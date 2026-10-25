@@ -3930,3 +3930,40 @@ private pack verification and retirement fixtures are authored and unrun. No
 runtime suite, listening, browser layout, touch, storage reload or end-to-end
 onset-count qualification is claimed. BODY FIT/COMPONENTS, derived rebuilds and
 advanced warp remain subsequent dependent work.
+
+
+### Continuation 175 — linked stereo component analysis (#1178, #1170)
+
+The same seed dock now has a COMPONENTS page with three aligned cached stereo
+waveform strips. A bounded shared-worker job computes linked root-mean-channel
+spectral magnitudes, temporal/frequency median estimates and real soft masks over
+the unchanged complex phase of both channels. The original first-party FFT is
+reused at 512/1024/2048 points, quarter-window hops and periodic square-root Hann
+analysis/synthesis. A second spectral pass avoids retaining all complex planes.
+Each job has explicit matrix/frame/memory limits, cooperative progress and
+latest-draft cancellation. No Python or external runtime dependency is shipped.
+
+Transient-like and sustained-like Float32 components preserve source alignment;
+the residual is their actual time-domain complement. A separate neutral
+recombination artifact and measured maximum/RMS/relative error accompany the exact
+window, padding, crop, mask margin and linked-stereo recipe. Every component embeds
+its parent asset/manifest identity, frame domain, printed effects and algorithm
+revision. These are estimates, not isolated miners, instruments or physical modes.
+Low reconstruction error does not qualify perceptual separation.
+
+Selecting original, a component or neutral recombination feeds the same recipe,
+compile, isolated audition, durable installation and undoable lane application
+path. An additional dry material comparison uses the existing native source-rate
+prelisten adapter, capped at eight seconds. Its receipt cannot satisfy instrument
+control-audition readiness. Foreground prelisten serializes these comparisons.
+The derived owner keeps last-good artifacts on failure, retires accepted workers
+before source windows, and keeps component readers before waveform/accounting
+release. Trim changes visibly invalidate derived readiness.
+
+Silence, impulse, sustained tone, mixed attack, stereo anti-phase, neutral
+reconstruction, cancellation, quota bounds, source-rate comparison and ownership
+fixtures are authored and unrun. Formatting and syntax checks only. Creative
+simultaneous sample/granular/modal child graphs, saved per-component revoicing,
+modal estimation and browser/listening acceptance remain dependent work.
+Reference algorithm context: [librosa 0.11.0 HPSS documentation](https://librosa.org/doc/0.11.0/generated/librosa.decompose.hpss.html);
+this is an original bounded implementation, not a measured oracle match.

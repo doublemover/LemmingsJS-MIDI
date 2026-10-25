@@ -47,8 +47,8 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     if (!Number.isFinite(sampleHoldSeconds) || sampleHoldSeconds < 0.2 || sampleHoldSeconds > 8 || sampleHoldSeconds !== 0.2 && patch.definition.engineId !== 'worklet-sample') {
       lease.release(); return Promise.reject(failure('sample-hold-unavailable', 'The owned sample audition hold must be 0.2–8 seconds.'));
     }
-    if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || patch.definition.engineId !== 'worklet-granular' || patch.definition.sampleRefs.length !== 1)) {
-      lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select a granular instrument with one local source to compare.'));
+    if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || !['worklet-granular', 'worklet-sample'].includes(patch.definition.engineId) || patch.definition.engineId === 'worklet-sample' && sourceMode !== 'original' || patch.definition.sampleRefs.length !== 1)) {
+      lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select one local source for a supported dry comparison.'));
     }
     if (sampleGesture !== null && (!['native-sample', 'worklet-sample'].includes(patch.definition.engineId) || !patch.definition.sampleMap?.articulations?.some(entry => entry.id === sampleGesture))) {
       lease.release(); return Promise.reject(failure('sample-gesture-unavailable', 'Choose an authored gesture for this sample instrument.'));

@@ -244,3 +244,7 @@ body.procgen-workstation {
 .studio-seed-lab > output { display:block; margin-block:4px; }
 .studio-seed-lab ol { max-height:110px; overflow:auto; overflow-wrap:anywhere; }
 @media(max-width:600px) { .studio-seed-lab { max-height:65dvh; } .studio-seed-lab button,.studio-seed-lab input,.studio-seed-lab select { min-height:44px; } }
+
+.studio-seed-components > div { display:grid; gap:4px; }
+.studio-seed-components canvas { display:block; width:100%; height:48px; background:#dce8ed; }
+.studio-seed-components > output { display:block; margin-block:4px; }

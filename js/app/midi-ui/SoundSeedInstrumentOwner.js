@@ -76,13 +76,14 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       if (next) discard({ stage: next }); loan?.release(); workspace?.release();
     }
   });
-  const audition = ({ repeatCount = 1 } = {}) => run('auditioning', async (operation, check) => {
+  const audition = ({ repeatCount = 1, comparison = false } = {}) => run('auditioning', async (operation, check) => {
+    if (typeof comparison !== 'boolean') throw fail('Declare an instrument audition or a dry source comparison.');
     if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 3) throw fail('Choose one audition or an explicit bounded three-pass loop.');
     if (!current?.stage.metadata().retained) throw fail('Compile the current seed before auditioning.');
     let receipt;
     for (let pass = 0; pass < repeatCount; pass++) {
       check(); receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal,
-        ...(current.contract.transform !== 'ice-dust' ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
+        ...(comparison ? { sourceMode: 'original' } : current.contract.transform !== 'ice-dust' ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
     }
     phase = 'audition-complete'; return receipt;
   });
