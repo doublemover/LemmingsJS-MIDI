@@ -77,6 +77,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
+  const cueStrip = node('div', null, 'studio-scene-cue'); cueStrip.setAttribute('aria-label', 'Prepared physical scene transition'); cueStrip.hidden = true;
+  const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
+  const cueGo = button('GO · stop and load', () => handlers.stageGo?.()); cueGo.disabled = true;
+  cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
   let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
@@ -159,6 +163,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   on(commandSearch, 'input', () => { fullscreenAction.hidden = !!commandSearch.value.trim() &&
     !/fullscreen|expand|exit|presentation/i.test(commandSearch.value); });
   fullscreenMenu.append(commandSearch, fullscreenAction);
+  const stageModeButton = button('Stage mode', () => handlers.stage?.(), 'Protect live performance and prepare an explicit NEXT score');
   const fullscreenExit = button('Exit fullscreen', fullscreenCommand); fullscreenExit.id = 'studioFullscreenExit'; fullscreenExit.hidden = true;
   // Opening the command and changing presentation geometry must not blur a numeric draft.
   for (const action of [fullscreenSummary, fullscreenAction, fullscreenExit]) on(action, 'pointerdown', event => {
@@ -173,7 +178,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   labeled('View', layoutMode, transport); labeled('Speed', speedMode, transport); labeled('BPM', bpm, transport); labeled('Link world', linked, transport);
   labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport);
-  transport.append(stopOutput, clockStatus, clockHealth, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
+  transport.append(stopOutput, stageModeButton, clockStatus, clockHealth, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
   fullscreenSession = createProcgenFullscreenSession({ document, root: presentationRoot, control: fullscreenAction,
     getGeneration: () => handlers.presentationGeneration?.() ?? 0,
     onTransition: () => { beginGeometry(); syncFullscreen(); },
@@ -856,7 +861,25 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, patchProject, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
+  let stageActive = false, stageFocus = null; const stageHidden = new Map();
+  const setStageMode = enabled => {
+    if (stageActive === !!enabled || disposed) return; stageActive = !!enabled;
+    shell.dataset.stageMode = String(stageActive); presentationRoot.dataset.stageMode = String(stageActive); cueStrip.hidden = !stageActive;
+    stageModeButton.textContent = stageActive ? 'Exit stage' : 'Stage mode'; stageModeButton.setAttribute('aria-pressed', String(stageActive));
+    if (stageActive) {
+      stageFocus = document.activeElement;
+      const roots = [inspector, footer, panel, grid, root.parentElement, scale.parentElement, clock.parentElement, layoutMode.parentElement,
+        ...topbar.querySelectorAll('.procgen-world-controls'), byId('procgenOutput')?.parentElement, byId('procgenMidiDevice')];
+      for (const element of roots) if (element && !stageHidden.has(element)) { stageHidden.set(element, { hidden: element.hidden, inert: element.inert }); element.hidden = true; element.inert = true; }
+      stopOutput.focus();
+    } else { for (const [element, previous] of stageHidden) { element.hidden = previous.hidden; element.inert = previous.inert; } stageHidden.clear(); stageFocus?.focus?.(); stageFocus = null; }
+    reflowGeometry();
+  };
+  const sceneCue = (value, current, active = stageActive) => {
+    currentCue.textContent = 'CURRENT · ' + (current?.title || 'Physical world'); nextCue.textContent = 'NEXT · ' + (value?.selection?.title || 'No candidate');
+    cueGo.disabled = !active || value?.canApply !== true; cueState.textContent = value?.prepared && !value.canApply ? 'Base changed · prepare again' : value?.phase === 'ready' ? 'Prepared stopped replacement · starts paused' : value?.phase || 'No prepared scene';
+  };
+  return { render, patchStep, patchProject, layout, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -911,6 +934,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     },
     midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
+      if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
@@ -920,7 +944,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
         { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },
-        ...[projectList, shell, footer, transport, heading].map((element, index) => ({ name: 'view-element-' + index, run: () => element.remove() })),
+        ...[projectList, cueStrip, shell, footer, transport, heading].map((element, index) => ({ name: 'view-element-' + index, run: () => element.remove() })),
         { name: 'legacy-panel', run: () => { if (panelParent) panelParent.insertBefore(panel, panelSibling?.parentNode === panelParent ? panelSibling : null); } },
         { name: 'topbar', run: () => topbarParent.insertBefore(topbar, topbarSibling?.parentNode === topbarParent ? topbarSibling : null) },
         { name: 'presentation-root', run: () => presentationRoot.remove() }

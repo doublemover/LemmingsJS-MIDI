@@ -221,3 +221,13 @@ body.procgen-workstation {
   .studio-scene-browser label { display:flex; margin-block:6px; }
   .studio-scene-browser button,.studio-scene-browser select,.studio-scene-browser input { min-height:44px; }
 }
+
+.procgen-presentation-root[data-stage-mode=true] { grid-template-rows:auto auto minmax(0,1fr); }
+.procgen-studio[data-stage-mode=true] { grid-template-columns:144px minmax(0,1fr); }
+.studio-scene-cue { display:flex; flex-wrap:wrap; gap:5px 9px; align-items:center; padding:5px 8px; background:#e8eef1; border:1px solid #a8bac6; border-radius:6px; }
+.studio-scene-cue[hidden] { display:none; }
+.studio-scene-cue > span { max-width:24ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.studio-scene-cue > output { flex:1 1 22ch; font-size:11px; }
+@media (max-width:600px) { .procgen-studio[data-stage-mode=true] { grid-template-columns:112px minmax(0,1fr); } .studio-scene-cue button { min-height:44px; } }
+
+.procgen-presentation-root[data-stage-mode=true] [hidden] { display:none !important; }

@@ -1,3 +1,4 @@
+import { createPerformanceStageSession } from '../js/app/procgen/workstation/PerformanceStageSession.js';
 import { createInstalledPerformanceSceneCatalog } from '../js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js';
 import { createPerformanceSceneWorldAdapter } from '../js/app/procgen/workstation/PerformanceSceneWorldAdapter.js';
 import { verifyPerformanceSceneOrigin } from '../js/app/procgen/workstation/PerformanceSceneRecipe.js';
@@ -112,5 +113,31 @@ describe('installed crossing scores and the existing world candidate adapter', (
   it('keeps source-build mismatch unavailable instead of converting the score silently', async () => {
     const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), origin = await f.library.origin(value); let error;
     try { await verifyPerformanceSceneOrigin(origin, { sourceHash: h('c') }); } catch (caught) { error = caught; } expect(error.code).to.equal('invalid-scene-score-recipe');
+  });
+});
+
+
+describe('protected stage sessions consume the same prepared scene owner', () => {
+  it('keeps performance and cleanup available while blocking structural edits and endpoint changes', async () => {
+    let presentation = false, canceled = 0;
+    const stage = createPerformanceStageSession({ getIdentity: () => 'doc:1', setPresentation: value => { presentation = value; }, applyCandidate: async () => { throw new Error('No cue prepared.'); }, cancelCandidate: async () => { canceled++; } });
+    expect(stage.permitsCommand('new')).to.equal(true); stage.enter(); expect(presentation).to.equal(true);
+    for (const name of ['stopOutput', 'panicOutput', 'stagePlay', 'performReleaseGesture', 'requestJunction', 'cancelExportDelivery']) expect(stage.permitsCommand(name), name).to.equal(true);
+    for (const name of ['new', 'load', 'rebuild', 'undo', 'save', 'input', 'clockOutput', 'selectNativeSound']) expect(stage.permitsCommand(name), name).to.equal(false);
+    expect(stage.permitsCommand('transport', [{ bpm: 130 }])).to.equal(true); expect(stage.permitsCommand('transport', [{ clockSource: 'external' }])).to.equal(false);
+    expect(stage.permitsEdit({ type: 'procgen/lane', patch: { gain: 0.6, mute: true } })).to.equal(true); expect(stage.permitsEdit({ type: 'procgen/lane', patch: { worldThemeId: 'crystal' } })).to.equal(false);
+    await stage.exit(); expect(presentation).to.equal(false); expect(canceled).to.equal(1); expect(stage.permitsCommand('new')).to.equal(true);
+  });
+  it('never publishes an unavailable or stale NEXT and retains an explicit paused resume choice', async () => {
+    let candidate = { phase: 'ready', canApply: false }, publications = 0, identity = 'doc:1';
+    const stage = createPerformanceStageSession({ getIdentity: () => identity, setPresentation() {}, getCandidate: () => candidate,
+      applyCandidate: async () => { publications++; identity = 'doc:2'; return { status: 'committed' }; } });
+    stage.enter(); expect(await stage.go()).to.equal(false); expect(publications).to.equal(0);
+    candidate = { phase: 'ready', canApply: true, prepared: { preflight: { sceneHash: h('a') } } }; await stage.go(); expect(publications).to.equal(1); expect(stage.state().enteringIdentity).to.equal('doc:2'); expect(stage.state().resumeChoice).to.include('explicit-Play'); await stage.dispose();
+  });
+  it('exposes stale source bases as unready before a user can press GO', async () => {
+    let base = 'doc:1'; const value = await scene(), loader = createPerformanceSceneLoader({ getBaseIdentity: () => base, resolveDependency: available,
+      prepareCandidate: async ({ preflight, baseIdentity }) => ({ sceneHash: preflight.sceneHash, variants: preflight.variants, baseIdentity, admission: { status: 'admitted', world: true, sound: true, mapping: true }, commit() { throw new Error('Unexpected publication.'); }, retire: () => ({ outcome: 'complete' }) }) });
+    loader.select(value); await loader.prepare(); expect(loader.state().canApply).to.equal(true); base = 'doc:2'; expect(loader.state().canApply).to.equal(false); await loader.dispose();
   });
 });

@@ -3451,3 +3451,29 @@ more score content and full first-use/browser/reopen proof paths remain pending.
 Installed-catalog closure, origin round-trip/build mismatch, real world/patch
 preparation, lane-isolated crossings and held-source transfer fixtures are
 written, not run. All runtime validation remains in the final combined pass.
+
+### Continuation 161 — protected stage surface and one prepared NEXT owner (#1175)
+
+Stage mode now collapses file controls, structural world controls, step cells and
+the deep inspector while retaining the world, lane mix, performance controls and
+explicit Play/Pause/Stop/Panic. A compact CURRENT/NEXT strip names the candidate,
+preparation state and stopped-replacement policy. GO consumes the existing scene
+loader; it cannot create a second scene, note clock or transition. The browser can
+retain a ready candidate for the visible stage cue; ordinary close/cancellation
+retires it. Exit stage releases that preparation and restores the previous chrome.
+No scene automatically resumes after GO.
+
+Command and edit guards reject structural history/file/world/sound/routing changes
+while stage is active, including global legacy regeneration shortcuts before they
+mutate settings or suspend output. Mix/macros, actual release/junction performance,
+recording controls, camera, Stop/Panic and cleanup remain deliberate operations.
+Prepared-base readiness now includes actual transport and output identity; UI GO
+is disabled after the base changes, before publication. Capture/world/history
+admission rules still apply. Stage view state is presentation-local and is never
+silently restored from a saved project's UI data.
+
+Policy, cleanup, stale-base readiness and paused-GO fixtures are authored and
+unrun. Isolated rehearsal, measured seamless transitions and browser/accessibility
+qualification remain pending; no crossfade animation implies continuity. This
+implements the stopped-replacement policy only, with explicit unavailable paths
+for absent preview/transition adapters.

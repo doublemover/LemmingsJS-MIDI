@@ -1,6 +1,6 @@
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, onStatus = () => {} } = {}) {
+export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, onStatus = () => {} } = {}) {
   if (!document?.createElement || !registry?.page || !loader?.select || !loader?.state) throw new TypeError('The scene browser requires metadata pages and the existing candidate owner.');
   const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -58,13 +58,14 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'An independently owned local scene audition adapter is not available yet.';
   button(actions, 'Cancel preparation', () => { void loader.cancel().catch(error => say(error.message)); });
   button(actions, 'Open saved takes', run(async () => { await loader.cancel(); if (dialog.open) dialog.close(); await onSavedTakes(); }));
-  const close = async () => { if (dialog.open) dialog.close(); await loader.cancel(); opener?.focus?.(); };
+  const close = async () => { if (dialog.open) dialog.close(); if (keepPreparedOnClose() && loader.state().canApply) await loader.stopPreview(); else await loader.cancel(); opener?.focus?.(); };
   button(actions, 'Close', () => { void close().catch(error => say(error.message)); }); listen(dialog, 'cancel', event => { event.preventDefault(); void close().catch(error => say(error.message)); });
   for (const input of [search, mechanism, density, lesson]) listen(input, input === search ? 'input' : 'change', () => { offset = 0; renderPage(); });
   listen(rows, 'keydown', event => { if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !page?.rows.length) return; event.preventDefault(); const at = page.rows.findIndex(chosen), index = event.key === 'Home' ? 0 : event.key === 'End' ? page.rows.length - 1 : Math.max(0, Math.min(page.rows.length - 1, at + (event.key === 'ArrowDown' ? 1 : -1))); choose(page.rows[index]); rows.children[index]?.focus(); });
   function refresh() {
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
-    prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready';
+    prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready' || !state.canApply;
+    rehearse.disabled = busy || !state.previewAvailable || !state.canApply;
     if (state.error) status.textContent = state.error.message;
     else if (state.pending || ['world-source', 'world-assets', 'world-geometry', 'sound-assets', 'sound-compile', 'resource-admission'].includes(state.phase)) status.textContent = 'Preparing: ' + state.phase + '. Live world retained.';
     else if (state.prepared) status.textContent = 'Ready: replaces world, sound and physical mappings; transport will be paused. Local audio and recording are not enabled by the scene.';

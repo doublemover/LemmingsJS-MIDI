@@ -68,6 +68,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
   let syncTargetHelp = () => {};
+  let physicalControlOwner = null;
   const renderOutput = state => {
     syncTargetHelp();
     const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
@@ -80,7 +81,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
   local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
-    backend: settings.output, onStateChange: renderOutput, onDevicesChange: (ports, selectedId) => {
+    backend: settings.output, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {
       const select = byId('procgenMidiDevice'); if (!select) return;
       select.replaceChildren(); const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = ports.length ? 'Choose MIDI output' : 'Connect to find MIDI outputs'; select.append(placeholder);
       for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name || port.id; select.append(option); }
@@ -264,6 +265,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   listen(byId('procgenListen'), 'click', () => { if (local.getState().enabled || local.getState().status === 'starting') local.stop(); else local.start(); });
   let restartId = 0;
   const doRestart = async ({ applySeed = false } = {}) => {
+    if (physicalControlOwner?.canRestart && !physicalControlOwner.canRestart()) return false;
     const id = ++restartId;
     spanOverlay.cancelDraft();
     const seed = byId('procgenSeed')?.value?.trim();
@@ -340,7 +342,6 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   listen(byId('procgenCctvClear'), 'click', () => { cctv()?.setPins([]); syncCctv(cctv()?.getState()); });
   for (let index = 0; index < 8; index++) listen(byId('procgenCctvSlot' + index), 'click', event => toggleCctvPin(Number(event.currentTarget?.dataset.lane ?? byId('procgenCctvSlot' + index)?.dataset.lane)));
 
-  let physicalControlOwner = null;
   const setSpeed = (value, { owned = false } = {}) => {
     if (!owned && physicalControlOwner?.speed) return physicalControlOwner.speed(normalizeProcgenSpeed(value, settings.speed));
     settings.speed = normalizeProcgenSpeed(value, settings.speed);
