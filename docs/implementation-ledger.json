@@ -212,14 +212,21 @@
         "js/app/procgen/PhysicalAuthoring.js",
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -227,6 +234,11 @@
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]
@@ -527,17 +539,31 @@
       "initialGap": "Some owned clip gestures exist, but no common pointer arbiter is installed; inspector move ignores pointer identity and sound dials begin unbound global history gestures whose apply resolves current source, preserving the reported cross-source retarget/grouped-Undo defect.",
       "state": "in-progress",
       "source": [
-        "js/app/controls/PointerGestureArbiter.js"
+        "js/app/controls/PointerGestureArbiter.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
       ],
       "regressions": [
-        "test/midi/midi-instrument-workbench.test.js"
+        "test/midi/midi-instrument-workbench.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
         "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
       ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership",
-      "remaining": "Shared owner now spans knobs, sound dials, clip painting, workstation painting, resize, camera and span editing. Gate/field/temporary-audition integration follows their owners."
+      "remaining": "Shared owner now spans knobs, sound dials, clip painting, workstation painting, resize, camera and span editing. Gate/field/temporary-audition integration follows their owners.",
+      "increments": [
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1001,
@@ -1959,16 +1985,23 @@
         "js/app/procgen/PhysicalAuthoring.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
         "scripts/bench-physical-junctions.mjs",
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075"
+        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -1981,6 +2014,11 @@
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]
@@ -2197,7 +2235,8 @@
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "68b954ff3e7b84b1ecc109172d917e6a9449291a"
+        "68b954ff3e7b84b1ecc109172d917e6a9449291a",
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2210,7 +2249,7 @@
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
-          "commit": null
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
         }
       ]
     },
@@ -2954,17 +2993,30 @@
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
       ],
       "regressions": [
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]
@@ -2981,17 +3033,30 @@
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
       ],
       "regressions": [
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]
@@ -3081,7 +3146,9 @@
         "js/app/procgen/PhysicalAuthoring.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js"
       ],
       "regressions": [
         "test/procgen-terrain-authoring.test.js",
@@ -3091,12 +3158,16 @@
         "test/physical-score-fragment.test.js",
         "scripts/qualify-physical-fragment-transforms.mjs",
         "scripts/bench-physical-fragments.mjs",
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
         "224d91e7fde8ff16e55ef9ec92121e161ccea9fc",
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
-        "6357fa75948baaf475a9da927f6a5eca4143686c"
+        "6357fa75948baaf475a9da927f6a5eca4143686c",
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3118,6 +3189,11 @@
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]
@@ -3143,7 +3219,9 @@
         "js/app/procgen/PhysicalAuthoring.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3151,11 +3229,15 @@
         "test/physical-score-fragment.test.js",
         "scripts/qualify-physical-fragment-transforms.mjs",
         "scripts/bench-physical-fragments.mjs",
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/physical-authoring-history.test.js",
+        "test/procgen-physical-authoring-controller.test.js",
+        "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
-        "6357fa75948baaf475a9da927f6a5eca4143686c"
+        "6357fa75948baaf475a9da927f6a5eca4143686c",
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3172,6 +3254,11 @@
         {
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "physical-authoring-surface-and-history",
+          "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
           "commit": null
         }
       ]

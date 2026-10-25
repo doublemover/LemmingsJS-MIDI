@@ -1062,3 +1062,41 @@ cancellation and independent checkpoint/recovery continuation is written, not ru
 The public placement-command builder is connected to this owner; the bounded
 editing surface and checkpoint-backed physical Undo integration are still being
 implemented and are not claimed by the atomic-owner increment alone.
+
+### Paused terrain/fragment editing and physical Undo
+
+The workstation's **Physical authoring** surface now exposes a finite world-space
+cell brush, keyboard cell selection, semantic material annotation, protected/unknown
+cell preview, spatial dependency capture, versioned fragment library, explicit
+placement bindings/ports/parameters and detachment. The shared pointer arbiter
+owns one physical contact; a replaced world/project/region cancels its draft.
+A shared display surface redraws changed source/selection identities only, under
+a reserved canvas budget. Closing or suspending cancels pending preparation and
+never starts audio or hardware preview.
+
+Apply requires paused transport, no active take and no older pending physical
+request. It first captures a cooperative whole-world checkpoint under an exclusive
+source/project/document lease, then queues and advances **one actual physics
+boundary**, remaining paused. Failure to reserve/capture history refuses the edit.
+A rejected candidate may still have advanced that real boundary; it is not called
+an unchanged simulation. Recorded-performance edits use the existing isolated
+physical branch instead of overwriting a take's history.
+
+Physical Undo/Redo restore the checkpoint plus project, command queue, actor
+identity, terrain/provenance, effective graph, musical interpretation and clock;
+they never pretend an inverse pixel stroke reconstructs past actors. Restores are
+paused and preserve the document destination while fencing old asynchronous work.
+Historical graph/region revisions are restored as captured, rather than spuriously
+rebased like a live mapping edit. Checkpoint producers keep their reservation until
+cancellation acknowledgement; unknown retirement remains accounted and visible.
+
+History has a finite byte budget and reserves half for a destination snapshot, so
+retained physical checkpoints cannot consume Undo/Redo's required capture headroom.
+The default 32 MiB history limit can reject large-world captures; the new profile
+reports admission/refusal for 8/128/1024 lanes rather than asserting they fit.
+The explicit discard action removes physical checkpoints and older crossing
+history without touching the current world. Cooperative capture still contains
+nonpreemptible native allocations/key enumeration; responsiveness is unqualified.
+Controller, ownership and whole-world restoration regressions plus the history
+profile are written but unrun. Browser interaction, large-world admission and
+source-qualified fragment traversal remain deferred validation.

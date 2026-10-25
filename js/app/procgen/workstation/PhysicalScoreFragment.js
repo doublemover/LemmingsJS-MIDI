@@ -183,3 +183,23 @@ export function validateFragmentInstances(values = []) {
   }));
 }
 export { GROUPS as FRAGMENT_GRAPH_GROUPS, LIMITS as PHYSICAL_FRAGMENT_LIMITS };
+
+export function selectSpatialFragmentGraph(input, bounds) {
+  const graph = validateCausalInstrumentGraph(input), b = rectangle(bounds), selected = { version: 1, revision: graph.revision, seed: graph.seed, instruments: [] };
+  const shapeInside = shape => shape.kind === 'band' ? withinBounds(shape.bounds, b) : shape.points.every(point => within(point, b, true));
+  selected.ensembles = (graph.ensembles || []).filter(ensemble => {
+    let eligible = ensemble.captureBoundary.mode === 'first-complete'; selectorWalk(ensemble.selector, selector => { if (['actors', 'route', 'birthCohort', 'crewProject'].includes(selector.kind) || selector.kind === 'region' && !withinBounds(selector.bounds, b)) eligible = false; }); return eligible;
+  });
+  const ensembleAvailable = id => !id || selected.ensembles.some(value => value.id === id);
+  selected.pickups = (graph.pickups || []).filter(pickup => shapeInside(pickup.geometry) && ensembleAvailable(pickup.ensembleId));
+  selected.harmonicFields = (graph.harmonicFields || []).filter(field => shapeInside(field.geometry) && ensembleAvailable(field.ensembleId));
+  selected.routes = (graph.routes || []).filter(route => route.markers.every(marker => selected.pickups.some(pickup => pickup.id === marker.gateId)) && route.segments.every(segment => segment.path.every(point => within(point, b, true)) && segment.dependencies.every(dependency => withinBounds(dependency.bounds, b))));
+  selected.formations = (graph.formations || []).filter(formation => ensembleAvailable(formation.ensembleId) && (!formation.routeId || selected.routes.some(route => route.id === formation.routeId)));
+  selected.topologyRegions = (graph.topologyRegions || []).filter(region => withinBounds(region.bounds, b));
+  selected.instruments = graph.instruments.filter(instrument => {
+    const pickup = instrument.pickupId || instrument.response?.pickupId, route = instrument.routeId || instrument.response?.routeId;
+    const positioned = pickup || route || instrument.topologyRegionId || instrument.harmonicFields && instrument.ensembleId && selected.harmonicFields.length;
+    return positioned && (!pickup || selected.pickups.some(value => value.id === pickup)) && (!route || selected.routes.some(value => value.id === route)) && ensembleAvailable(instrument.ensembleId) && ensembleAvailable(instrument.response?.ensembleId) && (!instrument.formationId || selected.formations.some(value => value.id === instrument.formationId)) && (!instrument.topologyRegionId || selected.topologyRegions.some(value => value.id === instrument.topologyRegionId));
+  });
+  return validateCausalInstrumentGraph(selected);
+}

@@ -1,3 +1,7 @@
+import { createPhysicalAuthoringView } from './PhysicalAuthoringView.js';
+import { createPhysicalAuthoringHistory } from './PhysicalAuthoringHistory.js';
+import { capturePhysicalScoreFragment, selectSpatialFragmentGraph, planPhysicalScoreFragment, fragmentPlacementCommand } from './PhysicalScoreFragment.js';
+import { normalizeTerrainCommand, planTerrainCommand, digestPlan } from '../TerrainAuthoringAdapter.js';
 import { prepareProjectJunctions } from './PhysicalJunctionProject.js';
 import { createPhysicalJunctionView } from './PhysicalJunctionView.js';
 import { getProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
@@ -119,7 +123,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null;
   let masterCapture = null;
-  let quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
+  let physicalAuthoringView = null, quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -132,19 +136,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const pendingSaveGenerations = new Set();
   let transportStopGeneration = 0;
   const historySizes = new WeakMap();
+  const physicalHistory = createPhysicalAuthoringHistory({ resourceBudget, maxBytes: Math.max(1048576, Math.min(128 * 1048576, historyBytesLimit)) });
+  let physicalAuthoringAbort = null, pendingPhysicalAuthoring = null, physicalAuthoringSerial = 0;
   let historyDropped = 0;
   const historyBytes = value => {
     let bytes = historySizes.get(value);
     if (bytes == null) { bytes = JSON.stringify(value).length * 2; historySizes.set(value, bytes); }
     return bytes;
   };
-  const retainedHistoryBytes = () => [...undo, ...redo].reduce((sum, entry) => sum + historyBytes(entry), 0);
+  const retainedHistoryBytes = () => [...undo, ...redo].reduce((sum, entry) => sum + historyBytes(entry) + physicalHistory.bytesFor(entry), 0);
   const trimHistory = () => {
     let bytes = retainedHistoryBytes();
-    while (bytes > historyBytesLimit && (undo.length || redo.length)) {
+    while ((bytes > historyBytesLimit || [...undo, ...redo].reduce((sum, entry) => sum + physicalHistory.bytesFor(entry), 0) > physicalHistory.diagnostics().retainedLimitBytes) && (undo.length || redo.length)) {
       const entry = undo.length ? undo.shift() : redo.shift();
-      bytes -= historyBytes(entry); historyDropped++;
+      bytes -= historyBytes(entry) + physicalHistory.bytesFor(entry); historyDropped++;
     }
+    physicalHistory.prune(new Set([...undo, ...redo]));
   };
   const status = text => { if (!disposed) view?.status(text); };
   const retirePhysicalScoreViews = ({ parentOnly = false } = {}) => {
@@ -236,7 +243,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     recoveryState = 'pending'; storageStatus();
     recoveryTimer = window.setTimeout(() => { recoveryTimer = null; void recover(); }, delay);
   };
-  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false } = {}) => {
+  const syncProject = (next, { history = true, historyGroup = null, historyCost = null, render = true, renderAction = null, fromLegacy = false, restoringWorld = false } = {}) => {
+    if (physicalAuthoringAbort && !restoringWorld) throw new Error('Physical authoring owns this paused project boundary.');
     const change = procgenProjectChange(project, next);
     const runtimeUnchanged = sameMidiRuntimeInputs(project, next);
     const instrumentRefsChanged = change && !change.structural ? change.laneIds.some(id => {
@@ -252,22 +260,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
     const junctionsChanged = !equal(project.procgen.junctions || [], next.procgen.junctions || []);
     if (junctionsChanged && (causalTake || causalTakeStart || causalTakeStop)) throw new Error('Finish the causal take before editing junction definitions. Existing junction requests remain available while recording.');
-    if (junctionsChanged) next = { ...next, procgen: { ...next.procgen, junctions: (next.procgen.junctions || []).map(value => {
+    if (!restoringWorld && junctionsChanged) next = { ...next, procgen: { ...next.procgen, junctions: (next.procgen.junctions || []).map(value => {
       const previous = project.procgen.junctions?.find(prior => prior.id === value.id); if (!previous || equal(previous, value) || value.revision > previous.revision) return value;
       if (!Number.isSafeInteger(previous.revision + 1)) throw new Error('Junction revision exhausted.'); return { ...value, revision: previous.revision + 1 };
     }) } };
     const junctionProposal = junctionsChanged && runtime()?.world ? prepareProjectJunctions(runtime().world, next.procgen.junctions || []) : null;
-    if (project.procgen.physicalGraph !== next.procgen.physicalGraph) for (const collection of ['harmonicFields', 'topologyRegions']) {
+    if (!restoringWorld && project.procgen.physicalGraph !== next.procgen.physicalGraph) for (const collection of ['harmonicFields', 'topologyRegions']) {
       const previous = project.procgen.physicalGraph[collection] || [], values = next.procgen.physicalGraph[collection];
       if (!values) continue;
       const rebased = values.map(value => { const old = previous.find(prior => prior.id === value.id); if (!old || equal(old, value) || value.revision > old.revision) return value; if (!Number.isSafeInteger(old.revision + 1)) throw new Error('Physical region revision exhausted.'); return { ...value, revision: old.revision + 1 }; });
       if (rebased.some((value, index) => value !== values[index])) next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, [collection]: rebased } } };
     }
-    if (project.procgen.physicalGraph !== next.procgen.physicalGraph && JSON.stringify(project.procgen.physicalGraph.harmonicFields || []) !== JSON.stringify(next.procgen.physicalGraph.harmonicFields || [])) {
+    if (!restoringWorld && project.procgen.physicalGraph !== next.procgen.physicalGraph && JSON.stringify(project.procgen.physicalGraph.harmonicFields || []) !== JSON.stringify(next.procgen.physicalGraph.harmonicFields || [])) {
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, editCommandId: `field-edit:${project.procgen.physicalGraph.revision + 1}` } } };
     }
     const graphChanged = project.procgen.physicalGraph !== next.procgen.physicalGraph && !equal(project.procgen.physicalGraph, next.procgen.physicalGraph);
-    if (graphChanged && next.procgen.physicalGraph.revision <= project.procgen.physicalGraph.revision) {
+    if (!restoringWorld && graphChanged && next.procgen.physicalGraph.revision <= project.procgen.physicalGraph.revision) {
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
     }
@@ -309,6 +317,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } return project;
   };
   const dispatch = (action, { historyGroup = null } = {}) => {
+    if (physicalAuthoringAbort) { status('Finish the paused physical authoring transaction before editing.'); return false; }
     if (disposed) return project;
     if (pendingHistory) {
       if (['procgen/palette', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
@@ -360,6 +369,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     onPosition(position) {
       if (disposed) return;
+      if (physicalAuthoringAbort && position.playing) { transport.pause(); return; }
       if (position.playing !== lastPlaying) { lastPlaying = position.playing; legacy.setPaused(!position.playing); }
       if (position.playing) runtime()?.lanes?.pump?.(position.timestamp);
       syncWorldSeed(); observeFrame(position.timestamp);
@@ -511,6 +521,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   let pageLifecycle = null;
   const play = () => {
+    if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
     if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
@@ -697,7 +708,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalTakeStop = recorder.stop({ boundaryState: causalBoundary(), finalCheckpoint, reason }).then(receipt => {
       lastCausalTake = receipt;
       selectedCausalTakeId = receipt.takeId;
-      physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
+      physicalAuthoringAbort?.abort(); physicalScoreAbort?.abort(); physicalScoreSerial++; retirePhysicalScoreViews();
       if (!recorder.canReplaceDocument()) throw new Error('Causal take saving needs recovery. Retry saving, or explicitly discard the unsaved tail before replacing the world.');
       if (causalTake === recorder) causalTake = null;
       status(receipt.complete ? `Causal take ${receipt.takeId} saved.` :
@@ -799,7 +810,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     next.getAutomationSpanState = (id, lane) => engine.getAutomationSpanState?.(id, lane);
     next.resetClock?.({ preserveGamePhrases: true });
   };
-  const bindRuntime = ({ session } = {}) => {
+  const bindRuntime = ({ session, historyRestore = false } = {}) => {
     if (disposed) return null;
     let sessionIdentity = null;
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
@@ -807,7 +818,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
-    const boundProject = session?.project || project;
+    const boundProject = session?.project || project; let bindingSession = !!session;
+    const playbackProject = () => bindingSession ? boundProject : project;
     next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
     if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, boundProject.procgen.junctions || []).commit();
     laneObserver = createProcgenLaneObserver(next.world);
@@ -816,13 +828,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer, resourceBudget,
-      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => playbackProject().procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
         else if (causalTake && physicalReceiptBoundary) causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary);
       } });
-    void physicalPlayback.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
+    void physicalPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
     const markPhysicalGap = (batch, reason) => {
@@ -837,11 +849,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (applied) {
         const authored = next.world.physicalAuthoring;
         if (authored.lastApplied?.transactionId === applied.transactionId) {
-          const previous = project; project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } });
+          const previous = project;
+          if (pendingPhysicalAuthoring?.commandId === applied.commandId) { pendingPhysicalAuthoring.capsule.promote(previous); pendingPhysicalAuthoring.promoted = true; }
+          project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } });
           undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
         }
       }
-      physicalJunctionView?.refresh();
+      physicalJunctionView?.refresh(); physicalAuthoringView?.refresh();
       let position;
       try {
         position = physicalScoreClock.observe(batch, transport.getState());
@@ -897,20 +911,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (session) {
       documentGeneration++;
       cancelInputEdits('project loaded');
-      documentId = null; documentRevision = 0;
-      savedRevision = -1; lastSavedAt = null; storageStatus();
+      if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; } storageStatus();
       suppressPersistence = true;
       try {
-        syncProject(session.project, { history: false, render: false }); Object.assign(legacy.settings, session.settings, { workstation: true });
+        syncProject(session.project, { history: false, render: false, restoringWorld: true }); Object.assign(legacy.settings, session.settings, { workstation: true });
         acceptWorldSettings(legacy.settings);
         lastLegacySpeed = legacy.settings.speed;
         Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
         transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
         if (session.camera) renderer()?.camera?.applyState?.(session.camera);
       } finally { suppressPersistence = false; }
-      ports.configure({ recording: false, thru: false }); undo.length = 0; redo.length = 0; status('Project loaded paused. Press Play to resume.');
+      ports.configure({ recording: false, thru: false }); if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); } status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
     }
-    prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
+    bindingSession = false; prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
     const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
     syncPorts(); view?.render(); view?.transport(transport.getState());
     worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
@@ -934,6 +947,32 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
       physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
+  };
+  const capturePhysicalHistory = async (sourceWorld, sourceProject, signal) => {
+    const sourceGeneration = documentGeneration, sourceTick = sourceWorld.tickIndex;
+    return physicalHistory.capture(sourceWorld, sourceProject, (checkpoint, capturedProject) => createProcgenSession({ name: savedName, project: capturedProject, settings: clone(settingsFor(capturedProject)), world: checkpoint,
+      transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(), physicalState: physicalPlayback?.engine.snapshot() || null,
+      camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } }),
+    { signal, isCurrent: () => !disposed && runtime()?.world === sourceWorld && project === sourceProject && documentGeneration === sourceGeneration && sourceWorld.tickIndex === sourceTick && !transport.getState().playing });
+  };
+  const applyPausedPhysicalCommand = async buildCommand => {
+    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || transport.getState().playing) throw new Error('Pause playback and finish the take/world operation before physical authoring. Use a physical branch for recorded performance edits.');
+    const sourceWorld = runtime()?.world, previous = project; if (sourceWorld?.interventionState.pending.length) throw new Error('Let existing physical requests reach a boundary before authoring a new transaction.'); if (!sourceWorld || sourceWorld._failedTick || !Number.isSafeInteger(project.procgen.revision + 1)) throw new Error('No writable physical authoring boundary.');
+    beforeRestart(); const controller = new AbortController(); physicalAuthoringAbort = controller; worldBusy = true; let capsule = null;
+    try {
+      capsule = await capturePhysicalHistory(sourceWorld, previous, controller.signal); controller.signal.throwIfAborted();
+      if (!Number.isSafeInteger(++physicalAuthoringSerial)) throw new Error('Physical authoring command identity exhausted.');
+      const command = buildCommand(sourceWorld, project, `physical-author:${sourceWorld.generation}:${sourceWorld.tickIndex}:${physicalAuthoringSerial}`), proposal = sourceWorld.prepareIntervention(command);
+      if (proposal.outcome.status !== 'queued') throw new Error('Physical authoring was not admitted: ' + proposal.outcome.reason);
+      pendingPhysicalAuthoring = { commandId: command.id, capsule, promoted: false }; proposal.commit(); sourceWorld.step();
+      const receipt = sourceWorld.interventionState.receipts.findLast(value => value.commandId === command.id);
+      if (receipt?.status !== 'accepted') throw new Error('Physical authoring rejected without a partial candidate: ' + (receipt?.reason || 'missing receipt'));
+      if (!pendingPhysicalAuthoring.promoted || project.procgen.physicalGraph !== sourceWorld.physicalAuthoring.graph || !undo.includes(previous)) { if (pendingPhysicalAuthoring.promoted && !undo.includes(previous)) undo.push(previous); throw new Error('Physical authoring applied but its project/history publication failed. Prior checkpoint retained; export recovery before continuing.'); }
+      status(`Physical authoring applied at tick ${sourceWorld.tickIndex}; playback remains paused.`); return receipt;
+    } finally {
+      if (!pendingPhysicalAuthoring?.promoted) capsule?.discard(); pendingPhysicalAuthoring = null;
+      if (physicalAuthoringAbort === controller) physicalAuthoringAbort = null; worldBusy = false; if (!disposed) { persist(); view?.render(); }
+    }
   };
   const recover = async () => {
     if (disposed || worldBusy || recoveryPending || !runtime()?.world) return false;
@@ -1022,7 +1061,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return lastDelivery;
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
-  async function loadSession(value, admittedLease = null, { signal } = {}) {
+  async function loadSession(value, admittedLease = null, { signal, historyRestore = false } = {}) {
     signal?.throwIfAborted();
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
     if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
@@ -1056,7 +1095,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const restarted = await restart({ session: prepared, lease });
       if (!ownsOperation(lease) || serial !== loadSerial) return false;
       if (restarted === false) throw new Error('World preparation was canceled.');
-      bindRuntime({ session: prepared }); loaded = true; return true;
+      bindRuntime({ session: prepared, historyRestore }); loaded = true; return true;
     } catch (error) {
       if (!ownsOperation(lease)) return false;
       if (runtime() !== previousRuntime) {
@@ -1132,7 +1171,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const historyMove = async (from, to) => {
     if (!from.length || pendingHistory || worldBusy) return false;
     cancelInputEdits('history changed');
-    const previous = project, next = from.at(-1), movedCost = historyBytes(next);
+    const previous = project, next = from.at(-1), movedCost = historyBytes(next), physicalSnapshot = physicalHistory.get(next);
+    if (physicalSnapshot) {
+      if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the take or use a physical branch before rewinding physical history.');
+      beforeRestart(); const controller = new AbortController(); physicalAuthoringAbort = controller; worldBusy = true; let capsule = null;
+      try {
+        capsule = await capturePhysicalHistory(runtime().world, previous, controller.signal); worldBusy = false;
+        const loaded = await loadSession(physicalSnapshot, null, { signal: controller.signal, historyRestore: true }); if (!loaded) return false;
+        from.pop(); capsule.promote(previous); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); return true;
+      } finally { capsule?.discard(); physicalAuthoringAbort = null; worldBusy = false; }
+    }
     if (!changesWorld(next)) {
       syncProject(next, { history: false }); from.pop(); historySizes.set(previous, movedCost); to.push(previous); trimHistory(); return true;
     }
@@ -1174,6 +1222,53 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       prelistenMonitor ||= createPrelistenMonitor({ document, audio: legacy.local.audio, displayScheduler: view?.displayScheduler,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
+    },
+    openPhysicalAuthoring() {
+      physicalAuthoringView ||= createPhysicalAuthoringView({ document, resourceBudget, displayScheduler: view?.displayScheduler, getWorld: () => runtime()?.world, getProject: () => project,
+        previewTerrain: input => handlers.previewTerrainAuthoring(input), applyTerrain: input => handlers.applyTerrainAuthoring(input), captureFragment: input => handlers.capturePhysicalFragment(input),
+        previewFragment: (id, options) => handlers.previewPhysicalFragment(id, options), placeFragment: (id, options) => handlers.placePhysicalFragment(id, options),
+        saveFragments: fragments => dispatch({ type: 'procgen/fragments', fragments }), detachFragment: instanceId => dispatch({ type: 'procgen/detachFragment', instanceId }), cancelPending: () => physicalAuthoringAbort?.abort(), discardPhysicalHistory: () => handlers.discardPhysicalHistory(), onStatus: status });
+      physicalAuthoringView.open();
+    },
+    discardPhysicalHistory() {
+      if (worldBusy || physicalAuthoringAbort || pendingHistory) throw new Error('Finish the physical history operation first.');
+      for (const stack of [undo, redo]) { const index = stack.findLastIndex(entry => physicalHistory.get(entry)); if (index >= 0) { historyDropped += index + 1; stack.splice(0, index + 1); } }
+      physicalHistory.clear(); trimHistory(); return { status: 'history-discarded', worldUnchanged: true, retained: physicalHistory.diagnostics() };
+    },
+    previewTerrainAuthoring(input) {
+      const world = runtime()?.world; if (!world || world._stepping) throw new Error('Wait for a completed physical boundary.');
+      const plan = planTerrainCommand({ ...input, generation: world.generation, transactionId: `terrain-preview:${world.generation}:${world.tickIndex}` }, world);
+      return { status: plan.status, reason: plan.reason, counts: plan.counts, conflicts: plan.rejected, patchCount: plan.patchCount, previewHardwareNotes: false };
+    },
+    applyTerrainAuthoring(input) {
+      const frozenInput = clone(input);
+      return applyPausedPhysicalCommand((world, source, id) => ({ id, transactionId: id, kind: 'physical-authoring', origin: 'manual', target: { generation: world.generation }, parameters: { authoring: {
+        version: 1, operation: 'terrain-and-graph', transactionId: id, expectedRevision: world.physicalAuthoring.revision, expectedJunctionRevision: world.physicalJunctions.revision, expectedGraphDigest: digestPlan(world.physicalAuthoring.graph),
+        graph: { ...source.procgen.physicalGraph, revision: source.procgen.physicalGraph.revision + 1, editCommandId: id }, instances: source.procgen.fragmentInstances || [], junctions: source.procgen.junctions || [],
+        terrain: normalizeTerrainCommand({ ...frozenInput, generation: world.generation, transactionId: id })
+      } } }));
+    },
+    capturePhysicalFragment(input) {
+      const world = runtime()?.world; if (!world || worldBusy || physicalAuthoringAbort || world._stepping) throw new Error('Wait for an available authoring boundary.');
+      const previous = project.procgen.fragments?.find(fragment => fragment.id === input.id), b = input.bounds;
+      const junctions = input.junctions ?? (project.procgen.junctions || []).filter(junction => junction.influence.x1 >= b.x1 && junction.influence.x2 <= b.x2 && junction.influence.y1 >= b.y1 && junction.influence.y2 <= b.y2);
+      const fragment = capturePhysicalScoreFragment(world, { ...input, revision: previous ? previous.revision + 1 : 1, source: { revision: `project:${project.procgen.revision}`, projectId: documentId }, junctions,
+        graph: input.graph || selectSpatialFragmentGraph(project.procgen.physicalGraph, b) });
+      dispatch({ type: 'procgen/fragments', fragments: [...(project.procgen.fragments || []).filter(value => value.id !== fragment.id), fragment] });
+      return { status: 'captured', id: fragment.id, revision: fragment.revision, externalReferences: fragment.externalReferences, geometrySpans: fragment.collision.spans.length, existingInstancesUpdated: false };
+    },
+    previewPhysicalFragment(id, options) {
+      const fragment = project.procgen.fragments?.find(value => value.id === id); if (!fragment) throw new Error('Select a saved fragment.');
+      const plan = planPhysicalScoreFragment(runtime().world, project, fragment, options);
+      return { status: plan.status, issues: plan.issues, unresolved: plan.unresolved, counts: plan.terrain.counts, alignments: plan.alignments, instance: plan.instance, previewHardwareNotes: false };
+    },
+    placePhysicalFragment(id, options) {
+      const frozenOptions = clone(options);
+      return applyPausedPhysicalCommand((world, source, commandId) => {
+        const fragment = source.procgen.fragments?.find(value => value.id === id); if (!fragment) throw new Error('Saved fragment is unavailable.');
+        const plan = planPhysicalScoreFragment(world, source, fragment, frozenOptions); if (plan.status !== 'prepared') throw new Error('Fragment placement is blocked: ' + JSON.stringify(plan.issues));
+        return fragmentPlacementCommand(world, source, plan, commandId);
+      });
     },
     openPhysicalJunctions() {
       physicalJunctionView ||= createPhysicalJunctionView({ document, displayScheduler: view?.displayScheduler,
@@ -1249,7 +1344,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     cancelCausalWorkbench: () => causalWorkbench?.cancel(), finishCausalBranch: safe(finishCausalBranch),
     historyBusy: () => pendingHistory !== null,
     historyState: () => Object.freeze({ undo: undo.length, redo: redo.length,
-      retainedBytes: retainedHistoryBytes(), byteLimit: historyBytesLimit, dropped: historyDropped }),
+      retainedBytes: retainedHistoryBytes(), physical: physicalHistory.diagnostics(), byteLimit: historyBytesLimit, dropped: historyDropped }),
     stopOutput() {
       transport.stop(); pendingResume = false;
       recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false });
@@ -1498,7 +1593,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
-    quarryEchoView?.suspend(); physicalJunctionView?.suspend();
+    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); physicalJunctionView?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
@@ -1576,6 +1671,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
+        { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },
         { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },
