@@ -281,7 +281,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (entry.kind === 'gain') { if (!gainControls.get(nodeId).insert(next.gain01, time, now)) throw failure('effect-control-capacity', 'Effect gain automation could not be admitted.'); }
       else for (const [adapter, amount] of changes) if (!adapter.insert(amount, time, now)) throw failure('effect-control-capacity', 'Effect automation could not be admitted.');
     } catch (caught) {
-      if (entry.membrane && !offline) { const processor = processors.find(processor => processor.nodeId === nodeId); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only', reason: caught.message }); }
+      if ((entry.membrane || entry.network) && !offline) { const processor = processors.find(processor => processor.nodeId === nodeId); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only', reason: caught.message }); }
       else { fault = caught; for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} }
       throw failure('effect-control-failed', 'Native effect control scheduling failed.');
     }
@@ -338,7 +338,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
   return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
-    isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane')?.health?.muted === true,
+    isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && ['rectangular-membrane', 'sympathetic-network'].includes(processor.kind))?.health?.muted === true,
+    bodyLossTargets: nodeId => NETWORK_LOSS_CONTROLS.map(key => Math.max(controls.get(nodeId)?.[key] ?? 0, parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0)),
+    bodyLossFuture: nodeId => NETWORK_LOSS_CONTROLS.map(key => parameterControls.get(nodeId)?.get(key)?.hasFutureEvents(context.currentTime) === true),
     enqueueBodyStrike(nodeId, command) {
       checkPublication(); const processor = processors.find(entry => entry.nodeId === nodeId && entry.strikes);
       if (!processor || processor.health?.muted) throw failure('stale-prepared-body', 'The exact finite-strike body is unavailable.');
@@ -346,7 +348,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     },
     lastBodyDriveFrame: () => Math.max(0, ...processors.map(entry => entry.strikes?.lastDriveFrame() || 0)),
     panicBody(nodeId) {
-      const processor = processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane');
+      const processor = processors.find(processor => processor.nodeId === nodeId && (processor.kind === 'rectangular-membrane' || processor.kind === 'sympathetic-network' && plan.nodes.find(node => node.id === nodeId).network.lossMasks.length));
       if (disposed || !processor) throw failure('stale-prepared-body', 'The named body is unavailable.'); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only' });
       return Object.freeze({ status: 'accepted', stage: 'body-panic-submitted', nodeId, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
     },

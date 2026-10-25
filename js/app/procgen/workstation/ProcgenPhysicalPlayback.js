@@ -123,7 +123,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     if (!executionEpoch || !Number.isSafeInteger(previousGeneration)) throw new Error('Observe the current physical execution before binding its prepared surface.');
     const surface = getGraph().preparedSurfaces?.find(surface => surface.id === options.surfaceId);
     if (!surface || surface.surfaceMap.boundTopologyRevision !== previousTerrainRevision) throw new Error('The named surface map is missing or differs from the observed terrain revision.');
-    return preparedBodies().bind({ ...options, surfaceRevision: surface.revision, surfaceMap: surface.surfaceMap, executionEpoch, worldId: previousWorldId, generation: previousGeneration });
+    return preparedBodies().bind({ ...options, preparationKinds: [...new Set(surface.preparations.map(preparation => preparation.kind))], lossMaskIds: surface.preparations.filter(preparation => preparation.kind === 'mode-loss').map(preparation => preparation.lossMaskId), surfaceRevision: surface.revision, surfaceMap: surface.surfaceMap, executionEpoch, worldId: previousWorldId, generation: previousGeneration });
   };
   const setEffectBypass = (mode, expected) => { const state = session?.getEffectPerformanceState?.(), result = session?.setEffectBypass?.(mode, expected); if (result) captureEffect('bypass', state, { mode }); return result; };
   const travelEffects = createTravelEffectMotion({ resourceBudget, update: updateEffectGraph,

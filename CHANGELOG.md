@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Bind observed contacts to exact retained modal loss masks, aggregate independent owners and fence manual automation before physical ownership.
+
 - Add Felt Bridge's six-mode shared body and independently releasable positive mode-loss masks with live/offline controls and exact preparation-state transfer.
 
 - Prepare original shape bodies in an admitted worker, prelisten explicit sites and save/apply through the existing sound-content owners.

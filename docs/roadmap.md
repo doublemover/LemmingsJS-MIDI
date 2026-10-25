@@ -4522,3 +4522,39 @@ They remain unrun. Only formatting/syntax/provenance checks are performed here.
 Observed contact ownership for named modal masks, travel-based pickup weighting,
 Three Hands/Felt Bridge physical proof lessons and listening/device qualification
 remain dependent work; manual controls are never labeled observed contacts.
+
+
+### Continuation 189 — observed ownership of authored modal masks (#1215, #1233)
+
+Saved prepared surfaces can now map completed supported contacts to named
+mode-loss masks. The schema keeps this distinct from a spatial touch radius and
+pickup coordinates. The actual owner host inventories which preparation kinds
+and masks each current/retained processor exposes. Binding checks the exact
+body/map/execution identity, available mask names and released manual targets;
+pending future manual automation also prevents an ambiguous handoff. The shared
+parameter scheduler exposes a read-only future-event predicate for that fence.
+
+Each source contact retains its own bounded mask contribution. The main-thread
+owner computes the maximum amount among actual owners of each mask; releasing a
+weaker owner leaves the stronger target unchanged and avoids a redundant native
+write. Contact end removes matching contributions across retained bodies while
+unrelated actors remain. Held bindings stay with their original prepared body;
+new contacts require the explicitly bound current body. Stale old-map updates
+cannot change replacement masks. Unknown native scheduling quarantines only the
+owned body and retains concrete metadata.
+
+The physical editor stages a reviewed Felt Bridge map using the observed terrain
+revision. Shared bodies can bind that saved map and inspect actual contact owners;
+manual mask inputs disable while the body has physical ownership. API targets and
+actual acoustic evidence remain separate. Mode-loss updates use existing effect
+capture and deterministic command preroll. physicalMusic becomes 13 and capture
+profile physical-basic-v19. A related capacity fix applies one-pickup-owner
+admission to current-observed-contact updates as well as explicit begins.
+
+Authored fixtures cover zero-onset mapping, same-mask aggregation, independent
+release, old-tail replacement, stale map rejection, unsupported preparation kinds,
+manual/future-automation handoff and the pickup update admission boundary. They
+remain unrun; formatting/syntax/provenance and the critical typecheck are the only
+checks in this development pass. Named physical lessons, route-driven pickup
+weighting, measured spectral contrasts, listening and device qualification remain
+pending.

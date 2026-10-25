@@ -14,11 +14,11 @@ export function validatePreparedSurfaceDefinitions(raw = []) {
         surface.heldContactPolicy !== 'keep-old-tail' || surface.unknownPolicy !== 'release' || !Array.isArray(surface.preparations) || !surface.preparations.length || surface.preparations.length > 4) throw new TypeError('Invalid prepared surface identity or held-contact policy.');
     seen.add(surface.id); surface.surfaceMap = validatePreparedSurfaceMap(surface.surfaceMap); const slots = new Set();
     for (const preparation of surface.preparations) {
-      if (!keys(preparation, ['id', 'kind', 'sourceLanes', 'actions', 'beginPolicy', 'radius01', 'amount01']) || !id(preparation.id) || slots.has(preparation.id) || !['touch', 'pickup-left', 'pickup-right'].includes(preparation.kind) ||
+      if (!keys(preparation, ['id', 'kind', 'sourceLanes', 'actions', 'beginPolicy', 'radius01', 'amount01', 'lossMaskId']) || !id(preparation.id) || slots.has(preparation.id) || !['touch', 'pickup-left', 'pickup-right', 'mode-loss'].includes(preparation.kind) ||
           !['observed-span-begin', 'current-observed-contact'].includes(preparation.beginPolicy) || !Array.isArray(preparation.sourceLanes) || !preparation.sourceLanes.length || preparation.sourceLanes.length > 32 ||
           preparation.sourceLanes.some(value => !integer(value) || value >= 1024) || new Set(preparation.sourceLanes).size !== preparation.sourceLanes.length ||
           !Array.isArray(preparation.actions) || !preparation.actions.length || preparation.actions.length > 8 || preparation.actions.some(value => typeof value !== 'string' || !value || value.length > 64) || new Set(preparation.actions).size !== preparation.actions.length) throw new TypeError('Invalid bounded contact preparation mapping.');
-      if (preparation.kind === 'touch' ? !Number.isFinite(preparation.radius01) || preparation.radius01 < 0.08 || preparation.radius01 > 0.18 || !Number.isFinite(preparation.amount01) || preparation.amount01 < 0 || preparation.amount01 > 1 : preparation.radius01 != null || preparation.amount01 != null) throw new TypeError('Touch consumes positive loss; pickup consumes observation coordinates only.');
+      if (preparation.kind === 'touch' ? preparation.lossMaskId != null || !Number.isFinite(preparation.radius01) || preparation.radius01 < 0.08 || preparation.radius01 > 0.18 || !Number.isFinite(preparation.amount01) || preparation.amount01 < 0 || preparation.amount01 > 1 : preparation.kind === 'mode-loss' ? !id(preparation.lossMaskId) || preparation.radius01 != null || !Number.isFinite(preparation.amount01) || preparation.amount01 < 0 || preparation.amount01 > 1 : preparation.radius01 != null || preparation.amount01 != null || preparation.lossMaskId != null) throw new TypeError('Touch consumes spatial positive loss; mode-loss consumes an authored mask; pickup consumes observation coordinates only.');
       slots.add(preparation.id); preparation.sourceLanes.sort((a, b) => a - b); preparation.actions.sort();
     }
   }
@@ -45,7 +45,8 @@ export function createPreparedSurfaceMapping() {
       mappingId: surface.id + '.' + preparation.id, mappingRevision: surface.revision, preparationSlot: preparation.id, beginPolicy: preparation.beginPolicy, contactSpanId: record.contactSpanId, actorId: record.actorId,
       worldId: record.worldId, generation: record.generation, sourceTick: batch.tick, sourceSequence: fact?.causalSequence ?? (reason === 'mapping-changed' || reason === 'execution-ended' ? batch.facts[0]?.causalSequence : batch.facts.at(-1)?.causalSequence) ?? Math.max(0, last.sequence),
       sourceEventIds: eventIds, sourceKind: fact?.kind || (reason === 'mapping-changed' ? 'mapping-changed' : 'coverage-ended'), sourceEditRevision: map.sourceEditRevision, boundTopologyRevision: map.boundTopologyRevision,
-      position: ending ? null : { ...fact.anchor }, radius01: ending || preparation.kind !== 'touch' ? null : preparation.radius01, amount01: ending || preparation.kind !== 'touch' ? null : preparation.amount01,
+      position: ending ? null : { ...fact.anchor }, radius01: ending || preparation.kind !== 'touch' ? null : preparation.radius01, amount01: ending || !['touch', 'mode-loss'].includes(preparation.kind) ? null : preparation.amount01,
+      ...(preparation.kind === 'mode-loss' ? { lossMaskId: preparation.lossMaskId } : {}),
       scoreTime: scoreTimeFor(batch, fact), reason });
   };
   const consume = (batch, { allowNew = true, scoreTimeFor } = {}) => {

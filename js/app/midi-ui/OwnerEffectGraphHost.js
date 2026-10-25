@@ -105,14 +105,16 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     if (!arm) throw failure('stale-prepared-body', 'The exact prepared body revision has retired or was superseded.'); return arm;
   };
   return Object.freeze({ prepare, bypass,
-    preparedBodyInventory: () => [...arms].flatMap(arm => arm.graph.plan.nodes.filter(node => node.membrane).map(node => Object.freeze({ owner, ownerGeneration: generation, ownerRouteRevision: arm.routeRevision, graphDefinitionHash: arm.graph.hash, nodeId: node.id,
-      processorRevision: node.membrane.revision, pulses: node.membrane.pulses.map(pulse => ({ milliseconds: pulse.milliseconds, frames: pulse.frames })), quarantined: arm.graph.isBodyQuarantined?.(node.id) === true, sampleRate: context.sampleRate, active: arm === current && ['active', 'mute'].includes(mode), retiring: !!arm.retirement || arm !== current, retireAtFrame: Number.isFinite(arm.retireAt) ? Math.ceil(arm.retireAt * context.sampleRate) : null }))),
+    preparedBodyInventory: () => [...arms].flatMap(arm => arm.graph.plan.nodes.filter(node => node.membrane || node.network?.lossMasks.length).map(node => Object.freeze({ owner, ownerGeneration: generation, ownerRouteRevision: arm.routeRevision, graphDefinitionHash: arm.graph.hash, nodeId: node.id,
+      processorRevision: (node.membrane || node.network).revision, bodyKind: node.membrane ? 'membrane' : 'authored-modal-network', preparationKinds: node.membrane ? ['touch', 'pickup-left', 'pickup-right'] : ['mode-loss'],
+      lossMasks: (node.network?.lossMasks || []).map((mask, index) => ({ id: mask.id, index, target01: arm.graph.bodyLossTargets?.(node.id)[index] ?? 0, pendingFuture: arm.graph.bodyLossFuture?.(node.id)[index] === true })),
+      pulses: (node.membrane?.pulses || []).map(pulse => ({ milliseconds: pulse.milliseconds, frames: pulse.frames })), quarantined: arm.graph.isBodyQuarantined?.(node.id) === true, sampleRate: context.sampleRate, active: arm === current && ['active', 'mute'].includes(mode), retiring: !!arm.retirement || arm !== current, retireAtFrame: Number.isFinite(arm.retireAt) ? Math.ceil(arm.retireAt * context.sampleRate) : null }))),
     enqueueBodyStrike(nodeId, command, expected) {
       const arm = preparedArm(expected);
       if (arm !== current || !['active', 'mute'].includes(mode)) throw failure('stale-prepared-body', 'New exciters require the active prepared body.');
       return Object.freeze({ ...arm.graph.enqueueBodyStrike(nodeId, command), ownerRouteRevision: arm.routeRevision });
     },
-    updatePreparedBody(nodeId, values, targetFrame, expected) { const arm = preparedArm(expected); if (!arm.graph.plan.nodes.some(node => node.id === nodeId && node.membrane)) throw failure('stale-prepared-body', 'The named node is not an owned membrane.');
+    updatePreparedBody(nodeId, values, targetFrame, expected) { const arm = preparedArm(expected); if (!arm.graph.plan.nodes.some(node => node.id === nodeId && (node.membrane || node.network?.lossMasks.length))) throw failure('stale-prepared-body', 'The named node has no owned preparation contract.');
       if (Number.isFinite(arm.retireAt) && targetFrame >= Math.ceil(arm.retireAt * context.sampleRate)) throw failure('stale-prepared-body', 'The command falls after the retained body deadline.');
       return Object.freeze({ ...arm.graph.update(nodeId, values, targetFrame), ownerRouteRevision: arm.routeRevision, bodyLifecycle: arm === current ? 'active' : 'retained-tail' }); },
     panicPreparedBody(nodeId, expected) { const arm = preparedArm(expected); return arm.graph.panicBody(nodeId); },

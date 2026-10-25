@@ -3,6 +3,7 @@ import { createPreparedSurfaceMapping, validatePreparedSurfaceDefinitions } from
 import { createPreparedSurfaceBodyOwner } from '../../js/app/procgen/workstation/PreparedSurfaceBodyOwner.js';
 import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
 import { createRectangularMembraneRecipe } from '../../js/midi/content/RectangularMembraneRecipe.js';
+import { createSympatheticMapRecipe } from '../../js/midi/content/SympatheticMapRecipes.js';
 import { createOwnedEffectGraphKernel } from '../../js/app/midi-ui/OwnedEffectGraphKernel.js';
 import { validateMappedBodyPreparation } from '../../js/midi/content/PreparedSurface.js';
 
@@ -20,18 +21,53 @@ const command = (sequence, options = {}) => validateMappedBodyPreparation({ sche
   sourceEditRevision: 0, boundTopologyRevision: 0, position: { x: 50, y: 50 }, radius01: 0.18, amount01: 1, scoreTime: { frame: sequence * 1920 }, reason: null, ...options });
 
 async function fixture(options = {}) {
-  const graphs = [await createOwnedEffectGraphKernel({ definition: createRectangularMembraneRecipe({ gridSize: 16, revision: 1 }).graph }),
-    await createOwnedEffectGraphKernel({ definition: createRectangularMembraneRecipe({ gridSize: 16, revision: 2 }).graph })];
-  const targets = graphs.map((graph, index) => ({ owner: 'audio-owner', ownerGeneration: 0, ownerRouteRevision: index + 1, graphDefinitionHash: graph.hash, nodeId: 'skin', processorRevision: graph.plan.nodes.find(node => node.membrane).membrane.revision, active: index === 0 }));
+  const definition = revision => options.modal ? createSympatheticMapRecipe({ recipe: 'felt-bridge', revision, damp01: 0 }).graph : createRectangularMembraneRecipe({ gridSize: 16, revision }).graph;
+  const graphs = [await createOwnedEffectGraphKernel({ definition: definition(1) }), await createOwnedEffectGraphKernel({ definition: definition(2) })];
+  const targets = graphs.map((graph, index) => { const profile = graph.plan.nodes.find(node => node.membrane || node.network), body = profile.membrane || profile.network; return { owner: 'audio-owner', ownerGeneration: 0, ownerRouteRevision: index + 1, graphDefinitionHash: graph.hash, nodeId: profile.id, processorRevision: body.revision, active: index === 0,
+    ...(options.modal ? { preparationKinds: ['mode-loss'], lossMasks: body.lossMasks.map((mask, index) => ({ id: mask.id, index, target01: 0, pendingFuture: false })) } : {}) }; });
   const submissions = [], receipts = [], panics = []; let present = [targets[0]];
   const owner = createPreparedSurfaceBodyOwner({ documentEpoch: 'document-execution-a', resourceBudget: options.resourceBudget, inventory: () => present, toFrame: score => score.frame, onReceipt: value => receipts.push(value),
     apply: (nodeId, values, targetFrame, expected) => { const index = graphs.findIndex(graph => graph.hash === expected.graphDefinitionHash); graphs[index].update(nodeId, values); submissions.push({ index, values, targetFrame }); return { status: 'accepted', targetFrame, graphDefinitionHash: expected.graphDefinitionHash }; },
     panicBody: (nodeId, expected) => { if (options.failPanic?.()) throw new Error('panic ownership unknown'); panics.push({ nodeId, expected }); return { status: 'accepted' }; } });
-  const bind = (index, surfaceMap = map(), surfaceRevision = 1) => owner.bind({ surfaceId: 'skin', surfaceRevision, surfaceMap, nodeId: 'skin', executionEpoch: 'execution-a', worldId: 'world-a', generation: 0,
+  const bind = (index, surfaceMap = map(), surfaceRevision = 1) => owner.bind({ surfaceId: 'skin', surfaceRevision, surfaceMap, nodeId: options.modal ? 'bodies' : 'skin', preparationKinds: options.modal ? ['mode-loss'] : null, executionEpoch: 'execution-a', worldId: 'world-a', generation: 0,
     expected: { ownerRouteRevision: index + 1, graphDefinitionHash: graphs[index].hash } });
   return { graphs, owner, bind, targets, submissions, receipts, panics, replace() { targets[0].active = false; targets[1].active = true; present = targets; }, retireFirst() { present = [targets[1]]; }, retireAll() { present = []; } };
 }
 describe('mapped shared-surface preparation ownership', () => {
+  const modeCommand = (sequence, values = {}) => command(sequence, { kind: 'mode-loss', lossMaskId: 'felt-alternating', preparationSlot: 'felt', mappingId: 'skin.felt', radius01: null, amount01: 0.7, ...values });
+  it('maps actual completed support to named authored mode loss without spatial radius or musical onsets', () => {
+    const value = surface(); value.preparations = [{ id: 'felt', kind: 'mode-loss', lossMaskId: 'felt-alternating', sourceLanes: [0], actions: ['blocking'], beginPolicy: 'current-observed-contact', amount01: 0.7 }];
+    const mapping = { version: 1, revision: 1, instruments: [], preparedSurfaces: [value] }, engine = createCausalMusicEngine({ getGraph: () => mapping });
+    expect(engine.processBatch(batch(1, [fact(1, 'ContactSpanBegan')]))).to.deep.equal([]); const prepared = engine.bodyPreparations(); expect(prepared.commands).to.have.length(1);
+    expect(prepared.commands[0]).to.include({ kind: 'mode-loss', lossMaskId: 'felt-alternating', amount01: 0.7, radius01: null }); engine.dispose();
+    value.preparations[0].radius01 = 0.12; expect(() => validatePreparedSurfaceDefinitions([value])).to.throw('authored mask');
+  });
+  it('aggregates independent owners of the same mask and releases one without clearing another contribution', async () => {
+    const f = await fixture({ modal: true }); await f.bind(0);
+    expect(f.owner.consume(modeCommand(1, { amount01: 0.4 }), 'execution-a').status).to.equal('accepted');
+    expect(f.owner.consume(modeCommand(2, { actorId: 2, contactSpanId: 'span-b', amount01: 0.9 }), 'execution-a').status).to.equal('accepted');
+    const state = () => f.graphs[0].diagnostics().sympatheticStates[0].lossMasks[0].target01; expect(state()).to.equal(Math.fround(0.9)); const writes = f.submissions.length;
+    expect(f.owner.consume(modeCommand(3, { operation: 'end', sourceKind: 'ContactSpanEnded', position: null, amount01: null }), 'execution-a').status).to.equal('accepted');
+    expect(state()).to.equal(Math.fround(0.9)); expect(f.submissions).to.have.length(writes); expect(f.owner.state().bindings).to.have.length(1);
+    f.owner.consume(modeCommand(4, { actorId: 2, contactSpanId: 'span-b', operation: 'end', sourceKind: 'ContactSpanEnded', position: null, amount01: null }), 'execution-a'); expect(state()).to.equal(0); expect(f.owner.state().bindings).to.have.length(0); f.owner.dispose();
+  });
+  it('retains independent authored masks on the old body through replacement and rejects a stale update on the new one', async () => {
+    const f = await fixture({ modal: true }), first = await f.bind(0);
+    f.owner.consume(modeCommand(1), 'execution-a'); f.owner.consume(modeCommand(2, { actorId: 2, contactSpanId: 'span-b', lossMaskId: 'felt-complement', preparationSlot: 'felt-other', mappingId: 'skin.other' }), 'execution-a');
+    f.replace(); const second = await f.bind(1, map(1), 2);
+    f.owner.consume(modeCommand(3, { actorId: 3, contactSpanId: 'span-c', mapRevision: 1, mappingRevision: 2, sourceEditRevision: 1, boundTopologyRevision: 1 }), 'execution-a');
+    f.owner.consume(modeCommand(4, { operation: 'end', sourceKind: 'ContactSpanEnded', position: null, amount01: null }), 'execution-a');
+    const old = f.graphs[0].diagnostics().sympatheticStates[0]; expect(old.lossMasks[0].target01).to.equal(0); expect(old.lossMasks[1].target01).to.equal(Math.fround(0.7));
+    expect(f.owner.state().bindings.find(binding => binding.actorId === 2).bodyInstanceId).to.equal(first.bodyInstanceId); expect(f.owner.state().bindings.find(binding => binding.actorId === 3).bodyInstanceId).to.equal(second.bodyInstanceId);
+    const writes = f.submissions.length; expect(f.owner.consume(modeCommand(5, { actorId: 3, contactSpanId: 'span-c', operation: 'update', sourceKind: 'ContactSpanUpdated' }), 'execution-a').status).to.equal('rejected'); expect(f.submissions).to.have.length(writes); f.owner.dispose();
+  });
+  it('rejects future manual preparation and unsupported mask capabilities before binding a physical owner', async () => {
+    const f = await fixture({ modal: true }); let caught; f.targets[0].lossMasks[0].pendingFuture = true;
+    try { await f.bind(0); } catch (error) { caught = error; } expect(caught.message).to.include('future manual automation'); expect(f.owner.state().bodies).to.have.length(0);
+    f.targets[0].lossMasks[0].pendingFuture = false; f.targets[0].lossMasks[0].target01 = 0.5;
+    try { await f.bind(0); } catch (error) { caught = error; } expect(caught.message).to.include('manual mode-loss');
+    f.targets[0].lossMasks[0].target01 = 0; await f.bind(0); expect(f.owner.consume(command(1), 'execution-a').reason).to.equal('body-preparation-kind-unavailable'); f.owner.dispose();
+  });
   it('projects actual complete support spans and releases unknown continuity without a musical onset', () => {
     const mapper = createPreparedSurfaceMapping(); mapper.configure([surface()]);
     const first = mapper.consume(batch(1, [fact(1, 'ContactSpanBegan')]), { scoreTimeFor }); expect(first.commands).to.have.length(1); expect(first.commands[0].operation).to.equal('begin'); expect(first.commands[0].position).to.deep.equal({ x: 50, y: 50 });
@@ -89,6 +125,7 @@ describe('mapped shared-surface preparation ownership', () => {
     expect(f.owner.consume(command(5, { actorId: 5, contactSpanId: 'fifth' }), 'execution-a').reason).to.equal('touch-slot-capacity');
     const pickup = { kind: 'pickup-left', mappingId: 'skin.listener', preparationSlot: 'listener', radius01: null, amount01: null, contactSpanId: 'listen-a' };
     expect(f.owner.consume(command(6, pickup), 'execution-a').status).to.equal('accepted'); expect(f.owner.consume(command(7, { ...pickup, actorId: 2, contactSpanId: 'listen-b' }), 'execution-a').reason).to.equal('pickup-owner-capacity');
+    expect(f.owner.consume(command(8, { ...pickup, operation: 'update', sourceKind: 'ContactSpanUpdated', actorId: 3, contactSpanId: 'listen-c' }), 'execution-a').reason).to.equal('pickup-owner-capacity');
     expect(f.owner.state().bodies).to.have.length(1); expect(f.receipts.filter(receipt => receipt.status === 'accepted').every(receipt => receipt.sourceCardinality === 'preparation-command;zero-musical-onsets')).to.equal(true); f.owner.dispose();
   });
   it('retains concrete binding metadata and its reservation when owned clearing is unknown', async () => {

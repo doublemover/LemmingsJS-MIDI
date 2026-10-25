@@ -26,15 +26,15 @@ export async function preparedBodyIdentity(raw) {
 export function validateMappedBodyPreparation(raw) {
   const p = cloneData(raw, { maxBytes: 32768, maxNodes: 1024 });
   if (!record(p, ['schema', 'commandId', 'batchId', 'stage', 'operation', 'kind', 'surfaceId', 'mapId', 'mapRevision', 'mappingId', 'mappingRevision', 'preparationSlot', 'beginPolicy', 'contactSpanId', 'actorId', 'worldId', 'generation',
-    'sourceTick', 'sourceSequence', 'sourceEventIds', 'sourceKind', 'sourceEditRevision', 'boundTopologyRevision', 'position', 'radius01', 'amount01', 'scoreTime', 'reason']) ||
-      p.schema !== 'lemmings-mapped-body-preparation/v1' || p.stage !== 'physical-mapping-output-not-audio-admission' || !text(p.commandId, 1024) || !text(p.batchId) || !['begin', 'update', 'end'].includes(p.operation) || !['touch', 'pickup-left', 'pickup-right'].includes(p.kind) ||
+    'sourceTick', 'sourceSequence', 'sourceEventIds', 'sourceKind', 'sourceEditRevision', 'boundTopologyRevision', 'position', 'radius01', 'amount01', 'scoreTime', 'reason', 'lossMaskId']) ||
+      p.schema !== 'lemmings-mapped-body-preparation/v1' || p.stage !== 'physical-mapping-output-not-audio-admission' || !text(p.commandId, 1024) || !text(p.batchId) || !['begin', 'update', 'end'].includes(p.operation) || !['touch', 'pickup-left', 'pickup-right', 'mode-loss'].includes(p.kind) ||
       !text(p.surfaceId, 128) || !text(p.mapId, 128) || !integer(p.mapRevision) || !text(p.mappingId, 128) || !integer(p.mappingRevision) || !text(p.preparationSlot, 128) || !['observed-span-begin', 'current-observed-contact'].includes(p.beginPolicy) || !text(p.contactSpanId) ||
       !integer(p.actorId) || !text(p.worldId) || !integer(p.generation) || !integer(p.sourceTick) || !integer(p.sourceSequence) || !integer(p.sourceEditRevision) || !integer(p.boundTopologyRevision) ||
       !Array.isArray(p.sourceEventIds) || !p.sourceEventIds.length || p.sourceEventIds.length > 128 || p.sourceEventIds.some(value => !text(value)) ||
       !['ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded', 'ActorTerminated', 'coverage-ended', 'mapping-changed'].includes(p.sourceKind) ||
-      !p.scoreTime || Object.getPrototypeOf(p.scoreTime) !== Object.prototype || p.reason != null && !text(p.reason)) throw new TypeError('Invalid mapped prepared-body command or fact ancestry.');
+      !p.scoreTime || Object.getPrototypeOf(p.scoreTime) !== Object.prototype || p.reason != null && !text(p.reason) || (p.kind === 'mode-loss' ? !text(p.lossMaskId, 96) : p.lossMaskId != null)) throw new TypeError('Invalid mapped prepared-body command or fact ancestry.');
   if (p.operation !== 'end' && (!record(p.position, ['x', 'y']) || ![p.position.x, p.position.y].every(value => Number.isFinite(value) && Math.abs(value) <= 1e9) ||
-      !['ContactSpanBegan', 'ContactSpanUpdated'].includes(p.sourceKind) || p.kind === 'touch' && (!Number.isFinite(p.radius01) || p.radius01 < 0.08 || p.radius01 > 0.18 || !Number.isFinite(p.amount01) || p.amount01 < 0 || p.amount01 > 1))) throw new TypeError('A held preparation needs an observed coordinate and an admitted loss domain.');
+      !['ContactSpanBegan', 'ContactSpanUpdated'].includes(p.sourceKind) || p.kind === 'touch' && (!Number.isFinite(p.radius01) || p.radius01 < 0.08 || p.radius01 > 0.18 || !Number.isFinite(p.amount01) || p.amount01 < 0 || p.amount01 > 1) || p.kind === 'mode-loss' && (p.radius01 != null || !Number.isFinite(p.amount01) || p.amount01 < 0 || p.amount01 > 1) || ['pickup-left', 'pickup-right'].includes(p.kind) && (p.radius01 != null || p.amount01 != null))) throw new TypeError('A held preparation needs an observed coordinate and an admitted loss domain.');
   if (p.operation === 'end' && (p.position !== null || p.radius01 != null || p.amount01 != null)) throw new TypeError('Preparation end cannot contain another strike or held position.');
   return freezeData(p);
 }

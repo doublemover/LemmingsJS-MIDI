@@ -6,6 +6,10 @@ const parameter = () => ({ events: [], setValueAtTime(value, time) { this.events
   cancelScheduledValues(time) { this.events = this.events.filter(event => event.time < time); } });
 
 describe('Smoothed audio parameters', () => {
+  it('reports queued future commands even when the latest declared target is neutral', () => {
+    const curve = createSmoothedAudioParameter({ param: parameter(), initialValue: 0, startTime: 0, smoothingSeconds: 0 }); expect(curve.hasFutureEvents(0)).to.equal(false);
+    curve.insert(1, 1, 0); curve.insert(0, 2, 0); expect(curve.valueAt(0)).to.equal(0); expect(curve.hasFutureEvents(0)).to.equal(true); expect(curve.hasFutureEvents(1.5)).to.equal(true); expect(curve.hasFutureEvents(2)).to.equal(false);
+  });
   it('retains independent authored per-event slew durations across shuffled future insertion', () => {
     const make = reverse => { const param = parameter(), curve = createSmoothedAudioParameter({ param, initialValue: 0, startTime: 0 });
       const changes = [[1, 1, 0, 2], [0, 2, 0, 0.5]]; for (const change of reverse ? changes.reverse() : changes) expect(curve.insert(...change)).to.equal(true);

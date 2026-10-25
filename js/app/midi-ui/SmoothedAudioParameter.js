@@ -56,6 +56,6 @@ export function createSmoothedAudioParameter({ param, initialValue, startTime, s
   };
   const valueAt = time => stateAt(Math.max(startTime, time)).value;
   param.setValueAtTime(initialValue, startTime);
-  return { insert, valueAt, canInsert: now => events.filter(event => event.time > Math.max(startTime, now)).length < maxEvents,
+  return { insert, valueAt, hasFutureEvents: now => events.some(event => event.time > Math.max(startTime, now)), canInsert: now => events.filter(event => event.time > Math.max(startTime, now)).length < maxEvents,
     diagnostics: () => Object.freeze({ queued: events.length, maxEvents, smoothingSeconds, interpolation: 'causal-linear-slew' }) };
 }
