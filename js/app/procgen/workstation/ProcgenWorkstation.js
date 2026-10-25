@@ -1,3 +1,4 @@
+import { createPhysicalDomainEditor } from './PhysicalDomainEditor.js';
 import { createPhysicalFeedbackController } from './physical/PhysicalFeedback.js';
 import { createPhysicalFeedbackView } from './PhysicalFeedbackView.js';
 import { createReleaseGestureView } from './ReleaseGestureView.js';
@@ -117,7 +118,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let writingLegacy = false;
   let worldBusy = false, pendingWorldSettings = null;
   let laneObserver = null;
-  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, physicalFeedback = null, physicalFeedbackView = null, feedbackEpoch = 0, worldInspector = null;
+  let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0;
   let causalTakeArmCanceled = false;
@@ -560,7 +561,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return { ...(runtime()?.world?.physicalFeedback ? { 'physical-feedback': runtime().world.physicalFeedback } : {}), sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
       ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
-      ...(physical?.activity ? { activity: physical.activity } : {}), ...(physical?.motifs ? { motifs: physical.motifs } : {}), ...(physical?.encounters ? { encounters: physical.encounters } : {}),
+      ...(physical?.cargo ? { cargo: physical.cargo } : {}), ...(physical?.activity ? { activity: physical.activity } : {}), ...(physical?.motifs ? { motifs: physical.motifs } : {}), ...(physical?.encounters ? { encounters: physical.encounters } : {}),
       ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
       ...(physical?.rhythmicResponses ? { 'rhythmic-responses': physical.rhythmicResponses } : {}),
       ...(physical?.actionAdmission ? { 'action-admission': physical.actionAdmission } : {}),
@@ -1233,6 +1234,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
     openPhysicalFeedback() { physicalFeedbackView ||= createPhysicalFeedbackView({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, getState: () => physicalFeedback?.diagnostics(), save: feedback => dispatch({ type: 'procgen/physicalGraph', graph: { ...project.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1, feedback } }), arm: () => handlers.armPhysicalFeedback(), disarm: () => physicalFeedback?.disarm(), mute: (id, muted) => physicalFeedback?.muteLayer(id, muted), capture: input => handlers.captureInterventionLayer(input), onStatus: status }); physicalFeedbackView.open(); },
     armPhysicalFeedback() { if (!physicalFeedback || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('No writable live physical world.'); if (!Number.isSafeInteger(++feedbackEpoch)) throw new Error('Feedback epoch exhausted.'); return physicalFeedback.arm({ mode: 'live', epoch: `live:${documentGeneration}:${runtime().world.generation}:${runtime().world.tickIndex}:${feedbackEpoch}` }); },
     disarmPhysicalFeedback: () => physicalFeedback?.disarm(),

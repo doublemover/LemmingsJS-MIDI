@@ -1261,3 +1261,33 @@ Rule fuel is consumed by an attempted rejection; command-batch admission is
 all-or-none. Unknown/censored ancestry, unresolved references and exhausted
 budgets fail closed. These are implemented bounds, not measured performance.
 Regressions and the 8/128/1,024-actor planning profile are written but **unrun**.
+
+### Actor-borne phrase cargo
+
+`cargoStations` attach capture, transform, exchange and delivery to actual pickup,
+contact or qualified two-actor encounter facts. Typed payloads are a pitch,
+rational pitch or at most eight physically captured/authored intervals. Cargo is
+actor-owned data, not an audio voice. No elapsed time, transport beat or payload
+step can emit an attack: only a delivery crossing creates `CargoDelivery` intents,
+as one item or an explicitly declared simultaneous chord. Role-tagged payloads
+can select authored delivery instruments without changing output routes implicitly.
+
+Four slots per actor share a 1,024-token ceiling. Copying consumes a nonrefundable
+family copy budget; every copy shares the family's finite delivery allowance.
+Move/swap publishes both ownership changes atomically. Exact capture, transformation,
+encounter and delivery roots remain attached; root/lineage overflow rejects the
+operation rather than truncating its causal proof. Same-boundary station ordering
+uses explicit priority then stable ID. Expiry and actor/generation removal dispose
+cargo, ordinary lane transfer preserves it, and checkpoint frontiers prevent a
+repeated boundary from delivering twice. Incomplete recent physical history cannot
+be promoted into a complete interval phrase.
+
+Token/history byte admission precedes publication (32 KiB per item, 2 MiB total
+state including reserved metadata); family indexes avoid pairwise scans and ensure
+that retiring one copy does not refund duplication fuel. Shared process-wide
+resource reservations remain tracked separately. The Physical scene editor stages
+a real courier-chord graph, validates and saves canonical revisions, and inspects
+actual tokens, roots and family budgets. Fragment remapping and causal capture v10
+include the cargo domain. Written regressions use real walking/blocker actions to
+vary delivery time, plus copy/swap, checkpoint, expiry, gap and no-delivery fixtures.
+Those regressions and the cargo profile remain **unrun**.

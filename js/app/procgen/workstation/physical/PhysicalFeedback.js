@@ -49,7 +49,7 @@ function targetActor(rule, fact, batch, actors) {
   return integer(actorId) && actors.has(actorId) ? { generation: batch.generation, actorId } : null;
 }
 function matching(rule, fact, actors, analysis) {
-  const source = rule.source; if (fact.kind !== source.kind || source.pickupId && fact.gateId !== source.pickupId || source.motifId && fact.motifId !== source.motifId || source.routeId && fact.routeId !== source.routeId || source.operationKind && fact.operationKind !== source.operationKind || source.action && fact.action !== source.action || source.direction !== 'either' && fact.direction !== source.direction) return false;
+  const source = rule.source; if (fact.kind !== source.kind || source.pickupId && fact.gateId !== source.pickupId || source.motifId && fact.motifId !== source.motifId || source.routeId && fact.routeId !== source.routeId || source.cargoStationId && fact.stationId !== source.cargoStationId || source.operationKind && fact.operationKind !== source.operationKind || source.action && fact.action !== source.action || source.direction !== 'either' && fact.direction !== source.direction) return false;
   if (source.ensembleId) { const view = analysis?.ensembles?.find(value => value.id === source.ensembleId); if (view?.completeness?.status !== 'complete') return null; if (!view.members.some(member => member.active && member.actorId === fact.actorId)) return false; }
   if (source.region) { const point = fact.positionAfter || fact.position || actors.get(fact.actorId), b = source.region; if (!point) return null; if (point.x < b.x1 || point.x >= b.x2 || point.y < b.y1 || point.y >= b.y2) return false; }
   return true;

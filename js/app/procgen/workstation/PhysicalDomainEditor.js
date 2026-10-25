@@ -1,0 +1,23 @@
+import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
+export function createPhysicalDomainEditor({ document, getOwner, getGraph, saveGraph, getInspection, onStatus = () => {} }) {
+  let dialog = null, previousFocus = null, disposed = false;
+  const node = (tag, text = '') => { const value = document.createElement(tag); value.textContent = text; return value; };
+  const close = () => { dialog?.remove(); dialog = null; previousFocus?.focus?.({ preventScroll: true }); };
+  const open = () => {
+    if (disposed) return; close(); previousFocus = document.activeElement; const owner = getOwner(); dialog = node('dialog'); dialog.setAttribute('aria-label', 'Physical scene and cargo authoring'); dialog.style.maxWidth = 'min(95vw, 1100px)';
+    const editor = node('textarea'); editor.rows = 24; editor.cols = 100; editor.maxLength = 524288; editor.value = JSON.stringify(getGraph(), null, 2); editor.setAttribute('aria-label', 'Canonical physical scene graph');
+    const output = node('pre'); output.setAttribute('role', 'status');
+    const button = (label, run, safe = false) => { const value = node('button', label); value.type = 'button'; value.addEventListener('click', () => { try { if (!safe && owner !== getOwner()) throw new Error('Scene editor belongs to an earlier document.'); const result = run(); if (dialog) output.textContent = JSON.stringify(result, null, 2); } catch (error) { output.textContent = error.message; onStatus(error.message); } }); return value; };
+    const read = () => { if (editor.value.length > 524288) throw new Error('Physical scene editor exceeds its input budget.'); return validateCausalInstrumentGraph(JSON.parse(editor.value)); };
+    const example = () => {
+      const graph = read(), existing = new Set([...(graph.pickups || []).map(value => value.id), ...(graph.cargoStations || []).map(value => value.id), ...graph.instruments.map(value => value.id)]); let serial = 1; while (existing.has(`courier-${serial}-capture`) || existing.has(`courier-${serial}-delivery`)) serial++; const prefix = `courier-${serial}`;
+      const next = { ...graph, revision: graph.revision + 1, pickups: [...(graph.pickups || []), ...[['capture', 40], ['delivery', 100]].map(([role, x]) => ({ id: `${prefix}-${role}`, geometry: { kind: 'segment', points: [{ x, y: 0 }, { x, y: 96 }] }, laneScope: [0] }))], cargoStations: [...(graph.cargoStations || []), { id: `${prefix}-capture`, kind: 'capture', source: { kind: 'pickup', id: `${prefix}-capture` }, payload: { version: 1, kind: 'interval-contour', baseCents: 6000, intervals: [0, 400, 300] }, maximumDeliveries: 1, maximumCopies: 1 }, { id: `${prefix}-delivery`, kind: 'delivery', source: { kind: 'pickup', id: `${prefix}-delivery` }, representation: 'chord', consume: true }], instruments: [...graph.instruments, { id: `${prefix}-voice`, sourceKind: 'CargoDelivery', cargoStationId: `${prefix}-delivery`, pitchCents: 6000, velocity01: 0.65, role: 'courier', route: 'local' }] };
+      editor.value = JSON.stringify(validateCausalInstrumentGraph(next), null, 2); return { status: 'example-staged-not-published', physicalTravelRequired: true, timerSequence: false };
+    };
+    dialog.append(node('h2', 'Physical scene / phrase cargo'), node('p', 'Tokens are bounded actor-owned data, not voices or timed phrases. Capture, transform, exchange and delivery need actual physical facts. Save uses the canonical project/Undo boundary; editing this buffer does not run the scene or arm feedback.'), editor,
+      button('Insert courier chord example', example), button('Validate scene', () => { const graph = read(); return { status: 'schema-valid', cargoStations: graph.cargoStations?.length || 0, geometryQualification: 'requires-real-world-events' }; }),
+      button('Save scene revision', () => { const graph = read(); saveGraph({ ...graph, revision: Math.max(graph.revision, getGraph().revision) + 1 }); return { status: 'saved', automaticFeedbackArmed: false }; }), button('Inspect actual tokens and physical causes', getInspection), output, button('Close', close, true));
+    document.body.append(dialog); dialog.addEventListener('cancel', event => { event.preventDefault(); close(); }); if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', ''); editor.focus();
+  };
+  return { open, close, dispose() { disposed = true; close(); } };
+}

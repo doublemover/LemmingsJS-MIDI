@@ -1521,7 +1521,8 @@
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "93a34d32b5f070926d98210783b873f54ab7fe55"
+        "93a34d32b5f070926d98210783b873f54ab7fe55",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -1535,7 +1536,7 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
-          "commit": null
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
         }
       ]
     },
@@ -1576,14 +1577,21 @@
         "js/app/midi-ui/RoutedInstrumentBackend.js",
         "js/app/midi-ui/worklet/OwnedSineProcessor.js",
         "js/app/procgen/workstation/LaneMixState.js",
-        "js/app/procgen/workstation/ProcgenWorkstationView.js"
+        "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/CausalTake.js"
       ],
       "regressions": [
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs",
         "test/procgen-action-voice-policy.test.js",
         "test/midi/voice-lane-mix.test.js",
-        "test/midi/routed-instrument-backend.test.js"
+        "test/midi/routed-instrument-backend.test.js",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
         "2705c467aa46b5fb99fb40d652a4638350f06ca2",
@@ -1606,6 +1614,11 @@
           "id": "owned-lane-mix-and-faders",
           "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
           "commit": "149de9d92c387cfaea8b394024e3052f41d03c66"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
+          "commit": null
         }
       ]
     },
@@ -2308,7 +2321,9 @@
         "js/app/procgen/workstation/physical/PhysicalFeedbackSchema.js",
         "js/app/procgen/workstation/physical/PhysicalFeedback.js",
         "js/app/procgen/workstation/CausalReperformance.js",
-        "js/app/procgen/workstation/PhysicalFeedbackView.js"
+        "js/app/procgen/workstation/PhysicalFeedbackView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js"
       ],
       "regressions": [
         "test/procgen-intervention-commands.test.js",
@@ -2323,14 +2338,18 @@
         "scripts/bench-release-gestures.mjs",
         "test/procgen-physical-feedback.test.js",
         "test/physical-feedback-view.test.js",
-        "scripts/bench-physical-feedback.mjs"
+        "scripts/bench-physical-feedback.mjs",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
         "8d9fd01f4472b2997edabd1e4c207698820a61d7",
-        "93a34d32b5f070926d98210783b873f54ab7fe55"
+        "93a34d32b5f070926d98210783b873f54ab7fe55",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2359,6 +2378,11 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
           "commit": null
         }
       ]
@@ -2384,13 +2408,15 @@
         "test/physical-feedback-view.test.js",
         "scripts/bench-physical-feedback.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
-          "commit": null
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
         }
       ]
     },
@@ -2452,7 +2478,9 @@
         "js/app/procgen/ProcgenCommittedBoundary.js",
         "js/app/procgen/workstation/physical/PhysicalFeedbackSchema.js",
         "js/app/procgen/workstation/physical/PhysicalFeedback.js",
-        "js/app/procgen/workstation/PhysicalFeedbackView.js"
+        "js/app/procgen/workstation/PhysicalFeedbackView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
@@ -2471,7 +2499,10 @@
         "scripts/bench-release-gestures.mjs",
         "test/procgen-physical-feedback.test.js",
         "test/physical-feedback-view.test.js",
-        "scripts/bench-physical-feedback.mjs"
+        "scripts/bench-physical-feedback.mjs",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
@@ -2480,7 +2511,8 @@
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
         "8d9fd01f4472b2997edabd1e4c207698820a61d7",
-        "93a34d32b5f070926d98210783b873f54ab7fe55"
+        "93a34d32b5f070926d98210783b873f54ab7fe55",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2518,6 +2550,11 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
           "commit": null
         }
       ]
@@ -2626,18 +2663,26 @@
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/CausalReperformance.js",
-        "js/app/procgen/workstation/PhysicalFeedbackView.js"
+        "js/app/procgen/workstation/PhysicalFeedbackView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/CausalTake.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
         "test/procgen-physical-batch.test.js",
         "test/procgen-physical-feedback.test.js",
         "test/physical-feedback-view.test.js",
-        "scripts/bench-physical-feedback.mjs"
+        "scripts/bench-physical-feedback.mjs",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "148bf84c49957839c208a2269f17dbd2d2b11453"
+        "148bf84c49957839c208a2269f17dbd2d2b11453",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2650,6 +2695,11 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
           "commit": null
         }
       ]
@@ -2942,13 +2992,15 @@
         "test/physical-feedback-view.test.js",
         "scripts/bench-physical-feedback.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
-          "commit": null
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
         }
       ]
     },
@@ -2987,7 +3039,8 @@
       ],
       "commits": [
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
-        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3004,7 +3057,7 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
-          "commit": null
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
         }
       ]
     },
@@ -3194,11 +3247,28 @@
       "requirementUpdatedAt": "2026-10-22T09:20:17Z",
       "requirementSha256": "cf435aa977eea497d48a699ea52bc33795d4b114dcd199630d34663d27143368",
       "initialGap": "No PhraseCargo actor slots, pickup/exchange/transform/delivery reducer or finite token lineage/checkpoint state.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/CausalTake.js"
+      ],
+      "regressions": [
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1159,
@@ -3241,17 +3311,26 @@
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/CausalReperformance.js",
-        "js/app/procgen/workstation/PhysicalFeedbackView.js"
+        "js/app/procgen/workstation/PhysicalFeedbackView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/CausalTake.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
         "test/procgen-render-lifecycle.test.js",
         "test/procgen-physical-feedback.test.js",
         "test/physical-feedback-view.test.js",
-        "scripts/bench-physical-feedback.mjs"
+        "scripts/bench-physical-feedback.mjs",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
-        "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
+        "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
@@ -3260,6 +3339,11 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
           "commit": null
         }
       ],
@@ -3338,11 +3422,28 @@
       "requirementUpdatedAt": "2026-10-22T09:27:03Z",
       "requirementSha256": "b694765aa74370e1f00b578f0c2d66460b8a726271c7467c4b3950425b1341ea",
       "initialGap": "No typed physical sentence-strip rule/motif editor, bounded matcher state display or recorded-take test workflow.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/CausalTake.js"
+      ],
+      "regressions": [
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1169,
@@ -3662,7 +3763,9 @@
         "js/app/procgen/ProcgenCommittedBoundary.js",
         "js/app/procgen/workstation/physical/PhysicalFeedbackSchema.js",
         "js/app/procgen/workstation/physical/PhysicalFeedback.js",
-        "js/app/procgen/workstation/PhysicalFeedbackView.js"
+        "js/app/procgen/workstation/PhysicalFeedbackView.js",
+        "js/app/procgen/workstation/physical/PhraseCargo.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3683,7 +3786,10 @@
         "scripts/bench-physical-activity.mjs",
         "test/procgen-physical-feedback.test.js",
         "test/physical-feedback-view.test.js",
-        "scripts/bench-physical-feedback.mjs"
+        "scripts/bench-physical-feedback.mjs",
+        "test/procgen-phrase-cargo.test.js",
+        "test/physical-domain-editor.test.js",
+        "scripts/bench-phrase-cargo.mjs"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
@@ -3693,7 +3799,8 @@
         "148bf84c49957839c208a2269f17dbd2d2b11453",
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
-        "8d9fd01f4472b2997edabd1e4c207698820a61d7"
+        "8d9fd01f4472b2997edabd1e4c207698820a61d7",
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3740,6 +3847,11 @@
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        },
+        {
+          "id": "actor-borne-phrase-cargo",
+          "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
           "commit": null
         }
       ]
@@ -4147,13 +4259,15 @@
         "test/physical-feedback-view.test.js",
         "scripts/bench-physical-feedback.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
           "summary": "Committed-boundary conductor and gate/motif layer evaluation; explicit dry/live/regenerate modes, future canonical commands, rooted cycle/fuel/rate/eligibility bounds, manual priority, journal-before-publication exact tape replay without reevaluation, world checkpoint/recovery state, retained human receipts with explicit anchor/binding, scoped arming/mute/capture UI and fragment remapping. Fixtures/profile unrun. Intervention-layer real circuit/worker/verified-ingress qualification fixtures and broader shared resource reservations remain development work; no overall issue-closure claim.",
-          "commit": null
+          "commit": "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
         }
       ],
       "remainingDevelopment": "Real solver-qualified repeated circuit and worker/display-rate fixture closure; dedicated port-role bindings and verified-ingress capture integration still require implementation beyond source-actor/motif-role/cohort-rank anchors."
