@@ -6,8 +6,8 @@ const canonicalTerrainSpans = cells => {
   const sorted = [...cells].sort((a, b) => a.y - b.y || a.x - b.x), spans = [];
   for (const cell of sorted) {
     const previous = spans.at(-1);
-    if (previous && previous.y === cell.y && previous.x2 === cell.x && previous.before === cell.before && previous.after === cell.after) previous.x2++;
-    else spans.push({ y: cell.y, x1: cell.x, x2: cell.x + 1, before: cell.before, after: cell.after });
+    if (previous && previous.y === cell.y && previous.x2 === cell.x && previous.before === cell.before && previous.after === cell.after && previous.tag === cell.tag && previous.materialId === cell.materialId) previous.x2++;
+    else spans.push({ y: cell.y, x1: cell.x, x2: cell.x + 1, before: cell.before, after: cell.after, ...(Object.hasOwn(cell, 'tag') ? { tag: cell.tag, materialId: cell.materialId } : {}) });
   }
   return spans;
 };
@@ -24,7 +24,7 @@ const commitTerrainScore = (world, metadata = {}, suppliedCells = null) => {
   if (!Number.isSafeInteger(state.serial + 1)) throw new RangeError('Terrain score identity exhausted.');
   const unique = new Map();
   for (const cell of cells) { const key = `${cell.x}:${cell.y}`, previous = unique.get(key); unique.set(key, previous ? { ...cell, before: previous.before } : cell); }
-  const actual = [...unique.values()].filter(cell => cell.before !== cell.after || metadata.operation === 'annotate');
+  const actual = [...unique.values()].filter(cell => cell.before !== cell.after || cell.annotationChanged || metadata.operation === 'annotate');
   const revisionBefore = metadata.revisionBefore ?? pending.revisionBefore, revisionAfter = world.terrainRevision;
   const incomplete = !suppliedCells && pending.overflow;
   world.terrainScorePending = { cells: [], overflow: false, revisionBefore: revisionAfter };
@@ -40,13 +40,13 @@ const commitTerrainScore = (world, metadata = {}, suppliedCells = null) => {
     solidAdded: actual.filter(cell => !cell.before && cell.after).length,
     solidRemoved: actual.filter(cell => cell.before && !cell.after).length,
     appearanceChanged: actual.filter(cell => !!cell.before === !!cell.after && cell.before !== cell.after).length,
-    annotationChanged: metadata.operation === 'annotate' ? actual.length : 0, spans: canonicalTerrainSpans(actual) };
+    annotationChanged: metadata.operation === 'annotate' ? actual.length : actual.filter(cell => cell.annotationChanged).length, spans: canonicalTerrainSpans(actual) };
   if (incomplete) { state.chunks.clear(); state.cells = 0; state.retiredChunks++; state.coverageRevision = revisionAfter; }
   for (const cell of actual) {
     const key = keyFor(cell.x, cell.y), index = indexFor(cell.x, cell.y); let chunk = state.chunks.get(key);
     if (!chunk) { chunk = new Map(); state.chunks.set(key, chunk); }
     let versions = chunk.get(index); if (!versions) { versions = []; chunk.set(index, versions); state.cells++; }
-    versions.push({ revision: revisionAfter, beforeRevision: revisionBefore, editId, tag, materialId: record.materialId,
+    versions.push({ revision: revisionAfter, beforeRevision: revisionBefore, editId, tag: Object.hasOwn(cell, 'tag') ? cell.tag : tag, materialId: Object.hasOwn(cell, 'materialId') ? cell.materialId : record.materialId,
       causeKind: record.causeKind, operation: record.operation, solid: !!cell.after, tick: world.tickIndex, expiresAtTick: record.expiresAtTick });
     if (versions.length > MAX_VERSIONS) versions.shift();
   }

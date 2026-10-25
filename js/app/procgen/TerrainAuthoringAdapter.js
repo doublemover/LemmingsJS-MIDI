@@ -1,4 +1,4 @@
-import { commitTerrainScore } from './TerrainScoreLayer.js';
+import { commitTerrainScore, terrainScoreAt } from './TerrainScoreLayer.js';
 const MAX_CELLS = 8192, MAX_CHUNKS = 128;
 const identity = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const inside = (x, y, b, halo = 0) => b && x >= b.x1 - halo && x < b.x2 + halo && y >= b.y1 - halo && y < b.y2 + halo;
@@ -27,18 +27,18 @@ const readTerrainCell = (world, x, y) => {
 };
 const normalizeTerrainCommand = input => {
   if (!input || !['addSolid', 'removeSolid', 'annotate', 'replaceSolid'].includes(input.operation) || !identity(input.transactionId) || !Number.isSafeInteger(input.generation) ||
-      input.occupancyPolicy != null && input.occupancyPolicy !== 'reject-occupied' || input.materialId != null && !identity(input.materialId) || input.tag != null && !identity(input.tag) ||
+      input.annotationPolicy != null && input.annotationPolicy !== 'replace' || input.annotationPolicy === 'replace' && input.operation !== 'replaceSolid' || input.occupancyPolicy != null && input.occupancyPolicy !== 'reject-occupied' || input.materialId != null && !identity(input.materialId) || input.tag != null && !identity(input.tag) ||
       input.operation === 'annotate' && !identity(input.tag) || input.expectedScoreRevision != null && (!Number.isSafeInteger(input.expectedScoreRevision) || input.expectedScoreRevision < 0) || input.expiresAtTick != null && (!Number.isSafeInteger(input.expiresAtTick) || input.expiresAtTick < 0) ||
       !Array.isArray(input.spans) || !input.spans.length || input.spans.length > 128) throw new Error('Invalid bounded terrain command.');
   const rows = new Map(); let count = 0;
   for (const span of input.spans) {
-    if (![span.x1, span.x2, span.y].every(Number.isSafeInteger) || span.x1 < 0 || span.y < 0 || span.x2 <= span.x1 || span.x2 - span.x1 > MAX_CELLS || input.operation === 'replaceSolid' && typeof span.solid !== 'boolean') throw new Error('Invalid integer terrain span.');
-    const row = rows.get(span.y) || []; row.push([span.x1, span.x2, input.operation === 'replaceSolid' ? span.solid : null]); rows.set(span.y, row);
+    if (![span.x1, span.x2, span.y].every(Number.isSafeInteger) || span.x1 < 0 || span.y < 0 || span.x2 <= span.x1 || span.x2 - span.x1 > MAX_CELLS || input.operation === 'replaceSolid' && typeof span.solid !== 'boolean' || input.annotationPolicy === 'replace' && (span.tag != null && !identity(span.tag) || span.materialId != null && !identity(span.materialId))) throw new Error('Invalid integer terrain span.');
+    const row = rows.get(span.y) || []; row.push([span.x1, span.x2, input.operation === 'replaceSolid' ? span.solid : null, span.tag ?? null, span.materialId ?? null]); rows.set(span.y, row);
   }
   const spans = [];
   for (const [y, row] of [...rows].sort((a, b) => a[0] - b[0])) {
     row.sort((a, b) => a[0] - b[0]); let current = null;
-    for (const range of row) { if (current && range[0] < current.x2 && input.operation === 'replaceSolid' && current.solid !== range[2]) throw new Error('Conflicting collision patch spans.'); if (current && range[0] <= current.x2 && (input.operation !== 'replaceSolid' || current.solid === range[2])) current.x2 = Math.max(current.x2, range[1]); else { current = { y, x1: range[0], x2: range[1], ...(input.operation === 'replaceSolid' ? { solid: range[2] } : {}) }; spans.push(current); } }
+    for (const range of row) { if (current && range[0] < current.x2 && input.operation === 'replaceSolid' && (current.solid !== range[2] || input.annotationPolicy === 'replace' && (current.tag !== range[3] || current.materialId !== range[4]))) throw new Error('Conflicting collision patch spans.'); if (current && range[0] <= current.x2 && (input.operation !== 'replaceSolid' || current.solid === range[2]) && (input.annotationPolicy !== 'replace' || current.tag === range[3] && current.materialId === range[4])) current.x2 = Math.max(current.x2, range[1]); else { current = { y, x1: range[0], x2: range[1], ...(input.operation === 'replaceSolid' ? { solid: range[2] } : {}), ...(input.annotationPolicy === 'replace' ? { tag: range[3], materialId: range[4] } : {}) }; spans.push(current); } }
   }
   for (const span of spans) count += span.x2 - span.x1;
   const maxCells = input.maxCells ?? MAX_CELLS, maxChunks = input.maxChunks ?? MAX_CHUNKS;
@@ -46,7 +46,7 @@ const normalizeTerrainCommand = input => {
   const expected = input.expectedRegionRevisionSet ?? [];
   if (!Array.isArray(expected) || expected.length > MAX_CHUNKS || expected.some(value => !Array.isArray(value) || value.length !== 2 || !value.every(Number.isSafeInteger)) || new Set(expected.map(value => value[0])).size !== expected.length) throw new Error('Invalid terrain revision set.');
   return { version: 1, operation: input.operation, generation: input.generation, transactionId: input.transactionId, spans, maxCells, maxChunks,
-    occupancyPolicy: 'reject-occupied', materialId: input.materialId ?? null, tag: input.tag ?? null, expiresAtTick: input.expiresAtTick ?? null,
+    occupancyPolicy: 'reject-occupied', ...(input.annotationPolicy === 'replace' ? { annotationPolicy: 'replace' } : {}), materialId: input.materialId ?? null, tag: input.tag ?? null, expiresAtTick: input.expiresAtTick ?? null,
     expectedScoreRevision: input.expectedScoreRevision ?? null, expectedRegionRevisionSet: expected.map(value => [...value]).sort((a, b) => a[0] - b[0]) };
 };
 const protectionBounds = world => {
@@ -116,7 +116,10 @@ const planTerrainCommand = (input, world) => {
       if (value.steel || x < world.leftEdgeX + 16 || protection || object) { reason = value.steel ? 'protected-steel' : protection?.reason ?? 'protected-source'; if (reason === 'occupied-footprint') counts.occupied++; else counts.protected++; }
       else {
         const after = command.operation === 'replaceSolid' ? span.solid ? value.color || 3 : 0 : command.operation === 'addSolid' ? value.color || 3 : command.operation === 'removeSolid' ? 0 : value.color;
-        if (after !== value.color || command.operation === 'annotate') { cells.push({ x, y, before: value.color, after }); if (command.operation === 'annotate') counts.annotationChanged++; else if (!value.color && after) counts.solidAdded++; else if (value.color && !after) counts.solidRemoved++; else counts.appearanceChanged++; }
+        const annotation = command.annotationPolicy === 'replace' ? terrainScoreAt(world, x, y) : null;
+        const annotationChanged = !!annotation && ((annotation.tag ?? null) !== span.tag || (annotation.materialId ?? null) !== span.materialId);
+        if (annotation && annotation.status !== 'complete') { reason = 'unknown-annotation-provenance'; counts.unknown++; }
+        else if (after !== value.color || command.operation === 'annotate' || annotationChanged) { cells.push({ x, y, before: value.color, after, ...(annotation ? { tag: span.tag, materialId: span.materialId, annotationChanged } : {}) }); if (command.operation === 'annotate' || annotationChanged) counts.annotationChanged++; if (!value.color && after) counts.solidAdded++; else if (value.color && !after) counts.solidRemoved++; else if (after !== value.color) counts.appearanceChanged++; }
       }
     }
     if (reason && rejected.length < 64) rejected.push({ x, y, reason });
@@ -143,7 +146,7 @@ const applyTerrainPlan = (plan, world) => {
     const key = world._editKey(cell.x, cell.y); let patch = patches.get(key);
     if (!patch) { patch = new Uint8Array(world.editChunks.chunkLength); for (let index = 0; index < patch.length; index++) patch[index] = readPatchCell(world.editChunks, key, index); patches.set(key, patch); }
     if (plan.command.operation !== 'annotate') patch[(cell.y % world.laneHeight) * 32 + cell.x % 32] = cell.after + 1;
-    const lane = Math.floor(cell.y / world.laneHeight); laneChanges.add(lane); changedTiles.set(lane * 0x800000 + Math.floor(cell.x / (world.terrain?.chunkWidth || 256)), world.terrainRevision + current.cells.length);
+    const lane = Math.floor(cell.y / world.laneHeight); if (cell.before !== cell.after) { laneChanges.add(lane); changedTiles.set(lane * 0x800000 + Math.floor(cell.x / (world.terrain?.chunkWidth || 256)), world.terrainRevision + current.cells.length); }
   }
   // Prepare provenance against a detached bounded state; allocation failure has
   // not touched collision, versions, occupancy, or semantic history.

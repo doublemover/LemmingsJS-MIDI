@@ -997,3 +997,40 @@ port compatibility and mixed-patch fixtures are written, as is an 8/128/1024-lan
 controller/whole-world-tick profile. No fixtures, timing qualification, profiles or
 browser interaction checks have been executed. Reusable fragment remapping and
 source-qualified authored short/long branch content remain explicit follow-on work.
+
+### Portable physical score fragments
+
+Canonical projects can retain bounded, immutable fragment definitions and pinned
+instance ancestry. Capture reads materialized collision and revision-qualified
+annotations without copying actors, voices, ensemble rosters, junction requests,
+reservations or occurrence state. A fragment owns at most 8,192 cells, 128 spans,
+256 musical/physical objects and 512 KiB; libraries own at most 32 definitions and
+8 MiB. Nested containment is explicitly unsupported (depth zero), so recursion
+cannot enter through a copied instance.
+
+Local pickup/ensemble/route/field/formation/topology/instrument/junction/port
+identities receive a fresh instance namespace. Every lane, crew/cohort, material,
+sink route, sample kit and body/macro dependency is an explicit external binding;
+missing required bindings block admission, while missing optional sound choices
+mute the copied instruments rather than accidentally resolving same-named objects.
+Typed numeric parameters bind only enumerated authoring fields and carry units.
+Library updates require newer revisions and never rewrite placed instances;
+detachment retains ordinary objects and immutable source ancestry.
+
+Dry runs check source hashes, destination identity conflicts, actual occupancy,
+protected terrain, finite port declarations and the merged causal graph. Per-span
+material annotations and binary collision now share one terrain transaction;
+annotation-only replacement does not invalidate collision tile identities. Integer
+translation is supported without claiming timing preservation. Horizontal
+reflection requires pinned real-runtime qualification, and signed-X articulation
+or discrete X-degree mappings currently require separately authored policies.
+Scaling/vertical reflection/rotation are rejected. Qualification candidates are
+explicitly unadmitted, never a placement shortcut.
+
+The real-adapter comparison producer retains original and realized route evidence,
+observed crew inputs and timing deltas. A separate shared-action circuit fixture
+measures translation/reflection and a separately authored doubled geometry instead
+of assuming a doubled period. Neither producer nor the 8/128/1024-lane authoring
+profile has been run. Graph/terrain instance publication, checkpoint-backed
+physical authoring history and the fragment editing surface are separate remaining
+integration work; this increment does not claim completed fragment workflows.

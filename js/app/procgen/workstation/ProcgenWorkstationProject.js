@@ -1,3 +1,4 @@
+import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
 import { validateProjectJunctions } from './PhysicalJunctionProject.js';
 import { procgenLaneIndex, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
 import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
@@ -95,8 +96,8 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const seed = integer(value?.seed, 777, 0, 0xffffffff);
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
-  const junctions = validateProjectJunctions(value.junctions);
-  return { version: PROCGEN_PROJECT_VERSION, ...(junctions.length ? { junctions } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  const junctions = validateProjectJunctions(value.junctions), fragments = validateFragmentLibrary(value.fragments), fragmentInstances = validateFragmentInstances(value.fragmentInstances);
+  return { version: PROCGEN_PROJECT_VERSION, ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -125,6 +126,15 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/fragments') {
+    const fragments = validateFragmentLibrary(action.fragments);
+    for (const fragment of fragments) { const prior = procgen.fragments?.find(value => value.id === fragment.id); if (prior && !sameValue(prior, fragment) && fragment.revision <= prior.revision) throw new Error('Fragment updates require an explicit newer source revision.'); }
+    return sameValue(fragments, procgen.fragments || []) ? project : { ...project, procgen: { ...procgen, fragments } };
+  }
+  if (action.type === 'procgen/detachFragment') {
+    const instances = procgen.fragmentInstances || []; if (!instances.some(value => value.id === action.instanceId && !value.detached)) return project;
+    return { ...project, procgen: { ...procgen, fragmentInstances: validateFragmentInstances(instances.map(value => value.id === action.instanceId ? { ...value, detached: true } : value)) } };
+  }
   if (action.type === 'procgen/junctions') {
     const junctions = validateProjectJunctions(action.junctions);
     if (sameValue(junctions, procgen.junctions || [])) return project;
@@ -220,7 +230,7 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/physicalGraph', 'procgen/effectRack'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
   if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);
