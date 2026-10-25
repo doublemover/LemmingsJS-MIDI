@@ -39,7 +39,7 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -271,7 +271,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
     }
-    const topologyProposal = graphChanged ? runtime()?.world?.prepareTopologyRegions?.(next.procgen.physicalGraph.topologyRegions || []) : null;
+    const authoringChanged = graphChanged || project.procgen.fragmentInstances !== next.procgen.fragmentInstances && !equal(project.procgen.fragmentInstances || [], next.procgen.fragmentInstances || []);
+    const authoringProposal = authoringChanged ? runtime()?.world?.preparePhysicalAuthoring?.(next.procgen.physicalGraph, next.procgen.fragmentInstances || []) : null;
     const mappingChanged = causalTake && graphChanged;
     if (causalTake && (mappingChanged || performanceChange)) {
       const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
@@ -279,7 +280,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
       if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
     }
-    topologyProposal?.commit(); junctionProposal?.commit();
+    authoringProposal?.commit(); junctionProposal?.commit();
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
         if (historyCost != null) historySizes.set(project, historyCost);
@@ -806,15 +807,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
-    next.world?.configureTopologyRegions?.(project.procgen.physicalGraph.topologyRegions || []);
-    if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, project.procgen.junctions || []).commit();
+    const boundProject = session?.project || project;
+    next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
+    if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, boundProject.procgen.junctions || []).commit();
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, renderer: next.lanes?.renderer, resourceBudget,
-      getGraph: () => project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => project.procgen.lanes, isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
@@ -831,6 +833,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
     };
     const onPhysicalBatch = batch => {
+      const applied = batch.facts.findLast(fact => fact.kind === 'CommandApplied' && fact.terrain?.authoring);
+      if (applied) {
+        const authored = next.world.physicalAuthoring;
+        if (authored.lastApplied?.transactionId === applied.transactionId) {
+          const previous = project; project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } });
+          undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
+        }
+      }
       physicalJunctionView?.refresh();
       let position;
       try {

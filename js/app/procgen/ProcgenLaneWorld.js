@@ -1,3 +1,4 @@
+import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
 import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
 import { disposeTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
 import { createTerrainScoreState, rememberTerrainCell, commitTerrainScore, terrainContactProvenance } from './TerrainScoreLayer.js';
@@ -71,7 +72,7 @@ class ProcgenLaneWorld {
     this.height = this.laneCount * this.laneHeight;
     this.tickIndex = 0;
     this._stepping = false; this._failedTick = false;
-    this.interventionState = createInterventionState(); this.physicalJunctions = createPhysicalJunctionState();
+    this.physicalAuthoring = createPhysicalAuthoringState(); this.interventionState = createInterventionState(); this.physicalJunctions = createPhysicalJunctionState();
     Object.defineProperties(this, {
       _completedPhysicalSnapshot: { value: null, writable: true, configurable: true },
       _snapshotRetainers: { value: 0, writable: true, configurable: true }
@@ -277,6 +278,8 @@ class ProcgenLaneWorld {
   }
 
   // Requests enter the existing simulation pass; pause never advances OHNO.
+  preparePhysicalAuthoring(graph, instances = []) { return preparePhysicalAuthoringConfiguration(this, graph, instances); }
+  configurePhysicalAuthoring(graph, instances = []) { return this.preparePhysicalAuthoring(graph, instances).commit(); }
   prepareInterventions(commands) { return prepareInterventionBatch(this, commands); }
   prepareIntervention(command) { return prepareIntervention(this, command); }
   enqueueIntervention(command) { return enqueueIntervention(this, command); }
@@ -1172,7 +1175,7 @@ class ProcgenLaneWorld {
       this.soundEvents.commitTick(snapshot, this.terrainRevision);
     }
     this._completedPhysicalSnapshot = null;
-    this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; disposeTerrainTopology(this); this.physicalJunctions.definitions = []; this.physicalJunctions.actual.clear(); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
+    this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; disposeTerrainTopology(this); this.physicalAuthoring = createPhysicalAuthoringState(); this.physicalJunctions.definitions = []; this.physicalJunctions.actual.clear(); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
   }
 }
 

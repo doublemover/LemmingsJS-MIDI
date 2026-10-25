@@ -1034,3 +1034,31 @@ of assuming a doubled period. Neither producer nor the 8/128/1024-lane authoring
 profile has been run. Graph/terrain instance publication, checkpoint-backed
 physical authoring history and the fragment editing surface are separate remaining
 integration work; this increment does not claim completed fragment workflows.
+
+### Atomic physical authoring owner
+
+`physical-authoring` is a canonical intervention, not a second edit scheduler.
+It stages collision/provenance allocations, the validated musical graph, junction
+definitions, topology profiles and pinned fragment ancestry before publishing any
+of them at the requested simulation boundary. Source hashes, generation, graph
+content, authoring/junction revisions and actual terrain/occupancy are rechecked.
+The same completed batch sees both the changed geometry and its effective graph;
+no synthetic work strike, actor birth or admission is emitted. Post-publication
+exceptions fail the physical tick instead of falsely reporting an unmutated
+rejection. No-op collision can accompany a meaningful graph transaction.
+
+The world checkpoint owns the effective authoring graph; project presentation
+adopts the applied receipt, rather than exposing a candidate graph before terrain
+admission. Ordinary mapping changes remain outside the physics hash projection,
+but their explicit recovery records reconstruct the authoring owner. Physical
+re-performance and branch mapping use the same owner and topology configuration.
+Commands are capped at 512 KiB, the pending queue has an 8 MiB serialized admission
+budget, and recovery records allow up to 1 MiB under the existing total journal
+budget. Larger ordinary graphs may be retained up to 4 MiB but can require paused
+recovery compaction instead of an incremental mapping record.
+
+Regression coverage for same-batch publication, stale/occupied rejection,
+cancellation and independent checkpoint/recovery continuation is written, not run.
+The public placement-command builder is connected to this owner; the bounded
+editing surface and checkpoint-backed physical Undo integration are still being
+implemented and are not claimed by the atomic-owner increment alone.

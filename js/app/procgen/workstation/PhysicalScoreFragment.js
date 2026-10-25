@@ -160,6 +160,15 @@ export function planPhysicalScoreFragment(world, project, fragment, options = {}
   const merged = validateCausalInstrumentGraph(graph);
   return freeze({ ...prepared, status: issues.length ? 'blocked' : 'prepared', issues, terrain, mergedGraph: merged, alignments, generation: world.generation, tick: world.tickIndex, projectGraphRevision: project.procgen.physicalGraph.revision, previewHardwareNotes: false });
 }
+
+export function fragmentPlacementCommand(world, project, plan, commandId) {
+  if (plan?.status !== 'prepared' || !identity(commandId) || commandId.length > 128 || world._disposed || world.generation !== plan.generation || world.tickIndex !== plan.tick || project.procgen.physicalGraph.revision !== plan.projectGraphRevision || JSON.stringify(world.physicalAuthoring.graph) !== JSON.stringify(project.procgen.physicalGraph)) throw new Error('Fragment placement plan is stale or blocked.');
+  const transactionId = plan.terrain.command.transactionId;
+  return freeze({ id: commandId, transactionId, kind: 'physical-authoring', origin: 'manual', target: { generation: world.generation }, parameters: { authoring: {
+    version: 1, operation: 'fragment-place', transactionId, expectedRevision: world.physicalAuthoring.revision, expectedJunctionRevision: world.physicalJunctions.revision, expectedGraphDigest: digestPlan(world.physicalAuthoring.graph),
+    graph: plan.mergedGraph, instances: [...(project.procgen.fragmentInstances || []), plan.instance], junctions: [...(project.procgen.junctions || []), ...plan.junctions], terrain: plan.terrain.command, instanceId: plan.instance.id, requiredAssets: plan.fragment.requiredAssets
+  } } });
+}
 export function validateFragmentLibrary(values = []) {
   if (!Array.isArray(values) || values.length > LIMITS.fragments) throw new Error('Fragment library capacity exceeded.'); const fragments = values.map(validatePhysicalScoreFragment);
   if (new Set(fragments.map(value => value.id)).size !== fragments.length || JSON.stringify(fragments).length * 2 > LIMITS.libraryBytes) throw new Error('Fragment library identity or byte capacity exceeded.'); return freeze(fragments);

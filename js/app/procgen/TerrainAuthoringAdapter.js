@@ -133,13 +133,13 @@ const planTerrainCommand = (input, world) => {
 };
 // No user callbacks or source materialization occur between the staged patch
 // allocation and publication. Crew/route readers observe the changed tile IDs.
-const applyTerrainPlan = (plan, world) => {
+const prepareTerrainPublication = (plan, world) => {
   if (plan?.status !== 'prepared') return { status: 'rejected', reason: plan?.reason ?? 'invalid-terrain-plan' };
   if (!world._stepping || !world.soundEvents._tick) return { status: 'rejected', reason: 'terrain-boundary-required' };
   const current = planTerrainCommand(plan.command, world);
   if (current.status !== 'prepared') return { status: 'rejected', reason: current.reason, counts: current.counts };
   if (JSON.stringify(current.cells) !== JSON.stringify(plan.cells)) return { status: 'rejected', reason: 'stale-terrain-plan' };
-  if (!current.cells.length) return { status: 'rejected', reason: 'no-change', counts: current.counts };
+  if (!current.cells.length) { const result = { status: 'accepted', reason: 'no-change', counts: current.counts, edit: null }; return { status: 'prepared', result, commit: () => result }; }
   if (!Number.isSafeInteger(world.terrainRevision + current.cells.length) || !Number.isSafeInteger(world.terrainScoreState.serial + 1)) throw new RangeError('Terrain identity exhausted.');
   const patches = new Map(), changedTiles = new Map(), laneChanges = new Set();
   for (const cell of current.cells) {
@@ -155,20 +155,27 @@ const applyTerrainPlan = (plan, world) => {
   const publication = stagePatchPublication(world.editChunks, patches);
   const revisionBefore = world.terrainRevision, nextRevision = revisionBefore + current.cells.length;
   const edit = commitTerrainScore({ ...world, terrainScoreState: stagedScore, terrainRevision: nextRevision }, { ...plan.command, revisionBefore, causeKind: 'authoring-command' }, current.cells);
-  for (const [key, patch] of patches) {
-    const cold = world.editChunks.cold?.get(key); if (cold) { world.editChunks.cold.delete(key); world.editChunks.coldBytes -= cold.bytes; }
-    world._invalidateEditChunk(key);
-  }
-  for (const [key, packed] of publication.packed) { const prior = world.editChunks.cold.get(key); if (prior) world.editChunks.coldBytes -= prior.bytes; world.editChunks.cold.set(key, packed); world.editChunks.coldBytes += packed.bytes; world._invalidateEditChunk(key); }
-  Map.prototype.clear.call(world.editChunks); for (const [key, patch] of publication.resident) Map.prototype.set.call(world.editChunks, key, patch);
-  world.editChunks._lastKey = undefined; world.editChunks._lastChunk = undefined;
-  world.terrainRevision = nextRevision; world.terrainScoreState = stagedScore;
-  if (plan.command.operation !== 'annotate') {
-    for (const [key, revision] of changedTiles) Map.prototype.set.call(world.terrainTileRevisions, key, revision);
-    for (const lane of laneChanges) world.terrainActivityTicks[lane] = world.tickIndex;
-  }
-  world._assistedColumn.valid = false;
-  world.captureTerrainTopology?.('postTransaction');
-  return { status: 'accepted', reason: 'applied', counts: current.counts, edit, planDigest: plan.digest };
+  const generation = world.generation, tick = world.tickIndex, chunks = world.editChunks; let committed = false;
+  const result = { status: 'accepted', reason: 'applied', counts: current.counts, edit, planDigest: plan.digest };
+  return { status: 'prepared', result, commit({ captureTopology = true } = {}) {
+    if (committed) return result;
+    if (!world._stepping || !world.soundEvents._tick || world.generation !== generation || world.tickIndex !== tick || world.terrainRevision !== revisionBefore || world.terrainScoreState !== original || world.editChunks !== chunks) throw new Error('Terrain publication proposal is stale.');
+    const final = planTerrainCommand(plan.command, world); if (final.status !== 'prepared' || JSON.stringify(final.cells) !== JSON.stringify(current.cells)) throw new Error('Terrain occupancy changed before publication.');
+    for (const [key, patch] of patches) {
+      const cold = world.editChunks.cold?.get(key); if (cold) { world.editChunks.cold.delete(key); world.editChunks.coldBytes -= cold.bytes; }
+      world._invalidateEditChunk(key);
+    }
+    for (const [key, packed] of publication.packed) { const prior = world.editChunks.cold.get(key); if (prior) world.editChunks.coldBytes -= prior.bytes; world.editChunks.cold.set(key, packed); world.editChunks.coldBytes += packed.bytes; world._invalidateEditChunk(key); }
+    Map.prototype.clear.call(world.editChunks); for (const [key, patch] of publication.resident) Map.prototype.set.call(world.editChunks, key, patch);
+    world.editChunks._lastKey = undefined; world.editChunks._lastChunk = undefined;
+    world.terrainRevision = nextRevision; world.terrainScoreState = stagedScore;
+    if (plan.command.operation !== 'annotate') {
+      for (const [key, revision] of changedTiles) Map.prototype.set.call(world.terrainTileRevisions, key, revision);
+      for (const lane of laneChanges) world.terrainActivityTicks[lane] = world.tickIndex;
+    }
+    world._assistedColumn.valid = false;
+    committed = true; if (captureTopology) world.captureTerrainTopology?.('postTransaction');
+    return result; } };
 };
-export { inspectTerrainInfluence, normalizeTerrainCommand, readTerrainCell, readonlyRevision, planTerrainCommand, applyTerrainPlan, digestPlan };
+const applyTerrainPlan = (plan, world) => { const proposal = prepareTerrainPublication(plan, world); return proposal.status === 'prepared' ? proposal.commit() : proposal; };
+export { inspectTerrainInfluence, normalizeTerrainCommand, readTerrainCell, readonlyRevision, planTerrainCommand, prepareTerrainPublication, applyTerrainPlan, digestPlan };

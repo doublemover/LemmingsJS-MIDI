@@ -206,18 +206,30 @@
       "requirementUpdatedAt": "2026-10-23T10:57:00Z",
       "requirementSha256": "2cfbe8cd3197a5d37e2f21bd9d4567e835cb11f607de27e51a9befaec278d555",
       "initialGap": "World-changing history snapshots/queues preserve concurrent edits. Non-world Undo still passes an old physicalGraph revision directly to syncProject; active causalTake.recordMapping requires a strictly newer revision, so the latest reported edit\u2192Undo while recording conflict remains implemented incorrectly.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
-        "js/app/procgen/workstation/ProcgenWorkstation.js"
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
-        "test/procgen-causal-music-engine.test.js"
+        "test/procgen-causal-music-engine.test.js",
+        "test/physical-authoring-transaction.test.js"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity"
+      "increment": "causal-boundary-and-publication-integrity",
+      "increments": [
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 985,
@@ -862,7 +874,8 @@
       ],
       "commits": [
         "224d91e7fde8ff16e55ef9ec92121e161ccea9fc",
-        "68b954ff3e7b84b1ecc109172d917e6a9449291a"
+        "68b954ff3e7b84b1ecc109172d917e6a9449291a",
+        "6357fa75948baaf475a9da927f6a5eca4143686c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -879,7 +892,7 @@
         {
           "id": "portable-physical-score-fragments",
           "summary": "Bounded immutable capture, explicit dependency bindings, fresh object namespaces, canonical library/instance ancestry, typed parameters, safe transform candidates, readonly terrain/port dry runs and real-runtime qualification producers. Atomic graph/terrain instance publication and authoring Undo/UI still being implemented; all qualification deferred.",
-          "commit": null
+          "commit": "6357fa75948baaf475a9da927f6a5eca4143686c"
         }
       ]
     },
@@ -1942,11 +1955,16 @@
         "js/app/procgen/workstation/physical/PhysicalPorts.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
         "js/app/procgen/workstation/PhysicalJunctionView.js",
-        "js/solver/PhysicalJunctionQualification.js"
+        "js/solver/PhysicalJunctionQualification.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
-        "scripts/bench-physical-junctions.mjs"
+        "scripts/bench-physical-junctions.mjs",
+        "test/physical-authoring-transaction.test.js"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
@@ -1959,6 +1977,11 @@
           "id": "queued-physical-junctions",
           "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
           "commit": "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075"
+        },
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": null
         }
       ]
     },
@@ -2158,13 +2181,19 @@
         "js/app/procgen/ProcgenTerrainTopology.js",
         "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
         "js/app/procgen/workstation/CausalTake.js",
-        "js/app/midi-ui/RoutedInstrumentBackend.js"
+        "js/app/midi-ui/RoutedInstrumentBackend.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
         "test/procgen-terrain-topology.test.js",
         "test/midi/routed-instrument-backend.test.js",
-        "scripts/bench-terrain-topology.mjs"
+        "scripts/bench-terrain-topology.mjs",
+        "test/physical-authoring-transaction.test.js"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
@@ -2177,6 +2206,11 @@
           "id": "revision-qualified-topology-instruments",
           "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
           "commit": "68b954ff3e7b84b1ecc109172d917e6a9449291a"
+        },
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": null
         }
       ]
     },
@@ -2914,11 +2948,26 @@
       "requirementUpdatedAt": "2026-10-22T11:33:12Z",
       "requirementSha256": "245f5f57d0c891bd62e7f930b74f9071409f685493919422915e7e7a71538ba5",
       "initialGap": "Only legacy span group operations exist; no SelectionSet/GroupEditProposal for typed physical gates/fields/terrain with mixed values, all-target ghosts and canonical batch apply.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
+      ],
+      "regressions": [
+        "test/physical-authoring-transaction.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1174,
@@ -2926,11 +2975,26 @@
       "requirementUpdatedAt": "2026-10-22T11:33:08Z",
       "requirementSha256": "c39728639667b1cfe5e544fab69bc1e382b19a5eb7c3b1371424eb92f6d34f84",
       "initialGap": "No SCULPT terrain-score draft/plan/ghost tool or admitted terrain-authoring command surface; worker-created edits are not direct authoring.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
+      ],
+      "regressions": [
+        "test/physical-authoring-transaction.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1175,
@@ -3013,7 +3077,11 @@
         "js/app/procgen/workstation/PhysicalJunctionView.js",
         "js/solver/PhysicalJunctionQualification.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
-        "js/solver/PhysicalFragmentQualification.js"
+        "js/solver/PhysicalFragmentQualification.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
         "test/procgen-terrain-authoring.test.js",
@@ -3022,11 +3090,13 @@
         "scripts/bench-physical-junctions.mjs",
         "test/physical-score-fragment.test.js",
         "scripts/qualify-physical-fragment-transforms.mjs",
-        "scripts/bench-physical-fragments.mjs"
+        "scripts/bench-physical-fragments.mjs",
+        "test/physical-authoring-transaction.test.js"
       ],
       "commits": [
         "224d91e7fde8ff16e55ef9ec92121e161ccea9fc",
-        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075"
+        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
+        "6357fa75948baaf475a9da927f6a5eca4143686c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3043,6 +3113,11 @@
         {
           "id": "portable-physical-score-fragments",
           "summary": "Bounded immutable capture, explicit dependency bindings, fresh object namespaces, canonical library/instance ancestry, typed parameters, safe transform candidates, readonly terrain/port dry runs and real-runtime qualification producers. Atomic graph/terrain instance publication and authoring Undo/UI still being implemented; all qualification deferred.",
+          "commit": "6357fa75948baaf475a9da927f6a5eca4143686c"
+        },
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
           "commit": null
         }
       ]
@@ -3064,17 +3139,23 @@
         "js/solver/PhysicalJunctionQualification.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/solver/PhysicalFragmentQualification.js",
-        "js/app/procgen/TerrainScoreLayer.js"
+        "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/PhysicalAuthoring.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
         "scripts/bench-physical-junctions.mjs",
         "test/physical-score-fragment.test.js",
         "scripts/qualify-physical-fragment-transforms.mjs",
-        "scripts/bench-physical-fragments.mjs"
+        "scripts/bench-physical-fragments.mjs",
+        "test/physical-authoring-transaction.test.js"
       ],
       "commits": [
-        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075"
+        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
+        "6357fa75948baaf475a9da927f6a5eca4143686c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3086,6 +3167,11 @@
         {
           "id": "portable-physical-score-fragments",
           "summary": "Bounded immutable capture, explicit dependency bindings, fresh object namespaces, canonical library/instance ancestry, typed parameters, safe transform candidates, readonly terrain/port dry runs and real-runtime qualification producers. Atomic graph/terrain instance publication and authoring Undo/UI still being implemented; all qualification deferred.",
+          "commit": "6357fa75948baaf475a9da927f6a5eca4143686c"
+        },
+        {
+          "id": "atomic-physical-authoring-owner",
+          "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
           "commit": null
         }
       ]
@@ -3523,7 +3609,8 @@
         "scripts/bench-physical-fragments.mjs"
       ],
       "commits": [
-        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075"
+        "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
+        "6357fa75948baaf475a9da927f6a5eca4143686c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3535,7 +3622,7 @@
         {
           "id": "portable-physical-score-fragments",
           "summary": "Bounded immutable capture, explicit dependency bindings, fresh object namespaces, canonical library/instance ancestry, typed parameters, safe transform candidates, readonly terrain/port dry runs and real-runtime qualification producers. Atomic graph/terrain instance publication and authoring Undo/UI still being implemented; all qualification deferred.",
-          "commit": null
+          "commit": "6357fa75948baaf475a9da927f6a5eca4143686c"
         }
       ]
     },
