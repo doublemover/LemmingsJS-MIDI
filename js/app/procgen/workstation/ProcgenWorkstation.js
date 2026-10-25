@@ -612,6 +612,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physical = physicalPlayback?.engine.snapshot();
     return { ...(runtime()?.world?.physicalFeedback ? { 'physical-feedback': runtime().world.physicalFeedback } : {}), sourceTimeMs: runtime()?.world?.simulationTimeMs ?? null, voices: physical?.active || [], travel: physical?.travel || null,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
+      ...(physical?.preparedSurfaces ? { 'prepared-surfaces': physical.preparedSurfaces } : {}),
       ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
       ...(physical?.swarm ? { swarm: physical.swarm } : {}), ...(physical?.cargo ? { cargo: physical.cargo } : {}), ...(physical?.activity ? { activity: physical.activity } : {}), ...(physical?.motifs ? { motifs: physical.motifs } : {}), ...(physical?.encounters ? { encounters: physical.encounters } : {}),
       ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
@@ -888,7 +889,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+    physicalPlayback = createProcgenPhysicalPlayback({ documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
@@ -933,7 +934,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
           playing: transport.getState().playing, position });
         if (causalTake) {
-          const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
+          const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, bodyCommands: physicalPlayback?.engine.bodyPreparations()?.batchId === batch.batchId ? physicalPlayback.engine.bodyPreparations().commands : [], probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
           if (receipt.status === 'rejected') { physicalFeedback?.disarm(); markPhysicalGap(batch, 'capture-admission-rejected'); }
           if (receipt.status === 'rejected' && !causalTakeErrorReported) {
             status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
@@ -1332,7 +1333,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
-    openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ swarm: physicalPlayback?.engine.diagnostics().swarm, cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
+    openPhysicalScene() { physicalDomainEditor ||= createPhysicalDomainEditor({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, saveGraph: graph => dispatch({ type: 'procgen/physicalGraph', graph }), getInspection: () => ({ terrainRevision: runtime()?.world?.terrainRevision ?? null, preparedSurfaces: physicalPlayback?.engine.diagnostics().preparedSurfaces, bodyBindings: physicalPlayback?.preparedSurfaceBodies(), swarm: physicalPlayback?.engine.diagnostics().swarm, cargo: physicalPlayback?.engine.diagnostics().cargo, physical: physicalPlayback?.engine.physicalAnalysis() }), onStatus: status }); physicalDomainEditor.open(); },
     openPhysicalFeedback() { physicalFeedbackView ||= createPhysicalFeedbackView({ document, getOwner: () => documentGeneration, getGraph: () => project.procgen.physicalGraph, getState: () => physicalFeedback?.diagnostics(), save: feedback => dispatch({ type: 'procgen/physicalGraph', graph: { ...project.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1, feedback } }), arm: () => handlers.armPhysicalFeedback(), disarm: () => physicalFeedback?.disarm(), mute: (id, muted) => physicalFeedback?.muteLayer(id, muted), capture: input => handlers.captureInterventionLayer(input), onStatus: status }); physicalFeedbackView.open(); },
     armPhysicalFeedback() { if (!physicalFeedback || worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('No writable live physical world.'); if (!Number.isSafeInteger(++feedbackEpoch)) throw new Error('Feedback epoch exhausted.'); return physicalFeedback.arm({ mode: 'live', epoch: `live:${documentGeneration}:${runtime().world.generation}:${runtime().world.tickIndex}:${feedbackEpoch}` }); },
     disarmPhysicalFeedback: () => physicalFeedback?.disarm(),

@@ -210,7 +210,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           if (generated.length >= 8) throw journalError('replay-overflow', 'Unexpected source batch fanout during re-performance.');
           if (initial.replay.scoreTimeline) clock.observe(batch, { bpm: current.bpm });
           if (world.physicalAuthoring?.graph) current.graph = world.physicalAuthoring.graph;
-          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [], probability: current.playing ? engine.probabilityAnalysis() : null });
+          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [], probability: current.playing ? engine.probabilityAnalysis() : null, bodyCommands: current.playing ? engine.bodyPreparations()?.commands || [] : [] });
         } catch (error) { callbackError = error; }
       };
       world.soundEvents.onBatch.on(listener);
@@ -239,10 +239,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
               comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
               for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
-              expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability });
+              expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability, bodyCommands: actual.bodyCommands });
               if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
             } else if (record.kind === 'musical-intents') {
               const companion = expectedIntents.get(record.payload.batchId), actual = companion?.intents;
+              if (!equal(record.payload.bodyCommands || [], companion?.bodyCommands || [])) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'prepared-body-commands' }; break; }
               if (record.payload.probability && !equal(record.payload.probability, companion?.probability)) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'causal-probability-decisions' }; break; }
               if (!actual || !equal(record.payload.intents, actual)) {
                 const index = (record.payload.intents || []).findIndex((intent, ordinal) => !equal(intent, actual?.[ordinal] ?? null));

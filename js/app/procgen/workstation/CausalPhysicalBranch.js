@@ -48,6 +48,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       if (world._disposed) return lastBoundary;
       const snapshot = session.engine.snapshot();
       return lastBoundary = { ...(world.physicalFeedback ? { 'physical-feedback': world.physicalFeedback } : {}), voices: snapshot.active, travel: snapshot.travel, contactSpans: snapshot.active.filter(voice => voice.lifetimeScope === 'contactSpan'),
+        ...(snapshot.preparedSurfaces ? { 'prepared-surfaces': snapshot.preparedSurfaces } : {}),
         ...(snapshot.performanceInputs ? { 'instrument-performance': snapshot.performanceInputs } : {}),
         ...(snapshot.physicalDomain ? { 'physical-domain': snapshot.physicalDomain } : {}), ...(snapshot.rhythmicResponses ? { 'rhythmic-responses': snapshot.rhythmicResponses } : {}),
         ...(snapshot.actionAdmission ? { 'action-admission': snapshot.actionAdmission } : {}), ...(snapshot.tonalInterpretation ? { 'tonal-interpretation': snapshot.tonalInterpretation } : {}), ...(snapshot?.swarm ? { swarm: snapshot.swarm } : {}), ...(snapshot?.cargo ? { cargo: snapshot.cargo } : {}), ...(snapshot?.activity ? { activity: snapshot.activity } : {}), ...(snapshot?.motifs ? { motifs: snapshot.motifs } : {}), ...(snapshot.encounters ? { encounters: snapshot.encounters } : {}),
@@ -78,7 +79,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         const replayState = session.replayState();
         if (replayState.scoreTimeline) session.clock.observe(batch, { bpm: replayState.bpm });
         lastIntents = replayState.version === 2 && !replayState.playing ? [] : session.engine.processBatch(batch);
-        const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents, probability: session.engine.probabilityAnalysis()?.batchId === batch.batchId ? session.engine.probabilityAnalysis() : null });
+        const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents, bodyCommands: session.engine.bodyPreparations()?.batchId === batch.batchId ? session.engine.bodyPreparations().commands : [], probability: session.engine.probabilityAnalysis()?.batchId === batch.batchId ? session.engine.probabilityAnalysis() : null });
         completedBatches++;
         if (receipt.status === 'rejected') failure = { code: 'capture-admission', reason: receipt.reason, tick: batch.tick };
         else feedback.observe(batch, session.engine.physicalAnalysis());

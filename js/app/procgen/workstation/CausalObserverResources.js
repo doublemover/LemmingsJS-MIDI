@@ -15,6 +15,7 @@ export function causalObserverResourceProfile(graph, { maxVoices = 512, maxBegin
     encounters: graph?.encounters?.length ? 32 * MiB : 0,
     motifs: graph?.motifs?.length ? 16 * MiB : 0,
     activity: graph?.activityWindows?.length ? 8 * MiB : 0,
+    preparedSurfaces: graph?.preparedSurfaces?.length ? 8 * MiB : 0,
     cargo: graph?.cargoStations?.length ? 8 * MiB : 0
   };
   const scratchBytes = 8 * MiB + Math.max(512, maxBeginsPerBatch) * 8192;

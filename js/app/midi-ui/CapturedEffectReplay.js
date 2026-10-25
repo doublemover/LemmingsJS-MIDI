@@ -25,6 +25,7 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
   const events = []; let previous = 0;
   for (const { packet, projected } of projectedPackets) {
     if (packet.streamId !== publication.streamId || packet.ownerRouteRevision !== publication.ownerRouteRevision || packet.graphDefinitionHash !== publication.graphDefinitionHash || packet.sequence <= previous) fail('effect-history-order', 'Captured effects mix routes, streams or nonmonotonic command identities.'); previous = packet.sequence;
+    if (packet.operation === 'body-panic') fail('effect-body-lifecycle-replay-unavailable', 'A body-only Panic was submitted through the message port; its applied audio frame is unavailable in this captured-command profile.');
     if (packet.operation === 'bypass') fail('effect-lifecycle-replay-unavailable', 'This history includes an effect stop, bypass, mute or Panic. Choose a range ending before that transition or explicit static revoice.');
     if (packet.operation === 'control') {
       if (projected.frame < 0 || projected.frame < initial.frame) fail('effect-control-before-publication', 'A captured parameter precedes its prepared graph.');

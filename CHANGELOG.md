@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Map observed contact preparations separately from notes, retain exact shared-body bindings through old tails, and journal their ownership and source ancestry.
+
 - Add independently releasable localized membrane loss patches, shared live/offline control targets and complete prepared-field state transfer.
 
 - Add an owned rectangular membrane with bounded discrete energy, independent stereo pickups, persistent graph tails and exact ringing-state transfer.

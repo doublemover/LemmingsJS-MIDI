@@ -73,7 +73,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
         const previous = current;
         arm.graph.gateSidechains?.(1, context.currentTime, transitionSeconds); arm.inAutomation.insert(1, context.currentTime, context.currentTime); arm.output.gain.setValueAtTime(1, context.currentTime); dryAutomation.insert(0, context.currentTime, context.currentTime);
         tail(previous); current = arm; published = operation.published = true; pending.delete(operation);
-        mode = 'active'; error = null; revision++; graph = null; arm = null; lease = null; poll(); report(); return state();
+        mode = 'active'; error = null; revision++; current.routeRevision = revision; graph = null; arm = null; lease = null; poll(); report(); return state();
       } catch (caught) {
         if (arm) { if (current === arm) current = null; const receipt = retireArm(arm); await receipt.completion; if (receipt.outcome !== 'complete') caught.retirement = receipt; }
         else if (graph) { const receipt = graph.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') { unknown.add({ graph, receipt }); caught.retirement = receipt; } lease?.release(); }
@@ -99,7 +99,17 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     else for (const arm of arms) { arm.graph.deactivateSidechains?.(); arm.graph.panic(); arm.inAutomation.insert(0, context.currentTime, context.currentTime); arm.retireAt = context.currentTime + transitionSeconds; }
     mode = selected; revision++; poll(); report(); return state();
   };
+  const preparedArm = expected => {
+    guard(); const arm = [...arms].find(arm => !arm.retirement && arm.routeRevision === expected?.ownerRouteRevision && arm.graph.hash === expected?.graphDefinitionHash);
+    if (!arm) throw failure('stale-prepared-body', 'The exact prepared body revision has retired or was superseded.'); return arm;
+  };
   return Object.freeze({ prepare, bypass,
+    preparedBodyInventory: () => [...arms].flatMap(arm => arm.graph.plan.nodes.filter(node => node.membrane).map(node => Object.freeze({ owner, ownerGeneration: generation, ownerRouteRevision: arm.routeRevision, graphDefinitionHash: arm.graph.hash, nodeId: node.id,
+      processorRevision: node.membrane.revision, quarantined: arm.graph.isBodyQuarantined?.(node.id) === true, sampleRate: context.sampleRate, active: arm === current && ['active', 'mute'].includes(mode), retiring: !!arm.retirement || arm !== current, retireAtFrame: Number.isFinite(arm.retireAt) ? Math.ceil(arm.retireAt * context.sampleRate) : null }))),
+    updatePreparedBody(nodeId, values, targetFrame, expected) { const arm = preparedArm(expected); if (!arm.graph.plan.nodes.some(node => node.id === nodeId && node.membrane)) throw failure('stale-prepared-body', 'The named node is not an owned membrane.');
+      if (Number.isFinite(arm.retireAt) && targetFrame >= Math.ceil(arm.retireAt * context.sampleRate)) throw failure('stale-prepared-body', 'The command falls after the retained body deadline.');
+      return Object.freeze({ ...arm.graph.update(nodeId, values, targetFrame), ownerRouteRevision: arm.routeRevision, bodyLifecycle: arm === current ? 'active' : 'retained-tail' }); },
+    panicPreparedBody(nodeId, expected) { const arm = preparedArm(expected); return arm.graph.panicBody(nodeId); },
     performanceSnapshot: () => !disposed && current ? Object.freeze({ definition: current.graph.plan.definition, graphDefinitionHash: current.graph.hash, ownerRouteRevision: revision,
       mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate) }) : null,
     requestInspection: () => current?.graph.requestInspection?.() || false,

@@ -4224,3 +4224,64 @@ underresolved/Float32 endpoint fixtures are authored and unrun. This adds a
 loss-only preparation mechanism; compliant contacts, rattles and mass attachments
 remain unavailable. Formatting/syntax/provenance only; all runtime qualification
 is still deferred with the rest of the development pass.
+
+
+### Continuation 182 — mapped preparation commands and retained body ownership (#1210, #1215, #1233)
+
+Prepared surfaces are now a validated optional physical-graph feature. Named
+world-to-normalized maps retain authored region-instance, source-edit and bound
+terrain revisions. Loss-only touch and independent left/right pickup mappings
+consume actual completed support spans, source lanes/actions and source facts
+inside the existing causal music engine. They emit a separate bounded command
+stream, not note begins, child voices or a second UI collision mapper. The same
+semantic score timeline supplies command time; stationary observations refresh
+continuity, while unknown coverage, action/actor/contact loss and map changes
+release owned preparations. No camera or presentation clock supplies coordinates.
+
+The audio adapter binds an explicitly selected current membrane to document,
+physical execution/world/generation, surface/map, owner route, graph hash, node
+and processor revisions. An immutable bodyInstanceId hashes that identity. One
+DSP node cannot masquerade as multiple surface bodies. Four touch slots and one
+pickup owner per side admit independently; touch slots project to existing positive
+loss parameters, and pickup end retains its last observation without adding energy.
+Unchanged observations avoid repeated native automation writes. Admission and
+submission remain separate from applied/acoustic evidence.
+
+The existing graph host now addresses a retained body by its original route/hash,
+with its actual old-tail deadline. The supported cutover is keep-old-tail: held
+contacts remain on their exact old body, while new contacts use an explicitly bound
+replacement. Late old-map commands cannot prepare the new body. Physical contact
+or actor end closes every matching retained contribution, preserving another
+actor's touch. Closed-contact ledgers prevent late updates from resurrecting a
+released preparation. Other rebind/both policies are unavailable, not inferred.
+Unknown native cleanup retains binding metadata/reservation until actual body
+retirement; Stop/document retirement submit owned body clearing.
+
+Physical graph authoring can stage a reviewed rectangular contact map using the
+observed terrain revision. The skin surface selects/binds that saved map and
+projects CURRENT versus RETAINED TAIL body IDs and actual contact bindings. Manual
+touch inputs yield to assigned contact owners. Body-specific quarantine/Panic
+leaves unrelated graph branches alive. Message-port body Panic is captured as a
+separate operation; command revoice declines it because its applied audio frame
+is unknown rather than treating submission time as renderer proof.
+
+Mapped preparation commands and their original ancestry accompany each journal
+intent batch without changing musical onset counts. Logical held mapping state
+is checkpointed and checked against the physical frontier. Re-performance compares
+commands separately, branch recording retains them, and sound-only query explicitly
+distinguishes dry source output from captured effect commands. physicalMusic is 10
+and the capture profile is physical-basic-v16; older takes acquire no fabricated
+preparation coverage. The mapping observer and body metadata have bounded, separate
+resource estimates; exact audio body state remains in the existing DSP owner.
+
+Authored unrun fixtures cover stationary/unknown support, mapping state restore,
+multiple intentional musical begins beside one preparation, two touch owners over
+body replacement, stale maps, independent release, pickup limits, body alias
+rejection and unknown retirement accounting. Formatting/syntax/type/provenance
+checks are the only validation in this development pass.
+
+Mapped per-source strike coordinates/force envelopes, prepared modal-bar masks,
+qualified rebind/both policies, irregular terrain geometry, the Three hands lesson,
+spectral/listening/deadline and production-browser acceptance remain subsequent
+work. This batch establishes loss/pickup ownership on the fixed rectangle; it does
+not claim a qualified shared physical instrument or complete #1210/#1215 acceptance.

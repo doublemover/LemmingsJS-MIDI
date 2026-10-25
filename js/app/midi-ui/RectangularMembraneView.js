@@ -11,7 +11,7 @@ export function createRectangularMembraneView({ document, getPlayback, getLanes,
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
   const field = (label, input) => { const wrapper = node('label', label); input.setAttribute('aria-label', label); wrapper.append(input); fields.append(wrapper); return input; };
   const option = (input, value, text) => { const entry = node('option', text); entry.value = String(value); input.append(entry); };
-  const source = field('Actual excitation bus', node('select')), grid = field('Prepared grid · experimental', node('select'));
+  const source = field('Actual excitation bus', node('select')), grid = field('Prepared grid · experimental', node('select')), surface = field('Observed preparation map', node('select'));
   option(grid, 8, '8 × 8 interior sites'); option(grid, 16, '16 × 16 interior sites');
   const live = (key, value) => { if (!expected || pending) return; try { getPlayback().updateEffectGraph('skin', { [key]: value }, undefined, expected); } catch (error) { say(error.message); } };
   const number = (label, min, max, step, value, key = null) => {
@@ -27,7 +27,7 @@ export function createRectangularMembraneView({ document, getPlayback, getLanes,
       number('Authored touch ' + (index + 1) + ' Y · normalized', 0, 1, 0.01, 0.5, slot + 'Y01'), number('Authored touch ' + (index + 1) + ' radius', 0.08, 0.18, 0.01, 0.12, slot + 'Radius01'),
       number('Authored touch ' + (index + 1) + ' loss · zero releases', 0, 1, 0.01, 0, slot + 'Amount01'));
   }
-  const inputs = [source, grid, tune, decay, wet, ...controls.map(([, input]) => input), ...touchInputs];
+  const inputs = [source, grid, surface, tune, decay, wet, ...controls.map(([, input]) => input), ...touchInputs];
   const button = (label, action, duringPrepare = false) => { const value = node('button', label); value.type = 'button'; listen(value, 'click', async () => { if (disposed || pending && !duringPrepare) return; try { await action(); } catch (error) { say(error.message); } }); actions.append(value); };
   button('Prepare skin', async () => {
     if (inputs.some(input => typeof input.checkValidity === 'function' && !input.checkValidity())) throw new Error('Resolve the invalid surface controls before preparing.');
@@ -42,6 +42,14 @@ export function createRectangularMembraneView({ document, getPlayback, getLanes,
         committed = model; expected = { ownerRouteRevision: receipt.revision, graphDefinitionHash: receipt.activeGraph.hash }; state.textContent = ''; say('Prepared one persistent ' + grid.value + ' × ' + grid.value + ' skin. Authored touch slots reset to released; actual bus audio drives the body.'); }
     } finally { if (pending === operation) pending = null; for (const input of inputs) input.disabled = false; }
   });
+  button('Bind observed contact map', async () => {
+    if (!expected || !surface.value) throw new Error('Prepare a skin and select a saved physical surface map first.');
+    if (touchInputs.some((input, index) => index % 4 === 3 && Number(input.value) !== 0)) throw new Error('Release the authored manual touch slots before assigning physical contact owners.');
+    const playback = getPlayback(), identity = await playback.bindPreparedSurface({ surfaceId: surface.value, nodeId: 'skin', expected });
+    if (disposed || getPlayback() !== playback) return; for (const input of touchInputs) input.disabled = true;
+    say('Bound body ' + identity.bodyInstanceId.slice(0, 12) + ' to map ' + identity.surfaceMap.id + ' revision ' + identity.surfaceMap.revision + '. Existing contacts keep their exact old tail; new observed contacts use this body.');
+  });
+  button('Inspect contact bindings', () => { const value = getPlayback()?.preparedSurfaceBodies(); state.textContent = value ? value.bodies.map(body => (body.active ? 'CURRENT ' : 'RETAINED TAIL ') + body.bodyInstanceId.slice(0, 12) + ' · map ' + body.surfaceMap.id + '/r' + body.surfaceMap.revision).concat(value.bindings.map(binding => binding.contactSpanId + ' → ' + binding.bodyInstanceId.slice(0, 12) + ' · ' + binding.kind + ' slot ' + binding.slot)).join('\n') : 'No prepared contact body is bound.'; });
   button('Inspect modeled state', () => {
     const graph = getPlayback()?.inspectEffectGraph?.({ requestHealth: true })?.activeGraph;
     if (!expected || graph?.hash !== expected.graphDefinitionHash) throw new Error('This prepared skin is no longer the active graph.');
@@ -56,8 +64,8 @@ export function createRectangularMembraneView({ document, getPlayback, getLanes,
   button('Panic skin', () => { if (expected) getPlayback()?.setEffectBypass?.('panic', expected); expected = null; state.textContent = ''; say('Owned body energy cleared.'); });
   const suspend = () => { pending?.controller.abort(); if (dialog.open) dialog.close(); }; button('Close', suspend, true); listen(dialog, 'cancel', event => { event.preventDefault(); suspend(); });
   dialog.append(title, node('p', 'Original five-point wave model with fixed boundaries. Strike and stereo pickup positions are independent normalized interior-grid coordinates. Stereo excitation is (L + R) / 2; opposite polarity cancels. Grid and tuning changes prepare a new body while the old tail retains its own state.'),
-    node('p', 'Experimental audio model: numerical dispersion, listening and device deadlines await qualification. Two authored touch slots change localized positive loss and release independently; they are manual audio controls, not observed contacts. A patch with no grid support is declined. Terrain bindings and calibrated physical units are unavailable.'), fields, actions, status, state);
+    node('p', 'Experimental audio model: numerical dispersion, listening and device deadlines await qualification. Two authored touch slots change localized positive loss and release independently; they are manual audio controls, not observed contacts. A patch with no grid support is declined. A saved physical surface map can bind observed contacts to this body. Held contacts stay on their exact retiring body; future contacts use a replacement only after it is explicitly bound. This rectangle does not infer acoustic geometry from terrain.'), fields, actions, status, state);
   (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
-  return Object.freeze({ open() { if (disposed) return; const old = source.value; source.replaceChildren(); option(source, 'owner', 'Physical owner · pre-fader'); for (const lane of getLanes()) option(source, 'lane:' + lane.id, lane.name || lane.id); if (Array.from(source.options || []).some(entry => entry.value === old)) source.value = old; if (!dialog.open) dialog.showModal(); }, suspend,
+  return Object.freeze({ open() { if (disposed) return; const old = source.value, oldSurface = surface.value; surface.replaceChildren(); option(surface, '', 'Choose a saved contact map'); for (const entry of getPlayback()?.preparedSurfaceDefinitions?.() || []) option(surface, entry.id, entry.id + ' · map r' + entry.surfaceMap.revision); if (Array.from(surface.options || []).some(entry => entry.value === oldSurface)) surface.value = oldSurface; source.replaceChildren(); option(source, 'owner', 'Physical owner · pre-fader'); for (const lane of getLanes()) option(source, 'lane:' + lane.id, lane.name || lane.id); if (Array.from(source.options || []).some(entry => entry.value === old)) source.value = old; if (!dialog.open) dialog.showModal(); }, suspend,
     dispose() { return retirement.retire([{ name: 'membrane-authoring-view', run: async () => { suspend(); disposed = true; await pending?.promise?.catch(() => {}); for (const remove of listeners) remove(); dialog.remove(); } }]); } });
 }

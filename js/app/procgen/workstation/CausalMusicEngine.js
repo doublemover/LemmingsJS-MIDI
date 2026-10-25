@@ -1,3 +1,4 @@
+import { validatePreparedSurfaceDefinitions, createPreparedSurfaceMapping } from './physical/PreparedSurfaceMapping.js';
 import { captureCircularContactCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
@@ -36,6 +37,7 @@ const sourceLaneIncluded = (instrument, lane) => {
 const validateCausalInstrumentGraph = value => {
   if (!plain(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0 ||
       !Array.isArray(value.instruments) || value.instruments.length > 256) throw new Error('Unsupported causal instrument graph.');
+  const preparedSurfaces = validatePreparedSurfaceDefinitions(value.preparedSurfaces);
   const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions), encounterDefinitions = validateEncounterDomain(value, domain), activityDefinitions = validateActivityWindows(value, { ...domain, topologyRegions }), motifDefinitions = validatePhysicalMotifs(value, { ...domain, encounters: encounterDefinitions, activityWindows: activityDefinitions });
   const cargoStations = validatePhraseCargoStations(value.cargoStations, { ...domain, encounters: encounterDefinitions });
   const swarm = validateSwarmReducer(value.swarm), randomSeeds = validateCausalSeedSet(value.randomSeeds, ['musical-response', 'physical-route']);
@@ -87,7 +89,7 @@ const validateCausalInstrumentGraph = value => {
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
   return Object.freeze({ version: 1, ...(randomSeeds ? { randomSeeds } : {}), ...(swarm ? { swarm } : {}), ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
-    ...(value.cargoStations ? { cargoStations } : {}), ...(value.activityWindows ? { activityWindows: activityDefinitions } : {}), ...(value.motifs ? { motifs: motifDefinitions } : {}), ...(value.encounters ? { encounters: encounterDefinitions } : {}), ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
+    ...(value.preparedSurfaces ? { preparedSurfaces } : {}), ...(value.cargoStations ? { cargoStations } : {}), ...(value.activityWindows ? { activityWindows: activityDefinitions } : {}), ...(value.motifs ? { motifs: motifDefinitions } : {}), ...(value.encounters ? { encounters: encounterDefinitions } : {}), ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };
 
@@ -99,6 +101,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
   const resourceOwner = createCausalObserverResources({ resourceBudget, maxVoices, maxBeginsPerBatch, traceLimit });
   let disposed = false, disposalError = null, snapshotCache = null, traceBytes = 0, traceOmitted = 0; const traceSizes = [];
+  let bodyPreparations = createPreparedSurfaceMapping(), latestBodyPreparations = null;
   let tones = createTonalInterpretation(); const onsetPlans = new Map();
   let swarm = createSwarmReducer();
   let cargo = createPhraseCargoObserver(), activity = createActivityWindowObserver(), motifs = createPhysicalMotifObserver(), encounters = createEncounterObserver(), latestPhysicalAnalysis = null;
@@ -161,8 +164,9 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     probabilityAnalysis = freezePhysical({ version: 1, batchId: batch.batchId, requested: probabilityCount, omitted: probabilityCount - batchDecisions.length, coverage: probabilityCount === batchDecisions.length ? 'complete' : 'capped', decisions: [...batchDecisions] });
     const reduction = swarm.reduce(batch, intents), sealed = reduction.intents;
     if (latestPhysicalAnalysis?.batchId === batch.batchId) latestPhysicalAnalysis = freezePhysical({ ...latestPhysicalAnalysis, swarm: reduction.summary, probability: probabilityAnalysis });
+    latestBodyPreparations = Object.freeze({ batchId: batch.batchId, ...bodyPreparations.consume(batch, { allowNew: !recoveryRequired, scoreTimeFor: (source, fact) => Object.freeze({ ...(scoreTimeline?.map(timeFor(source, fact)) || timeFor(source, fact)), sourceTimeMs: source.sourceTimeMs ?? null, sourceTickDurationMs: source.tickDurationMs ?? null }) }) });
     for (const intent of sealed) remember(intent);
-    try { deliver(sealed, batch); } catch { errors++; }
+    try { deliver(sealed, batch, latestBodyPreparations.commands); } catch { errors++; }
     return sealed;
   };
   const endVoice = (batch, record, fact, reason, output) => {
@@ -198,7 +202,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       for (const instrument of next.instruments) if (!unchanged.has(instrument.id) || !instrumentEpochs.has(instrument.id)) instrumentEpochs.set(instrument.id, next.revision);
       for (const record of [...active.values(), ...suppressed.values()]) if (unchanged.has(record.instrument.id)) record.graphRevision = next.revision;
       travel.rebaseGraph(next.revision, record => unchanged.has(record.instrumentId));
-      swarm.configure(next.swarm); cargo.configure(next.cargoStations || []); activity.configure(next.activityWindows || [], next); motifs.configure(next.motifs || [], next); encounters.configure(next.encounters || []); tones.configure(next); physical.configure(next); rhythmic.configure(next.instruments); actionAdmission.configure(next.instruments);
+      bodyPreparations.configure(next.preparedSurfaces); swarm.configure(next.swarm); cargo.configure(next.cargoStations || []); activity.configure(next.activityWindows || [], next); motifs.configure(next.motifs || [], next); encounters.configure(next.encounters || []); tones.configure(next); physical.configure(next); rhythmic.configure(next.instruments); actionAdmission.configure(next.instruments);
       graph = next; graphSource = source; graphFingerprint = fingerprint; liveIds = new Set(live.map(instrument => instrument.id)); indexed = nextIndex;
     }
     return graph;
@@ -486,7 +490,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     ...(record.physicalSourceKinds.length ? { physicalSourceKinds: record.physicalSourceKinds } : {}),
     ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) })));
   const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); if (snapshotCache && snapshotCache.performanceKey === JSON.stringify(performance)) return snapshotCache.value;
-    const value = resourceOwner.stage('causal-observer-snapshot-copy', () => Object.freeze({ version: 1, swarm: swarm.snapshot(), generation, graphRevision: graph.revision, recoveryRequired, ...(graph.cargoStations?.length ? { cargo: cargo.snapshot() } : {}), ...(graph.activityWindows?.length ? { activity: activity.snapshot() } : {}), ...(graph.motifs?.length ? { motifs: motifs.snapshot() } : {}), ...(graph.encounters?.length ? { encounters: encounters.snapshot() } : {}), ...(tones.enabled() ? { tonalInterpretation: tones.snapshot() } : {}), instrumentEpochs: Object.freeze(Object.fromEntries(instrumentEpochs)), travel: travel.snapshot(), ...(graph.instruments.some(instrument => instrument.actionVoicePolicy) ? { actionAdmission: actionAdmission.snapshot() } : {}), ...(graph.instruments.some(instrument => instrument.response) ? { rhythmicResponses: rhythmic.snapshot() } : {}), ...(graph.pickups?.length || graph.ensembles?.length || graph.routes?.length ? { physicalDomain: physical.snapshot() } : {}), physicalCursor: Object.freeze({ ...cursor }),
+    const value = resourceOwner.stage('causal-observer-snapshot-copy', () => Object.freeze({ version: 1, ...(graph.preparedSurfaces?.length || bodyPreparations.diagnostics().heldPreparations ? { preparedSurfaces: bodyPreparations.snapshot() } : {}), swarm: swarm.snapshot(), generation, graphRevision: graph.revision, recoveryRequired, ...(graph.cargoStations?.length ? { cargo: cargo.snapshot() } : {}), ...(graph.activityWindows?.length ? { activity: activity.snapshot() } : {}), ...(graph.motifs?.length ? { motifs: motifs.snapshot() } : {}), ...(graph.encounters?.length ? { encounters: encounters.snapshot() } : {}), ...(tones.enabled() ? { tonalInterpretation: tones.snapshot() } : {}), instrumentEpochs: Object.freeze(Object.fromEntries(instrumentEpochs)), travel: travel.snapshot(), ...(graph.instruments.some(instrument => instrument.actionVoicePolicy) ? { actionAdmission: actionAdmission.snapshot() } : {}), ...(graph.instruments.some(instrument => instrument.response) ? { rhythmicResponses: rhythmic.snapshot() } : {}), ...(graph.pickups?.length || graph.ensembles?.length || graph.routes?.length ? { physicalDomain: physical.snapshot() } : {}), physicalCursor: Object.freeze({ ...cursor }),
       ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}),
       active: serializeVoices(active), ...(suppressed.size ? { suppressed: serializeVoices(suppressed) } : {}) }));
     snapshotCache = { value, performanceKey: JSON.stringify(performance) }; return value; };
@@ -521,6 +525,9 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       if (value.instrumentEpochs != null && (!plain(value.instrumentEpochs) || Object.entries(value.instrumentEpochs).some(([id, epoch]) => !current.instruments.some(instrument => instrument.id === id) || !Number.isSafeInteger(epoch) || epoch < 0 || epoch > current.revision))) throw new Error('Invalid instrument owner epochs.');
       const next = readVoices(value.active), nextSuppressed = readVoices(value.suppressed || []);
       if (current.instruments.some(instrument => instrument.response) && !value.rhythmicResponses || (current.pickups?.length || current.ensembles?.length || current.routes?.length) && !value.physicalDomain) throw new Error('Physical interpretation boundary state is missing.');
+      const nextBodyPreparations = createPreparedSurfaceMapping(); nextBodyPreparations.configure(current.preparedSurfaces);
+      if (value.preparedSurfaces) { nextBodyPreparations.restore(value.preparedSurfaces); const frontier = value.preparedSurfaces.cursor; if (frontier.worldId !== nextCursor.worldId || frontier.generation !== nextCursor.generation || frontier.tick !== nextCursor.tick || frontier.sequence !== nextCursor.lastSequence) throw new Error('Prepared surface continuation differs from the physical boundary.'); }
+      else if (current.preparedSurfaces?.length) throw new Error('Prepared surface continuation is missing.');
       const nextSwarm = createSwarmReducer(); nextSwarm.configure(current.swarm); if (value.swarm) nextSwarm.restore(value.swarm); else if (current.swarm || value.active.length) throw new Error('Swarm continuation state missing.');
       if (value.swarm && (value.swarm.held.some(([id]) => !next.has(id)) || value.swarm.cursor.worldId !== nextCursor.worldId || value.swarm.cursor.generation !== nextCursor.generation || value.swarm.cursor.tick !== nextCursor.tick || value.swarm.cursor.batchId !== nextCursor.batchId)) throw new Error('Swarm ownership differs from the physical engine boundary.');
       const nextCargo = createPhraseCargoObserver(); nextCargo.configure(current.cargoStations || []); if (value.cargo) nextCargo.restore(value.cargo); else if (current.cargoStations?.length) throw new Error('Physical cargo boundary missing.');
@@ -534,7 +541,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       if (value.rhythmicResponses) nextRhythmic.restore(value.rhythmicResponses);
       if (value.physicalDomain) nextPhysical.restore(value.physicalDomain);
       if (value.travel) nextTravel.restore(value.travel);
-      snapshotCache = null; swarm = nextSwarm; cargo = nextCargo; activity = nextActivity; motifs = nextMotifs; encounters = nextEncounters; latestPhysicalAnalysis = null; tones = nextTones; actionAdmission = nextAdmission; rhythmic = nextRhythmic; physical = nextPhysical; travel = nextTravel;
+      snapshotCache = null; bodyPreparations = nextBodyPreparations; latestBodyPreparations = null; swarm = nextSwarm; cargo = nextCargo; activity = nextActivity; motifs = nextMotifs; encounters = nextEncounters; latestPhysicalAnalysis = null; tones = nextTones; actionAdmission = nextAdmission; rhythmic = nextRhythmic; physical = nextPhysical; travel = nextTravel;
       active.clear(); byActor.clear(); suppressed.clear(); for (const [id, record] of next) addVoice(id, record, true);
       for (const [id, record] of nextSuppressed) suppressed.set(id, record);
       if (value.instrumentEpochs) { instrumentEpochs.clear(); for (const [id, epoch] of Object.entries(value.instrumentEpochs)) instrumentEpochs.set(id, epoch); }
@@ -544,10 +551,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       if (cursor.batchId) { seen.add(cursor.batchId); seenOrder.push(cursor.batchId); }
     });
   };
-  const diagnostics = () => disposed ? Object.freeze({ disposed, resources: resourceOwner.diagnostics(), activeVoices: 0 }) : Object.freeze({ resources: resourceOwner.diagnostics(), traceBytes, traceOmitted, swarm: swarm.diagnostics(), cargo: cargo.diagnostics(), activity: activity.diagnostics(), motifs: motifs.diagnostics(), encounters: encounters.diagnostics(), tonal: tones.diagnostics(), actionAdmission: actionAdmission.diagnostics(), physical: physical.diagnostics(), rhythmic: rhythmic.diagnostics(), recoveryRequired, recoveryAction: recoveryRequired ? 'restore-complete-boundary-or-explicit-rearm' : null, activeVoices: active.size, suppressedVoices: suppressed.size, deliveryErrors: errors, rejectedBegins: rejected,
+  const diagnostics = () => disposed ? Object.freeze({ disposed, resources: resourceOwner.diagnostics(), activeVoices: 0 }) : Object.freeze({ resources: resourceOwner.diagnostics(), traceBytes, traceOmitted, preparedSurfaces: bodyPreparations.diagnostics(), swarm: swarm.diagnostics(), cargo: cargo.diagnostics(), activity: activity.diagnostics(), motifs: motifs.diagnostics(), encounters: encounters.diagnostics(), tonal: tones.diagnostics(), actionAdmission: actionAdmission.diagnostics(), physical: physical.diagnostics(), rhythmic: rhythmic.diagnostics(), recoveryRequired, recoveryAction: recoveryRequired ? 'restore-complete-boundary-or-explicit-rearm' : null, activeVoices: active.size, suppressedVoices: suppressed.size, deliveryErrors: errors, rejectedBegins: rejected,
     accepted: Object.freeze(Object.fromEntries(accepted)), rejected: Object.freeze(Object.fromEntries(rejectedByInstrument)),
     trace: Object.freeze([...trace]), decisions: Object.freeze([...decisions]) });
-  const prepareGraph = source => { resourceOwner.check(); estimateJournalBytes(source, { maxBytes: 2 * 1048576, maxNodes: 131072 }); return resourceOwner.prepareGraph(validateCausalInstrumentGraph(source)); };
+  const prepareGraph = source => { resourceOwner.check(); estimateJournalBytes(source, { maxBytes: 2 * 1048576, maxNodes: 131072 }); const next = validateCausalInstrumentGraph(source); bodyPreparations.validateConfiguration(next.preparedSurfaces); return resourceOwner.prepareGraph(next); };
   let releaseGraphAdmission = null;
   try { if (world) releaseGraphAdmission = registerPhysicalGraphAdmission(world, prepareGraph); } catch (error) { resourceOwner.dispose(); throw error; }
   const dispose = () => { if (disposalError) throw disposalError; if (disposed) return false;
@@ -555,7 +562,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     for (const collection of [onsetPlans, instrumentEpochs, active, suppressed, byActor, seen, accepted, rejectedByInstrument, onsetDecisions]) collection.clear();
     seenOrder.length = trace.length = traceSizes.length = decisions.length = batchDecisions.length = 0; traceBytes = 0;
     graph = graphSource = graphFingerprint = liveIds = indexed = snapshotCache = latestPhysicalAnalysis = probabilityAnalysis = null;
-    tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
+    latestBodyPreparations = null; bodyPreparations = tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
     disposed = true; try { resourceOwner.dispose(); } catch (error) { disposalError = error; throw error; } return true; };
   const activeVoiceView = ({ limit = 64, instrumentIds = null } = {}) => {
     resourceOwner.check(); getCurrentGraph();
@@ -566,10 +573,10 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return Object.freeze(result);
   };
-  return { processBatch, snapshot, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     resourceOwner.check(); snapshotCache = null;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
-    recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });
+    bodyPreparations.reset({ worldId: cursor.worldId, generation: cursor.generation, tick: cursor.tick, sequence: cursor.lastSequence }); latestBodyPreparations = null; recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });
   } };
 };
 

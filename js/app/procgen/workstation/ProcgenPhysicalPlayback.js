@@ -1,3 +1,4 @@
+import { createPreparedSurfaceBodyOwner } from './PreparedSurfaceBodyOwner.js';
 import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
 import { createTravelColorationRecipe } from '../../../midi/content/TravelColorationRecipes.js';
 import { createTravelEffectMotion } from './TravelEffectMotion.js';
@@ -25,7 +26,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
+  documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
@@ -45,8 +46,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   catch { routingUnavailable = 'audio-preparation-resource-unavailable'; try { onInstrumentState({ laneId: 'all', state: 'unavailable', code: routingUnavailable }); } catch { /* Preparation cannot stop physics. */ } }
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
-  let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
+  let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
+  let surfaceBodies = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectSequence = 0, effectClockAnchor = null;
   let latestSinkOutcome = null, lastMixPublication = null, declaredSourceLanes = null;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
@@ -105,6 +107,21 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     const receipt = session.updateEffectGraph(nodeId, values, frame, expected), state = session.getEffectPerformanceState?.();
     if (state && receipt.status === 'accepted') captureEffect('control', { ...state, targetFrame: receipt.targetFrame }, { nodeId, values, sourceEventIds: cause?.sourceEventIds || [] }); return receipt;
   };
+  const preparedBodies = () => surfaceBodies ||= createPreparedSurfaceBodyOwner({ documentEpoch, inventory: () => session?.preparedBodyInventory?.() || [], resourceBudget, onReceipt,
+    apply: (nodeId, values, frame, expected, cause) => {
+      if (!session?.updatePreparedBody) throw new Error('Prepared body routing is unavailable.');
+      const receipt = session.updatePreparedBody(nodeId, values, frame, expected), current = session.getEffectPerformanceState?.();
+      captureEffect('control', { ...current, ownerRouteRevision: receipt.ownerRouteRevision, graphDefinitionHash: receipt.graphDefinitionHash, sampleRate: audio.getAudioContext().sampleRate, targetFrame: receipt.targetFrame }, { nodeId, values, sourceEventIds: cause?.sourceEventIds || [] }); return receipt;
+    },
+    panicBody: (nodeId, expected) => { const receipt = session?.panicPreparedBody?.(nodeId, expected);
+      if (receipt?.status === 'accepted') captureEffect('body-panic', { ...expected, sampleRate: audio.getAudioContext().sampleRate, targetFrame: Math.ceil(audio.getAudioContext().currentTime * audio.getAudioContext().sampleRate) }, { nodeId }); return receipt; },
+    toFrame: (scoreTime, epoch, release) => { const frame = permitted() ? clock.toTargetFrame(scoreTime, epoch) : null; return release && Number.isSafeInteger(frame) ? Math.max(frame, clock.currentFrame()) : frame; } });
+  const bindPreparedSurface = options => {
+    if (!executionEpoch || !Number.isSafeInteger(previousGeneration)) throw new Error('Observe the current physical execution before binding its prepared surface.');
+    const surface = getGraph().preparedSurfaces?.find(surface => surface.id === options.surfaceId);
+    if (!surface || surface.surfaceMap.boundTopologyRevision !== previousTerrainRevision) throw new Error('The named surface map is missing or differs from the observed terrain revision.');
+    return preparedBodies().bind({ ...options, surfaceRevision: surface.revision, surfaceMap: surface.surfaceMap, executionEpoch, worldId: previousWorldId, generation: previousGeneration });
+  };
   const setEffectBypass = (mode, expected) => { const state = session?.getEffectPerformanceState?.(), result = session?.setEffectBypass?.(mode, expected); if (result) captureEffect('bypass', state, { mode }); return result; };
   const travelEffects = createTravelEffectMotion({ resourceBudget, update: updateEffectGraph,
     bypass: setEffectBypass, toFrame: clock.toTargetFrame, onReceipt });
@@ -129,8 +146,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
-    deliver: (intents, batch) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
+    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
       travelEffects.consume(intents, executionEpoch);
+      for (const command of bodyCommands) { if (surfaceBodies) surfaceBodies.consume(command, executionEpoch); else onReceipt({ status: 'rejected', stage: 'prepared-body-control', commandId: command.commandId, sourceEventIds: command.sourceEventIds, reason: 'prepared-surface-not-bound', acousticReceipt: false }); }
       for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
   engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
@@ -174,8 +192,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       dispatcher.cancelGeneration(previousGeneration, executionEpoch);
       clock.invalidate(); anchoredEpoch = null;
     }
-    previousGeneration = batch.generation;
-    if (executionEpoch !== nextEpoch) effectClockAnchor = null;
+    previousGeneration = batch.generation; previousWorldId = batch.worldId; previousTerrainRevision = batch.terrainRevisionAfter ?? batch.snapshot?.terrainRevision ?? null;
+    if (executionEpoch !== nextEpoch) { effectClockAnchor = null; if (executionEpoch !== null) surfaceBodies?.clear('physical-execution-changed'); }
     executionEpoch = nextEpoch;
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
@@ -203,9 +221,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     captureEffect('bypass', session?.getEffectPerformanceState?.(), { mode: 'owner-stop' }); effectClockAnchor = null;
     armEnabled = false; enableLease = null;
     const generation = previousGeneration, epoch = executionEpoch;
-    executionSerial++; previousGeneration = null; executionEpoch = null;
+    executionSerial++; previousGeneration = null; previousWorldId = null; previousTerrainRevision = null; executionEpoch = null;
     leaseUntil = null; leaseEpoch = null; leaseContext = null;
     return createProcgenRetirementScope().retire([
+      { name: 'surface-contact-bindings', run: () => surfaceBodies?.clear('playback-stopped') },
       { name: 'travel-effect-control', run: () => travelEffects.clear('playback-stopped', true) },
       { name: 'display-observation', run: stopDisplay },
       { name: 'dispatch-generation', run: () => { if (generation !== null) return dispatcher.cancelGeneration(generation, epoch); } },
@@ -218,7 +237,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     disposed = true;
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
-      { name: 'playback-stop', run: stop }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'playback-stop', run: stop }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
@@ -227,12 +246,12 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   return { engine, processBatch, stop, dispose,
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
     isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
-    prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
+    bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: !!session?.getState().enabled, accepted, rejected,
-      motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
+      preparedSurfaces: surfaceBodies?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

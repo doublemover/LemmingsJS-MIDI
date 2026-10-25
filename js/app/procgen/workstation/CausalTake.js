@@ -1,3 +1,4 @@
+import { validateMappedBodyPreparation } from '../../../midi/content/PreparedSurface.js';
 import { captureRevoiceLaneRouting } from './CausalLaneRouting.js';
 import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
 import { cloneJournalData, canonicalJournalText, freezeJournalData, journalError } from './CausalJournalCanonical.js';
@@ -14,10 +15,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v15',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v16',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -46,11 +47,11 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
     worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
   const addGap = coverageIndex.add;
-  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [], probability = null } = {}) => {
+  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [], probability = null, bodyCommands = [] } = {}) => {
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     if (batch?.version !== 1 || !name(batch.batchId) || !name(batch.worldId) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
         !Number.isSafeInteger(batch.generation) || batch.generation < 0 || !Array.isArray(batch.facts) || batch.facts.length > 8192 ||
-        !Array.isArray(intents) || intents.length > 8192 || !Array.isArray(deliveryOutcomes) || deliveryOutcomes.length > 16384) throw new Error('Invalid canonical performance boundary.');
+        !Array.isArray(bodyCommands) || bodyCommands.length > 1024 || !Array.isArray(intents) || intents.length > 8192 || !Array.isArray(deliveryOutcomes) || deliveryOutcomes.length > 16384) throw new Error('Invalid canonical performance boundary.');
     if (batches.has(batch.batchId)) return Object.freeze({ status: 'duplicate', batchId: batch.batchId });
     if (worldId != null && worldId !== batch.worldId || lastTick != null && batch.tick < lastTick ||
         lastGeneration != null && batch.generation < lastGeneration) throw new Error('Take source requires a new boundary identity or branch.');
@@ -61,9 +62,10 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     }
     for (const intent of intents) if (intent?.version !== 1 || !name(intent.kind) || typeof intent.intentId !== 'string' ||
         !['begin', 'update', 'end'].includes(intent.kind) || !Array.isArray(intent.sourceEventIds) || intent.batchId !== batch.batchId) throw new Error('Invalid canonical musical intent.');
+    bodyCommands = bodyCommands.map(command => { const value = validateMappedBodyPreparation(command); if (value.batchId !== batch.batchId || value.sourceTick !== batch.tick) throw new Error('Prepared body command differs from its canonical batch.'); return value; });
     if (probability && (probability.version !== 1 || probability.batchId !== batch.batchId || !Number.isSafeInteger(probability.requested) || !Number.isSafeInteger(probability.omitted) || probability.omitted < 0 || !Array.isArray(probability.decisions) || probability.decisions.length > 8192 || probability.requested !== probability.decisions.length + probability.omitted || JSON.stringify(probability).length * 2 > 1050624)) throw new Error('Invalid bounded causal probability evidence.');
     const entries = [{ kind: 'physical-batch', tick: batch.tick, generation: batch.generation, payload: batch },
-      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents, ...(probability ? { probability } : {}) } }];
+      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents, ...(bodyCommands.length ? { bodyCommands } : {}), ...(probability ? { probability } : {}) } }];
     if (deliveryOutcomes.length) entries.push({ kind: 'sink-outcome', tick: batch.tick, generation: batch.generation,
       payload: { batchId: batch.batchId, outcomes: deliveryOutcomes } });
     const receipt = writer.appendMany(entries);
@@ -146,6 +148,7 @@ const graphCaptureRequirements = graph => {
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const rule of [...(valid.feedback?.conductors || []), ...(valid.feedback?.layers || []).flatMap(layer => layer.rules)]) { add('physical-feedback', rule.id, 'state'); for (const kind of ['CommandApplied', 'CommandRejected', 'CommandWaiting', 'ActorBorn', 'ActorTerminated']) add(kind, rule.id, 'fact'); if (['PickupCrossing', 'RouteLap', 'EncounterBegan', 'RendezvousCompleted', 'MotifCompleted', 'RestStarted', 'RestEnded', 'CargoDelivered'].includes(rule.source.kind)) { add('MotionCommitted', rule.id, 'fact'); add('physical-domain', rule.id, 'state'); } else add(rule.source.kind, rule.id, 'fact'); }
   if (valid.swarm) { add('swarm', 'swarm-reducer', 'state'); add('voices', 'swarm-reducer', 'state'); }
+  for (const surface of valid.preparedSurfaces || []) { add('prepared-surfaces', surface.id, 'state'); add('contactSpans', surface.id, 'state'); for (const kind of ['ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded', 'ActorTerminated']) add(kind, surface.id, 'fact'); }
   for (const station of valid.cargoStations || []) { add('cargo', station.id, 'state'); add('ActorTerminated', station.id, 'fact'); add('ActorLaneTransferred', station.id, 'fact'); if (station.source.kind === 'contact') add('ContactResolved', station.id, 'fact'); else { add('MotionCommitted', station.id, 'fact'); add('physical-domain', station.id, 'state'); } if (station.source.kind === 'encounter') add('encounters', station.id, 'state'); }
   for (const definition of valid.encounters || []) { add('encounters', definition.id, 'state'); if (definition.pickupId || definition.routeId || definition.participants.leftEnsembleId || definition.participants.rightEnsembleId) add('physical-domain', definition.id, 'state'); for (const kind of ['ActorBorn', 'ActorTerminated', 'MotionCommitted']) add(kind, definition.id, 'fact'); }
   for (const definition of valid.activityWindows || []) { add('activity', definition.id, 'state'); add('voices', definition.id, 'state'); if (definition.scope.ensembleId || definition.scope.routeId) add('physical-domain', definition.id, 'state'); if (definition.scope.topologyRegionId) add('topology-geometry-v1', definition.id, 'descriptor'); for (const kind of definition.physicalKinds) { if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else add(kind, definition.id, 'fact'); } if (definition.completionPolicy.kind === 'crew-route') for (const kind of ['CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed']) add(kind, definition.id, 'fact'); }
@@ -230,8 +233,12 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
       count += record.payload.intents.length;
       if (count > maxIntents) throw journalError('revoice-capacity', 'This revoice window contains too many intents; narrow its source range or page size.');
     }
-    const intents = new Array(count); let offset = 0;
+    const intents = new Array(count), bodyCommands = []; let offset = 0;
     for (const record of slice.records) if (record.kind === 'musical-intents') for (const intent of record.payload.intents) intents[offset++] = intent;
+    for (const record of slice.records) if (record.kind === 'musical-intents' && record.payload.bodyCommands != null) {
+      if (!Array.isArray(record.payload.bodyCommands) || record.payload.bodyCommands.length > 1024 || bodyCommands.length + record.payload.bodyCommands.length > 65536) throw journalError('prepared-body-command-capacity', 'Prepared body commands exceed this revoice window.');
+      for (const command of record.payload.bodyCommands) bodyCommands.push(validateMappedBodyPreparation(command));
+    }
     const effectEvents = [];
     if (includeEffects) for (const record of slice.records) if (record.kind === 'sink-outcome') for (const outcome of Array.isArray(record.payload?.outcomes) ? record.payload.outcomes : [record.payload]) {
       if (outcome?.schema === 'lemmings-effect-performance/v1') { if (effectEvents.length >= 8192) throw journalError('effect-performance-capacity', 'Captured effect commands exceed the render window.'); effectEvents.push(validateEffectPerformance(outcome)); }
@@ -242,7 +249,7 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
       sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, sourceState: manifest.state, sourceComplete: manifest.complete,
       finalBoundaryState: manifest.stopBoundaryState || null, executionEpoch, soundPatch: patch,
       ...(includeEffects ? { effectEvents, effectCoverage: { captured: manifest.coverage?.available?.stateKinds?.includes('effect-performance') === true, gaps: (manifest.coverage?.gaps || []).filter(gap => ['effect-performance', 'all'].includes(gap.kind)) } } : {}),
-      ...(laneRouting ? { laneRouting } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
+      ...(laneRouting ? { laneRouting } : {}), ...(bodyCommands.length ? { bodyCommands, bodyPreparationPolicy: includeEffects ? 'captured-effect-commands-required;no-remapping-physical-facts' : 'source-only-revoice-excludes-prepared-body-output' } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
       boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',
         state: initialBoundary ? manifest.boundaryState : null, sourceOnsetsSynthesized: false },
       sourceRecords: { firstSequence: slice.records[0]?.sequence ?? null, lastSequence: slice.records.at(-1)?.sequence ?? null, count: slice.records.length },

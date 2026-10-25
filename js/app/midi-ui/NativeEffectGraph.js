@@ -245,6 +245,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     if (entry?.kind === 'gain') {
       if (Object.keys(values).some(key => key !== 'gain01') || !Number.isFinite(next.gain01) || next.gain01 < 0 || next.gain01 > entry.parameters.gainMaximum01 || !gainControls.get(nodeId).canInsert(now)) throw failure('invalid-effect-control', 'Gain control exceeds its admitted amplitude or queue domain.');
     } else if (entry?.kind === 'rectangular-membrane') {
+      if (processors.find(processor => processor.nodeId === nodeId)?.health?.muted) throw failure('stale-prepared-body', 'This membrane has cleared its energy and requires new preparation.');
       if (Object.keys(values).some(key => !membraneControlValid(key, values[key]))) throw failure('invalid-effect-control', 'Membrane positions and loss require normalized coordinates.');
       for (let index = 0; index < 4; index++) { const key = 'touch' + index, x = membraneControlTarget(key + 'X01', next[key + 'X01'] ?? 0.5), y = membraneControlTarget(key + 'Y01', next[key + 'Y01'] ?? 0.5), radius = membraneControlTarget(key + 'Radius01', next[key + 'Radius01'] ?? 0.12); if ((next[key + 'Amount01'] ?? 0) > 0 && !membraneTouchSupported(entry.parameters.gridSize, x, y, radius)) throw failure('unsupported-touch-position', 'This touch patch has no interior grid support.'); }
       for (const key of Object.keys(values)) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Membrane control automation is full.'); changes.push([adapter, values[key]]); }
@@ -273,7 +274,11 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     try {
       if (entry.kind === 'gain') { if (!gainControls.get(nodeId).insert(next.gain01, time, now)) throw failure('effect-control-capacity', 'Effect gain automation could not be admitted.'); }
       else for (const [adapter, amount] of changes) if (!adapter.insert(amount, time, now)) throw failure('effect-control-capacity', 'Effect automation could not be admitted.');
-    } catch (caught) { fault = caught; for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} throw failure('effect-control-failed', 'Native effect control scheduling failed.'); }
+    } catch (caught) {
+      if (entry.membrane && !offline) { const processor = processors.find(processor => processor.nodeId === nodeId); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only', reason: caught.message }); }
+      else { fault = caught; for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); try { onFault(caught); } catch {} }
+      throw failure('effect-control-failed', 'Native effect control scheduling failed.');
+    }
     controls.set(nodeId, Object.freeze(next));
     return Object.freeze({ status: 'accepted', stage: 'native-control-submitted', nodeId, targetFrame, sequence: ++controlSequence, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
   };
@@ -327,6 +332,12 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
   return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
+    isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane')?.health?.muted === true,
+    panicBody(nodeId) {
+      const processor = processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane');
+      if (disposed || !processor) throw failure('stale-prepared-body', 'The named body is unavailable.'); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only' });
+      return Object.freeze({ status: 'accepted', stage: 'body-panic-submitted', nodeId, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
+    },
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
       runtime: { membraneRevision: plan.processingRevisions.membrane ?? null, networkRevision: plan.processingRevisions.network ?? null, spectralRevision: plan.processingRevisions.spectral ?? null, allpassRevision: processors.some(entry => entry.kind === 'allpass-notch') ? ALLPASS_NOTCH_REVISION : null, ringRevision: processors.some(entry => entry.kind === 'ring-modulator') ? RING_MODULATOR_REVISION : null, hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, vocoderRevision: processors.some(entry => entry.kind === 'multiband-vocoder') ? VOCODER_BANK_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },

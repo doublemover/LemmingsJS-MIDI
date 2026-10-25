@@ -343,6 +343,12 @@ class BrowserNotePreview {
         if (session.disposed || !this._ownerReady(id)) throw new Error('This local effect owner is not active.');
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
+      preparedBodyInventory: () => this._channels.get(id + ':0')?.effects?.preparedBodyInventory() || [],
+      updatePreparedBody: (nodeId, values, frame, expected) => {
+        if (session.disposed || !this._ownerReady(id)) throw new Error('The prepared body owner is not active.');
+        const effects = this._channels.get(id + ':0')?.effects; if (!effects) throw new Error('The prepared body owner is unavailable.'); return effects.updatePreparedBody(nodeId, values, frame, expected);
+      },
+      panicPreparedBody: (nodeId, expected) => { const effects = this._channels.get(id + ':0')?.effects; if (!effects) throw new Error('The prepared body owner is unavailable.'); return effects.panicPreparedBody(nodeId, expected); },
       setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
       isSourceVoiceAvailable: member => this._laneSourceBuses.get(id)?.buses.hasVoice(member) || false,
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
