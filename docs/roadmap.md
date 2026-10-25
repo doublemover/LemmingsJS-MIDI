@@ -3477,3 +3477,27 @@ unrun. Isolated rehearsal, measured seamless transitions and browser/accessibili
 qualification remain pending; no crossfade animation implies continuity. This
 implements the stopped-replacement policy only, with explicit unavailable paths
 for absent preview/transition adapters.
+
+### Continuation 162 — bounded observed sample cursor (#1130, #1224)
+
+Advanced owned sample playback now has a source/output-frame cursor contract and
+preallocated segment owner. Original-source endpoints convert through the pinned
+decoder rate. Explicit output-frame intervals retain reversals, gaps and seek
+boundaries; a full queue rejects rather than discarding an unrendered turn. No
+future motion is extrapolated and no private cumulative travel state is created.
+Linear or named zero-endpoint smoothstep interpolation preserves exact segment
+endpoints, with derivative admission including smoothstep's 1.5 peak factor.
+
+Prepared stop/wrap/reflect policies are distinct. Reflection uses decoded sample
+centers; wrap preserves fractional positions at the seam. At rest or after source
+coverage ends, the cursor holds and its gain fades to zero over an authored
+5–20ms bound. Explicit seeks expose a bounded two-head mix to the future reader.
+Reset reuses storage. State cuts retain the queue, actual position, rest/seek
+frontiers and immutable bank/map/rate identity, with validation before mutation.
+
+Cursor and source-rate fixtures are written and unrun. This is a renderer
+component, not a second physical mapper or a completed sampler. The bandlimited
+reader, sample-map capability extension, actual Worklet source, release children,
+shared source/PCM admission, capture/offline wiring and canonical travel adapter
+remain the next implementation span. Spectral, seam, browser and listening
+qualification remains deferred with all other runtime validation.
