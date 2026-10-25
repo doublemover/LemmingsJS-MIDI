@@ -42,7 +42,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
-  let latestSinkOutcome = null, lastMixPublication = null;
+  let latestSinkOutcome = null, lastMixPublication = null, declaredSourceLanes = null;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
   let lastAudioEnabled = false, lastAudioContext = null;
   let displayKey = null, releaseDisplay = null, displayErrors = 0, displayBlocked = false;
@@ -114,7 +114,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     if (release) { releaseDisplay = release; displayKey = key; }
   };
   const synchronizeLaneMix = () => {
-    laneMix.synchronize(getLanes()); const revision = laneMix.revision(), context = audio?.getAudioContext?.();
+    const lanes = getLanes();
+    if (lanes !== declaredSourceLanes) { session?.configureLaneSources?.(lanes.map(lane => lane.id)); declaredSourceLanes = lanes; }
+    laneMix.synchronize(lanes); const revision = laneMix.revision(), context = audio?.getAudioContext?.();
     if (lastMixPublication?.revision === revision && lastMixPublication.context === context && lastMixPublication.executionEpoch === executionEpoch) return { status: 'accepted', stage: 'unchanged' };
     const receipt = routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
     if (receipt.status === 'accepted') lastMixPublication = { revision, context, executionEpoch }; return receipt;

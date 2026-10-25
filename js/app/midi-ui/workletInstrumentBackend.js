@@ -1,3 +1,4 @@
+import { LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL } from './OwnedSourceLayout.js';
 import { validVoiceLaneMix } from './VoiceLaneMix.js';
 import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
@@ -55,7 +56,33 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const display = createAudioDisplayTelemetry({ owner, engineId, getContext: () => context || preview.getAudioContext(), getContextEpoch: () => preview._contextEpoch ?? 0,
     getRouteState: () => ({ muted: !preview._ownerReady(owner) || preview.getState().masterVolume === 0, evidenceClass: 'owner-routing-state' }),
     getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
-  let queue = null;
+  let queue = null, laneProducer = null, laneRegistry = null, releaseLaneProducer = null;
+  const laneRoutes = new Map(), attachedLaneBuses = new Map(), laneTapsEnabled = typeof preview._laneSourcesFor === 'function';
+  const sendLaneRoute = (voice, route) => node.port.postMessage({ type: 'lane-route', protocol: LIVE_LANE_TAP_PROTOCOL, slot: voice.slot, token: voice.slotToken, route });
+  const ensureLaneProducer = () => {
+    if (!laneTapsEnabled || !node) return;
+    const registry = preview._laneSourcesFor(owner, context);
+    if (laneRegistry === registry && laneProducer === node) return;
+    releaseLaneProducer?.(); laneRegistry = registry; laneProducer = node; const producer = node;
+    releaseLaneProducer = registry.registerRenderer({
+      attach(bus) {
+        if (attachedLaneBuses.has(bus)) return;
+        attachedLaneBuses.set(bus, { pre: false, post: false }); const connected = attachedLaneBuses.get(bus);
+        producer.connect(bus.pre, 1 + bus.index * 2, 0); connected.pre = true;
+        producer.connect(bus.post, 2 + bus.index * 2, 0); connected.post = true;
+        laneRoutes.set(bus.laneId, bus.index);
+        for (const voice of voices.values()) if (voice.audioLaneId === bus.laneId) sendLaneRoute(voice, bus.index);
+      },
+      detach(bus) {
+        const connected = attachedLaneBuses.get(bus); if (!connected) return;
+        laneRoutes.delete(bus.laneId);
+        for (const voice of voices.values()) if (voice.audioLaneId === bus.laneId) sendLaneRoute(voice, -1);
+        if (connected.pre) { producer.disconnect(bus.pre, 1 + bus.index * 2, 0); connected.pre = false; }
+        if (connected.post) { producer.disconnect(bus.post, 2 + bus.index * 2, 0); connected.post = false; }
+        attachedLaneBuses.delete(bus);
+      }
+    });
+  };
   const epochSettled = epoch => {
     if (faultRetirement?.outcome === 'partial' || preview._retirementFaults?.has(owner)) return false;
     if (ownerStopped && node || slots.some(voice => voice?.semanticEpoch === epoch) || queue?.some(item => item.epoch === epoch)) return false;
@@ -78,6 +105,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let nativeRetirement;
     const receipt = createProcgenRetirementScope().retire([
       { name: 'native-worklet', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
+        { name: 'lane-source-producer', run: () => { if (laneProducer === retiringNode) { releaseLaneProducer?.(); releaseLaneProducer = null; laneRegistry = laneProducer = null; laneRoutes.clear(); } } },
         { name: 'processor-handler', run: () => { if (retiringNode) retiringNode.onprocessorerror = null; } },
         { name: 'message-handler', run: () => { if (retiringNode) retiringNode.port.onmessage = null; } },
         { name: 'disconnect', run: () => retiringNode?.disconnect() },
@@ -263,20 +291,20 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, 0, true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
         const channel = preview._channel(0, owner), destination = channel.sourceInput || channel.gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
-        candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2],
-          processorOptions: { maxVoices: MAX_VOICES, ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+        candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1, outputChannelCount: new Array(laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1).fill(2),
+          processorOptions: { maxVoices: MAX_VOICES, ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
           candidate.port.onmessage = event => {
             const data = event.data;
             if (data?.type !== 'ready' || data.protocol !== PROTOCOL || data.engineId !== runtime.engineId || data.engineVersion !== 1 ||
-                data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || data.maxVoices !== MAX_VOICES ||
+                data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || laneTapsEnabled && (data.laneTapProtocol !== LIVE_LANE_TAP_PROTOCOL || data.maxLaneTaps !== LIVE_LANE_TAP_LIMIT) || data.maxVoices !== MAX_VOICES ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
                 data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
                 source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
@@ -307,6 +335,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         runtimeResourceLease = candidateResourceLease; candidateResourceLease = null; pcmDescriptor = candidatePcm;
         ready = true; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
       }
+      try { ensureLaneProducer(); } catch (error) { markFault('lane-source-admission-failed'); throw error; }
       patch = next; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime, ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) });
     } catch (error) {
       sourceFailureRetirement = error?.retirement || null;
@@ -382,6 +411,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!isExtended && (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros'))) return reject('performance-controls-unavailable', intent?.voiceId);
     if (!ready || !patch || !preview._ownerReady(owner) || context !== preview.getAudioContext()) return reject(fault || 'audio-not-ready', intent?.voiceId);
     if (ownerStopped) return reject('kernel-stop-pending', intent?.voiceId);
+    try { ensureLaneProducer(); } catch { return reject('lane-source-admission-failed', intent?.voiceId); }
     const now = frameNow();
     if (intent?.version !== 1 || intent.kind !== 'begin' || typeof intent.voiceId !== 'string' || !intent.voiceId || intent.voiceId.length > 256 ||
         !Number.isSafeInteger(intent.generation) || intent.generation < 0 || !finite(intent.velocity01, 0, 1) || !finite(intent.pitch?.cents, -24000, 24000) ||
@@ -420,7 +450,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, audioLaneId: intent.audioLaneId ?? null, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease, initialLeaseEndFrame: endFrame, requestedLeaseEndFrame: endFrame, effectiveLeaseEndFrame: null,
       pendingLeases: new Map(), leaseFailure: null,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
@@ -454,6 +484,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } };
     const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
     const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
+    if (laneTapsEnabled) { try { sendLaneRoute(voice, laneRoutes.get(voice.audioLaneId) ?? -1); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       14: 1 + (intent.laneMix?.gain ?? 1), 15: intent.laneMix?.pan ?? 0, 12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });

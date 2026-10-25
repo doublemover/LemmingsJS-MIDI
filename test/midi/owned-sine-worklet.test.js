@@ -148,11 +148,11 @@ describe('Owned sine worklet kernel', () => {
 });
 
 const setupHost = (engineId = 'worklet-sine') => {
-  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v2-display', 'owned-sine-f64-command-v1'],
-    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v1', 'owned-choir-f64-command-v1'],
-    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v1', 'owned-pluck-f64-command-v1'],
-    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v1', 'owned-spectrum-f64-command-v1'] }[engineId];
-  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v1', 'owned-granular-f64-command-v1'] : source;
+  const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v3-lane-taps', 'owned-sine-f64-command-v1'],
+    'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v2-lane-taps', 'owned-choir-f64-command-v1'],
+    'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v2-lane-taps', 'owned-pluck-f64-command-v1'],
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v2-lane-taps', 'owned-spectrum-f64-command-v1'] }[engineId];
+  const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v2-lane-taps', 'owned-granular-f64-command-v1'] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
     addEventListener: (type, listener) => { if (type === 'statechange') contextListeners.add(listener); }, removeEventListener: (type, listener) => { if (type === 'statechange') contextListeners.delete(listener); },

@@ -3028,3 +3028,37 @@ transport, explicit resource leases and settlement boundaries.
   lease attachment, invalid logical windows and EOF boundary guards.
 - **Acceptance boundary:** This validates the local Node suite, not browser,
   listening, hardware or performance-soak acceptance for the open issue backlog.
+
+
+### Continuation 150 — live cross-lane native/Worklet source buses (#1163, #1185, #1165)
+
+The refreshed GitHub inventory contains 248 open issues. The remaining code is
+being reviewed by shared dependencies, starting with complete live signal routes,
+then captured effect performance, dependent sound recipes/scenes and their editing
+surfaces. Broad validation is deferred until the remaining development is written.
+The existing benchmark receipt, long-session transport and native ADSR repairs
+remain in place for their later full acceptance audits.
+
+Live physical rendering now publishes stable resolved lane identities to the
+shared audio owner. Each declared donor owns distinct stereo pre/post lane-fader
+taps, with no automatic audible destination. Native oscillator/FM/modal/sample
+voices register their actual upstream source and post gain/pan nodes. All five
+owned Worklet producers expose the same taps from their real shared sample pass,
+using fixed output storage and slot-token-qualified routing. No extra source
+rendering, semantic onsets, meter polling or UI-rate modulation is introduced.
+Pre taps retain source envelopes/pan; post taps additionally include lane gain,
+pan, mute and solo. The owner master remains downstream of both lane taps.
+
+At most eight distinct donor lanes can be pinned concurrently across effect
+consumers. Staged graphs share a donor; individual voice, source renderer, lane
+identity and native bus storage are admitted before allocation. Deleting a lane,
+stopping its session or replacing its epoch disconnects the actual producer and
+notifies all consumer pins before resource release, so followers decay naturally
+to neutral. Unknown retirement preserves reservations. Declared silent lanes stay
+connected-silent; undeclared lanes remain missing. Old source processor builds are
+rejected by new pinned build identities and the explicit live tap handshake.
+
+API and production-kernel fixtures cover native pre/post isolation, donor sharing,
+source deletion, finite capacity, slot reuse and sample-exact stereo sums at
+44.1/48/96 kHz. They are authored but deliberately unrun. Browser routing, device
+cost and listening acceptance remain deferred; this does not close those gates.

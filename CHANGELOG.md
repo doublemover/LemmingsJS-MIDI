@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Publish owned live lane pre/post-fader source taps across native and Worklet instruments, with bounded shared donor routing and explicit source retirement.
+
 - Fix checkpoint replay and branch retirement, resumable survey evidence, worker source bounds, audio render cleanup, local MIDI admission accounting, and close-follower containment at source fire bridges.
 
 - Add actor-owned action admission, legato/crossfade and hold limits, with explicit lane handoff policies and native/sample/worklet transition ramps.

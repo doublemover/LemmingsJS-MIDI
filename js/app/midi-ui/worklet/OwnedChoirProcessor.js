@@ -102,6 +102,6 @@ export class OwnedChoirKernel extends OwnedSineKernel {
 }
 export class OwnedChoirProcessor extends OwnedSineProcessor {
   createKernel(rate, voices, options) { return new OwnedChoirKernel(rate, Math.min(voices, CHOIR_VOICES), options?.sourceBank); }
-  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v1', buildId: 'owned-choir-v1', sourceBankHash: this.kernel.source.bank.hash }; }
+  runtimeIdentity() { return { engineId: 'worklet-choir', engineVersion: 1, runtimeABI: 'owned-choir-f64-command-v1', buildId: 'owned-choir-v2-lane-taps', sourceBankHash: this.kernel.source.bank.hash }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-choir-v1', OwnedChoirProcessor);

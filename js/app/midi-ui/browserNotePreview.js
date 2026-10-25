@@ -1,3 +1,4 @@
+import { createLiveLaneSourceBuses } from './LiveLaneSourceBuses.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 import { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
 import { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
@@ -130,6 +131,7 @@ class BrowserNotePreview {
     this._captureSamples = null;
     this._channels = new Map();
     this._sessions = new Map();
+    this._laneSourceBuses = new Map();
     this._pcmCaptureTaps = new Set();
     this._sessionSequence = 0;
     this._defaultEnabled = false;
@@ -236,7 +238,7 @@ class BrowserNotePreview {
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
       for (const entry of this._previewPending) if (entry.spec.owner === id) pendingNotes++;
       return { ...state, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
-        retirement: retirementState(retirement.getReceipt()),
+        laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, retirement: retirementState(retirement.getReceipt()),
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
@@ -254,6 +256,7 @@ class BrowserNotePreview {
         { name: 'cue-mute', run: () => { if (workloadClass === 'cue') this._cueRouting?.stop(); } },
         { name: 'session-admission', run: () => session.cancel() },
         { name: 'owned-voices', run: () => this._clearVoices(null, id) },
+        { name: 'lane-sources', run: () => this._retireLaneSources(id) },
         { name: 'mix-state', run: () => { if (!this._hasEnabledOwners()) return this.stop(); session.report(); } }
       ]); } finally { session.stopping = false; }
     };
@@ -307,6 +310,11 @@ class BrowserNotePreview {
         if (session.disposed || this._disposed || generation !== session.generation) throw new Error('Audio backend selection was cancelled.');
         return this._registerInstrumentBackend(createSampleInstrumentBackend(this, id, options), id);
       },
+      configureLaneSources: laneIds => {
+        if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(value => typeof value !== 'string' || !value || value.length > 160) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Invalid lane source declaration.');
+        if (session.disposed) throw new Error('The lane source session has retired.');
+        this._laneSourceBuses.get(id)?.buses.declare(laneIds); session.laneSourceIds = laneIds.slice();
+      },
       prepareEffectGraph: async (definition, options = {}) => {
         const generation = session.generation, context = this._context;
         if (session.disposed || !this._ownerReady(id)) throw new Error('Enable this local audio owner before preparing its effect rack.');
@@ -322,7 +330,8 @@ class BrowserNotePreview {
         channel.effects ||= createOwnerEffectGraphHost({ context, input: channel.effectInput, dry: channel.effectDry, destination: channel.destination,
           resources: this._audioResources, owner: id, generation, getMaterialProvider: () => this.getSoundMaterialProvider(), isCurrent: () => !session.disposed && generation === session.generation && context === this._context,
           resolveSidechainSource: request => {
-            if (request.sourceBusId !== 'owner' || request.inputLayout !== 'audioStereo') return null;
+            if (request.sourceBusId !== 'owner') return this._laneSourcesFor(id, context).pin(request);
+            if (request.inputLayout !== 'audioStereo') return null;
             return { node: request.tap === 'pre-fader' ? channel.sourceInput : channel.effectInput, context, owner: id, generation, sourceBusId: 'owner', tap: request.tap,
               layout: 'audioStereo', stage: 'upstream-owner-effects', isActive: () => !session.disposed && generation === session.generation && context === this._context && context.state !== 'closed', release() {} };
           },
@@ -570,6 +579,7 @@ class BrowserNotePreview {
     this._lastClosedContextRetirement = createProcgenRetirementScope().retire([
       { name: 'stop', run: () => this.stop() },
       { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
+      ...[...this._laneSourceBuses.keys()].map(owner => ({ name: 'lane-sources-' + owner, run: () => this._retireLaneSources(owner) })),
       { name: 'context-listener', run: () => context.removeEventListener?.('statechange', this._onContextState) },
       ...[...this._channels].map(([key, channel]) => ({ name: 'channel-' + key, run: () => this._retireChannel(key, channel) })),
       ...['_master', '_limiter', '_compressor', '_compressorOutput', '_captureAnalyser'].map(field => ({ name: field, run: () => this[field]?.disconnect() })),
@@ -646,6 +656,7 @@ class BrowserNotePreview {
       ...[...this._instrumentBackends].map((entry, index) => ({ name: `backend-${index}`, run: () => entry.backend.dispose() })),
       { name: 'stop', run: () => this.stop() },
       { name: 'cue-routing', run: () => this._cueRouting?.dispose() },
+      ...[...this._laneSourceBuses.keys()].map(owner => ({ name: 'lane-sources-' + owner, run: () => this._retireLaneSources(owner) })),
       { name: 'foreground-auditions', run: () => this._foregroundAuditions.dispose() },
       { name: 'sound-material', run: () => this._soundMaterialProvider?.dispose() },
       { name: 'context-listener', run: () => context?.removeEventListener?.('statechange', this._onContextState) },
@@ -669,6 +680,30 @@ class BrowserNotePreview {
     ]);
     this._disposePromise = receipt.completion;
     return this._disposePromise;
+  }
+
+  _retireLaneSources(owner) {
+    const entry = this._laneSourceBuses.get(owner); if (!entry) return;
+    const receipt = entry.buses.dispose();
+    if (receipt.outcome === 'complete') this._laneSourceBuses.delete(owner);
+    else this._retirementFaults.add(owner);
+    return receipt;
+  }
+
+  _laneSourcesFor(owner, context) {
+    const session = this._sessions.get(owner), generation = session?.generation ?? this._generation;
+    if (!session || session.disposed || context !== this._context || context.state === 'closed') throw new Error('The lane source owner is unavailable.');
+    let entry = this._laneSourceBuses.get(owner);
+    if (entry && (entry.context !== context || entry.generation !== generation)) {
+      if (this._retireLaneSources(owner)?.outcome !== 'complete') throw new Error('Prior lane source retirement is unresolved.'); entry = null;
+    }
+    if (!entry) {
+      const buses = createLiveLaneSourceBuses({ context, resources: this._audioResources, owner, generation,
+        isCurrent: () => !session.disposed && session.generation === generation && this._context === context });
+      try { buses.declare(session.laneSourceIds || []); } catch (error) { buses.dispose(); throw error; }
+      entry = { context, generation, buses }; this._laneSourceBuses.set(owner, entry);
+    }
+    return entry.buses;
   }
 
   _retireChannel(key, channel) {

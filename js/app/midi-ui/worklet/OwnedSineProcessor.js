@@ -2,7 +2,7 @@
 // Storage is fixed at construction; process() inspects the supplied block size.
 import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from './OwnedSourceState.js';
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
-import { SINE_LAYOUT } from '../OwnedSourceLayout.js';
+import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6, MIX = 7;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
@@ -23,7 +23,7 @@ class OwnedSineKernel {
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
-    this.stemSums = new Float64Array(32);
+    this.stemSums = new Float64Array(32); this.preStemSums = new Float64Array(32);
     this.lastPacket = 0; this.lastFrame = 0; this.nonfinite = 0;
     this.displayTokens = new Uint32Array(MAX_VOICES); this.displayState = new Float64Array(MAX_VOICES * DISPLAY_STATE_WIDTH);
     this.displayData = new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH); this.displayCount = 0;
@@ -221,10 +221,19 @@ class OwnedSineKernel {
   }
 
   render(left, right, frameStart, stems = null) {
-    if (stems && (!(stems.routes instanceof Int8Array) || stems.routes.length < this.maxVoices || stems.routes.length > MAX_VOICES ||
-        !Array.isArray(stems.channels) || stems.channels.length < 1 || stems.channels.length > 16 ||
-        stems.channels.some(channels => !Array.isArray(channels) || channels.length !== 2 || channels.some(channel => !(channel instanceof Float32Array) || channel.length !== left.length)) ||
-        stems.routes.some(route => route < -1 || route >= stems.channels.length))) throw new TypeError('Invalid bounded sine stem taps.');
+    if (stems) {
+      if (!(stems.routes instanceof Int8Array) || stems.routes.length < this.maxVoices || stems.routes.length > MAX_VOICES ||
+          !Array.isArray(stems.channels) || !stems.channels.length || stems.channels.length > 16 ||
+          stems.tokens && (!(stems.tokens instanceof Uint32Array) || stems.tokens.length !== stems.routes.length) ||
+          stems.preChannels && (!Array.isArray(stems.preChannels) || stems.preChannels.length !== stems.channels.length)) throw new TypeError('Invalid bounded sine stem taps.');
+      for (let index = 0; index < stems.routes.length; index++) if (stems.routes[index] < -1 || stems.routes[index] >= stems.channels.length) throw new TypeError('Invalid stem route.');
+      for (let stage = 0; stage < (stems.preChannels ? 2 : 1); stage++) {
+        const channels = stage ? stems.preChannels : stems.channels;
+        for (let index = 0; index < channels.length; index++) if (!Array.isArray(channels[index]) || channels[index].length !== 2 ||
+            !(channels[index][0] instanceof Float32Array) || !(channels[index][1] instanceof Float32Array) ||
+            channels[index][0].length !== left.length || channels[index][1].length !== left.length) throw new TypeError('Invalid stem channel storage.');
+      }
+    }
     this.lastFrame = frameStart;
     if (this.panicPending) {
       this.panicPending = false;
@@ -232,7 +241,7 @@ class OwnedSineKernel {
         const at = index * this.width;
         this.receipt(CANCELLED, this.queue[at + 2], this.queue[at + 4], this.queue[at + 5], frameStart, this.queue[at + 3] === BEGIN ? 9 : 2);
       }
-      this.queueLength = 0; this.counters[4]++;
+      this.queue.fill(0); this.queueLength = 0; this.counters[4]++;
       for (let slot = 0; slot < this.maxVoices; slot++) this.release(slot, Math.max(1, Math.min(left.length, this.sampleRate * 0.005)), frameStart, 2);
       this.receipt(APPLIED, 0, -1, 0, frameStart, 2);
     }
@@ -242,7 +251,7 @@ class OwnedSineKernel {
         this.apply(frame); this.pop();
       }
       let sumLeft = 0, sumRight = 0;
-      if (stems) this.stemSums.fill(0);
+      if (stems) { this.stemSums.fill(0); if (stems.preChannels) this.preStemSums.fill(0); }
       for (let slot = 0; slot < this.maxVoices; slot++) {
         if (!this.active[slot]) continue;
         const at = slot * 28, voices = this.voice, age = frame - voices[at + 15];
@@ -281,13 +290,16 @@ class OwnedSineKernel {
           if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 4);
           this.active[slot] = 0; this.source?.retire?.(slot); this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
         }
+        const stemRoute = stems && (!stems.tokens || stems.tokens[slot] === voices[at + 2]) ? stems.routes[slot] : -1;
+        if (stems?.preChannels && stemRoute >= 0) { const stem = stemRoute * 2; this.preStemSums[stem] += voiceLeft; this.preStemSums[stem + 1] += voiceRight; }
         voiceLeft *= this.mix[mix] * (this.mix[mix + 3] > 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
         voiceRight *= this.mix[mix] * (this.mix[mix + 3] < 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
         sumLeft += voiceLeft; sumRight += voiceRight;
-        if (stems && stems.routes[slot] >= 0) { const stem = stems.routes[slot] * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
+        if (stems && stemRoute >= 0) { const stem = stemRoute * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
       }
       left[offset] = !right && this.source?.stereo === true ? (sumLeft + sumRight) * 0.5 : sumLeft; if (right) right[offset] = sumRight;
       if (stems) for (let stem = 0; stem < stems.channels.length; stem++) { stems.channels[stem][0][offset] = this.stemSums[stem * 2]; stems.channels[stem][1][offset] = this.stemSums[stem * 2 + 1]; }
+      if (stems?.preChannels) for (let stem = 0; stem < stems.preChannels.length; stem++) { stems.preChannels[stem][0][offset] = this.preStemSums[stem * 2]; stems.preChannels[stem][1][offset] = this.preStemSums[stem * 2 + 1]; }
       if (this.displayEnabled && frame + 1 >= this.displayNext) this.finishDisplay(frame + 1);
     }
     this.lastFrame = frameStart + left.length;
@@ -298,6 +310,8 @@ const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
+    this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routes: new Int8Array(MAX_VOICES).fill(-1), tokens: new Uint32Array(MAX_VOICES),
+      channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
     this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
       sequence: 0, droppedWindows: 0, count: 0, data: new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH) };
@@ -308,6 +322,10 @@ class OwnedSineProcessor extends ProcessorBase {
       else if (data?.type === 'panic') {
         this.kernel.panicPending = true; this.kernel.receipt(SCHEDULED, 0, -1, 0, this.kernel.lastFrame, 2);
       }
+      else if (data?.type === 'lane-route' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.slot) && data.slot >= 0 && data.slot < this.kernel.maxVoices &&
+          Number.isSafeInteger(data.token) && data.token > 0 && data.token <= 0xffffffff && Number.isSafeInteger(data.route) && data.route >= -1 && data.route < LIVE_LANE_TAP_LIMIT) {
+        this.laneTaps.routes[data.slot] = data.route; this.laneTaps.tokens[data.slot] = data.token;
+      }
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
       else if (data?.type === 'display-ack' && data.sequence === this.displayAwaiting) { this.displayAwaiting = 0; this.flushDisplay(); }
       else if (data?.type === 'inspect') this.port.postMessage({ type: 'health', protocol: PROTOCOL,
@@ -317,11 +335,12 @@ class OwnedSineProcessor extends ProcessorBase {
       this.flushReceipts();
     };
     this.port.postMessage({ type: 'ready', protocol: PROTOCOL, ...this.runtimeIdentity(),
+      laneTapProtocol: this.laneTaps ? LIVE_LANE_TAP_PROTOCOL : null, maxLaneTaps: this.laneTaps ? LIVE_LANE_TAP_LIMIT : 0,
       displayProtocol: DISPLAY_PROTOCOL, displayWidth: DISPLAY_WIDTH, displayVoices: DISPLAY_VOICES,
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v2-display' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v3-lane-taps' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
@@ -341,7 +360,12 @@ class OwnedSineProcessor extends ProcessorBase {
   process(_inputs, outputs) {
     const output = outputs[0];
     if (!output?.[0]) return true;
-    this.kernel.render(output[0], output[1], globalThis.currentFrame); this.flushReceipts(); this.flushDisplay(); return true;
+    if (this.laneTaps) for (let index = 0; index < LIVE_LANE_TAP_LIMIT; index++) {
+      const pre = outputs[1 + index * 2], post = outputs[2 + index * 2];
+      if (!pre?.[0] || !pre[1] || !post?.[0] || !post[1] || pre[0].length !== output[0].length || post[0].length !== output[0].length) { this.kernel.panicPending = true; return false; }
+      this.laneTaps.preChannels[index][0] = pre[0]; this.laneTaps.preChannels[index][1] = pre[1]; this.laneTaps.channels[index][0] = post[0]; this.laneTaps.channels[index][1] = post[1];
+    }
+    this.kernel.render(output[0], output[1], globalThis.currentFrame, this.laneTaps); this.flushReceipts(); this.flushDisplay(); return true;
   }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-sine-v1', OwnedSineProcessor);

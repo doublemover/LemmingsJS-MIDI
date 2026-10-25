@@ -94,7 +94,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     try { reserveMetadata({ voices: 1 }); } catch { return reject('audio-resource-budget'); }
     const laneMix = getLaneMix(lane, intent.laneId); if (!laneMix) return reject('lane-unavailable');
     if (laneMix.muted || laneMix.soloSuppressed || laneMix.gain === 0) return reject(laneMix.muted ? 'lane-muted' : laneMix.soloSuppressed ? 'lane-solo-suppressed' : 'lane-zero-gain');
-    const outcome = child.backend.begin({ ...intent, laneMix }, targetFrame, execution);
+    const outcome = child.backend.begin({ ...intent, laneMix, audioLaneId: lane }, targetFrame, execution);
     if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, laneId: lane, sourceLaneId: intent.laneId, mix: laneMix, mixFault: false, voiceId: intent.voiceId, articulation: outcome.articulation || child });
     return outcome;
   };
