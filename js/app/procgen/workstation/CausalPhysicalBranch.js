@@ -71,7 +71,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         const replayState = session.replayState();
         if (replayState.scoreTimeline) session.clock.observe(batch, { bpm: replayState.bpm });
         lastIntents = replayState.version === 2 && !replayState.playing ? [] : session.engine.processBatch(batch);
-        const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents });
+        const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents, probability: session.engine.probabilityAnalysis()?.batchId === batch.batchId ? session.engine.probabilityAnalysis() : null });
         completedBatches++;
         if (receipt.status === 'rejected') failure = { code: 'capture-admission', reason: receipt.reason, tick: batch.tick };
         else feedback.observe(batch, session.engine.physicalAnalysis());

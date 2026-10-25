@@ -1,7 +1,7 @@
+import { causalRandomDecision } from './workstation/CausalRandom.js';
 import { validateReleaseGesture } from './ReleaseGesture.js';
 const DEFAULT_PROCGEN_POPULATION = Object.freeze({ highLaneThreshold: 64, highLaneMultiplier: 1.5,
   targetLivePerLane: 8, maximumMultiplier: 4, easing: 0.25, scoutsEvery: 8, scoutDelayTicks: 180, spawnSpreadTicks: 12, spawnBeatTicks: 0 });
-const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 
 const normalizePopulationPolicy = (next = {}, current = DEFAULT_PROCGEN_POPULATION) => {
   const result = {};
@@ -99,17 +99,17 @@ class ProcgenPopulationPolicy {
     if (!Number.isSafeInteger((capacityAvailable ? run.admitted : run.missed) + 1)) throw new RangeError('Release gesture outcome counter exhausted.'); if (run.remaining != null) run.remaining--; if (capacityAvailable) run.admitted++; else run.missed++; if (run.remaining === 0) run.status = 'exhausted';
     return { status: capacityAvailable ? 'admitted' : 'missed', reason: capacityAvailable ? null : 'population-cap', gestureId: gesture.id, gestureRevision: gesture.revision, remainingAttempts: run.remaining };
   }
-  isScout(laneSeed, spawnOrdinal) {
-    if (!this.settings.scoutsEvery) return false;
-    const every = this.settings.scoutsEvery;
-    return (spawnOrdinal + mix(laneSeed) % every) % every === 0;
+  scoutDecision(laneSeed, spawnOrdinal) {
+    if (!Number.isSafeInteger(spawnOrdinal) || spawnOrdinal < 0) throw new Error('Invalid stable scout birth ordinal.');
+    if (!this.settings.scoutsEvery) return Object.freeze({ version: 1, selected: false, abilities: 0, reason: 'scouts-disabled' });
+    const every = this.settings.scoutsEvery, cadence = causalRandomDecision({ seed: laneSeed, namespace: 'population', mappingId: 'scout-admission', generation: 0, stableCauseId: 'lane-cadence', drawPurpose: 'scout-phase' });
+    const selected = (spawnOrdinal + cadence.drawUint32 % every) % every === 0;
+    if (!selected) return Object.freeze({ version: 1, selected, abilities: 0, cadence, spawnOrdinal });
+    const variation = causalRandomDecision({ seed: laneSeed, namespace: 'population', mappingId: 'scout-admission', generation: 0, stableCauseId: `cycle:${Math.floor(spawnOrdinal / every)}`, drawPurpose: 'scout-abilities' }), choice = variation.drawUint32 % 8;
+    return Object.freeze({ version: 1, selected, abilities: choice < 3 ? 1 : choice < 6 ? 2 : 3, cadence, variation, spawnOrdinal });
   }
-  scoutAbilities(laneSeed, spawnOrdinal) {
-    if (!this.isScout(laneSeed, spawnOrdinal)) return 0;
-    const cycle = Math.floor(spawnOrdinal / this.settings.scoutsEvery);
-    const choice = mix(laneSeed ^ Math.imul(cycle + 1, 0x85ebca6b)) % 8;
-    return choice < 3 ? 1 : choice < 6 ? 2 : 3;
-  }
+  isScout(laneSeed, spawnOrdinal) { return this.scoutDecision(laneSeed, spawnOrdinal).selected; }
+  scoutAbilities(laneSeed, spawnOrdinal) { return this.scoutDecision(laneSeed, spawnOrdinal).abilities; }
   setSettings(next = {}) {
     Object.assign(this.settings, normalizePopulationPolicy(next, this.settings));
     if (!this._cohortStarted && !this.releaseGesture && !this.pendingReleaseGesture) {

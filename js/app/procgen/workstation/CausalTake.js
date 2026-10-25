@@ -44,7 +44,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
     worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
   const addGap = coverageIndex.add;
-  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [] } = {}) => {
+  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [], probability = null } = {}) => {
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     if (batch?.version !== 1 || !name(batch.batchId) || !name(batch.worldId) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
         !Number.isSafeInteger(batch.generation) || batch.generation < 0 || !Array.isArray(batch.facts) || batch.facts.length > 8192 ||
@@ -59,8 +59,9 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     }
     for (const intent of intents) if (intent?.version !== 1 || !name(intent.kind) || typeof intent.intentId !== 'string' ||
         !['begin', 'update', 'end'].includes(intent.kind) || !Array.isArray(intent.sourceEventIds) || intent.batchId !== batch.batchId) throw new Error('Invalid canonical musical intent.');
+    if (probability && (probability.version !== 1 || probability.batchId !== batch.batchId || !Number.isSafeInteger(probability.requested) || !Number.isSafeInteger(probability.omitted) || probability.omitted < 0 || !Array.isArray(probability.decisions) || probability.decisions.length > 8192 || probability.requested !== probability.decisions.length + probability.omitted || JSON.stringify(probability).length * 2 > 1050624)) throw new Error('Invalid bounded causal probability evidence.');
     const entries = [{ kind: 'physical-batch', tick: batch.tick, generation: batch.generation, payload: batch },
-      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents } }];
+      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents, ...(probability ? { probability } : {}) } }];
     if (deliveryOutcomes.length) entries.push({ kind: 'sink-outcome', tick: batch.tick, generation: batch.generation,
       payload: { batchId: batch.batchId, outcomes: deliveryOutcomes } });
     const receipt = writer.appendMany(entries);

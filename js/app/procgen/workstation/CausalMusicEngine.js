@@ -11,7 +11,7 @@ import { validateActionVoicePolicy, validateVoiceTransferPolicy, createActionVoi
 import { createRhythmicResponses, validateRhythmicResponse, RHYTHMIC_SOURCE_KINDS } from './physical/RhythmicResponses.js';
 import { createPhysicalMusicDomain, validatePhysicalDomain, DERIVED_PHYSICAL_KINDS } from './physical/PhysicalMusicDomain.js';
 import { validateInstrumentControls, captureInstrumentCause, INSTRUMENT_PHYSICAL_SOURCE_KINDS } from '../../../midi/content/InstrumentPerformance.js';
-import { causalRandomDecision } from './CausalRandom.js';
+import { validateCausalProbabilityPolicy, validateCausalSeedSet, causalNamespaceSeed, createCausalProbabilityContext, causalPolicyDecision } from './CausalProbabilityPolicy.js';
 import { createTravelAccumulator, validateArticulationField } from './TravelAccumulator.js';
 import { validateCausalPerformanceState } from './CausalPerformanceState.js';
 
@@ -27,7 +27,7 @@ const validateCausalInstrumentGraph = value => {
       !Array.isArray(value.instruments) || value.instruments.length > 256) throw new Error('Unsupported causal instrument graph.');
   const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions), encounterDefinitions = validateEncounterDomain(value, domain), activityDefinitions = validateActivityWindows(value, { ...domain, topologyRegions }), motifDefinitions = validatePhysicalMotifs(value, { ...domain, encounters: encounterDefinitions, activityWindows: activityDefinitions });
   const cargoStations = validatePhraseCargoStations(value.cargoStations, { ...domain, encounters: encounterDefinitions });
-  const swarm = validateSwarmReducer(value.swarm);
+  const swarm = validateSwarmReducer(value.swarm), randomSeeds = validateCausalSeedSet(value.randomSeeds, ['musical-response', 'physical-route']);
   const feedback = validatePhysicalFeedback(value.feedback, { ...domain, motifs: motifDefinitions, cargoStations });
   const ids = new Set();
   const instruments = value.instruments.map(input => {
@@ -57,7 +57,7 @@ const validateCausalInstrumentGraph = value => {
     if (input.sourceKind === 'MotionCommitted' && !input.articulation && (!Number.isFinite(input.gateX) || Math.abs(input.gateX) > 1000000000 ||
         !['either', 'positive', 'negative'].includes(input.crossingDirection ?? 'either'))) throw new Error('Motion instrument needs a valid gate.');
     if (input.articulation && input.sourceKind !== 'MotionCommitted') throw new Error('Travel articulation requires committed motion.');
-    if (input.probability01 != null && (!Number.isFinite(input.probability01) || input.probability01 < 0 || input.probability01 > 1)) throw new Error('Invalid response probability.');
+    const probability = validateCausalProbabilityPolicy(input.probability);
     if (input.sourceKind === 'TerrainWorkCommitted' && input.operationKind != null && !nonempty(input.operationKind)) throw new Error('Invalid work operation.');
     if (['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) && input.causeKind != null && !nonempty(input.causeKind)) throw new Error('Invalid contact cause.');
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
@@ -67,14 +67,14 @@ const validateCausalInstrumentGraph = value => {
       operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
       articulation: input.articulation ? validateArticulationField(input.articulation) : null,
-      probability01: input.probability01 ?? 1,
+      ...(probability ? { probability } : {}), probability01: input.probability01 == null ? 1 : Number.isFinite(input.probability01) ? Math.min(1, Math.max(0, input.probability01)) : 0,
       crossingDirection: input.crossingDirection ?? 'either',
       changedOnly: input.changedOnly === true, pitchCents: input.pitchCents, velocity01: input.velocity01,
       ...(input.sampleGesture != null ? { sampleGesture: input.sampleGesture } : {}), ...(input.sampleKitId != null ? { sampleKitId: input.sampleKitId } : {}),
       route: input.route, role: input.role, mute: input.mute === true, solo: input.solo === true });
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
-  return Object.freeze({ version: 1, ...(swarm ? { swarm } : {}), ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
+  return Object.freeze({ version: 1, ...(randomSeeds ? { randomSeeds } : {}), ...(swarm ? { swarm } : {}), ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
     ...(value.cargoStations ? { cargoStations } : {}), ...(value.activityWindows ? { activityWindows: activityDefinitions } : {}), ...(value.motifs ? { motifs: motifDefinitions } : {}), ...(value.encounters ? { encounters: encounterDefinitions } : {}), ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };
@@ -83,6 +83,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
   maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024 } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
+  if (!Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 8192 || !Number.isSafeInteger(maxBeginsPerBatch) || maxBeginsPerBatch < 0 || maxBeginsPerBatch > 4096 || !Number.isSafeInteger(maxVoices) || maxVoices < 0 || maxVoices > 4096) throw new Error('Invalid bounded causal engine owner capacity.');
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
   let tones = createTonalInterpretation(); const onsetPlans = new Map();
   let swarm = createSwarmReducer();
@@ -102,7 +103,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   };
   let travel = createTravelAccumulator({ maxEntries: Math.max(4096, maxVoices) }); const decisions = [];
   let generation = null, graph = null, graphSource = null, graphFingerprint = null, liveIds = null, indexed = null, errors = 0, rejected = 0;
-  let recoveryRequired = false;
+  let recoveryRequired = false, probabilityAnalysis = null, probabilityCount = 0, probabilityBytes = 0; const batchDecisions = [], onsetDecisions = new Map();
   let cursor = { worldId: null, generation: null, tick: -1, lastSequence: -1, batchId: null };
   const accepted = new Map(), rejectedByInstrument = new Map();
   const remember = intent => { if (traceLimit > 0) { trace.push(intent); if (trace.length > traceLimit) trace.shift(); } };
@@ -133,12 +134,14 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
+      ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),
       ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...getOnsetControls(fact?.laneId), macros: { ...getOnsetControls(fact?.laneId)?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
     }); };
   const publish = (batch, intents) => {
-    onsetPlans.clear();
+    onsetPlans.clear(); onsetDecisions.clear();
+    probabilityAnalysis = freezePhysical({ version: 1, batchId: batch.batchId, requested: probabilityCount, omitted: probabilityCount - batchDecisions.length, coverage: probabilityCount === batchDecisions.length ? 'complete' : 'capped', decisions: [...batchDecisions] });
     const reduction = swarm.reduce(batch, intents), sealed = reduction.intents;
-    if (latestPhysicalAnalysis?.batchId === batch.batchId) latestPhysicalAnalysis = freezePhysical({ ...latestPhysicalAnalysis, swarm: reduction.summary });
+    if (latestPhysicalAnalysis?.batchId === batch.batchId) latestPhysicalAnalysis = freezePhysical({ ...latestPhysicalAnalysis, swarm: reduction.summary, probability: probabilityAnalysis });
     for (const intent of sealed) remember(intent);
     try { deliver(sealed, batch); } catch { errors++; }
     return sealed;
@@ -201,7 +204,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     seen.add(batch.batchId); seenOrder.push(batch.batchId);
     if (seenOrder.length > 1024) seen.delete(seenOrder.shift());
-    const output = [];
+    const output = []; batchDecisions.length = 0; probabilityCount = 0; probabilityBytes = 0; onsetDecisions.clear();
     if (generation !== null && (generation !== batch.generation || cursor.worldId !== batch.worldId)) {
       endMatching(batch, () => true, null, 'generation-change', output); travel.reset(); physical.reset(); encounters.reset(); motifs.reset(); activity.reset(); cargo.reset(); latestPhysicalAnalysis = null; rhythmic.reset(); actionAdmission.reset(); tones.reset();
     }
@@ -245,9 +248,13 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       }
     }
     const sourceFacts = [...batch.facts, ...observations.facts, ...responses.facts, ...actionAdmissions.facts, ...relationships.responses, ...cargoResult.responses, ...recognized.responses, ...activityResult.responses].sort((a, b) => a.causalSequence - b.causalSequence || (a.subTick || 0) - (b.subTick || 0) || (a.observationId || '').localeCompare(b.observationId || ''));
+    const probabilityContext = current.instruments.some(instrument => instrument.probability && (instrument.probability.identity !== 'cause' || instrument.probability.conditions.length)) ? createCausalProbabilityContext(batch) : () => ({});
     const responds = (instrument, fact, stableCauseId = fact.eventId) => {
-      const decision = causalRandomDecision({ seed: current.seed, mappingId: instrument.id, generation: batch.generation,
-        stableCauseId: stableCauseId || fact.observationId, probability01: instrument.probability01 });
+      const decision = causalPolicyDecision({ policy: instrument.probability, seed: causalNamespaceSeed(current.randomSeeds, 'musical-response', current.seed), mappingId: instrument.id, generation: batch.generation,
+        stableCauseId: stableCauseId || fact.observationId, probability01: instrument.probability01, context: probabilityContext(fact) });
+      probabilityCount++; const size = JSON.stringify(decision).length * 2;
+      if (batchDecisions.length < 8192 && probabilityBytes + size <= 1048576) { batchDecisions.push(decision); probabilityBytes += size; }
+      if (decision.accepted) { const key = `${instrument.id}:${fact.observationId || fact.eventId}`; if (onsetDecisions.size < 4096 || onsetDecisions.has(key)) onsetDecisions.set(key, decision); }
       if (traceLimit > 0) { decisions.push(decision); if (decisions.length > traceLimit) decisions.shift(); }
       return decision.accepted;
     };
@@ -499,13 +506,14 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     for (const [id, record] of nextSuppressed) suppressed.set(id, record);
     if (value.instrumentEpochs) { instrumentEpochs.clear(); for (const [id, epoch] of Object.entries(value.instrumentEpochs)) instrumentEpochs.set(id, epoch); }
     recoveryRequired = value.recoveryRequired === true;
+    probabilityAnalysis = null; batchDecisions.length = 0; onsetDecisions.clear();
     seen.clear(); seenOrder.length = 0; generation = value.generation; cursor = { ...nextCursor };
     if (cursor.batchId) { seen.add(cursor.batchId); seenOrder.push(cursor.batchId); }
   };
   const diagnostics = () => Object.freeze({ swarm: swarm.diagnostics(), cargo: cargo.diagnostics(), activity: activity.diagnostics(), motifs: motifs.diagnostics(), encounters: encounters.diagnostics(), tonal: tones.diagnostics(), actionAdmission: actionAdmission.diagnostics(), physical: physical.diagnostics(), rhythmic: rhythmic.diagnostics(), recoveryRequired, recoveryAction: recoveryRequired ? 'restore-complete-boundary-or-explicit-rearm' : null, activeVoices: active.size, suppressedVoices: suppressed.size, deliveryErrors: errors, rejectedBegins: rejected,
     accepted: Object.freeze(Object.fromEntries(accepted)), rejected: Object.freeze(Object.fromEntries(rejectedByInstrument)),
     trace: Object.freeze([...trace]), decisions: Object.freeze([...decisions]) });
-  return { processBatch, snapshot, restore, diagnostics, physicalAnalysis: () => latestPhysicalAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  return { processBatch, snapshot, restore, diagnostics, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });
   } };

@@ -1,3 +1,4 @@
+import { causalRandomDecision } from './workstation/CausalRandom.js';
 import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
 import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
 import { releaseLanePhases } from './ReleaseGesture.js';
@@ -200,13 +201,13 @@ class ProcgenLaneWorld {
     actor.birthCohortId = recordBirthCohortSlot(this, lane, actor); actor.crewOriginIds = []; actor.crewOriginComplete = true;
     const release = this.population.cohortReleaseGesture; actor.releaseGesture = release ? Object.freeze({ id: release.id, revision: release.revision, requestedTick: this.population.cohortStartTick + this._spawnPhaseForLane(lane), realizedTick: this.tickIndex, cohortOrdinal: this.population.gestureRun.cohortOrdinal, clockMode: release.clockMode, sourceCommandId: this.population.releaseGestureCommandId }) : null; if (actor.releaseGesture?.sourceCommandId) actor._physicalInterventionId = actor.releaseGesture.sourceCommandId;
     actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
-    actor.scoutAbilities = this.population.scoutAbilities(this.laneSeeds[lane], actor.spawnOrdinal); actor.scout = !!actor.scoutAbilities;
+    actor.scoutDecision = this.population.scoutDecision(this.laneSeeds[lane], actor.spawnOrdinal); actor.scoutAbilities = actor.scoutDecision.abilities; actor.scout = !!actor.scoutAbilities;
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
     actor.lastProgressTick = this.tickIndex;
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
-    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } });
+    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, scoutDecision: actor.scoutDecision, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } });
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor); this.activeCount++;
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
@@ -217,9 +218,8 @@ class ProcgenLaneWorld {
     return actor;
   }
   _resetSpawnPhases() {
-    const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ (this.workstationEnabled ? 1 : this.generation));
-    for (let at = order.length - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
-    for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank]] = rank;
+    const order = Array.from({ length: this.laneCount }, (_, lane) => ({ lane, draw: causalRandomDecision({ seed: this.seed, namespace: 'population', mappingId: 'default-release', generation: this.workstationEnabled ? 1 : this.generation, stableCauseId: `lane:${lane}`, drawPurpose: 'phase-rank' }).drawUint32 })).sort((a, b) => a.draw - b.draw || a.lane - b.lane);
+    for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank].lane] = rank;
     if (!this.population.cohortReleaseGesture) this.population.cohortSpreadTicks = this.spawnSpreadTicks;
     this._laneAdmissionCohorts.fill(-Infinity); this._spawnPhaseCohortTick = -Infinity; this._computeSpawnPhases();
   }

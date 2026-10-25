@@ -57,7 +57,7 @@ export function validatePhysicalScoreFragment(input) {
   const b = rectangle(input.bounds); if (b.x1 || b.y1 || !plain(input.pixelOrigin) || ![input.pixelOrigin.x, input.pixelOrigin.y].every(Number.isSafeInteger)) throw new Error('Fragment geometry must use a local integer origin.');
   const graph = validateCausalInstrumentGraph(input.graph), junctions = (input.junctions || []).map(validatePhysicalJunction), ports = validatePhysicalPorts(input.ports);
   if (junctions.length > 32 || new Set(junctions.map(value => value.id)).size !== junctions.length || GROUPS.reduce((sum, group) => sum + (graph[group]?.length || 0), junctions.length + (graph.feedback?.conductors.length || 0) + (graph.feedback?.layers || []).reduce((sum, layer) => sum + 1 + layer.rules.length, 0)) > LIMITS.objects) throw new Error('Fragment object capacity exceeded.');
-  if (graph.swarm) throw new Error('Swarm reduction is project-scoped and cannot be transplanted by a physical fragment.');
+  if (graph.swarm || graph.randomSeeds) throw new Error('Swarm reduction and namespace seeds are project-scoped and cannot be transplanted by a physical fragment.');
   checkGraphBounds(graph, junctions, ports, b);
   const spans = input.collision?.spans;
   if (!Array.isArray(spans) || !spans.length || spans.length > LIMITS.spans) throw new Error('Fragment collision span capacity exceeded.');

@@ -210,7 +210,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           if (generated.length >= 8) throw journalError('replay-overflow', 'Unexpected source batch fanout during re-performance.');
           if (initial.replay.scoreTimeline) clock.observe(batch, { bpm: current.bpm });
           if (world.physicalAuthoring?.graph) current.graph = world.physicalAuthoring.graph;
-          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [] });
+          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [], probability: current.playing ? engine.probabilityAnalysis() : null });
         } catch (error) { callbackError = error; }
       };
       world.soundEvents.onBatch.on(listener);
@@ -239,10 +239,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
               comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
               for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
-              expectedIntents.set(actual.batch.batchId, actual.intents);
+              expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability });
               if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
             } else if (record.kind === 'musical-intents') {
-              const actual = expectedIntents.get(record.payload.batchId);
+              const companion = expectedIntents.get(record.payload.batchId), actual = companion?.intents;
+              if (record.payload.probability && !equal(record.payload.probability, companion?.probability)) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'causal-probability-decisions' }; break; }
               if (!actual || !equal(record.payload.intents, actual)) {
                 const index = (record.payload.intents || []).findIndex((intent, ordinal) => !equal(intent, actual?.[ordinal] ?? null));
                 const original = record.payload.intents?.[Math.max(0, index)], replayed = actual?.[Math.max(0, index)];

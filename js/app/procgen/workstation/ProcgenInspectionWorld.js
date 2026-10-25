@@ -15,7 +15,7 @@ const settleAll = async tasks => {
 };
 
 export async function prepareProcgenInspectionWorld({ checkpoint, rootPath, resourceBudget, signal } = {}) {
-  if (checkpoint?.version !== 2 || checkpoint.generator !== 'procgen-workstation-1' || !Number.isSafeInteger(checkpoint.laneCount) || checkpoint.laneCount < 1 || checkpoint.laneCount > 1024 ||
+  if (checkpoint?.version !== 2 || checkpoint.generator !== 'procgen-workstation-2' || !Number.isSafeInteger(checkpoint.laneCount) || checkpoint.laneCount < 1 || checkpoint.laneCount > 1024 ||
       typeof rootPath !== 'string' || !resourceBudget?.reserve || !resourceBudget?.release || !Array.isArray(checkpoint.assets) || !checkpoint.assets.length)
     throw new TypeError('Inspection requires a current checkpoint, installed asset root and resource owner.');
   const maximumActors = checkpoint.graph?.owners?.find(owner => owner.name === 'world')?.props?.maxActors;

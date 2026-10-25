@@ -1,3 +1,4 @@
+import { validateCausalProbabilityPolicy } from './CausalProbabilityPolicy.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 import { validatePopulationReleaseState } from '../ReleaseGesture.js';
 import { validatePhysicalCrewEvidence } from '../PhysicalCrewEvidence.js';
@@ -10,9 +11,10 @@ import { PROCGEN_TRIGGER_INDEX_FIELDS } from '../ProcgenTriggerManager.js';
 
 const VERSION = 2;
 const CHECKPOINT_COMPONENT_CODECS = Object.freeze({ worldGraph: 2, physicalIdentity: 1, clock: 1,
-  terrainAssignments: 1, terrainGrowth: 1, presentationScenery: 1 });
+  terrainAssignments: 1, terrainGrowth: 1, presentationScenery: 1, causalRandom: 1 });
 const validateCheckpointCodecs = saved => {
   if (saved.schema != null && saved.schema !== 'lemmings-procgen-checkpoint' || saved.numericEncoding != null && saved.numericEncoding !== 'typed-f64-sentinels-v2') throw new Error('Unsupported checkpoint schema or numeric encoding.');
+  if (saved.physicsAlgorithms?.causalRandom !== 'fnv1a32-avalanche-v1' || saved.physicsAlgorithms?.populationRandom !== 1 || saved.physicsAlgorithms?.terrainChallenge !== 3) throw new Error('Checkpoint random/terrain source version requires its original runtime; no implicit reseed migration.');
   if (saved.physicsAlgorithms != null && ![1, 2].includes(saved.physicsAlgorithms.stallCascade)) throw new Error('Unsupported checkpoint physical policy.');
   if (saved.componentCodecs != null && (Object.keys(saved.componentCodecs).length !== Object.keys(CHECKPOINT_COMPONENT_CODECS).length ||
       Object.entries(CHECKPOINT_COMPONENT_CODECS).some(([key, version]) => saved.componentCodecs[key] !== version))) throw new Error('Unsupported checkpoint component codec.');
@@ -134,10 +136,10 @@ function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
 }
 const checkpointEnvelope = (world, graph) => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
-  return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-1',
+  return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-2',
     componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
     seed: world.seed, assets: assetIdentity(world), graph,
-    physicsAlgorithms: { stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1 },
+    physicsAlgorithms: { stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1, causalRandom: 'fnv1a32-avalanche-v1', populationRandom: 1, terrainChallenge: 3 },
     terrainAssignments: world.terrain?.exportAssignments?.() || null,
     terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
     growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
@@ -239,7 +241,7 @@ function validateCheckpointGraph(graph, bound, version) {
 
 function restoreProcgenCheckpoint(world, saved) {
   if (world._stepping || world.soundEvents._tick) throw new Error('Cannot restore a checkpoint inside a physical tick.');
-  if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-1' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
+  if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-2' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
   validateCheckpointCodecs(saved);
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
   if (!saved.clock || !Number.isFinite(saved.clock.speedFactor) || saved.clock.speedFactor < 0 ||
@@ -298,6 +300,7 @@ function restoreProcgenCheckpoint(world, saved) {
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   const preparedWorld = prepared.find(item => item.entry.name === 'world'); preparedWorld.props.physicalCrewEvidence = validatePhysicalCrewEvidence(preparedWorld.props.physicalCrewEvidence, preparedWorld.props.generation);
+  for (const command of preparedWorld.props.interventionState?.pending || []) if (command.probability && JSON.stringify(validateCausalProbabilityPolicy(command.probability)) !== JSON.stringify(command.probability)) throw new Error('Invalid checkpoint physical probability policy.');
   if (preparedWorld.props.physicalFeedback != null) preparedWorld.props.physicalFeedback = validatePhysicalFeedbackState(preparedWorld.props.physicalFeedback);
   const preparedPopulation = prepared.find(item => item.entry.name === 'population'); if (preparedPopulation) validatePopulationReleaseState(preparedPopulation.props, saved.laneCount);
   const activityTicks = prepared.find(item => item.entry.name === 'world')?.props.terrainActivityTicks;

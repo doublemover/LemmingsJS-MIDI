@@ -1,3 +1,4 @@
+import { validateCausalProbabilityPolicy } from '../CausalProbabilityPolicy.js';
 import { plain, identity, integer, bounds, freeze, copy } from './PhysicalSchema.js';
 import { validateReleaseGesture } from '../../ReleaseGesture.js';
 export const FEEDBACK_COMMANDS = Object.freeze(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy', 'set-release-gesture', 'junction-request']);
@@ -5,7 +6,8 @@ const KINDS = ['ActorBorn', 'ActionEntered', 'TerrainWorkCommitted', 'ContactRes
 const id = value => identity(value) && value.length <= 96;
 export function validateFeedbackCausality(value) {
   if (!plain(value) || !identity(value.feedbackRootId) || !integer(value.hopCount, 8) || !value.hopCount || !Array.isArray(value.parentCauseIds) || !value.parentCauseIds.length || value.parentCauseIds.length > 64 || value.parentCauseIds.some(key => !identity(key)) || !Array.isArray(value.rulePath) || value.rulePath.length !== value.hopCount || value.rulePath.some(key => !identity(key)) || new Set(value.rulePath).size !== value.rulePath.length || !identity(value.ownerId) || !integer(value.ruleRevision) || !identity(value.epoch)) throw new Error('Invalid bounded physical feedback ancestry.');
-  return freeze({ feedbackRootId: value.feedbackRootId, hopCount: value.hopCount, parentCauseIds: [...new Set(value.parentCauseIds)], rulePath: [...value.rulePath], ruleRevision: value.ruleRevision, ownerId: value.ownerId, epoch: value.epoch });
+  if (value.sourceOccurrenceId != null && (!identity(value.sourceOccurrenceId) || !KINDS.includes(value.sourceKind))) throw new Error('Invalid physical feedback occurrence identity.');
+  return freeze({ ...(value.sourceOccurrenceId ? { sourceOccurrenceId: value.sourceOccurrenceId, sourceKind: value.sourceKind } : {}), feedbackRootId: value.feedbackRootId, hopCount: value.hopCount, parentCauseIds: [...new Set(value.parentCauseIds)], rulePath: [...value.rulePath], ruleRevision: value.ruleRevision, ownerId: value.ownerId, epoch: value.epoch });
 }
 export function validateFeedbackTemplate(value) {
   if (!plain(value) || !FEEDBACK_COMMANDS.includes(value.kind) || !plain(value.parameters || {})) throw new Error('Unsupported physical feedback command family.');
@@ -15,7 +17,9 @@ export function validateFeedbackTemplate(value) {
   else if (value.kind === 'set-release-policy') { if (!integer(p.spawnSpreadTicks ?? 0, 53) || !Number.isFinite(p.spawnBeatTicks ?? 0) || (p.spawnBeatTicks ?? 0) < 0 || (p.spawnBeatTicks ?? 0) > 4096 || p.spawnBeatTicks == null && p.spawnSpreadTicks == null) throw new Error('Invalid release template.'); parameters = { ...(p.spawnSpreadTicks == null ? {} : { spawnSpreadTicks: p.spawnSpreadTicks }), ...(p.spawnBeatTicks == null ? {} : { spawnBeatTicks: p.spawnBeatTicks }) }; }
   else if (value.kind === 'junction-request') { if (!plain(p.request) || !identity(p.request.junctionId) || !identity(p.request.configurationId) || JSON.stringify(p.request).length > 4096) throw new Error('Invalid approved junction request template.'); parameters = { request: copy(p.request) }; }
   else parameters = {};
-  return freeze({ kind: value.kind, parameters });
+  const probability = validateCausalProbabilityPolicy(value.probability); if (probability && !['assign-worker', 'place-blocker', 'release-blocker', 'junction-request'].includes(value.kind)) throw new Error('Probability cannot choose unapproved physical branch families.');
+  if (probability?.conditions.some(condition => !['crowdCellCount', 'actorAction', 'terrainSolidBelow'].includes(condition.descriptor))) throw new Error('Physical branches cannot borrow unrelated work or motion descriptors.');
+  return freeze({ kind: value.kind, parameters, ...(probability ? { probability } : {}) });
 }
 const target = value => {
   if (!plain(value) || value.version !== 1 || !['source-actor', 'stable-actor', 'motif-role', 'cohort-rank', 'global'].includes(value.kind)) throw new Error('Unknown versioned physical target selector.');

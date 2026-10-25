@@ -5,7 +5,7 @@ import { normalizeJunctionRequest, applyJunctionRequest, normalizeJunctionDefini
 import { normalizeTerrainCommand, planTerrainCommand, applyTerrainPlan } from './TerrainAuthoringAdapter.js';
 import { recordProcgenRecoveryCommand, recordProcgenRecoveryCancellation } from './workstation/ProcgenRecoveryJournal.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
-import { causalRandomDecision } from './workstation/CausalRandom.js';
+import { validateCausalProbabilityPolicy, causalNamespaceSeed, createCausalProbabilityContext, causalPolicyDecision } from './workstation/CausalProbabilityPolicy.js';
 
 const ORIGIN_PRIORITY = Object.freeze({ manual: 0, 'live-controller': 0, replay: 0, layer: 1, ensemble: 1, conductor: 2, 'auto-assist': 3 });
 const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-gesture', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring']);
@@ -32,6 +32,9 @@ const enqueueIntervention = (world, command) => {
   if (state.recentIds.includes(command.id) || state.pending.some(item => item.id === command.id)) {
     return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'duplicate-command' });
   }
+  const probability = validateCausalProbabilityPolicy(command.probability);
+  if (probability && !['assign-worker', 'place-blocker', 'release-blocker', 'junction-request'].includes(command.kind)) throw new Error('Conditional physical branching permits only owned worker/blocker/junction affordances.');
+  if (probability?.conditions.some(condition => !['crowdCellCount', 'actorAction', 'terrainSolidBelow'].includes(condition.descriptor))) throw new Error('Physical branch conditions require current local affordance descriptors.');
   const causality = command.causality == null ? null : validateFeedbackCausality(command.causality);
   if (command.eligibilityUntilTick != null && (!causality || !Number.isSafeInteger(command.eligibilityUntilTick) || command.eligibilityUntilTick < (command.applyAtTick ?? world.tickIndex + 1) || command.eligibilityUntilTick > world.tickIndex + 601)) throw new Error('Invalid physical eligibility deadline.');
   const parameters = {};
@@ -75,7 +78,7 @@ const enqueueIntervention = (world, command) => {
     applyAtTick: command.applyAtTick ?? world.tickIndex + 1, ...(command.kind === 'junction-request' ? { requestedBoundaryTick: command.applyAtTick ?? world.tickIndex + 1 } : {}), origin: command.origin ?? 'manual',
     expectedStateRevision: command.expectedStateRevision ?? null, transactionId: command.transactionId ?? null,
     coalesceKey: command.coalesceKey ?? null,
-    probability01: command.probability01 ?? 1, sequence: state.sequence + 1 };
+    ...(probability ? { probability } : {}), probability01: command.probability01 ?? 1, sequence: state.sequence + 1 };
   const entry = Object.freeze({ ...draft, storageBytes: JSON.stringify(draft).length * 2 + 256 });
   const replaceJunction = entry.kind === 'junction-request' && entry.parameters.request.coalesce || entry.kind === 'junction-define' && entry.parameters.definition.replacePending;
   const replacing = new Set();
@@ -133,6 +136,7 @@ const applyInterventions = world => {
   state.pending = state.pending.filter(command => command.applyAtTick > world.tickIndex); state.pendingBytes = state.pending.reduce((sum, value) => sum + commandStorageBytes(value), 0);
   if (!due.length) return;
   const actors = new Map(world.actors.map(actor => [actor.id, actor])), claimed = new Map();
+  const probabilityContext = due.some(command => command.probability) ? createCausalProbabilityContext({ worldId: world.worldId, generation: world.generation, snapshot: { actors: world.actors.slice(0, 16385).map(actor => ({ actorId: actor.id, x: actor.x, y: actor.y, action: actor.action?.getActionName?.() || actor.action?.actionName || null, birthCohortId: actor.birthCohortId, removed: actor.removed, disabled: actor.disabled })) } }, { terrainSolidBelow: actor => world.hasGroundAt(actor.x, actor.y + 1) }) : () => ({});
   for (const command of due) {
     const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : command.kind.startsWith('nuke') ? 'nuke:' + (command.target.laneId ?? 'all') : ['terrain-edit', 'junction-request', 'physical-authoring'].includes(command.kind) ? 'terrain-authoring' : command.kind === 'junction-define' ? 'junction-definition:' + command.parameters.definition.junctionId : 'release-policy';
     let status = 'rejected', reason = null, conflictCommandId = null, decision = null, terrainResult = null;
@@ -143,9 +147,9 @@ const applyInterventions = world => {
       status = 'stale'; reason = 'stale-target';
     } else if (claimed.has(resource)) { reason = 'conflicting-command'; conflictCommandId = claimed.get(resource); }
     else {
-      decision = causalRandomDecision({ seed: world.seed, namespace: 'physical-route', mappingId: command.kind,
-        generation: world.generation, stableCauseId: command.id, drawPurpose: 'apply-intervention', probability01: command.probability01 });
-      if (!decision.accepted) reason = 'policy-not-selected';
+      decision = causalPolicyDecision({ policy: command.probability, seed: causalNamespaceSeed(world.physicalAuthoring?.graph?.randomSeeds, 'physical-route', world.seed), namespace: 'physical-route', mappingId: command.kind,
+        generation: world.generation, stableCauseId: command.id, drawPurpose: 'apply-intervention', probability01: command.probability01, context: { ...probabilityContext({ actorId: actor?.id, birthCohortId: actor?.birthCohortId }), encounterId: ['EncounterBegan', 'RendezvousCompleted'].includes(command.causality?.sourceKind) ? command.causality.sourceOccurrenceId : null } });
+      if (!decision.accepted) reason = decision.reason === 'probability-not-selected' ? 'policy-not-selected' : decision.reason;
       else {
         const previousCommand = actor?._physicalInterventionId ?? null;
         const populationBefore = command.kind.startsWith('set-release-') ? JSON.stringify(world.population) : null;
@@ -202,7 +206,7 @@ const applyInterventions = world => {
     if (status === 'waiting') { state.pending.push(Object.freeze({ ...command, applyAtTick: world.tickIndex + 1, lastWaitReason: reason })); state.pendingBytes += commandStorageBytes(command); }
     if (status === 'waiting' && command.lastWaitReason === reason) continue;
     const junctionId = command.parameters.request?.junctionId ?? command.parameters.definition?.junctionId;
-    const receipt = { commandId: command.id, ...(command.causality ? { causality: command.causality, parentCauseIds: command.causality.parentCauseIds } : {}), ...(FEEDBACK_COMMANDS.includes(command.kind) && ['manual', 'live-controller'].includes(command.origin) && JSON.stringify(command.parameters).length * 2 <= 8192 && (command.parameters.gesture?.lanePhase.length ?? 0) <= 64 ? { requestedCommand: { id: command.id, kind: command.kind, target: command.target, parameters: command.parameters, requestedAt: command.requestedAt, applyAtTick: command.applyAtTick, origin: command.origin } } : {}), ...(junctionId ? { junctionId } : {}), transactionId: command.transactionId, status, appliedTick: world.tickIndex,
+    const receipt = { commandId: command.id, ...(command.causality ? { causality: command.causality, parentCauseIds: command.causality.parentCauseIds } : {}), ...(FEEDBACK_COMMANDS.includes(command.kind) && ['manual', 'live-controller'].includes(command.origin) && JSON.stringify(command.parameters).length * 2 <= 8192 && (command.parameters.gesture?.lanePhase.length ?? 0) <= 64 ? { requestedCommand: { id: command.id, kind: command.kind, target: command.target, parameters: command.parameters, ...(command.probability ? { probability: command.probability } : {}), requestedAt: command.requestedAt, applyAtTick: command.applyAtTick, origin: command.origin } } : {}), ...(junctionId ? { junctionId } : {}), transactionId: command.transactionId, status, appliedTick: world.tickIndex,
       reason, conflictCommandId, origin: command.origin, target: command.target, decision, ...(terrainResult ? { terrain: terrainResult } : {}) };
     remember(state, receipt);
     world.soundEvents.emitPhysicalFact({ kind: status === 'accepted' ? 'CommandApplied' : status === 'waiting' ? 'CommandWaiting' : 'CommandRejected',

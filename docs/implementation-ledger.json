@@ -1444,19 +1444,20 @@
       "requirementUpdatedAt": "2026-10-22T09:00:57Z",
       "requirementSha256": "2f675d4fbe1a89e159d20c49496afe2800540d01f9b1852c6fa2dd4ce457e90a",
       "initialGap": "Keyed CausalRandom namespaces, bounded musical decisions and validated probability-driven physical intervention admission now exist. Per-actor/cohort/encounter identity/reseed policies and migration of terrain/population consumers to the shared versioned contract remain absent; population still uses its separate old mixer.",
-      "state": "in-progress",
+      "state": "implemented-validation-deferred",
       "source": [
-        "js/app/procgen/ReleaseGesture.js",
-        "js/app/procgen/ProcgenPopulationPolicy.js",
-        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/workstation/CausalRandom.js",
+        "js/app/procgen/workstation/CausalProbabilityPolicy.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/ProcgenInterventionCommands.js",
-        "js/app/procgen/workstation/ReleaseGestureView.js",
-        "js/app/procgen/workstation/ProcgenWorkstation.js"
+        "js/app/procgen/ProcgenPopulationPolicy.js",
+        "js/app/procgen/ProcgenTerrainChallenges.js",
+        "js/app/procgen/workstation/CausalReperformance.js"
       ],
       "regressions": [
-        "test/procgen-release-gesture.test.js",
-        "test/release-gesture-view.test.js",
-        "scripts/bench-release-gestures.mjs"
+        "test/procgen-causal-random.test.js",
+        "test/procgen-causal-probability-policy.test.js",
+        "test/fixtures/causal-random-v1.json"
       ],
       "commits": [
         "93a34d32b5f070926d98210783b873f54ab7fe55"
@@ -1468,7 +1469,9 @@
           "summary": "Versioned saved recipe versus explicitly performed canonical command; deterministic population-keyed phases, finite attempted-birth budget, frozen admitted cohorts, locked/adaptive clock, strict capacity/no catch-up, requested/scheduled/actual/missed facts, checkpoint and replay ownership, bounded document-fenced controls. Fixtures/profile unrun. Broader probability migration, feedback and semantic source closure remain tracked independently.",
           "commit": "93a34d32b5f070926d98210783b873f54ab7fe55"
         }
-      ]
+      ],
+      "increment": "scoped-causal-probability-and-namespace-isolation",
+      "implementation": "Fixed UTF-16 vectors in four namespaces; explicit scoped identity/reseed and namespace seeds, bounded local conditional descriptors, music-only observational decisions, canonical actual-affordance physical branches, positive/negative replay evidence with explicit diagnostic cap, source-versioned scout/release/challenge draws. All regression/statistical/runtime validation deferred."
     },
     {
       "number": 1055,
@@ -2449,7 +2452,9 @@
         "test/procgen-swarm-reducer.test.js",
         "scripts/bench-swarm-reducer.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "d1ca066c5ecd7e1368b54ebfe22776f3da51b6ad"
+      ],
       "validation": "deferred-by-request",
       "increment": "semantic-swarm-reduction-and-owned-handover",
       "implementation": "Versioned semantic policy, stable onset neighborhood/action/cohort grouping, authored salience and bounded fairness/windows, four representations, source/count/extrema/loss references, raw-fact isolation, owned held handovers/ends, declared simpler capacity fallbacks, capture/restore and canonical scene editing. Fixtures and reducer-only environment-bound profile are written; all runtime/performance qualification deferred."
@@ -3270,7 +3275,9 @@
         "test/physical-domain-editor.test.js",
         "scripts/bench-phrase-cargo.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {

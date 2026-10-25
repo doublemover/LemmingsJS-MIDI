@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "algorithmVersion": "fnv1a32-avalanche-v1",
+  "reference": "independent UTF-16 FNV-1a + declared 32-bit avalanche",
+  "vectors": [
+    {
+      "input": {
+        "seed": 42,
+        "namespace": "terrain",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "actor:7:contact:10",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 1632093884
+    },
+    {
+      "input": {
+        "seed": 0,
+        "namespace": "terrain",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "cohort:1",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 201526516
+    },
+    {
+      "input": {
+        "seed": "take:alternate",
+        "namespace": "terrain",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "encounter:α:🦊",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 1789781076
+    },
+    {
+      "input": {
+        "seed": 42,
+        "namespace": "population",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "actor:7:contact:10",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 750066225
+    },
+    {
+      "input": {
+        "seed": 0,
+        "namespace": "population",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "cohort:1",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 870465970
+    },
+    {
+      "input": {
+        "seed": "take:alternate",
+        "namespace": "population",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "encounter:α:🦊",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 2418952765
+    },
+    {
+      "input": {
+        "seed": 42,
+        "namespace": "physical-route",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "actor:7:contact:10",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 1018095228
+    },
+    {
+      "input": {
+        "seed": 0,
+        "namespace": "physical-route",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "cohort:1",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 431643742
+    },
+    {
+      "input": {
+        "seed": "take:alternate",
+        "namespace": "physical-route",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "encounter:α:🦊",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 1145145519
+    },
+    {
+      "input": {
+        "seed": 42,
+        "namespace": "musical-response",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "actor:7:contact:10",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 2039161961
+    },
+    {
+      "input": {
+        "seed": 0,
+        "namespace": "musical-response",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "cohort:1",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 3215795252
+    },
+    {
+      "input": {
+        "seed": "take:alternate",
+        "namespace": "musical-response",
+        "mappingId": "fixture",
+        "generation": 7,
+        "stableCauseId": "encounter:α:🦊",
+        "drawPurpose": "respond",
+        "probability01": 0.5
+      },
+      "drawUint32": 4024708467
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { canonicalJournalText, cloneJournalData, hashJournalData, journalError }
 
 const PRESENTATION_WORLD_KEYS = new Set(['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
 const equal = (left, right) => canonicalJournalText(left).text === canonicalJournalText(right).text;
-const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-1' } = {}) => {
+const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-2' } = {}) => {
   const reasons = [];
   if (saved?.generator !== generator || ![1, 2].includes(saved?.version)) reasons.push('unsupported-generator-or-version');
   if (!Array.isArray(saved?.assets)) reasons.push('missing-asset-identities');
@@ -108,7 +108,7 @@ const compareProcgenPhysicsCheckpoints = async (expected, actual) => {
 };
 
 const migrateProcgenCheckpoint = saved => {
-  if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-1') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
+  if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-2') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
   const candidate = structuredClone(saved);
   if (candidate.version === 1) for (const node of candidate.graph?.nodes || []) if (node.type === 'Float32Array' || node.type === 'Float64Array') {
     node.values = node.values.map(value => {
