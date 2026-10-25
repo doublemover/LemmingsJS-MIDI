@@ -1,3 +1,4 @@
+import { createTravelColorationView } from '../../midi-ui/TravelColorationView.js';
 import { createCrossExcitationView } from '../../midi-ui/CrossExcitationView.js';
 import { sealMidiProjectSnapshot } from '../../../midi/project/MidiProjectSnapshot.js';
 import { createPhysicalDomainEditor } from './PhysicalDomainEditor.js';
@@ -134,7 +135,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null, nativeSoundSelection = null;
   let masterCapture = null;
-  let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, physicalJunctionView = null, junctionRequestSerial = 0;
+  let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -1370,6 +1371,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (causalTake && causalTake.recordInput({ version: 1, kind: 'intervention-cancel', commandId }, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit the cancellation.');
       return world.cancelIntervention(commandId);
     },
+    openTravelColoration() {
+      if (disposed || !physicalPlayback) { status('Physical travel color is unavailable.'); return; }
+      travelColorationView ||= createTravelColorationView({ document, getPlayback: () => physicalPlayback,
+        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+      travelColorationView.open();
+    },
     openCrossExcitation() {
       if (disposed || !physicalPlayback) { status('Physical lane effects are unavailable.'); return; }
       crossExcitationView ||= createCrossExcitationView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
@@ -1378,7 +1385,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     openQuarryEcho() {
       if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
-      quarryEchoView ||= createQuarryEchoView({ document, window, onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
+      quarryEchoView ||= createQuarryEchoView({ document, window, onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
         saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
       quarryEchoView.open();
     },
@@ -1690,7 +1697,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
-    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); physicalJunctionView?.suspend();
+    physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); physicalJunctionView?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
@@ -1776,6 +1783,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
         { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },
+        { name: 'travel-colour-view', run: () => travelColorationView?.dispose() },
         { name: 'cross-excitation-view', run: () => crossExcitationView?.dispose() },
         { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },

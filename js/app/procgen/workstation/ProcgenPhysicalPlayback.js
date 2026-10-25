@@ -1,3 +1,5 @@
+import { createTravelColorationRecipe } from '../../../midi/content/TravelColorationRecipes.js';
+import { createTravelEffectMotion } from './TravelEffectMotion.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
 import { createLaneMixState } from './LaneMixState.js';
 import { createAudioClockBridge } from './AudioClockBridge.js';
@@ -80,6 +82,22 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
     onReceipt: receipt => { latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
+  const travelEffects = createTravelEffectMotion({ resourceBudget, update: (id, values, frame, expected) => session.updateEffectGraph(id, values, frame, expected),
+    bypass: (mode, expected) => session?.setEffectBypass?.(mode, expected), toFrame: clock.toTargetFrame, onReceipt });
+  const travelEffectSources = () => {
+    const instruments = new Map(getGraph().instruments.filter(instrument => instrument.articulation?.sustain && ['signedX', 'signedY'].includes(instrument.articulation.orientation)).map(instrument => [instrument.id, instrument]));
+    return (engine?.snapshot().active || []).filter(voice => instruments.has(voice.instrumentId)).slice(0, 64);
+  };
+  const prepareTravelEffect = async ({ voiceId, generation, ...parameters }, options = {}) => {
+    if (disposed || !session?.prepareEffectGraph || !travelEffectSources().some(voice => voice.voiceId === voiceId && voice.generation === generation)) throw new Error('Choose an active sustained signed-distance voice before preparing travel color.');
+    const model = createTravelColorationRecipe(parameters), state = await session.prepareEffectGraph(model.graph, { ...options, isCurrent: () => !disposed && (!options.isCurrent || options.isCurrent()) });
+    const expected = { graphDefinitionHash: state.activeGraph.hash, ownerRouteRevision: state.revision };
+    try {
+      const source = travelEffectSources().find(voice => voice.voiceId === voiceId && voice.generation === generation);
+      if (!source || disposed) throw new Error('The selected physical travel voice ended during preparation.');
+      travelEffects.bind({ voiceId, generation, instrumentId: source.instrumentId, control: model.control, expected }); return Object.freeze({ model, state });
+    } catch (error) { try { session.setEffectBypass('tail', expected); } catch {} throw error; }
+  };
   let engine;
   try { engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
@@ -88,6 +106,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
     deliver: (intents, batch) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
+      travelEffects.consume(intents, executionEpoch);
       for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
   engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
@@ -161,6 +180,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionSerial++; previousGeneration = null; executionEpoch = null;
     leaseUntil = null; leaseEpoch = null; leaseContext = null;
     return createProcgenRetirementScope().retire([
+      { name: 'travel-effect-control', run: () => travelEffects.clear('playback-stopped', true) },
       { name: 'display-observation', run: stopDisplay },
       { name: 'dispatch-generation', run: () => { if (generation !== null) return dispatcher.cancelGeneration(generation, epoch); } },
       { name: 'audio-session', run: () => session?.stop?.() },
@@ -172,21 +192,21 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     disposed = true;
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
-      { name: 'playback-stop', run: stop }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'playback-stop', run: stop }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
-  return { engine, processBatch, stop, dispose, synchronizeLaneMix, laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
+  return { engine, processBatch, stop, dispose, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
     prepareEffectGraph: (definition, options) => session?.prepareEffectGraph ? session.prepareEffectGraph(definition, options) : Promise.reject(new Error('Physical owner effect routing is unavailable.')),
     updateEffectGraph: (nodeId, values, frame, expected) => { if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.'); return session.updateEffectGraph(nodeId, values, frame, expected); },
-    setEffectBypass: mode => session?.setEffectBypass?.(mode), inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
+    setEffectBypass: (mode, expected) => session?.setEffectBypass?.(mode, expected), inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: !!session?.getState().enabled, accepted, rejected,
-      clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
+      motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

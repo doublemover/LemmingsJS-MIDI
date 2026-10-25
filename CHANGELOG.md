@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add actor-travel comb/flange controls backed by bounded cubic delay, exact transition state and source-clock-qualified motion bindings.
+
 - Add prepared Tools Talk, Rust Bloom, Footstep Air and Mirror Breath lane interactions, including shared live/offline stereo ring DSP and owned state transfers.
 
 - Publish owned live lane pre/post-fader source taps across native and Worklet instruments, with bounded shared donor routing and explicit source retirement.

@@ -11,26 +11,27 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 export class BoundedDelayKernel {
   constructor({ sampleRate, maxDelayFrames, delayFrames, mode = 'glide', transitionFrames = 128, maximumSlew = 0.25, feedback = 0.3,
-    feedbackMaximum = 0.7, feedbackLowpassHz = 6000, feedbackHighpassHz = 120, wet = 0.2 } = {}) {
+    feedbackMaximum = 0.7, feedbackLowpassHz = 6000, feedbackHighpassHz = 120, wet = 0.2, interpolation = 'linear', jumpPolicy = 'reject' } = {}) {
     if (!Number.isSafeInteger(sampleRate) || !finite(sampleRate, 8000, 192000) || !Number.isSafeInteger(maxDelayFrames) || !finite(maxDelayFrames, 2, sampleRate * 3) ||
-        !finite(delayFrames, 1, maxDelayFrames) || !['glide', 'jump'].includes(mode) || !Number.isSafeInteger(transitionFrames) ||
+        !['linear', 'lagrange3'].includes(interpolation) || !['reject', 'coalesce-latest'].includes(jumpPolicy) || interpolation === 'lagrange3' && feedbackMaximum > 0.35 || !finite(delayFrames, interpolation === 'lagrange3' ? 2 : 1, maxDelayFrames) || !['glide', 'jump'].includes(mode) || !Number.isSafeInteger(transitionFrames) ||
         !finite(transitionFrames, 2, sampleRate * 0.2) || !finite(maximumSlew, 0.00001, 0.25) || !finite(feedbackMaximum, 0, 0.7) || !finite(feedback, -feedbackMaximum, feedbackMaximum) || !finite(wet, 0, 1) ||
         !finite(feedbackLowpassHz, 200, sampleRate * 0.4) || !finite(feedbackHighpassHz, 20, Math.min(1000, feedbackLowpassHz))) throw new TypeError('Invalid bounded delay profile.');
+    this.interpolation = interpolation; this.minimumDelayFrames = interpolation === 'lagrange3' ? 2 : 1; this.jumpPolicy = jumpPolicy; this.pendingDelay = 0; this.coalescedTransitions = 0;
     this.sampleRate = sampleRate; this.maxDelayFrames = maxDelayFrames; this.mode = mode; this.transitionFrames = transitionFrames; this.maximumSlew = maximumSlew;
     this.stride = maxDelayFrames + 4; this.buffer = new Float32Array(this.stride * 2); this.filter = new Float64Array(6);
     this.write = 0; this.frame = 0; this.delay = delayFrames; this.targetDelay = delayFrames; this.oldDelay = delayFrames; this.transition = 0;
     this.feedbackMaximum = feedbackMaximum; this.feedback = feedback; this.wet = wet; this.slew = 1 - Math.exp(-1 / (0.008 * sampleRate));
     this.feedbackLowpassHz = feedbackLowpassHz; this.lp = this.targetLowpass = 1 - Math.exp(-2 * Math.PI * feedbackLowpassHz / sampleRate); this.hp = Math.exp(-2 * Math.PI * feedbackHighpassHz / sampleRate);
     this.faults = 0; this.rejectedTransitions = 0; this.leftSample = 0; this.rightSample = 0; this.muted = false; this.inputEnabled = true;
-    const configuration = { revision: DELAY_KERNEL_REVISION, sampleRate, maxDelayFrames, delayFrames, mode, transitionFrames, maximumSlew, feedback, feedbackMaximum, feedbackLowpassHz, feedbackHighpassHz, wet };
+    const configuration = { revision: DELAY_KERNEL_REVISION, sampleRate, maxDelayFrames, delayFrames, mode, transitionFrames, maximumSlew, feedback, feedbackMaximum, feedbackLowpassHz, feedbackHighpassHz, wet, interpolation, jumpPolicy };
     this.stateIdentity = JSON.stringify(configuration);
-    const numberFields = ['write', 'frame', 'delay', 'targetDelay', 'oldDelay', 'transition', 'feedback', 'wet', 'lp', 'targetLowpass', 'feedbackLowpassHz', 'faults', 'rejectedTransitions', 'leftSample', 'rightSample'];
+    const numberFields = ['write', 'frame', 'delay', 'targetDelay', 'oldDelay', 'transition', 'feedback', 'wet', 'lp', 'targetLowpass', 'feedbackLowpassHz', 'faults', 'rejectedTransitions', 'pendingDelay', 'coalescedTransitions', 'leftSample', 'rightSample'];
     this.stateTransfer = createOwnedEffectState({ kernel: this, identity: this.stateIdentity, arrays: [this.buffer, this.filter],
       scalars: [...numberFields.map(name => ({ name, type: 'number' })), ...['muted', 'inputEnabled'].map(name => ({ name, type: 'boolean' }))],
       validate: ({ named, planes }) => {
         const integer = (name, lo, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(named(name)) && finite(named(name), lo, hi);
-        if (!integer('write', 0, this.stride - 1) || !integer('frame', 0) || !integer('transition', 0, this.transitionFrames) || !integer('faults', 0) || !integer('rejectedTransitions', 0) ||
-            !['delay', 'targetDelay', 'oldDelay'].every(name => finite(named(name), 1, this.maxDelayFrames)) || !finite(named('feedback'), -this.feedbackMaximum, this.feedbackMaximum) || !finite(named('wet'), 0, 1) ||
+        if (!integer('write', 0, this.stride - 1) || !integer('frame', 0) || !integer('transition', 0, this.transitionFrames) || !integer('faults', 0) || !integer('rejectedTransitions', 0) || !integer('coalescedTransitions', 0) || !(named('pendingDelay') === 0 || this.mode === 'jump' && named('transition') > 0 && this.jumpPolicy === 'coalesce-latest' && finite(named('pendingDelay'), this.minimumDelayFrames, this.maxDelayFrames)) ||
+            !['delay', 'targetDelay', 'oldDelay'].every(name => finite(named(name), this.minimumDelayFrames, this.maxDelayFrames)) || !finite(named('feedback'), -this.feedbackMaximum, this.feedbackMaximum) || !finite(named('wet'), 0, 1) ||
             !finite(named('lp'), 0, 1) || !finite(named('targetLowpass'), 0, 1) || !finite(named('feedbackLowpassHz'), 200, this.sampleRate * 0.4) ||
             Math.abs(named('targetLowpass') - (1 - Math.exp(-2 * Math.PI * named('feedbackLowpassHz') / this.sampleRate))) > Number.EPSILON * 4 ||
             !finite(named('leftSample'), -64, 64) || !finite(named('rightSample'), -64, 64) || this.mode === 'glide' && named('transition') !== 0) throw new TypeError('Invalid delay state frontier.');
@@ -41,9 +42,9 @@ export class BoundedDelayKernel {
   snapshotInto(bytes) { return this.stateTransfer.write(bytes); }
   restoreFrom(bytes) { return this.stateTransfer.restore(bytes); }
   setDelay(value) {
-    if (!finite(value, 1, this.maxDelayFrames)) return false;
-    if (value === this.targetDelay) return true;
-    if (this.mode === 'jump' && this.transition) { this.rejectedTransitions++; return false; }
+    if (!finite(value, this.minimumDelayFrames, this.maxDelayFrames)) return false;
+    if (value === this.targetDelay) { if (this.jumpPolicy === 'coalesce-latest') this.pendingDelay = 0; return true; }
+    if (this.mode === 'jump' && this.transition) { if (this.jumpPolicy === 'coalesce-latest') { this.pendingDelay = value; this.coalescedTransitions++; return true; } this.rejectedTransitions++; return false; }
     this.targetDelay = value;
     if (this.mode === 'jump') { this.oldDelay = this.delay; this.transition = this.transitionFrames; }
     return true;
@@ -55,9 +56,14 @@ export class BoundedDelayKernel {
   read(channel, delay) {
     let cursor = this.write - delay; if (cursor < 0) cursor += this.stride;
     const first = Math.floor(cursor), fraction = cursor - first, base = channel * this.stride, second = first + 1 === this.stride ? 0 : first + 1;
+    if (this.interpolation === 'lagrange3') {
+      const before = first === 0 ? this.stride - 1 : first - 1, after = second + 1 === this.stride ? 0 : second + 1, f = fraction;
+      return this.buffer[base + before] * (-f * (1 - f) * (2 - f) / 6) + this.buffer[base + first] * ((1 + f) * (1 - f) * (2 - f) / 2) +
+        this.buffer[base + second] * ((1 + f) * f * (2 - f) / 2) - this.buffer[base + after] * ((1 + f) * f * (1 - f) / 6);
+    }
     return this.buffer[base + first] + (this.buffer[base + second] - this.buffer[base + first]) * fraction;
   }
-  clear() { this.buffer.fill(0); this.filter.fill(0); this.transition = 0; this.delay = this.targetDelay; this.oldDelay = this.delay; this.leftSample = this.rightSample = 0; }
+  clear() { this.buffer.fill(0); this.filter.fill(0); this.transition = 0; this.pendingDelay = 0; this.delay = this.targetDelay; this.oldDelay = this.delay; this.leftSample = this.rightSample = 0; }
   panic() { this.clear(); this.muted = true; this.inputEnabled = false; }
   sample(left, right, feedback = this.feedback, wet = this.wet) {
     if (!Number.isFinite(left) || !Number.isFinite(right) || !finite(feedback, -this.feedbackMaximum, this.feedbackMaximum) || !finite(wet, 0, 1)) { this.faults++; this.panic(); this.frame++; return; }
@@ -75,12 +81,12 @@ export class BoundedDelayKernel {
       const output = this.muted ? 0 : input * (1 - this.wet) + delayed * this.wet;
       if (channel) this.rightSample = output; else this.leftSample = output;
     }
-    if (this.transition && --this.transition === 0) this.delay = this.targetDelay;
+    if (this.transition && --this.transition === 0) { this.delay = this.targetDelay; if (this.pendingDelay) { const next = this.pendingDelay; this.pendingDelay = 0; this.setDelay(next); } }
     if (++this.write === this.stride) this.write = 0; this.frame++;
   }
-  diagnostics() { return { revision: DELAY_KERNEL_REVISION, frame: this.frame, delayFrames: this.delay, targetDelayFrames: this.targetDelay, mode: this.mode,
+  diagnostics() { return { revision: DELAY_KERNEL_REVISION, frame: this.frame, delayFrames: this.delay, targetDelayFrames: this.targetDelay, mode: this.mode, interpolation: this.interpolation, interpolationOrder: this.interpolation === 'lagrange3' ? 3 : 1, minimumDelayFrames: this.minimumDelayFrames, jumpPolicy: this.jumpPolicy, pendingDelayFrames: this.pendingDelay, coalescedTransitions: this.coalescedTransitions,
     transitionRemainingFrames: this.transition, transitionGainLaw: 'linear-correlated-unity-sum', maximumDelaySlewFramesPerSample: this.maximumSlew,
-    interpolation: 'linear-two-sample', feedbackBound: this.feedbackMaximum, stateAmplitudeFaultBound: 32, stateBytes: this.buffer.byteLength + this.filter.byteLength,
+    interpolationSupportFrames: this.interpolation === 'lagrange3' ? 4 : 2, interpolationMaximumL1: this.interpolation === 'lagrange3' ? 1.25 : 1, feedbackBound: this.feedbackMaximum, stateAmplitudeFaultBound: 32, stateBytes: this.buffer.byteLength + this.filter.byteLength,
     processingLatencyFrames: 0, intentionalDelayFrames: this.delay, faults: this.faults, rejectedTransitions: this.rejectedTransitions,
     feedbackLowpassHz: this.feedbackLowpassHz, feedbackToneSmoothing: '8ms-one-pole-in-coefficient-domain',
     muted: this.muted, inputEnabled: this.inputEnabled, quality: 'implementation-awaiting-alias-impulse-and-cost-qualification' }; }

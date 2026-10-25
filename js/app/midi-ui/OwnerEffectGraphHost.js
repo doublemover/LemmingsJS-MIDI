@@ -82,7 +82,8 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     })();
     pending.add(operation); report(); return operation.promise;
   };
-  const bypass = selected => {
+  const bypass = (selected, expected = null) => {
+    if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect bypass belongs to an earlier owner route.');
     if (!['neutral', 'tail', 'mute', 'panic'].includes(selected)) throw new TypeError('Unknown effect bypass mode.');
     if (disposed) throw failure('effect-owner-disposed', 'The effect owner is closed.');
     serial++; for (const operation of pending) operation.controller.abort(failure('effect-preparation-canceled', 'Effect bypass canceled the pending preparation.'));

@@ -192,9 +192,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
           configurationKey: nonlinear ? nonlinearChainIdentity(entry.nonlinear) : null,
           parameterData: nonlinear ? { driveDb: p.driveDb, outputTrim01: p.outputTrim01 } : { delayFrames: p.delaySeconds * context.sampleRate, feedback: p.feedback, wet: p.wet01, feedbackLowpassHz: p.feedbackLowpassHz },
           processorOptions: nonlinear ? { parameters: p } : { maxDelayFrames: Math.ceil(p.maxDelaySeconds * context.sampleRate), delayFrames: p.delaySeconds * context.sampleRate,
-            transitionFrames: Math.max(2, Math.round(p.transitionSeconds * context.sampleRate)), mode: p.mode, maximumSlew: p.maximumSlew,
+            transitionFrames: Math.max(2, Math.round(p.transitionSeconds * context.sampleRate)), mode: p.mode, interpolation: p.interpolation, jumpPolicy: p.jumpPolicy, maximumSlew: p.maximumSlew,
             feedback: p.feedback, feedbackMaximum: p.feedbackMaximum, feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 } });
-      } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'modulated-gain' ? 0 : entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
+      } else { value = node(context.createGain()); value.gain.setValueAtTime(entry.kind === 'modulated-gain' ? 0 : entry.kind === 'polarity-invert' ? -1 : entry.kind === 'gain' ? entry.parameters.gain01 : 1, context.currentTime); }
       instances.set(entry.id, value); nodeOutputs.set(entry.id, outputValue || value); controls.set(entry.id, Object.freeze({ ...entry.parameters }));
       if (entry.kind === 'gain') gainControls.set(entry.id, createSmoothedAudioParameter({ param: value.gain, initialValue: entry.parameters.gain01, startTime: context.currentTime, smoothingSeconds: 0.008, maxEvents: 128 }));
       if (entry.kind === 'sidechain-in') { value.channelCount = entry.parameters.inputLayout === 'audioMono' ? 1 : 2; value.channelCountMode = 'explicit'; value.channelInterpretation = 'discrete'; sidechainInputs.set(entry.id, value); }
@@ -228,7 +228,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     if (entry?.kind === 'gain') {
       if (Object.keys(values).some(key => key !== 'gain01') || !Number.isFinite(next.gain01) || next.gain01 < 0 || next.gain01 > entry.parameters.gainMaximum01 || !gainControls.get(nodeId).canInsert(now)) throw failure('invalid-effect-control', 'Gain control exceeds its admitted amplitude or queue domain.');
     } else if (entry?.kind === 'feedback-delay') {
-      if (Object.keys(values).some(key => !['delaySeconds', 'feedback', 'wet01', 'feedbackLowpassHz'].includes(key)) || !Number.isFinite(next.delaySeconds) || next.delaySeconds < 1 / context.sampleRate || next.delaySeconds > entry.parameters.maxDelaySeconds ||
+      if (Object.keys(values).some(key => !['delaySeconds', 'feedback', 'wet01', 'feedbackLowpassHz'].includes(key)) || !Number.isFinite(next.delaySeconds) || next.delaySeconds < (entry.parameters.interpolation === 'lagrange3' ? 2 : 1) / context.sampleRate || next.delaySeconds > entry.parameters.maxDelaySeconds ||
           !Number.isFinite(next.feedback) || Math.abs(next.feedback) > entry.parameters.feedbackMaximum || !Number.isFinite(next.wet01) || next.wet01 < 0 || next.wet01 > 1 || !Number.isFinite(next.feedbackLowpassHz) || next.feedbackLowpassHz < 200 || next.feedbackLowpassHz > context.sampleRate * 0.4) throw failure('invalid-effect-control', 'Delay control exceeds its admitted range.');
       for (const [key, parameter, factor] of [['delaySeconds', 'delayFrames', context.sampleRate], ['feedback', 'feedback', 1], ['wet01', 'wet', 1], ['feedbackLowpassHz', 'feedbackLowpassHz', 1]]) if (values[key] != null) {
         const adapter = parameterControls.get(nodeId)?.get(parameter); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'This effect parameter has no remaining bounded future automation slots.'); changes.push([adapter, next[key] * factor]);

@@ -3098,3 +3098,43 @@ Authored fixtures cover all recipes/rates, real ring sidebands and stereo polari
 unchanged aligned dry output, exact state continuation, invalid/foreign state,
 source loss and Panic. Runtime, browser, spectral/listening and cost qualification
 remain deliberately deferred with the implementation-first backlog pass.
+
+
+### Continuation 152 — actual travel-driven comb/flange and bounded cubic delay (#1188, #1211)
+
+The shared delay now offers an explicit third-order four-tap Lagrange realization,
+with a two-sample minimum and support beyond its nominal ring bound. Its maximum
+interpolation L1 is 1.25. The cubic profile caps feedback at 0.35 and includes the
+filter/interpolation absolute bound in graph gain and conservative tail estimates.
+Linear interpolation keeps its own declared profile. Jump transitions can reject
+busy requests or coalesce exactly one latest target behind the current two taps;
+returning to the current target cancels that pending request. State cuts retain
+the complete fractional transition/pending frontier. The processor revision is
+bumped; neither cubic interpolation nor glide claims alias-free modulation.
+
+Rail Comb and Return Flange are original prepared recipes with 0.8–6 ms and
+0.4–8 ms ranges, convex dry/wet mixing, optional explicit polarity inversion,
+128–512 world-pixel sweeps, conservative feedback and chosen glide/jump behavior.
+Their control reads the existing sustained signed-distance articulation intents
+from the canonical travel accumulator. No private distance accumulator, free-running
+LFO, additional musical begin or camera-derived motion is introduced. Idle facts
+send no repeated control. Reversal/wrap use a smooth spatial curve; discontinuities
+end the source binding or require explicit prepared rebind. Source end disarms
+motion and holds the last timbre; the owner rack persists until explicit bypass,
+replacement or retirement. Known smoothing and admitted delay contents may finish.
+
+The Travel color surface is reachable from Quarry Echo, lists current eligible
+physical voices, and stages actor binding together with the real effect graph.
+A voice that ends during preparation cannot publish an unattended binding. All
+updates retain the exact owner graph token, physical source IDs, signed distance
+and the shared source/audio-clock frame. Delivery receipts are API scheduling
+evidence and can be captured with the take; static saved-rack revoice does not
+claim to replay these gestures. Stop/dispose releases the motion owner, and stale
+control retirement cannot bypass another surface's later effect graph.
+
+Authored fixtures exercise cubic impulse weights at 44.1/48/96 kHz, minimum and
+maximum taps, repeated/coalesced jumps, mid-transition restore, wrap/reversal,
+selected-voice isolation and actual CausalMusicEngine travel intents without extra
+notes. They remain unrun. Allpass-notch/through-zero modes, full gesture replay,
+browser alias/cost/listening qualification and the remaining issue backlog remain
+separate work; no completed acceptance is inferred from this implementation.

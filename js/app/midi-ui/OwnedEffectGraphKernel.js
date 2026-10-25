@@ -21,7 +21,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     const p = entry.parameters, at = index * 4; let kernel = null;
     if (entry.kind === 'feedback-delay') {
       controls.set([p.delaySeconds * sampleRate, p.feedback, p.wet01, p.feedbackLowpassHz], at);
-      kernel = new BoundedDelayKernel({ sampleRate, maxDelayFrames: Math.ceil(p.maxDelaySeconds * sampleRate), delayFrames: p.delaySeconds * sampleRate, mode: p.mode,
+      kernel = new BoundedDelayKernel({ sampleRate, maxDelayFrames: Math.ceil(p.maxDelaySeconds * sampleRate), delayFrames: p.delaySeconds * sampleRate, mode: p.mode, interpolation: p.interpolation, jumpPolicy: p.jumpPolicy,
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
@@ -48,7 +48,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008));
     } else if (entry.kind === 'feedback-delay') {
       if (keys.some(key => !['delaySeconds', 'feedback', 'wet01', 'feedbackLowpassHz'].includes(key)) ||
-          next.delaySeconds != null && !finite(next.delaySeconds, 1 / sampleRate, p.maxDelaySeconds) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) ||
+          next.delaySeconds != null && !finite(next.delaySeconds, (p.interpolation === 'lagrange3' ? 2 : 1) / sampleRate, p.maxDelaySeconds) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) ||
           next.wet01 != null && !finite(next.wet01, 0, 1) || next.feedbackLowpassHz != null && !finite(next.feedbackLowpassHz, 200, sampleRate * 0.4)) fail('invalid-effect-control', 'Delay control exceeds its immutable profile.');
       if (next.delaySeconds != null) { const target = next.delaySeconds * sampleRate; if (!kernel.setDelay(target)) fail('effect-transition-busy', 'The two-tap delay transition is still active.'); controls[at] = target; }
       if (next.feedback != null) controls[at + 1] = next.feedback;
@@ -84,6 +84,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, audioPresent); a = kernel.output; b = 0; }
       else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
       else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
+      else if (entry.kind === 'polarity-invert') { a = -a; b = -b; }
       else if (entry.kind === 'mono-to-stereo') b = a;
       else if (entry.kind === 'stereo-to-mono') { a = (a + b) * 0.5; b = 0; }
       else if (entry.kind === 'gain') {

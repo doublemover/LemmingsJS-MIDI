@@ -14,7 +14,7 @@ const finite = (value, lo, hi) => Number.isFinite(value) && value >= lo && value
 const fail = message => { throw Object.assign(new Error(message), { name: 'EffectGraphError', code: 'invalid-effect-graph' }); };
 const keys = (object, allowed) => { if (!object || Object.getPrototypeOf(object) !== Object.prototype || Object.keys(object).some(key => !allowed.includes(key))) fail('Unknown effect graph field or invalid record.'); };
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-const delayDefaults = Object.freeze({ maxDelaySeconds: 1, delaySeconds: 0.24, mode: 'glide', transitionSeconds: 0.015, maximumSlew: 0.25,
+const delayDefaults = Object.freeze({ maxDelaySeconds: 1, delaySeconds: 0.24, mode: 'glide', interpolation: 'linear', jumpPolicy: 'reject', transitionSeconds: 0.015, maximumSlew: 0.25,
   feedback: 0.3, feedbackMaximum: 0.7, feedbackLowpassHz: 6000, feedbackHighpassHz: 120, wet01: 0.2 });
 
 export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBytes = 64 * 1048576 } = {}) {
@@ -28,7 +28,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0, nonlinearCount = 0;
   for (const entry of graph.nodes) {
     keys(entry, ['id', 'kind', 'parameters', 'impulse']);
-    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'stereo-to-mono', 'multiband-vocoder', 'ring-modulator'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
+    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'stereo-to-mono', 'polarity-invert', 'multiband-vocoder', 'ring-modulator'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
     let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, vocoder = null, ring = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
     if (entry.kind === 'sidechain-in') {
@@ -45,11 +45,12 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     } else if (entry.kind === 'gain') { keys(entry.parameters, ['gain01', 'gainMaximum01']); if (!finite(entry.parameters.gainMaximum01 ?? 2, 0, 2) || !finite(entry.parameters.gain01, 0, entry.parameters.gainMaximum01 ?? 2)) fail('Effect gain exceeds its linear amplitude domain.'); parameters = { gain01: entry.parameters.gain01, gainMaximum01: entry.parameters.gainMaximum01 ?? 2 }; }
     else if (entry.kind === 'feedback-delay') {
       keys(entry.parameters, Object.keys(delayDefaults)); parameters = { ...delayDefaults, ...entry.parameters };
-      if (!finite(parameters.maxDelaySeconds, 2 / sampleRate, 3) || !finite(parameters.delaySeconds, 1 / sampleRate, parameters.maxDelaySeconds) ||
+      if (!finite(parameters.maxDelaySeconds, 2 / sampleRate, 3) || !['linear', 'lagrange3'].includes(parameters.interpolation) || !['reject', 'coalesce-latest'].includes(parameters.jumpPolicy) || !finite(parameters.delaySeconds, (parameters.interpolation === 'lagrange3' ? 2 : 1) / sampleRate, parameters.maxDelaySeconds) ||
           !['glide', 'jump'].includes(parameters.mode) || !finite(parameters.transitionSeconds, 2 / sampleRate, 0.2) || !finite(parameters.maximumSlew, 0.00001, 0.25) ||
-          !finite(parameters.feedbackMaximum, 0, 0.7) || !finite(parameters.feedback, -parameters.feedbackMaximum, parameters.feedbackMaximum) || !finite(parameters.feedbackLowpassHz, 200, sampleRate * 0.4) ||
+          !finite(parameters.feedbackMaximum, 0, parameters.interpolation === 'lagrange3' ? 0.35 : 0.7) || !finite(parameters.feedback, -parameters.feedbackMaximum, parameters.feedbackMaximum) || !finite(parameters.feedbackLowpassHz, 200, sampleRate * 0.4) ||
           !finite(parameters.feedbackHighpassHz, 20, Math.min(1000, parameters.feedbackLowpassHz)) || !finite(parameters.wet01, 0, 1)) fail('Delay parameters exceed their bounded processor profile.');
-      const repeats = parameters.feedbackMaximum === 0 ? 1 : Math.ceil(Math.log(0.001) / Math.log(parameters.feedbackMaximum)) + 1;
+      const feedbackDecay = parameters.feedbackMaximum * (parameters.interpolation === 'lagrange3' ? 2.5 : 1);
+      const repeats = feedbackDecay === 0 ? 1 : Math.ceil(Math.log(0.001) / Math.log(feedbackDecay)) + 1;
       maximumTailFrames = Math.ceil((repeats * parameters.maxDelaySeconds + 1) * sampleRate);
       bytes = (Math.ceil(parameters.maxDelaySeconds * sampleRate) + 4) * 8 + 6 * 8;
     } else if (entry.kind === 'nonlinear-chain') {
@@ -101,7 +102,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     for (const edge of inputs) edge.alignmentFrames = graph.latencyPolicy === 'align-declared' && isAudioEffectPort(node.ports.inputs[edge.to.port]) && (node.kind !== 'multiband-vocoder' || edge.to.port === 'carrierAudio') ? arrival - latency.get(edge.from.nodeId) : 0;
     const amplitudeInputs = node.kind === 'ring-modulator' ? signalInputs.filter(edge => edge.to.port === 'carrierAudio') : signalInputs;
     const inputBound = sourceNode ? 1 : amplitudeInputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
-    const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : node.kind === 'convolution-native' ? node.impulse.maximumLinearGain : 1;
+    const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * (node.parameters.interpolation === 'lagrange3' ? 2.5 : 1.1)) : node.kind === 'convolution-native' ? node.impulse.maximumLinearGain : 1;
     amplitude.set(key, ['envelope-detector', 'envelope-mapping'].includes(node.kind) ? 1 : node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * (node.ring?.maximumLinearGain ?? node.vocoder?.maximumLinearGain ?? gainBound)); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
     latency.set(key, arrival === null || node.processingLatencyFrames === null ? null : arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId) + edge.alignmentFrames)) + node.maximumTailFrames);
     if (sourceNode || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);

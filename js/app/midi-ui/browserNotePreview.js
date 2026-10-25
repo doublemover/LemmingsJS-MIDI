@@ -342,7 +342,7 @@ class BrowserNotePreview {
         if (session.disposed || !this._ownerReady(id)) throw new Error('This local effect owner is not active.');
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
-      setEffectBypass: mode => this._channels.get(id + ':0')?.effects?.bypass(mode) || null,
+      setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
