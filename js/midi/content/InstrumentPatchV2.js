@@ -1,3 +1,4 @@
+import { resolveCircularSpectrum, circularSpectrumParameters } from './CircularSpectrum.js';
 import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
 import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE, NATIVE_SAMPLE_MAP_PROFILE } from './SampleInstrumentMap.js';
@@ -100,6 +101,10 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     visiting.delete(source); visited.add(source);
   };
   for (const source of dependencies.keys()) visit(source);
+  if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode === 2) {
+    const resolved = Object.fromEntries(engine.parameters.map(spec => [spec.id, input.parameters[spec.id] ?? spec.default]));
+    resolveCircularSpectrum(circularSpectrumParameters(resolved), 48000);
+  }
   const sampleIds = new Set();
   const sampleRefs = input.sampleRefs.map(sample => {
     if (!plain(sample) || !id(sample.id) || sampleIds.has(sample.id) || !hash(sample.sha256) ||

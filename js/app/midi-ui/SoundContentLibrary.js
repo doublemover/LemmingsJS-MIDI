@@ -286,12 +286,18 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         modelInfo.textContent = 'Patch model: artificial three-band formants · vowel ' + parameters.vowel01 + ' · size ' + parameters.sizeRatio +
           ' · breath ' + parameters.breath01 + '. Actor-seeded breath and a phase-aligned harmonic bank share one owned gate. Live profile: eight voices, 50–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz. Spectral/listening qualification is pending; exact restore is unavailable. Fixed control WAVs and causal revoice use this same kernel.';
       }
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode === 2) {
+        const p = patch.definition.parameters;
+        modelInfo.textContent = 'Circular spectrum: octave period 2 · lattice reference ' + (p.circularReferenceHz ?? 55) + ' Hz · spectral center ' + (p.circularCenterHz ?? 700) +
+          ' Hz · Gaussian amplitude width ' + (p.circularWidthOctaves ?? 1.2) + ' octaves · one cycle per ' + (p.circularPixelsPerCycle ?? 512) +
+          ' canonical signed-axis world pixels. Rests preserve distance phase; wraps retain active oscillator phases. Carrier oscillation continues only within the original held voice. Other periods and route-coordinate mappings are unavailable. Listening, band-edge and real-time qualification are pending.';
+      }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: one pinned local WAV per cloud · ' + parameters.grainMilliseconds + ' ms Hann grains at ' + parameters.densityHz +
           '/s · source position hold ' + (parameters.freezePosition ? 'on' : 'off') + '. Eight clouds, 16 grain slots per cloud, 32 births per 128 audio frames. Shared source quotas apply. Linear resampling, stereo and dense scenes await qualification; exact restore is unavailable. Fixed control WAVs use the same pinned source; causal rendering requires its saved material reference.';
       }
-      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum') {
+      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-spectrum' && patch.definition.parameters.sourceMode !== 2) {
         const parameters = patch.definition.parameters;
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
           ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +

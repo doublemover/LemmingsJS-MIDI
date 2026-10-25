@@ -24,7 +24,7 @@ const conversionRecord = (value, path) => {
 };
 const compilerArtifact = (artifact, patch, compilerRevision) => {
   const path = 'compilation.artifacts.' + artifact.id;
-  const sampleMetadata = compilerRevision === 'typed-recipes-v11';
+  const sampleMetadata = ['typed-recipes-v11', 'typed-recipes-v12'].includes(compilerRevision);
   keysOnly(artifact.display, ['name', 'author', 'tags', ...(sampleMetadata ? ['sampleMap'] : [])], path + '.display');
   assertContent(text(artifact.display.name, 160) && text(artifact.display.author, 160) && Array.isArray(artifact.display.tags) && artifact.display.tags.length <= 16 && artifact.display.tags.every(id), path, 'invalid compiler display metadata');
   let map = null;
@@ -167,7 +167,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11', 'typed-recipes-v12'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');

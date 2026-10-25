@@ -103,6 +103,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     if (!voice) return reject('voice-unavailable');
     if (method === 'end' && value?.transitionPolicy !== 'crossfade' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
       ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
+    if (method === 'updateCanonicalTravel' && typeof voice.child.backend.updateCanonicalTravel !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-canonical-travel-binding' });
     if (method === 'updateSampleTravel' && typeof voice.child.backend.updateSampleTravel !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-sample-travel-binding' });
     if (method === 'updateSamplePosition' && typeof voice.child.backend.updateSamplePosition !== 'function') return reject('sample-position-unavailable');
     if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
@@ -147,7 +148,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const outcomes = [...execution.children].map(([child, handle]) => child.backend.renewExecutionLease(generation, handle, until));
     if (outcomes.some(outcome => outcome?.status !== 'accepted')) return reject('renderer-lease-rejected'); execution.leaseUntil = until; return Object.freeze({ status: 'accepted' });
   };
-  const backend = { begin, transferVoiceLane, update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), updateSamplePosition: (...args) => voiceCall('updateSamplePosition', ...args), updateSampleTravel: (...args) => voiceCall('updateSampleTravel', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
+  const backend = { begin, transferVoiceLane, update: (...args) => voiceCall('update', ...args), updatePhysical: (...args) => voiceCall('updatePhysical', ...args), updateSamplePosition: (...args) => voiceCall('updateSamplePosition', ...args), updateSampleTravel: (...args) => voiceCall('updateSampleTravel', ...args), updateCanonicalTravel: (...args) => voiceCall('updateCanonicalTravel', ...args), end: (...args) => voiceCall('end', ...args), renewExecutionLease,
     setDisplayContext(value) {
       if (!value || typeof value.worldId !== 'string' || !Number.isSafeInteger(value.graphRevision) || value.graphRevision < 0 ||
           !Number.isSafeInteger(value.routeRevision) || value.routeRevision < 0) throw new TypeError('Invalid routed display context.');

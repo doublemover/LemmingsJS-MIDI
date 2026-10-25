@@ -125,10 +125,12 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       const values = performance?.values || parameters;
       if (!owned.acceptsParameters(values)) throw failure('unsupported-source-layout', 'New target controls request an unrealized source layout.');
       const frequency = frequencyFor(intent.pitch, expression.pitchOffsetCents ?? 0, sampleRate, !!selectSample);
-      if (Math.abs(expression.pitchOffsetCents ?? 0) > owned.bendCents || !finite(frequency, owned.minHz, Math.min(owned.maxHz ?? Infinity, selectSample ? Infinity : sampleRate / 2 - 1)) || !owned.acceptsOnset(values, frequency, pcmDescriptor))
+      if (Math.abs(expression.pitchOffsetCents ?? 0) > owned.bendCents || !finite(frequency, owned.minHz, Math.min(owned.maxHz ?? Infinity, selectSample ? Infinity : sampleRate / 2 - 1)) || !owned.acceptsOnset(values, frequency, pcmDescriptor, sampleRate))
         throw failure('unsupported-pitch', 'Captured onset exceeds this source profile.', { intentId: intent.intentId, engineId: owned.id, minimumHz: owned.minHz, maximumHz: owned.maxHz });
       let samplePlan = null;
       if (selectSample) { try { samplePlan = selectSample(intent); } catch (error) { throw failure('sample-onset-preflight', error.message, { intentId: intent.intentId }); } }
+      let circularTravel = null;
+      if (owned.travelPlanner) { try { circularTravel = owned.travelPlanner(values, intent, frame, sampleRate); } catch (error) { throw failure('circular-travel-preflight', error.message, { intentId: intent.intentId }); } }
       let traversal = null;
       if (sampleSourcePlan && samplePlan) { const entry = sampleSourcePlan.entries[samplePlan.zoneIndex].attack;
         if (entry.mode === 'positionDriven') { try { traversal = planSampleTraversal(entry, intent, frame, sampleRate); } catch (error) { throw failure('sample-travel-preflight', error.message, { intentId: intent.intentId }); } }
@@ -138,10 +140,10 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
         try { nativeSourcePlan = owned.planOnset({ fundamentalHz: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), sampleRate, parameters: values, pitchOffsetCents: expression.pitchOffsetCents ?? 0 }); }
         catch { throw failure('native-source-preflight', 'Captured onset exceeds the native source register or bend profile.', { intentId: intent.intentId }); }
       }
-      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = { ...owned.beginFields(values, seed, pcmDescriptor, samplePlan), ...sampleTraversalBeginFields(traversal) };
+      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = { ...owned.beginFields(values, seed, pcmDescriptor, samplePlan, circularTravel), ...sampleTraversalBeginFields(traversal) };
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
       voice = { key, laneId, routeLaneId: laneId, laneTransferUntil: 0, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: { ...intent, performanceControls: admittedTargetControls }, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
-        parameters: values, nativeSourcePlan, samplePlan, traversalIdentity: traversal?.ownerIdentity ?? null, sampleTravelEndFrame: traversal?.segment.endOutputFrame ?? 0,
+        parameters: values, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence, segments: 1 } : null, nativeSourcePlan, samplePlan, traversalIdentity: traversal?.ownerIdentity ?? null, sampleTravelEndFrame: traversal?.segment.endOutputFrame ?? 0,
         positionFrontier: traversal ? { frame, released: false, length: 0, lastSequence: traversal.segment.sequence, lastEndFrame: traversal.segment.endOutputFrame, lastEndPosition: traversal.segment.endSourceFrame, lastSeekFrame: -sampleSourcePlan.entries[samplePlan.zoneIndex].attack.cursorProfile.slewFrames } : null,
         sampleTraversalSegments: traversal ? 1 : 0, lastSampleTraversal: traversal?.receipt ?? null, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}), ...(samplePlan?.articulation || {}) },
         continuousBase: performance?.continuousBase, physicalCauses: new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []), sourceValues: values,
@@ -157,7 +159,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       if (!voice || voice.end != null) throw failure('missing-voice-history', 'A captured control or end has no still-owned original onset.', { intentId: intent.intentId });
       if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
-        const at = Math.max(voice.sampleTravelEndFrame, intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame);
+        const at = Math.max(voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0, intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame);
         voice.releaseAt = at; voice.end = at + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); capturedEnds++;
         voice.events.push({ kind: 'end', frame: at, order, intentId: intent.intentId, values: { 13: voice.releaseFrames } });
       } else if (intent.articulationState?.transfer) {
@@ -169,6 +171,13 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
         }
       } else {
         let mask = 0, controlFrame = frame; const values = { 14: Math.ceil(0.008 * sampleRate) };
+        if (voice.circularTravel && intent.articulationState?.travel) {
+          let planned; try { planned = owned.travelPlanner(voice.parameters, intent, frame, sampleRate); } catch (error) { throw failure('circular-travel-preflight', error.message, { intentId: intent.intentId }); }
+          const frontier = voice.circularTravel;
+          if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7) throw failure('circular-travel-continuity', 'Circular travel changed owner, epoch, observed phase or output coverage.');
+          frontier.lastEndFrame = planned.endFrame; frontier.lastPhase = planned.to; frontier.lastSequence = planned.sequence; frontier.segments++;
+          mask = 64; controlFrame = planned.firstFrame; Object.assign(values, { 25: planned.from, 26: planned.to, 27: planned.endFrame - planned.firstFrame });
+        }
         if (voice.traversalIdentity && intent.articulationState?.travel) {
           let planned; const entry = sampleSourcePlan.entries[voice.samplePlan.zoneIndex].attack;
           try { planned = planSampleTraversal(entry, intent, frame, sampleRate); } catch (error) { throw failure('sample-travel-preflight', error.message, { intentId: intent.intentId }); }
@@ -211,7 +220,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   for (const voice of voices.values()) {
     if (voice.end == null) {
       if (tail.mode === 'bounded-natural') throw failure('unknown-natural-release', 'A held voice has no captured release before this boundary. Choose exact crop or an explicit derived boundary release.');
-      if (tail.mode === 'boundary-release') { voice.releaseAt = Math.max(endFrame, voice.sampleTravelEndFrame); voice.end = voice.releaseAt + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
+      if (tail.mode === 'boundary-release') { voice.releaseAt = Math.max(endFrame, voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0); voice.end = voice.releaseAt + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
         voice.events.push({ kind: 'end', frame: voice.releaseAt, order: ++ordinal, intentId: null, values: { 13: voice.releaseFrames } }); }
       else voice.end = endFrame + voice.releaseFrames + 128;
     }
@@ -270,7 +279,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, sampleSourcePlan, renderVoices: owned.requiresPCMSet ? owned.voices : patch.voicePolicy.maxVoices, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
-    sampleTraversal: { policy: 'canonical-completed-observations;no-private-distance-clock;no-extrapolation', voices: [...voices.values()].filter(voice => voice.traversalIdentity).length, segments: [...voices.values()].reduce((count, voice) => count + voice.sampleTraversalSegments, 0) }, sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, derivedLaneTransfers, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, sourceLaneTokens, pcmBytes,
+    circularTravel: { policy: 'canonical-signed-axis;completed-observation-interpolation;no-time-driven-ascent', voices: [...voices.values()].filter(voice => voice.circularTravel).length, segments: [...voices.values()].reduce((count, voice) => count + (voice.circularTravel?.segments || 0), 0) }, sampleTraversal: { policy: 'canonical-completed-observations;no-private-distance-clock;no-extrapolation', voices: [...voices.values()].filter(voice => voice.traversalIdentity).length, segments: [...voices.values()].reduce((count, voice) => count + voice.sampleTraversalSegments, 0) }, sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, derivedLaneTransfers, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, sourceLaneTokens, pcmBytes,
     laneRoutingReceipt: revoice.laneRouting ? { schema: revoice.laneRouting.schema, hash: await hashData(revoice.laneRouting, { maxBytes: 4194304, maxNodes: 524288 }), initialLanes: revoice.laneRouting.initial.length, changes: revoice.laneRouting.changes.length, policy: 'captured-index-to-stable-id-at-onset-and-explicit-transfer;eight-millisecond-nonoverlapping-route-fades;semantic-intents-unchanged' } : null,
     effectReplay, effectPlan, effectSourceBindings, captureLaneIds, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
@@ -384,7 +393,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     realization: { scope: plan.owned.id === 'worklet-sine' ? 'new-local-sine-realization-of-immutable-intents' : 'new-local-owned-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',
-      sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
+      circularTravel: plan.circularTravel, sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
       ...(plan.sampleSourcePlan ? { sampleTraversal: plan.sampleTraversal, sampleMap: { id: plan.sampleSourcePlan.map.mapId, revision: plan.sampleSourcePlan.map.revision, profile: plan.sampleSourcePlan.map.rendererProfile ?? 'native-forward-v1', sourcePool: plan.renderVoices, maximumLogicalGates: plan.patch.voicePolicy.maxVoices, chokedVoices: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, selection: 'one-deterministic-onset-selection;release-child-retains-original-map-entry' } } : {}),
       sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCMSet ? 'owned-sample-sample-read-v1;128taps;phase128;rate19;unqualified-spectral-and-listening-profile' : plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,

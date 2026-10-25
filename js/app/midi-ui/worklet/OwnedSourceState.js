@@ -1,3 +1,4 @@
+import { resolveCircularSpectrum } from '../../../midi/content/CircularSpectrum.js';
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
 import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT } from '../OwnedSourceLayout.js';
 
@@ -100,8 +101,25 @@ const inspectSource = (kernel, profile, view) => {
         !integer(get(6), 0, 0xffffffff) || !integer(get(7), 0, get(0) - 1) || !finite(get(16), -1, 1))) fail('Pluck fractional delay or seed state is invalid.');
     if (profile.kind === 2 && (!finite(get(0), 0, 1) || !finite(get(1), 0, 1) || !integer(get(2), 0, 0xffffffff))) fail('Choir phase or PRNG state is invalid.');
     if (profile.kind === 3) {
-      if (!finite(get(0), 0, 1) || ![0, 1].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');
+      if (!finite(get(0), 0, 1) || ![0, 1, 2].includes(get(1)) || !integer(get(2), 1, 16)) fail('Spectrum phase or partial topology is invalid.');
       const partial = data.arrays[1].get;
+      if (get(1) === 2) {
+        const meta = (slot * 16 + 10) * SPECTRUM_LAYOUT.partialState; let recipe;
+        try { recipe = resolveCircularSpectrum({ referenceFrequencyHz: partial(meta), frequencyCenterHz: partial(meta + 1), spectralWidthOctaves: partial(meta + 2), bandLowHz: partial(meta + 3), bandHighHz: partial(meta + 4), partialCountCap: partial(meta + 5), weight01: partial(meta + 6) }, kernel.sampleRate, get(3) / 261.6255653005986); } catch { fail('Circular source recipe is invalid.'); }
+        const base = at + 24, phase = state(base), targetPhase = state(base + 1), remaining = state(base + 2), step = state(base + 3), whole = state(base + 4);
+        if (get(2) !== recipe.partialCountCap || !finite(phase, -1000000, 1000000) || !finite(targetPhase, -1000000, 1000000) || !integer(remaining, 0, kernel.sampleRate * 2) || !finite(step, -4 / kernel.sampleRate, 4 / kernel.sampleRate) ||
+            !integer(whole, -1000001, 1000001) || Math.abs(Math.floor(phase) - whole) > 1 || !integer(state(base + 5), 0, 0xffffffff) || !integer(state(base + 7), 0, 8) || !integer(state(base + 8), 0, recipe.partialCountCap) || !integer(state(base + 9), 0) || state(base + 10) || state(base + 11) ||
+            remaining && Math.abs(targetPhase - phase - remaining * step) > 1e-6 || remaining && Math.abs(state(base + 6) - 2 ** step) > 1e-12) fail('Circular distance-phase or interpolation frontier is invalid.');
+        const indices = new Set(); let amplitude = 0, targetAmplitude = 0;
+        for (let p = 0; p < recipe.partialCountCap; p++) {
+          const offset = (slot * 16 + p) * SPECTRUM_LAYOUT.partialState, index = partial(offset), expected = recipe.referenceFrequencyHz * 2 ** (index + phase - whole);
+          if (!integer(index, recipe.minimumIndex, recipe.maximumIndex) || indices.has(index) || !finite(partial(offset + 1), 0, 1) || !finite(partial(offset + 2), 0, 10000000) || Math.abs(partial(offset + 2) - expected) > 1e-6 * Math.max(1, expected) ||
+              !finite(partial(offset + 3), 0, 0.8) || !finite(partial(offset + 4), 0, 0.8) || partial(offset + 5)) fail('Circular oscillator phase, lattice handoff or amplitude is invalid.');
+          indices.add(index); amplitude += partial(offset + 3); targetAmplitude += partial(offset + 4);
+        }
+        if (amplitude > 0.800000001 || targetAmplitude > 0.800000001) fail('Circular amplitude normalization exceeds the declared peak bound.');
+        continue;
+      }
       for (let p = 0; p < 16; p++) { const offset = (slot * 16 + p) * SPECTRUM_LAYOUT.partialState;
         if (!finite(partial(offset), 0.125, 32) || !finite(partial(offset + 2), 0, 1) || !finite(partial(offset + 4), 0, 1)) fail('Spectrum partial phase or decay state is invalid.');
       }
@@ -160,6 +178,6 @@ export function restoreOwnedSourceState(kernel, source, identity) {
   const cut = restoreOwnedKernelState(kernel, source.subarray(HEADER, HEADER + coreBytes), identity);
   for (let i = 0; i < profile.scalars.length; i++) kernel.source[profile.scalars[i]] = data.scalars[i];
   for (const array of data.arrays) for (let i = 0; i < array.target.length; i++) array.target[i] = array.get(i);
-  kernel.source.rehydrateState?.();
+  kernel.source.rehydrateState?.(kernel.active);
   return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, sourceMemory: 'independent-mutable-copy', checksum: view.getUint32(252, true) });
 }

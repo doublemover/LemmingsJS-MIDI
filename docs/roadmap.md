@@ -3801,3 +3801,47 @@ a stale response as current state. Disposing the owner rejects a pending read.
 The retained diagnostic remains labeled processor state at its reported frame,
 not acoustic output. Actual child-state and pending-read retirement fixtures are
 authored and unrun; broad runtime validation remains deferred.
+
+
+### Continuation 172 — travel-owned circular spectra on the additive core (#1226, #1202)
+
+The existing spectral Worklet has an octave-circular additive mode, rather than a
+separate timer or playback engine. Its resolved recipe separates the frequency
+lattice reference (55 Hz by default) from the Gaussian amplitude-envelope center
+(700 Hz), declares width as log-frequency standard deviation, caps the authored
+band below 0.4 of the output sample rate and reserves eight to ten fixed slots
+including silent recycling guards. Period ratios other than exactly two are
+rejected by content validation and runtime preflight. Original phase policy and
+amplitude normalization are explicit; perceptual endlessness is not asserted.
+
+Canonical signed-axis observations determine unwrapped cycle phase from origin
+and pixels/cycle. Scope, mapping, evidence precision, discontinuity epoch and
+completed-tick interpolation are fenced. Journey phase survives ordinary action
+changes; an action-scoped patch resets only at its authored instance. A rest holds
+distance phase while an observed owned gate may sustain its current tone. Reverse
+travel uses floor-based negative phase, not JavaScript negative remainder. Live
+and offline updates use one planner and one shared execution owner. Normal release
+follows the final admitted observation; rejected source controls fault their owner.
+
+The spectral source prepares circular views and oscillator slots before onsets.
+In-band carrier phases survive octave reindexing; only silent outer guards are
+recycled. Sine lookup is shared with the existing additive renderer, and control
+weights refresh at a bounded interval with convex amplitude interpolation and a
+declared 0.8 L1 bound. Source cuts retain the unwrapped phase/frontier, integer
+lattice state, carrier phases, gains and resolved recipe planes. Restore validates
+these before changing the shared gate and rehydrates only active source caches.
+
+Original Endless Stair, Counter-walk and explicit action-scope instrument recipes
+are available through the existing content collection. CLIMB, WINDOW, CENTER and
+WEIGHT are onset controls, with their units and scope visible. Typed compilation
+advances to v12 for octave/cycle/count quantities while preserving prior archived
+artifact admission. Directed-route coordinates, non-octave variants, contact-only
+stepping-stone realization and the authored Impossible Staircase world remain
+separate pending integrations.
+
+Frequency/reference, Gaussian-width, negative phase, wrap handoff, ten-second rest,
+forward/return, all three output rates, peak bounds, actual kernel state cuts,
+original content and canonical causal-render fixtures are authored and unrun.
+Formatting/syntax/provenance are the only current checks. Spectral seams, measured
+render cost, listening direction/ambiguity and browser acceptance remain deferred.
+Primary historical foundation: [Shepard (1964), original-paper scan](https://www.brainmusic.org/MBB91%20Webpage/Pitch_I_Shepard.pdf).

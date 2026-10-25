@@ -1,3 +1,4 @@
+import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel } from '../../midi/content/CircularSpectrum.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
 import { SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
@@ -7,6 +8,7 @@ import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NA
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const spectrumPartials = Object.freeze(Array.from({ length: 16 }, (_, index) => Object.freeze(['Ratio', 'Gain', 'T60Scale'].map(suffix => 'partial' + index + suffix))));
 const acceptsSpectrum = parameters => {
+  if (parameters.sourceMode === 2) { try { resolveCircularSpectrum(circularSpectrumParameters(parameters), 48000); return true; } catch { return false; } }
   if (parameters.sourceMode) return true;
   if (parameters.partialCount !== 16) return false;
   for (const names of spectrumPartials) for (const name of names) if (parameters[name] !== NATIVE_SPECTRUM_FIELDS[name][2]) return false;
@@ -14,7 +16,7 @@ const acceptsSpectrum = parameters => {
 };
 const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
-  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false }) => {
+  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, acceptsExpression = () => true }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
   const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
@@ -31,8 +33,9 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
       return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
     }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId,
-    controlReferenceRender, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
+    controlReferenceRender, travelPlanner, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
+      if (!acceptsExpression(expression, voice)) return null;
       let mask = 0;
       for (const [name, bit, field] of slots) {
         if (expression[name] == null) continue;
@@ -83,10 +86,13 @@ const profiles = Object.freeze({
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio, 22: parameters.chorusCents,
       23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale }) }),
   'worklet-spectrum': createProfile({ id: 'worklet-spectrum', controlReferenceRender: true, bankId: 'spectrum-v1', width: SPECTRUM_LAYOUT.width, voices: SPECTRUM_LAYOUT.voices, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
-    buildId: 'owned-spectrum-v6-owned-retirement', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+    buildId: 'owned-spectrum-v7-circular-partials', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+    travelPlanner: planCircularTravel, acceptsExpression: (expression, voice) => voice.sourceValues?.sourceMode !== 2 || !['scan01', 'body01', 'edge01'].some(id => expression[id] != null),
+    acceptsOnset: (parameters, frequency, pcm, rate) => { if (parameters.sourceMode !== 2) return true; try { resolveCircularSpectrum(circularSpectrumParameters(parameters), rate, frequency / 261.6255653005986); return true; } catch { return false; } },
     storageBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,
-    cost: parameters => parameters.sourceMode ? parameters.partialCount : 4, minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23]],
-    beginFields: (parameters, seed) => {
+    cost: parameters => parameters.sourceMode === 2 ? parameters.circularPartialCap : parameters.sourceMode ? parameters.partialCount : 4, minimumControlSeconds: 0.008, expressions: [['scan01', 8, 21], ['body01', 16, 22], ['edge01', 32, 23]],
+    beginFields: (parameters, seed, pcm, selected, travel) => {
+      if (parameters.sourceMode === 2) return { 18: seed, 19: 2, 25: parameters.circularReferenceHz, 26: parameters.circularCenterHz, 27: parameters.circularWidthOctaves, 28: parameters.circularLowHz, 29: parameters.circularHighHz, 30: parameters.circularPartialCap, 31: parameters.circularWeight01, 32: travel?.from ?? parameters.circularPhaseOrigin, 33: parameters.circularPeriodRatio, ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) };
       const fields = { 18: seed, 19: parameters.sourceMode, 20: parameters.partialCount, 21: parameters.scan01, 22: parameters.body01, 23: parameters.edge01, 24: parameters.partialDecaySeconds };
       for (let index = 0; index < spectrumPartials.length; index++) {
         const names = spectrumPartials[index]; fields[25 + index] = parameters[names[0]]; fields[41 + index] = parameters[names[1]]; fields[57 + index] = parameters[names[2]];

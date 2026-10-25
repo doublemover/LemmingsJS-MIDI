@@ -1,3 +1,5 @@
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
+import { sampleMotionBatch, sampleTravelGraph } from '../helpers/sampleTraversal.js';
 import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
 import { inspectVoiceInterval, workloadVoiceCount } from '../../js/app/midi-ui/AudioVoiceAdmission.js';
@@ -151,7 +153,7 @@ const setupHost = (engineId = 'worklet-sine') => {
   const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v7-owned-retirement', 'owned-sine-f64-command-v1'],
     'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v6-owned-retirement', 'owned-choir-f64-command-v1'],
     'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v6-owned-retirement', 'owned-pluck-f64-command-v1'],
-    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v6-owned-retirement', 'owned-spectrum-f64-command-v1'] }[engineId];
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v7-circular-partials', 'owned-spectrum-f64-command-v1'] }[engineId];
   const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v1'] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
@@ -189,6 +191,19 @@ const setupHost = (engineId = 'worklet-sine') => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('owns circular phase through canonical travel updates and defers release through the completed observation', async () => {
+    const { backend, nodes, patch, preview } = setupHost('worklet-spectrum'); patch.patch.parameters = { sourceMode: 2, attackSeconds: 0.005, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.01 };
+    const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });
+    const outbound = engine.processBatch(sampleMotionBatch(1, 0, 1))[0], rest = engine.processBatch(sampleMotionBatch(2, 1, 1))[0], returned = engine.processBatch(sampleMotionBatch(3, 1, 0))[0];
+    expect((await backend.prepare(patch)).status).to.equal('ready'); backend.renewExecutionLease(1, 'live', 24000);
+    const begin = backend.begin(outbound, 0); expect(begin.status).to.equal('accepted'); expect(begin.circularTravel.endPhaseCycles).to.equal(1 / 512);
+    expect(backend.updateCanonicalTravel(outbound.voiceId, rest, 2880).status).to.equal('accepted'); expect(backend.updateCanonicalTravel(outbound.voiceId, returned, 5760).status).to.equal('accepted');
+    expect(backend.end(outbound.voiceId, { seconds: 0.01 }, 6000).effectiveTargetFrame).to.equal(8640);
+    await Promise.resolve(); const output = nodes[0].render(9500); expect(output.left.every(Number.isFinite)).to.equal(true); expect(output.left.some(value => value !== 0)).to.equal(true);
+    expect(nodes[0].kernel.source.circular[0].state[0]).to.equal(0); expect(preview._voices.size).to.equal(0);
+    expect(backend.renderDiagnostics().counters.rejected).to.equal(0); engine.dispose(); await backend.dispose().completion;
+  });
+
   it('reconciles delayed per-voice renewal with requested, queued and effective bounds kept separate', async () => {
     const { backend, nodes, patch, intent, context, preview } = setupHost();
     patch.patch.parameters = { attackSeconds: 0, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.01 };

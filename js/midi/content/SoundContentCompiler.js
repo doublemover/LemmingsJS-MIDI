@@ -5,9 +5,9 @@ import { validateInstrumentMacros } from './InstrumentPerformance.js';
 import { sampleMapRenderIdentity } from './SampleInstrumentMap.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
-export const SOUND_COMPILER_REVISION = 'typed-recipes-v11';
+export const SOUND_COMPILER_REVISION = 'typed-recipes-v12';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
-const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel']);
+const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel', 'octaves', 'cycles', 'count']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
 const finite = value => Number.isFinite(value) && Math.abs(value) <= 1000000000;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -42,7 +42,7 @@ const nativeComponents = descriptor => {
     resonator: ['position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-spectrum' ? {
-    exciter: descriptor.parameters.map(parameter => parameter.id).filter(name => /^partial\d|^partialCount$|^partialDecaySeconds$|^sourceMode$/.test(name)),
+    exciter: descriptor.parameters.map(parameter => parameter.id).filter(name => /^partial\d|^partialCount$|^partialDecaySeconds$|^sourceMode$|^circular/.test(name)),
     resonator: ['scan01', 'body01', 'edge01'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-choir' ? {
     exciter: ['breath01', 'chorusCents', 'vibratoCents'], resonator: ['vowel01', 'sizeRatio', 'vowelStep', 'bandwidthScale'],

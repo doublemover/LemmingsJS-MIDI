@@ -53,7 +53,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
     packet[offset] = 1; packet[offset + 1] = Math.round(event.seconds * sampleRate); packet[offset + 2] = index + 1;
     packet[offset + 3] = event.kind === 'begin' ? BEGIN : ['update', 'position'].includes(event.kind) ? UPDATE : END; packet[offset + 4] = 0; packet[offset + 5] = 1; packet[offset + 17] = 1;
     if (event.kind === 'begin') {
-      if (!owned.acceptsOnset(values, frequency(event.pitchCents), pcmDescriptor)) throw new Error('Offline source onset is out of range.');
+      if (!owned.acceptsOnset(values, frequency(event.pitchCents), pcmDescriptor, sampleRate)) throw new Error('Offline source onset is out of range.');
       for (const [field, value] of Object.entries(owned.beginFields(values, seed, pcmDescriptor, selected))) packet[offset + Number(field)] = value;
       packet[offset + 6] = frequency(event.pitchCents); packet[offset + 7] = event.velocity01 * values.gain01 * patch.mix.gain01;
       packet[offset + 8] = expression.pressure01; packet[offset + 9] = Math.max(-1, Math.min(1, expression.pan01 + patch.mix.pan01));
