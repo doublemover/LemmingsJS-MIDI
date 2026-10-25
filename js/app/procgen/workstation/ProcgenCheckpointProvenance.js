@@ -1,7 +1,7 @@
 import { CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs } from './ProcgenCheckpoint.js';
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 
-const PRESENTATION_WORLD_KEYS = new Set(['physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
+const PRESENTATION_WORLD_KEYS = new Set(['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
 const equal = (left, right) => canonicalJournalText(left).text === canonicalJournalText(right).text;
 const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-1' } = {}) => {
   const reasons = [];

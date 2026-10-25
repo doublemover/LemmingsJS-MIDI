@@ -1,14 +1,14 @@
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
-export const MOTIF_PHYSICAL_KINDS = Object.freeze(['MotionCommitted', 'ContactResolved', 'ActionEntered', 'ActionExited', 'TerrainWorkCommitted', 'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorBorn', 'ActorTerminated', 'ActorLaneTransferred', 'PickupCrossing', 'RouteLap', 'EncounterBegan', 'EncounterEnded', 'RendezvousCompleted', 'RouteCompleted', 'RestStarted', 'RestEnded']);
+export const MOTIF_PHYSICAL_KINDS = Object.freeze(['MotionCommitted', 'ContactResolved', 'ActionEntered', 'ActionExited', 'TerrainWorkCommitted', 'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorBorn', 'ActorTerminated', 'ActorLaneTransferred', 'PickupCrossing', 'RouteLap', 'EncounterBegan', 'EncounterEnded', 'RendezvousCompleted', 'RouteCompleted', 'RouteFailed', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RestStarted', 'RestEnded']);
 const physicalRoots = fact => fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []);
 const named = value => identity(value) && value.length <= 128;
 const count = (value, fallback, maximum) => { const result = value ?? fallback; if (!integer(result, maximum) || result < 1) throw new Error('Invalid motif finite bound.'); return result; };
 const readPredicate = (value, graph) => {
   if (!plain(value) || !MOTIF_PHYSICAL_KINDS.includes(value.kind)) throw new Error('Motif predicates require an actual supported physical fact kind.');
-  for (const [key, group] of [['pickupId', 'pickups'], ['routeId', 'routes'], ['encounterId', 'encounters']]) if (value[key] != null && !graph[group]?.some(item => item.id === value[key])) throw new Error('Unresolved motif physical reference.');
+  for (const [key, group] of [['pickupId', 'pickups'], ['routeId', 'routes'], ['encounterId', 'encounters'], ['activityWindowId', 'activityWindows']]) if (value[key] != null && !graph[group]?.some(item => item.id === value[key])) throw new Error('Unresolved motif physical reference.');
   for (const key of ['action', 'operationKind', 'causeKind', 'crewProjectId']) if (value[key] != null && !named(value[key])) throw new Error('Invalid motif predicate identity.');
   if (value.direction != null && !['positive', 'negative', 'left', 'right'].includes(value.direction)) throw new Error('Invalid motif crossing direction.');
-  return { kind: value.kind, ...Object.fromEntries(['pickupId', 'routeId', 'encounterId', 'action', 'operationKind', 'causeKind', 'crewProjectId', 'direction'].filter(key => value[key] != null).map(key => [key, value[key]])), ...(value.region ? { region: bounds(value.region) } : {}) };
+  return { kind: value.kind, ...Object.fromEntries(['pickupId', 'routeId', 'encounterId', 'activityWindowId', 'action', 'operationKind', 'causeKind', 'crewProjectId', 'direction'].filter(key => value[key] != null).map(key => [key, value[key]])), ...(value.region ? { region: bounds(value.region) } : {}) };
 };
 export function validatePhysicalMotifs(value, graph) {
   const input = value.motifs || []; if (!Array.isArray(input) || input.length > 32) throw new Error('Motif definition capacity exceeded.');
@@ -70,7 +70,7 @@ export function createPhysicalMotifObserver({ maximumPartials = 1024, maximumWor
     const match = (definition, clause, state, fact) => {
       if (++work > maximumWork) return { status: 'unknown' };
       const predicate = clause.predicate;
-      if (fact.kind !== predicate.kind || predicate.pickupId && predicate.pickupId !== fact.gateId || ['routeId', 'encounterId', 'action', 'operationKind', 'causeKind', 'crewProjectId', 'direction'].some(key => predicate[key] != null && predicate[key] !== fact[key])) return null;
+      if (fact.kind !== predicate.kind || predicate.pickupId && predicate.pickupId !== fact.gateId || ['routeId', 'encounterId', 'activityWindowId', 'action', 'operationKind', 'causeKind', 'crewProjectId', 'direction'].some(key => predicate[key] != null && predicate[key] !== fact[key])) return null;
       const actorId = fact.participants?.[clause.participantIndex] ?? (clause.participantIndex ? null : fact.actorId), actor = actors.get(actorId), role = definition.roles.find(role => role.id === clause.role), point = fact.positionAfter || fact.position || actor;
       if (!integer(actorId) || predicate.region && !contains(point, predicate.region)) return null;
       const membership = domain.membership(role.ensembleId, actorId); if (membership.status !== 'complete' || fact.rootCoverage && fact.rootCoverage !== 'complete') return { status: 'unknown' }; if (!membership.includes) return null;
@@ -85,8 +85,8 @@ export function createPhysicalMotifObserver({ maximumPartials = 1024, maximumWor
     };
     for (const definition of definitions) {
       const slots = compiled.get(definition.id), prior = partials.get(definition.id) || [], usesRelationships = slots.some(slot => ['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(slot.predicate.kind));
-      let states = prior;
-      if (!complete || usesRelationships && coverage.encounters !== 'complete' || definition.invalidateOnTerrainChange && terrainRevision != null && batch.terrainRevisionAfter !== terrainRevision) { total -= states.length; states = []; censored = !complete || usesRelationships && coverage.encounters !== 'complete' || censored; report({ motifId: definition.id, status: complete && !usesRelationships ? 'invalidated' : 'censored', reason: 'coverage-or-terrain-boundary', count: prior.length }); if (!complete || usesRelationships && coverage.encounters !== 'complete') { partials.delete(definition.id); continue; } }
+      let states = prior; const usesActivity = slots.some(slot => ['RestStarted', 'RestEnded'].includes(slot.predicate.kind)), dependentUnknown = usesRelationships && coverage.encounters !== 'complete' || usesActivity && coverage.activity !== 'complete';
+      if (!complete || dependentUnknown || definition.invalidateOnTerrainChange && terrainRevision != null && batch.terrainRevisionAfter !== terrainRevision) { total -= states.length; states = []; censored = !complete || dependentUnknown || censored; report({ motifId: definition.id, status: complete && !usesRelationships ? 'invalidated' : 'censored', reason: 'coverage-or-terrain-boundary', count: prior.length }); if (!complete || dependentUnknown) { partials.delete(definition.id); continue; } }
       const advance = (state, now, inclusive) => {
         if (definition.mode !== 'sequence') return;
         let index = state.done.findIndex(value => !value);

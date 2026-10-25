@@ -1169,3 +1169,38 @@ and invalidate affected rule/ensemble dependencies. Fragment closure/remapping a
 capture-profile v6 include motif definitions and state. Regression and workload
 profiles are implemented but unexecuted; no recognition/performance qualification
 is inferred from source or syntax checks.
+
+### Physical activity, rests and crew cadences
+
+`ActivityWindows` counts declared physical facts, authored held actions and owned
+semantic voices against simulation-tick deadlines. Empty/static unvoiced scopes
+never manufacture an initial rest trigger or background notes. A rest begins once
+a complete, previously active interval reaches its timeout; the next actual cause
+ends it without catch-up attacks. Current mute/solo/output availability and the
+latest sink outcome are separate diagnostic fields—not inputs to physical timing.
+A rejected output cannot manufacture absence. Unknown route/ensemble/topology or
+source coverage invalidates the absence proof; explicit instrument policies may
+release held voices on rest/unknown instead of silently resuming them.
+
+Crew projects now publish canonical open, connect, individual arrival, completion
+and failure facts. A bounded world-owned evidence table joins the exact admitted
+opening/connection/arrival identities. Source gaps or owner-table exhaustion make
+completion coverage incomplete, never a successful cadence. The final observer
+also checks the completed living cohort and actual unchanged-route receipt before
+emitting a finite authored cadence. Deduplicated completion ownership survives
+checkpoint restore. This observation table is excluded from the physics projection,
+validated on restoration and reset across generations. Producer refusal now returns
+no staged identity, preventing dropped prerequisites from masquerading as admitted.
+
+Activity state and prerequisite facts are in capture-profile v7; the physical-music
+algorithm identity advances to v3 rather than silently claiming older execution
+compatibility. Fragment closure/remapping includes scopes and cadence references,
+while motif monitors can consume proven rest transitions. The authoring inspector
+exposes physical silence and recent causes without probing audio. Lane availability
+uses the existing indexed mix owner, and a refused mix publication remains retryable
+when the audio clock becomes valid rather than caching an unsent revision.
+
+Written regressions cover empty/static/held worlds, exact gaps, pause-by-no-ticks,
+unknown-source cases, muted/rejected output, cadence deduplication and actual crew
+owner failure/success joins. Planning profiles and all tests remain **unrun**;
+no browser, PCM, real-time or acoustic acceptance is claimed.

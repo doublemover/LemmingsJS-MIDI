@@ -41,6 +41,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
+  let latestSinkOutcome = null, lastMixPublication = null;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
   let lastAudioEnabled = false, lastAudioContext = null;
   let displayKey = null, releaseDisplay = null, displayErrors = 0, displayBlocked = false;
@@ -75,10 +76,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionEpoch: () => executionEpoch,
     toTargetFrame: scoreTime => permitted() ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
-    onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
+    onReceipt: receipt => { latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
-  const engine = createCausalMusicEngine({ getGraph, scoreTimeline,
-    getLaneState: laneId => { const lanes = getLanes(), lane = typeof laneId === 'number' ? lanes[laneId] : lanes.find(value => value.id === laneId), solo = lanes.some(value => value.solo && !value.mute); return { available: !!lane && !lane.mute && (!solo || lane.solo) }; },
+  const engine = createCausalMusicEngine({ getGraph, scoreTimeline, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
+    getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
@@ -106,8 +107,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     if (release) { releaseDisplay = release; displayKey = key; }
   };
   const synchronizeLaneMix = () => {
-    if (!laneMix.synchronize(getLanes())) return { status: 'accepted', stage: 'unchanged' };
-    return routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
+    laneMix.synchronize(getLanes()); const revision = laneMix.revision(), context = audio?.getAudioContext?.();
+    if (lastMixPublication?.revision === revision && lastMixPublication.context === context && lastMixPublication.executionEpoch === executionEpoch) return { status: 'accepted', stage: 'unchanged' };
+    const receipt = routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
+    if (receipt.status === 'accepted') lastMixPublication = { revision, context, executionEpoch }; return receipt;
   };
   const processBatch = (batch, { bpm, playing = true, position = null } = {}) => {
     if (disposed || !playing) return Object.freeze([]);

@@ -15,6 +15,7 @@ const model = () => {
     soundEvents: { emit: event => events.push(event) }, actions: { [State.WALKING]: {}, [State.BLOCKING]: {} } };
   const projects = new ProcgenCrewProjects(world, (...credit) => credits.push(credit));
   const actors = Array.from({ length: 3 }, (_, id) => ({ id, laneIndex: 0, x: 40 - id * 2, y: 120, lookRight: true, action: world.actions[State.WALKING] }));
+  world.actors = actors;
   for (const actor of actors) projects.observe(actor);
   const task = {}; projects.begin(actors[0], 'builders', task);
   return { events, credits, world, projects, actors, task };

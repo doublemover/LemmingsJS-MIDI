@@ -99,12 +99,12 @@ class ProcgenSoundEventBus extends SoundEventBus {
       const causalSequence = ++this._causalSequence;
       let copied;
       try { copied = copyFact(event); } catch { current.dropped++; return null; }
-      const fact = { ...copied.value, causalSequence,
+      const fact = { ...copied.value, causalSequence, eventId: `${this.pendingBatchIdentity()}:${causalSequence}`,
           ...(this._interventionCommandId && !copied.value.commandId ? { commandId: this._interventionCommandId } : {}) }, entry = { fact, legacy };
       if (current.facts.length < this._maxFacts && current.factBytes + copied.bytes <= this._maxFactBytes) { current.facts.push(entry); current.factBytes += copied.bytes; }
       else if ((TERMINAL_TYPES.has(fact.kind) || TERMINAL_TYPES.has(fact.type)) && current.terminalFacts.length < this._maxTerminalFacts && current.terminalBytes + copied.bytes <= this._maxTerminalFactBytes) { current.terminalFacts.push(entry); current.terminalBytes += copied.bytes; }
-      else current.dropped++;
-      return fact;
+      else { current.dropped++; return null; }
+      return Object.freeze(fact);
     }
     return null;
   }

@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v6',
-  factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v7',
+  factKinds: ['CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -141,9 +141,10 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const definition of valid.encounters || []) { add('encounters', definition.id, 'state'); if (definition.pickupId || definition.routeId || definition.participants.leftEnsembleId || definition.participants.rightEnsembleId) add('physical-domain', definition.id, 'state'); for (const kind of ['ActorBorn', 'ActorTerminated', 'MotionCommitted']) add(kind, definition.id, 'fact'); }
+  for (const definition of valid.activityWindows || []) { add('activity', definition.id, 'state'); add('voices', definition.id, 'state'); if (definition.scope.ensembleId || definition.scope.routeId) add('physical-domain', definition.id, 'state'); if (definition.scope.topologyRegionId) add('topology-geometry-v1', definition.id, 'descriptor'); for (const kind of definition.physicalKinds) { if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else add(kind, definition.id, 'fact'); } if (definition.completionPolicy.kind === 'crew-route') for (const kind of ['CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed']) add(kind, definition.id, 'fact'); }
   for (const definition of valid.motifs || []) {
     add('motifs', definition.id, 'state'); if (definition.roles.some(role => role.ensembleId)) add('physical-domain', definition.id, 'state');
-    for (const clause of definition.clauses) { const kind = clause.predicate.kind; if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else add(kind, definition.id, 'fact'); }
+    for (const clause of definition.clauses) { const kind = clause.predicate.kind; if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['RestStarted', 'RestEnded'].includes(kind)) add('activity', definition.id, 'state'); else add(kind, definition.id, 'fact'); }
   }
   for (const instrument of valid.instruments) {
     if (instrument.topologyRegionId) add('topology-geometry-v1', instrument.id, 'descriptor');
@@ -156,7 +157,7 @@ const graphCaptureRequirements = graph => {
       for (const source of sources) add(source, instrument.id, 'fact');
       if (instrument.response.type === 'crowdInterval') add('physical-domain', instrument.id, 'state');
       if (instrument.response.type === 'workCycle') add('work-phase-v2', instrument.id, 'descriptor');
-    } else if (instrument.sourceKind === 'MotifResponse') { add('motifs', instrument.id, 'state'); } else if (instrument.sourceKind === 'EncounterResponse') { add('encounters', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
+    } else if (instrument.sourceKind === 'CadenceResponse') { add('activity', instrument.id, 'state'); } else if (instrument.sourceKind === 'MotifResponse') { add('motifs', instrument.id, 'state'); } else if (instrument.sourceKind === 'EncounterResponse') { add('encounters', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
     else add(instrument.sourceKind, instrument.id, 'fact');
     if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
     if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');

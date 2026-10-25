@@ -1557,11 +1557,28 @@
       "requirementUpdatedAt": "2026-10-22T11:58:26Z",
       "requirementSha256": "b9713e3f7394d1f454b46f6900fd860dafd485521b5e9d9cdc5d0996b776b914",
       "initialGap": "Physical default emits no filler and releases held voices, but no ActivityWindow/inactivity transitions, authored verified completion cadence or coverage-aware absence reducer.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
+      ],
+      "regressions": [
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1061,
@@ -1822,11 +1839,19 @@
         "js/app/midi-ui/RoutedInstrumentBackend.js",
         "js/app/midi-ui/worklet/OwnedSineProcessor.js",
         "js/app/procgen/workstation/LaneMixState.js",
-        "js/app/procgen/workstation/ProcgenWorkstationView.js"
+        "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/midi/voice-lane-mix.test.js",
-        "test/midi/routed-instrument-backend.test.js"
+        "test/midi/routed-instrument-backend.test.js",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
         "149de9d92c387cfaea8b394024e3052f41d03c66"
@@ -1837,6 +1862,11 @@
           "id": "owned-lane-mix-and-faders",
           "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
           "commit": "149de9d92c387cfaea8b394024e3052f41d03c66"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
+          "commit": null
         }
       ]
     },
@@ -2191,18 +2221,25 @@
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
-        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/procgen-intervention-commands.test.js",
         "test/procgen-encounters.test.js",
         "scripts/bench-physical-encounters.mjs",
         "test/procgen-physical-motifs.test.js",
-        "scripts/bench-physical-motifs.mjs"
+        "scripts/bench-physical-motifs.mjs",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2216,6 +2253,11 @@
         {
           "id": "finite-physical-motif-monitors",
           "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
           "commit": null
         }
       ]
@@ -2278,7 +2320,11 @@
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
-        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
@@ -2289,13 +2335,16 @@
         "test/procgen-encounters.test.js",
         "scripts/bench-physical-encounters.mjs",
         "test/procgen-physical-motifs.test.js",
-        "scripts/bench-physical-motifs.mjs"
+        "scripts/bench-physical-motifs.mjs",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "68b954ff3e7b84b1ecc109172d917e6a9449291a",
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
-        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2318,6 +2367,11 @@
         {
           "id": "finite-physical-motif-monitors",
           "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
           "commit": null
         }
       ]
@@ -2336,16 +2390,23 @@
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
-        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/procgen-encounters.test.js",
         "scripts/bench-physical-encounters.mjs",
         "test/procgen-physical-motifs.test.js",
-        "scripts/bench-physical-motifs.mjs"
+        "scripts/bench-physical-motifs.mjs",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
-        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -2357,6 +2418,11 @@
         {
           "id": "finite-physical-motif-monitors",
           "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
           "commit": null
         }
       ]
@@ -2716,18 +2782,31 @@
         "js/app/procgen/workstation/physical/PhysicalMotifs.js",
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/workstation/CausalTake.js",
-        "js/app/procgen/workstation/PhysicalScoreFragment.js"
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/procgen-physical-motifs.test.js",
-        "scripts/bench-physical-motifs.mjs"
+        "scripts/bench-physical-motifs.mjs",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "finite-physical-motif-monitors",
           "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
           "commit": null
         }
       ]
@@ -3360,7 +3439,11 @@
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/workstation/CausalTake.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
-        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3376,7 +3459,9 @@
         "test/procgen-encounters.test.js",
         "scripts/bench-physical-encounters.mjs",
         "test/procgen-physical-motifs.test.js",
-        "scripts/bench-physical-motifs.mjs"
+        "scripts/bench-physical-motifs.mjs",
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
@@ -3384,7 +3469,8 @@
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
         "ca7a899ff9652ce7da596c549fdc0051118526b9",
         "148bf84c49957839c208a2269f17dbd2d2b11453",
-        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
+        "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3421,6 +3507,11 @@
         {
           "id": "finite-physical-motif-monitors",
           "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": "a4636ff46efa676c3adb21f24b122be4c9e6bf8c"
+        },
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
           "commit": null
         }
       ]
@@ -3927,15 +4018,31 @@
       "initialGap": "Canonical numeric v2 distinguishes typed nonfinite/signed zero and replay validation exists. Survey physical projection still includes stats/observer caches and omits interventionState, simulationTimeMs and timer speed; passive ground query changes physical hash while supported pending command/speed changes do not.",
       "state": "in-progress",
       "source": [
-        "js/app/procgen/survey/ProcgenSurveyCore.js"
+        "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "js/app/procgen/PhysicalCrewEvidence.js",
+        "js/app/procgen/ProcgenCrewProjects.js",
+        "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js"
       ],
-      "regressions": [],
+      "regressions": [
+        "test/procgen-activity-windows.test.js",
+        "scripts/bench-physical-activity.mjs"
+      ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
-      "remaining": "Physics-only state now includes behavior owners and excludes query caches; full projection audit remains."
+      "remaining": "Physics-only state now includes behavior owners and excludes query caches; full projection audit remains.",
+      "increments": [
+        {
+          "id": "physical-activity-and-rooted-cadence",
+          "summary": "Simulation-only activity/held/rest windows, complete-coverage absence, separate output diagnostics, exact canonical crew prerequisite roots and one-shot cadence ownership, checkpoint/fragment/capture v7 integration, physical-music identity v3, truthful refused fact/mix publication. Fixtures and profiles unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1224,
