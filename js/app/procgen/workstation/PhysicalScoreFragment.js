@@ -4,7 +4,7 @@ import { validatePhysicalPorts, alignPhysicalPorts } from './physical/PhysicalPo
 import { plain, identity, integer, freeze, copy } from './physical/PhysicalSchema.js';
 import { readTerrainCell, inspectTerrainInfluence, planTerrainCommand, digestPlan } from '../TerrainAuthoringAdapter.js';
 import { terrainScoreAt } from '../TerrainScoreLayer.js';
-const GROUPS = ['pickups', 'ensembles', 'routes', 'harmonicFields', 'formations', 'topologyRegions', 'instruments'];
+const GROUPS = ['pickups', 'ensembles', 'routes', 'harmonicFields', 'formations', 'topologyRegions', 'encounters', 'instruments'];
 const LIMITS = Object.freeze({ cells: 8192, spans: 128, objects: 256, bytes: 524288, fragments: 32, libraryBytes: 8388608, instances: 128, nestedDepth: 0 });
 const rectangle = value => { if (!plain(value) || ![value.x1, value.x2, value.y1, value.y2].every(Number.isSafeInteger) || value.x1 < 0 || value.y1 < 0 || value.x2 <= value.x1 || value.y2 <= value.y1 || value.x2 > 1e9 || value.y2 > 1e9 || (value.x2 - value.x1) * (value.y2 - value.y1) > LIMITS.cells) throw new Error('Fragment bounds exceed finite integer geometry.'); return { x1: value.x1, x2: value.x2, y1: value.y1, y2: value.y2 }; };
 const within = (point, b, edge = false) => point.x >= b.x1 && point.y >= b.y1 && (edge ? point.x <= b.x2 && point.y <= b.y2 : point.x < b.x2 && point.y < b.y2);
@@ -16,6 +16,7 @@ const numericBindings = {
   pickups: { hysteresis: 'pixels', 'pitchMap.baseCents': 'cents', 'pitchMap.spanCents': 'cents' },
   harmonicFields: { priority: 'integer', width: 'pixels', 'coordinateMap.pixelsPerDegree': 'pixels/degree', 'coordinateMap.centsPerPixel': 'cents/pixel', slewSeconds: 'seconds' },
   formations: { spacingPixels: 'pixels', degreeStep: 'integer', hysteresisPixels: 'pixels', slewSeconds: 'seconds', 'register.minCents': 'cents', 'register.maxCents': 'cents' },
+  encounters: { enterRadius: 'pixels', exitRadius: 'pixels', groupingToleranceTicks: 'ticks', 'response.gateTicks': 'ticks' },
   instruments: { pitchCents: 'cents', velocity01: 'ratio', probability01: 'ratio', 'articulation.spacingPixels': 'pixels' },
   topologyRegions: { 'mapping.basePitchCents': 'cents', 'mapping.referenceAreaPixels2': 'pixels2', 'mapping.areaCentsPerOctave': 'cents', 'mapping.boundaryDampingScale': 'ratio', 'mapping.openDamping01': 'ratio' }
 };
@@ -37,6 +38,7 @@ const checkGraphBounds = (graph, junctions, ports, b) => {
   for (const object of [...(graph.pickups || []), ...(graph.harmonicFields || [])]) { if (object.geometry.kind === 'band') bound(object.geometry.bounds); else points(object.geometry.points); }
   for (const ensemble of graph.ensembles || []) selectorWalk(ensemble.selector, selector => { if (selector.kind === 'region') bound(selector.bounds); });
   for (const route of graph.routes || []) for (const segment of route.segments) { points(segment.path); segment.dependencies.forEach(dependency => bound(dependency.bounds)); }
+  for (const encounter of graph.encounters || []) bound(encounter.region);
   for (const region of graph.topologyRegions || []) { bound(region.bounds); points(region.anchors); }
   for (const instrument of graph.instruments) if (instrument.sourceKind === 'MotionCommitted' && !instrument.articulation && (instrument.gateX < b.x1 || instrument.gateX > b.x2)) throw new Error('Fragment motion gate leaves local bounds.');
   for (const junction of junctions) { bound(junction.influence); bound(junction.control); points(junction.ports.map(port => port.position)); }
@@ -86,11 +88,12 @@ const transformContent = (input, { dx, dy, reflect = false, width = 0, preserveP
   const remapSelector = selector => { if (selector.selectors) selector.selectors.forEach(remapSelector); if (selector.kind === 'region') selector.bounds = bound(selector.bounds); if (selector.kind === 'route') { selector.routeId = rename('routes', selector.routeId); if (selector.branchId) selector.branchId = rename('branch', selector.branchId); } if (selector.kind === 'lane') selector.laneId = Number(external('lane', String(selector.laneId))); if (['birthCohort', 'crewProject'].includes(selector.kind)) selector.id = external(selector.kind, selector.id); };
   for (const group of GROUPS) for (const object of graph[group] || []) {
     object.id = rename(group, object.id);
-    for (const [key, kind] of [['ensembleId', 'ensembles'], ['routeId', 'routes'], ['pickupId', 'pickups'], ['formationId', 'formations'], ['topologyRegionId', 'topologyRegions']]) if (object[key]) object[key] = rename(kind, object[key]);
+    for (const [key, kind] of [['ensembleId', 'ensembles'], ['routeId', 'routes'], ['pickupId', 'pickups'], ['formationId', 'formations'], ['topologyRegionId', 'topologyRegions'], ['encounterId', 'encounters']]) if (object[key]) object[key] = rename(kind, object[key]);
     if (object.response) for (const [key, kind] of [['ensembleId', 'ensembles'], ['routeId', 'routes'], ['pickupId', 'pickups']]) if (object.response[key]) object.response[key] = rename(kind, object.response[key]);
     if (object.geometry) { if (object.geometry.kind === 'band') object.geometry.bounds = bound(object.geometry.bounds); else object.geometry.points = object.geometry.points.map(point); }
     if (object.laneScope) object.laneScope = object.laneScope.map(id => Number(external('lane', String(id))));
     if (object.materialTag) object.materialTag = external('materialTag', object.materialTag);
+    if (group === 'encounters') { object.region = bound(object.region); for (const key of ['leftEnsembleId', 'rightEnsembleId']) if (object.participants[key]) object.participants[key] = rename('ensembles', object.participants[key]); }
     if (group === 'ensembles') remapSelector(object.selector);
     if (group === 'pickups' && reflect) object.directionPolicy = flipDirection(object.directionPolicy);
     if (group === 'routes') { object.branchId = rename('branch', object.branchId); object.markers = object.markers.map(marker => ({ gateId: rename('pickups', marker.gateId), direction: reflect ? flipDirection(marker.direction) : marker.direction })); for (const segment of object.segments) { segment.id = rename('segment', segment.id); segment.path = segment.path.map(point); segment.dependencies = segment.dependencies.map(dependency => ({ ...dependency, bounds: bound(dependency.bounds), terrainRevision: 0 })); } }
@@ -196,10 +199,11 @@ export function selectSpatialFragmentGraph(input, bounds) {
   selected.routes = (graph.routes || []).filter(route => route.markers.every(marker => selected.pickups.some(pickup => pickup.id === marker.gateId)) && route.segments.every(segment => segment.path.every(point => within(point, b, true)) && segment.dependencies.every(dependency => withinBounds(dependency.bounds, b))));
   selected.formations = (graph.formations || []).filter(formation => ensembleAvailable(formation.ensembleId) && (!formation.routeId || selected.routes.some(route => route.id === formation.routeId)));
   selected.topologyRegions = (graph.topologyRegions || []).filter(region => withinBounds(region.bounds, b));
+  selected.encounters = (graph.encounters || []).filter(value => withinBounds(value.region, b) && ensembleAvailable(value.participants.leftEnsembleId) && ensembleAvailable(value.participants.rightEnsembleId) && (!value.routeId || selected.routes.some(route => route.id === value.routeId)) && (!value.pickupId || selected.pickups.some(pickup => pickup.id === value.pickupId)));
   selected.instruments = graph.instruments.filter(instrument => {
     const pickup = instrument.pickupId || instrument.response?.pickupId, route = instrument.routeId || instrument.response?.routeId;
-    const positioned = pickup || route || instrument.topologyRegionId || instrument.harmonicFields && instrument.ensembleId && selected.harmonicFields.length;
-    return positioned && (!pickup || selected.pickups.some(value => value.id === pickup)) && (!route || selected.routes.some(value => value.id === route)) && ensembleAvailable(instrument.ensembleId) && ensembleAvailable(instrument.response?.ensembleId) && (!instrument.formationId || selected.formations.some(value => value.id === instrument.formationId)) && (!instrument.topologyRegionId || selected.topologyRegions.some(value => value.id === instrument.topologyRegionId));
+    const positioned = instrument.encounterId || pickup || route || instrument.topologyRegionId || instrument.harmonicFields && instrument.ensembleId && selected.harmonicFields.length;
+    return positioned && (!instrument.encounterId || selected.encounters.some(value => value.id === instrument.encounterId)) && (!pickup || selected.pickups.some(value => value.id === pickup)) && (!route || selected.routes.some(value => value.id === route)) && ensembleAvailable(instrument.ensembleId) && ensembleAvailable(instrument.response?.ensembleId) && (!instrument.formationId || selected.formations.some(value => value.id === instrument.formationId)) && (!instrument.topologyRegionId || selected.topologyRegions.some(value => value.id === instrument.topologyRegionId));
   });
   return validateCausalInstrumentGraph(selected);
 }

@@ -1110,3 +1110,34 @@ reserves 512 KiB plus terminal event credits for lifecycle facts. These are copy
 accounting estimates, not measured heap peaks. Exhaustion remains explicit
 incomplete coverage; no receipt or acoustic success is fabricated. The extended
 receipt and aggregate-byte/terminal-reserve regressions are written but unrun.
+
+### Completed-position encounters and rendezvous
+
+`physical/Encounters.js` adds authored, revisioned encounter regions, distinct from
+blocker contacts. Relative endpoint chords detect between-tick meetings; lane-X
+and qualified-route distance never silently fall back to Euclidean distance.
+Sorted stable actor pairs own hysteretic episodes, cooldowns and bounded nearest
+neighbors. Opposing-crossing admission uses actual displacement, not sprite facing.
+A continuing episode is not reattacked merely because actors stop moving.
+
+Spatial bins cap swept memberships and candidates. Crowds above 32 actors in one
+half-radius cell use an explicit density episode: exact contained-pair count,
+stable representative voices, bounded root references and **censored cross-cell
+pair detail**, not an assertion that every pair was individually observed.
+Unknown membership/route coverage cannot generate a new pair. All responses retain
+actual physical roots; interval exchange requires prior physical pickup pitches
+and declares whether those memories swap or are only mirrored. No actor moves.
+
+Rendezvous groups actual pickup arrivals within the authored simulation-tick
+window, retaining each source time and recognizing only at the completed boundary.
+Late arrivals start another window. Checkpoints copy open groups before freezing,
+validate bounded nested arrivals on restore, and retain episode ownership across
+recovery; world/generation changes cannot inherit it. Capture requirements include
+relationship state and physical sources, and physical branches now preserve all
+physical/rhythmic/action/tonal boundary components. Fragments remap encounter,
+ensemble, pickup and route references and translate the region geometry. The
+physical authoring preview shows those regions and exposes their grouping contract.
+
+Regression and 8/128/512/1024-actor planning profiles are written but **not run**.
+Browser interaction, sound quality, tail latency and memory qualification remain
+deferred; semantic aggregation is not a DSP/render or acoustic receipt.

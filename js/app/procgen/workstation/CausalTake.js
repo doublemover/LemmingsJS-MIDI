@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v4',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v5',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -140,6 +140,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
 const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
+  for (const definition of valid.encounters || []) { add('encounters', definition.id, 'state'); if (definition.pickupId || definition.routeId || definition.participants.leftEnsembleId || definition.participants.rightEnsembleId) add('physical-domain', definition.id, 'state'); for (const kind of ['ActorBorn', 'ActorTerminated', 'MotionCommitted']) add(kind, definition.id, 'fact'); }
   for (const instrument of valid.instruments) {
     if (instrument.topologyRegionId) add('topology-geometry-v1', instrument.id, 'descriptor');
     if (instrument.harmonicFields || instrument.formationId) { add('tonal-interpretation', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
@@ -151,7 +152,7 @@ const graphCaptureRequirements = graph => {
       for (const source of sources) add(source, instrument.id, 'fact');
       if (instrument.response.type === 'crowdInterval') add('physical-domain', instrument.id, 'state');
       if (instrument.response.type === 'workCycle') add('work-phase-v2', instrument.id, 'descriptor');
-    } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
+    } else if (instrument.sourceKind === 'EncounterResponse') { add('encounters', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
     else add(instrument.sourceKind, instrument.id, 'fact');
     if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
     if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');

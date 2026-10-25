@@ -621,7 +621,7 @@
       "requirementUpdatedAt": "2026-10-22T08:45:33Z",
       "requirementSha256": "9d06d18a9fcac6d877805878587d2c870094847d727a2c69d4df8818f6c448e1",
       "initialGap": "Admitted worker checksum/recovery jobs, durable two-slot verified generations and paused-edit recovery state exist. SnapshotSession still synchronously clones/captures the full mutable graph and no incremental command/terrain page journal/checkpoint coordinator is implemented.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
         "js/app/procgen/workstation/ProcgenRecoveryCapture.js",
@@ -639,7 +639,8 @@
         "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e"
       ],
       "validation": "deferred-by-request",
-      "increment": "incremental-recovery-journal-and-pages"
+      "increment": "incremental-recovery-journal-and-pages",
+      "remaining": "Worker release acknowledgement, cancellation after durable transaction commit and source-generation pin composition remain to be implemented/reconciled with recovery ownership; incremental capture/encoding is implemented."
     },
     {
       "number": 1008,
@@ -1188,11 +1189,12 @@
       "requirementUpdatedAt": "2026-10-22T09:28:19Z",
       "requirementSha256": "cd78943be826aaaee5e7448494fff2abb9917bccdbd7af8fdc6fb48a7f1d4bc0",
       "initialGap": "Four original procedural biomes plus bounded actor-owned granular engine and source-region/dry-original audition exist. Ticket title/outcome says field recordings but body allows original/cleared source packs; interpretation is disputed. Completion comment was denied before posting because reviewer requires cleared field recordings. Left open; no retry.",
-      "state": "pending-implementation",
+      "state": "scope-uncertain-recording-provenance",
       "source": [],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "remaining": "Procedural source content exists; original cleared-field-recording requirement is unresolved. Do not claim recordings exist or completion."
     },
     {
       "number": 1039,
@@ -1291,7 +1293,7 @@
       "requirementUpdatedAt": "2026-10-24T14:21:19Z",
       "requirementSha256": "d8be5a8f42bad0404409c23c746adb950ffd04704cc2d20babe489d303f4e89a",
       "initialGap": "Journal-owned offline render, WAV/stems, bounded tail/memory and export ownership implemented. Latest same-frame sample-choke blocker persists: zero-duration loser still occupies a slot in captured-order allocation, so one-voice admission may reject a valid same-kit winner.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
         "js/app/midi-ui/CausalOwnedRender.js"
       ],
@@ -1302,7 +1304,8 @@
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity"
+      "increment": "causal-boundary-and-publication-integrity",
+      "remaining": "Sound-only offline render still needs historical lane-mix command lowering to reproduce the newly implemented live fader/mute/solo path."
     },
     {
       "number": 1047,
@@ -1343,11 +1346,28 @@
       "requirementUpdatedAt": "2026-10-22T09:00:53Z",
       "requirementSha256": "c0d29d657d99cfa03fae5e182993a5afd26751085c900d8fbfcd2ea2fe42f59a",
       "initialGap": "No EncounterInstrument, swept pair episodes/spatial pair reducer or rendezvous grouping; completed positions are a foundation only.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/physical/Encounters.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js"
+      ],
+      "regressions": [
+        "test/procgen-encounters.test.js",
+        "scripts/bench-physical-encounters.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "bounded-physical-encounters",
+          "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1050,
@@ -2162,17 +2182,32 @@
       "initialGap": "Canonical typed takes, capture profiles/requirements-aware reinterpretation, immutable-intent revoice, boundary inventory, coverage and re-performance services implemented. Complete physical-input capture is not guaranteed: ordinary manual nuke bypasses command recording without marking coverage unknown; re-performance diverges while take can finalize complete.",
       "state": "in-progress",
       "source": [
-        "js/app/procgen/ProcgenInterventionCommands.js"
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/physical/Encounters.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js"
       ],
       "regressions": [
-        "test/procgen-intervention-commands.test.js"
+        "test/procgen-intervention-commands.test.js",
+        "test/procgen-encounters.test.js",
+        "scripts/bench-physical-encounters.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
-      "remaining": "Manual nuke is captured before mutation; broader replay boundary contract remains."
+      "remaining": "Manual nuke is captured before mutation; broader replay boundary contract remains.",
+      "increments": [
+        {
+          "id": "bounded-physical-encounters",
+          "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1105,
@@ -2227,14 +2262,20 @@
         "js/app/procgen/ProcgenInterventionCommands.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
-        "js/app/procgen/workstation/CausalReperformance.js"
+        "js/app/procgen/workstation/CausalReperformance.js",
+        "js/app/procgen/workstation/physical/Encounters.js",
+        "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
         "test/procgen-terrain-topology.test.js",
         "test/midi/routed-instrument-backend.test.js",
         "scripts/bench-terrain-topology.mjs",
-        "test/physical-authoring-transaction.test.js"
+        "test/physical-authoring-transaction.test.js",
+        "test/procgen-encounters.test.js",
+        "scripts/bench-physical-encounters.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
@@ -2253,6 +2294,11 @@
           "id": "atomic-physical-authoring-owner",
           "summary": "Single-boundary staged terrain/provenance, musical graph, junction definitions and pinned fragment instances; effective graph available before the same completed batch, explicit recovery mapping records and causal re-performance integration. Queue has aggregate byte admission and post-publication failures cannot become false rejected/no-mutation receipts. Physical history and authoring surface remain next integration; runtime validation deferred.",
           "commit": "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        },
+        {
+          "id": "bounded-physical-encounters",
+          "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": null
         }
       ]
     },
@@ -2262,11 +2308,28 @@
       "requirementUpdatedAt": "2026-10-22T11:58:51Z",
       "requirementSha256": "90093941d6fa1c62f6eeb6d67b483ce9c32a8f5507becce61b0fdf0337625973",
       "initialGap": "Real-world causal/work/physical replay tests and metamorphic microfixtures exist. Complete installed-asset golden-scene corpus and create/edit/capture/revoice/export/reopen fault journey fixture not implemented; unexecuted listening/browser outcomes kept separate.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/Encounters.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js",
+        "js/app/procgen/workstation/PhysicalAuthoringView.js"
+      ],
+      "regressions": [
+        "test/procgen-encounters.test.js",
+        "scripts/bench-physical-encounters.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "bounded-physical-encounters",
+          "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1110,
@@ -2320,7 +2383,8 @@
         "test/procgen-physical-batch.test.js"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "148bf84c49957839c208a2269f17dbd2d2b11453"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2328,7 +2392,7 @@
         {
           "id": "bounded-nested-physical-receipts",
           "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
-          "commit": null
+          "commit": "148bf84c49957839c208a2269f17dbd2d2b11453"
         }
       ]
     },
@@ -2845,7 +2909,7 @@
       "requirementUpdatedAt": "2026-10-24T12:56:51Z",
       "requirementSha256": "8ad6dca392987504fcc2415b01c6d6a952eddb068dd25f3c7cb0bce14c588ac2",
       "initialGap": "Shared category/resource leases and many adapters implemented. Current source retains all-cache audio purge under tiny pressure, stale reserve preconditions after eviction callback, ImageData final-only replacement accounting and width-first intermediate canvas raster admission holes.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
         "js/app/resources/ResourceBudget.js",
         "js/app/midi-ui/AudioAssetLoader.js",
@@ -2859,7 +2923,8 @@
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab"
       ],
       "validation": "deferred-by-request",
-      "increment": "bounded-command-and-render-staging"
+      "increment": "bounded-command-and-render-staging",
+      "remaining": "New topology/relationship physical owners still need shared-budget reservations and peak composition; the audited raster replacement, asset-pressure and reentrant-reservation defects are repaired."
     },
     {
       "number": 1163,
@@ -3184,7 +3249,8 @@
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
         "6357fa75948baaf475a9da927f6a5eca4143686c",
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
-        "ca7a899ff9652ce7da596c549fdc0051118526b9"
+        "ca7a899ff9652ce7da596c549fdc0051118526b9",
+        "148bf84c49957839c208a2269f17dbd2d2b11453"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3216,7 +3282,7 @@
         {
           "id": "bounded-nested-physical-receipts",
           "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
-          "commit": null
+          "commit": "148bf84c49957839c208a2269f17dbd2d2b11453"
         }
       ]
     },
@@ -3244,7 +3310,11 @@
         "js/app/procgen/workstation/CausalReperformance.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
         "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
-        "js/app/procgen/ProcgenSoundEventBus.js"
+        "js/app/procgen/ProcgenSoundEventBus.js",
+        "js/app/procgen/workstation/physical/Encounters.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/CausalPhysicalBranch.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3256,13 +3326,16 @@
         "test/physical-authoring-history.test.js",
         "test/procgen-physical-authoring-controller.test.js",
         "scripts/bench-physical-authoring-history.mjs",
-        "test/procgen-physical-batch.test.js"
+        "test/procgen-physical-batch.test.js",
+        "test/procgen-encounters.test.js",
+        "scripts/bench-physical-encounters.mjs"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
         "6357fa75948baaf475a9da927f6a5eca4143686c",
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
-        "ca7a899ff9652ce7da596c549fdc0051118526b9"
+        "ca7a899ff9652ce7da596c549fdc0051118526b9",
+        "148bf84c49957839c208a2269f17dbd2d2b11453"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3289,6 +3362,11 @@
         {
           "id": "bounded-nested-physical-receipts",
           "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
+          "commit": "148bf84c49957839c208a2269f17dbd2d2b11453"
+        },
+        {
+          "id": "bounded-physical-encounters",
+          "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
           "commit": null
         }
       ]
@@ -3729,7 +3807,8 @@
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
-        "6357fa75948baaf475a9da927f6a5eca4143686c"
+        "6357fa75948baaf475a9da927f6a5eca4143686c",
+        "148bf84c49957839c208a2269f17dbd2d2b11453"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3746,7 +3825,7 @@
         {
           "id": "bounded-nested-physical-receipts",
           "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
-          "commit": null
+          "commit": "148bf84c49957839c208a2269f17dbd2d2b11453"
         }
       ]
     },
@@ -3991,11 +4070,12 @@
       "requirementUpdatedAt": "2026-10-24T20:18:33Z",
       "requirementSha256": "c51c28ed3d50b68eaf5253c11be558a7e3acae08dd64936bb8b548bc37d51672",
       "initialGap": "The shared ADSR truncation reconstructs the ramp frontier rather than deleting pre-release interpolation; both native oscillator/FM/modal lifetime and sample main/release-child paths use it, with the sample main endpoint distinct from composite child lifetime.",
-      "state": "pending-implementation",
+      "state": "implemented-before-branch-publication-blocked",
       "source": [],
       "regressions": [],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "remaining": "No new development gap established; closure operation remains blocked and is not retried."
     },
     {
       "number": 1257,
