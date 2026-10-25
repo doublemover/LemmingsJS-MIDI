@@ -1,6 +1,7 @@
 export class OwnedRadix2FFT {
-  constructor(size) {
-    if (![512, 1024, 2048].includes(size)) throw new RangeError('The prepared FFT size is unavailable.');
+  constructor(size, { offlineMaximumSize = 2048 } = {}) {
+    if (!Number.isSafeInteger(offlineMaximumSize) || offlineMaximumSize < 2048 || offlineMaximumSize > 65536 || (offlineMaximumSize & (offlineMaximumSize - 1)) ||
+        !Number.isSafeInteger(size) || size < 512 || size > offlineMaximumSize || (size & (size - 1))) throw new RangeError('The prepared FFT size is unavailable.');
     this.size = size; this.reverse = new Uint32Array(size); this.cos = new Float64Array(size / 2); this.sin = new Float64Array(size / 2);
     const bits = Math.log2(size);
     for (let index = 0; index < size; index++) { let value = index, reversed = 0; for (let bit = 0; bit < bits; bit++) { reversed = reversed * 2 + (value & 1); value >>>= 1; } this.reverse[index] = reversed; }

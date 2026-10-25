@@ -6,9 +6,9 @@ import { deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 export function createSoundSeedLabView({ document, window, audio, resourceBudget, jobs, displayScheduler, onApply, onStatus = () => {} } = {}) {
-  const listeners = [], retirement = createProcgenRetirementScope();
+  const listeners = [], modeListeners = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
-  let analysis, instrument, derived, surface, derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
+  let analysis, instrument, derived, modal, surface, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const listen = (element, event, handler) => { element.addEventListener(event, handler); listeners.push(() => element.removeEventListener(event, handler)); };
   const root = node('section'); root.className = 'studio-seed-lab'; root.hidden = true; root.setAttribute('aria-label', 'Sound seed laboratory');
@@ -23,6 +23,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   const trimIn = node('input'), trimOut = node('input'); for (const input of [trimIn, trimOut]) { input.type = 'range'; input.min = '0'; input.max = '1'; input.step = '1'; } field('Trim in handle', trimIn); field('Trim out handle', trimOut);
   const law = select('Fade law', [['linear', 'Linear'], ['equal-power', 'Equal power']]);
   const transform = select('Seed recipe', [['hammer-seed', 'Hammer seed · new contact'], ['ice-dust', 'Ice dust · granular tail'], ['route-relic', 'Route relic · recorded phrase']]);
+  { const option = node('option', 'Found body · fitted modal approximation'); option.value = 'modal-body'; transform.append(option); }
   const pitch = select('Pitch declaration', [['unpitched', 'Unpitched · fixed source rate'], ['pitched', 'Declared root · varispeed']]), rootPitch = numeric('Declared root · MIDI cents', 6000, 2400, 9600);
   const zoom = select('Waveform zoom', [['1', 'Whole prepared window'], ['2', '2×'], ['4', '4×'], ['8', '8×']]), viewFirst = numeric('Waveform first local frame', 0);
   const auditionMode = select('Audition repeat', [['1', 'Once'], ['3', 'Explicit loop · 3 passes, up to 8s per sample pass']]);
@@ -31,6 +32,10 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   status.setAttribute('role', 'status'); readiness.setAttribute('aria-label', 'Independent seed readiness');
   const advanced = node('details'), advancedTitle = node('summary', 'COMPONENTS · estimates with aligned original phase'), componentInfo = node('output'), componentStrips = node('div');
   advanced.className = 'studio-seed-components'; advanced.append(advancedTitle, node('p', 'Transient-like, sustained-like and residual estimates share one stereo mask. Neutral reconstruction error measures PCM summation, not perceptual isolation. Selecting a strip uses its material for a separate recipe.'), componentInfo, componentStrips);
+  const bodyPage = node('details'), bodyTitle = node('summary', 'BODY FIT · editable damped-sinusoid approximation'), bodyInfo = node('output'), bodyModes = node('div'), bodySpectrum = node('canvas'); bodySpectrum.width = 960; bodySpectrum.height = 120; bodySpectrum.setAttribute('role', 'img'); bodySpectrum.setAttribute('aria-label', 'Actual linked stereo source spectrum with estimated mode marks');
+  const observation = numeric('Body observation · original frames', 4096, 512, 65536), padding = select('Body FFT size', [['512', '512'], ['1024', '1024'], ['2048', '2048'], ['4096', '4096'], ['8192', '8192'], ['16384', '16384'], ['32768', '32768'], ['65536', '65536']]); padding.value = '8192';
+  bodyPage.className = 'studio-seed-body'; bodyModes.className = 'studio-seed-mode-list';
+  bodyPage.append(bodyTitle, node('p', 'Modes are estimates with amplitude T60, phase and residual evidence. The declared root is independent. A new modal instrument uses new excitation; it does not reproduce original phase or establish a physical material.'), observation.parentNode, padding.parentNode, bodyInfo, bodySpectrum, bodyModes);
   const actions = node('div'); actions.className = 'studio-sound-actions';
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
   const refresh = () => surface?.invalidate();
@@ -40,21 +45,23 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     active = Promise.resolve(work).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh();
   };
   const button = (text, action) => { const element = node('button', text); element.type = 'button'; listen(element, 'click', action); actions.append(element); return element; };
-  const chosenCandidate = () => derivedSelection ? derived.component(derivedSelection) : analysis.candidate();
-  const invalidateTrim = () => { derivedSelection = null; derivedDraft = -1; derived.cancel(); draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
+  const chosenCandidate = () => modalSelection ? modal.component(modalSelection) : derivedSelection ? derived.component(derivedSelection) : analysis.candidate();
+  const invalidateModal = () => { modalRevision++; compiledDraft = -1; modal.cancel(); instrument.stop(); refresh(); };
+  const invalidateTrim = () => { modalSelection = null; modalDraft = -1; modal.cancel(); derivedSelection = null; derivedDraft = -1; derived.cancel(); draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
   const invalidateRecipe = () => { recipeDraft++; compiledDraft = -1; instrument.stop(); refresh(); };
   const nudge = (input, amount) => () => { input.value = String(Math.max(Number(input.min), Math.min(Number(input.max), Number(input.value) + amount))); trimIn.value = first.value; trimOut.value = end.value; invalidateTrim(); };
   button('In −1 frame', nudge(first, -1)); button('In +1 frame', nudge(first, 1)); button('Out −1 frame', nudge(end, -1)); button('Out +1 frame', nudge(end, 1));
   const prepare = button('Freeze selected region', run(async () => {
-    const revision = draft; await instrument.clear(); await derived.clear(); derivedSelection = null; derivedDraft = -1;
+    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1;
     const result = await analysis.prepare({ firstFrame: Number(first.value), endFrame: Number(end.value), fades: { inFrames: Number(fadeIn.value), outFrames: Number(fadeOut.value), law: law.value }, isCurrent: () => revision === draft });
+    editableModes = []; selectedModes.clear(); renderModes(); modalDrawn = null; bodySpectrum.getContext('2d')?.clearRect(0, 0, 960, 120);
     candidateDraft = revision; viewFirst.value = '0'; drawn = null; renderAncestry(result); say('Region frozen in memory. Inspect the original frame range, then compile its recipe.');
   }));
   const compile = button('Compile seed instrument', run(async () => {
-    if (candidateDraft !== draft) throw new Error('Freeze the edited range before compiling.');
-    const revision = draft, recipeRevision = recipeDraft;
-    await instrument.prepare(chosenCandidate(), { transform: transform.value, pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' },
-      isCurrent: () => revision === draft && recipeRevision === recipeDraft });
+    if (candidateDraft !== draft || modalSelection && (modalDraft !== draft || preparedModalRevision !== modalRevision)) throw new Error('Freeze or refit the edited material before compiling.');
+    const revision = draft, recipeRevision = recipeDraft, fitRevision = modalRevision;
+    await instrument.prepare(chosenCandidate(), { modalFit: transform.value === 'modal-body' && modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, transform: transform.value, pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' },
+      isCurrent: () => revision === draft && recipeRevision === recipeDraft && fitRevision === modalRevision });
     compiledDraft = recipeRevision; say('Instrument compiled. Audition this exact revision before saving and applying it.');
   }));
   const audition = button('Audition seed controls', run(() => instrument.audition({ repeatCount: Number(auditionMode.value) }))), save = button('Save playable seed locally', run(() => instrument.install())), apply = button('Apply to selected lane', run(() => instrument.apply()));
@@ -71,27 +78,61 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     const receipt = deliverArtifactToAnchor(candidate.artifact, { document, windowRef: window }); say(receipt.state === 'delivery-requested' ? 'WAV download requested. Browser completion is unacknowledged; the in-memory seed remains available.' : 'WAV delivery ' + receipt.state + '.'); });
   const decompose = button('Analyze seed components', run(async () => {
     if (candidateDraft !== draft) throw new Error('Freeze the current range before component analysis.');
-    const revision = draft; await instrument.clear(); derivedSelection = null;
+    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; derivedSelection = null;
     await derived.prepare(analysis.candidate(), { isCurrent: () => revision === draft }); derivedDraft = revision; derivedDrawn = null; compiledDraft = -1;
     say('Components prepared in memory. Their source phase, frame alignment and measured neutral reconstruction receipt are retained.');
   }));
   const compare = button('Compare selected dry material · up to 8s', run(() => instrument.audition({ comparison: true })));
-  const recombined = button('Use neutral recombined material', () => { if (active || derivedDraft !== draft || !derived.component('neutral-recombined')?.metadata().assetReady) return; derivedSelection = 'neutral-recombined'; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
-  const original = button('Use original frozen seed', () => { if (active) return; derivedSelection = null; invalidateRecipe(); const candidate = chosenCandidate(); if (candidate) renderAncestry(candidate); drawn = null; });
+  const recombined = button('Use neutral recombined material', () => { if (active || derivedDraft !== draft || !derived.component('neutral-recombined')?.metadata().assetReady) return; modalSelection = null; derivedSelection = 'neutral-recombined'; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
+  const original = button('Use original frozen seed', () => { if (active) return; modalSelection = null; derivedSelection = null; invalidateRecipe(); const candidate = chosenCandidate(); if (candidate) renderAncestry(candidate); drawn = null; });
   for (const kind of ['transient-like', 'sustained-like', 'residual']) {
     const strip = node('div'), label = node('button', 'Use ' + kind), stripCanvas = node('canvas'); label.type = 'button'; stripCanvas.width = 960; stripCanvas.height = 48;
     stripCanvas.setAttribute('role', 'img'); stripCanvas.setAttribute('aria-label', kind + ' stereo waveform with shared seed frame ruler');
-    listen(label, 'click', () => { if (active || derivedDraft !== draft || !derived.component(kind)?.metadata().assetReady) return; derivedSelection = kind; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
+    listen(label, 'click', () => { if (active || derivedDraft !== draft || !derived.component(kind)?.metadata().assetReady) return; modalSelection = null; derivedSelection = kind; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
     strip.append(label, stripCanvas); componentStrips.append(strip);
   }
-  const nested = button('Use frozen seed as next source', run(async () => { const candidate = chosenCandidate(); if (!candidate?.metadata().assetReady || derivedSelection) return;
-    await instrument.clear(); await derived.clear(); derivedDraft = -1; await analysis.selectSource({ artifact: candidate.artifact, manifest: candidate.manifest }); resetRange(); say('Frozen material selected as the next immutable parent. Its original ancestry and gap evidence remain attached.'); }));
-  const close = () => { sourceSelection++; analysis.cancel(); derived.cancel(); instrument.stop(); root.hidden = true; };
+  const performFit = manual => run(async () => {
+    const selection = manual ? modalParentSelection : derivedSelection, candidate = selection ? derived.component(selection) : analysis.candidate();
+    if (!candidate?.metadata().assetReady || candidateDraft !== draft) throw new Error('Freeze the current source range before fitting.');
+    const revision = draft, fitRevision = modalRevision; await instrument.clear();
+    const options = { observationFrames: Number(observation.value), fftSize: Number(padding.value), ...(manual ? { manualModes: editableModes.map(({ id, frequencyHz, t60Seconds, pinned }) => ({ id, frequencyHz, t60Seconds, pinned })) } : { pinnedModes: (modal.state().analysis?.parentAssetHash === candidate.metadata().assetHash ? editableModes : []).filter(mode => mode.pinned).map(({ id, frequencyHz, t60Seconds, pinned }) => ({ id, frequencyHz, t60Seconds, pinned })) }) };
+    await modal.prepare(candidate, { options, isCurrent: () => revision === draft && fitRevision === modalRevision });
+    modalParentSelection = selection; modalSelection = null; modalDraft = revision; preparedModalRevision = fitRevision; modalDrawn = null; compiledDraft = -1; drawn = null;
+    say('Modal analysis completed. Review confidence and residual before selecting a new-excitation body recipe.');
+  });
+  const fit = button('Estimate body modes', performFit(false)), refit = button('Refit edited mode selection', performFit(true));
+  const mergeModes = button('Merge selected modes', () => {
+    if (active || selectedModes.size < 2) return;
+    const merged = editableModes.filter(mode => selectedModes.has(mode.id)), total = merged.reduce((sum, mode) => sum + (mode.sourceAmplitude || 1), 0);
+    editableModes = [...editableModes.filter(mode => !selectedModes.has(mode.id)), { id: 'merged-' + (++modalRevision), frequencyHz: merged.reduce((sum, mode) => sum + mode.frequencyHz * (mode.sourceAmplitude || 1), 0) / total,
+      t60Seconds: merged.reduce((sum, mode) => sum + mode.t60Seconds * (mode.sourceAmplitude || 1), 0) / total, pinned: true }]; selectedModes.clear(); renderModes(); invalidateModal();
+  });
+  for (const [kind, label] of [['modal-reconstruction', 'Use fitted reconstruction material'], ['modal-residual', 'Use true modal residual material']]) button(label, () => {
+    if (active || modalDraft !== draft || preparedModalRevision !== modalRevision || !modal.component(kind)?.metadata().assetReady) return; modalSelection = kind; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate());
+  });
+  button('Return to fitted source', () => { if (active) return; modalSelection = null; derivedSelection = modalParentSelection; invalidateRecipe(); drawn = null; const candidate = chosenCandidate(); if (candidate) renderAncestry(candidate); });
+  function renderModes() {
+    for (const remove of modeListeners.splice(0)) remove(); bodyModes.replaceChildren();
+    const bind = (element, event, callback) => { element.addEventListener(event, callback); modeListeners.push(() => element.removeEventListener(event, callback)); };
+    for (const mode of editableModes) {
+      const row = node('div'), selectMode = node('input'), pin = node('input'), hz = node('input'), t60 = node('input'), remove = node('button', 'Remove');
+      selectMode.type = pin.type = 'checkbox'; selectMode.checked = selectedModes.has(mode.id); pin.checked = mode.pinned; selectMode.setAttribute('aria-label', 'Select ' + mode.id + ' for merge'); pin.setAttribute('aria-label', 'Pin ' + mode.id);
+      for (const input of [hz, t60]) { input.type = 'number'; input.step = 'any'; } hz.value = String(mode.frequencyHz); hz.min = '20'; hz.max = '20000'; hz.setAttribute('aria-label', mode.id + ' frequency Hz');
+      t60.value = String(mode.t60Seconds); t60.min = '0.03'; t60.max = '8'; t60.setAttribute('aria-label', mode.id + ' amplitude T60 seconds'); remove.type = 'button';
+      bind(selectMode, 'change', () => { if (selectMode.checked) selectedModes.add(mode.id); else selectedModes.delete(mode.id); refresh(); });
+      bind(pin, 'change', () => { mode.pinned = pin.checked; invalidateModal(); }); bind(hz, 'change', () => { mode.frequencyHz = Number(hz.value); invalidateModal(); }); bind(t60, 'change', () => { mode.t60Seconds = Number(t60.value); invalidateModal(); });
+      bind(remove, 'click', () => { if (active) return; editableModes = editableModes.filter(entry => entry.id !== mode.id); selectedModes.delete(mode.id); renderModes(); invalidateModal(); });
+      row.append(selectMode, node('span', mode.id + ' · ' + (mode.confidence || 'manual selection') + ' · Hz / T60 s / Pin'), hz, t60, pin, remove); bodyModes.append(row);
+    }
+  }
+  const nested = button('Use frozen seed as next source', run(async () => { const candidate = chosenCandidate(); if (!candidate?.metadata().assetReady || derivedSelection || modalSelection) return;
+    await instrument.clear(); await modal.clear(); modalDraft = -1; await derived.clear(); derivedDraft = -1; await analysis.selectSource({ artifact: candidate.artifact, manifest: candidate.manifest }); resetRange(); say('Frozen material selected as the next immutable parent. Its original ancestry and gap evidence remain attached.'); }));
+  const close = () => { sourceSelection++; analysis.cancel(); derived.cancel(); modal.cancel(); instrument.stop(); root.hidden = true; };
   button('Close seed dock', close);
   function resetRange() {
     const source = analysis.state().source; first.value = '0'; end.value = String(Math.min(source.sourceFrames, Math.floor(source.sampleRate * 1.5), Math.floor(15 * 1048576 / 8)));
     for (const input of [first, end, trimIn, trimOut]) input.max = String(source.sourceFrames); trimIn.value = first.value; trimOut.value = end.value;
-    const edge = Math.min(64, Math.floor(Number(end.value) / 2)); fadeIn.value = fadeOut.value = String(edge); candidateDraft = -1; compiledDraft = -1; draft++; drawn = null; causeList.replaceChildren(); refresh();
+    const edge = Math.min(64, Math.floor(Number(end.value) / 2)); fadeIn.value = fadeOut.value = String(edge); candidateDraft = -1; compiledDraft = -1; draft++; drawn = null; causeList.replaceChildren(); editableModes = []; selectedModes.clear(); renderModes(); modalDrawn = null; modalParentSelection = null; preparedModalRevision = -1; bodySpectrum.getContext('2d')?.clearRect(0, 0, 960, 120); refresh();
   }
   function renderAncestry(candidate) {
     causeList.replaceChildren();
@@ -121,15 +162,25 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     });
   }
   function paint() {
-    if (disposed || !analysis || !instrument || !derived) return; const a = analysis.state(), i = instrument.state(), d = derived.state(), candidate = chosenCandidate(), meta = candidate?.metadata(), validAsset = !!meta?.assetReady && candidateDraft === draft, validPatch = validAsset && compiledDraft === recipeDraft && i.compiledPatchReady;
+    if (disposed || !analysis || !instrument || !derived || !modal) return; const a = analysis.state(), i = instrument.state(), d = derived.state(), m = modal.state(), candidate = chosenCandidate(), meta = candidate?.metadata(), validAsset = !!meta?.assetReady && candidateDraft === draft && (!modalSelection || modalDraft === draft && preparedModalRevision === modalRevision), validPatch = validAsset && compiledDraft === recipeDraft && i.compiledPatchReady;
     sourceText.textContent = a.source ? a.source.originKind + ' · ' + a.source.sourceTap + ' · ' + a.source.sourceFrames.toLocaleString() + ' original frames at ' + a.source.sampleRate + ' Hz · ' + a.source.immutableSourceRef : 'No retained source selected.';
     readiness.textContent = 'ASSET ' + (validAsset ? 'ready in memory' : meta?.assetReady ? 'stale draft' : 'not frozen') + ' · PATCH ' + (validPatch ? 'compiled' : 'not prepared for draft') + ' · AUDITION ' + (validPatch && i.audibleAuditionReady ? 'completed' : 'not completed') + ' · STORAGE ' + (validPatch && i.durable ? 'committed locally' : 'not durable');
     if (a.active || i.active) status.textContent = a.active ? a.phase + (a.progress ? ' · ' + a.progress.completedUnits + '/' + a.progress.totalUnits : '') : i.phase;
     warnings.textContent = [a.error, i.error, ...(validPatch ? i.recipe.warnings : []), meta ? 'Coverage: ' + meta.coverage.status + ' · peak ' + meta.statistics.peak.toFixed(5) + ' · clipped samples ' + meta.statistics.clippedSamples + ' · stereo correlation ' + (meta.statistics.stereoCorrelation == null ? 'undefined for silent channel' : meta.statistics.stereoCorrelation.toFixed(4)) : '',
       pitch.value === 'unpitched' && transform.value === 'ice-dust' ? 'Ice dust requires a declared root for the current granular renderer. Choose a sampler recipe for Unpitched material.' : ''].filter(Boolean).join(' ');
-    const busy = !!active || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
+    const busy = !!active || m.active || m.unknownRetirement || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
     prepare.disabled = busy || !a.source; compile.disabled = busy || !validAsset; audition.disabled = busy || !validPatch; save.disabled = busy || !validPatch || !i.audibleAuditionReady;
-    apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch; useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
+    apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection || !!modalSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch || transform.value === 'modal-body'; useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
+    fit.disabled = busy || !validAsset; refit.disabled = busy || modalDraft !== draft || !editableModes.length; mergeModes.disabled = busy || selectedModes.size < 2;
+    const modalSummary = m.analysis;
+    bodyInfo.textContent = m.active ? m.phase : m.error || (modalSummary ? (modalDraft !== draft || preparedModalRevision !== modalRevision ? 'STALE · ' : '') + modalSummary.estimate.status + ' · observed ' + modalSummary.recipe.observationFrames + ' frames / FFT ' + modalSummary.recipe.fftSize + ' / padding ' + modalSummary.recipe.zeroPaddingFrames + ' · minimum resolvable separation ' + modalSummary.recipe.resolutionHz.toFixed(3) + ' Hz · model RMS error ' + modalSummary.estimate.modelRmsError.toExponential(3) + ' · ' + modalSummary.estimate.declined.length + ' declined tracks. Root pitch not inferred.' : 'Fit the original seed or a selected sustained component. Observation length bounds frequency separation; FFT padding alone adds no observed information.');
+    if (modalSummary && modalDrawn !== modalSummary.generation) { modalDrawn = modalSummary.generation; editableModes = modalSummary.estimate.modes.map(mode => ({ id: mode.id, frequencyHz: mode.frequencyHz, t60Seconds: mode.t60Seconds, pinned: mode.pinned, sourceAmplitude: mode.amplitude, confidence: mode.confidence.level })); selectedModes.clear(); renderModes();
+      const spectrum = modalSummary.estimate.spectrum, context = bodySpectrum.getContext('2d');
+      if (context) { context.clearRect(0, 0, 960, 120); context.strokeStyle = '#326b80'; context.beginPath();
+        for (let x = 0; x < 960; x++) { const bin = Math.min(spectrum.decibels.length - 1, Math.floor(x * spectrum.decibels.length / 960)), y = 112 - (Math.max(-100, Math.min(0, spectrum.decibels[bin])) + 100); if (x) context.lineTo(x, y); else context.moveTo(x, y); } context.stroke();
+        context.strokeStyle = '#a43754'; for (const mode of modalSummary.estimate.modes) { const x = mode.frequencyHz / (spectrum.frequencyStepHz * spectrum.decibels.length) * 960; context.beginPath(); context.moveTo(x, 0); context.lineTo(x, 120); context.stroke(); }
+      }
+    }
     const summary = d.analysis;
     componentInfo.textContent = d.active ? d.phase : d.error || (summary ? (derivedDraft !== draft ? 'STALE · ' : '') + 'Selected ' + (derivedSelection || 'original frozen seed') + ' · ' + summary.recipe.fftSize + ' FFT / ' + summary.recipe.hopFrames + ' hop · ' + summary.recipe.observationFrames + ' observed frames · neutral max error ' + summary.reconstruction.maximumAbsoluteError.toExponential(3) + ' / RMS ' + summary.reconstruction.rmsError.toExponential(3) + ' · zero output delay, exact original-frame crop.' : 'Analyze a frozen seed to inspect its components.');
     if (summary && derivedDrawn !== summary.generation) {
@@ -146,27 +197,29 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   }
   for (const input of [first, end, fadeIn, fadeOut, law]) listen(input, 'change', () => { trimIn.value = first.value; trimOut.value = end.value; invalidateTrim(); });
   for (const [input, target] of [[trimIn, first], [trimOut, end]]) listen(input, 'input', () => { target.value = input.value; invalidateTrim(); });
+  for (const input of [observation, padding]) listen(input, 'change', invalidateModal);
   for (const input of [transform, pitch, rootPitch]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); instrument.stop(); } });
-  root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, cause, advanced, actions);
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); modal.cancel(); instrument.stop(); } });
+  root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, cause, advanced, bodyPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
   derived = createSoundSeedDerivedOwner({ resourceBudget, jobs, onState: refresh });
+  modal = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'body-fit', onState: refresh });
   instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
     onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   return Object.freeze({ async open(source) {
-    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; analysis.cancel(); derived.cancel(); instrument.stop();
-    await active?.catch(() => {}); await instrument.clear(); await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
+    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; analysis.cancel(); derived.cancel(); modal.cancel(); instrument.stop();
+    await active?.catch(() => {}); await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
-  }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), derivedSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
-  suspend() { analysis.cancel(); derived.cancel(); instrument.stop(); },
+  }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), modal: modal.state(), derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
+  suspend() { analysis.cancel(); derived.cancel(); modal.cancel(); instrument.stop(); },
   dispose() {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); instrument.stop();
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); modal.cancel(); instrument.stop();
     const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(async () => { const receipt = instrument.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed audition still owns material.'); });
-    return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-derived', run: async () => { await instrumentFinished; return derived.dispose(); } }, { name: 'seed-analysis', run: async () => { await instrumentFinished; const receipt = derived.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Derived analysis still owns seed material.'); return analysis.dispose(); } },
+    return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-modal', run: async () => { await instrumentFinished; return modal.dispose(); } }, { name: 'seed-derived', run: async () => { await instrumentFinished; const receipt = modal.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Modal analysis still owns derived material.'); return derived.dispose(); } }, { name: 'seed-analysis', run: async () => { await instrumentFinished; const modalReceipt = modal.dispose(); await modalReceipt.completion; if (modalReceipt.outcome !== 'complete') throw new Error('Modal analysis still owns seed material.'); const receipt = derived.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Derived analysis still owns seed material.'); return analysis.dispose(); } },
       { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
-      ...listeners.splice(0).map((remove, index) => ({ name: 'seed-listener-' + index, run: remove })), { name: 'seed-dock', run: () => root.remove() }]);
+      ...[...listeners.splice(0), ...modeListeners.splice(0)].map((remove, index) => ({ name: 'seed-listener-' + index, run: remove })), { name: 'seed-dock', run: () => root.remove() }]);
   } });
 }

@@ -1,5 +1,6 @@
 import { inspectOwnedSoundSeedHeader, inspectOwnedSoundSeedOrigin } from './OwnedSoundSeedSource.js';
 import { createSoundSeedRecipe } from '../../midi/content/SoundSeedRecipe.js';
+import { createSoundSeedModalRecipe } from '../../midi/content/SoundSeedModalRecipe.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 import { getNativeInstrumentCatalog } from './NativeInstrumentSchema.js';
 import { createSoundContentReader } from './SoundContentReader.js';
@@ -36,7 +37,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     operation.promise = Promise.resolve().then(() => work(operation, check)).catch(failure => { error = String(failure.message).slice(0, 512); phase = unknown.size ? 'ownership-unknown' : current ? 'previous-patch-retained' : 'no-patch'; throw failure; })
       .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
-  const prepare = (candidate, { transform, pitch, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
+  const prepare = (candidate, { transform, pitch, modalFit = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
     const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady) throw fail('The seed draft changed while preparing its instrument.'); };
     let loan = null, job = null, workspace = null, next = null, prepared = null;
     try {
@@ -46,7 +47,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       const sourceHeader = inspectOwnedSoundSeedHeader(new Uint8Array(await loan.blob.slice(0, 56).arrayBuffer()), artifactMetadata.byteLength); check();
       if (sourceHeader.frames !== candidate.manifest.frames || sourceHeader.sampleRate !== candidate.manifest.sampleRate) throw fail('Frozen seed frame inventory differs from its recipe.');
       inspectOwnedSoundSeedOrigin(new Uint8Array(await loan.blob.slice(sourceHeader.metadataOffset).arrayBuffer()), candidate.manifest); check();
-      const recipe = await createSoundSeedRecipe({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch }); check();
+      const recipe = await (transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch, modalFit }); check();
       const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
       job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
         inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,
@@ -83,7 +84,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     let receipt;
     for (let pass = 0; pass < repeatCount; pass++) {
       check(); receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal,
-        ...(comparison ? { sourceMode: 'original' } : current.contract.transform !== 'ice-dust' ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
+        ...(comparison ? { sourceMode: 'original' } : ['hammer-seed', 'route-relic'].includes(current.contract.transform) ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
     }
     phase = 'audition-complete'; return receipt;
   });

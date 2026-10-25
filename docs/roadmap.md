@@ -3967,3 +3967,50 @@ simultaneous sample/granular/modal child graphs, saved per-component revoicing,
 modal estimation and browser/listening acceptance remain dependent work.
 Reference algorithm context: [librosa 0.11.0 HPSS documentation](https://librosa.org/doc/0.11.0/generated/librosa.decompose.hpss.html);
 this is an original bounded implementation, not a measured oracle match.
+
+
+### Continuation 176 — inspectable body-fit baseline and modal recipe (#1177, #1170)
+
+BODY FIT now runs in the same bounded shared-worker/source-window ownership path.
+It begins with linked stereo Hann spectral peaks, refines frequency using local
+phase tracks, fits amplitude log-decay, and solves stereo damped cosine/sine
+coefficients. Growing, insufficient, out-of-range or poorly exponential tracks
+are declined. Confidence remains a baseline estimate; clipping, observed fraction
+of amplitude T60 and minimum observation-limited mode separation are explicit.
+Silence can produce a declined estimate with an unchanged residual rather than
+invented modes. Root pitch, material, geometry and impact force are not inferred.
+
+The original FFT supports up to 65536 points only behind an explicit offline
+maximum; ordinary worklet construction still admits only 512/1024/2048. Observed
+frames and zero padding are separate receipt fields. The dock plots the actual
+linked source spectrum and estimated frequency marks, exposes exact frequency and
+T60 edits plus Pin/Remove/Merge, and refits saved choices under a new generation.
+Pinned modes survive automatic refinement of the remaining candidates. Spectrum,
+waveform and mode rows refresh on analysis changes rather than scanning PCM on
+presentation frames; rebuilt mode rows release their old listeners.
+
+Stereo phase-preserving reconstruction and its actual Float32 residual become
+independent immutable seed artifacts with original frame alignment and ancestry.
+Model RMS error is reported separately from neutral complement error. The common
+foreground dry-material comparison can audition either material after staging;
+its receipt does not mark a new instrument ready. Failed/stale fitting keeps the
+last-good artifacts and ordinary sampler/granular use available.
+
+A Found body recipe compiles selected estimates to the existing native modal
+engine with a separately declared reference pitch. Exact fit/selection receipts
+and the original frozen material remain in the content pack. New excitation is
+explicitly an approximation; the original stereo phases remain analysis evidence.
+The renderer's frequency-ratio and 2.5-second T60 limits reject unsupported modes
+before replacing a lane, without silent clamping. There are no extra semantic
+onsets for the fitted oscillator children.
+
+Known decays/phase, close-mode observation limits, padding, silence, growth,
+clipping, pinned/manual edits, stale cancellation and modal recipe fixtures are
+authored and unrun. No estimator accuracy, listening, performance-grid, production
+browser or Found Bell end-to-end qualification is claimed. Composite creative
+exciter/body graphs, richer body engines and lineage rebuild coordination remain
+subsequent development.
+Research context: [Lagrange and Scherrer, DAFx 2008](https://dafx.de/paper-archive/2008/papers/dafx08_21.pdf)
+and [Sirdey et al., DAFx 2011](https://www.dafx.de/paper-archive/2011/Papers/61_e.pdf).
+The shipped baseline is original code and is not an implementation or validation
+of their higher-resolution estimators.
