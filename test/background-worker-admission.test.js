@@ -4,7 +4,7 @@ import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 
 describe('shared background worker and queued-input admission', () => {
   const request = (id, extra = {}) => ({ kind: 'parse-json', ownerId: id, ownerEpoch: 1, sourceRevision: 'content:1', estimatedPeakBytes: 4096, ...extra });
-  for (const kind of ['solve-shape-body', 'build-shape-body-content', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'render-scene-rehearsal']) it('admits the registered ' + kind + ' producer and retains storage until consumer release', async () => {
+  for (const kind of ['qualify-original-shape-refinement', 'solve-shape-body', 'build-shape-body-content', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'render-scene-rehearsal']) it('admits the registered ' + kind + ' producer and retains storage until consumer release', async () => {
     const service = createBackgroundWorkerAdmission({ maxWorkers: 1 }), owner = await service.acquire(request(kind, { kind })); expect(service.diagnostics().activeWorkers).to.equal(1);
     owner.release(); expect(service.diagnostics().memory.accountedBytes).to.equal(0); service.dispose();
   });

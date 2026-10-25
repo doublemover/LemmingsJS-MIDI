@@ -194,3 +194,33 @@ zone scene remains dependent work. The Sound panel now offers an in-app Shape
 foundry using the actual bound worker, ordinary verified content installation,
 selected-site prelisten and canonical lane Apply. Those browser paths are
 implemented but not yet runtime-qualified.
+
+
+### Compare nested original bar meshes
+
+`npm run qualify:shape-refinement -- --name=rook` solves the original coarse and
+refined pocket bar, then compares the fixed `low-eight-v1` profile. Optional
+`--output=dist/shape-refinement`, `--shape=pocket-bar` and
+`--profile=low-eight-v1` keep the selected source and tolerances explicit.
+The browser foundry offers the same operation for its exact currently prepared
+bar through one admitted background worker.
+
+The comparison checks matching physical sites, constraints and complete nested
+parent-volume coverage. It reassembles elastic residuals and mass orthogonality
+before correlating mode shapes. The [Ansys MAC documentation](https://ansyshelp.ansys.com/public/Views/Secured/corp/v242/en/mech_addon/ds_results_nvh_maccalc_method.html)
+describes correlation on matched/mapped nodes; this implementation explicitly
+uses coarse lumped mass at exactly matched vertices. A global one-to-one assignment
+combines shape correlation and fine-reference relative frequency error. The fixed
+profile requires all eight lowest elastic modes to meet 5% frequency error and
+MAC at least 0.9. Nearly degenerate mode groups are inconclusive pending a separate
+subspace comparison; mode order alone is not a correspondence certificate.
+
+The output contains content-addressed full input artifacts and a hashed comparison
+package. `current.json` identifies the latest **comparison result**, including an
+out-of-tolerance or inconclusive status. Those statuses return exit code one.
+A comparison exception/cancellation leaves the previous result head intact. Input
+file hashes and modal asset hashes are named separately. No pack, playback setting
+or quality tier changes. Two-mesh agreement is a limited numerical observation;
+it does not prove asymptotic convergence, physical material accuracy, listening
+quality or measured real-time capacity. No accepted comparison is claimed until
+this tool has actually run and its receipt has been reviewed.

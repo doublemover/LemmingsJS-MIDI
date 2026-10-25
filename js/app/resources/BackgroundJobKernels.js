@@ -1,5 +1,6 @@
 import { fitSoundSeedModes } from './SeedModalFit.js';
 import { solveShapeBody } from './ShapeBodySolver.js';
+import { solveOriginalShapeRefinement } from './ShapeBodyRefinement.js';
 import { renderShapeBodyCalibration } from './ShapeBodyCalibration.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { createShapeBodyRecipe } from '../../midi/content/ShapeBodyRecipe.js';
@@ -130,6 +131,14 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'qualify-original-shape-refinement') {
+    const execution = getActiveExecutionIdentity('browser-background-jobs');
+    if (execution.activeExecution !== 'bound' || input?.comparisonBuildHash !== execution.buildId || Object.keys(input).some(key => !['shapeId', 'profileId', 'comparisonBuildHash', 'expectedCoarseAssetHash'].includes(key)) || estimatedPeakBytes < 128 * 1048576) throw problem('engine-identity-unbound', 'Refinement comparison requires its actual bound worker and two complete admitted solves.');
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 4096), maxNodes: 128 });
+    const result = await solveOriginalShapeRefinement({ ...input, solverBuildHash: execution.buildId }, { signal, current, yieldControl, onProgress, estimatedPeakBytes }); guard(signal, current);
+    const retainedBytes = canonicalDataText(result.receipt, { maxBytes: 262144, maxNodes: 16384 }).bytes.length * 8;
+    return { value: result.receipt, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
+  }
   if (kind === 'build-shape-body-content') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');

@@ -8,6 +8,7 @@ import { SOUND_ARCHIVE_FORMAT, SOUND_ARCHIVE_MAGIC } from './SoundContentArchive
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { SHAPE_REFINEMENT_PROFILE, SHAPE_REFINEMENT_REVISION } from '../resources/ShapeBodyRefinement.js';
 
 const fail = message => Object.assign(new Error(message), { name: 'ShapeFoundryError', code: 'shape-foundry-unavailable' });
 export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgroundJobService, indexedDB, keyRange, getCatalog = getNativeInstrumentCatalog, onApply, onState = () => {} } = {}) {
@@ -15,9 +16,9 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
   const reader = createSoundContentReader({ resourceBudget, jobs, maxPending: 2, stageLifetimeMs: 3600000 }), registry = createSoundContentRegistry({ indexedDB, keyRange, resourceBudget }), installation = createSoundContentInstallation({ audio, registry, getCatalog }), retirement = createProcgenRetirementScope(), unknown = new Set();
   let active = null, current = null, ordinal = 0, disposed = false, phase = 'idle', error = null, progress = null;
   const state = () => Object.freeze({ disposed, active: !!active, phase, error, progress, unknownRetirement: unknown.size, overview: current?.overview || null, contract: current?.contract || null, config: current?.config || null,
-    compiledReady: !!current?.stage.metadata().retained, auditionReady: !!current && !!installation.getAudition(current.stage, current.identity), durable: current?.installed === true, patchIdentity: current?.identity || null });
+    compiledReady: !!current?.stage.metadata().retained, auditionReady: !!current && !!installation.getAudition(current.stage, current.identity), durable: current?.installed === true, patchIdentity: current?.identity || null, refinement: current?.refinement || null });
   const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
-  const discard = value => { if (!value) return; value.stage.discard(); const metadata = value.stage.metadata(); if (metadata.retirement !== 'released' || metadata.activeLeases) { unknown.add(value); throw fail('The previous foundry pack retains unresolved readers.'); } };
+  const discard = value => { if (!value) return; value.stage.discard(); const metadata = value.stage.metadata(); if (metadata.retirement !== 'released' || metadata.activeLeases) { unknown.add(value); throw fail('The previous foundry pack retains unresolved readers.'); } try { value.refinementStorage?.release(); } catch (caught) { unknown.add(value); throw caught; } };
   const run = (nextPhase, work) => {
     if (disposed || active || unknown.size) return Promise.reject(fail('Finish or cancel the current foundry operation before starting another.'));
     const operation = { controller: new AbortController(), ordinal: ++ordinal, promise: null }; active = operation; phase = nextPhase; error = null; progress = null; report();
@@ -56,6 +57,27 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
       releaseProducer(); try { if (next) discard({ stage: next }); } finally { releaseWorkspace(); }
     }
   });
+  const compareRefinement = ({ isCurrent = () => true } = {}) => run('comparing-original-mesh-refinement', async (operation, checkOwner) => {
+    const source = current; let job = null, storage = null;
+    const check = () => { checkOwner(); if (!source?.stage.metadata().retained || source !== current || !isCurrent() || source.config.shapeId !== 'pocket-bar') throw fail('Prepare the exact current original pocket bar before comparing its nested meshes.'); };
+    const releaseProducer = () => { if (!job) return; job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('Refinement worker ownership remains unresolved.'); job = null; };
+    try {
+      check(); const catalog = await getCatalog(); check(); if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity?.buildId !== source.overview.solver.buildHash) throw fail('The executing solver changed. Prepare the current original body again.');
+      const input = { shapeId: 'pocket-bar', profileId: SHAPE_REFINEMENT_PROFILE.id, comparisonBuildHash: catalog.executionIdentity.buildId, expectedCoarseAssetHash: source.overview.assetHash };
+      job = await jobs.compute({ kind: 'qualify-original-shape-refinement', ownerId: 'shape-foundry-refinement', ownerEpoch: operation.ordinal, sourceRevision: source.overview.assetHash, inputBytes: canonicalDataText(input).bytes.length, maxBytes: 4096, estimatedPeakBytes: 128 * 1048576,
+        budgetAdapter: resourceBudget, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && source === current && isCurrent(), deadlineMs: 180000, prepareInput: () => input,
+        onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); phase = value.phase || 'comparing-original-mesh-refinement'; report(); } } }); check();
+      const value = job.value, { receiptHash, ...receipt } = value;
+      if (job.receipt.method !== 'dedicated-worker' || job.receipt.executionIdentity?.activeExecution !== 'bound' || job.receipt.executionIdentity.buildId !== catalog.executionIdentity.buildId || value.schema !== 'lemmings-shape-refinement-comparison/v1' || value.revision !== SHAPE_REFINEMENT_REVISION || value.comparisonBuildHash !== catalog.executionIdentity.buildId || value.coarse?.assetHash !== source.overview.assetHash ||
+          canonicalDataText(value.profile).text !== canonicalDataText(SHAPE_REFINEMENT_PROFILE).text || !['within-profile-tolerances', 'outside-profile-tolerances', 'inconclusive-degenerate-subspace'].includes(value.status) || value.summary?.comparedModes !== SHAPE_REFINEMENT_PROFILE.modeCount || !Array.isArray(value.pairs) || value.pairs.length !== SHAPE_REFINEMENT_PROFILE.modeCount ||
+          value.automaticTierAdmission !== false || value.acousticQualification !== false || value.listeningQualification !== false || value.deviceCostQualification !== false || await hashData(receipt, { maxBytes: 262144, maxNodes: 16384 }) !== receiptHash) throw fail('The comparison result differs from its admitted body, algorithm or actual worker.'); check();
+      storage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'shape-foundry-refinement', generation: operation.ordinal, kind: 'retained-mesh-comparison-receipt-estimate', bytes: Math.max(4096, canonicalDataText(value, { maxBytes: 262144, maxNodes: 16384 }).bytes.length * 8) });
+      const retained = freezeData(value); releaseProducer(); check(); try { source.refinementStorage?.release(); } catch (caught) { unknown.add(source); throw caught; } source.refinementStorage = storage; source.refinement = retained; storage = null; phase = 'refinement-' + retained.status; return state();
+    } catch (caught) {
+      if (caught.backgroundRetirementCompletion) caught.backgroundRetirement = await caught.backgroundRetirementCompletion;
+      if (caught.backgroundRetirement && !['released', 'canceled'].includes(caught.backgroundRetirement.phase)) { unknown.add({ caught, job, storage }); job = storage = null; } throw caught;
+    } finally { try { releaseProducer(); } catch (caught) { unknown.add({ caught, job, storage }); job = storage = null; throw caught; } finally { if (storage) try { storage.release(); } catch (caught) { unknown.add({ caught, storage }); throw caught; } } }
+  });
   const audition = (siteId, { isCurrent = () => true } = {}) => run('auditioning-selected-site', async (operation, check) => {
     if (!current?.stage.metadata().retained || !current.contract.sites.includes(siteId) || !isCurrent()) throw fail('Prepare the current body and choose one actual authored site.');
     const receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal, sampleGesture: siteId, sampleHoldSeconds: Math.max(0.2, Math.min(8, current.config.seconds + 0.02)) }); check(); if (!isCurrent()) throw fail('The foundry target changed during audition.'); phase = 'site-audition-complete'; return receipt;
@@ -63,7 +85,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
   const install = () => run('saving-immutable-body', async (operation, check) => { if (!current) throw fail('Prepare and audition a body first.'); const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation }); check(); current.installed = true; phase = 'durable-body'; return receipt; });
   const apply = ({ isCurrent = () => true } = {}) => run('applying-body-to-selected-lane', async (operation, check) => { if (!current || !isCurrent()) throw fail('The prepared body or selected lane changed.'); const candidate = installation.applyCandidate(current.stage, current.identity); await onApply(candidate, { signal: operation.controller.signal }); check(); phase = 'applied'; return state(); });
   const stop = () => { active?.controller.abort(fail('Foundry operation canceled.')); installation.stop(); };
-  return Object.freeze({ prepare, audition, install, apply, stop, state,
+  return Object.freeze({ prepare, compareRefinement, audition, install, apply, stop, state,
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const pending = Promise.resolve(active?.promise).catch(() => {}), installationFinished = pending.then(async () => { const receipt = installation.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Foundry audition retirement is unresolved.'); });
       return retirement.retire([{ name: 'foundry-operation', run: () => pending }, { name: 'foundry-audition', run: () => installationFinished }, { name: 'foundry-material-stage', run: async () => { await installationFinished; if (unknown.size) throw fail('Generated foundry material retains unresolved ownership.'); discard(current); current = null; reader.dispose(); registry.close(); } }]); }
   });

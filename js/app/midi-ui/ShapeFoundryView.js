@@ -15,13 +15,15 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
   const site = select('Explicit strike site', [['end', 'End'], ['shoulder', 'Shoulder'], ['corner', 'Corner']]);
   const config = () => ({ shapeId: shape.value, modeCount: Number(modes.value), sampleRate: Number(rate.value), seconds: Number(duration.value) }), key = value => JSON.stringify(value), targetKey = () => key(getTargetIdentity());
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
-  let prepareButton, auditionButton, saveButton, applyButton;
+  let prepareButton, auditionButton, saveButton, applyButton, refinementButton;
   const refresh = () => {
     if (disposed || !owner) return; const value = owner.state(), matching = key(value.config) === key(config()), targetMatches = preparedTarget === targetKey();
     readiness.textContent = 'Compiled ' + (value.compiledReady ? 'ready' : 'unavailable') + ' · isolated audition ' + (value.auditionReady ? 'complete' : 'pending') + ' · durable ' + (value.durable ? 'yes' : 'no') + (value.compiledReady && !matching ? ' · current draft differs from retained body' : '') + (value.compiledReady && !targetMatches ? ' · selected lane or document changed' : '');
     status.textContent = value.error || value.phase + (value.progress ? ' · ' + value.progress.completedUnits + '/' + value.progress.totalUnits : '');
     prepareButton.disabled = !!active || value.active; auditionButton.disabled = !!active || value.active || !value.compiledReady || !matching || !targetMatches; saveButton.disabled = !!active || value.active || !value.auditionReady; applyButton.disabled = !!active || value.active || !value.durable || !value.auditionReady || !matching || !targetMatches;
-    if (value.overview) details.textContent = JSON.stringify({ ...value.overview, content: value.contract }, null, 2);
+    refinementButton.disabled = !!active || value.active || !value.compiledReady || !matching || !targetMatches || value.config?.shapeId !== 'pocket-bar';
+    if (value.refinement) readiness.textContent += ' · low-mode mesh comparison ' + value.refinement.status.replaceAll('-', ' ');
+    if (value.overview) details.textContent = JSON.stringify({ ...value.overview, content: value.contract, meshRefinementComparison: value.refinement }, null, 2);
   };
   const run = action => () => { if (disposed || active) return; let work; try { work = action(); } catch (error) { say(error.message); return; } active = Promise.resolve(work).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh(); };
   const button = (label, action) => { const value = node('button', label); value.type = 'button'; listen(value, 'click', action); actions.append(value); return value; };
@@ -31,6 +33,7 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
   }));
   auditionButton = button('Prelisten selected site', run(() => owner.audition(site.value, { isCurrent: () => preparedTarget === targetKey() })));
   saveButton = button('Save immutable instrument', run(() => owner.install()));
+  refinementButton = button('Compare original bar refinement', run(() => owner.compareRefinement({ isCurrent: () => preparedTarget === targetKey() && key(owner.state().config) === key(config()) })));
   applyButton = button('Apply to selected lane', run(async () => { await owner.apply({ isCurrent: () => preparedTarget === targetKey() && key(owner.state().config) === key(config()) }); preparedTarget = targetKey(); say('Applied the ordinary saved instrument through the lane Undo boundary. Physical routes are unchanged.'); }));
   button('Restore retained body settings', () => { const value = owner.state().config; if (!value) return; shape.value = value.shapeId; modes.value = String(value.modeCount); rate.value = String(value.sampleRate); duration.value = String(value.seconds); refresh(); });
   button('Cancel / stop prelisten', () => owner.stop());
@@ -38,7 +41,7 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
   button('Close', suspend); listen(dialog, 'cancel', event => { event.preventDefault(); suspend(); });
   for (const input of [shape, modes, rate, duration]) listen(input, 'change', () => { owner.stop(); refresh(); });
   dialog.append(title, node('p', 'Choose an original closed solid and prepare its selected modes off the audio thread. Meter scale, material assumptions, boundary conditions, signed sites and solver evidence are retained in the ordinary instrument pack. Changing the picture or painting terrain does not retune an active body.'),
-    node('p', 'These coarse linear solids are experimental. Algebraic convergence does not establish mesh accuracy, physical material identity or perceptual quality. Site previews share one gain calibration. The resulting sampler keeps fixed body tuning; it does not infer root pitch or require a native solver during playback.'), fields, actions, readiness, status, details);
+    node('p', 'These coarse linear solids are experimental. Algebraic convergence does not establish mesh accuracy, physical material identity or perceptual quality. The bar comparison checks the same nested domain and eight low modes against declared frequency and shape tolerances. Degenerate subspaces remain inconclusive. This changes no sound, quality tier or saved pack. Site previews share one gain calibration. Playback keeps fixed body tuning and needs no native solver.'), fields, actions, readiness, status, details);
   (document.getElementById('procgenPresentationRoot') || document.body).append(dialog);
   try { owner = createShapeFoundryOwner({ audio, resourceBudget, jobs, onApply, onState: refresh }); } catch (error) { for (const remove of listeners) remove(); dialog.remove(); throw error; }
   return Object.freeze({ open() { if (disposed) return; previousFocus = document.activeElement; refresh(); if (!dialog.open) dialog.showModal(); }, suspend,

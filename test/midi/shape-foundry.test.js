@@ -60,10 +60,12 @@ describe('original offline tetrahedral shape foundry', function() {
   });
   it('retains the previous staged body after stale preparation and requires independent audition/install before Apply', async () => {
     const asset = await solveShapeBody(input(createOriginalShapeBodySource()), options), calibration = await renderShapeBodyCalibration({ asset, modeCount: 8, sampleRate: 48000, seconds: 0.2 }, options), recipe = await createShapeBodyRecipe({ asset, calibration }), [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sample', engineVersion: 1, artifactHash: 'b'.repeat(64) }]);
-    const compiled = await compileSoundContent(recipe.source, { targets: [{ descriptor }] }), budget = createResourceBudget(); let applied = 0, releases = 0;
+    const compiled = await compileSoundContent(recipe.source, { targets: [{ descriptor }] }), budget = createResourceBudget(); let applied = 0, releases = 0, resolveComparison, announceComparison;
+    const comparisonStarted = new Promise(resolve => { announceComparison = resolve; }), comparisonCompletion = new Promise(resolve => { resolveComparison = resolve; });
     const jobs = { async compute(request) {
       const source = await request.prepareInput(); let value;
-      if (request.kind === 'build-shape-body-content') value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, overview: { assetHash: asset.assetHash } };
+      if (request.kind === 'build-shape-body-content') value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, overview: { assetHash: asset.assetHash, solver: asset.solver } };
+      else if (request.kind === 'qualify-original-shape-refinement') { expect(source.expectedCoarseAssetHash).to.equal(asset.assetHash); announceComparison(); await comparisonCompletion; value = {}; }
       else if (request.kind === 'parse-json') value = JSON.parse(source);
       else if (request.kind === 'encode-canonical-json') value = canonicalDataText(source).text;
       else if (request.kind === 'asset-hash') { value = [...new Uint8Array(await crypto.subtle.digest('SHA-256', source))].map(value => value.toString(16).padStart(2, '0')).join(''); expect(value).to.equal(request.expectedInputHash); }
@@ -72,6 +74,8 @@ describe('original offline tetrahedral shape foundry', function() {
     } };
     const owner = createShapeFoundryOwner({ audio: { createSession() {}, getAudioContext() {} }, resourceBudget: budget, jobs, getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: 'a'.repeat(64) }, descriptors: [descriptor] }), onApply: () => { applied++; } });
     await owner.prepare({ seconds: 0.2 }); expect(owner.state()).to.include({ compiledReady: true, auditionReady: false, durable: false }); const identity = owner.state().patchIdentity;
+    let targetCurrent = true, comparisonError; const comparing = owner.compareRefinement({ isCurrent: () => targetCurrent }); await comparisonStarted; targetCurrent = false; resolveComparison();
+    try { await comparing; } catch (error) { comparisonError = error; } expect(comparisonError.message).to.include('exact current'); expect(owner.state().refinement).to.equal(null); expect(owner.state().patchIdentity).to.equal(identity);
     let caught; try { await owner.prepare({ seconds: 0.2 }, { isCurrent: () => false }); } catch (error) { caught = error; } expect(caught.message).to.include('draft changed'); expect(owner.state().patchIdentity).to.equal(identity);
     try { await owner.apply(); } catch (error) { caught = error; } expect(caught.message).to.include('Commit this staged pack'); expect(applied).to.equal(0); expect(releases).to.be.greaterThan(0);
     const receipt = owner.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);

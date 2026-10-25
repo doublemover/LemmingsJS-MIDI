@@ -4642,3 +4642,45 @@ syntax/provenance and the limited critical typecheck remain the checks for this
 frontloaded development pass. Geometric foundry-derived pickup fields, the complete
 Three Hands lesson, measured spectra, listening and device qualification remain
 pending.
+
+
+### Continuation 192 — bounded nested-mesh foundry comparison (#1217, #1239)
+
+Original bar refinement now preserves the exact curated strike/pickup positions;
+the finer shoulder had previously moved to another coordinate. The refined source
+is revision three. A dedicated fixed comparison profile covers all eight lowest
+elastic modes, with declared 5% fine-reference frequency error, mass-weighted MAC
+at least 0.9, and a separate near-degenerate-subspace policy. These are authored
+numerical tolerances, not measured material, hearing or device-capacity promises.
+
+The comparator verifies both immutable modal artifacts and actual model identity,
+scale, material, constraints and source sites. It matches every coarse vertex to
+one fine coordinate, requires each fine tetrahedron inside one coarse parent and
+checks complete parent-volume coverage. It then reassembles each elastic system
+and recomputes full-vector residuals, mass orthogonality and Rayleigh damping;
+forged converged metadata plus a recomputed content hash is insufficient. Correlation
+uses the common coarse lumped-mass metric. A bounded global one-to-one assignment
+handles changed mode ordering; unobservable fine modes are reported explicitly.
+Nearly degenerate modes require future subspace comparison and cannot receive an
+individual-vector qualification by selecting a favorable basis.
+
+A shared-admission worker performs both real original-source solves and comparison.
+The foundry binds the result to its exact existing coarse body, document/draft,
+actual worker build, profile and receipt digest. Stale/canceled/unknown producer
+outcomes retain the old body and comparison; retained receipt metadata is budgeted
+and retired with its stage. UI displays comparison separately from compilation,
+audition and durability. It changes no sound, saved pack or resource tier.
+
+`npm run qualify:shape-refinement -- --name=rook` writes content-addressed complete
+coarse/fine inputs and a comparison package under dist, with a publication lock,
+atomic current-result head and complete cleanup. Out-of-tolerance or inconclusive
+results remain inspectable and return nonzero. No foundry pack is installed or
+promoted. Exact solver/comparison closures, domain, sites, tolerances, correspondence,
+errors and unqualified acoustic/listening/device dimensions remain in the receipt.
+
+Metric, global-assignment, real nested-domain, forged-eigenpair, stale owner and
+cancellation fixtures are authored but unrun. Neither the CLI nor the new numerical
+fixtures has executed in this frontloaded pass. Only format, syntax, provenance
+and limited critical typecheck checks are used. An observed comparison result,
+degenerate-subspace support, larger refined shape families, geometric pickup fields,
+physical scene lessons and listening/device qualification remain pending.
