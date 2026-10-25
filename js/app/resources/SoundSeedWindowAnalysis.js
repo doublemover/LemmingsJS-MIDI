@@ -93,7 +93,7 @@ export async function analyzeSoundSeedWindow(input, { signal, current = () => tr
   if (!Array.isArray(inherited) || inherited.length >= 16) fail('Nested sound-seed ancestry exceeds the admitted depth.');
   const ancestry = [...inherited, { originKind: source.originKind, immutableSourceRef: source.immutableSourceRef, completeParentArtifactHash: source.sourceDigest,
     parentManifestHash, parentFrameDomain: source.originalFrameDomain, parentSampleRate: sampleRate, firstFrame, endFrame, parentTimelineOriginFrame: source.parentTimelineOriginFrame,
-    sourceTap: source.sourceTap, takeId: origin.takeId ?? null, takeRevision: origin.takeRevision ?? null, sourceCanonicalHash: origin.sourceCanonicalHash ?? null,
+    sourceTap: source.sourceTap, takeId: origin.takeId ?? null, takeRevision: origin.takeRevision ?? null, sourceCanonicalHash: origin.sourceCanonicalHash ?? null, sourcePatchReceipt: origin.schema === 'lemmings-causal-audio-render/v1' ? { definitionHash: origin.definitionHash ?? null, engineRequirement: origin.engineRequirement ?? null } : null,
     bakedEffects: origin.schema === 'lemmings-master-pcm/v1' ? 'all-original-master-effects-and-protection' : origin.effectGraph?.hash ?? origin.bakedEffects ?? 'none-declared',
     regeneration: 'requires-separately-retained-original-source;not-required-to-play-frozen-PCM' }];
   const manifest = freezeData({ schema: 'lemmings-sound-seed/v1', revision: SOUND_SEED_ANALYSIS_REVISION, frames, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', tap: 'frozen-source-region-with-explicit-fades',

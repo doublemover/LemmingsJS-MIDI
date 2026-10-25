@@ -4014,3 +4014,45 @@ Research context: [Lagrange and Scherrer, DAFx 2008](https://dafx.de/paper-archi
 and [Sirdey et al., DAFx 2011](https://www.dafx.de/paper-archive/2011/Papers/61_e.pdf).
 The shipped baseline is original code and is not an implementation or validation
 of their higher-resolution estimators.
+
+
+### Continuation 177 — explicit selected seed-lineage rebuild (#1236)
+
+Offering another revoice file to an occupied seed dock no longer replaces the
+current frozen material implicitly. Keep recorded material, independent harvest
+and a reviewed derived-branch plan are distinct choices. The plan binds the exact
+original take/revision/semantic hash, old/new resolved patch receipts, source rate,
+timeline origin, tap, complete parent frame range, fades and selected component/
+modal/recipe closure. Current captures retain their original source patch receipt
+in seed ancestry. Older origins lacking it remain playable and report regeneration
+unknown rather than acquiring fabricated provenance.
+
+Preflight reports missing prerequisites, unsupported realization and unknown
+coverage separately. A changed tail cannot silently shorten a selected region;
+a changed take, rate, origin or tap requires explicit new material/coordinates.
+Captured master PCM cannot masquerade as a covered semantic revoice. The selected
+DAG is bounded and cycle-checked; effective recipes and patch receipts contribute
+to the plan hash. Numerical reproducibility across builds remains unqualified.
+
+Preparation reuses the owned source-window, worker analysis, component, modal,
+content verification and isolated installation owners in dependency order. Only
+affected selected stages run. Original asset nodes, existing project references
+and other projects are never deleted or rewritten. A new branch gets new artifact
+hashes, exact analysis ancestry and its own compiled pack. Its waveform, changed
+hashes, staged patch and target freshness are visible beside the kept material.
+Audition, durable save and one undoable lane Apply remain explicit separate actions.
+Document, selected lane, project revision and lab/source revision fence publication
+and Apply. New source offers cancel old in-flight preparation.
+
+Failed/canceled preparation retains the original seed and previous complete branch.
+Retirement releases auditions before stages, modal before component parents and
+workers before input windows. Unknown retirement retains concrete owners and blocks
+further mutation. Durable material is kept if later project application fails.
+
+Matching-input plan identity, unchanged old material, changed source/tail/rate/tap,
+missing old patch receipt, missing component closure, isolated branch preparation,
+stale target, corrupted plan and reservation cleanup fixtures are authored and
+unrun. The integrated closure currently covers a direct revoice window, its
+components, fitted bodies and current ordinary recipes. Arbitrary imported DAGs,
+qualified warp/graft descendants, reinterpretation/reperformance coordination and
+shared two-project storage/browser acceptance remain subsequent work.

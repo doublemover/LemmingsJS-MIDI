@@ -23,7 +23,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
   let current = null, active = null, disposed = false, sequence = 0, error = null, phase = 'no-patch';
   const state = () => Object.freeze({ phase, active: !!active, disposed, error, unknownRetirement: unknown.size,
     compiledPatchReady: !!current?.stage.metadata().retained, audibleAuditionReady: !!current && !!installation.getAudition(current.stage, current.identity),
-    durable: !!current?.installed, assetHash: current?.assetHash || null, recipe: current?.contract || null, patchIdentity: current?.identity || null });
+    durable: !!current?.installed, assetHash: current?.assetHash || null, recipe: current?.contract || null, patchIdentity: current?.identity || null, contentHash: current?.stage.metadata().contentHash || null });
   const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
   const discard = record => {
     if (!record) return;
