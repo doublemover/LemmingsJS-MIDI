@@ -3535,3 +3535,25 @@ silently replacing one still contributing to the output. Continuous observed
 segments remain admissible through that fade, and the seek frontier is included
 in state validation. The fixed-bank result bound includes metadata overhead as
 well as the larger coefficient plane.
+
+### Continuation 164 — bounded multi-asset PCM sets (#1130, #1133, #1162)
+
+Advanced sample voices now have a shared multi-asset preparation owner. Up to
+thirty-two exact assets fit within one sixteen-MiB decoded-plane cap across attack,
+loop and release sources. Exact aliases deduplicate; conflicting variants reject
+before copying. Stable sorted asset indices and aggregate metadata/PCM identities
+bind the complete set, while each existing bank retains its verified source-rate,
+channel and PCM evidence. No per-actor PCM copy is introduced.
+
+Processor-copy loans share the existing bounded bank ownership path. Ready readers
+retain every source through Set discard, pending copies cancel coherently, and
+complete retirement is required before releasing aggregate metadata. Partial or
+unknown copy/consumer retirement retains accounting and blocks new set copies.
+A shared strict descriptor contract now serves individual and aggregate offline
+verification; actual plane storage and cross-asset aliases are checked before
+hashing, while stereo channels may share their own bank's contiguous buffer.
+
+Deduplication, stereo ownership, aggregate admission, later-bank cancellation,
+reader quiescence and tamper fixtures are written and unrun. Source-map selection,
+release-layer commands, actual sample Worklet registration and travel/render
+integration remain the next span. Runtime validation remains deferred.

@@ -134,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
 
 ### Added
+- Added bounded multi-asset PCM sets with aggregate identities, shared attack/release material and retirement through every processor-copy loan; sample-source integration remains in progress.
 - Added an original worker-prepared sample interpolation bank with rate-aware sinc reads, bounded PCM guards and explicit coefficient gain/memory identities; complete sampler integration remains in progress.
 - Added a preallocated observed sample cursor with exact source/output frame units, retained reversals, rest silence, explicit boundary policies and validated state transfer; reader/source integration remains in progress.
 - Added protected stage mode with CURRENT/NEXT cues, exact prepared-base GO, preserved lane performance controls and explicit stopped scene replacement.
