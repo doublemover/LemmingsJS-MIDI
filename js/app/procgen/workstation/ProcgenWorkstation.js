@@ -39,6 +39,7 @@ import { resolveProcgenStartupIntent } from './ProcgenStartupIntent.js';
 import { deliverArtifactToAnchor, deliverArtifactToFileHandle, prepareExportArtifact, requestExportFileHandle } from '../../export/ExportArtifact.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { readBrowserBuildResponse } from '../../../runtime/BrowserGenerationService.js';
+import { createInstrumentMacroGestures } from '../../midi-ui/InstrumentMacroGestures.js';
 import { createLaneSoundTransaction } from '../../midi-ui/LaneSoundTransaction.js';
 import { createNativeSoundSelection } from '../../midi-ui/NativeSoundSelection.js';
 import { resolveLegacySoundAlias } from './NativeSoundCollections.js';
@@ -195,8 +196,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
   const selected = () => procgenLane(project.procgen.lanes, state.laneId) || project.procgen.lanes[0];
+  let sampledMacroRevision = 0, sampledMacroPerformance = null, macroInputEndpoint = null;
+  const macroGestures = createInstrumentMacroGestures({ resourceBudget, getLane: laneId => procgenLane(project.procgen.lanes, laneId), getDocumentEpoch: () => documentGeneration,
+    commit: (laneId, instrumentControls, gestureId) => dispatch({ type: 'procgen/lane', laneId, patch: { instrumentControls } }, { historyGroup: 'macro:' + documentGeneration + ':' + gestureId }),
+    onState: () => view?.macroState?.() });
+  const effectiveSoundLanes = lanes => macroGestures.lanes(soundTransactions.lanes(lanes));
+  const sampleMacroPerformance = boundary => {
+    const revision = macroGestures.revision(); if (revision === sampledMacroRevision) return;
+    const next = captureCausalPerformanceState(effectiveSoundLanes(project.procgen.lanes)), previous = sampledMacroPerformance || captureCausalPerformanceState(project.procgen.lanes);
+    const change = diffCausalPerformanceState(previous, next);
+    if (causalTake && change) { const receipt = causalTake.recordPerformance(change, boundary); if (receipt.status !== 'accepted') throw new Error('Causal take cannot admit this macro sample: ' + receipt.reason); }
+    sampledMacroRevision = revision; sampledMacroPerformance = next;
+  };
   const soundTransactions = createLaneSoundTransaction({ resourceBudget,
-    getSource: laneId => ({ available: !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTake && !causalTakeStart && !causalTakeStop && !!physicalPlayback,
+    getSource: laneId => ({ available: !macroGestures.diagnostics().active && !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTake && !causalTakeStart && !causalTakeStop && !!physicalPlayback,
       owner: physicalPlayback, documentGeneration, worldGeneration: runtime()?.world?.generation, selectedLaneId: selected().id,
       lane: procgenLane(project.procgen.lanes, laneId || selected().id), reason: 'Finish the current world/history/take operation before selecting sound.' }),
     prepare: (laneId, reference, options) => physicalPlayback.prepareLaneInstrument(laneId, reference, options),
@@ -276,9 +289,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       !equal(lane.instrumentRef ?? null, next.procgen.lanes[index]?.instrumentRef ?? null)) || next.procgen.lanes.some((lane, index) => lane.instrumentRef && !project.procgen.lanes[index]);
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
+    if (causalTake) { const world = runtime()?.world; sampleMacroPerformance({ tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 }); }
+    const beforePerformanceLanes = macroGestures.lanes(project.procgen.lanes), afterPerformanceLanes = macroGestures.lanes(next.procgen.lanes);
     const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural
-      ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
-      : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
+      ? diffCausalLanePerformance(beforePerformanceLanes, afterPerformanceLanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
+      : diffCausalPerformanceState(captureCausalPerformanceState(beforePerformanceLanes), captureCausalPerformanceState(afterPerformanceLanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
     const junctionsChanged = !equal(project.procgen.junctions || [], next.procgen.junctions || []);
     if (junctionsChanged && (causalTake || causalTakeStart || causalTakeStop)) throw new Error('Finish the causal take before editing junction definitions. Existing junction requests remain available while recording.');
@@ -310,6 +325,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const receipt = performanceChange ? causalTake.recordPerformance(performanceChange, boundary, mappingChanged ? next.procgen.physicalGraph : null)
         : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
       if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
+      if (performanceChange) sampledMacroPerformance = captureCausalPerformanceState(afterPerformanceLanes);
     }
     authoringProposal?.commit(); junctionProposal?.commit();
     if (history) {
@@ -322,7 +338,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
-    projectRevision++; soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
+    projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
     if (inputLease && !inputTarget(inputLease)) cancelInputEdits('target was removed');
@@ -431,8 +447,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   ports = createProcgenMidiPorts({ transport, now, schedulerConfig: projectToMidiConfig(project),
-    onMonitor(event) { state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
+    onMonitor(event) { const endpoint = ports?.getState(); if (endpoint?.inputId) macroGestures.observeController(event, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch }); state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
+      const endpoint = { id: midiState.inputId, epoch: midiState.inputLiveness.connectionEpoch }, prior = macroInputEndpoint; macroInputEndpoint = endpoint;
+      if (prior?.id && (prior.id !== endpoint.id || prior.epoch !== endpoint.epoch)) { try { macroGestures.disconnect(prior.id, prior.epoch); } catch (error) { status('Controller disconnected; its final macro value was not committed: ' + error.message); } }
       if (inputLease && midiState.inputLiveness.connectionEpoch !== inputLease.inputEndpointEpoch) cancelInputEdits('input changed');
       const wasRecording = state.recording;
       state.recording = midiState.recording;
@@ -564,7 +582,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
-    soundTransactions.cancel('The world or transport is being replaced.');
+    macroGestures.cancelAll(); soundTransactions.cancel('The world or transport is being replaced.');
     physicalFeedback?.disarm();
     recoveryAbort?.abort();
     if (causalTake) {
@@ -722,6 +740,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     try {
       const world = runtime()?.world;
       if (!world) throw new Error('The recorded world is no longer available.');
+      sampleMacroPerformance({ tick: world.tickIndex, generation: world.generation });
       if (!recorder.status().captureStopped) finalCheckpoint = { world: captureCheckpoint(world), engine: physicalPlayback?.engine.snapshot() || null,
         timeline: physicalScoreClock.snapshot(), replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
     } catch (error) {
@@ -775,7 +794,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
         throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
       }
-      causalTake = recorder;
+      causalTake = recorder; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes); sampledMacroRevision = macroGestures.revision();
       lastCausalInspection = null;
       causalTakeErrorReported = false;
       status(`Causal take ${takeId} recording committed world facts and musical intents.`);
@@ -854,7 +873,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
-      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => soundTransactions.lanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
@@ -892,7 +911,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         physicalClockError = true; return;
       }
       try {
-        physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation };
+        physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation }; sampleMacroPerformance(physicalReceiptBoundary);
         physicalReceiptBuffer = [];
         const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
           playing: transport.getState().playing, position });
@@ -1370,7 +1389,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
       return soundTransactions.select(signal => nativeSoundSelection.prepare(alias.patchId, { signal }), { laneId, patch: alias.lanePatch });
     },
-    reconcileSoundPreview: () => soundTransactions.reconcile(), cancelSoundPreview: () => soundTransactions.cancel(), soundSelectionState: () => soundTransactions.diagnostics(),
+    beginMacroGesture: (laneId, macroId, options) => { if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || soundTransactions.diagnostics().active) throw new Error('Finish the pending sound/world/take operation before a macro gesture.'); return macroGestures.begin(laneId, macroId, options); },
+    previewMacroGesture: (handle, value, pressure = null) => pressure == null ? macroGestures.set(handle, value) : macroGestures.pressure(handle, pressure),
+    finishMacroGesture: (handle, options) => macroGestures.finish(handle, options), macroGestureState: (laneId, macroId) => macroGestures.state(laneId, macroId),
+    commitPerformedMacros: () => macroGestures.commitAll(), returnPerformedMacros: () => macroGestures.cancelAll(),
+    learnMacro(laneId, macroId) { const endpoint = ports.getState(), epoch = documentGeneration, reference = procgenLane(project.procgen.lanes, laneId)?.instrumentRef;
+      if (!endpoint.inputId || !reference) throw new Error('Select a connected input and an admitted instrument first.');
+      ports.learnNext(event => { const current = ports.getState(); if (documentGeneration !== epoch || current.inputId !== endpoint.inputId || current.inputLiveness.connectionEpoch !== endpoint.inputLiveness.connectionEpoch || procgenLane(project.procgen.lanes, laneId)?.instrumentRef !== reference) { status('Macro Learn source changed; no mapping was installed.'); return; }
+        if (!['cc', 'pressure', 'bend'].includes(event.type)) { status('Macro Learn needs a CC, channel pressure or pitch-bend observation; notes are not macro triggers.'); return; }
+        macroGestures.bindController(laneId, macroId, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch, channel: event.channel, controller: event.controller, type: event.type });
+        status(event.type === 'pressure' ? 'Pressure learned as momentary normalized model input. Release returns to the saved baseline.' : 'Controller learned with pickup. Commit performed macros saves one edit per gesture; disconnect keeps the exact last accepted value.');
+      }); status('Move the selected input controller to observe a scoped macro mapping.');
+    },
+    reconcileSoundPreview: () => { macroGestures.reconcile(); return soundTransactions.reconcile(); }, cancelSoundPreview: () => soundTransactions.cancel(), soundSelectionState: () => soundTransactions.diagnostics(),
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
@@ -1716,6 +1747,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
+        { name: 'macro-gestures', run: () => macroGestures.dispose() },
         { name: 'sound-transactions', run: () => soundTransactions.dispose() },
         { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },

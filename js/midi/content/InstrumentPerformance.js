@@ -11,7 +11,7 @@ export function validateInstrumentMacros(input, parameters) {
   const schema = new Map(parameters.map(parameter => [parameter.id, parameter])), ids = new Set(), replacements = new Set();
   return Object.freeze(input.map(macro => {
     if (!object(macro) || !id(macro.id) || ids.has(macro.id) || typeof macro.name !== 'string' || !macro.name || macro.name.length > 80 ||
-        !['onset-only', 'continuous'].includes(macro.mode) || !finite(macro.default01, 0, 1) || !finite(macro.smoothingMs, 0, 60000) ||
+        !['onset-only', 'continuous'].includes(macro.mode) || macro.bipolar != null && typeof macro.bipolar !== 'boolean' || macro.momentary != null && typeof macro.momentary !== 'boolean' || !finite(macro.default01, 0, 1) || !finite(macro.smoothingMs, 0, 60000) ||
         typeof macro.perceptualDirection !== 'string' || !macro.perceptualDirection || macro.perceptualDirection.length > 256 ||
         !Array.isArray(macro.targets) || !macro.targets.length || macro.targets.length > 16 || macro.mode === 'onset-only' && macro.smoothingMs !== 0) fail('macro requires typed curves, defaults and timing');
     ids.add(macro.id); const targets = new Set();
@@ -30,7 +30,7 @@ export function validateInstrumentMacros(input, parameters) {
       return Object.freeze({ parameter: mapping.parameter, minimum: mapping.minimum, maximum: mapping.maximum, unit: mapping.unit,
         curve: mapping.curve, composition: mapping.composition, clamp: true });
     });
-    return Object.freeze({ id: macro.id, name: macro.name, mode: macro.mode, default01: macro.default01, smoothingMs: macro.smoothingMs,
+    return Object.freeze({ id: macro.id, name: macro.name, ...(macro.bipolar != null ? { bipolar: macro.bipolar } : {}), ...(macro.momentary != null ? { momentary: macro.momentary } : {}), mode: macro.mode, default01: macro.default01, smoothingMs: macro.smoothingMs,
       perceptualDirection: macro.perceptualDirection, targets: Object.freeze(mappings) });
   }).sort(order));
 }

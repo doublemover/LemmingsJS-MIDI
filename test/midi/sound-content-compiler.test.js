@@ -31,7 +31,7 @@ describe('typed declarative sound authoring', () => {
     expect(reviewSoundContentChanges(first, await compile(raw))[0].state).to.equal('effective-render-change');
   });
   it('compiles actual inherited oscillator parameters and preserves visible overrides', async () => {
-    const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@2');
+    const output = await compile(source), triangle = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@3');
     expect(output.prepared.patches).to.have.length(4); expect(triangle.definition.parameters).to.include({ waveform: 1, attackSeconds: 0.04, gain01: 0.55 });
     expect(output.artifacts.find(artifact => artifact.id === triangle.definition.id).overrides).to.include('envelope.attackSeconds');
     expect(output.qualification).to.equal('compiled-data-not-render-qualified');
@@ -69,7 +69,7 @@ describe('typed declarative sound authoring', () => {
     await rejects(compile(input), 'voicePolicy');
   });
   it('applies native capability boundaries to imported definitions as well as authored recipes', async () => {
-    const output = await compile(source), entry = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@2');
+    const output = await compile(source), entry = output.prepared.patches.find(patch => patch.identity === 'foundation.soft-triangle@3');
     const descriptor = targets.find(target => target.descriptor.engineId === 'native-oscillator').descriptor;
     expect(descriptor.maximumVoices).to.equal(64); expect(descriptor.voicePolicies).to.deep.equal(['reject']);
     for (const change of [patch => { patch.voicePolicy.steal = 'oldest'; }, patch => { patch.voicePolicy.maxVoices = 65; },

@@ -32,6 +32,24 @@ describe('typed parameter control transactions', () => {
     cap.dispatchEvent(event('pointerdown', { pointerId: 1, clientY: 0 })); identity = {}; cap.dispatchEvent(event('pointermove', { pointerId: 1, clientY: 100 }));
     expect(knob.inspect().gestureId).to.equal(null); knob.dispose();
   });
+  it('updates pickup observations without overwriting the active drag and restores the accepted value after rejected publication', () => {
+    const document = new TestDocument(), commits = [];
+    const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => { commits.push(value); throw new Error('Publication rejected'); } });
+    const cap = knob.element.children[1]; cap.dispatchEvent(event('pointerdown', { pointerId: 1, clientY: 160 }));
+    cap.dispatchEvent(event('pointermove', { pointerId: 1, clientY: 120 })); const draft = knob.inspect().draft;
+    knob.setObservations({ pickupValue: -600 }); expect(knob.inspect().draft).to.equal(draft);
+    cap.dispatchEvent(event('pointerup', { pointerId: 1 })); expect(commits).to.have.length(1);
+    expect(knob.inspect()).to.include({ authored: 0, draft: 0, gestureId: null }); knob.dispose();
+  });
+  it('returns momentary keyboard changes and always releases no-change pointer gestures', () => {
+    const document = new TestDocument(), commits = [], previews = [], finishes = [];
+    const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, momentary: true,
+      commit: value => commits.push(value), preview: (value, meta) => previews.push([value, meta.phase]), onFinish: () => finishes.push(true) });
+    const cap = knob.element.children[1]; cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
+    expect(knob.inspect().draft).to.equal(0); expect(previews.at(-1)).to.deep.equal([0, 'return']); expect(commits).to.have.length(0);
+    cap.dispatchEvent(event('pointerdown', { pointerId: 2, clientY: 160, pointerType: 'pen', pressure: 0.4 })); cap.dispatchEvent(event('pointerup', { pointerId: 2 }));
+    expect(finishes).to.have.length(2); knob.dispose();
+  });
   it('keeps invalid project names editable inline and resolves explicit cancellation without saving', async () => {
     const document = new TestDocument(), create = document.createElement.bind(document); document.body = create('body');
     document.createElement = tag => { const element = create(tag); if (tag === 'dialog') { element.showModal = () => {}; element.close = () => element.dispatchEvent(event('close')); element.remove = () => document.body.removeChild(element); } return element; };

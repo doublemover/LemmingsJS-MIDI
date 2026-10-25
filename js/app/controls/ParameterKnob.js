@@ -2,7 +2,7 @@ import { getPointerGestureArbiter } from './PointerGestureArbiter.js';
 import { normalizeParameterDescriptor, parameterUnitPosition, parameterValueAt, quantizeParameter, parseParameterValue, formatParameterValue } from './ParameterDescriptor.js';
 
 export function createParameterKnob({ document, window = document.defaultView, descriptor: input, value, getIdentity = () => input,
-  commit, preview = () => {}, onCancel = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob' } = {}) {
+  commit, preview = () => {}, onCancel = () => {}, onFinish = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob' } = {}) {
   if (!['knob', 'fader'].includes(presentation)) throw new Error('Invalid parameter presentation.');
   const descriptor = normalizeParameterDescriptor(input), arbiter = getPointerGestureArbiter(document), listeners = [];
   const node = (tag, cls, text) => { const element = document.createElement(tag); element.className = cls; if (text != null) element.textContent = text; return element; };
@@ -37,7 +37,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   };
   const change = (next, event) => {
     if (!gesture?.lease.owns(event) || root.isConnected === false) { gesture?.lease.cancel('removed'); return false; }
-    draft = quantizeParameter(descriptor, next, event?.shiftKey); paint(); preview(draft, { phase: 'preview', gestureId: gesture.lease.id, parameterId: descriptor.id }); return true;
+    draft = quantizeParameter(descriptor, next, event?.shiftKey); paint(); preview(draft, { phase: 'preview', gestureId: gesture.lease.id, parameterId: descriptor.id, normalizedPressure: Number.isFinite(event?.pressure) ? event.pressure : null, pointerType: event?.pointerType || null }); return true;
   };
   const finish = event => {
     const current = gesture; if (!current?.lease.finish(event)) return false;
@@ -45,10 +45,10 @@ export function createParameterKnob({ document, window = document.defaultView, d
     try { if (current.pointerId != null) cap.releasePointerCapture?.(current.pointerId); } catch { /* Already released. */ }
     const next = draft; draft = momentary ? authored : next;
     if (momentary) preview(authored, { phase: 'return', gestureId: current.lease.id });
-    else if (next !== authored) { authored = next; commit(next, Object.freeze({ gestureId: current.lease.id, parameterId: descriptor.id, descriptorRevision: descriptor.revision, beginValue: current.beginValue, phase: 'commit' })); }
-    if (!disposed) paint(); return true;
+    else if (next !== authored) { const previous = authored; try { commit(next, Object.freeze({ gestureId: current.lease.id, parameterId: descriptor.id, descriptorRevision: descriptor.revision, beginValue: current.beginValue, phase: 'commit' })); authored = next; } catch (failure) { authored = draft = previous; preview(previous, { phase: 'cancel', reason: 'commit-rejected' }); onCancel('commit-rejected'); error.textContent = failure.message; } }
+    onFinish(); if (!disposed) paint(); return true;
   };
-  on(cap, 'pointerdown', event => { if ((event.button ?? 0) !== 0 || !begin(event)) return; event.preventDefault(); cap.focus?.(); cap.setPointerCapture?.(event.pointerId); });
+  on(cap, 'pointerdown', event => { if ((event.button ?? 0) !== 0 || !begin(event)) return; event.preventDefault(); cap.focus?.(); cap.setPointerCapture?.(event.pointerId); change(authored, event); });
   on(cap, 'pointermove', event => {
     if (!gesture?.lease.owns(event)) return;
     let position = Math.max(0, Math.min(1, gesture.position + (gesture.startY - event.clientY) / (event.shiftKey ? 1600 : 160)));
@@ -81,11 +81,18 @@ export function createParameterKnob({ document, window = document.defaultView, d
   on(document, 'visibilitychange', () => { if (document.hidden) gesture?.lease.cancel('hidden'); });
   const observer = typeof window?.MutationObserver === 'function' ? new window.MutationObserver(() => { if (!root.isConnected) gesture?.lease.cancel('removed'); }) : null;
   observer?.observe(document.documentElement, { childList: true, subtree: true }); paint();
+  const observations = ({ effectiveValue = null, pickupValue = null } = {}) => {
+    for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) {
+      mark.hidden = !Number.isFinite(position);
+      if (!mark.hidden) { mark.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`;
+        if (presentation === 'fader') mark.style.top = `${(1 - parameterUnitPosition(descriptor, position)) * 90}%`; }
+    }
+  };
   return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null }),
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
       if (gesture && (getIdentity() !== gesture.lease.identity || next !== authored)) gesture.lease.cancel('external-edit');
       readOnly = isReadOnly; pending = isPending; authored = draft = next == null ? null : quantizeParameter(descriptor, next, true);
-      for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) { mark.hidden = !Number.isFinite(position); if (!mark.hidden) { mark.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`; if (presentation === 'fader') mark.style.top = `${(1 - parameterUnitPosition(descriptor, position)) * 90}%`; } }
+      observations({ effectiveValue, pickupValue });
       paint();
-    }, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; observer?.disconnect(); for (const remove of listeners) remove(); listeners.length = 0; } });
+    }, setObservations: observations, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; observer?.disconnect(); for (const remove of listeners) remove(); listeners.length = 0; } });
 }

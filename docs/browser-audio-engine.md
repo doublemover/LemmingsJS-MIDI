@@ -1442,3 +1442,37 @@ slow/fast/cancel/control/document races, rollback, one-edit Undo, imported legac
 IDs, explicit matching-world action, hardware conflict warnings and a real
 immutable-browser keyboard-preview journey. They are **not run**. Neither the
 silent host fixture nor static checks claim PCM, browser or acoustic qualification.
+
+### Macro performer leases
+
+The SOUND inspector now uses the shared typed knob for admitted **onset-only**
+macros, with per-control momentary return and pen/touch pressure. Pressure is
+normalized model input, never a measured force. Authored bipolar controls map
+negative pressure below the saved baseline; positive pressure maps above it.
+Saved defaults and user overrides remain distinct. Preview overlays are limited
+to four active gestures, affect only future causal onsets, do not create notes,
+and do not mutate the project, terrain, simulation RNG or undo history. A latch
+commits once; momentary release/cancel returns to the accepted baseline.
+
+Macro Learn binds an observed CC, bend or channel-pressure message to the exact
+selected endpoint and connection epoch. Absolute controllers use crossing pickup;
+pressure is momentary. Disconnect commits the final accepted latching value once
+(or visibly reports rejection), rather than substituting zero. Mappings are
+session-owned, bounded to 32 and invalidated by document/patch replacement; they
+are not persisted as fictitious portable device bindings. Relative controllers
+and device-side value readback remain separate unfinished owners.
+
+Causal takes sample effective macro overlays at committed physical boundaries,
+not at UI event cadence. Interleaved canonical gain/pan changes retain active
+macro values in the sparse performance journal; return-to-baseline is recorded
+before the next physical batch. Patch selection waits for performed macros to be
+committed or returned. Pickup display updates cannot overwrite a drag's draft,
+and rejected canonical knob publication restores its accepted displayed value.
+
+The oscillator recipes now declare four independent edge/body/rise/tail controls;
+FM adds a release-tail control and declares bipolar hardness. Concrete changed
+recipes receive new immutable revisions; the unsupported held-sine recipe does
+not acquire decorative macros. Native and owned renderers still advertise their
+actual onset/continuous capabilities. Endpoint/grid PCM qualification and the
+broader qualification/listening package are not yet implemented in this increment;
+no audible result, safe continuum, sensitivity study or completed #971 is claimed.

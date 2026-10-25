@@ -41,11 +41,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       changed(el.type === 'checkbox' ? el.checked : el.type === 'text' ? el.value : options.nullable && el.value === '' ? null : Number(el.value));
     }); return el;
   };
-  const parameter = (value, changed, descriptor) => {
+  const macroControls = new Map(), macroModes = new Map();
+  const parameter = (value, changed, descriptor, options = {}) => {
     const laneId = state.laneId, tab = state.tab, source = procgenLane(getProject().procgen.lanes, laneId);
     const control = createParameterKnob({ document, window, value, descriptor,
       getIdentity: () => procgenLane(getProject().procgen.lanes, laneId) === source && state.laneId === laneId && state.tab === tab ? source : null,
-      commit: changed }); parameterControls.push(control); return control.element;
+      commit: changed, ...options }); parameterControls.push(control); if (options.macroKey) macroControls.set(options.macroKey, control); return control.element;
   };
   const labeled = (label, control, parent) => { control.dataset.fieldKey = state.tab + ':' + (control.dataset.parameterId || label); const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
   const byId = id => document.getElementById(id);
@@ -287,6 +288,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
   };
+  const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
   const selectSound = (laneId, patch) => { renderInspector(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.'); Promise.resolve().then(() => handlers.selectSoundAlias(laneId, patch)).catch(error => { handlers.status?.(error.message + ' Keep the previous sound, enable local listening for worklet sources, or explicitly select the Soft triangle fallback.'); renderInspector(); }); };
@@ -301,7 +303,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
-    for (const control of parameterControls.splice(0)) control.dispose();
+    for (const control of parameterControls.splice(0)) control.dispose(); macroControls.clear();
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
     state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
@@ -321,12 +323,27 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       fields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
       const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; fields.append(matchingWorld);
       if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
+      if (lane.instrumentRef?.definition?.macros?.length) fields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
+      const visibleMacroKeys = new Set((lane.instrumentRef?.definition?.macros || []).map(macro => JSON.stringify([lane.id, macro.id])));
+      for (const key of macroModes.keys()) if (!visibleMacroKeys.has(key)) macroModes.delete(key);
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
-        const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => changeLane({ instrumentControls: { ...lane.instrumentControls,
-          macros: { ...lane.instrumentControls?.macros, [macro.id]: value } } }), { id: 'macro:' + macro.id, name: macro.name, quantity: 'authored-performance-macro', unit: 'normalized', min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: macro.default01, detents: macro.bipolar ? [0.5] : [] });
+        const macroKey = JSON.stringify([lane.id, macro.id]), mode = macroModes.get(macroKey) || { momentary: !!macro.momentary, pressure: false }; let handle = null;
+        const begin = () => handle ||= handlers.beginMacroGesture(lane.id, macro.id, { momentary: mode.momentary || mode.pressure, origin: mode.pressure ? 'pressure' : 'manual' });
+        const cancel = () => { const previous = handle; handle = null; if (previous) { try { handlers.finishMacroGesture(previous, { cancel: true }); } catch (error) { handlers.status?.(error.message); } } };
+        const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => {
+          const previous = begin(); handle = null; handlers.previewMacroGesture(previous, value); handlers.finishMacroGesture(previous);
+        }, { id: 'macro:' + macro.id, name: macro.name, quantity: 'authored-performance-macro', unit: 'normalized', min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: macro.default01, detents: macro.bipolar ? [macro.default01] : [] },
+        { macroKey, momentary: mode.momentary || mode.pressure, readOnly: macro.mode !== 'onset-only', preview(value, meta) {
+          if (meta.phase === 'cancel' || meta.phase === 'return') { cancel(); return; }
+          try { const baseline = lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, pressure = mode.pressure && ['pen', 'touch'].includes(meta.pointerType) && meta.normalizedPressure != null
+            ? meta.normalizedPressure * (macro.bipolar && value < baseline ? -1 : 1) : null;
+          handlers.previewMacroGesture(begin(), value, pressure); } catch (error) { cancel(); handlers.status?.(error.message); }
+        }, onCancel: cancel, onFinish: cancel });
         control.title = macro.perceptualDirection; control.setAttribute('aria-label', macro.name + ' · next onset');
-        labeled(macro.name + ' · next onset', control, fields);
-        fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled(macro.name + ' · next onset', control, fields); fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), fields);
+        labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), fields);
+        fields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));
       }
       const variation = lane.instrumentRef?.definition?.variation;
       if (variation) {
@@ -812,6 +829,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (status) { status.textContent = mix.outputState.replaceAll('-', ' ') + (mix.eventRate ? ` · ${mix.eventRate.toFixed(0)} events/s` : ''); status.title = `Signal ${mix.signalStatus}; ${mix.meterSource}; gain ${mix.gainEvidence}`; }
     }
   } });
+  const macroSurface = displayScheduler.register({ id: 'workstation-macro-pickup', element: fields, intervalMs: 50, write: refreshMacroState });
   const midiSurface = displayScheduler.register({ id: 'workstation-midi', element: fields, intervalMs: 50, write: () => {
     const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== state.lastMidi) monitor.textContent = state.lastMidi;
   } });
@@ -838,7 +856,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, patchProject, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
+  return { render, patchStep, patchProject, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));

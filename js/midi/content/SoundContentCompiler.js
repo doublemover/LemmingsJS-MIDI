@@ -136,7 +136,7 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
         return { parameter: mapping.parameter, minimum: low, maximum: high, unit, curve: mapping.curve, composition: mapping.composition,
           conversion: { minimum: mapping.minimum.conversion || null, maximum: mapping.maximum.conversion || null }, clamp: mapping.clamp };
       });
-      explanations.push({ id: macro.id, name: macro.name, mode: macro.mode, default01: macro.default01, smoothingMs: macro.smoothingMs, perceptualDirection: macro.perceptualDirection, mappings });
+      explanations.push({ id: macro.id, name: macro.name, ...(macro.bipolar != null ? { bipolar: macro.bipolar } : {}), ...(macro.momentary != null ? { momentary: macro.momentary } : {}), mode: macro.mode, default01: macro.default01, smoothingMs: macro.smoothingMs, perceptualDirection: macro.perceptualDirection, mappings });
     }
     const authoredModulations = recipe.modulations || [], causalBindings = recipe.causalBindings || [];
     requireValue(Array.isArray(authoredModulations) && authoredModulations.length <= 64 && (!authoredModulations.length || descriptor.capabilities.modulationGraph) && Array.isArray(causalBindings) &&

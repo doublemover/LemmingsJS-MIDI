@@ -64,7 +64,8 @@
         "e2e/procgen-sound-world-isolation.spec.js"
       ],
       "commits": [
-        "91f570603dcacdebe9b5fec85ba8c1a3e386acb2"
+        "91f570603dcacdebe9b5fec85ba8c1a3e386acb2",
+        "7c9b785d5372d1000038afc512df438bf8c62555"
       ],
       "validation": "deferred-by-request",
       "increment": "transactional-native-sound-audition-with-physical-isolation",
@@ -76,11 +77,26 @@
       "requirementUpdatedAt": "2026-10-22T11:37:07Z",
       "requirementSha256": "1c348c2b690a50e20bb07f10b15965379bc458b3d9518d9612e25051db53dabb",
       "initialGap": "Typed macros/composition and authored sound recipes exist. Workstation surface presents next-onset scalar range controls only, with no transactional shared knob/momentary return-to-baseline/bipolar performer gesture integration required by this ticket.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/midi-ui/InstrumentMacroGestures.js",
+        "js/app/controls/ParameterKnob.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "js/midi/content/InstrumentPerformance.js",
+        "js/midi/content/SoundContentCompiler.js",
+        "content/sounds/native.json",
+        "content/sounds/fm-forge.json"
+      ],
+      "regressions": [
+        "test/midi/instrument-macro-gestures.test.js",
+        "test/parameter-controls.test.js",
+        "test/midi/instrument-performance.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-macro-performer-leases",
+      "remaining": "Shared knob, momentary/bipolar normalized pressure, endpoint-epoch pickup, bounded ephemeral overlays and causal-boundary recording implemented. Full fixed-note/fixed-event endpoint and paired-grid qualification tooling, unsupported-effective diagnostics and sensitivity/domain receipt integration remain development work; continuous macro targets remain explicitly unsupported by current renderers."
     },
     {
       "number": 972,
@@ -483,7 +499,8 @@
       "initialGap": "No reusable typed ParameterGesture rotary control exists; production helper creates native input controls with change-only commits and resize/paint use separate handlers.",
       "state": "in-progress",
       "source": [
-        "js/app/controls/ParameterKnob.js"
+        "js/app/controls/ParameterKnob.js",
+        "js/app/midi-ui/InstrumentMacroGestures.js"
       ],
       "regressions": [
         "test/parameter-controls.test.js"

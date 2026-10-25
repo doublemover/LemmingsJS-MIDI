@@ -50,7 +50,7 @@ test('hold preview restores on keyboard release and commits only through the exp
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   await expect(dialog.getByLabel('Saved instrument revision').locator('option')).toHaveCount(4, { timeout: 30000 });
-  await dialog.getByLabel('Saved instrument revision').selectOption('foundation.soft-triangle@2');
+  await dialog.getByLabel('Saved instrument revision').selectOption('foundation.soft-triangle@3');
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click(); await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
   await dialog.getByRole('button', { name: 'Audition controls', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Control audition completed');
   await dialog.getByRole('button', { name: 'Install auditioned pack', exact: true }).click(); await expect(dialog.getByLabel('Sound library status')).toContainText('Pack installed');

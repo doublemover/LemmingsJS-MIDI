@@ -82,6 +82,22 @@ describe('ProcGen workstation orchestration', () => {
       await changed.studio.handlers.undo(); expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world))).to.equal(beforeUndo); expect(changed.restarts).to.have.length(0);
     } finally { await control.studio.dispose().completion; await changed.studio.dispose().completion; control.runtime.world.dispose(); changed.runtime.world.dispose(); }
   });
+  it('owns shared macro gestures while paused, commits one undo entry and never replaces the physical world', async () => {
+    const { candidates, descriptors } = await nativeSoundCandidates();
+    const f = setup({ physicalOnly: true, audio: createSilentPreparationAudio(), getInstrumentCatalog: async () => ({ descriptors }) });
+    try {
+      f.studio.bindRuntime(); await f.studio.handlers.applyInstalledInstrument(candidates[1]);
+      const lane = f.studio.getProject().procgen.lanes[0], macro = lane.instrumentRef.definition.macros[0], world = f.runtime.world;
+      const first = f.studio.handlers.beginMacroGesture(lane.id, macro.id, { momentary: true });
+      f.studio.handlers.previewMacroGesture(first, 0.8); f.studio.handlers.finishMacroGesture(first);
+      expect(f.studio.getProject().procgen.lanes[0]).to.equal(lane);
+      const second = f.studio.handlers.beginMacroGesture(lane.id, macro.id);
+      for (const value of [0.1, 0.9, 0.375]) f.studio.handlers.previewMacroGesture(second, value);
+      f.studio.handlers.finishMacroGesture(second); expect(f.studio.getProject().procgen.lanes[0].instrumentControls.macros[macro.id]).to.equal(0.375);
+      await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].instrumentControls).to.deep.equal(lane.instrumentControls);
+      expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0); expect(f.calls).to.have.length(0);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('warns about conflicting hardware programs without changing native sound or silently reassigning channels', () => {
     const f = setup({ laneCount: 2 }); f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { channel: 7, externalProgram: 20 } });
     f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { channel: 7, externalProgram: 60 } });

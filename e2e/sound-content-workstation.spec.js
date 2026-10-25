@@ -105,7 +105,7 @@ test('FM Forge stages original source recipes and only applies the auditioned in
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare FM Forge', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
-  await revisions.selectOption('forge.glass-rivet@3'); await expect(dialog.getByLabel('Instrument source model')).toContainText('1:2.71');
+  await revisions.selectOption('forge.glass-rivet@4'); await expect(dialog.getByLabel('Instrument source model')).toContainText('1:2.71');
   await expect(dialog.getByRole('button', { name: 'Apply to selected lane', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
   await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
@@ -134,7 +134,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision');
-  await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.soft-triangle@2');
+  await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 }); await revisions.selectOption('foundation.soft-triangle@3');
   await expect(dialog.getByRole('button', { name: 'Apply to selected lane', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Rehearsal on live output', exact: true }).click();
   await expect(dialog.getByLabel('Prelisten route')).toContainText('ready');
