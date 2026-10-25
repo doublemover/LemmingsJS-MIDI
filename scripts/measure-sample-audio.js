@@ -1,3 +1,4 @@
+import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -16,6 +17,7 @@ try {
   server = await startAudioEvidenceServer(root); await page.goto(server.origin);
   const evidence = await page.evaluate(async rates => {
     const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js');
+    const { admitPcmBuffer, measurePcmWindow, comparePcmChannels, requireFiniteMetric } = await import('/js/app/midi-ui/PcmEvidence.js');
     const { createAudioAssetLoader } = await import('/js/app/midi-ui/AudioAssetLoader.js');
     const { DECODER_VERSION } = await import('/js/app/midi-ui/AudioAssetRef.js');
     const sourceRate = 44100, sourceFrames = sourceRate, bytes = new Uint8Array(44 + sourceFrames * 2), view = new DataView(bytes.buffer);
@@ -27,23 +29,14 @@ try {
     const hash = Array.from(new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes))).map(n => n.toString(16).padStart(2, '0')).join('');
     const ref = { contentHash: hash, bytes: bytes.length, mime: 'audio/wav', channels: 1, sourceSampleRate: sourceRate,
       frames: sourceFrames, decodeVersion: DECODER_VERSION, licenseId: 'CC0-1.0', attribution: 'Original generated test sine', path: 'fixtures/sine.wav' };
-    const measure = (data, sampleRate, from, to) => {
-      const first = Math.ceil(from * sampleRate), last = Math.min(data.length, Math.floor(to * sampleRate));
-      let peak = 0, square = 0, nonfinite = 0, maximumDelta = 0;
-      for (let frame = first; frame < last; frame++) {
-        const value = data[frame]; if (!Number.isFinite(value)) { nonfinite++; continue; }
-        peak = Math.max(peak, Math.abs(value)); square += value * value;
-        if (frame > first) maximumDelta = Math.max(maximumDelta, Math.abs(value - data[frame - 1]));
-      }
-      return { peak, rms: Math.sqrt(square / (last - first)), maximumDelta, nonfinite };
-    };
+    const measure = (values, sampleRate, from, to) => measurePcmWindow([values], sampleRate, from, to);
     const pitchError = (data, sampleRate, expected) => {
       let first = null, last = null, crossings = 0;
       for (let n = Math.ceil(0.2 * sampleRate); n < Math.floor(0.29 * sampleRate); n++) if (data[n - 1] <= 0 && data[n] > 0) {
         const crossing = n - 1 - data[n - 1] / (data[n] - data[n - 1]); if (first == null) first = crossing; last = crossing; crossings++;
       }
-      if (crossings < 3) return null;
-      return 1200 * Math.log2((crossings - 1) * sampleRate / (last - first) / expected);
+      if (crossings < 3) throw new Error('Required pitch metric has insufficient crossings.');
+      return requireFiniteMetric(1200 * Math.log2((crossings - 1) * sampleRate / (last - first) / expected), 'pitch error');
     };
     const run = async (sampleRate, reversed, crowd = 2, chokeCancellation = false) => {
       const raw = new globalThis.OfflineAudioContext(6, sampleRate, sampleRate);
@@ -100,8 +93,8 @@ try {
       let cancelledFutureChokes = 0;
       if (cancelChoke) { await cancelChoke; cancelledFutureChokes = A.cancelGeneration(2, 'fixture'); await raw.resume(); }
       await cueStop; cue.stop(); await raw.resume(); await panic; preview.panic(); await raw.resume();
-      const rendered = await rendering, data = Array.from({ length: 6 }, (_, n) => rendered.getChannelData(n));
-      const report = { requestedSampleRate: sampleRate, actualSampleRate: raw.sampleRate, decodedFrames: pin.variant.frames, crowd, chokeCancellation, cancelledFutureChokes,
+      const rendered = await rendering, data = admitPcmBuffer(rendered, 6);
+      const report = { comparisonStatus: { permutation: 'not-applicable', choke: 'not-applicable' }, requiredPcm: { channels: 6, frames: rendered.length, scope: 'all-retained-channels' }, requestedSampleRate: sampleRate, actualSampleRate: raw.sampleRate, decodedFrames: pin.variant.frames, crowd, chokeCancellation, cancelledFutureChokes,
         accepted: receipts.filter(receipt => receipt.status === 'accepted').length, expectedReceipts: receipts.length, selections,
         expectedSelections: crowd === 2 ? 4 : crowd + (overflow ? 1 : 0), maximumReservedSources, overflowDecision: overflow?.reason ?? null,
         sourceHash: hash, sourceSampleRate: sourceRate, targetSampleRate: sampleRate,
@@ -116,16 +109,19 @@ try {
     };
     const reports = [];
     for (const rate of rates) {
-      const a = await run(rate, false), b = await run(rate, true); let maxPermutationError = 0;
-      for (let channel = 0; channel < a.data.length; channel++) for (let frame = 0; frame < a.data[channel].length; frame++) maxPermutationError = Math.max(maxPermutationError, Math.abs(a.data[channel][frame] - b.data[channel][frame]));
-      reports.push({ ...a.report, maxPermutationError, permutationTolerance: 1e-6 });
-      const choke = await run(rate, false, 2, true); let chokeRestorationError = 0;
-      for (let channel = 0; channel < a.data.length; channel++) for (let frame = 0; frame < a.data[channel].length; frame++) chokeRestorationError = Math.max(chokeRestorationError, Math.abs(a.data[channel][frame] - choke.data[channel][frame]));
-      reports.push({ ...choke.report, chokeRestorationError });
+      const a = await run(rate, false), b = await run(rate, true), maxPermutationError = comparePcmChannels(a.data, b.data);
+      reports.push({ ...a.report, comparisonStatus: { permutation: 'measured', choke: 'not-applicable' }, maxPermutationError, permutationTolerance: 1e-6 });
+      const choke = await run(rate, false, 2, true), chokeRestorationError = comparePcmChannels(a.data, choke.data);
+      reports.push({ ...choke.report, comparisonStatus: { permutation: 'not-applicable', choke: 'measured' }, chokeRestorationError });
       for (const crowd of [16, 32]) reports.push((await run(rate, false, crowd)).report);
     }
     return { engine: 'native-sample@1', reports, evidence: { digitalOffline: 'executed', digitalRealtime: 'not-run', listened: 'not-run', physicalLoopback: 'not-run' } };
   }, rates);
+  for (const report of evidence.reports) {
+    admitPcmMetrics(report, ['all.rms', 'all.peak', 'all.frames', 'AAfterCueStop.rms', 'BAfterCueStop.peak', 'releaseChild.rms', 'pitchErrorCentsA', 'pitchErrorCentsB', 'mainContinuity.maximumDelta', 'afterRelease.peak', 'afterPanic.peak']);
+    if (report.comparisonStatus.permutation === 'measured') admitPcmMetrics(report, ['maxPermutationError', 'permutationTolerance']);
+    if (report.comparisonStatus.choke === 'measured') admitPcmMetrics(report, ['chokeRestorationError']);
+  }
   evidence.environment = environment; evidence.errors = errors;
   evidence.sourceHashes = Object.fromEntries(await Promise.all(LOCAL_AUDIO_SOURCES.map(async file => [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));
   const failed = evidence.reports.filter(report => report.accepted !== report.expectedReceipts || report.selections !== report.expectedSelections || report.all.nonfinite || report.all.peak >= 0.9 ||

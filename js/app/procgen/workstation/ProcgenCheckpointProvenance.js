@@ -1,9 +1,9 @@
 import { CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs } from './ProcgenCheckpoint.js';
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 
-const PRESENTATION_WORLD_KEYS = new Set(['scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
+const PRESENTATION_WORLD_KEYS = new Set(['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
 const equal = (left, right) => canonicalJournalText(left).text === canonicalJournalText(right).text;
-const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-1' } = {}) => {
+const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-2' } = {}) => {
   const reasons = [];
   if (saved?.generator !== generator || ![1, 2].includes(saved?.version)) reasons.push('unsupported-generator-or-version');
   if (!Array.isArray(saved?.assets)) reasons.push('missing-asset-identities');
@@ -80,7 +80,7 @@ const projectProcgenPhysicsCheckpoint = saved => {
     generator: saved.generator, seed: saved.seed, laneCount: saved.laneCount, laneHeight: saved.laneHeight, assets: saved.assets,
     physicsAlgorithms: saved.physicsAlgorithms ?? { stallCascade: 1 },
     graph: { nodes: projected, owners }, terrainAssignments: saved.terrainAssignments, terrainSettings: saved.terrainSettings,
-    growth: saved.growth, physicalIdentity: saved.physicalIdentity,
+    growth: saved.growth, physicalIdentity: saved.physicalIdentity ? { version: saved.physicalIdentity.version, causalSequence: saved.physicalIdentity.causalSequence, coverage: saved.physicalIdentity.coverage } : null,
     clock: { speedFactor: saved.clock.speedFactor, simulationTimeMs: saved.clock.simulationTimeMs } };
 };
 const hashProcgenPhysicsCheckpoint = saved => hashJournalData(projectProcgenPhysicsCheckpoint(saved), { maxBytes: 32 * 1048576, maxNodes: 4000000 });
@@ -108,7 +108,7 @@ const compareProcgenPhysicsCheckpoints = async (expected, actual) => {
 };
 
 const migrateProcgenCheckpoint = saved => {
-  if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-1') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
+  if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-2') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
   const candidate = structuredClone(saved);
   if (candidate.version === 1) for (const node of candidate.graph?.nodes || []) if (node.type === 'Float32Array' || node.type === 'Float64Array') {
     node.values = node.values.map(value => {

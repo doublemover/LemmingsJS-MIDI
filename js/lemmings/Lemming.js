@@ -1,3 +1,4 @@
+import { transitionPhysicalFlight, endPhysicalFlight, publishObservedFlightBoundary } from '../actions/PhysicalFlightFacts.js';
 import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
@@ -39,6 +40,9 @@ class Lemming extends BaseLogger {
     this.x = x;
     this.y = y;
     this.id = id;
+    this.birthCohortId = null; this.crewOriginIds = []; this.crewOriginComplete = true;
+    this._physicalFlightSerial = 0; this._physicalFlightState = null;
+    this._physicalActionCycle = 0; this._physicalProcessingFrame = null;
     this._physicalActionSerial = 0;
     this._physicalCommandSerial = 0;
     this._physicalInterventionId = null;
@@ -65,7 +69,7 @@ class Lemming extends BaseLogger {
       const contactId = `${walker.id}:${this.id}:${_tick}:blocker`;
       walker._physicalPendingBlockerContact = { contactId, blockerId: this.id };
       facts.emit({ kind: 'ContactResolved', contactId, actorId: walker.id, otherActorId: this.id,
-        laneId: walker.laneIndex ?? null, causeKind: 'blocker', participantRoles: { actor: 'walker', otherActor: 'blocker' },
+        laneId: walker.laneIndex ?? null, otherLaneId: this.laneIndex ?? null, incomingDirection: walker.lookRight ? 'right' : 'left', triggerId: trigger.id ?? null, causeKind: 'blocker', participantRoles: { actor: 'walker', otherActor: 'blocker' },
         positionBefore: { x: walker.x, y: walker.y }, positionAfter: { x: walker.x, y: walker.y } });
     }
     const bus = getRuntimeSoundEvents(this.runtime);
@@ -86,6 +90,7 @@ class Lemming extends BaseLogger {
     const previousFrameIndex = this.frameIndex;
     previousAction?.spriteProvider?.resetActor?.(this);
     this.action = action;
+    this._physicalActionCycle = 0; this._physicalProcessingFrame = null;
     this.frameIndex = 0;
     this.state = 0;
     action?.spriteProvider?.onActionChange?.(this, previousAction, previousFrameIndex);
@@ -98,6 +103,7 @@ class Lemming extends BaseLogger {
         laneId: this.laneIndex ?? null, action: action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
         parentCauseIds: this._physicalInterventionId ? [this._physicalInterventionId] : [],
         positionAfter: { x: this.x, y: this.y } });
+      transitionPhysicalFlight(this, previousAction, action);
     }
   }
 
@@ -115,6 +121,7 @@ class Lemming extends BaseLogger {
     this._physicalPendingTransitions = null;
     if (!this._physicalTerminated && this.action && !this._physicalActionPublished) {
       this._physicalActionPublished = true;
+      publishObservedFlightBoundary(this);
       facts.emit({ kind: 'ActionEntered', actorId: this.id, laneId: this.laneIndex ?? null,
         action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
         positionAfter: { x: this.x, y: this.y } });
@@ -123,7 +130,7 @@ class Lemming extends BaseLogger {
 
   endPhysicalLifecycle(reason = 'removed') {
     if (this.id == null || this._physicalTerminated) return;
-    this.endPhysicalContactSpan(reason);
+    this.endPhysicalContactSpan(reason); endPhysicalFlight(this, reason);
     if (this.runtime?.physicalFacts?.enabled?.(this) || this.runtime?.physicalFacts?.observing?.(this)) {
       if (this.action && this._physicalActionPublished && this._physicalActionInstanceId) this._queuePhysicalTransition({ kind: 'ActionExited', actorId: this.id,
         laneId: this.laneIndex ?? null, action: this.action.actionName || null, actionInstanceId: this._physicalActionInstanceId,
@@ -210,7 +217,15 @@ class Lemming extends BaseLogger {
       }
     }
     if (this.action) {
-      let returnedState = this.action.process(level, this);
+      const action = this.action, cycleLength = action.actionName === 'mining' ? 24 : ['building', 'bashing', 'digging'].includes(action.actionName) ? 16 : 0;
+      this._physicalProcessingFrame = this.frameIndex;
+      let returnedState;
+      try { returnedState = action.process(level, this);
+        if (cycleLength && this.action === action && this.frameIndex % cycleLength < this._physicalProcessingFrame % cycleLength) {
+          this._physicalActionCycle++;
+          this._queuePhysicalTransition({ kind: 'ActionCycleCompleted', actorId: this.id, laneId: this.laneIndex ?? null, action: action.actionName, actionInstanceId: this._physicalActionInstanceId, cycleOrdinal: this._physicalActionCycle, cycleLengthFrames: cycleLength, positionAfter: { x: this.x, y: this.y } });
+        }
+      } finally { this._physicalProcessingFrame = null; }
       return returnedState;
     }
     // prevent falling through function without returning a type

@@ -46,23 +46,27 @@ export function createProcgenLaneObserver(world) {
     index();
     const previous = observations[lane];
     if (previous?.serial === serial && previous.revision === revision) return previous.value;
-    const actor = projection ? projection.semanticObservationLeader(lane) : leaders[lane];
-    if (!actor) return save(lane, EMPTY);
-    const x = Math.floor(actor.x), y = Math.floor(actor.y), direction = actor.lookRight === false ? -1 : 1;
-    const tags = [], ahead = x + direction * 4;
-    const known = px => px >= (world.leftEdgeX || 0) && px < (world.generatedThrough?.[lane] ?? world.width);
-    const ground = (px, py) => { if (!known(px)) return false; contactQueries++; return !!world.hasGroundAt(px, py); };
-    if (ground(x, y) || ground(x, y + 1)) tags.push('ground');
-    if (known(ahead) && !ground(ahead, y) && !ground(ahead, y + 1) && !ground(ahead, y + 4)) tags.push('gap');
-    if (ground(x + direction * 2, y - 5) || ground(ahead, y - 5)) tags.push('wall');
-    if (known(ahead) && world.hasSteelAt?.(ahead, y - 5)) tags.push('steel');
-    const chunkWidth = world.terrain?.chunkWidth || 256, first = Math.max(0, Math.floor((x - 8) / chunkWidth));
-    for (let chunk = first; chunk <= first + 1; chunk++) {
-      const record = world.hazards?.chunks?.get(lane * 0x800000 + chunk);
-      if (record?.entries.some(entry => entry?.enabled && entry.trigger && entry.trigger.x2 > x - 8 && entry.trigger.x1 < x + 16 && entry.trigger.y2 > y - 12 && entry.trigger.y1 < y + 8)) { tags.push('hazard'); break; }
-    }
-    const mask = projection ? projection.semanticActionMask(lane) : masks[lane], order = projection ? projection.semanticActionOrder(lane) : orders[lane];
-    return save(lane, Object.freeze({ action: formatProcgenActionMask(mask, order), terrain: tags.join(' '), x: actor.x, y: actor.y }));
+    const lease = projection?.acquireSnapshot();
+    try {
+      if (projection && (!lease || !projection.isCurrent())) return EMPTY;
+      const actor = lease ? lease.frame.observationLeaders[lane] : leaders[lane];
+      if (!actor) return save(lane, EMPTY);
+      const x = Math.floor(actor.x), y = Math.floor(actor.y), direction = actor.lookRight === false ? -1 : 1;
+      const tags = [], ahead = x + direction * 4;
+      const known = px => px >= (world.leftEdgeX || 0) && px < (world.generatedThrough?.[lane] ?? world.width);
+      const ground = (px, py) => { if (!known(px)) return false; contactQueries++; return !!world.hasGroundAt(px, py); };
+      if (ground(x, y) || ground(x, y + 1)) tags.push('ground');
+      if (known(ahead) && !ground(ahead, y) && !ground(ahead, y + 1) && !ground(ahead, y + 4)) tags.push('gap');
+      if (ground(x + direction * 2, y - 5) || ground(ahead, y - 5)) tags.push('wall');
+      if (known(ahead) && world.hasSteelAt?.(ahead, y - 5)) tags.push('steel');
+      const chunkWidth = world.terrain?.chunkWidth || 256, first = Math.max(0, Math.floor((x - 8) / chunkWidth));
+      for (let chunk = first; chunk <= first + 1; chunk++) {
+        const record = world.hazards?.chunks?.get(lane * 0x800000 + chunk);
+        if (record?.entries.some(entry => entry?.enabled && entry.trigger && entry.trigger.x2 > x - 8 && entry.trigger.x1 < x + 16 && entry.trigger.y2 > y - 12 && entry.trigger.y1 < y + 8)) { tags.push('hazard'); break; }
+      }
+      const mask = lease ? lease.frame.actionMasks[lane] : masks[lane], order = lease ? lease.frame.actionOrders[lane] : orders[lane];
+      return save(lane, Object.freeze({ action: formatProcgenActionMask(mask, order), terrain: tags.join(' '), x: actor.x, y: actor.y }));
+    } finally { lease?.release(); }
   };
   observe.getStats = () => ({ fallbackBuilds, actorVisits, contactQueries, indexAllocations, observationAllocations });
   return observe;

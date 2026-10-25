@@ -63,6 +63,14 @@ describe('Owned native sample regions', () => {
     expect(backend.renewExecutionLease(1, 'take', 480000).status).to.equal('accepted');
     return { preview, session, context, backend, asset, selections: () => selections };
   };
+  it('uses one sampled control clock for all expression lanes even while currentTime advances', async () => {
+    const { backend, context } = await setup(); expect(backend.begin(intent(), 0, 'take').status).to.equal('accepted');
+    let clock = 0.01; Object.defineProperty(context, 'currentTime', { configurable: true, get: () => { const value = clock; clock += 0.000001; return value; } });
+    const receipt = backend.update('A', { pressure01: 0.4, pan01: 0.3, pitchOffsetCents: 25 }, 481, 'take');
+    expect(receipt.status).to.equal('accepted');
+    const pressure = context.gains.flatMap(node => node.gain.events).filter(event => event.type === 'ramp' && event.value === 0.4);
+    expect(pressure).not.to.have.length(0); Object.defineProperty(context, 'currentTime', { configurable: true, value: clock, writable: true });
+  });
   it('prepares the immutable authored map directly and retains its actual region selection and one-shot duration', async () => {
     const fixture = await setup(), backend = await fixture.session.createSampleInstrumentBackend({ clockMode: 'offline' }), resolution = patch();
     resolution.patch.sampleMap = singleSampleMap(fixture.asset.pin.ref.contentHash, { frames: 44100 });

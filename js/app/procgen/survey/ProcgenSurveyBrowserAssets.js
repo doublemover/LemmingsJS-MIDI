@@ -1,3 +1,5 @@
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { BinaryReader } from '../../../data/BinaryReader.js';
 import { FileContainer } from '../../../data/FileContainer.js';
 import { MaskProvider } from '../../../render/MaskProvider.js';
@@ -44,19 +46,27 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
   for (const required of ['js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', 'js/app/procgen/survey/ProcgenSurveyCore.js', 'js/steelSpritesData.js'])
     if (!Object.hasOwn(manifest.codeHashes, required)) throw new Error(`Replay code is missing from provenance: ${required}`);
   if (await hexSha256(new TextEncoder().encode(JSON.stringify(manifest.codeHashes))) !== manifest.codeDigest) throw new Error('Replay source manifest digest mismatch');
-  const bytes = new Map(), token = {}, owner = 'browser-survey-source'; let totalBytes = 0, cursor = 0, released = false;
-  resourceBudget.reserve({ token, owner, generation: 0, category: 'asset', bytes: MAX_SOURCE_BYTES * 2, pinned: true, reloadable: false });
+  const bytes = new Map(), token = {}, owner = 'browser-survey-source'; let totalBytes = 0, admittedStreamBytes = 0, cursor = 0, released = false;
+  const producers = new Set(), retirement = createProcgenRetirementScope();
+  resourceBudget.reserve({ token, owner, generation: 0, category: 'asset', bytes: MAX_SOURCE_BYTES * 3 + 8 * 65536, pinned: true, reloadable: false });
   const controller = new AbortController(), signal = controller.signal, cancel = () => controller.abort(externalSignal.reason);
   externalSignal?.addEventListener('abort', cancel, { once: true }); if (externalSignal?.aborted) cancel();
   const deadline = setTimeout(() => controller.abort(new Error('Browser survey source preparation deadline exceeded.')), 120000);
-  const release = () => { if (!released) { released = true; bytes.clear(); resourceBudget.release({ token, owner }); } };
+  const release = () => {
+    if (retirement.getReceipt()) return retirement.getReceipt(); released = true; bytes.clear();
+    return retirement.retire([{ name: 'source-stream-producers', run: () => producers.size ? Promise.all([...producers]) : undefined },
+      { name: 'source-storage', run: () => { const finish = () => { if (resourceBudget.release({ token, owner }) === false) throw new Error('Survey source release was not acknowledged.'); }; return producers.size ? Promise.all([...producers]).then(finish) : finish(); } }]);
+  };
   const read = async () => {
     try {
       while (cursor < entries.length) {
         signal?.throwIfAborted();
         const [name, expected, isCode] = entries[cursor++], response = await awaitBrowserBuildOperation(() => fetchRef(sourcePath(name, isCode), { cache: 'no-store', credentials: 'same-origin', redirect: 'error', signal }), signal);
         if (!response.ok) throw new Error(`Replay source request failed: ${name} (${response.status})`);
-        const data = await readBrowserBuildResponse(response, MAX_FILE_BYTES, signal); signal?.throwIfAborted(); totalBytes += data.byteLength;
+        const data = await readBrowserBuildResponse(response, MAX_FILE_BYTES, signal, {
+          claimBytes(count) { if (released || signal.aborted || admittedStreamBytes + count > MAX_SOURCE_BYTES) throw new Error('Replay aggregate stream byte budget exceeded before materialization.'); admittedStreamBytes += count; },
+          observeProducer(promise) { producers.add(promise); promise.then(() => producers.delete(promise)); }
+        }); signal?.throwIfAborted(); totalBytes += data.byteLength;
         if (data.byteLength > MAX_FILE_BYTES || totalBytes > MAX_SOURCE_BYTES) throw new Error('Replay source byte limit exceeded');
         if (await hexSha256(data) !== expected) throw new Error(`Replay source differs from the saved trial: ${name}`);
         bytes.set(name, data);
@@ -73,19 +83,21 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
         if (dependency.origin !== repoUrl.origin || !Object.hasOwn(manifest.codeHashes, relative)) throw new Error(`Replay dependency is missing from provenance: ${relative}`);
       }
     }
+    resourceBudget.reserve({ token, owner, generation: 0, category: 'asset', bytes: Math.max(4096, totalBytes), previousBytes: MAX_SOURCE_BYTES * 3 + 8 * 65536, pinned: true, reloadable: false });
     return { bytes, release, verification: freezeSurveyData({ receiptVersion: 3, scheme: 'same-origin-file-sha256-v1', artifactPolicy,
       artifactIntegrity: verifyCode ? 'verified' : 'assets-verified', codeArtifactIntegrity: verifyCode ? 'verified' : 'not-checked', assetIntegrity: 'verified',
       activeExecution: 'unbound', executionReason: verifyCode ? 'fetched-source-is-not-the-loaded-module-graph' : 'explicit-current-runtime-comparison',
       codeDigest: manifest.codeDigest, codeFiles: verifyCode ? code.length : 0, declaredCodeFiles: code.length, assetFiles: assets.length, totalBytes }) };
-  } catch (error) { controller.abort(error); release(); throw error; }
+  } catch (error) { controller.abort(error); const receipt = release(); if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
   finally { clearTimeout(deadline); externalSignal?.removeEventListener('abort', cancel); }
 };
 const browserTerrain = async (scenario, files) => {
   const pack = scenario.pack, groundName = `GROUND${scenario.groundSet}O.DAT`, vgaName = `VGAGR${scenario.groundSet}.DAT`;
   const required = name => { const bytes = files.get(name); if (!bytes) throw new Error(`Replay asset is missing from provenance: ${name}`); return bytes; };
   const ground = new BinaryReader(required(`${pack}/${groundName}`), 0, undefined, groundName, pack);
-  const vga = new FileContainer(new BinaryReader(required(`${pack}/${vgaName}`)));
-  const reader = new GroundReader(ground, vga.getPart(0), vga.getPart(1));
+  const rawVga = new BinaryReader(required(`${pack}/${vgaName}`)); let vga, terrainPart, objectPart, reader;
+  try { vga = new FileContainer(rawVga); terrainPart = vga.getPart(0); objectPart = vga.getPart(1); reader = new GroundReader(ground, terrainPart, objectPart); }
+  finally { terrainPart?.release(); objectPart?.release(); vga?.dispose(); rawVga.release(); ground.release(); }
   if (!reader.valid) throw new Error('Replay ground data is invalid');
   // Match the headless loader's pinned file-URL fallback without changing its
   // shared steel classification owner in a running browser application.
@@ -100,6 +112,24 @@ const browserTerrain = async (scenario, files) => {
   const sourceDescriptor = selectTerrainDescriptor(book, { packPath: pack, groundSet: scenario.groundSet, assetSha256 });
   const assemblyCatalog = selectAuthoredAssemblyCatalog(book, { packPath: pack, groundSet: scenario.groundSet, assetSha256, objectSha256 });
   return new ProcgenRecipeTerrain({ recipe, terrainPieces, objectPieces, sourceDescriptor, assemblyCatalog, packWidthLimit: getPackTerrainWidthLimit(book, pack) });
+};
+const surveyDecodeBytes = (scenario, files) => {
+  const containers = ['lemmings_ohNo/MAIN.DAT', ...(scenario.mode === 'generated' ? [`${scenario.pack}/VGAGR${scenario.groundSet}.DAT`] : [])];
+  for (const name of containers) {
+    const data = files.get(name); if (!(data instanceof Uint8Array)) throw new Error(`Survey container is missing: ${name}`);
+    let at = 0, parts = 0;
+    while (at + 10 < data.length) { const size = data[at + 8] * 256 + data[at + 9];
+      if (++parts > 64 || size < 10 || at + size > data.length) throw new Error('Survey compressed container exceeds bounded part metadata.'); at += size;
+    }
+  }
+  let pixels = 0;
+  if (scenario.mode === 'generated') {
+    const ground = files.get(`${scenario.pack}/GROUND${scenario.groundSet}O.DAT`); if (!(ground instanceof Uint8Array) || ground.length !== 1056) throw new Error('Survey ground header is not a bounded classic source.');
+    for (let i = 0; i < 16; i++) pixels += ground[i * 28 + 3] * ground[i * 28 + 4] * ground[i * 28 + 5];
+    for (let i = 0; i < 64; i++) pixels += ground[448 + i * 8] * ground[449 + i * 8];
+  }
+  const bytes = 1048576 + pixels * 8;
+  if (!Number.isSafeInteger(bytes) || bytes > 64 * 1048576) throw new Error('Survey decoder expansion exceeds the declared pixel workspace.'); return bytes;
 };
 const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate: rawCandidate, sourceManifest: rawSourceManifest, fetchFile = globalThis.fetch, signal, mode = 'compatibility', artifactPolicy = 'saved-source-and-assets', executionLease, resourceBudget } = {}) => {
   if (typeof fetchFile !== 'function') throw new Error('Verified replay requires fetch');
@@ -116,19 +146,27 @@ const createBrowserSurveyTrial = async ({ scenario: rawScenario, candidate: rawC
     active = await requireSurveySourceBuild(sourceManifest, await loadActiveBrowserSurveyBuild({ fetchFile, signal }));
     requireIsolatedBrowserSurveyExecution(executionLease, sourceManifest); signal?.throwIfAborted();
   }
-  const { bytes, verification, release } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal, { resourceBudget, artifactPolicy });
+  const budget = resourceBudget || preparationBudget;
+  const { bytes, verification, release } = await verifiedBrowserFiles(sourceManifest, fetchFile, signal, { resourceBudget: budget, artifactPolicy });
+  let decoder = null, candidateReservation = null, trial = null; const retirement = createProcgenRetirementScope();
+  const releaseAll = () => retirement.retire([{ name: 'verified-source', run: release }, { name: 'decoded-source', run: () => decoder?.release() }, { name: 'survey-world', run: () => candidateReservation?.release() }]);
   try {
+    decoder = createOwnedResourceReservation({ budget, owner: 'browser-survey-decoder', kind: 'classic-palette-and-mask-expansion', category: 'asset', bytes: surveyDecodeBytes(scenario, bytes) });
+    const estimatedWorldBytes = 8 * 1048576 + scenario.physicalLaneCount * (65536 + scenario.laneHeight * 128 * 8) + scenario.maxActors * (8192 + scenario.laneHeight * 32) + scenario.actorRecordLimit * 512;
+    candidateReservation = createOwnedResourceReservation({ budget, owner: 'browser-survey-world', kind: 'bounded-survey-runtime-estimate', category: 'candidate', bytes: estimatedWorldBytes });
     signal?.throwIfAborted();
     const main = bytes.get('lemmings_ohNo/MAIN.DAT'); if (!main) throw new Error('Replay masks are missing from provenance');
-    const masks = new MaskProvider(new FileContainer(new BinaryReader(main)).getPart(1));
+    const rawMain = new BinaryReader(main); let container, part, masks;
+    try { container = new FileContainer(rawMain); part = container.getPart(1); masks = new MaskProvider(part); }
+    finally { part?.release(); container?.dispose(); rawMain.release(); }
     const terrain = scenario.mode === 'generated' ? await browserTerrain(scenario, bytes) : null;
     signal?.throwIfAborted();
     if (active) requireIsolatedBrowserSurveyExecution(executionLease, sourceManifest);
-    const trial = createSurveyTrial({ scenario, candidate, masks, terrain }); trial.sourceVerification = active ? freezeSurveyData({ ...verification,
+    trial = createSurveyTrial({ scenario, candidate, masks, terrain }); trial.sourceVerification = active ? freezeSurveyData({ ...verification,
       receiptVersion: 3, activeExecution: 'bound', executionReason: 'owned-immutable-dedicated-worker', executionIdentity: active }) : verification;
-    const dispose = trial.dispose.bind(trial); let disposed = false;
-    trial.dispose = () => { if (!disposed) { dispose(); disposed = true; release(); } };
+    const dispose = trial.dispose.bind(trial);
+    trial.dispose = () => { if (!retirement.getReceipt()) { dispose(); trial.releaseStorage(); } const receipt = releaseAll(); if (receipt.outcome !== 'complete') throw Object.assign(new Error('Survey asset/world retirement is unresolved.'), { retirement: receipt }); return receipt; };
     return trial;
-  } catch (error) { release(); throw error; }
+  } catch (error) { try { trial?.dispose(); trial?.releaseStorage(); } catch (retirementError) { error.retirementError = retirementError; throw error; } const receipt = releaseAll(); if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
 };
-export { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256, MAX_SOURCE_FILES, MAX_SOURCE_BYTES };
+export { createBrowserSurveyTrial, verifiedBrowserFiles, hexSha256, MAX_SOURCE_FILES, MAX_SOURCE_BYTES, surveyDecodeBytes };

@@ -1,3 +1,4 @@
+import { getPointerGestureArbiter } from '../controls/PointerGestureArbiter.js';
 import { createMidiSpan, SPAN_COLORS } from '../midi-ui/midiAutomationSpanEditor.js';
 import { projectMidiAutomationSpan, selectMidiSpanDisplayEntries } from '../midi-ui/midiAutomationSpanProjection.js';
 const getLaneHeight = renderer => renderer.world.laneHeight || 96;
@@ -33,7 +34,7 @@ const getMidiSpanRectangles = (renderer, project, entries = project.automation, 
   return result;
 };
 const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDomain, getTarget, onUpdate, onBatchUpdate, onAdd, onSelect, onStatus = () => {} }) => {
-  const canvas = document.getElementById('gameCanvas'), listeners = [];
+  const canvas = document.getElementById('gameCanvas'), listeners = [], pointerArbiter = getPointerGestureArbiter(document);
   let selectedIds = new Set();
   let renderer = null, selectedId = null, editing = false, visible = true, drag = null, drafts = null, rectangles = [], revision = 0, presented = null;
   const listen = (name, handler) => { canvas?.addEventListener(name, handler, { capture: true }); listeners.push([name, handler]); };
@@ -47,8 +48,8 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     presented?.renderer === renderer && presented.generation === renderer.world?.generation && presented.revision === revision &&
     presented.projectionKey === projectionKey(getDomain());
   const cancelDrag = () => {
-    if (drag?.pointerId != null && canvas.hasPointerCapture?.(drag.pointerId)) canvas.releasePointerCapture?.(drag.pointerId);
-    drafts = drag = null;
+    const previous = drag; drafts = drag = null; previous?.lease.cancel('cancelled');
+    if (previous?.pointerId != null && canvas.hasPointerCapture?.(previous.pointerId)) canvas.releasePointerCapture?.(previous.pointerId);
   };
   const captureTransform = domain => {
     const box = canvas.getBoundingClientRect();
@@ -64,7 +65,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation?.(); };
   listen('pointerdown', event => {
     api.sync();
-    if (!editing || !canPresent() || event.button) return;
+    if (!editing || !canPresent() || event.button || pointerArbiter.inspect()) return;
     const point = position(event, getDomain()), dpr = Math.min(2, renderer.window.devicePixelRatio || 1);
     if (point.y < 0 || point.y >= canvas.height / dpr - (renderer.overviewBandHeight || 0)) return;
     stop(event); canvas.focus?.(); canvas.setPointerCapture?.(event.pointerId);
@@ -92,12 +93,17 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
       }
     }
     onStatus('');
-    drag = { entry, entries, domain, transform, projectionKey: projectionKey(domain), point: source,
+    const identity = getProject(), projection = projectionKey(domain);
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'span:' + (entry?.id || 'new'), identity,
+      getIdentity: () => getProject() === identity && projectionKey(domain) === projection ? identity : null,
+      onCancel: () => { cancelDrag(); changed(); } });
+    if (!lease) { if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId); return; }
+    drag = { lease, entry, entries, domain, transform, projectionKey: projectionKey(domain), point: source,
       pointerId: event.pointerId, mode: hit ? !hit.repeating && point.x >= hit.x + hit.w - 8 ? 'resize' : 'move' : 'draw' };
   });
   listen('pointermove', event => {
     api.sync();
-    if (!drag) return; stop(event);
+    if (!drag?.lease.owns(event)) return; stop(event);
     if (drag.projectionKey !== projectionKey(drag.domain)) { cancelDrag(); onStatus('The canvas view changed; the span draft was canceled.'); return; }
     const next = position(event, drag.domain, drag.transform), quantum = drag.domain === 'distance' ? 1 : 0.25, snap = value => Math.round(value / quantum) * quantum;
     const entries = drag.entries.length ? drag.entries : [{ id: 'draft', name: getTarget() + ' span', target: getTarget(), min: 48, max: 110, enabled: true, span: createMidiSpan(drag.domain) }];
@@ -121,12 +127,12 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   });
   listen('pointerup', event => {
     api.sync();
-    if (!drag) return; stop(event);
+    if (!drag?.lease.owns(event)) return; stop(event);
     const ready = drafts, entries = drag.entries, entry = drag.entry;
     const current = getProject().automation;
     const stale = entries.some(original => JSON.stringify(current.find(candidate => candidate.id === original.id)?.span) !== JSON.stringify(original.span));
     const presentationValid = canPresent() && drag.projectionKey === projectionKey(drag.domain);
-    cancelDrag();
+    drag.lease.finish(event); cancelDrag();
     if (ready && !stale && presentationValid) {
       if (!entry) onAdd(ready[0].span, ready[0].target);
       else {
@@ -138,7 +144,8 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     else if (!presentationValid) onStatus('The span draft was canceled because its presentation is no longer current.');
     changed();
   });
-  listen('pointercancel', event => { if (drag) { stop(event); cancelDrag(); changed(); } });
+  for (const type of ['pointercancel', 'lostpointercapture']) listen(type, event => { if (drag?.lease.owns(event)) { stop(event); cancelDrag(); changed(); } });
+  listen('blur', cancelDrag); listen('keydown', event => { if (event.key === 'Escape') cancelDrag(); });
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },

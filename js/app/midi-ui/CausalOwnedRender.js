@@ -1,11 +1,11 @@
 import { prepareEffectSourceBindings, createEffectSourceSampler } from './EffectSourceBindings.js';
 import { prepareNativeSamplePlan, sampleRegionRate, nativeSampleReleaseFrames } from './NativeSamplePlan.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
-import { RECEIPT_WIDTH, BEGIN, UPDATE, END, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
+import { RECEIPT_WIDTH, BEGIN, UPDATE, END, PANIC, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
 import { verifyOwnedPcmPayload } from '../resources/OwnedPcmVerification.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
 import { ownedSourceSeed } from './OwnedSourceSeed.js';
-import { compileInstrumentPerformance, retainInstrumentCause } from '../../midi/content/InstrumentPerformance.js';
+import { compileInstrumentPerformance, retainInstrumentCause, validateInstrumentControls } from '../../midi/content/InstrumentPerformance.js';
 import { createOwnedControlKernel } from '../resources/OwnedControlKernel.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
@@ -48,7 +48,7 @@ const encodeWav = (pcm, frames, rate, manifest) => {
 };
 
 export async function planCausalSourceRender({ revoice, definition, descriptor, sampleRate = 48000, startSeconds = 0, endSeconds,
-  tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
+  targetControls = {}, tail = { mode: 'exact-crop' }, stemLaneIds = [], effectGraph = null, effectReturnNodeIds = [], applicationBuildId = null, pcm = null, nativeAssets = null, signal = null, yieldControl, maxPlanningBytes = 128 * 1048576 } = {}, { nativeConvolution = false, nativeOwnedProcessors = false } = {}) {
   if (effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype)) throw failure('effect-render-preflight', 'Effect rendering requires an explicit declarative graph.');
   if (revoice?.operation !== 'sound-only-revoice' || revoice.version !== 1 || !text(revoice.takeId, 256) || !hash(revoice.sourceCanonicalHash) ||
       !natural(revoice.takeRevision) || revoice.takeRevision < 1 || !['finalized', 'partial'].includes(revoice.sourceState) || revoice.nextSequence != null ||
@@ -61,6 +61,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       !tail || !['exact-crop', 'bounded-natural', 'boundary-release'].includes(tail.mode) || Object.keys(tail).some(key => !['mode', 'maxSeconds'].includes(key)) ||
       !finite(tail.maxSeconds ?? 4, 0, effectGraph ? 30 : 4) || !Array.isArray(stemLaneIds) || stemLaneIds.length > (NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor?.engineId) ? 15 : 16) || stemLaneIds.some(id => !text(id, 128)) || new Set(stemLaneIds).size !== stemLaneIds.length)
     throw failure('render-preflight', 'Choose a bounded owned-source render, supported sample rate, range, tail policy and the source-specific captured lane stem limit.');
+  const admittedTargetControls = validateInstrumentControls(targetControls);
   const owned = NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) ? getNativeOfflineProfile(descriptor.engineId) : getOwnedSourceProfile(descriptor.engineId), patch = validateInstrumentPatchV2(definition, descriptor);
   if (!Array.isArray(effectReturnNodeIds) || !effectGraph && effectReturnNodeIds.length) throw failure('effect-render-preflight', 'Shared effect taps require an explicit graph realization.');
   const effectPlan = effectGraph ? prepareEffectRenderPlan(effectGraph, sampleRate, effectReturnNodeIds, { nativeConvolution: nativeConvolution || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId), nativeOwnedProcessors: nativeOwnedProcessors || NATIVE_OFFLINE_SOURCE_IDS.includes(descriptor.engineId) }) : null;
@@ -76,10 +77,11 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (!owned.requiresNativeAssets && nativeAssets != null) throw failure('unsupported-patch', 'This target does not consume native sample pins.');
   let selectSample = null;
   if (owned.requiresNativeAssets) { try { selectSample = prepareNativeSamplePlan(patch, nativeAssets); } catch (error) { throw failure('sample-material-preflight', error.message); } }
+  if (!owned.extended && (Object.keys(admittedTargetControls.macros).length || admittedTargetControls.variationAmount01 != null || admittedTargetControls.variationSeed != null)) throw failure('unsupported-performance-controls', 'Unsupported performer controls for this source.');
   const parameters = Object.fromEntries(Object.entries(owned.fields).map(([key, spec]) => [key, patch.parameters[key] ?? spec[2]]));
   const performancePlan = owned.extended ? compileInstrumentPerformance(patch, owned.parameters) : null;
   const articulation = resolveOwnedArticulationPolicy({ engineId: owned.id, parameters });
-  const sourceControls = { mode: 'new-target-default-macros-and-identity-variation', observedPhysicalUpdates: 0, appliedPhysicalUpdates: 0, missingOnsetBindings: 0, minimumHoldSeconds: null, maximumHoldSeconds: null, observedKinds: new Set() };
+  const sourceControls = { mode: 'explicit-new-target-controls-and-identity-variation', targetControls: admittedTargetControls, observedPhysicalUpdates: 0, appliedPhysicalUpdates: 0, missingOnsetBindings: 0, minimumHoldSeconds: null, maximumHoldSeconds: null, observedKinds: new Set() };
   const sourceOriginMs = revoice.boundary.state.sourceTimeMs, sourceEndSeconds = (revoice.finalBoundaryState.sourceTimeMs - sourceOriginMs) / 1000;
   const timing = createCausalRenderTiming(revoice, sampleRate);
   if (endSeconds > sourceEndSeconds + 0.5 / sampleRate) throw failure('uncovered-range', 'The requested render extends beyond the captured source-clock boundary.');
@@ -102,7 +104,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       const laneId = String(intent.laneId ?? 'unassigned'); lanes.add(laneId);
       let initialCause = null;
       try { initialCause = intent.performanceCause ? retainInstrumentCause(intent.performanceCause) : null; } catch { throw failure('invalid-physical-control', 'Captured onset physical evidence is malformed.'); }
-      const performance = performancePlan?.resolve({}, frame, { ...intent, performanceCause: initialCause });
+      const performance = performancePlan?.resolve(admittedTargetControls, frame, { ...intent, performanceCause: initialCause });
       const values = performance?.values || parameters;
       if (!owned.acceptsParameters(values)) throw failure('unsupported-source-layout', 'New target controls request an unrealized source layout.');
       const frequency = frequencyFor(intent.pitch, expression.pitchOffsetCents ?? 0, sampleRate, !!selectSample);
@@ -117,7 +119,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       }
       const seed = owned.native ? null : ownedSourceSeed(owned, patch, intent, performance), sourceFields = owned.beginFields(values, seed, pcmDescriptor);
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
-      voice = { key, laneId, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: intent, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
+      voice = { key, laneId, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: { ...intent, performanceControls: admittedTargetControls }, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
         parameters: values, nativeSourcePlan, samplePlan, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ engineId: owned.id, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}), ...(samplePlan?.articulation || {}) },
         continuousBase: performance?.continuousBase, physicalCauses: new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []), sourceValues: values,
         stringT60Seconds: values.stringT60Seconds, bodyT60Seconds: values.bodyT60Seconds };
@@ -199,6 +201,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (!natural(pcmBytes) || pcmBytes + 262208 * fileCount > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem/return set exceeds 64 MiB; choose a shorter range or fewer taps.');
   const slots = new Array(patch.voicePolicy.maxVoices).fill(null), tokens = new Uint32Array(owned.voices); let peakVoices = 0;
   for (const voice of [...voices.values()].sort((left, right) => left.start - right.start || left.order - right.order)) {
+    if (selectSample && voice.admissionEnd <= voice.start) { voice.silentChoke = true; continue; }
     let occupied = 0, selected = -1;
     for (let slot = 0; slot < slots.length; slot++) { if ((selectSample ? slots[slot]?.admissionEnd : slots[slot]?.end) <= voice.start) slots[slot] = null; if (slots[slot]) occupied++; else if (selected < 0) selected = slot; }
     if (selected < 0) throw failure('intent-voice-capacity', 'The selected patch cannot realize every captured onset without dropping a voice.', { intentId: voice.begin.intentId });
@@ -207,6 +210,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   const effectSourceBindings = effectPlan ? prepareEffectSourceBindings(effectPlan, [...lanes]) : null;
   const captureLaneIds = Object.freeze([...new Set([...stemLaneIds, ...(effectSourceBindings?.laneIds || [])])]);
   if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined exported and detector source lanes.');
+  for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
@@ -222,8 +226,11 @@ export async function planCausalOwnedRender(input = {}, { nativeConvolution = fa
 
 export async function renderCausalOwnedTake(input, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), onProgress = () => {}, maxWorkingBytes = 512 * 1048576 } = {}) {
   const sourcePhase = input.outputMode === 'source-pcm';
+  const panicFrame = input.panicFrame ?? null; let panicApplied = false;
+  if (panicFrame != null && (!natural(panicFrame) || sourcePhase || input.effectGraph)) throw failure('panic-fixture-profile', 'Panic qualification requires a bounded dry source render.');
   if (input.outputMode != null && !sourcePhase) throw failure('render-output-mode', 'Choose an explicit supported source output phase.');
   signal?.throwIfAborted(); const plan = await planCausalOwnedRender({ ...input, maxPlanningBytes: maxWorkingBytes, signal, yieldControl }, { nativeConvolution: sourcePhase, nativeOwnedProcessors: sourcePhase }); signal?.throwIfAborted();
+  if (panicFrame != null && panicFrame >= plan.outputEnd) throw failure('panic-fixture-profile', 'Panic frame exceeds the selected render.');
   if (sourcePhase && (!plan.effectPlan?.impulseCount || plan.stemLaneIds.length + plan.effectReturnNodeIds.length > 15 || plan.captureLaneIds.length > 15)) throw failure('native-convolution-source-profile', 'A source PCM stage requires an actual native body and at most fifteen combined stereo taps.');
   const sourcePcmBytes = sourcePhase ? plan.outputEnd * (1 + plan.captureLaneIds.length) * 8 : 0;
   if (sourcePhase && (!natural(sourcePcmBytes) || sourcePcmBytes > 56 * 1048576)) throw failure('source-pcm-capacity', 'Complete source history exceeds the bounded native convolution PCM profile.');
@@ -267,6 +274,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
         immutableAssets: 'shared-read-only', mutableState: 'independent-staged-copy', effects: sourcePhase ? 'native-body-reconstructed-from-complete-source-history-not-an-effect-state-cut' : effects ? 'continued-same-admitted-preroll-graph-not-a-graph-state-cut' : 'none', qualification: 'implementation-awaiting-pcm-equivalence' };
       signal?.throwIfAborted(); transfer.fill(0); transfer = null; kernel = staged;
     }
+    if (panicFrame === frame && !panicApplied) { packet.fill(0); packet[0] = 1; packet[1] = frame; packet[2] = ++sequence; packet[3] = PANIC; packet[17] = 1; kernel.accept(packet, 1, ++packetSequence); checkReceipts(); panicApplied = true; cursor = events.length; }
     while (cursor < events.length && events[cursor].frame <= frame) {
       const event = events[cursor++], voice = event.voice;
       if (event.frame >= outputEnd) break;
@@ -277,7 +285,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       if (event.kind === 'begin') packet[16] = Math.max(voice.end + 128, outputEnd + voice.releaseFrames + 128);
       kernel.accept(packet, 1, ++packetSequence); checkReceipts();
     }
-    const count = Math.min(128, outputEnd - frame, cursor < events.length ? events[cursor].frame - frame : Infinity, transfer && frame < firstFrame ? firstFrame - frame : Infinity);
+    const count = Math.min(128, outputEnd - frame, panicFrame != null && frame < panicFrame ? panicFrame - frame : Infinity, cursor < events.length ? events[cursor].frame - frame : Infinity, transfer && frame < firstFrame ? firstFrame - frame : Infinity);
     const a = count === 128 ? left : left.subarray(0, count), b = count === 128 ? right : right.subarray(0, count);
     const taps = stemChannels.length ? { routes, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
     kernel.render(a, b, frame, taps); checkReceipts();
@@ -307,10 +315,11 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum', ...(effects ? { realization: effects.diagnostics() } : {}) } : null,
     definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision, engineRequirement: { engineId: plan.descriptor.engineId,
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,
+    panic: panicApplied ? { frame: panicFrame, source: 'shared-owned-kernel-panic-opcode', futureFixtureEvents: 'explicitly-suppressed-after-panic', releaseSlewMaximumFrames: 128 } : null,
     commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, submitted: sequence, applied, peakVoices: plan.peakVoices },
     realization: { scope: plan.owned.id === 'worklet-sine' ? 'new-local-sine-realization-of-immutable-intents' : 'new-local-owned-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
-      sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-new-target-defaults-and-recorded-physical-causes-applied',
+      sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',
       sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
       sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,

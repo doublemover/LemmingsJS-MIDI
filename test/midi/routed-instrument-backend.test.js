@@ -13,6 +13,7 @@ describe('voice-owned lane instrument replacement', () => {
       setDisplayContext() {},
       observeDisplaySamples(listener, options) { const observer = { listener, options }; observers.add(observer); return () => observers.delete(observer); },
       begin(intent, frame, epoch) { calls.push(['begin', intent.voiceId]); voices.set(key(epoch, intent.voiceId), { voiceId: intent.voiceId, epoch }); return { status: 'accepted' }; },
+      updateLaneMix(voiceId, mix) { calls.push(['mix', voiceId, mix.gain, mix.pan]); return { status: 'accepted' }; },
       update(voiceId) { calls.push(['update', voiceId]); return { status: 'accepted' }; },
       end(voiceId) { calls.push(['end', voiceId]); return { status: 'accepted' }; },
       renewExecutionLease: () => ({ status: 'accepted' }),
@@ -26,6 +27,56 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('rolls back a candidate synchronously while each held voice keeps its original renderer', async () => {
+    const fallback = renderer(), old = renderer(), candidate = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'old', old.backend); const previous = router.retainAssignment('lane-1');
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'preview' }).execution;
+    router.backend.begin(onset('old-held'), 100, execution);
+    const receipt = router.assign('lane-1', 'candidate', candidate.backend); router.backend.begin(onset('preview-held'), 101, execution);
+    expect(previous.restore(receipt)).to.include({ status: 'restored', key: 'old' }); previous.release();
+    router.backend.begin(onset('restored'), 102, execution); router.backend.end('preview-held', { seconds: 0.1 }, 103, execution);
+    expect(old.calls).to.deep.equal([['begin', 'old-held'], ['begin', 'restored']]);
+    expect(candidate.calls).to.deep.equal([['begin', 'preview-held'], ['end', 'preview-held']]); expect(candidate.disposed).to.equal(false);
+    candidate.finish('preview-held'); router.collect(); expect(candidate.disposed).to.equal(true); await router.dispose().completion;
+  });
+  it('never lets a stale preview restore over a newer selection even when its renderer key is identical', async () => {
+    const fallback = renderer(), old = renderer(), next = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'old', old.backend); const previous = router.retainAssignment('lane-1'), stale = router.assign('lane-1', 'next', next.backend);
+    const winner = router.assign('lane-1', 'next', next.backend); expect(winner.revision).to.be.greaterThan(stale.revision);
+    expect(previous.restore(stale)).to.deep.equal({ status: 'superseded', restoresNewerSelection: false }); previous.release();
+    expect(router.assignment('lane-1')).to.equal('next'); expect(old.disposed).to.equal(true); await router.dispose().completion;
+  });
+  it('restores an unassigned default or an explicit blocked requirement without inventing a fallback assignment', async () => {
+    const fallback = renderer(), next = renderer(), router = root(fallback.backend);
+    const empty = router.retainAssignment('lane-1'), first = router.assign('lane-1', 'next', next.backend);
+    expect(empty.restore(first)).to.include({ status: 'restored', key: null }); empty.release(); expect(router.assignment('lane-1')).to.equal(null);
+    router.block('lane-1', 'missing-source'); const blocked = router.retainAssignment('lane-1'), other = renderer();
+    const receipt = router.assign('lane-1', 'other', other.backend); blocked.restore(receipt); blocked.release();
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'blocked' }).execution;
+    expect(router.backend.begin(onset('silent'), 100, execution).reason).to.equal('missing-source'); expect(fallback.calls).to.have.length(0); await router.dispose().completion;
+  });
+  it('requires the prepared authored body and damping macro for topology excitation', () => {
+    const fallback = renderer(), child = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'body-pack', child.backend, { bodyId: 'modal:clay', macroIds: ['damping'] });
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'topology' }).execution;
+    expect(router.backend.begin({ ...onset('wrong'), topologyBinding: { bodyId: 'modal:metal' } }, 100, execution).reason).to.equal('topology-body-or-macro-unavailable');
+    expect(router.backend.begin({ ...onset('missing'), topologyBinding: { bodyId: 'modal:clay', dampingMacroId: 'missing' } }, 100, execution).reason).to.equal('topology-body-or-macro-unavailable');
+    expect(router.backend.begin({ ...onset('right'), topologyBinding: { bodyId: 'modal:clay', dampingMacroId: 'damping' } }, 100, execution).status).to.equal('accepted');
+    expect(child.calls.filter(call => call[0] === 'begin')).to.have.length(1); router.backend.dispose();
+  });
+  it('routes carried voices through destination lane mix while retaining their original renderer', async () => {
+    const fallback = renderer(), child = renderer(); let muted = false;
+    const router = root(fallback.backend, { getLaneMix: lane => ({ gain: muted ? 0 : lane === 'lane-2' ? 0.25 : 1, pan: lane === 'lane-2' ? 1 : 0, muted }) });
+    router.assign('lane-1', 'source', child.backend);
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'mix' }).execution;
+    router.backend.begin(onset('held'), 100, execution);
+    expect(router.backend.transferVoiceLane('held', 'lane-2', 200, execution).status).to.equal('accepted');
+    expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0.25, 1]); expect(fallback.calls).to.have.length(0);
+    muted = true; expect(router.synchronizeLaneMix(300).status).to.equal('accepted'); expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0, 1]);
+    expect(router.backend.begin({ ...onset('silent'), laneId: 'lane-2' }, 301, execution).reason).to.equal('lane-muted');
+    await router.dispose().completion;
+  });
+
   it('shares one prepared renderer across 1024 lane assignments while retaining an explicit route bound', async () => {
     const budget = createResourceBudget(), fallback = renderer(), child = renderer(), router = root(fallback.backend, { resourceBudget: budget });
     for (let lane = 0; lane < 1024; lane++) router.assign('lane-' + lane, 'shared', child.backend);

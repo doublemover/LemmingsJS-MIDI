@@ -1,3 +1,7 @@
+import { validateReleaseGesture } from '../ReleaseGesture.js';
+import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
+import { validateProjectJunctions } from './PhysicalJunctionProject.js';
+import { procgenLaneIndex, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
 import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
@@ -54,7 +58,7 @@ const sanitizePattern = (value, family, role, slot) => {
   return { id: string(value?.id, base.id), name: string(value?.name, base.name), length, rate: number(value?.rate, 1, 0.125, 8),
     steps: Array.from({ length }, (_, index) => sanitizeProcgenStep(value?.steps?.[index] ?? base.steps[index % 16])) };
 };
-const createProcgenLane = (index = 0, overrides = {}) => {
+const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   if (overrides.mode != null && !MODES.includes(overrides.mode)) throw new Error('Legacy Game/hybrid semantics require explicit physical conversion.');
   const mode = overrides.mode ?? 'physical';
   if (mode === 'pattern' && !(typeof overrides.patternPurpose === 'string' && overrides.patternPurpose.trim())) {
@@ -65,22 +69,30 @@ const createProcgenLane = (index = 0, overrides = {}) => {
   const family = PROCGEN_SOUND_COLLECTIONS.some(item => item.id === overrides.family) ? overrides.family : pair[0];
   const role = PROCGEN_ROLES.includes(overrides.role) ? overrides.role : pair[1];
   const sound = resolveProcgenSound(family, role, overrides.patch);
+  const worldThemeId = overrides.worldThemeId ?? family;
+  if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === worldThemeId)) throw new Error('Unknown physical world theme.');
+  const instrumentRef = trusted && overrides.instrumentRef === trusted.instrumentRef ? trusted.instrumentRef : validateSoundContentReference(overrides.instrumentRef);
+  if (instrumentRef && overrides.instrumentPatchId != null && overrides.instrumentPatchId !== instrumentRef.patchId) throw new Error('Lane sound identity differs from its pinned renderer definition.');
+  if (overrides.soundChangePolicy != null && !['new-notes-only', 'crossfade-held'].includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
-  return { id: string(overrides.id, `lane-${index + 1}`), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id,
-    instrumentRef: validateSoundContentReference(overrides.instrumentRef),
-    instrumentControls: validateInstrumentControls(overrides.instrumentControls),
+  return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
+    instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
+    linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
+    externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
+    instrumentRef,
+    instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
-    channel: role === 'drums' ? 10 : melodic.includes(overrides.channel) ? overrides.channel : melodic[index % melodic.length],
+    channel: Number.isInteger(overrides.channel) && overrides.channel >= 1 && overrides.channel <= 16 ? overrides.channel : role === 'drums' ? 10 : melodic[index % melodic.length],
     outputId: overrides.outputId == null ? null : String(overrides.outputId),
     bankMSB: overrides.bankMSB == null ? null : integer(overrides.bankMSB, 0, 0, 127),
     bankLSB: overrides.bankLSB == null ? null : integer(overrides.bankLSB, 0, 0, 127),
-    eventMask: Object.fromEntries(Object.entries(overrides.eventMask || {}).filter(([key]) => /^[a-z][a-z-]{0,31}$/.test(key)).map(([key, value]) => [key, value !== false])),
-    ccAutomation: sanitizeProcgenCcAutomation(overrides.ccAutomation),
+    eventMask: trusted && overrides.eventMask === trusted.eventMask ? trusted.eventMask : Object.fromEntries(Object.entries(overrides.eventMask || {}).filter(([key]) => /^[a-z][a-z-]{0,31}$/.test(key)).map(([key, value]) => [key, value !== false])),
+    ccAutomation: trusted && overrides.ccAutomation === trusted.ccAutomation ? trusted.ccAutomation : sanitizeProcgenCcAutomation(overrides.ccAutomation),
     mute: overrides.mute === true, solo: overrides.solo === true, gain: number(overrides.gain, 1, 0, 2),
     eventAccent: number(overrides.eventAccent, 0.65, 0, 2), pan: number(overrides.pan, 0, -127, 127),
     activeSlot: integer(overrides.activeSlot, 0, 0, 3), queuedSlot: overrides.queuedSlot == null ? null : integer(overrides.queuedSlot, 0, 0, 3),
     launchSerial: integer(overrides.launchSerial, 0, 0, Number.MAX_SAFE_INTEGER),
-    patterns: mode === 'pattern' ? Array.from({ length: 4 }, (_, slot) => sanitizePattern(overrides.patterns?.[slot], family, role, slot)) : [] };
+    patterns: trusted && mode === trusted.mode && overrides.patterns === trusted.patterns ? trusted.patterns : mode === 'pattern' ? Array.from({ length: 4 }, (_, slot) => sanitizePattern(overrides.patterns?.[slot], family, role, slot)) : [] };
 };
 const sanitizeProcgenWorkstation = (value = {}) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid procgen project.');
@@ -93,7 +105,8 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const seed = integer(value?.seed, 777, 0, 0xffffffff);
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
-  return { version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL, seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  const junctions = validateProjectJunctions(value.junctions), fragments = validateFragmentLibrary(value.fragments), fragmentInstances = validateFragmentInstances(value.fragmentInstances);
+  return { version: PROCGEN_PROJECT_VERSION, ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -120,8 +133,23 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
       'Builder work, ordinary wall contacts and the x=40 gate use the declared default mapping.']) }) });
 };
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
-const reduceCanonicalProcgenProject = (project, action) => {
+const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }
+  if (action.type === 'procgen/fragments') {
+    const fragments = validateFragmentLibrary(action.fragments);
+    for (const fragment of fragments) { const prior = procgen.fragments?.find(value => value.id === fragment.id); if (prior && !sameValue(prior, fragment) && fragment.revision <= prior.revision) throw new Error('Fragment updates require an explicit newer source revision.'); }
+    return sameValue(fragments, procgen.fragments || []) ? project : { ...project, procgen: { ...procgen, fragments } };
+  }
+  if (action.type === 'procgen/detachFragment') {
+    const instances = procgen.fragmentInstances || []; if (!instances.some(value => value.id === action.instanceId && !value.detached)) return project;
+    return { ...project, procgen: { ...procgen, fragmentInstances: validateFragmentInstances(instances.map(value => value.id === action.instanceId ? { ...value, detached: true } : value)) } };
+  }
+  if (action.type === 'procgen/junctions') {
+    const junctions = validateProjectJunctions(action.junctions);
+    if (sameValue(junctions, procgen.junctions || [])) return project;
+    return { ...project, procgen: { ...procgen, junctions } };
+  }
   if (action.type === 'procgen/effectRack') {
     const rack = validateOwnerEffectRack(action.rack);
     if (sameValue(rack, procgen.effectRack || null)) return project;
@@ -153,23 +181,28 @@ const reduceCanonicalProcgenProject = (project, action) => {
       if (!Number.isInteger(slot) || slot < 0 || slot >= lane.patterns.length ||
           lane.activeSlot === slot && lane.queuedSlot == null) return lane;
       changed = true;
-      return { ...lane, activeSlot: slot, queuedSlot: null };
+      if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted.');
+      return { ...lane, revision: (lane.revision || 0) + 1, activeSlot: slot, queuedSlot: null };
     });
+    if (changed) inheritProcgenLaneIndex(lanes, updated);
     return changed ? { ...project, procgen: { ...procgen, lanes: updated } } : project;
   }
-  const index = lanes.findIndex(lane => lane.id === action.laneId);
-  if (index < 0) return project;
+  const index = procgenLaneIndex(lanes).get(action.laneId);
+  if (index == null) return project;
   if (action.type === 'procgen/removeLane') {
-    return lanes.length <= 1 ? project : { ...project, procgen: { ...procgen, lanes: lanes.filter((_, at) => at !== index) } };
+    return lanes.length <= 1 ? project : { ...project, procgen: { ...procgen, ...(procgen.releaseGesture ? { releaseGesture: releaseGestureAfterLaneRemoval(procgen.releaseGesture, index, lanes.length - 1) } : {}), lanes: lanes.filter((_, at) => at !== index) } };
   }
   const lane = lanes[index]; let next = lane;
   if (action.type === 'procgen/lane') {
     if (!action.patch || typeof action.patch !== 'object') return project;
-    next = createProcgenLane(index, { ...lane, ...action.patch, id: lane.id });
+    next = createProcgenLane(index, { ...lane, ...action.patch, ...(Object.hasOwn(action.patch, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id, revision: lane.revision }, lane);
     if (action.patch.patterns === undefined) next.patterns = lane.patterns;
+  } else if (action.type === 'procgen/worldTheme') {
+    if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === action.worldThemeId)) throw new Error('An explicit known physical world theme is required.');
+    next = createProcgenLane(index, { ...lane, worldThemeId: action.worldThemeId }, lane);
   } else if (action.type === 'procgen/palette') {
     next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
-      patch: action.patch ?? null, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
+      patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
     if (!action.resetPatterns) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
     const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];
@@ -196,17 +229,26 @@ const reduceCanonicalProcgenProject = (project, action) => {
         lane.activeSlot === action.slot && lane.queuedSlot == null) return project;
     next = { ...lane, activeSlot: action.slot, queuedSlot: null };
   } else return project;
-  if (next === lane || sameValue(next, lane)) return project;
-  const updated = lanes.slice(); updated[index] = next;
+  if (next === lane || !['procgen/step', 'procgen/pattern'].includes(action.type) && Object.keys(next).every(key => next[key] === lane[key] || sameValue(next[key], lane[key]))) return project;
+  if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted.');
+  next = { ...next, revision: (lane.revision || 0) + 1 };
+  const updated = lanes.slice(); updated[index] = next; inheritProcgenLaneIndex(lanes, updated);
   return { ...project, procgen: { ...procgen, lanes: updated } };
+};
+const releaseGestureAfterLaneRemoval = (gesture, index, laneCount) => gesture && validateReleaseGesture({ ...gesture, revision: gesture.revision + 1, lanePhase: gesture.lanePhase.filter(value => value.laneId !== index).map(value => ({ ...value, laneId: value.laneId > index ? value.laneId - 1 : value.laneId })) }, laneCount);
+const reduceCanonicalProcgenProject = (project, action) => {
+  const next = reduceCanonicalProcgenProjectValue(project, action);
+  if (next === project) return project;
+  if (!Number.isSafeInteger((project.procgen.revision || 0) + 1)) throw new Error('Project revision exhausted.');
+  return { ...next, procgen: { ...next.procgen, revision: (project.procgen.revision || 0) + 1 } };
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/physicalGraph', 'procgen/effectRack'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
-  if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);
-  else if (action.type === 'procgen/palette') lanes = lanes.map(lane => target(lane) ? { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role, patch: action.patch ?? null,
+  if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);
+  else if (action.type === 'procgen/palette') lanes = lanes.map(lane => target(lane) ? { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role, patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} },
     ...(action.resetPatterns ? { patterns: undefined } : {}) } : lane);
   else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') lanes = lanes.map(lane => target(lane) ? { ...lane, patterns: lane.patterns.map((pattern, slot) => slot === (action.slot ?? lane.activeSlot) ?
     action.type === 'procgen/pattern' ? { ...pattern, ...action.patch } : { ...pattern, steps: pattern.steps.map((step, index) => index === action.index ? { ...step, ...action.patch } : step) } : pattern) } : lane);

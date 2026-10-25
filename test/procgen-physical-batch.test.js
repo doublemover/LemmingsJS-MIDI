@@ -11,6 +11,18 @@ describe('completed physical event batches', () => {
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
 
+  it('joins candidate contact motion only to matching completed support evidence', () => {
+    for (const valid of [false, true]) {
+      const bus = new ProcgenSoundEventBus({ getGameTime: () => 0 }, 1), batches = [];
+      bus.onBatch.on(value => batches.push(value)); bus.beginTick({ worldId: 'world', generation: 1, tick: 2, terrainRevisionBefore: 1 });
+      bus.emitPhysicalFact({ kind: 'MotionCommitted', actorId: 7, actionInstanceId: 'walk:7', contactSpanId: 'span:7', physicalPayload: { contactObserved: true } });
+      bus.emitPhysicalFact({ kind: 'ContactSpanUpdated', actorId: 7, actionInstanceId: valid ? 'walk:7' : 'changed:7', spanId: 'span:7', observedTick: 2, surfaceRevision: 3 });
+      bus.commitTick({ revision: 2 }, 3);
+      const motion = batches[0].facts[0]; expect(motion.physicalPayload.contactObserved).to.equal(valid);
+      expect(motion.contactSpanId).to.equal(valid ? 'span:7' : null); bus.dispose();
+    }
+  });
+
   it('publishes two builder strikes after both actors and lane counts complete', () => {
     const world = new ProcgenLaneWorld({ masks, laneCount: 2, assists: false });
     for (const actor of world.actors) { actor.setAction(world.actions[State.BUILDING]); actor.frameIndex = 8; }
@@ -294,5 +306,23 @@ describe('completed physical event batches', () => {
     expect(batches[0].snapshot.lanes[0].buildingCount).to.equal(0);
     expect(world.soundEvents.deliveryErrors).to.equal(0);
     world.dispose();
+  });
+});
+
+describe('physical fact byte envelopes', () => {
+  it('admits the supported deeply nested 128-span authoring receipt without silently censoring it', () => {
+    const bus = new ProcgenSoundEventBus({ getGameTime: () => 0 }, 1), batches = []; bus.onBatch.on(value => batches.push(value));
+    bus.beginTick({ worldId: 'world', generation: 1, tick: 1, terrainRevisionBefore: 0 });
+    const spans = Array.from({ length: 128 }, (_, index) => ({ y: 10, x1: index * 2, x2: index * 2 + 1, before: 0, after: 3, tag: 't'.repeat(128), materialId: 'm'.repeat(128) }));
+    bus.emitPhysicalFact({ kind: 'CommandApplied', commandId: 'author:1', terrain: { counts: { solidAdded: 128 }, edit: { editId: 'edit:1', spans }, authoring: { revision: 1, graphRevision: 2 } } });
+    bus.commitTick({ revision: 1 }, 128); expect(batches[0].completeness.status).to.equal('complete'); expect(batches[0].facts[0].terrain.edit.spans).to.deep.equal(spans);
+    expect(bus.factBudget().factBytes).to.be.lessThan(131328); expect(Object.isFrozen(batches[0].facts[0].terrain.edit.spans[0])).to.equal(true); bus.dispose();
+  });
+  it('caps aggregate copied bytes independently of event count and retains terminal credit', () => {
+    const bus = new ProcgenSoundEventBus({ getGameTime: () => 0 }, 1), batches = []; bus.onBatch.on(value => batches.push(value)); bus._maxFactBytes = 2048;
+    bus.beginTick({ worldId: 'world', generation: 1, tick: 1, terrainRevisionBefore: 0 });
+    for (let index = 0; index < 20; index++) bus.emitPhysicalFact({ kind: 'MotionCommitted', actorId: index, detail: 'x'.repeat(500) });
+    bus._maxFacts = 0; bus.emitPhysicalFact({ kind: 'ActorTerminated', actorId: 1, terminationReason: 'fixture' }); bus.commitTick({ revision: 1 }, 0);
+    expect(bus.factBudget().factBytes).to.be.at.most(2048); expect(bus.factBudget().terminalBytes).to.be.greaterThan(0); expect(batches[0].completeness.status).to.equal('incomplete'); expect(batches[0].facts.at(-1).kind).to.equal('ActorTerminated'); bus.dispose();
   });
 });

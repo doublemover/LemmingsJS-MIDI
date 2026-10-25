@@ -15,6 +15,23 @@ describe('simulation boundary intervention commands', () => {
   const command = (world, id, extra = {}) => ({ id, kind: 'assign-worker', target: { generation: world.generation, actorId: world.actors[0].id },
     origin: 'manual', parameters: { workerKind: 'builders' }, ...extra });
 
+  it('prepares commands without mutation and refuses stale publication after another writer', () => {
+    const world = ready(), original = world.interventionState;
+    const proposal = world.prepareIntervention(command(world, 'staged'));
+    expect(world.interventionState).to.equal(original); expect(original.pending).to.have.length(0);
+    world.enqueueIntervention(command(world, 'other'));
+    expect(() => proposal.commit()).to.throw('stale'); expect(world.interventionState.pending.map(value => value.id)).to.deep.equal(['other']);
+    world.dispose();
+  });
+  it('records nuke requests as future-boundary commands, not synchronous actor edits', () => {
+    const world = ready(), actor = world.actors[0], before = actor.action, batches = [];
+    world.soundEvents.onBatch.on(value => batches.push(value));
+    world.prepareIntervention(command(world, 'nuke', { kind: 'nuke-lane', target: { generation: world.generation, laneId: 0 }, parameters: {} })).commit();
+    expect(actor.action).to.equal(before); world.step();
+    expect(batches[0].facts.find(fact => fact.commandId === 'nuke' && fact.kind === 'CommandApplied').status).to.equal('accepted');
+    world.dispose();
+  });
+
   it('applies an accepted builder at the boundary and preserves its cause on the first brick', () => {
     const world = ready(), batches = [], actor = world.actors[0];
     world.soundEvents.onBatch.on(batch => batches.push(batch));

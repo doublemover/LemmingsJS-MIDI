@@ -1,3 +1,5 @@
+import { createVoiceLaneMix, validVoiceLaneMix } from './VoiceLaneMix.js';
+import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 export { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 export { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
@@ -132,6 +134,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       policy: 'authoritative-execution-liveness', stage: 'scheduled' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceLaneMix(intent?.laneMix)) return failure('invalid-lane-mix', intent);
+    if (!validVoiceTransition(intent?.voiceTransition)) return failure('invalid-voice-transition', intent);
     if (disposed) return failure('disposed', intent);
     if (!prepared) return failure('patch-unprepared', intent);
     if (!preview._ownerReady(owner)) return failure('audio-not-ready', intent);
@@ -179,20 +183,21 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     const admission = preview._inspectVoiceInterval(owner, { start, end, releaseAt: end - values.releaseSeconds, cost: sourceCost,
       patchVoices: voices.values(), patchLimit: prepared.patch.voicePolicy.maxVoices });
     if (!admission.accepted) { resourceLease.release(); return failure(admission.reason, intent); }
-    let oscillator, gain, pressureGain, pan, voice;
+    let oscillator, gain, pressureGain, pan, voice, laneMix;
     try {
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, value: intent.laneMix });
       oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : modalPlan ? createNativeModalSourceOwner(context, modalPlan, start) : context.createOscillator();
       if (sourcePlan) oscillator.prepare(); gain = context.createGain();
       pressureGain = context.createGain();
       pan = context.createStereoPanner?.() || null;
       const basePeak = intent.velocity01 * values.gain01 * prepared.patch.mix.gain01;
-      voice = { oscillator, gain, pressureGain, pan, resourceLease, owner, renderCost: sourceCost, fmPlan, modalPlan, sourcePlan, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
+      voice = { oscillator, gain, pressureGain, pan, laneMix, resourceLease, owner, renderCost: sourceCost, fmPlan, modalPlan, sourcePlan, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100),
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, token: null,
         basePeak, peak: basePeak,
-        attack: values.attackSeconds, decay: values.decaySeconds, sustain: values.sustain01, release,
+        attack: transitionAttackSeconds(intent, values.attackSeconds), decay: values.decaySeconds, sustain: values.sustain01, release,
         velocity: intent.velocity01 * 127, instrument: prepared.patch,
         priority: 1, laneIndex: intent.laneId ?? 0, startedAt: start,
         semanticKey: identity, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
@@ -204,9 +209,9 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         onDestroy: reason => {
           if (voices.get(identity) === voice) voices.delete(identity);
           if (preview._semanticVoiceOwners.get(sharedIdentity) === voice) preview._semanticVoiceOwners.delete(sharedIdentity);
-          pressureGain.disconnect();
+          const mixRetirement = createProcgenRetirementScope().retire([{ name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'lane-mix', run: () => laneMix.dispose() }]);
           trace({ status: 'ended', stage: 'native-source-ended', voiceId: intent.voiceId, executionEpoch,
-            generation: intent.generation, targetFrame, reason, patchRevision: voice.patchRevision });
+            generation: intent.generation, targetFrame, reason, patchRevision: voice.patchRevision }); return mixRetirement;
         } };
       if (!sourcePlan) oscillator.type = waveforms[values.waveform];
       oscillator.frequency.setValueAtTime(frequency, start);
@@ -218,8 +223,8 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       if (pan) {
         voice.panAutomation = createSmoothedAudioParameter({ param: pan.pan,
           initialValue: clamp((intent.expression?.pan01 ?? values.pan01) + prepared.patch.mix.pan01, -1, 1), startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
-        pressureGain.connect(pan); pan.connect(channel.sourceInput || channel.gain);
-      } else pressureGain.connect(channel.sourceInput || channel.gain);
+        pressureGain.connect(pan); pan.connect(laneMix.input);
+      } else pressureGain.connect(laneMix.input);
       oscillator.onended = () => preview._destroyVoice(voice,
         voice.ownedGate && !voice.released ? 'owner-lease-expired' : 'source-ended');
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
@@ -248,7 +253,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         const construction = createProcgenRetirementScope(), receipt = construction.retire([
           { name: 'native-nodes', run: () => { native = createProcgenRetirementScope().retire([
             { name: 'stop', run: () => { if (oscillator) { oscillator.onended = null; try { oscillator.stop(); } catch (failure) { if (failure.name !== 'InvalidStateError') throw failure; } } } },
-            { name: 'oscillator', run: () => oscillator?.disconnect() }, { name: 'gain', run: () => gain?.disconnect() },
+            { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'oscillator', run: () => oscillator?.disconnect() }, { name: 'gain', run: () => gain?.disconnect() },
             { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
           ]); return native; } },
           { name: 'reservation', run: () => releaseAudioResourceAfterRetirement(resourceLease, native) }
@@ -261,9 +266,10 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       return failure(error?.name === 'ResourceBudgetError' ? 'audio-resource-budget' : 'backend-failure', intent);
     }
   };
-  const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
+  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
     if (!voice || voice.stolen || voice.released && voice.releaseAt <= preview._context?.currentTime || !preview._ownerReady(owner)) return failure('voice-not-active', { voiceId });
+    if (!Number.isFinite(rampSeconds) || rampSeconds < 0 || rampSeconds > 60) return failure('invalid-control-ramp', { voiceId });
     const time = audioTime(targetFrame);
     if (time == null || !expression || typeof expression !== 'object' || Array.isArray(expression) ||
         Object.getPrototypeOf(expression) !== Object.prototype) return failure('invalid-expression', { voiceId });
@@ -284,14 +290,18 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];
     if (changes.some(([automation, value]) => value != null && !automation?.canInsert(now))) return failure('expression-queue-full', { voiceId });
     try {
-      for (const [automation, value] of changes) if (value != null) automation.insert(value, at, now);
+      for (const [automation, value] of changes) if (value != null) { if (!automation.insert(value, at, now, Math.max(smoothingSeconds, rampSeconds))) throw new Error('Expression automation refused admission.'); }
     } catch {
       deliveryErrors++; preview._destroyVoice(voice, 'backend-failure-after-acceptance');
       return failure('backend-failure-after-acceptance', { voiceId, generation: voice.semanticGeneration });
     }
     const receipt = Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame,
-      smoothingFrames: Math.ceil(smoothingSeconds * preview._context.sampleRate) });
+      smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * preview._context.sampleRate) });
     trace({ ...receipt, generation: voice.semanticGeneration, patchRevision: voice.patchRevision }); return receipt;
+  };
+  const updateLaneMix = (voiceId, mix, frame, epoch = 'live') => {
+    const voice = voices.get(keyFor(epoch, voiceId));
+    return voice?.laneMix?.update(mix, frame) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
@@ -367,7 +377,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     ...[...voices.values()].map(voice => ({ name: `voice-${voice.id}`, run: () => preview._destroyVoice(voice, 'backend-disposed') })),
     { name: 'leases', run: () => leases.clear() }, { name: 'patch', run: () => { prepared = null; } }
   ]);
-  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGeneration,
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateLaneMix, end, renewExecutionLease, cancelGeneration,
     cancelGenerationWithReceipt, renderDiagnostics, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epoch => !preview._retirementFaults?.has(owner) && ![...voices.values()].some(voice => voice.semanticEpoch === epoch),

@@ -94,26 +94,29 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           frame = decision.targetFrame; repair = decision.repair || null;
         }
         let outcome;
+        const physicalDuration = Number.isFinite(intent.responseGateTicks) && Number.isFinite(intent.scoreTime?.sourceTickDurationMs) ? intent.responseGateTicks * intent.scoreTime.sourceTickDurationMs / 1000 : null;
+        const durationLoss = physicalDuration != null && physicalDuration > 4 ? Object.freeze({ kind: 'gate-duration-cap', requestedSeconds: physicalDuration, representedSeconds: 4 }) : null;
         try {
           const identity = executionFor(sink, epoch, intent.generation);
           if (!identity.execution) outcome = identity;
           else if (intent.kind === 'begin') outcome = sink.backend.begin(intent, frame, identity.execution);
+          else if (intent.kind === 'update' && intent.articulationState?.transfer && typeof sink.backend.transferVoiceLane === 'function') outcome = sink.backend.transferVoiceLane(intent.voiceId, intent.laneId, frame, identity.execution);
           else if (intent.kind === 'update' && intent.performanceCause) outcome = typeof sink.backend.updatePhysical === 'function'
             ? sink.backend.updatePhysical(intent.voiceId, intent.performanceCause, frame, identity.execution)
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };
           else if (intent.kind === 'update') outcome = intent.expression && Object.getPrototypeOf(intent.expression) === Object.prototype && Object.keys(intent.expression).length === 0 && intent.articulationState
             ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
-            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
+            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution, intent.articulationState?.slewSeconds);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
-            ? { mode: 'one-shot', tailSeconds: oneShotTailSeconds, seconds: releaseSeconds }
-            : { seconds: releaseSeconds }, frame, identity.execution);
+            ? { mode: 'one-shot', tailSeconds: physicalDuration == null ? oneShotTailSeconds : Math.min(4, Math.max(0, physicalDuration)), seconds: releaseSeconds, ...(physicalDuration != null ? { durationSource: 'physical-interval' } : {}) }
+            : { seconds: intent.voiceTransition?.kind === 'crossfade' ? intent.voiceTransition.seconds : releaseSeconds, ...(intent.voiceTransition ? { transitionPolicy: 'crossfade' } : {}) }, frame, identity.execution);
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

@@ -31,7 +31,7 @@ export async function acquireSharedGroundAssets({ ground, vgagr, steelIds, signa
   } catch (error) { releasePins(); throw error; }
   const job = await pending;
   try {
-    const assets = hydrateGroundAssets(job.value);
-    return Object.freeze({ get value() { job.value; return assets; }, receipt: job.receipt, signal: job.signal, release: job.release });
+    let assets = hydrateGroundAssets(job.value);
+    return Object.freeze({ get value() { job.value; return assets; }, receipt: job.receipt, signal: job.signal, release() { assets = null; return job.release(); }, retirementState: job.retirementState });
   } catch (error) { job.release(); throw error; }
 }

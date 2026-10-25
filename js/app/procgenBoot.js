@@ -1,3 +1,5 @@
+import { prepareProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryCapture.js';
+import { replayProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryJournal.js';
 import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
 import './bootstrap.js';
 import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
@@ -67,7 +69,7 @@ const PROCGEN_SKILLS = {
 let activeProcgenRuntime = null;
 const procgenResourceBudget = createResourceBudget();
 const renderBudget = { budgetAdapter: procgenResourceBudget };
-procgenResourceBudget.registerEvictor('cold-render-buffers', () => activeProcgenRuntime?.lanes?.renderer?.resources?.clearCaches?.());
+procgenResourceBudget.registerEvictor('cold-render-buffers', ({ neededBytes }) => activeProcgenRuntime?.lanes?.renderer?.resources?.reclaim?.(neededBytes), { priority: -2 });
 
 let analytics = null;
 let procgenUi = null;
@@ -402,6 +404,8 @@ const initWorkstation = async ({ session, lease } = {}) => {
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
       previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
+    if (session?.recoveryJournal) await replayProcgenRecoveryJournal(candidate, session.recoveryJournal, { signal: lease?.signal });
+    await prepareProcgenRecoveryJournal(candidate, { resourceBudget: procgenResourceBudget, signal: lease?.signal, isCurrent: () => canCommit() && !committed });
     lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     resourceLease = null;

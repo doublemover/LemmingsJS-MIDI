@@ -10,7 +10,7 @@ const engine = () => ({ engineId: 'native-oscillator', engineVersion: 1, artifac
   ] });
 const patch = () => ({ schemaVersion: 2, id: 'crystal-lead', revision: 7, name: 'Crystal Lead', author: 'Lemmings', tags: ['crystal', 'lead'],
   engineId: 'native-oscillator', engineVersion: 1, parameters: { frequency: 660, brightness: 0.72, layers: 3 },
-  modulations: [{ id: 'motion-brightness', source: 'physical:displacementPixels', target: 'brightness', amount: 0.25, smoothingMs: 15, curve: 'linear' }],
+  modulations: [{ id: 'motion-brightness', source: 'physical:displacementPixels', target: 'brightness', mode: 'continuous', amount: 0.25, smoothingMs: 15, curve: 'linear' }],
   sampleRefs: [{ id: 'air', sha256: 'c'.repeat(64), bytes: 32000, required: false }],
   voicePolicy: { maxVoices: 16, steal: 'oldest' }, mix: { gain01: 0.8, pan01: -0.2 },
   macros: [{ id: 'shimmer', name: 'Shimmer', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Increase spectral brightness.',
@@ -21,6 +21,19 @@ const patch = () => ({ schemaVersion: 2, id: 'crystal-lead', revision: 7, name: 
   midiFallback: { bankMSB: 0, bankLSB: 0, program: 10, percussionMap: { 36: 38 } } });
 
 describe('versioned causal instrument patches', () => {
+  it('gates modulation sources by engine capabilities and distinguishes onset-only discrete targets', () => {
+    const descriptor = engine(), input = patch(); delete input.parameters.brightness; input.causalBindings = []; input.macros = [];
+    descriptor.capabilities.filter = false;
+    input.modulations = [{ id: 'source', source: 'parameter:brightness', target: 'frequency', amount: 1, smoothingMs: 0, curve: 'linear', mode: 'onset-only' }];
+    expect(() => validateInstrumentPatchV2(input, descriptor)).to.throw();
+    descriptor.capabilities.filter = true;
+    input.modulations = [{ id: 'steps', source: 'parameter:frequency', target: 'layers', amount: 1, smoothingMs: 0, curve: 'step', mode: 'onset-only' }];
+    expect(validateInstrumentPatchV2(input, descriptor).modulations[0].mode).to.equal('onset-only');
+    for (const change of [{ mode: 'continuous' }, { curve: 'linear' }, { amount: 0.5 }, { smoothingMs: 1 }]) {
+      expect(() => validateInstrumentPatchV2({ ...input, modulations: [{ ...input.modulations[0], ...change }] }, descriptor)).to.throw();
+    }
+  });
+
   it('commits a complete bounded batch atomically, deduplicates identical definitions and rejects conflicts', () => {
     const registry = createInstrumentPatchRegistry({ maxDefinitions: 2 }), first = patch(), second = { ...patch(), id: 'second' };
     const invalid = { ...second, parameters: { frequency: Infinity } };

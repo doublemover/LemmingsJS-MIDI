@@ -4,6 +4,11 @@ import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 
 describe('shared background worker and queued-input admission', () => {
   const request = (id, extra = {}) => ({ kind: 'parse-json', ownerId: id, ownerEpoch: 1, sourceRevision: 'content:1', estimatedPeakBytes: 4096, ...extra });
+  it('reports observed queue waiting separately from synchronous resource admission', async () => {
+    let clock = 10; const service = createBackgroundWorkerAdmission({ maxWorkers: 1, now: () => clock });
+    const first = await service.acquire(request('first')), waiting = service.acquire(request('second')); clock = 47; first.release();
+    const second = await waiting; expect(second.getState().queueWaitMs).to.equal(37); expect(service.diagnostics()).to.include({ queueWaitMs: 37, peakQueueWaitMs: 37 }); second.release(); service.dispose();
+  });
   it('reserves before granting execution, bounds runnable workers and releases all independent ownership', async () => {
     const budget = createResourceBudget({ limitBytes: 1048576 }), service = createBackgroundWorkerAdmission({ resourceBudget: budget, maxWorkers: 1 });
     const first = await service.acquire(request('import')), second = service.acquire(request('recovery', { inputBytes: 1000 }));

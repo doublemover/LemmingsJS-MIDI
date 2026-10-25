@@ -1,3 +1,4 @@
+import { applyRecordedPhysicalFeedback } from './physical/PhysicalFeedback.js';
 import { createCausalMusicEngine, validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from './ProcgenCheckpoint.js';
@@ -134,7 +135,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           } }
         ]) },
         { name: 'checkpoint-source', run: () => {
-          const closeSource = () => { retireCausalRead(initialSource); initialSource = null; initial = null; performance = null; };
+          const closeSource = () => { engine?.dispose(); engine = null; generated.length = 0; expectedIntents.clear(); retireCausalRead(initialSource); initialSource = null; initial = null; performance = null; };
           if (!initialProducerPending && synchronousDisposal && !processing) {
             try { closeSource(); synchronousSourceDisposal = true; return; }
             catch (error) { actualSourceDisposal = Promise.reject(error); actualSourceDisposal.catch(() => {}); throw error; }
@@ -194,10 +195,13 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       check(signal);
       if (restoredHash !== initialHash) throw journalError('restore-divergence', 'Restored authoritative checkpoint state differs before the first replay tick.', { tick: world.tickIndex });
       physicalHash = restoredHash;
+      if (world.physicalAuthoring?.graph) current.graph = validateCausalInstrumentGraph(world.physicalAuthoring.graph);
+      else world.configurePhysicalAuthoring?.(current.graph, []);
       clock = createProcgenPhysicalScoreClock();
       if (initial.timeline) clock.restore(initial.timeline);
       performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
-      engine = createCausalMusicEngine({ getGraph: () => current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
+      engine = createCausalMusicEngine({ resourceBudget, world, getGraph: () => world.physicalAuthoring?.graph || current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
+        getLaneState: source => performance?.getLaneState(source) || { available: true },
         getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source), getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
       engine.restore(initial.engine);
       listener = batch => {
@@ -205,7 +209,8 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         try {
           if (generated.length >= 8) throw journalError('replay-overflow', 'Unexpected source batch fanout during re-performance.');
           if (initial.replay.scoreTimeline) clock.observe(batch, { bpm: current.bpm });
-          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [] });
+          if (world.physicalAuthoring?.graph) current.graph = world.physicalAuthoring.graph;
+          generated.push({ batch, intents: current.playing ? engine.processBatch(batch) : [], probability: current.playing ? engine.probabilityAnalysis() : null });
         } catch (error) { callbackError = error; }
       };
       world.soundEvents.onBatch.on(listener);
@@ -234,10 +239,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
               comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
               for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
-              expectedIntents.set(actual.batch.batchId, actual.intents);
+              expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability });
               if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
             } else if (record.kind === 'musical-intents') {
-              const actual = expectedIntents.get(record.payload.batchId);
+              const companion = expectedIntents.get(record.payload.batchId), actual = companion?.intents;
+              if (record.payload.probability && !equal(record.payload.probability, companion?.probability)) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'causal-probability-decisions' }; break; }
               if (!actual || !equal(record.payload.intents, actual)) {
                 const index = (record.payload.intents || []).findIndex((intent, ordinal) => !equal(intent, actual?.[ordinal] ?? null));
                 const original = record.payload.intents?.[Math.max(0, index)], replayed = actual?.[Math.max(0, index)];
@@ -252,7 +258,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
                 causeId: record.payload.command?.id || null, kind: 'intervention-admission' }; break; }
             } else if (record.kind === 'mapping') {
               if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Mapping changed outside its recorded source boundary.', { firstSequence: record.sequence });
-              current.graph = validateCausalInstrumentGraph(record.payload);
+              current.graph = validateCausalInstrumentGraph(record.payload); world.configurePhysicalAuthoring?.(current.graph, world.physicalAuthoring?.instances || []);
               mappingRevisions.add(current.graph.revision);
               if (mappingRevisions.size > 4096) throw journalError('replay-capacity', 'Mapping revision inventory reached its bound.', { firstSequence: record.sequence });
             }
@@ -263,12 +269,14 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
             } else if (record.kind === 'input-observation') {
               const input = record.payload;
               if (record.tick !== world.tickIndex || record.generation !== world.generation || input?.version !== 1) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
-              if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+              if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
+              else if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+              else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
               else if (input.kind === 'instrument-performance' && performance) {
                 const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;
                 if (mapping && (mapping.revision <= current.graph.revision || mappingRevisions.size >= 4096)) throw journalError('unsupported-recorded-input', 'Performance mapping revision is stale or exceeds capacity.');
                 performance.apply(input.change);
-                if (mapping) { current.graph = mapping; mappingRevisions.add(mapping.revision); }
+                if (mapping) { current.graph = mapping; world.configurePhysicalAuthoring?.(mapping, world.physicalAuthoring?.instances || []); mappingRevisions.add(mapping.revision); }
               }
               else if (input.kind === 'transport-state' && typeof input.playing === 'boolean' && initial.replay.version === 2) current.playing = input.playing;
               else if (!(input.kind === 'transport-state' && typeof input.playing === 'boolean' ||
@@ -312,7 +320,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           requireSession();
           const nextGraph = validateCausalInstrumentGraph(graph);
           if (nextGraph.revision <= current.graph.revision) throw new Error('A physical branch mapping needs a new revision.');
-          current.graph = nextGraph;
+          world.configurePhysicalAuthoring?.(nextGraph, world.physicalAuthoring?.instances || []); current.graph = nextGraph;
         },
         configureTempo: bpm => {
           if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 1000000) throw new Error('Invalid physical branch tempo.');

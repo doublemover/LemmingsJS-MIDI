@@ -14,7 +14,7 @@ import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetire
 const rejects = async (promise, code) => { let error; try { await promise; } catch (failure) { error = failure; } expect(error?.code).to.equal(code); return error; };
 describe('staged sound installation and isolated audition authority', () => {
   let archive, descriptors;
-  const identity = 'foundation.soft-triangle@2';
+  const identity = 'foundation.soft-triangle@3';
   before(async () => {
     descriptors = await describeNativeInstrumentEngines(['native-oscillator', 'worklet-sine'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })));
     const source = JSON.parse(await fs.readFile(new URL('../../content/sounds/native.json', import.meta.url), 'utf8'));
@@ -64,7 +64,7 @@ describe('staged sound installation and isolated audition authority', () => {
       expect(() => owner.installation.applyCandidate(owner.stage, identity)).to.throw('Commit this staged pack');
       await owner.installation.install(owner.stage); const candidate = owner.installation.applyCandidate(owner.stage, identity);
       expect(candidate.reference.patchId).to.equal('foundation.soft-triangle'); expect(candidate.laneApplication).to.equal('not-requested');
-      expect(() => owner.installation.applyCandidate(owner.stage, 'foundation.short-square@2')).to.throw('Audition this exact patch');
+      expect(() => owner.installation.applyCandidate(owner.stage, 'foundation.short-square@3')).to.throw('Audition this exact patch');
     } finally { await owner.dispose(); }
     expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
   });

@@ -10,7 +10,7 @@ const session = name => ({ format: 'lemmings-procgen-session', version: 1, name,
   patterns: { version: 1, beat: 0, lanes: {}, pending: [], active: [] } });
 
 function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } = {}) {
-  const records = new Map(), metadata = new Map(), connections = [], requests = [], reads = { sessions: 0, projectMetadata: 0 };
+  const records = new Map(), metadata = new Map(), pins = new Map(), connections = [], requests = [], reads = { sessions: 0, projectMetadata: 0 };
   let opens = 0;
   const newDatabase = () => {
     const db = { closes: 0, objectStoreNames: { contains: () => true }, close() { this.closes++; },
@@ -18,7 +18,7 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
         let waiting = 0, aborted = false;
         const schedule = work => { waiting++; queueMicrotask(() => { if (!aborted) work(); waiting--; if (!waiting) queueMicrotask(() => { if (!waiting && !aborted) transaction.oncomplete?.(); }); }); };
         const transaction = { objectStore: name => {
-          const values = name === 'projectMetadata' ? metadata : records;
+          const values = name === 'projectMetadata' ? metadata : name === 'generationPins' ? pins : records;
           return {
             put(record) { const request = { result: record.id }; schedule(() => values.set(record.id, record)); return request; },
             get(id) { const request = { result: null }; schedule(() => { request.result = values.get(id); request.onsuccess?.(); }); return request; },
@@ -53,7 +53,7 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
       } };
     connections.push(db); return db;
   };
-  return { records, metadata, connections, requests, reads, get opens() { return opens; },
+  return { records, metadata, pins, connections, requests, reads, get opens() { return opens; },
     open() {
       opens++; const request = { result: null, error: null }; requests.push(request);
       if (!pending) queueMicrotask(() => {
@@ -67,6 +67,11 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
 }
 
 describe('ProcGen session storage connection lifecycle', () => {
+  it('writes legacy recovery source provenance atomically beside its generation', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter), buildId = 'a'.repeat(64);
+    const receipt = await storage.saveRecovery({ ...session('bound'), executionIdentity: { activeExecution: 'bound', buildId, deploymentRoot: 'https://app.invalid/lemmings/' } });
+    const pin = adapter.pins.get(`recovery:slot:${receipt.generation % 2}`); expect(pin.generation).to.equal(receipt.generation); expect(pin.source).to.include({ status: 'bound', buildId }); storage.close();
+  });
   it('keeps an owned document or recovery source charged until its caller releases publication ownership', async () => {
     const adapter = fakeIndexedDb(), budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
     const storage = createProcgenSessionStorage(adapter, { budgetAdapter: budget, backgroundJobs: jobs });

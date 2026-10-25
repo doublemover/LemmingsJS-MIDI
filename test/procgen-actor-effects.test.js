@@ -32,6 +32,14 @@ const drawFixture = () => {
 };
 
 describe('actor effect evidence and profiles', () => {
+  it('keeps equal sequence values from independent voices and names the bounded reduction', () => {
+    const display = managerFixture();
+    expect(display.ingest(sample({ voiceId: 'a', onsetId: 'a', sequence: 1, value: 0.25 }), correlation)).to.equal(true);
+    expect(display.ingest(sample({ voiceId: 'b', onsetId: 'b', sequence: 1, value: 0.75 }), correlation)).to.equal(true);
+    const result = display.evaluate(2, 100); expect(result.x).to.equal(2.25);
+    expect(result.sources[0]).to.include({ voiceId: 'b', contributors: 2, reduction: 'maximum-magnitude-qualified-voice' }); display.dispose();
+  });
+
   it('requires complete stable owner/epoch/source identity and correlated applied frame windows', () => {
     const display = managerFixture();
     for (const patch of [{ generation: 9 }, { executionEpoch: 1 }, { graphRevision: 9 }, { routeRevision: 9 }, { owner: { kind: 'actor', actorId: 8 } }, { voiceId: '' }, { appliedAudioFrame: null }, { window: { firstFrame: 49000, lastFrame: 48000 } }, { units: {} }]) expect(display.ingest(sample(patch), correlation)).to.equal(false);

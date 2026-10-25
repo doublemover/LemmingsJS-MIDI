@@ -34,7 +34,7 @@ describe('ProcGen current lane conditions', () => {
     f.world.actors[0].id = 9; f.world.actors[1].id = 2; f.world.actors[1].x = 40;
     registerProcgenActorVisibility(f.world, index); publishProcgenActorVisibility(f.world);
     expect(index.getStats()).to.include({ publications: 1, rebuilds: 0, actorScans: 2, retainedActors: 2 });
-    expect(index.physicalLeader(1, 2)).to.equal(f.world.actors[1]);
+    expect(index.physicalLeader(1, 2).id).to.equal(f.world.actors[1].id);
     expect(f.observe(0).action).to.equal('walk build');
     expect(f.observe(0).action).to.equal('walk build');
     expect(index.getStats().actorScans).to.equal(2);
@@ -60,7 +60,8 @@ describe('ProcGen current lane conditions', () => {
     for (let tick = 0; tick < 20; tick++) {
       f.world.tickIndex++; index.publish(); expect(f.observe(0).action).to.equal('walk build');
     }
-    expect(index.actionMasks).to.equal(masks); expect(index.actionCounts).to.equal(counts);
+    expect(index.actionMasks).not.to.equal(masks); expect(index.actionCounts).not.to.equal(counts);
+    expect(Object.isFrozen(masks)).to.equal(true);
     expect(index.getStats().actorScans - reads).to.equal(40);
     expect(f.observe.getStats()).to.include({ actorVisits: 0, observationAllocations: slots, indexAllocations: 1 });
     const publications = index.getStats().publications; f.world.terrainRevision++; f.observe(0);

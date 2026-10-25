@@ -17,6 +17,12 @@ function fixture(clock = () => 1000) {
 }
 
 describe('ProcGen workstation MIDI ports', () => {
+  it('fails unrepresentable SMF tempo rather than silently retiming recorded source', () => {
+    for (const bpm of [0, 1, NaN, Infinity, 120000001]) expect(() => exportProcgenMidi([], { bpm })).to.throw('representable');
+    expect(() => exportProcgenMidi([{ type: 'tempo', beat: 4, bpm: 1 }])).to.throw('representable');
+    expect(exportProcgenMidi([], { bpm: 120 })).to.be.instanceOf(Uint8Array);
+  });
+
   it('rejects normalized MPE reconfiguration before setup can exceed an active route grant', () => {
     withFakeClockAndPerformance(clock => {
       const calls = [], scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 1 });

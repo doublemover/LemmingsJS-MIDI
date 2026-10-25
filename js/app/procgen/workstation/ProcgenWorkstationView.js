@@ -1,3 +1,8 @@
+import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
+import { procgenLane } from './ProcgenProjectIndex.js';
+import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
+import { createParameterKnob } from '../../controls/ParameterKnob.js';
+import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
 import { PROCGEN_SOUND_COLLECTIONS, PROCGEN_ROLES, resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { createProcgenLaneProjection } from './ProcgenLaneProjection.js';
 import { procgenStepNotes } from './ProcgenPatternEngine.js';
@@ -12,8 +17,9 @@ const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e'
 const rendererLeases = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
-  for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 64, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
-  const listeners = [];
+  for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
+  const listeners = [], parameterControls = [], laneMixControls = new Map();
+  const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
   const node = (tag, text, cls) => { const el = document.createElement(tag); if (text != null) el.textContent = text; if (cls) el.className = cls; return el; };
@@ -35,7 +41,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       changed(el.type === 'checkbox' ? el.checked : el.type === 'text' ? el.value : options.nullable && el.value === '' ? null : Number(el.value));
     }); return el;
   };
-  const labeled = (label, control, parent) => { const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
+  const macroControls = new Map(), macroModes = new Map();
+  const parameter = (value, changed, descriptor, options = {}) => {
+    const laneId = state.laneId, tab = state.tab, source = procgenLane(getProject().procgen.lanes, laneId);
+    const control = createParameterKnob({ document, window, value, descriptor,
+      getIdentity: () => procgenLane(getProject().procgen.lanes, laneId) === source && state.laneId === laneId && state.tab === tab ? source : null,
+      commit: changed, ...options }); parameterControls.push(control); if (options.macroKey) macroControls.set(options.macroKey, control); return control.element;
+  };
+  const labeled = (label, control, parent) => { control.dataset.fieldKey = state.tab + ':' + (control.dataset.parameterId || label); const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
   const byId = id => document.getElementById(id);
   const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
   const presentationRoot = node('div', null, 'procgen-presentation-root'); presentationRoot.id = 'procgenPresentationRoot';
@@ -65,12 +78,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
   let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
-  let indexedLanes = null, laneIndex = new Map();
-  const currentLaneIndex = () => {
-    const source = getProject().procgen.lanes;
-    if (source !== indexedLanes) { indexedLanes = source; laneIndex = new Map(source.map(lane => [lane.id, lane])); }
-    return laneIndex;
-  };
+  const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
@@ -114,11 +122,19 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getRuntime()?.lanes?.renderer?.render?.(false);
     finishGeometry();
   };
-  on(resize, 'pointerdown', event => { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); });
+  let resizeLease = null, resizeStartWidth = null;
+  on(resize, 'pointerdown', event => {
+    if ((event.button ?? 0) !== 0) return;
+    const identity = getProject(); resizeStartWidth = state.inspectorWidth;
+    resizeLease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'inspector-resize', identity, getIdentity: getProject,
+      onCancel: () => { dragging = null; resizeLease = null; setInspectorWidth(resizeStartWidth); } });
+    if (resizeLease) { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); }
+  });
   const setInspectorWidth = width => { state.inspectorWidth = Math.max(250, Math.min(480, width)); resize.setAttribute('aria-valuenow', String(state.inspectorWidth)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); };
-  on(resize, 'pointermove', event => { if (dragging != null) setInspectorWidth(window.innerWidth - event.clientX); });
-  on(resize, 'pointerup', () => { dragging = null; handlers.preferences?.(); });
-  on(resize, 'pointercancel', () => { dragging = null; });
+  on(resize, 'pointermove', event => { if (dragging === event.pointerId && resizeLease?.owns(event)) setInspectorWidth(window.innerWidth - event.clientX); });
+  on(resize, 'pointerup', event => { if (!resizeLease?.finish(event)) return; dragging = null; resizeLease = null; handlers.preferences?.(); });
+  for (const type of ['pointercancel', 'lostpointercapture']) on(resize, type, event => { if (resizeLease?.owns(event)) resizeLease.cancel(type); });
+  on(window, 'blur', () => resizeLease?.cancel('blur'));
   on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); setInspectorWidth(state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16)); });
   const layoutMode = select([['strip', 'Strip'], ['overlay', 'Overlay']], state.layout, value => { state.layout = value; render(); handlers.preferences?.(); }, 'Sequencer layout');
   const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 1 }); bpm.setAttribute('aria-label', 'BPM');
@@ -170,7 +186,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const moveLanes = delta => { state.firstLane += delta; layout(); renderRows(); handlers.preferences?.(); };
   const previousLanes = button('↑', () => moveLanes(-projection.count), 'Show previous lanes');
   const nextLanes = button('↓', () => moveLanes(projection.count), 'Show next lanes');
-  const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation);
+  const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation, button('Clear all solos', () => handlers.clearSolos?.(), 'Clear solo on every lane; does not change self-mute or level'));
   footer.append(button('+ Lane', () => handlers.addLane?.()), button('− Lane', () => handlers.removeLane?.()), button('Duplicate', () => handlers.duplicate?.()), button('Clear', () => handlers.clear?.()), tool,
     button('Copy', () => handlers.copy?.()), button('Paste', () => handlers.paste?.()), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
@@ -185,6 +201,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   footer.append(records, status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), button('Save As', () => handlers.saveAs?.()),
     button('Rename', () => handlers.rename?.()), button('Load', () => handlers.load?.()), button('New', () => handlers.new?.()),
     button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()),
+    button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo'),
+    button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases'),
+    button('Physical scene…', () => handlers.openPhysicalScene?.(), 'Author physical gates, cargo stations and their causal instruments'),
+    button('Feedback…', () => handlers.openPhysicalFeedback?.(), 'Author, inspect and explicitly arm physical conductors and intervention layers'),
+    button('Junctions…', () => handlers.openPhysicalJunctions?.(), 'Request safe physical route changes and inspect pending versus applied configurations'),
     button('Quarry Echo…', () => handlers.openQuarryEcho?.(), 'Prepare an original echo rack for the physical audio owner'),
     button('Record audio…', () => handlers.openMasterCapture?.(), 'Capture the running shared browser master as a bounded stereo WAV'),
     button('Prelisten', () => handlers.openPrelistenMonitor?.(), 'Choose cue routing and stop the foreground preview'), exportDesk);
@@ -210,7 +231,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const showProjectPage = (page, load, fetchPage = null) => {
     if (disposed) return;
     retirePicker(pickerOwner);
-    const owner = { generation: 0, closed: false, loading: false, query: '' }; pickerOwner = owner;
+    const owner = { generation: 0, closed: false, loading: false, query: '', cursor: null, back: [] }; pickerOwner = owner;
     const current = generation => !disposed && pickerOwner === owner && !owner.closed && owner.generation === generation;
     const items = node('div', null, 'studio-project-items'), feedback = node('p', '', 'studio-project-feedback');
     const search = node('input'); search.type = 'search'; search.placeholder = 'Search project names'; search.setAttribute('aria-label', 'Search project names');
@@ -222,12 +243,21 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       try {
         const next = await fetchPage(cursor, query);
         if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return;
-        page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
+        owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
           'No matches in this page. Continue the search with More projects.' : 'No more matching projects.';
       } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
       finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
+    const previous = button('Previous projects', async () => {
+      if (!fetchPage || owner.loading || !owner.back.length || !current(owner.generation)) return;
+      const generation = owner.generation, cursor = owner.back.at(-1); owner.loading = true;
+      try { const next = await fetchPage(cursor, owner.query); if (!current(generation) || !next) return;
+        owner.back.pop(); owner.cursor = cursor; page = next; append(next.items); more.disabled = !page.nextCursor; more.hidden = !page.nextCursor;
+      } catch (error) { if (current(generation)) feedback.textContent = error.message; }
+      finally { if (current(generation)) owner.loading = false; }
+    });
     const append = entries => {
+      items.replaceChildren(); previous.hidden = !owner.back.length;
       for (const entry of entries) items.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
         if (!current(owner.generation) || owner.loading) return;
         const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
@@ -245,7 +275,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     search.addEventListener('change', async () => {
       if (!fetchPage || !current(owner.generation) || search.disabled) return;
       const generation = ++owner.generation, query = search.value.trim(); owner.query = query; owner.loading = true;
-      page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
+      owner.cursor = null; owner.back.length = 0; previous.hidden = true; page = { items: [], nextCursor: null }; items.replaceChildren(); more.disabled = true; more.hidden = true;
       feedback.textContent = 'Searching projects…';
       try {
         const next = await fetchPage(null, query); if (!current(generation) || !next) return;
@@ -253,13 +283,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project search failed. Retry.'; }
       finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
     });
-    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, more);
+    projectList.replaceChildren(node('h2', 'Saved projects'), button('Close', () => retirePicker(owner, { cancel: true, close: true })), search, items, feedback, previous, more);
     append(page.items); more.hidden = !page.nextCursor;
     if (handlers.reclaimRecovery) projectList.append(button('Remove recovery checkpoint', () => handlers.reclaimRecovery()));
     projectList.showModal();
   };
+  const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
+  const selectSound = (laneId, patch) => { renderInspector(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.'); Promise.resolve().then(() => handlers.selectSoundAlias(laneId, patch)).catch(error => { handlers.status?.(error.message + ' Keep the previous sound, enable local listening for worklet sources, or explicitly select the Soft triangle fallback.'); renderInspector(); }); };
   const changeLane = patch => dispatch({ type: 'procgen/lane', laneId: selected().id, patch });
   const changePattern = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch }); };
   const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
@@ -271,6 +303,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
+    for (const control of parameterControls.splice(0)) control.dispose(); macroControls.clear();
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
     state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
@@ -281,17 +314,36 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
-      labeled('Collection / tileset', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => dispatch({ type: 'procgen/palette', laneId: lane.id, family }), 'Sound collection'), fields);
-      labeled('Role', select(PROCGEN_ROLES, lane.role, role => dispatch({ type: 'procgen/palette', laneId: lane.id, role }), 'Instrument role'), fields);
+      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => selectSound(lane.id, { family }), 'Sound collection'), fields);
+      labeled('Role', select(PROCGEN_ROLES, lane.role, role => selectSound(lane.id, { role }), 'Instrument role'), fields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);
-      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => dispatch({ type: 'procgen/palette', laneId: lane.id, patch }), 'Sound patch'), fields);
+      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => selectSound(lane.id, { patch }), 'Sound patch'), fields);
+      fields.append(node('p', `World: ${lane.worldThemeId} · sound: ${lane.instrumentPatchId} · ${lane.linkedThemePresetId === lane.worldThemeId ? 'matching theme suggestion' : 'independent world'} · ${lane.soundChangePolicy === 'new-notes-only' ? 'new notes only; held voices retain their renderer' : 'held crossfade requires adapter support'}`, 'studio-hint'));
+      labeled('Patch change policy', select([['new-notes-only', 'New notes only'], ...(lane.soundChangePolicy === 'crossfade-held' ? [['crossfade-held', 'Held crossfade — unsupported by this adapter']] : [])], lane.soundChangePolicy, soundChangePolicy => changeLane({ soundChangePolicy }), 'Patch change policy'), fields);
+      fields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
+      const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; fields.append(matchingWorld);
       if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
+      if (lane.instrumentRef?.definition?.macros?.length) fields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
+      const visibleMacroKeys = new Set((lane.instrumentRef?.definition?.macros || []).map(macro => JSON.stringify([lane.id, macro.id])));
+      for (const key of macroModes.keys()) if (!visibleMacroKeys.has(key)) macroModes.delete(key);
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
-        const control = input(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => changeLane({ instrumentControls: { ...lane.instrumentControls,
-          macros: { ...lane.instrumentControls?.macros, [macro.id]: value } } }), { type: 'range', min: 0, max: 1, step: 0.01 });
+        const macroKey = JSON.stringify([lane.id, macro.id]), mode = macroModes.get(macroKey) || { momentary: !!macro.momentary, pressure: false }; let handle = null;
+        const begin = () => handle ||= handlers.beginMacroGesture(lane.id, macro.id, { momentary: mode.momentary || mode.pressure, origin: mode.pressure ? 'pressure' : 'manual' });
+        const cancel = () => { const previous = handle; handle = null; if (previous) { try { handlers.finishMacroGesture(previous, { cancel: true }); } catch (error) { handlers.status?.(error.message); } } };
+        const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => {
+          const previous = begin(); handle = null; handlers.previewMacroGesture(previous, value); handlers.finishMacroGesture(previous);
+        }, { id: 'macro:' + macro.id, name: macro.name, quantity: 'authored-performance-macro', unit: 'normalized', min: 0, max: 1, step: 0.01, fineStep: 0.001, defaultValue: macro.default01, detents: macro.bipolar ? [macro.default01] : [] },
+        { macroKey, momentary: mode.momentary || mode.pressure, readOnly: macro.mode !== 'onset-only', preview(value, meta) {
+          if (meta.phase === 'cancel' || meta.phase === 'return') { cancel(); return; }
+          try { const baseline = lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, pressure = mode.pressure && ['pen', 'touch'].includes(meta.pointerType) && meta.normalizedPressure != null
+            ? meta.normalizedPressure * (macro.bipolar && value < baseline ? -1 : 1) : null;
+          handlers.previewMacroGesture(begin(), value, pressure); } catch (error) { cancel(); handlers.status?.(error.message); }
+        }, onCancel: cancel, onFinish: cancel });
         control.title = macro.perceptualDirection; control.setAttribute('aria-label', macro.name + ' · next onset');
-        labeled(macro.name + ' · next onset', control, fields);
-        fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled(macro.name + ' · next onset', control, fields); fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), fields);
+        labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), fields);
+        fields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));
       }
       const variation = lane.instrumentRef?.definition?.variation;
       if (variation) {
@@ -309,9 +361,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), fields);
         labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), fields);
       } else fields.append(node('p', 'This lane follows committed world causes. The Physical tab edits the live instrument mapping.', 'studio-hint'));
-      labeled('Level', input(lane.gain, gain => changeLane({ gain }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
-      labeled('Game accent', input(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { type: 'range', min: 0, max: 2, step: 0.01 }), fields);
-      labeled('Pan', input(lane.pan, pan => changeLane({ pan }), { type: 'range', min: -127, max: 127 }), fields);
+      labeled('Level', parameter(lane.gain, gain => changeLane({ gain }), { id: 'lane-gain', name: 'Level', quantity: 'lane-gain', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
+      labeled('Game accent', parameter(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { id: 'event-accent', name: 'Game accent', quantity: 'event-velocity-multiplier', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
+      labeled('Pan', parameter(lane.pan, pan => changeLane({ pan }), { id: 'lane-pan', name: 'Pan', quantity: 'stereo-position', unit: 'pan units', min: -127, max: 127, step: 1, fineStep: 1, defaultValue: 0, detents: [0] }), fields);
       const events = node('fieldset', null, 'studio-event-mask'); events.append(node('legend', 'Game events'));
       for (const action of ['build', 'bash', 'mine', 'dig', 'fall', 'land', 'spawn']) labeled(action, input(lane.eventMask?.[action] !== false, enabled => changeLane({ eventMask: { ...lane.eventMask, [action]: enabled } }), { type: 'checkbox' }), events);
       fields.append(events);
@@ -322,6 +374,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (take) {
         const controls = node('fieldset', null, 'studio-physical-take');
         controls.append(node('legend', 'Causal take'));
+        if (take.physicalRecoveryRequired) {
+          controls.append(node('p', 'Physical source coverage was lost. Held voices remain disarmed until you explicitly discard unknown state.', 'studio-hint'));
+          const rearm = button('Discard unknown held state and rearm', () => handlers.rearmPhysicalMusic?.());
+          rearm.disabled = take.recording || take.starting || take.recovering; controls.append(rearm);
+        }
         state.takeNameDraft ||= 'Untitled take'; state.takeMarkerDraft ||= 'Marker';
         labeled('Take name', input(state.takeNameDraft, takeName => {
           state.takeNameDraft = takeName.slice(0, 120); handlers.preferences?.();
@@ -374,6 +431,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           } else {
             const step = button('Step branch 32 ticks', () => handlers.advanceCausalBranch?.({ ticks: 32 })); step.disabled = !branch.canStep;
             const finish = button('Save and close branch', () => handlers.finishCausalBranch?.()); finish.disabled = !!branch.busy; branchControls.append(step, finish);
+            const feedback = button(branch.active.inspection?.physicalLayers ? 'Disarm branch feedback' : 'Regenerate physical feedback', () => branch.active.inspection?.physicalLayers ? handlers.disarmCausalBranchFeedback?.() : handlers.armCausalBranchFeedback?.()); feedback.disabled = !branch.canStep; branchControls.append(feedback);
             if (branch.active.playbackAdmission) {
               const interpretation = button(branch.active.interpretationPlaying ? 'Pause branch interpretation' : 'Enable branch interpretation', () => handlers.setCausalBranchPlayback?.(!branch.active.interpretationPlaying));
               interpretation.disabled = !branch.canStep; branchControls.append(interpretation);
@@ -499,6 +557,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), fields);
       labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), fields);
       labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), fields);
+      labeled('Owned external program (zero based)', input(lane.externalProgram ?? '', externalProgram => changeLane({ externalProgram }), { min: 0, max: 127, nullable: true }), fields);
+      labeled('External percussion mapping', input(lane.externalPercussion, externalPercussion => changeLane({ externalPercussion }), { type: 'checkbox' }), fields);
       for (const [key, title] of [['bankMSB', 'Bank MSB'], ['bankLSB', 'Bank LSB']]) labeled(title, input(lane[key] ?? '', value => changeLane({ [key]: value }), { min: 0, max: 127, nullable: true }), fields);
       fields.append(button('Connect MIDI', () => handlers.connect?.()),
         ...(pattern ? [button('Learn step note', () => handlers.learn?.())] : []),
@@ -511,7 +571,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } else if (state.tab === 'World') {
       fields.append(button('Reroll world', () => handlers.reroll?.()), button('Replay seed', () => handlers.replay?.()));
       labeled('Seed', input(getRuntime()?.world?.seed || 0, seed => handlers.seed?.(seed), { min: 0, max: 4294967295 }), fields);
-      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { state.hazardSpacing = value; handlers.rebuild?.(); }, { min: 80, max: 1024, step: 16 }), fields);
+      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { handlers.rebuild?.({ hazardSpacing: value }); }, { min: 80, max: 1024, step: 16 }), fields);
       labeled('Minimum display row', input(state.minimumRow, value => { state.minimumRow = value; layout(); renderRows(); }, { min: 56, max: 220, step: 4 }), fields);
       const observe = patch => { Object.assign(state, { observerMode: patch.mode ?? state.observerMode, observerLane: patch.laneId ?? state.observerLane, observerHold: patch.holdSeconds ?? state.observerHold }); handlers.observe?.(patch); handlers.preferences?.(); };
       labeled('Observer', select([['overview', 'Overview'], ['follow', 'Follow lane'], ['director', 'Automatic director']], state.observerMode || 'overview', mode => observe({ mode }), 'Observer mode'), fields);
@@ -550,11 +610,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
     const changed = key !== layoutKey;
     if (changed) {
-      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow: state.minimumRow });
+      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow: Math.max(88, state.minimumRow) });
       state.firstLane = projection.firstLane;
       layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, state.minimumRow, state.inspectorWidth]);
       shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
-      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) { canvas.width = Math.floor(width * dpr); canvas.height = Math.floor(height * dpr); }
       canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     }
     const renderer = getRuntime()?.lanes?.renderer || null;
@@ -568,27 +627,38 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { attachedRenderer = null; superseded = true; } });
         attachedRenderer = renderer;
       }
-      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize();
+      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
     }
     return changed || rendererChanged;
   }
-  function renderRows() {
+  function renderRows({ laneIds = null } = {}) {
     if (!projection) return;
     queuedBeat = null; playheadSurface.invalidate();
-    lanes.replaceChildren(); grid.replaceChildren(); const project = getProject();
+    if (!laneIds) { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); lanes.replaceChildren(); grid.replaceChildren(); }
+    const place = (parent, child) => { const previous = laneIds && [...parent.children].find(item => item.dataset.laneId === child.dataset.laneId); if (previous) previous.replaceWith(child); else parent.append(child); };
+    const project = getProject();
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
     for (let row = 0; row < projection.count; row++) {
       const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
+      if (laneIds && !laneIds.includes(lane.id)) continue;
+      laneMixControls.get(lane.id)?.dispose(); laneMixControls.delete(lane.id);
       const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
       const controls = node('div', null, 'studio-lane-mini');
-      for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !lane[key] } }), `${key} ${lane.name}`); el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
+      for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !procgenLane(getProject().procgen.lanes, lane.id)?.[key] } }), `${key} ${lane.name}`); el.dataset.laneControl = key; el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
       const slots = node('div', null, 'studio-slots');
       if (pattern) for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
       else slots.append(node('span', 'LIVE', 'studio-physical-badge'));
-      header.append(label, role, controls, slots); lanes.append(header);
+      const fader = createParameterKnob({ document, window, presentation: 'fader', value: lane.gain,
+        descriptor: { id: 'lane-fader:' + lane.id, name: 'Level', quantity: 'lane-gain', unit: 'dB', min: 0, max: 2, step: 0.01, fineStep: 0.001, defaultValue: 1, detents: [1],
+          format: formatLaneGain, formatInput: value => value === 0 ? '-inf' : (20 * Math.log10(value)).toFixed(2), parse: parseLaneGain },
+        getIdentity: () => procgenLane(getProject().procgen.lanes, lane.id), commit: gain => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { gain } }) });
+      fader.element.classList.add('studio-lane-fader'); laneMixControls.set(lane.id, fader);
+      const mixStatus = node('output', 'Signal unavailable', 'studio-lane-mix-status'); mixStatus.dataset.laneMixStatus = lane.id;
+      header.append(label, role, controls, slots, fader.element, mixStatus); place(lanes, header);
+      const mix = handlers.laneMixView?.(lane.id); if (mix) { fader.setState({ value: lane.gain, effectiveValue: mix.effectiveGain }); mixStatus.textContent = mix.outputState.replaceAll('-', ' '); mixStatus.title = 'Local signal unavailable · activity is semantic events, not dBFS'; }
       const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
@@ -596,13 +666,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         sequence.classList.add('studio-physical-row');
         sequence.style.gridTemplateColumns = '1fr';
         sequence.append(node('span', 'Physical causes · live world', 'studio-physical-label'));
-        grid.append(sequence);
+        place(grid, sequence);
         continue;
       }
       for (let index = 0; index < pattern.length; index++) {
         const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', () => {
           if (window.performance.now() < suppressClickUntil) return;
-          state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = step.chord ? 'Chord' : 'Step';
+          state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[displaySlot]?.steps[index]?.chord ? 'Chord' : 'Step';
           if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
         cell.className = 'studio-cell'; cell.dataset.index = index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
@@ -613,13 +683,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         });
         sequence.append(cell);
       }
-      grid.append(sequence);
+      place(grid, sequence);
     }
   }
   function frame(beat = state.beat || 0) {
     if (disposed || superseded) return;
     if (beat === queuedBeat) return; queuedBeat = beat;
-    playheadSurface.publish(Object.freeze({ beat }));
+    playheadSurface.publish(Object.freeze({ beat })); laneMixSurface.invalidate();
   }
   function paintPlayheads(_measured, packet) {
     if (disposed || superseded) return;
@@ -652,7 +722,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       focus.value = active.value;
       try { focus.selectionStart = active.selectionStart; focus.selectionEnd = active.selectionEnd; } catch { /* Number inputs have no caret. */ }
     }
-    selected(); root.value = String(getProject().global.scale.root);
+    selected(); handlers.reconcileSoundPreview?.(); root.value = String(getProject().global.scale.root);
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
@@ -677,7 +747,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function patchStep(action) {
     if (disposed) return;
-    const lane = getProject().procgen.lanes.find(item => item.id === action.laneId);
+    const lane = procgenLane(getProject().procgen.lanes, action.laneId);
     const slot = action.slot ?? lane?.activeSlot;
     const row = [...grid.children].find(item => item.dataset.laneId === action.laneId && Number(item.dataset.slot) === slot);
     const step = lane?.patterns[slot]?.steps[action.index], cell = row?.children[action.index];
@@ -690,10 +760,27 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     for (const selectedCell of grid.querySelectorAll('.studio-cell.selected')) selectedCell.classList.remove('selected');
     if (state.laneId === action.laneId && state.slot === slot) row?.children[state.step]?.classList.add('selected');
-    render({ partial: true });
+    if (state.laneId === action.laneId) render({ partial: true });
   }
-  on(lanes, 'wheel', event => { if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
+  function patchProject(action, change) {
+    if (disposed || !action) return;
+    if (action.type === 'procgen/step') { patchStep(action); return; }
+    if (change.structural || action.type === 'procgen/seed') { render(); return; }
+    if (['procgen/palette', 'procgen/pattern'].includes(action.type) || change.fields.some(key => ['family', 'role', 'mode', 'patterns'].includes(key))) renderRows({ laneIds: change.laneIds });
+    else for (const id of change.laneIds) {
+      const lane = procgenLane(getProject().procgen.lanes, id), header = [...lanes.children].find(item => item.dataset.laneId === id);
+      if (!lane || !header) continue;
+      laneMixControls.get(id)?.setState({ value: lane.gain, effectiveValue: handlers.laneMixView?.(id)?.effectiveGain ?? null });
+      for (const control of header.querySelectorAll('[data-lane-control]')) control.setAttribute('aria-pressed', String(lane[control.dataset.laneControl]));
+      for (const [slot, control] of [...header.querySelector('.studio-slots').children].entries()) {
+        control.setAttribute('aria-pressed', String(slot === lane.activeSlot)); control.classList.toggle('queued', slot === lane.queuedSlot);
+      }
+    }
+    if (!change.laneIds.length || change.laneIds.includes(state.laneId)) render({ partial: true });
+  }
+  on(lanes, 'wheel', event => { if (event.defaultPrevented) return; if (getProject().procgen.lanes.length <= projection.count) return; event.preventDefault(); state.firstLane += Math.sign(event.deltaY); layout(); renderRows(); }, { passive: false });
   on(lanes, 'keydown', event => {
+    if (event.defaultPrevented || event.target?.closest?.('.parameter-knob')) return;
     const offsets = { PageUp: -projection.count, PageDown: projection.count, ArrowUp: -1, ArrowDown: 1 };
     if (!(event.key in offsets)) return;
     event.preventDefault(); event.stopPropagation(); moveLanes(offsets[event.key]);
@@ -711,21 +798,38 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     event.preventDefault();
     const lane = getProject().procgen.lanes.find(item => item.id === row.dataset.laneId), slot = Number(row.dataset.slot);
     if (!lane?.patterns?.[slot]) return;
-    stroke = { laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
+    const source = getProject(), transform = projection;
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: `pattern:${lane.id}:${slot}`, identity: source,
+      getIdentity: () => getProject() === source && projection === transform ? source : null,
+      onCancel: () => { stroke = null; if (!disposed) renderRows(); } });
+    if (!lease) return;
+    stroke = { lease, pointerId: event.pointerId, laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
+    grid.setPointerCapture?.(event.pointerId);
     state.laneId = lane.id; state.slot = slot; state.tab = 'Step'; paint(cell);
   });
-  on(window, 'pointermove', event => { if (stroke) paint(document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.studio-cell')); });
-  on(window, 'pointerup', () => {
-    if (!stroke) return;
+  on(window, 'pointermove', event => { if (stroke?.lease.owns(event)) paint(document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.studio-cell')); });
+  on(window, 'pointerup', event => {
+    if (!stroke?.lease.finish(event)) return;
     const completed = stroke; stroke = null; suppressClickUntil = window.performance.now() + 100;
     if (completed.changed) dispatch({ type: 'procgen/pattern', laneId: completed.laneId, slot: completed.slot, patch: { steps: completed.steps } });
     else render();
   });
-  on(window, 'pointercancel', () => { if (stroke) { stroke = null; renderRows(); } });
+  for (const type of ['pointercancel', 'lostpointercapture']) on(window, type, event => { if (stroke?.lease.owns(event)) stroke.lease.cancel(type); });
+  on(window, 'blur', () => stroke?.lease.cancel('blur'));
+  on(document, 'keydown', event => { if (event.key === 'Escape') stroke?.lease.cancel('escape'); });
   const layoutSurface = displayScheduler.register({ id: 'workstation-layout', element: stage, intervalMs: 0,
     read: () => ({ width: stage.clientWidth, height: stage.clientHeight }), write: measured => { if (layout(measured)) renderRows(); },
     onError: message => { displayStatus.textContent = message; } });
   const playheadSurface = displayScheduler.register({ id: 'workstation-playheads', element: grid, intervalMs: 32, write: paintPlayheads });
+  const laneMixSurface = displayScheduler.register({ id: 'workstation-lane-mix', element: lanes, intervalMs: 100, write: () => {
+    for (const [id, control] of laneMixControls) {
+      const mix = handlers.laneMixView?.(id), lane = procgenLane(getProject().procgen.lanes, id); if (!mix || !lane) continue;
+      if (control.inspect().gestureId == null) control.setState({ value: lane.gain, effectiveValue: mix.effectiveGain });
+      const row = [...lanes.children].find(value => value.dataset.laneId === id), status = row?.querySelector('[data-lane-mix-status]');
+      if (status) { status.textContent = mix.outputState.replaceAll('-', ' ') + (mix.eventRate ? ` · ${mix.eventRate.toFixed(0)} events/s` : ''); status.title = `Signal ${mix.signalStatus}; ${mix.meterSource}; gain ${mix.gainEvidence}`; }
+    }
+  } });
+  const macroSurface = displayScheduler.register({ id: 'workstation-macro-pickup', element: fields, intervalMs: 50, write: refreshMacroState });
   const midiSurface = displayScheduler.register({ id: 'workstation-midi', element: fields, intervalMs: 50, write: () => {
     const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== state.lastMidi) monitor.textContent = state.lastMidi;
   } });
@@ -752,7 +856,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
     else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
   });
-  return { render, patchStep, layout, renderInspector: render, showProjects, showProjectPage, displayScheduler, status: text => { status.textContent = text; },
+  return { render, patchStep, patchProject, layout, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -811,7 +915,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'display-scheduler', run: () => displayScheduler.dispose() },
+        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
+        { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
         { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },
         ...[projectList, shell, footer, transport, heading].map((element, index) => ({ name: 'view-element-' + index, run: () => element.remove() })),

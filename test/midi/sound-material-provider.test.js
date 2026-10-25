@@ -1,3 +1,4 @@
+import { PROCEDURAL_BIOME_IDENTITIES } from '../../js/midi/content/ProceduralBiomeIdentities.js';
 import { expect } from 'chai';
 import { createHash } from 'node:crypto';
 import { inspectWaveContainer } from '../../js/app/midi-ui/AudioAssetRef.js';
@@ -27,6 +28,22 @@ describe('shared sound material inspection and preparation', () => {
     const bad = wav({ value: NaN }); await reject(runBackgroundJobKernel('inspect-wave-asset', { bytes: bad, contentHash: hash(bad) }, { estimatedPeakBytes: 16 * 1048576 }), 'invalid-data');
     await reject(runBackgroundJobKernel('inspect-wave-asset', { bytes, contentHash: '0'.repeat(64) }, { estimatedPeakBytes: 16 * 1048576 }), 'content-mismatch');
     expect(() => inspectWaveContainer(bytes.subarray(0, bytes.length - 1))).to.throw();
+  });
+  it('coalesces original material generation across independent providers without coupling cancellation', async () => {
+    const original = PROCEDURAL_BIOME_IDENTITIES[0], file = { ...original, kind: 'sample', mediaType: 'audio/wav' }, budget = createResourceBudget();
+    let finish, calls = 0, retired = 0;
+    const jobs = { compute(options) { calls++; return new Promise(resolve => { finish = async () => {
+      const value = await runBackgroundJobKernel(options.kind, await options.prepareInput(), { estimatedPeakBytes: options.estimatedPeakBytes, maxBytes: options.maxBytes }); options.releasePreparedInput?.();
+      resolve({ value: value.value, receipt: {}, release() { retired++; }, retirementState: () => ({ phase: retired ? 'released' : 'computed' }) });
+    }; }); } };
+    const options = { jobs, resourceBudget: budget, registry: {}, getContext: () => { throw new Error('Encoded material must not open audio.'); } };
+    const a = createSoundMaterialProvider(options), b = createSoundMaterialProvider(options), controller = new AbortController();
+    const abandoned = a.borrowEncoded(file, { signal: controller.signal }).catch(error => error), kept = b.borrowEncoded(file);
+    await Promise.resolve(); await Promise.resolve(); controller.abort(); expect(await abandoned).to.be.instanceOf(Error);
+    await finish(); const loan = await kept; expect(calls).to.equal(1); expect(loan.blob.size).to.equal(original.bytes); expect(retired).to.equal(0);
+    const released = loan.release(); await released.completion; expect(released.outcome).to.equal('complete'); expect(retired).to.equal(1);
+    for (const provider of [a, b]) { const receipt = provider.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('shares decoded PCM across installed pinned definitions while returning independent pins', async () => {
     const bytes = wav(), contentHash = hash(bytes), packHash = 'a'.repeat(64), definitionHash = 'b'.repeat(64), budget = createResourceBudget();

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add actor-owned action admission, legato/crossfade and hold limits, with explicit lane handoff policies and native/sample/worklet transition ramps.
+
+- Interpret real crowd arrivals, work phases, blocker pairs and flight arcs with actor-owned sustained responses, explicit grouping ancestry and portable estimator state.
+
+- Add indexed world-space pickup geometry, actor-owned occupancy, stable birth/crew ensembles and marker-qualified route coordinates with portable causal boundary state.
+
+- Journal completed physical steps and interventions for incremental recovery, cooperatively capture quiescent checkpoint bases, and atomically commit SHA-256-verified compressed pages with bounded replay/read ownership.
+
+- Propagate typed lane deltas through shared ID indexes, sparse performance journals and targeted visible controls; coalesce authored preference encoding in an admitted background worker with document-fenced publication.
+
+- Commit accepted world recipes independently of UI drafts, preserve each concurrent musical Undo boundary on terrain rollback, and publish immutable batch-identified actor snapshots with bounded reader leases.
+
+- Add typed transactional knob controls, shared pointer ownership across canvas and sound editors, inline validated project naming, and bounded paged project selection.
+
+- Hold bounded worklet credits through terminal acknowledgment, admit renderer replacement peaks before allocation, preflight aggregate object masks, and keep hidden/BFCache worlds explicitly paused without overdue clock bursts.
+
+- Preserve independent physical mapping lifetimes and qualified contact travel; journal manual interventions before mutation, disarm incomplete-source music until explicit recovery, fence stale inspection/export publication, and enforce per-observer telemetry budgets. Runtime and acoustic qualification deferred.
+
+- Fence staged effect and cue-route failures, rearm physical audio correlations after interruptions, serialize offline pack ownership, and preserve cold-history retirement evidence.
+
 - Retain bounded prepared ProcGen project and MIDI exports for exact retry, with separate anchor-request and writable-close delivery receipts.
 - Classify missing browser and Node pack resources consistently, keep seasonal fallback attempts and source provenance visible, verify optional pinned asset hashes, and make strict odd-table requirements explicit.
 

@@ -2,10 +2,17 @@ import { expect } from 'chai';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 
 const world = () => ({ laneCount: 1, laneHeight: 144, seed: 7, terrain: {}, actions: {}, timer: { speedFactor: 1, TIME_PER_FRAME_MS: 16 },
-  actors: [], tickIndex: 0, laneSeeds: [], generation: 0, step() { return true; } });
+  actors: [], nextActorId: 0, stall: { settings: {} }, soundEvents: { snapshotIdentity: () => ({ version: 1, causalSequence: 0, legacySequence: 0, coverage: 'complete' }), restoreIdentity() {} }, tickIndex: 0, laneSeeds: [], generation: 0, step() { return true; } });
 const saved = () => JSON.parse(JSON.stringify(captureProcgenCheckpoint(world())));
 
 describe('ProcGen checkpoint admission', () => {
+  it('rejects exhausted counter frontiers before publication', () => {
+    for (const field of ['tickIndex', 'nextActorId']) {
+      const checkpoint = saved(), target = world(); checkpoint.graph.owners.find(owner => owner.name === 'world').props[field] = Number.MAX_SAFE_INTEGER;
+      expect(() => restoreProcgenCheckpoint(target, checkpoint)).to.throw(); expect(target[field]).to.equal(0);
+    }
+  });
+
   it('refuses method-shadowing owner properties before changing the target', () => {
     const checkpoint = saved(), target = world();
     checkpoint.graph.owners.find(owner => owner.name === 'world').props.step = 'imported scalar';

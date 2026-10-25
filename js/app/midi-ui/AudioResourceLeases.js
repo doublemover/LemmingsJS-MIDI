@@ -1,7 +1,7 @@
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 const MAX_BYTES = 512 * 1024 * 1024;
-const KERNEL_TYPED_BYTES = 512 * 18 * 8 + 64 * 28 * 8 + 64 + 2048 * 6 * 8 + 64 * 6 * 8 + 8 * 4 +
+const KERNEL_TYPED_BYTES = 512 * 18 * 8 + 64 * 28 * 8 + 64 * 6 * 8 + 64 + 2048 * 6 * 8 + 64 * 6 * 8 + 8 * 4 +
   64 * 16 * 8 + 64 * 4 + 2 * 32 * 20 * 8 + 32 * 8;
 const NATIVE_VOICE_ESTIMATE = 16 * 1024, WORKLET_HOST_ESTIMATE = 128 * 1024;
 
@@ -108,7 +108,7 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
     return retirement.retire([...leases.values()].map((lease, index) => ({ name: `reservation-${index}`, run: lease.retire })));
   };
   const confirmClosedContext = () => createProcgenRetirementScope().retire([...leases.values()].filter(lease => lease.blocked &&
-    ['native-voice', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph', 'effects-graph', 'effect-route-arm', 'effect-host-metadata'].includes(lease.kind))
+    ['native-voice', 'voice-lane-mix', 'worklet-voice-host', 'worklet-runtime', 'pcm-capture-runtime', 'channel-graph', 'mix-graph', 'effects-graph', 'effect-route-arm', 'effect-host-metadata'].includes(lease.kind))
     .map((lease, index) => ({ name: 'closed-context-resource-' + index, run: lease.confirmRetirement })));
   return { reserve, reserveDecodedBuffer, releaseOwner, retireOwner, confirmClosedContext, diagnostics, dispose,
     reserveNativeVoice: (owner, generation = 0, sourceCost = 1) => {

@@ -11,7 +11,7 @@ import { runBackgroundJobKernel } from '../js/app/resources/BackgroundJobKernels
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 import { createSharedContentJobs } from '../js/app/resources/SharedContentJobs.js';
-import { getActiveExecutionIdentity } from '../js/runtime/ActiveExecutionIdentity.js';
+import { createBackgroundJobWorkerEndpoint } from '../js/app/resources/BackgroundJobWorkerEndpoint.js';
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const rejects = async (operation, code) => { let error; try { await operation; } catch (failure) { error = failure; } expect(error?.code).to.equal(code); };
@@ -50,12 +50,10 @@ describe('shared verified terrain decode jobs', () => {
   it('shares one actual decode across two source owners and retains the result until both release it', async () => {
     let computations = 0, terminated = 0, finish;
     class Worker {
-      postMessage(message) {
-        computations++;
-        finish = async () => this.onmessage({ data: { ...message, type: 'computed',
-          result: await runBackgroundJobKernel(message.kind, message.input, { ...message.limits, yieldControl: async () => {} }),
-          executionIdentity: getActiveExecutionIdentity('browser-background-jobs') } });
-      }
+      constructor() { this.endpoint = createBackgroundJobWorkerEndpoint({ postMessage: data => queueMicrotask(() => this.onmessage({ data })), close() {}, kernel: (kind, input, limits) => {
+        computations++; return new Promise(resolve => { finish = async () => resolve(await runBackgroundJobKernel(kind, input, { ...limits, yieldControl: async () => {} })); });
+      } }); }
+      postMessage(message) { void this.endpoint.receive(structuredClone(message)); }
       terminate() { terminated++; }
     }
     const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker }), contentJobs = createSharedContentJobs({ jobs });
@@ -67,7 +65,7 @@ describe('shared verified terrain decode jobs', () => {
     for (let turn = 0; turn < 100 && contentJobs.diagnostics().consumers < 2; turn++) await new Promise(resolve => setTimeout(resolve, 0));
     expect(contentJobs.diagnostics().consumers).to.equal(2); canceled.abort(); expect(await a).to.be.instanceOf(Error);
     first.ground.reader.release(); first.vgagr.reader.release();
-    await finish(); const kept = await b;
+    while (!finish) await new Promise(resolve => setTimeout(resolve, 0)); await finish(); const kept = await b;
     try {
       expect(kept.value.terrainImages).to.have.length(64); expect(computations).to.equal(1); expect(terminated).to.equal(1);
       expect(admission.diagnostics().retainedResults).to.equal(1); expect(admission.diagnostics().memory.accountedBytes).to.be.greaterThan(0);

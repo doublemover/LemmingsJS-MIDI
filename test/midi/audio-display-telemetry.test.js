@@ -115,6 +115,18 @@ describe('Worklet-owned display reductions', () => {
 });
 
 describe('Audio display observation leases', () => {
+  it('enforces each observer voice budget even when another observer expands the union', () => {
+    const { telemetry, voices, context, messages } = host(), small = [], large = [];
+    const second = voice(1); voices.push(second); telemetry.admit(second, { actorId: 4, onsetId: 'second' }); context.currentTime = 0;
+    telemetry.observe(value => small.push(value), { identity, maxVoices: 1 });
+    telemetry.observe(value => large.push(value), { identity, maxVoices: 2 }); context.currentTime = 0.05;
+    const revision = messages.filter(item => item.type === 'display-config').at(-1).revision;
+    for (let slot = 0; slot < 2; slot++) { const incoming = packet(slot); incoming.revision = revision; telemetry.consume(incoming); }
+    expect(small).to.have.length(1); expect(large).to.have.length(2);
+    expect(small[0].selectionCoverage).to.include({ eligible: 2, selected: 1, omitted: 1 });
+    expect(large[0].selectionCoverage).to.include({ eligible: 2, selected: 2, omitted: 0 }); telemetry.dispose();
+  });
+
   it('stamps immutable admission identity and keeps measured, applied and kernel state separate', () => {
     const { telemetry, context } = host(), samples = []; context.currentTime = 0;
     telemetry.observe(value => samples.push(value), { identity }); telemetry.setContext({ ...identity, worldId: 'later-world' });

@@ -1,3 +1,4 @@
+import { procgenLane, procgenLaneIndex, procgenProjectChange } from './ProcgenProjectIndex.js';
 import { resolveProcgenSound } from './ProcgenSoundCollections.js';
 import { MidiAutomationSpans } from '../../../midi/router/MidiAutomationSpans.js';
 import { applyMidiAutomationSpanValues } from '../../../midi/midi-mapping/MidiAutomationSpanValues.js';
@@ -31,15 +32,21 @@ const procgenStepNotes = (step, sound, scale) => {
 const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () => 'default', getLaneDistance = () => 0, getLaneObservation, getLaneSpatialPosition = () => ({}), onLaunch = () => {}, onLaunchBatch, now = () => performance.now(), maxNotesPerPulse = 128 } = {}) => {
   const emptyState = () => ({ version: 1, beat: -1, timestamp: 0, bpm: 120, lanes: {}, pending: [], active: [], cursor: 0, budget: maxNotesPerPulse, ccBudget: maxNotesPerPulse, automationSerial: 0 });
   const automation = new MidiAutomationSpans([]);
-  let state = emptyState(), cachedProject = null, solo = false, liveLanes = new Map(), spatialCurves = [];
+  let state = emptyState(), cachedProject = null, solo = false, soloCount = 0, liveLanes = new Map(), spatialCurves = [];
   const derive = project => {
     if (cachedProject === project) return;
+    const previous = cachedProject, change = previous && procgenProjectChange(previous, project);
+    if (previous?.automation !== project.automation) {
+      automation.configure(project.automation);
+      spatialCurves = (project.automation || []).filter(entry => !entry.span && entry.enabled !== false);
+    }
+    if (change && !change.structural) {
+      for (const id of change.laneIds) soloCount += Number(!!procgenLane(project.procgen.lanes, id)?.solo) - Number(!!procgenLane(previous.procgen.lanes, id)?.solo);
+    } else soloCount = project.procgen.lanes.reduce((count, lane) => count + Number(lane.solo), 0);
+    solo = soloCount > 0;
+    liveLanes = { get: id => procgenLane(project.procgen.lanes, id), has: id => procgenLaneIndex(project.procgen.lanes).has(id) };
+    if (!change || change.structural) for (const id of Object.keys(state.lanes)) if (!liveLanes.has(id)) delete state.lanes[id];
     cachedProject = project;
-    automation.configure(project.automation);
-    spatialCurves = (project.automation || []).filter(entry => !entry.span && entry.enabled !== false);
-    solo = project.procgen.lanes.some(lane => lane.solo);
-    liveLanes = new Map(project.procgen.lanes.map(lane => [lane.id, lane]));
-    for (const id of Object.keys(state.lanes)) if (!liveLanes.has(id)) delete state.lanes[id];
   };
   const laneState = lane => {
     if (!Object.hasOwn(state.lanes, lane.id)) Object.defineProperty(state.lanes, lane.id, { enumerable: true, configurable: true, writable: true, value: {
@@ -112,7 +119,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
       const spanValues = automation.entries.length ? automation.values(meta, automationPosition(project, laneIndex, beat + offset, source === 'game' ? current.eventMeta : null)) : null;
       for (const note of notes) {
         let spec = { note, velocity: step.velocity,
-          channel: sound.percussion ? 10 : lane.channel, program: sound.program, outputId: lane.outputId, percussion: sound.percussion,
+          channel: lane.channel, program: lane.externalProgram, outputId: lane.outputId, percussion: lane.externalPercussion,
           bankMSB: lane.bankMSB, bankLSB: lane.bankLSB,
           bankMsb: lane.bankMSB, bankLsb: lane.bankLSB,
           ensembleRole: lane.role, envelope: sound.envelope, timbre: sound.timbre, pan: lane.pan,

@@ -52,8 +52,8 @@ const compilerArtifact = (artifact, patch, compilerRevision) => {
     conversionRecord(parameter.authored.conversion, path + '.conversion');
   }
   for (const macro of artifact.macros) {
-    keysOnly(macro, ['id', 'name', 'mode', 'default01', 'smoothingMs', 'perceptualDirection', 'mappings'], path + '.macros');
-    assertContent(id(macro.id) && text(macro.name, 80) && ['onset-only', 'continuous'].includes(macro.mode) && text(macro.perceptualDirection, 256) &&
+    keysOnly(macro, ['id', 'name', 'mode', 'default01', 'smoothingMs', 'perceptualDirection', 'mappings', 'bipolar', 'momentary'], path + '.macros');
+    assertContent((macro.bipolar == null || typeof macro.bipolar === 'boolean') && (macro.momentary == null || typeof macro.momentary === 'boolean') && id(macro.id) && text(macro.name, 80) && ['onset-only', 'continuous'].includes(macro.mode) && text(macro.perceptualDirection, 256) &&
       Array.isArray(macro.mappings) && macro.mappings.length <= 16, path, 'invalid macro explanation');
     for (const mapping of macro.mappings) {
       keysOnly(mapping, ['parameter', 'minimum', 'maximum', 'unit', 'curve', 'composition', 'conversion', 'clamp'], path + '.macroMappings');

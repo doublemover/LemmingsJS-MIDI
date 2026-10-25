@@ -29,6 +29,11 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     rebases++;
     return anchor;
   };
+  const isAnchored = (executionEpoch, scoreEpoch, bpm) => {
+    const context = getContext();
+    return !!anchor && anchor.executionEpoch === executionEpoch && anchor.scoreEpoch === scoreEpoch && anchor.bpm === bpm &&
+      context === anchorContext && context?.state === 'running' && context.sampleRate === anchor.sampleRate;
+  };
   const toTargetFrame = (scoreTime, executionEpoch) => {
     const context = getContext();
     if (!anchor || executionEpoch !== anchor.executionEpoch || scoreTime?.epoch !== anchor.scoreEpoch ||
@@ -82,5 +87,5 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
       outputCorrelation });
   };
   const invalidate = () => { anchor = null; anchorContext = null; };
-  return { rebase, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate };
+  return { rebase, isAnchored, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate };
 }

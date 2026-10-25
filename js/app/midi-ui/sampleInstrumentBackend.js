@@ -1,3 +1,5 @@
+import { createVoiceLaneMix, validVoiceLaneMix } from './VoiceLaneMix.js';
+import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { sampleRegionRate as rateFor, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { DECODER_VERSION } from './AudioAssetRef.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
@@ -205,6 +207,8 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     armExpiry(); return trace({ status: 'accepted', stage: 'scheduled', generation, executionEpoch, validUntilFrame });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceLaneMix(intent?.laneMix)) return reject('invalid-lane-mix', intent?.voiceId);
+    if (!validVoiceTransition(intent?.voiceTransition)) return reject('invalid-voice-transition', intent?.voiceId);
     if (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros')) return reject('performance-controls-unavailable', intent?.voiceId);
     if (disposed || !prepared || !preview._ownerReady(owner)) return reject(disposed ? 'disposed' : !prepared ? 'patch-unprepared' : 'audio-not-ready', intent?.voiceId);
     const context = preview._context, start = timeFor(targetFrame), expression = intent?.expression ?? {};
@@ -240,7 +244,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       releaseAt: Math.min(hardEnd - prepared.parameters.releaseSeconds, nextChoke), overrides,
       cost: renderCost, patchVoices: voices.values(), patchLimit: prepared.maxVoices });
     if (!admission.accepted) return reject(admission.reason, intent.voiceId);
-    const allocations = [], components = []; let pressureGain, pan, voice;
+    const allocations = [], components = []; let pressureGain, pan, voice, laneMix;
     try {
       for (let n = 0; n < renderCost; n++) allocations.push(preview._audioResources.reserveNativeVoice(owner, intent.generation));
       for (const selected of [region, region.releaseRegion].filter(Boolean)) {
@@ -256,14 +260,15 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         }
       }
       const channel = preview._channel(0, owner), values = prepared.parameters;
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, value: intent.laneMix });
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
-      pressureGain.connect(pan || channel.sourceInput || channel.gain); pan?.connect(channel.sourceInput || channel.gain);
+      pressureGain.connect(pan || laneMix.input); pan?.connect(laneMix.input);
       voice = { owner, workloadClass: preview._workloadClass(owner), number: 0, note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127, id: ++preview._voiceSequence,
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
-        main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, nativeNodesOwnedByBackend: true,
+        main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, laneMix, nativeNodesOwnedByBackend: true,
         onContextClosed: () => reconcileComponents(components),
-        peak: intent.velocity01 * values.gain01 * prepared.mix.gain01 * region.gain01, patchGain: values.gain01 * prepared.mix.gain01, attack: values.attackSeconds, decay: values.decaySeconds,
+        peak: intent.velocity01 * values.gain01 * prepared.mix.gain01 * region.gain01, patchGain: values.gain01 * prepared.mix.gain01, attack: transitionAttackSeconds(intent, values.attackSeconds), decay: values.decaySeconds,
         sustain: values.sustain01, release: values.releaseSeconds, ownedGate: gateMode === 'owned', region, pitch: Object.freeze({ ...intent.pitch }),
         mixPan: prepared.mix.pan01, semanticGeneration: intent.generation, semanticEpoch: executionEpoch, patchId: prepared.id, patchRevision: prepared.revision,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, playback: { voiceId: intent.voiceId, onsetId: intent.onsetId, actorId: intent.actorId },
@@ -276,7 +281,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
           return createProcgenRetirementScope().retire([
             { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
               ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
-              { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+              { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'pressure-gain', run: () => pressureGain.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
             ]); return native; } },
             ...allocations.map((allocation, index) => ({ name: `allocation-${index}`, run: () => releaseAudioResourceAfterRetirement(allocation, native) })),
             { name: 'observation', run: () => { trace({ status: 'ended', voiceId: intent.voiceId, generation: intent.generation, executionEpoch, reason }); armExpiry(); } },
@@ -314,7 +319,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         const receipt = construction.retire([
           { name: 'native-sources', run: () => { native = createProcgenRetirementScope().retire([
             ...components.map((component, index) => ({ name: 'source-' + index, run: () => retireComponent(component) })),
-            { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
+            { name: 'lane-mix', run: () => laneMix?.dispose() }, { name: 'pressure-gain', run: () => pressureGain?.disconnect() }, { name: 'pan', run: () => pan?.disconnect() }
           ]); return native; } },
           ...allocations.map((allocation, index) => ({ name: 'allocation-' + index, run: () => releaseAudioResourceAfterRetirement(allocation, native) }))
         ]);
@@ -399,23 +404,28 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       }
     } finally { rebuildingChokes = false; armExpiry(); }
   };
-  const update = (voiceId, expression, targetFrame, executionEpoch = 'live') => {
-    const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame), context = preview._context;
-    if (!voice || voice.released && voice.releaseAt <= context?.currentTime || voice.semanticRelease?.at <= context?.currentTime || !preview._ownerReady(owner)) return reject('voice-not-active', voiceId);
-    if (!validExpression(expression) || time == null || time < context.currentTime - 1 / context.sampleRate || time < voice.start || time >= Math.min(voice.releaseAt, voice.semanticRelease?.at ?? Infinity)) return reject('invalid-or-stale-expression', voiceId);
+  const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
+    const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame), context = preview._context, now = context?.currentTime;
+    if (!voice || voice.released && voice.releaseAt <= now || voice.semanticRelease?.at <= now || !preview._ownerReady(owner)) return reject('voice-not-active', voiceId);
+    if (!finite(rampSeconds, 0, 60)) return reject('invalid-control-ramp', voiceId);
+    if (!validExpression(expression) || time == null || time < now - 1 / context.sampleRate || time < voice.start || time >= Math.min(voice.releaseAt, voice.semanticRelease?.at ?? Infinity)) return reject('invalid-or-stale-expression', voiceId);
     const ratio = expression.pitchOffsetCents == null ? null : rateFor(voice.region, voice.pitch, expression.pitchOffsetCents);
     if (expression.pitchOffsetCents != null && (ratio == null || voice.region.releaseRegion && rateFor(voice.region.releaseRegion, voice.pitch, expression.pitchOffsetCents) == null)) return reject('sample-pitch-out-of-range', voiceId);
     if (expression.pan01 != null && !voice.pan) return reject('pan-unavailable', voiceId);
     const changes = [[voice.rateAutomation, ratio], [voice.pressureAutomation, expression.pressure01],
       [voice.panAutomation, expression.pan01 == null ? null : clamp(expression.pan01 + voice.mixPan, -1, 1)]];
-    if (changes.some(([automation, value]) => value != null && !automation.canInsert(context.currentTime))) return reject('expression-queue-full', voiceId);
+    if (changes.some(([automation, value]) => value != null && !automation.canInsert(now))) return reject('expression-queue-full', voiceId);
     try {
-      for (const [automation, value] of changes) if (value != null) automation.insert(value, Math.max(time, context.currentTime), context.currentTime);
-      if (voice.released && !voice.stolen && voice.child && voice.releaseAt > context.currentTime) scheduleReleaseChild(voice, voice.releaseAt, voice.releaseVelocity);
+      for (const [automation, value] of changes) if (value != null && !automation.insert(value, Math.max(time, now), now, Math.max(smoothingSeconds, rampSeconds))) throw new Error('Expression automation refused admission.');
+      if (voice.released && !voice.stolen && voice.child && voice.releaseAt > now) scheduleReleaseChild(voice, voice.releaseAt, voice.releaseVelocity);
       armExpiry();
     }
     catch { errors++; preview._destroyVoice(voice, 'sample-update-failure'); return reject('sample-update-failure', voiceId); }
-    return trace({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame, smoothingFrames: Math.ceil(smoothingSeconds * context.sampleRate) });
+    return trace({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch, targetFrame, smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * context.sampleRate) });
+  };
+  const updateLaneMix = (voiceId, mix, frame, epoch = 'live') => {
+    const voice = voices.get(keyFor(epoch, voiceId));
+    return voice?.laneMix?.update(mix, frame) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), time = timeFor(targetFrame);
@@ -481,7 +491,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       { name: 'patch', run: () => { prepared = null; } }
     ]);
   };
-  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, end, renewExecutionLease, cancelGenerationWithReceipt,
+  return createInstrumentExecutionLifecycle({ capabilities, prepare, begin, update, updateLaneMix, end, renewExecutionLease, cancelGenerationWithReceipt,
     cancelGeneration: (generation, executionEpoch = 'live') => cancelGenerationWithReceipt(generation, executionEpoch).count || 0,
     renderDiagnostics, onOwnerStop, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,

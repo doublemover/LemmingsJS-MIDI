@@ -44,3 +44,23 @@ describe('ProcGen physical playback', () => {
     playback.dispose(); expect(disposed).to.equal(true);
   });
 });
+
+
+describe('physical clock rearm without transport changes', () => {
+  it('reanchors after disable and same-rate context replacement at the next committed batch', async () => {
+    const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock(), calls = [];
+    let context = { state: 'running', currentTime: 1, sampleRate: 48000 }, enabled = true, notify, host = 1000;
+    const backend = { prepare: async () => ({ status: 'ready' }), begin: (...args) => { calls.push(args); return { status: 'accepted', stage: 'scheduled' }; },
+      end: () => ({ status: 'accepted', stage: 'scheduled' }), cancelGeneration() {}, dispose() {} };
+    const session = { getState: () => ({ enabled }), enable: async () => enabled, stop() {}, dispose() {}, createInstrumentBackend: () => backend };
+    const audio = { createSession: () => session, getAudioContext: () => context, getState: () => ({ enabled }), subscribe: fn => { notify = fn; return () => {}; } };
+    const playback = createProcgenPhysicalPlayback({ audio, getGraph: () => project.procgen.physicalGraph, scoreTimeline: timeline, now: () => host }); await playback.ready();
+    const step = tick => { const batch = { version: 1, batchId: 'b' + tick, worldId: 'world', generation: 1, tick, sourceTimeMs: tick * 60, tickDurationMs: 60,
+      completeness: { status: 'complete', dropped: 0 }, facts: [{ kind: 'TerrainWorkCommitted', eventId: 'e' + tick, causalSequence: tick, actorId: 1, laneId: 0, operationKind: 'build' }] };
+    playback.processBatch(batch, { bpm: 120, position: timeline.observe(batch, { bpm: 120 }) }); };
+    step(1); enabled = false; notify({ enabled }); host += 60; context.currentTime += 0.06; enabled = true; notify({ enabled }); step(2);
+    host += 60; context = { ...context, currentTime: 2 }; notify({ enabled }); step(3);
+    expect(calls).to.have.length(3); expect(playback.diagnostics().clock.rebases).to.equal(3);
+    expect(playback.diagnostics().rejected).to.equal(0); await playback.dispose().completion;
+  });
+});

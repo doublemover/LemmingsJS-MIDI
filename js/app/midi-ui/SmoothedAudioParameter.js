@@ -13,7 +13,7 @@ export function createSmoothedAudioParameter({ param, initialValue, startTime, s
     let state = anchor;
     for (const event of events) {
       if (event.time > time) break;
-      state = { time: event.time, value: interpolate(state, event.time), target: event.value, end: event.time + smoothingSeconds };
+      state = { time: event.time, value: interpolate(state, event.time), target: event.value, end: event.time + event.duration };
     }
     return { time, value: interpolate(state, time), target: state.target, end: Math.max(time, state.end) };
   };
@@ -33,21 +33,21 @@ export function createSmoothedAudioParameter({ param, initialValue, startTime, s
       finish(event.time);
       const value = interpolate(cursor, event.time);
       param.setValueAtTime(value, event.time);
-      cursor = { time: event.time, value, target: event.value, end: event.time + smoothingSeconds };
-      if (smoothingSeconds === 0) param.setValueAtTime(event.value, event.time);
+      cursor = { time: event.time, value, target: event.value, end: event.time + event.duration };
+      if (event.duration === 0) param.setValueAtTime(event.value, event.time);
     }
     finish(cursor.end);
     if (state.end <= from && !events.some(event => event.time > from)) param.setValueAtTime(state.target, from);
   };
-  const insert = (value, time, now) => {
-    if (![value, time, now].every(Number.isFinite) || time < startTime || time < now) return false;
+  const insert = (value, time, now, duration = smoothingSeconds) => {
+    if (![value, time, now, duration].every(Number.isFinite) || duration < 0 || duration > 60 || time < startTime || time < now) return false;
     const floor = Math.max(startTime, now);
     anchor = stateAt(floor);
     let consumed = 0;
     while (consumed < events.length && events[consumed].time <= floor) consumed++;
     if (consumed) events.splice(0, consumed);
     if (events.length >= maxEvents) return false;
-    const event = { time, value, sequence: ++sequence };
+    const event = { time, value, duration, sequence: ++sequence };
     let index = events.length;
     while (index > 0 && events[index - 1].time > time) index--;
     events.splice(index, 0, event);

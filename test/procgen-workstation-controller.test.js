@@ -1,4 +1,9 @@
 import { expect } from 'chai';
+import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
+import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
+import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
+import { hashProcgenPhysicsCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
+import { nativeSoundCandidates, createSilentPreparationAudio } from './helpers/native-sound-candidates.js';
 import { createProcgenWorkstation } from '../js/app/procgen/workstation/ProcgenWorkstation.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createMidiProject } from '../js/midi/project/MidiProject.js';
@@ -13,7 +18,7 @@ function target() {
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
 function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
-  laneCount = 1, windowTimers = {} } = {}) {
+  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -23,29 +28,29 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
-  const makeRuntime = () => ({ world: { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
+  const makeRuntime = () => ({ world: worldFactory ? worldFactory() : { laneCount, seed: 7, timer: { speedFactor: 1 }, frontiers: [100], soundEvents: { onEvent: new EventHandler(), onBatch: new EventHandler() } },
     lanes: { setClockDriven(value) { this.clockDriven = value; }, pump(value) { positions.push(value); }, renderer: { camera: { getState: () => ({ cameraX: 45 }), applyState(value) { if (throwCamera) throw new Error('Camera unavailable'); this.restored = value; } } } },
     view: { midiPreviewRouter: { scheduler, resetClock() {} }, setMidiPreviewRouter(value) { this.midiPreviewRouter = value; } } });
   let runtime = makeRuntime();
-  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index ? {} :
+  let project = createProcgenWorkstationProject(createMidiProject(), { seed: 7, lanes: Array.from({ length: laneCount }, (_, index) => index || physicalOnly ? {} :
     { mode: 'pattern', patternPurpose: 'Complementary transport test fixture',
       patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
   const projectListeners = new Set();
   const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
-    local: { getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
+    local: { audio, getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
   let viewProps;
-  const view = { render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
+  const view = { requestProjectName: async () => window.prompt(), render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
     exportState: (artifact, delivery) => exportStates.push({ artifact, delivery }), showProjects() {}, dispose() { this.disposed = true; } };
   let rejectSave = false, saveCalls = 0;
   const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
-    restart: async request => { restarts.push(request); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
+    restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit
+    getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
@@ -53,6 +58,62 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('preserves a real 1000-tick physical trace across six prepared renderer changes with the pattern path disabled', async function() {
+    this.timeout(60000); const masks = await loadProcgenMasks(), { candidates, descriptors } = await nativeSoundCandidates();
+    const create = () => setup({ physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, seed: 7, laneCount: 1, assists: false, maxActors: 64 }),
+      audio: createSilentPreparationAudio(), getInstrumentCatalog: async () => ({ descriptors }) });
+    const control = create(), changed = create(), left = [], right = [];
+    try {
+      control.studio.bindRuntime(); changed.studio.bindRuntime(); control.studio.transport.play(); changed.studio.transport.play();
+      control.runtime.world.soundEvents.onBatch.on(batch => left.push(batch)); changed.runtime.world.soundEvents.onBatch.on(batch => right.push(batch));
+      const identity = changed.runtime.world, actors = changed.runtime.world.actors.map(actor => actor.id);
+      for (let tick = 0; tick < 1000; tick++) {
+        if (tick % 150 === 0 && tick < 900) {
+          const before = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world));
+          await changed.studio.handlers.applyInstalledInstrument(candidates[tick / 150]);
+          expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world))).to.equal(before);
+        }
+        control.runtime.world.step(tick * 16); changed.runtime.world.step(tick * 16);
+        if ((tick + 1) % 200 === 0) expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world))).to.equal(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(control.runtime.world)));
+      }
+      expect(right).to.deep.equal(left); expect(changed.runtime.world).to.equal(identity); expect(changed.restarts).to.have.length(0);
+      expect(changed.studio.getProject().procgen.lanes.every(lane => lane.mode === 'physical' && lane.patterns.length === 0)).to.equal(true);
+      expect(actors).to.have.length.greaterThan(0); const beforeUndo = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world));
+      await changed.studio.handlers.undo(); expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(changed.runtime.world))).to.equal(beforeUndo); expect(changed.restarts).to.have.length(0);
+    } finally { await control.studio.dispose().completion; await changed.studio.dispose().completion; control.runtime.world.dispose(); changed.runtime.world.dispose(); }
+  });
+  it('owns shared macro gestures while paused, commits one undo entry and never replaces the physical world', async () => {
+    const { candidates, descriptors } = await nativeSoundCandidates();
+    const f = setup({ physicalOnly: true, audio: createSilentPreparationAudio(), getInstrumentCatalog: async () => ({ descriptors }) });
+    try {
+      f.studio.bindRuntime(); await f.studio.handlers.applyInstalledInstrument(candidates[1]);
+      const lane = f.studio.getProject().procgen.lanes[0], macro = lane.instrumentRef.definition.macros[0], world = f.runtime.world;
+      const first = f.studio.handlers.beginMacroGesture(lane.id, macro.id, { momentary: true });
+      f.studio.handlers.previewMacroGesture(first, 0.8); f.studio.handlers.finishMacroGesture(first);
+      expect(f.studio.getProject().procgen.lanes[0]).to.equal(lane);
+      const second = f.studio.handlers.beginMacroGesture(lane.id, macro.id);
+      for (const value of [0.1, 0.9, 0.375]) f.studio.handlers.previewMacroGesture(second, value);
+      f.studio.handlers.finishMacroGesture(second); expect(f.studio.getProject().procgen.lanes[0].instrumentControls.macros[macro.id]).to.equal(0.375);
+      await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].instrumentControls).to.deep.equal(lane.instrumentControls);
+      expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0); expect(f.calls).to.have.length(0);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('warns about conflicting hardware programs without changing native sound or silently reassigning channels', () => {
+    const f = setup({ laneCount: 2 }); f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { channel: 7, externalProgram: 20 } });
+    f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { channel: 7, externalProgram: 60 } });
+    expect(f.statuses.some(message => message.includes('External program/bank/percussion mapping conflicts'))).to.equal(true);
+    expect(f.studio.getProject().procgen.lanes.map(lane => lane.channel)).to.deep.equal([7, 7]); expect(f.restarts).to.have.length(0); f.studio.dispose();
+  });
+  it('keeps sound aliases, hardware mapping and their Undo independent of world replacement', async () => {
+    const f = setup(); f.studio.bindRuntime(); const world = f.runtime.world, theme = f.studio.getProject().procgen.lanes[0].worldThemeId;
+    f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { externalProgram: 67, channel: 4, pan: 21 } });
+    for (const family of ['rock', 'snow', 'bubble', 'fire', 'dirt', 'pillar']) f.studio.dispatch({ type: 'procgen/palette', laneId: 'lane-1', family });
+    expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0); expect(f.studio.getLaneAssignments()).to.deep.equal([theme]);
+    expect(f.studio.getProject().procgen.lanes[0]).to.include({ family: 'pillar', worldThemeId: theme, externalProgram: 67, channel: 4, pan: 21 });
+    await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].family).to.equal('dirt'); expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0);
+    await f.studio.handlers.redo(); expect(f.studio.getProject().procgen.lanes[0].family).to.equal('pillar'); expect(f.restarts).to.have.length(0);
+    await f.studio.handlers.applyMatchingWorld('lane-1'); expect(f.restarts).to.have.length(1); expect(f.studio.getLaneAssignments()).to.deep.equal(['pillar']); f.studio.dispose();
+  });
   it('cancels an externally retired document source before its candidate can publish', async () => {
     const f = setup(); f.studio.bindRuntime(); const session = f.studio.capture(), previous = f.runtime, source = new AbortController();
     const release = f.holdRestart(), pending = f.studio.loadSession(session, null, { signal: source.signal });
@@ -282,17 +343,18 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.storageReceipts.at(-1).recovery.state).to.equal('unavailable');
     f.studio.dispose();
   });
-  it('coalesces large-project preference writes while edits stay in the canonical project', () => {
-    const timers = [], f = setup({ laneCount: 128, windowTimers: {
+  for (const laneCount of [8, 128]) it(`coalesces ${laneCount}-lane preference writes while edits stay in the canonical project`, async () => {
+    const timers = [], f = setup({ laneCount, backgroundJobs: { async compute(request) { return { value: JSON.stringify(await request.prepareInput()), release() { request.releasePreparedInput(); } }; } }, windowTimers: {
       setTimeout(callback) { timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     } });
+    f.studio.bindRuntime();
     const key = 'lemmings.procgen.workstation.v1', original = f.window.localStorage.getItem(key);
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
     expect(f.window.localStorage.getItem(key)).to.equal(original);
     expect(timers.filter(Boolean)).to.have.length(1);
-    timers[0]();
+    timers[0](); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     const durable = JSON.parse(f.window.localStorage.getItem(key));
     expect(durable.project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
     f.studio.dispose();
@@ -839,6 +901,34 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
     expect(JSON.parse(f.window.localStorage.getItem('lemmings.procgen.workstation.v1')).project.procgen.lanes[0].patterns[0].steps[0].note).to.equal(81);
     f.studio.dispose();
+  });
+
+  it('never promotes a rejected spacing draft during Save or Recovery', async () => {
+    const f = setup(); f.studio.bindRuntime(); f.failRestart(); const previous = f.runtime;
+    expect(await f.studio.handlers.rebuild({ hazardSpacing: 256 })).to.equal(false);
+    expect(f.runtime).to.equal(previous); expect(f.studio.state.hazardSpacing).to.equal(160);
+    f.studio.state.hazardSpacing = 512; // A stale legacy UI reference is not recipe authority.
+    const captured = f.studio.capture();
+    expect(captured.settings.hazardSpacing).to.equal(160); expect(f.legacy.settings.hazardSpacing).to.equal(160);
+    f.studio.dispose();
+  });
+  it('accepts spacing only at world commit and rejects a busy second draft', async () => {
+    const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart();
+    const pending = f.studio.handlers.rebuild({ hazardSpacing: 256 });
+    expect(f.studio.state.hazardSpacing).to.equal(160);
+    expect(await f.studio.handlers.rebuild({ hazardSpacing: 384 })).to.equal(false);
+    release(); expect(await pending).to.equal(true);
+    expect(f.studio.state.hazardSpacing).to.equal(256); expect(f.studio.capture().settings.hazardSpacing).to.equal(256);
+    f.studio.dispose();
+  });
+  it('retains each accepted sound Undo boundary after a failed terrain transaction', async () => {
+    const f = setup(); f.studio.bindRuntime(); const release = f.holdRestart(); f.failRestart();
+    const pending = f.studio.handlers.addLane();
+    for (const note of [72, 84]) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+    release(); expect(await pending).to.equal(false);
+    const note = () => f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note;
+    expect(note()).to.equal(84); await f.studio.handlers.undo(); expect(note()).to.equal(72);
+    await f.studio.handlers.undo(); expect(note()).to.equal(60); f.studio.dispose();
   });
 
   it('keeps concurrent musical edits when a candidate world fails', async () => {

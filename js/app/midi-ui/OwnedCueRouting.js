@@ -101,7 +101,8 @@ export function createOwnedCueRouting({ context, masterInput, resources, createE
           if (candidate.element.sinkId !== selected.deviceId) throw failure('The selected cue sink was not acknowledged.');
           if (disposed || generation !== epoch || context.state !== 'running') throw failure('Cue selection changed before output readiness.');
           await candidate.element.play();
-          const invalid = () => { if (current === candidate) invalidate('Cue output changed or stopped. Revalidate before prelisten.'); };
+          const acceptedRoute = candidate;
+          const invalid = () => { if (current === acceptedRoute) invalidate('Cue output changed or stopped. Revalidate before prelisten.'); };
           for (const type of ['error', 'pause', 'ended', 'sinkchange']) { candidate.element.addEventListener(type, invalid); candidate.listeners.push([type, invalid]); }
         } else candidate.destination = masterInput;
         if (disposed || generation !== epoch || context.state !== 'running') throw failure('Cue readiness belongs to a retired operation.');

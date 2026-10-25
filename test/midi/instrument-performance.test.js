@@ -50,6 +50,13 @@ describe('typed effective onset controls', () => {
     expect(() => validateInstrumentControls({ macros: { a: Infinity } })).to.throw('normalized');
     const live = macro('a', 'replace', 100, 1000); live.mode = 'continuous'; expect(() => compileInstrumentPerformance({ parameters: {}, macros: [live] }, schema)).to.throw();
   });
+  it('preserves explicitly authored bipolar/momentary semantics without rewriting legacy macro identities', () => {
+    const original = macro('a', 'replace', 100, 1000), legacy = validateInstrumentMacros([original], schema)[0];
+    expect(Object.hasOwn(legacy, 'bipolar')).to.equal(false); expect(Object.hasOwn(legacy, 'momentary')).to.equal(false);
+    const authored = validateInstrumentMacros([{ ...original, bipolar: true, momentary: true }], schema)[0];
+    expect(authored).to.include({ bipolar: true, momentary: true });
+    expect(() => validateInstrumentMacros([{ ...original, bipolar: 'yes' }], schema)).to.throw();
+  });
   it('changes actual native FM/envelope inputs at authored endpoints while preserving explicit onset semantics', async () => {
     const source = JSON.parse(await readFile(new URL('../../content/sounds/fm-forge.json', import.meta.url), 'utf8'));
     const targets = (await describeNativeInstrumentEngines([{ engineId: 'native-fm', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));

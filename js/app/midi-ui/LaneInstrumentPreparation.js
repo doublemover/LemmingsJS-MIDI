@@ -16,17 +16,22 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     (nextPending + unknown.size) * 2 * 1048576);
   const retirement = createProcgenRetirementScope(); let disposed = false, serial = 0, pumping = null;
   const report = (laneId, state, code = null) => { try { onState(Object.freeze({ laneId, state, code })); } catch { /* Views cannot publish instruments. */ } };
-  const prepare = async (laneId, raw, { signal: externalSignal } = {}) => {
+  const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || unknown.size || pending.size >= 2) throw failure('instrument-preparation-capacity', 'Lane instrument preparation is unavailable or busy.');
     if (typeof laneId !== 'string' || !laneId || laneId.length > 160) throw new TypeError('Invalid lane identity.');
-    reserveInputs(0, pending.size + 1);
     const reference = validateSoundContentReference(raw);
     if (!reference) throw failure('invalid-sound-reference', 'Lane preparation needs a pinned instrument definition.');
     const key = keyFor(reference);
     if (!routed.canAssign(key)) throw failure('instrument-retirement-capacity', 'Prior held voices still occupy renderer capacity.');
-    let complete;
-    const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, material: null, pin: routed.retain(key), committed: false,
+    if (!Number.isSafeInteger(serial + 1)) throw failure('instrument-identity-exhausted', 'Lane instrument preparation identity is exhausted.');
+    if (retainPrevious && typeof routed.retainAssignment !== 'function') throw failure('instrument-rollback-unavailable', 'This renderer cannot retain its previous lane assignment.');
+    reserveInputs(0, pending.size + 1);
+    let complete; const previousKey = observed.get(laneId), previousReference = observedReferences.get(laneId);
+    let previousAssignment, pin;
+    try { previousAssignment = retainPrevious ? routed.retainAssignment(laneId) : null; pin = routed.retain(key); }
+    catch (error) { previousAssignment?.release(); reserveInputs(); throw error; }
+    const operation = { id: ++serial, laneId, referenceKey: key, controller: new AbortController(), backend: null, material: null, pin, rollbackFailed: false, committed: false, accepted: false, assignmentReceipt: null,
       retired: false, preparing: true, retirement: null, nativeRetirement: null, completion: new Promise(resolve => { complete = resolve; }) };
     const signal = operation.controller.signal, cancel = () => operation.controller.abort(externalSignal.reason);
     const check = () => { signal.throwIfAborted(); if (disposed || laneRequests.get(laneId) !== operation) throw failure('stale-owner', 'Lane instrument preparation source changed.'); };
@@ -36,6 +41,8 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       externalSignal?.removeEventListener('abort', cancel); pending.delete(operation); if (laneRequests.get(laneId) === operation) laneRequests.delete(laneId);
       operation.retirementScope = createProcgenRetirementScope();
       operation.retirement = operation.retirementScope.retire([
+        { name: 'previous-assignment-rollback', run: () => { if (operation.committed && !operation.accepted && previousAssignment) { let result; try { result = previousAssignment.restore(operation.assignmentReceipt); } catch (error) { operation.rollbackFailed = true; throw error; } if (result.status === 'restored') { if (previousKey === undefined) observed.delete(laneId); else observed.set(laneId, previousKey); if (previousReference === undefined) observedReferences.delete(laneId); else observedReferences.set(laneId, previousReference); report(laneId, 'restored'); } return result; } } },
+        { name: 'previous-assignment-pin', run: () => { if (operation.rollbackFailed) throw failure('retirement-unknown', 'Previous renderer remains pinned after an unacknowledged rollback.'); return previousAssignment?.release(); } },
         { name: 'candidate-pin', run: () => operation.pin?.release() },
         { name: 'decoded-material', run: () => operation.material?.release() },
         { name: 'unpublished-renderer', run: () => { if (!operation.committed && !operation.pin) return operation.nativeRetirement || operation.backend?.dispose(); } }
@@ -79,10 +86,10 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       const { releaseSeconds, oneShotTailSeconds } = resolveOwnedArticulationPolicy(resolution.patch);
       return Object.freeze({ reference,
         commit() {
-          check(); if (operation.retired) throw failure('candidate-retired', 'Lane instrument candidate was retired.');
-          routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds }); operation.committed = true;
-          observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); release(); report(laneId, 'ready'); return reference;
-        }, release });
+          check(); if (operation.retired || operation.committed) throw failure('candidate-retired', 'Lane instrument candidate was retired or already committed.');
+          operation.assignmentReceipt = routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds, bodyId: resolution.patch.id, macroIds: (resolution.patch.macros || []).map(macro => macro.id) }); operation.committed = true;
+          observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); if (!retainPrevious) { operation.accepted = true; release(); report(laneId, 'ready'); } return reference;
+        }, accept() { check(); if (!operation.committed || operation.retired) throw failure('candidate-not-published', 'Only a live committed candidate can be accepted.'); operation.accepted = true; release(); report(laneId, 'ready'); return reference; }, release });
     } catch (error) { operation.preparing = false; const receipt = release(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } report(laneId, 'unavailable', error.code || 'preparation-failed'); throw error; }
   };
   const synchronize = lanes => {

@@ -57,12 +57,12 @@ describe('owned pure background computations', () => {
   it('rechecks document ownership before accepting a worker result and terminates the worker once', async () => {
     let current = true, pending, terminated = 0;
     class Worker {
-      postMessage(message) { pending = () => this.onmessage({ data: { ...message, type: 'computed', result: { value: {}, inputBytes: 1, nodes: 1 }, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') } }); }
+      postMessage(message) { if (message.type !== 'input-end') { queueMicrotask(() => this.onmessage({ data: { ...message, type: 'input-ack', sequence: message.sequence } })); return; } pending = () => this.onmessage({ data: { ...message, type: 'computed', result: { value: {}, inputBytes: 1, nodes: 1 }, executionIdentity: getActiveExecutionIdentity('browser-background-jobs') } }); }
       terminate() { terminated++; }
     }
     const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker });
     const computation = jobs.compute(specification({ isCurrent: () => current }));
-    while (!pending) await Promise.resolve(); current = false; pending();
+    while (!pending) await new Promise(resolve => setTimeout(resolve, 0)); current = false; pending();
     await rejects(computation, 'no longer belongs'); expect(terminated).to.equal(1); expect(admission.diagnostics().memory.accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
   });
   it('checks JSON depth, escaped output capacity, unsupported values and unchanged snapshot buffers', async () => {

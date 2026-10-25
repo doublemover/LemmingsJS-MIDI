@@ -17,6 +17,16 @@ const setup = (options = {}) => {
 };
 
 describe('Procgen workstation musical domain', function() {
+  it('migrates family-only lanes to independent sound, world, recipe and external mapping identities', () => {
+    const legacy = createProcgenLane(0, { family: 'dirt', role: 'bass' }), sound = resolveProcgenSound('dirt', 'bass');
+    expect(legacy).to.include({ worldThemeId: 'dirt', instrumentPatchId: sound.id, performanceRecipeId: sound.id, linkedThemePresetId: 'dirt', soundChangePolicy: 'new-notes-only', externalProgram: sound.program });
+    const run = setup({ lanes: [{ family: 'dirt', role: 'bass', externalProgram: 77, externalPercussion: false, channel: 3 }] });
+    run.edit({ type: 'procgen/palette', laneId: 'lane-1', family: 'fire', role: 'drums' });
+    expect(run.project.procgen.lanes[0]).to.include({ family: 'fire', role: 'drums', worldThemeId: 'dirt', linkedThemePresetId: 'fire', externalProgram: 77, externalPercussion: false, channel: 3 });
+    run.edit({ type: 'procgen/worldTheme', laneId: 'lane-1', worldThemeId: 'snow' }); expect(run.project.procgen.lanes[0]).to.include({ worldThemeId: 'snow', family: 'fire', externalProgram: 77 });
+    expect(() => run.edit({ type: 'procgen/worldTheme', laneId: 'lane-1' })).to.throw('explicit');
+    expect(sanitizeMidiProject(JSON.parse(JSON.stringify(run.project))).procgen.lanes[0]).to.include({ worldThemeId: 'snow', family: 'fire', externalProgram: 77, channel: 3 });
+  });
   it('reanchors a queued launch to the accepted meter without changing the current phrase origin', () => {
     const run = setup({ lanes: [{}] }); run.beat(0.25);
     run.edit({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 }); run.beat(0.5);
@@ -149,12 +159,12 @@ describe('Procgen workstation musical domain', function() {
     expect(after.patch).to.equal('dirt-bass');
   });
 
-  it('sanitizes invalid data, protects drum channels and keeps lane identifiers unique', function() {
+  it('sanitizes invalid data, preserves explicit hardware channels and keeps lane identifiers unique', function() {
     const run = setup({ seed: -1, lanes: [{ id: 'x', role: 'drums', channel: 2 }, { id: 'x', role: 'lead', channel: 10, patterns: [{ length: 999, rate: 0, steps: [{ probability: 7, repeats: 99 }] }] }] });
     expect(run.project.procgen.seed).to.equal(0);
     expect(run.project.procgen.lanes.map(lane => lane.id)).to.deep.equal(['x', 'x-copy']);
-    expect(run.project.procgen.lanes[0].channel).to.equal(10);
-    expect(run.project.procgen.lanes[1].channel).to.equal(2);
+    expect(run.project.procgen.lanes[0].channel).to.equal(2);
+    expect(run.project.procgen.lanes[1].channel).to.equal(10);
     expect(run.project.procgen.lanes[1].patterns[0].length).to.equal(64);
     expect(run.project.procgen.lanes[1].patterns[0].steps[0].probability).to.equal(1);
   });

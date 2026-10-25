@@ -17,6 +17,19 @@ describe('qualified physical support contact spans', () => {
     return { world, actor, batches, intents, engine };
   };
 
+  it('advances a real walking contact articulation only while completed support remains', () => {
+    const world = new ProcgenLaneWorld({ masks, assists: false, scoutsEvery: 0 }), actor = world.actors[0], batches = [], output = [];
+    world.actors = [actor]; world.baseGroundAt = (_x, y) => y >= 80 ? 1 : 0; actor.x = 40; actor.y = 79; actor.setAction(world.actions[State.WALKING]);
+    const graph = { version: 1, revision: 1, instruments: [{ id: 'scrape', sourceKind: 'MotionCommitted', pitchCents: 6000, velocity01: 0.5, role: 'texture', route: 'local',
+      articulation: { spacingPixels: 1, metric: 'endpoint-chord', lifetimeScope: 'contactSpan', phaseMode: 'contact-stroke', sustain: true } }] };
+    const engine = createCausalMusicEngine({ getGraph: () => graph }); world.soundEvents.onBatch.on(value => { batches.push(value); output.push(...engine.processBatch(value)); });
+    for (let tick = 0; tick < 4; tick++) world.step();
+    expect(batches.slice(1).flatMap(value => value.facts).filter(fact => fact.kind === 'MotionCommitted').every(fact => fact.physicalPayload.contactObserved)).to.equal(true);
+    expect(output.some(intent => intent.kind === 'begin')).to.equal(true); const before = output.filter(intent => intent.kind === 'begin').length;
+    world.hasGroundAt = () => false; world.step();
+    expect(output.filter(intent => intent.kind === 'begin')).to.have.length(before); expect(engine.snapshot().travel.entries).to.have.length(0); world.dispose();
+  });
+
   it('holds a resting damper without repeated attacks and releases on loss of support', () => {
     const { world, actor, batches, intents, engine } = setup();
     world.step(); world.step();

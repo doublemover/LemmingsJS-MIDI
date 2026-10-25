@@ -65,8 +65,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       frame = windowRef.requestAnimationFrame(update);
     };
     const visibilityChanged = () => {
-      lastTime = null; renderer.camera.resetPresentationClock(); renderer.actorEffects?.setVisible(!windowRef.document.hidden);
-      if (!clockDriven && windowRef.document.hidden) previewRouter?.resetClock?.({ preserveGamePhrases: true });
+      lastTime = null; clockTime = null; elapsed = 0; renderer.camera.resetPresentationClock(); renderer.actorEffects?.setVisible(!windowRef.document.hidden);
+      if (windowRef.document.hidden) { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); }
     };
     constructionVisibility = visibilityChanged;
     windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
@@ -77,6 +77,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       setClockDriven(value) { clockDriven = !!value; clockTime = null; elapsed = 0; },
       pump(time) {
         if (!clockDriven || !running) return;
+        if (windowRef.document.hidden) { clockTime = null; elapsed = 0; return; }
         if (!paused && clockTime != null) elapsed = advanceProcgenClock(elapsed, Math.max(0, time - clockTime), world.timer.speedFactor,
           () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
         clockTime = time; reportActiveCount();

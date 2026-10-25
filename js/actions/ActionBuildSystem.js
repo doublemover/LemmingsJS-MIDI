@@ -37,7 +37,7 @@ class ActionBuildSystem extends ActionBaseSystem {
         if (observing && changed) { changedAppearanceCells++; if (!wasSolid) changedSolidCells++; }
       }
       recordPhysicalWork(level, lem, { operationKind: 'build', phase: 'brick', cycleOrdinal: lem.state,
-        attemptedCells, changedSolidCells, changedAppearanceCells, revisionBefore, targetX: startX, targetY: brickY });
+        attemptedCells, changedSolidCells, changedAppearanceCells, warning: lem.state >= 9 ? 'last-bricks' : null, revisionBefore, targetX: startX, targetY: brickY });
       const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.BUILDER_STEP,

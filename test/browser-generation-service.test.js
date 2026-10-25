@@ -14,7 +14,7 @@ describe('complete immutable browser installation', () => {
     try { return new globalThis.Response(await fs.readFile(path.join(fixture.root, 'dist/browser', relative))); }
     catch { return new globalThis.Response('missing', { status: 404 }); }
   };
-  const owner = (build, extra = {}) => createBrowserGenerationService({ scopeUrl: scope, buildId: build.buildId, cacheStorage: caches, fetchFile: network, ...extra });
+  const owner = (build, extra = {}) => createBrowserGenerationService({ scopeUrl: scope, buildId: build.buildId, cacheStorage: caches, fetchFile: network, getDurableBuildPins: async () => ({ status: 'complete', buildIds: [] }), retentionLocks: { request: (_name, _options, operation) => operation({}) }, ...extra });
   const request = (relative, mode) => ({ url: new URL(relative, scope).href, method: 'GET', mode });
   it('publishes completeness last, restores after worker restart and resolves each offline route exactly', async () => {
     const build = await fixture.build(), service = owner(build), first = service.install();
@@ -58,6 +58,19 @@ describe('complete immutable browser installation', () => {
     expect((await next.responseFor(request(a.buildId + '/js/entry.js'))).status).to.equal(200);
     clients = []; await next.trim(); expect((await caches.keys()).some(name => name.includes(a.buildId))).to.equal(false);
     expect((await next.responseFor(request(a.buildId + '/js/entry.js'))).status).to.equal(503);
+  });
+  it('retains durable recovery generations without clients and refuses uncertain or unlocked pruning', async () => {
+    const a = await fixture.build(); await owner(a).install();
+    await fs.writeFile(path.join(fixture.root, 'classic/MAIN.DAT'), 'build B'); const b = await fixture.build();
+    let pins = { status: 'complete', buildIds: [a.buildId] };
+    const next = owner(b, { getDurableBuildPins: async () => pins }); await next.install();
+    expect((await next.trim()).retainedBuildIds).to.include(a.buildId);
+    pins = { status: 'unknown', buildIds: [], reason: 'legacy-recovery-pin-schema' };
+    expect((await next.trim()).status).to.equal('deferred');
+    expect((await owner(b, { retentionLocks: null }).trim()).reason).to.equal('retention-lock-unavailable');
+    expect((await caches.keys()).some(name => name.includes(a.buildId))).to.equal(true);
+    pins = { status: 'complete', buildIds: [] }; await next.trim();
+    expect((await caches.keys()).some(name => name.includes(a.buildId))).to.equal(false);
   });
   it('does not call a restarted cache complete if a declared dependency was removed or modified', async () => {
     const build = await fixture.build(); await owner(build).install();

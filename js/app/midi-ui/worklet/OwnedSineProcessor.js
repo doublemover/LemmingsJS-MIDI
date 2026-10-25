@@ -4,7 +4,7 @@ import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState }
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
 import { SINE_LAYOUT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
-const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6;
+const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6, MIX = 7;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
 const DISPLAY_PROTOCOL = 1, DISPLAY_WIDTH = 20, DISPLAY_VOICES = 32, DISPLAY_STATE_WIDTH = 16;
 
@@ -19,6 +19,7 @@ class OwnedSineKernel {
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
+    this.mix = new Float64Array(MAX_VOICES * 6);
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
@@ -118,7 +119,7 @@ class OwnedSineKernel {
     for (let item = 0; item < count; item++) {
       const source = item * this.width, frame = packet[source + 1], sequence = packet[source + 2], opcode = packet[source + 3];
       let valid = Number.isSafeInteger(frame) && frame >= 0 && frame - this.lastFrame <= this.sampleRate * 10 &&
-        Number.isSafeInteger(sequence) && sequence > 0 && Number.isInteger(opcode) && opcode >= BEGIN && opcode <= LEASE;
+        Number.isSafeInteger(sequence) && sequence > 0 && Number.isInteger(opcode) && opcode >= BEGIN && opcode <= MIX;
       for (let field = 0; valid && field < this.width; field++) if (!Number.isFinite(packet[source + field])) valid = false;
       if (!valid) { this.counters[0]++; this.receipt(REJECTED, sequence, packet[source + 4], packet[source + 5], this.lastFrame, 1); continue; }
       if (opcode === PANIC) { this.panicPending = true; this.receipt(SCHEDULED, sequence, -1, 0, frame); continue; }
@@ -172,7 +173,7 @@ class OwnedSineKernel {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
       if (this.active[slot] || queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || queue[7] < 0 || queue[7] > 1 ||
           queue[8] < 0 || queue[8] > 1 || queue[9] < -1 || queue[9] > 1 || queue[10] < 0 || queue[11] < 0 ||
-          queue[12] < 0 || queue[12] > 1 || queue[13] < 1 || queue[16] <= frame) {
+          queue[12] < 0 || queue[12] > 1 || queue[13] < 1 || queue[14] < 0 || queue[14] > 3 || queue[15] < -1 || queue[15] > 1 || queue[16] <= frame) {
         this.receipt(REJECTED, sequence, slot, token, frame, 5); return;
       }
       if (this.source) { const admission = this.source.begin(slot, queue[6], queue, frame);
@@ -184,13 +185,14 @@ class OwnedSineKernel {
       voices[at + 8] = queue[8]; voices[at + 9] = queue[8]; voices[at + 10] = queue[9]; voices[at + 11] = queue[9];
       voices[at + 12] = Math.round(queue[10]); voices[at + 13] = Math.round(queue[11]); voices[at + 14] = queue[12];
       voices[at + 15] = frame; voices[at + 16] = queue[16]; voices[at + 17] = Math.max(1, Math.round(queue[13]));
+      const mix = slot * 6; this.mix.fill(0, mix, mix + 6); this.mix[mix] = this.mix[mix + 1] = queue[14] === 0 ? 1 : queue[14] - 1; this.mix[mix + 3] = this.mix[mix + 4] = queue[15];
       voices[at + 22] = sequence; this.active[slot] = 1;
     } else if (!this.active[slot] || voices[at] !== epoch || voices[at + 2] !== token) {
       this.counters[3]++; this.receipt(REJECTED, sequence, slot, token, frame, 6); return;
     } else if (opcode === UPDATE) {
       if (target < frame) { this.counters[2]++; this.receipt(REJECTED, sequence, slot, token, frame, 4); return; }
       const mask = queue[15];
-      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate ||
+      if (!Number.isInteger(mask) || mask < 0 || mask > (this.source?.maxUpdateMask ?? 7) || queue[14] < 0 || queue[14] > this.sampleRate * 60 ||
           (mask & 1) && (queue[6] <= 0 || queue[6] >= this.sampleRate / 2 || this.source && !this.source.validFrequency(slot, queue[6])) ||
           (mask & 2) && (queue[8] < 0 || queue[8] > 1) || (mask & 4) && (queue[9] < -1 || queue[9] > 1) || this.source && !this.source.validUpdate(slot, mask, queue)) {
         this.receipt(REJECTED, sequence, slot, token, frame, 1); return;
@@ -199,8 +201,18 @@ class OwnedSineKernel {
       if (mask & 2) { voices[at + 9] = queue[8]; voices[at + 24] = Math.max(1, Math.round(queue[14])); }
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
       this.source?.applyUpdate(slot, mask, queue);
+    } else if (opcode === MIX) {
+      if (queue[7] < 0 || queue[7] > 2 || queue[9] < -1 || queue[9] > 1 || queue[14] < 0 || queue[14] > this.sampleRate) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
+      const mix = slot * 6; this.mix[mix + 1] = queue[7]; this.mix[mix + 4] = queue[9]; this.mix[mix + 2] = this.mix[mix + 5] = Math.max(1, Math.round(queue[14]));
     } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
-    else if (opcode === LEASE) voices[at + 16] = Math.max(voices[at + 16], queue[16]);
+    else if (opcode === LEASE) {
+      // The render boundary, not producer time, owns the irreversible release cutoff.
+      if (voices[at + 18] > 0 || frame >= voices[at + 16] - voices[at + 17]) {
+        this.receipt(REJECTED, sequence, slot, token, frame, 11); return;
+      }
+      if (queue[16] <= voices[at + 16]) { this.receipt(REJECTED, sequence, slot, token, frame, 12); return; }
+      voices[at + 16] = queue[16];
+    }
     voices[at + 26] = frame; voices[at + 27] = sequence;
     this.receipt(APPLIED, sequence, slot, token, frame);
   }
@@ -244,6 +256,8 @@ class OwnedSineKernel {
         if (voices[at + 23] > 0) { voices[at + 5] += (voices[at + 6] - voices[at + 5]) / voices[at + 23]; voices[at + 23]--; }
         if (voices[at + 24] > 0) { voices[at + 8] += (voices[at + 9] - voices[at + 8]) / voices[at + 24]; voices[at + 24]--; }
         if (voices[at + 25] > 0) { voices[at + 10] += (voices[at + 11] - voices[at + 10]) / voices[at + 25]; voices[at + 25]--; }
+        const mix = slot * 6;
+        for (let offset = 0; offset <= 3; offset += 3) if (this.mix[mix + offset + 2] > 0) { this.mix[mix + offset] += (this.mix[mix + offset + 1] - this.mix[mix + offset]) / this.mix[mix + offset + 2]; this.mix[mix + offset + 2]--; }
         const phase = voices[at + 3], sourceSample = this.source ? this.source.sample(slot, voices[at + 5], frame) : Math.sin(phase),
           sample = sourceSample * voices[at + 4] * voices[at + 7] * voices[at + 8], stereo = this.source?.stereo === true;
         let voiceLeft, voiceRight;
@@ -264,6 +278,8 @@ class OwnedSineKernel {
           if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 4);
           this.active[slot] = 0; this.source?.retire?.(slot); this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
         }
+        voiceLeft *= this.mix[mix] * (this.mix[mix + 3] > 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
+        voiceRight *= this.mix[mix] * (this.mix[mix + 3] < 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
         sumLeft += voiceLeft; sumRight += voiceRight;
         if (stems && stems.routes[slot] >= 0) { const stem = stems.routes[slot] * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
       }
@@ -329,4 +345,4 @@ if (typeof globalThis.registerProcessor === 'function') globalThis.registerProce
 
 export { OwnedSineKernel, OwnedSineProcessor, PROTOCOL, WIDTH, CAPACITY, MAX_VOICES, RECEIPT_WIDTH,
   DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES, DISPLAY_STATE_WIDTH,
-  BEGIN, UPDATE, END, CANCEL, PANIC, LEASE, SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED };
+  BEGIN, UPDATE, END, CANCEL, PANIC, LEASE, MIX, SCHEDULED, APPLIED, REJECTED, ENDED, CANCELLED, FAULTED };

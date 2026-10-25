@@ -31,6 +31,38 @@ const fixture = (options = {}) => {
 };
 
 describe('ProcGen display resource lifecycle', () => {
+  it('admits both image buffers until replacement drops old image and pixel aliases', () => {
+    const budget = createResourceBudget({ limitBytes: 8192, costFactors: { other: 1 } });
+    const resources = new ProcgenRenderResources({}, { budgetBytes: 8192, budgetAdapter: budget }); let current = null, samples = [];
+    const context = { createImageData(width, height) { samples.push([resources.getStats().estimatedBytes, budget.diagnostics().residentBytes]); return { data: new Uint8ClampedArray(width * height * 4) }; } };
+    resources.replaceImage(context, 40, 20, {}, value => { current = value; }); const old = current;
+    resources.replaceImage(context, 20, 40, current.key, value => { expect(resources.getStats().estimatedBytes).to.equal(6400); current = value; });
+    expect(samples).to.deep.equal([[3200, 3200], [6400, 6400]]); expect(current.image).not.to.equal(old.image);
+    expect(resources.getStats()).to.include({ estimatedBytes: 3200, peakEstimatedBytes: 6400 }); resources.dispose();
+  });
+  it('refuses an unadmitted replacement before allocation and preserves the old owner on allocation failure', () => {
+    const resources = new ProcgenRenderResources({}, { budgetBytes: 4096 }); let current, calls = 0;
+    const context = { createImageData(width, height) { calls++; return { data: new Uint8ClampedArray(width * height * 4) }; } };
+    resources.replaceImage(context, 40, 20, {}, value => { current = value; }); const old = current;
+    expect(() => resources.replaceImage(context, 20, 40, current.key, value => { current = value; })).to.throw('budget');
+    expect(calls).to.equal(1); expect(current).to.equal(old); expect(resources.getStats().estimatedBytes).to.equal(3200);
+    expect(() => resources.replaceImage({ createImageData() { throw new Error('allocation'); } }, 1, 1, current.key, value => { current = value; })).to.throw('allocation');
+    expect(current).to.equal(old); expect(resources.getStats().estimatedBytes).to.equal(3200); resources.dispose();
+  });
+  it('shrinks opposite-aspect canvas dimensions before growing with every setter already admitted', () => {
+    let width = 0, height = 0; const assignments = [], resources = new ProcgenRenderResources({}, { budgetBytes: 4096 });
+    const canvas = { getContext() {}, get width() { return width; }, set width(value) { width = value; assignments.push(width * height * 4); expect(width * height * 4).to.be.at.most(resources.getStats().estimatedBytes); },
+      get height() { return height; }, set height(value) { height = value; assignments.push(width * height * 4); expect(width * height * 4).to.be.at.most(resources.getStats().estimatedBytes); } };
+    resources.resize(canvas, 16, 48); resources.resize(canvas, 48, 16);
+    expect(Math.max(...assignments)).to.equal(3072); resources.dispose();
+  });
+  it('owns requested surface dimensions without clearing a budget-scaled canvas on a repeated layout', () => {
+    const { renderer, canvas } = fixture({ renderBudget: { budgetBytes: 512 * 1024, cacheBytes: 128 * 1024 } });
+    renderer.resize({ width: 1200, height: 800 }); const managed = [canvas.width, canvas.height];
+    expect(managed[0]).to.be.lessThan(1200); expect(renderer.resize({ width: 1200, height: 800 })).to.equal(false);
+    expect([canvas.width, canvas.height]).to.deep.equal(managed); renderer.dispose();
+  });
+
   it('contains null contexts in every initial surface and retires even before a first frame', () => {
     for (let index = 0; index < 4; index++) {
       const options = { nullContext: index }, { renderer, canvases } = fixture(options);
@@ -187,5 +219,17 @@ describe('ProcGen display resource lifecycle', () => {
     world._musicCompletedTick = world.tickIndex; world.tickIndex++; world._stepping = true;
     expect(renderer.render()).to.equal(false); expect(renderer.lastFrameKey).to.equal(frame); expect(renderer.resources.allocations).to.equal(allocations);
     world._musicCompletedTick = world.tickIndex; expect(renderer.render()).to.equal(true); renderer.dispose();
+  });
+});
+
+describe('incremental shared render-cache pressure', () => {
+  it('reclaims only the cold accounted deficit and retains active canvases', () => {
+    const { canvas } = fixture(), budget = createResourceBudget({ limitBytes: 16384 }), resources = new ProcgenRenderResources(canvas.ownerDocument, { budgetAdapter: budget });
+    const cold = [resources.canvas(), resources.canvas(), resources.canvas()], active = resources.canvas();
+    for (const value of cold) resources.resize(value, 8, 8, { cache: true }); resources.resize(active, 8, 8);
+    const before = budget.diagnostics().accountedBytes, receipt = resources.reclaim(1);
+    expect(receipt).to.include({ attempted: 1, reclaimedBytes: 384, accounting: 'shared-accounted' });
+    expect(resources.entries.has(cold[0])).to.equal(false); expect(resources.entries.has(cold[1])).to.equal(true); expect(resources.entries.has(active)).to.equal(true);
+    expect(budget.diagnostics().accountedBytes).to.equal(before - 384); resources.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 });

@@ -71,13 +71,17 @@ class ProcgenCctv {
       if (!actors) { actors = []; actorsByLane.set(lane, actors); }
       actors.push(actor);
     };
-    if (this.renderer.actorVisibility) {
-      for (const lane of selected) for (const actor of this.renderer.actorVisibility.semanticActors(lane)) visit(actor);
-    } else {
-      for (const actor of world.actors) visit(actor);
-    }
-    const ranks = new Map(ranked.map((lane, index) => [lane, index + 1]));
-    for (const lane of this.slots) this.refresh(lane, leaders.get(lane), actorsByLane.get(lane) || [], ranks.get(lane));
+    const lease = this.renderer.actorVisibility?.acquireSnapshot();
+    if (this.renderer.actorVisibility && (!lease || !this.renderer.actorVisibility.isCurrent())) { lease?.release(); return; }
+    try {
+      if (lease) {
+        for (const lane of selected) for (const actor of lease.frame.semanticLanes[lane] || []) visit(actor);
+      } else {
+        for (const actor of world.actors) visit(actor);
+      }
+      const ranks = new Map(ranked.map((lane, index) => [lane, index + 1]));
+      for (const lane of this.slots) this.refresh(lane, leaders.get(lane), actorsByLane.get(lane) || [], ranks.get(lane));
+    } finally { lease?.release(); }
     for (const lane of this.views.keys()) if (!selected.has(lane)) this.releaseView(lane);
     this.width = width; this.height = height; this.lastAppearance = world.sprites?.activePreference; this.lastSprites = world.sprites; this.lastUpdateMs = now; this.lastStateKey = key;
     this.renderKey = key; this.refreshes++; this.lastDirectorRevision = this.director.revision;
@@ -107,7 +111,7 @@ class ProcgenCctv {
     const height = Math.max(32, Math.min(64, Math.round(width * imageHeight / imageWidth)));
     if (!view.image || view.buffer.width !== width || view.buffer.height !== height) {
       for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) r.resources.resize(canvas, width, height);
-      view.image = r.resources.image(view.terrainContext, width, height, view.imageKey); view.pixels = new Uint32Array(view.image.data.buffer); view.lastTerrainKey = '';
+      r.resources.replaceImage(view.terrainContext, width, height, view.imageKey, ({ image, pixels, key }) => { view.image = image; view.pixels = pixels; view.imageKey = key; }); view.lastTerrainKey = '';
     }
     view.viewWidth = width; view.viewHeight = height;
     view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));
@@ -117,9 +121,9 @@ class ProcgenCctv {
     if (terrainKey !== view.lastTerrainKey) { view._terrainPixels(width, height, geometry !== view.lastGeometryKey); view.lastTerrainKey = terrainKey; view.lastGeometryKey = geometry; }
     view.bufferContext.imageSmoothingEnabled = false; view.bufferContext.drawImage(view.terrainBuffer, 0, 0); view._drawObjects();
     let drawn = 0;
-    if (leader) { leader.render(view); drawn++; }
-    for (const actor of actors) if (drawn < 64 && actor !== leader && actor.x >= view.originX - 24 && actor.x <= view.originX + width + 24) { actor.render(view); drawn++; }
-    view.leaderId = leader?.id ?? null; view.actionLabel = leader?.action?.constructor?.name?.replace(/^Action|System$/g, '').toUpperCase() || ''; view.rank = rank; view.distance = Math.round(progress(world, lane)); view.drawn = drawn;
+    if (leader) { const live = r.actorVisibility?.renderActor(leader.id) || (!r.actorVisibility ? leader : null); if (live) { live.render(view); drawn++; } }
+    for (const actor of actors) if (drawn < 64 && actor !== leader && actor.x >= view.originX - 24 && actor.x <= view.originX + width + 24) { const live = r.actorVisibility?.renderActor(actor.id) || (!r.actorVisibility ? actor : null); if (live) { live.render(view); drawn++; } }
+    view.leaderId = leader?.id ?? null; view.actionLabel = leader?.actionName?.toUpperCase() || leader?.action?.constructor?.name?.replace(/^Action|System$/g, '').toUpperCase() || ''; view.rank = rank; view.distance = Math.round(progress(world, lane)); view.drawn = drawn;
   }
   draw(context, dpr) {
     const r = this.renderer;

@@ -9,7 +9,7 @@ const LOCAL_AUDIO_ENTRIES = Object.freeze([
   'js/app/midi-ui/browserNotePreview.js', 'js/app/midi-ui/nativeOscillatorBackend.js',
   'js/app/midi-ui/TimedControlTimeline.js', 'js/app/midi-ui/SmoothedAudioParameter.js',
   'js/app/midi-ui/AudioObservationLeases.js', 'js/midi/scheduler/LocalAudioVoiceBudget.js',
-  'js/app/midi-ui/AudioResourceLeases.js',
+  'js/app/midi-ui/AudioResourceLeases.js', 'js/app/midi-ui/PcmEvidence.js',
   'js/app/midi-ui/AudioDisplayTelemetry.js',
   'js/app/midi-ui/AudioAssetRef.js', 'js/app/midi-ui/AudioAssetLoader.js',
   'js/app/midi-ui/sampleInstrumentBackend.js',

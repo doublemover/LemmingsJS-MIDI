@@ -6,6 +6,16 @@ const parameter = () => ({ events: [], setValueAtTime(value, time) { this.events
   cancelScheduledValues(time) { this.events = this.events.filter(event => event.time < time); } });
 
 describe('Smoothed audio parameters', () => {
+  it('retains independent authored per-event slew durations across shuffled future insertion', () => {
+    const make = reverse => { const param = parameter(), curve = createSmoothedAudioParameter({ param, initialValue: 0, startTime: 0 });
+      const changes = [[1, 1, 0, 2], [0, 2, 0, 0.5]]; for (const change of reverse ? changes.reverse() : changes) expect(curve.insert(...change)).to.equal(true);
+      return curve; };
+    const first = make(false), second = make(true);
+    for (const time of [0, 1, 1.5, 2, 2.25, 2.5, 3]) expect(first.valueAt(time)).to.equal(second.valueAt(time));
+    expect(first.valueAt(1.5)).to.equal(0.25); expect(first.valueAt(2.25)).to.equal(0.25);
+    expect(first.insert(1, 4, 0, NaN)).to.equal(false);
+  });
+
   it('produces the same future automation for chronological and shuffled submission', () => {
     const render = reverse => {
       const param = parameter(), curve = createSmoothedAudioParameter({ param, initialValue: 1, startTime: 0 });

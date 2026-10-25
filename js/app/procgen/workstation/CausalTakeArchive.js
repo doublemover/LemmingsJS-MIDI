@@ -158,7 +158,7 @@ const inspectCausalTakeArchive = async (source, { maxBytes = MAX_ARCHIVE_BYTES, 
   };
   for await (const line of readOwnedNdjsonLines(source, { maxBytes, maxLineBytes: Math.min(maxBytes, MAX_ARCHIVE_LINE_BYTES), resourceBudget, signal })) {
     if (ended) throw new Error('Causal archive has data after its footer.');
-    const peak = line.byteLength * 8 + 1048576;
+    const peak = line.byteLength * 8 + Math.min(4000000, Math.ceil(line.byteLength / 2) + 1) * 32 + 1048576;
     if (line.byteLength > 64 * 1048576 || peak > 512 * 1048576) throw new Error('Causal archive entry exceeds shared parsing admission.');
     const lease = await jobs.compute({ kind: 'inspect-causal-archive-entry', ownerId: 'causal-archive-inspect', ownerEpoch: 0,
       sourceRevision: 'archive-line-' + line.totalBytes, inputBytes: line.byteLength, estimatedPeakBytes: Math.max(4096, peak),

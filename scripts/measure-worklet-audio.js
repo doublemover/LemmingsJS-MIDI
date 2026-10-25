@@ -1,3 +1,4 @@
+import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -16,6 +17,7 @@ try {
   server = await startAudioEvidenceServer(root); await page.goto(server.origin);
   const evidence = await page.evaluate(async rates => {
     const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js');
+    const { admitPcmBuffer, measurePcmWindow, comparePcmChannels } = await import('/js/app/midi-ui/PcmEvidence.js');
     const reports = [];
     const run = async (sampleRate, reverse = false, crowd = 2, telemetry = false) => {
       const raw = new globalThis.OfflineAudioContext(6, Math.ceil(sampleRate * 0.7), sampleRate);
@@ -82,16 +84,10 @@ try {
       const buffer = await rendering;
       // Drain already queued port messages before collecting render receipts.
       await new Promise(resolve => setTimeout(resolve, 0));
-      const samples = Array.from({ length: 6 }, (_, index) => buffer.getChannelData(index));
-      const measure = (channel, from, to) => {
-        let square = 0, peak = 0, nonfinite = 0, count = 0;
-        for (let index = Math.ceil(from * sampleRate); index < Math.floor(to * sampleRate); index++) {
-          const value = samples[channel][index]; if (!Number.isFinite(value)) nonfinite++; else { square += value * value; peak = Math.max(peak, Math.abs(value)); } count++;
-        }
-        return { peak, rms: Math.sqrt(square / count), nonfinite };
-      };
+      const samples = admitPcmBuffer(buffer, 6);
+      const measure = (channel, from, to) => measurePcmWindow([samples[channel]], sampleRate, from, to);
       const diagnostics = [A.renderDiagnostics({ includeTraces: true }), B.renderDiagnostics({ includeTraces: true })];
-      const report = { sampleRate: raw.sampleRate, crowd, telemetry, displaySamples: displaySamples.length, displayErrors,
+      const report = { comparisonStatus: { permutation: 'not-applicable', telemetry: 'not-applicable' }, requiredPcm: { channels: 6, frames: buffer.length, scope: 'all-retained-channels' }, sampleRate: raw.sampleRate, crowd, telemetry, displaySamples: displaySamples.length, displayErrors,
         displayOwners: [...new Set(displaySamples.map(sample => sample.owner))],
         accepted: receipts.filter(receipt => receipt.status === 'accepted').length, expected: receipts.length,
         final: measure(0, 0, 0.7), liveAfterCueStop: measure(2, 0.35, 0.45), cueAfterStop: measure(4, 0.35, 0.45),
@@ -103,20 +99,21 @@ try {
     };
     for (const rate of rates) {
       const chronological = await run(rate), shuffled = await run(rate, true);
-      let permutationError = 0;
-      for (let channel = 0; channel < 6; channel++) for (let frame = 0; frame < chronological.samples[channel].length; frame++)
-        permutationError = Math.max(permutationError, Math.abs(chronological.samples[channel][frame] - shuffled.samples[channel][frame]));
-      reports.push({ ...chronological.report, permutationError });
-      const observed = await run(rate, false, 2, true); let telemetryPcmError = 0;
-      for (let channel = 0; channel < 6; channel++) for (let frame = 0; frame < chronological.samples[channel].length; frame++)
-        telemetryPcmError = Math.max(telemetryPcmError, Math.abs(chronological.samples[channel][frame] - observed.samples[channel][frame]));
-      reports.push({ ...observed.report, telemetryPcmError });
+      const permutationError = comparePcmChannels(chronological.samples, shuffled.samples);
+      reports.push({ ...chronological.report, comparisonStatus: { permutation: 'measured', telemetry: 'not-applicable' }, permutationError });
+      const observed = await run(rate, false, 2, true), telemetryPcmError = comparePcmChannels(chronological.samples, observed.samples);
+      reports.push({ ...observed.report, comparisonStatus: { permutation: 'not-applicable', telemetry: 'measured' }, telemetryPcmError });
       for (const crowd of [16, 32, 64]) reports.push((await run(rate, false, crowd)).report);
       reports.push((await run(rate, false, 64, true)).report);
     }
     return { engine: 'worklet-sine@1', scope: 'digital-offline', reports,
       evidence: { renderKernelReceipts: true, realtimeDeadline: 'not-run', listened: 'not-run', physicalLoopback: 'not-run' } };
   }, rates);
+  for (const report of evidence.reports) {
+    admitPcmMetrics(report, ['final.rms', 'final.peak', 'final.frames', 'liveAfterCueStop.rms', 'cueAfterStop.peak', 'postPanic.peak']);
+    if (report.comparisonStatus.permutation === 'measured') admitPcmMetrics(report, ['permutationError']);
+    if (report.comparisonStatus.telemetry === 'measured') admitPcmMetrics(report, ['telemetryPcmError']);
+  }
   evidence.environment = environment; evidence.errors = errors;
   evidence.sourceHashes = Object.fromEntries(await Promise.all(LOCAL_AUDIO_SOURCES.map(async file =>
     [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));

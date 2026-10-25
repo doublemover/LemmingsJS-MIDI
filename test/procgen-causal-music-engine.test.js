@@ -14,6 +14,20 @@ const batch = (tick, facts, generation = 1, completeness = { status: 'complete',
 });
 
 describe('causal musical intent engine', () => {
+  it('preserves unchanged instruments, travel phase and voice identity across unrelated mapping edits', () => {
+    let current = graph([instrument('travel', 'MotionCommitted', { articulation: { spacingPixels: 10, sustain: true, lifetimeScope: 'actorJourney' } }), instrument('other', 'TerrainWorkCommitted')]);
+    const engine = createCausalMusicEngine({ getGraph: () => current });
+    const motion = (from, to) => ({ kind: 'MotionCommitted', actorId: 7, laneId: 0, positionBefore: { x: from, y: 0 }, positionAfter: { x: to, y: 0 } });
+    const first = engine.processBatch(batch(1, [motion(0, 6)]))[0];
+    current = { ...current, revision: 2, instruments: current.instruments.map(item => item.id === 'other' ? { ...item, pitchCents: 6300 } : item) };
+    const next = engine.processBatch(batch(2, [motion(6, 11)]));
+    expect(next.some(intent => intent.terminationReason === 'mapping-changed')).to.equal(false);
+    expect(next.find(intent => intent.kind === 'update').voiceId).to.equal(first.voiceId);
+    expect(next.filter(intent => intent.kind === 'begin')).to.have.length(1);
+    const restored = createCausalMusicEngine({ getGraph: () => current }); restored.restore(engine.snapshot());
+    expect(restored.processBatch(batch(3, [motion(11, 12)]))).to.deep.equal(engine.processBatch(batch(3, [motion(11, 12)])));
+  });
+
   it('captures authored sample gesture and kit tags without adding physical or musical onsets', () => {
     const current = graph([instrument('mapped-contact', 'TerrainWorkCommitted', { sampleGesture: 'brush', sampleKitId: 'tactile-kit' })]);
     const engine = createCausalMusicEngine({ getGraph: () => current });
@@ -31,7 +45,7 @@ describe('causal musical intent engine', () => {
     expect(ended.map(intent => intent.kind)).to.deep.equal(['end']); expect(ended[0].terminationReason).to.equal('physical-control-budget');
     expect(engine.diagnostics()).to.include({ activeVoices: 0, suppressedVoices: 1 }); expect(engine.processBatch(batch(3, [motion(3)]))).to.have.length(0);
     const restored = create(2048); restored.restore(engine.snapshot()); expect(restored.processBatch(batch(4, [motion(4)]))).to.have.length(0);
-    current = { ...current, revision: 2 }; const revised = restored.processBatch(batch(5, [motion(5)]));
+    current = { ...current, revision: 2, instruments: current.instruments.map(value => ({ ...value, pitchCents: 6100 })) }; const revised = restored.processBatch(batch(5, [motion(5)]));
     expect(revised.filter(intent => intent.kind === 'begin')).to.have.length(1); expect(revised.find(intent => intent.kind === 'begin').voiceId).not.to.equal(begin.voiceId);
     restored.processBatch(batch(6, [{ kind: 'ActorTerminated', actorId: 7, laneId: 0 }])); expect(restored.diagnostics()).to.include({ activeVoices: 0, suppressedVoices: 0 });
   });
@@ -139,8 +153,10 @@ describe('causal musical intent engine', () => {
     const incomplete = engine.processBatch(batch(2, [{ kind: 'ActionEntered', actorId: 2, action: 'blocking', actionInstanceId: '2:action:1' }], 1, { status: 'incomplete', dropped: 3 }));
     expect(incomplete.map(intent => intent.kind)).to.deep.equal(['end']);
     expect(incomplete[0].terminationReason).to.equal('incomplete-source');
-    engine.processBatch(batch(3, [{ kind: 'ActionEntered', actorId: 1, action: 'blocking', actionInstanceId: '1:action:2' }]));
-    const boundary = engine.processBatch(batch(4, [], 2));
+    expect(engine.processBatch(batch(3, [{ kind: 'ActionEntered', actorId: 1, action: 'blocking', actionInstanceId: '1:action:2' }]))).to.have.length(0);
+    expect(engine.diagnostics().recoveryRequired).to.equal(true); engine.rearm({ discardUnknownHeldState: true });
+    engine.processBatch(batch(4, [{ kind: 'ActionEntered', actorId: 1, action: 'blocking', actionInstanceId: '1:action:3' }]));
+    const boundary = engine.processBatch(batch(5, [], 2));
     expect(boundary.map(intent => intent.terminationReason)).to.deep.equal(['generation-change']);
     expect(boundary[0].generation).to.equal(1);
   });

@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.fm-forge",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "name": "FM Forge",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -228,7 +228,7 @@
     },
     {
       "id": "forge.glass-rivet",
-      "revision": 3,
+      "revision": 4,
       "extends": "forge.base",
       "name": "Glass Rivet",
       "components": [
@@ -284,7 +284,8 @@
               "composition": "replace",
               "clamp": true
             }
-          ]
+          ],
+          "bipolar": true
         },
         {
           "id": "ring",
@@ -333,12 +334,36 @@
               "clamp": true
             }
           ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4356594349152103,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
         }
       ]
     },
     {
       "id": "forge.copper-tine",
-      "revision": 3,
+      "revision": 4,
       "extends": "forge.base",
       "name": "Copper Tine",
       "components": [
@@ -418,7 +443,8 @@
               "composition": "replace",
               "clamp": true
             }
-          ]
+          ],
+          "bipolar": true
         },
         {
           "id": "ring",
@@ -467,12 +493,36 @@
               "clamp": true
             }
           ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4356594349152103,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
         }
       ]
     },
     {
       "id": "forge.alarm-bloom",
-      "revision": 3,
+      "revision": 4,
       "extends": "forge.base",
       "name": "Alarm Bloom",
       "components": [
@@ -556,7 +606,8 @@
               "composition": "replace",
               "clamp": true
             }
-          ]
+          ],
+          "bipolar": true
         },
         {
           "id": "ring",
@@ -605,12 +656,36 @@
               "clamp": true
             }
           ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.4860965043038218,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
         }
       ]
     },
     {
       "id": "forge.rubber-bolt",
-      "revision": 3,
+      "revision": 4,
       "extends": "forge.base",
       "name": "Rubber Bolt",
       "components": [
@@ -698,7 +773,8 @@
               "composition": "replace",
               "clamp": true
             }
-          ]
+          ],
+          "bipolar": true
         },
         {
           "id": "ring",
@@ -743,6 +819,30 @@
                 "unit": "ratio"
               },
               "curve": "step",
+              "composition": "replace",
+              "clamp": true
+            }
+          ]
+        },
+        {
+          "id": "tail",
+          "name": "TAIL",
+          "mode": "onset-only",
+          "default01": 0.2430482521519109,
+          "smoothingMs": 0,
+          "perceptualDirection": "Change the real owned release tail of future strikes without changing modulation ratio, master gain or the physical trigger.",
+          "targets": [
+            {
+              "parameter": "releaseSeconds",
+              "minimum": {
+                "value": 0.005,
+                "unit": "s"
+              },
+              "maximum": {
+                "value": 1.5,
+                "unit": "s"
+              },
+              "curve": "logarithmic",
               "composition": "replace",
               "clamp": true
             }

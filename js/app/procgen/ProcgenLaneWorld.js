@@ -1,3 +1,17 @@
+import { causalRandomDecision } from './workstation/CausalRandom.js';
+import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
+import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
+import { releaseLanePhases } from './ReleaseGesture.js';
+import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
+import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
+import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
+import { disposeTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
+import { createTerrainScoreState, rememberTerrainCell, commitTerrainScore, terrainContactProvenance } from './TerrainScoreLayer.js';
+import { planTerrainCommand } from './TerrainAuthoringAdapter.js';
+import { observePhysicalFlightStep } from '../../actions/PhysicalFlightFacts.js';
+import { recordBirthCohortSlot, completedBirthCohorts } from './ProcgenBirthCohorts.js';
+import { recordProcgenRecoveryStep, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
+import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
 import { ProcgenTunnelCrewRoutes } from './ProcgenTunnelCrewRoutes.js';
 import { ProcgenBasinCrewRoutes } from './ProcgenBasinCrewRoutes.js';
@@ -39,7 +53,7 @@ import { EventHandler } from '../../util/EventHandler.js';
 import { normalizeSeed, deriveSeed } from '../../core/seededRandom.js';
 import { ProcgenScenery } from './ProcgenScenery.js';
 import { publishProcgenActorVisibility } from './ProcgenActorVisibility.js';
-import { createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions } from './ProcgenInterventionCommands.js';
+import { createInterventionState, prepareInterventionBatch, prepareIntervention, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions } from './ProcgenInterventionCommands.js';
 import { observePhysicalSupport } from '../../actions/PhysicalContactFacts.js';
 
 const MAX_PROCGEN_LANES = 1024;
@@ -63,7 +77,7 @@ class ProcgenLaneWorld {
     this.height = this.laneCount * this.laneHeight;
     this.tickIndex = 0;
     this._stepping = false; this._failedTick = false;
-    this.interventionState = createInterventionState();
+    this.physicalCrewEvidence = createPhysicalCrewEvidence(); this.physicalAuthoring = createPhysicalAuthoringState(); this.interventionState = createInterventionState(); this.physicalJunctions = createPhysicalJunctionState();
     Object.defineProperties(this, {
       _completedPhysicalSnapshot: { value: null, writable: true, configurable: true },
       _snapshotRetainers: { value: 0, writable: true, configurable: true }
@@ -77,6 +91,8 @@ class ProcgenLaneWorld {
     this._assistedColumn = { valid: false, x: 0, y: 0, height: 0, revision: 0, value: 0 };
     this.terrain = terrain;
     terrain?.configure?.(this.laneCount, maxActors, { laneHeight: this.laneHeight, workstation, hazardSpacing: workstation ? hazardSpacing : 0 });
+    this.terrainTopology = createTerrainTopologyState();
+    this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: 0 };
     this.terrainRevision = 0; this.frontierRevision = 0; this.terrainTileRevisions = new ProcgenTerrainRevisions(this.laneCount, Math.max(128, this.laneCount * 16));
     this.frontiers = new Float64Array(this.laneCount); this.frontiers.fill(36);
     this.generatedThrough = new Float64Array(this.laneCount); this.generatedThrough.fill(terrain?.chunkWidth || CHUNK_WIDTH);
@@ -139,6 +155,7 @@ class ProcgenLaneWorld {
     this.soundEvents.laneIndex = 0;
     Object.defineProperty(this, '_authoritativeActors', { value: new WeakSet(), writable: true, configurable: true });
     const runtime = { soundEvents: this.soundEvents, physicalFacts: {
+      tick: () => this.tickIndex,
       enabled: actor => !!this.soundEvents._tick && this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
       observing: actor => this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
       canMutate: actor => !this._authoritativeActors.has(actor) || !this._stepping || !!this.soundEvents._tick,
@@ -163,7 +180,8 @@ class ProcgenLaneWorld {
     };
     for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
     this.basinRoutes = new ProcgenBasinCrewRoutes(this); this.tunnelRoutes = new ProcgenTunnelCrewRoutes(this);
-    this.actors = [];
+    this.physicalFeedback = createPhysicalFeedbackState('initial', this.generation, this.tickIndex);
+    this.actors = []; this.birthCohortRecords = []; this.birthCohortRevision = 0; this._physicalWorkBounds = null;
     this._musicActorPositions = new Map(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
     this._retainTerrainDescriptors();
@@ -173,19 +191,23 @@ class ProcgenLaneWorld {
 
   _spawn(lane, emit = true) {
     this.soundEvents.laneIndex = lane;
+    if (!Number.isSafeInteger(this.nextActorId) || this.nextActorId < 0 || !Number.isSafeInteger(this.nextActorId + 1)) throw new RangeError('Actor identity exhausted.');
     const actor = new Lemming(36, lane * this.laneHeight + this.laneHeight - LANE_HEIGHT + 42, this.nextActorId++, this.runtime);
     this._authoritativeActors.add(actor);
     actor.appearanceIndex = lane; actor._musicPositionId = actor.id;
     actor.laneIndex = lane; actor.spawnLaneIndex = lane;
     actor.spawnTick = this.tickIndex;
     actor.spawnOrdinal = this.stall.lanes[lane].spawned;
+    actor.birthCohortId = recordBirthCohortSlot(this, lane, actor); actor.crewOriginIds = []; actor.crewOriginComplete = true;
+    const release = this.population.cohortReleaseGesture; actor.releaseGesture = release ? Object.freeze({ id: release.id, revision: release.revision, requestedTick: this.population.cohortStartTick + this._spawnPhaseForLane(lane), realizedTick: this.tickIndex, cohortOrdinal: this.population.gestureRun.cohortOrdinal, clockMode: release.clockMode, sourceCommandId: this.population.releaseGestureCommandId }) : null; if (actor.releaseGesture?.sourceCommandId) actor._physicalInterventionId = actor.releaseGesture.sourceCommandId;
     actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
-    actor.scoutAbilities = this.population.scoutAbilities(this.laneSeeds[lane], actor.spawnOrdinal); actor.scout = !!actor.scoutAbilities;
+    actor.scoutDecision = this.population.scoutDecision(this.laneSeeds[lane], actor.spawnOrdinal); actor.scoutAbilities = actor.scoutDecision.abilities; actor.scout = !!actor.scoutAbilities;
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
     actor.lastProgressTick = this.tickIndex;
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
+    actor._queuePhysicalTransition({ kind: 'ActorBorn', actorId: actor.id, laneId: lane, scoutDecision: actor.scoutDecision, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } });
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor); this.activeCount++;
     this.stall.spawn(lane, this.tickIndex); this.spawnedTotal++;
@@ -196,13 +218,13 @@ class ProcgenLaneWorld {
     return actor;
   }
   _resetSpawnPhases() {
-    const order = Array.from({ length: this.laneCount }, (_, lane) => lane); let state = mix(this.seed ^ (this.workstationEnabled ? 1 : this.generation));
-    for (let at = order.length - 1; at > 0; at--) { state = mix(state ^ at); const other = state % (at + 1); [order[at], order[other]] = [order[other], order[at]]; }
-    for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank]] = rank;
-    this.population.cohortSpreadTicks = this.spawnSpreadTicks;
+    const order = Array.from({ length: this.laneCount }, (_, lane) => ({ lane, draw: causalRandomDecision({ seed: this.seed, namespace: 'population', mappingId: 'default-release', generation: this.workstationEnabled ? 1 : this.generation, stableCauseId: `lane:${lane}`, drawPurpose: 'phase-rank' }).drawUint32 })).sort((a, b) => a.draw - b.draw || a.lane - b.lane);
+    for (let rank = 0; rank < order.length; rank++) this._spawnPhaseRanks[order[rank].lane] = rank;
+    if (!this.population.cohortReleaseGesture) this.population.cohortSpreadTicks = this.spawnSpreadTicks;
     this._laneAdmissionCohorts.fill(-Infinity); this._spawnPhaseCohortTick = -Infinity; this._computeSpawnPhases();
   }
   _computeSpawnPhases() {
+    if (this.population.cohortReleaseGesture) { this._spawnPhases.set(releaseLanePhases(this.population.cohortReleaseGesture, { laneCount: this.laneCount, generation: this.generation, cohortOrdinal: this.population.gestureRun.cohortOrdinal, worldSeed: this.seed })); return; }
     const spread = Math.min(this.population.cohortSpreadTicks, this.population.intervalTicks - 1);
     const start = this.population.cohortStartTick, beatTicks = this.population.cohortBeatTicks;
     for (let lane = 0; lane < this.laneCount; lane++) {
@@ -218,19 +240,25 @@ class ProcgenLaneWorld {
     this.spawnSpreadTicks = settings.spawnSpreadTicks;
     return { ...settings };
   }
+  setReleaseGesture(value, commandId = null) {
+    if (!this.cohorts) throw new Error('Release gestures require physical cohort admission.');
+    const outcome = this.population.setReleaseGesture(value, commandId); this.soundEvents.emitPhysicalFact({ kind: 'ReleaseGestureRequested', gestureId: value.id, gestureRevision: value.revision, requestedAtTick: this.tickIndex, effectiveBoundary: outcome.effectiveBoundary, admissionPrecision: 'integer-simulation-ticks', sourceCommandId: commandId }); return outcome;
+  }
   _spawnCohort() {
     if (!this.cohorts || this.stall.phase !== 'running') return;
     const phase = this.population.phaseAt(this.tickIndex, this.activeCount);
     this.admissionPaused = this.activeCount >= this.maxActors;
     if (phase < 0) return;
-    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; }
+    if (this._spawnPhaseCohortTick !== this.population.cohortStartTick) { this._computeSpawnPhases(); this._spawnPhaseCohortTick = this.population.cohortStartTick; const gesture = this.population.cohortReleaseGesture; if (gesture) this.soundEvents.emitPhysicalFact({ kind: 'ReleaseScheduleCommitted', gestureId: gesture.id, gestureRevision: gesture.revision, cohortStartTick: this.population.cohortStartTick, cohortOrdinal: this.population.gestureRun.cohortOrdinal, spreadTicks: gesture.spreadTicks, requestedGapTicks: gesture.nominalGapTicks, realizedGapTicks: this.population.cohortIntervalTicks, adaptiveIntervalTicks: this.population.intervalTicks, clockMode: gesture.clockMode, remainingAttempts: this.population.gestureRun.remaining, paused: gesture.paused, sourceCommandId: this.population.releaseGestureCommandId }); }
     for (let lane = 0; lane < this.laneCount; lane++) {
       if (this._spawnPhaseForLane(lane) !== phase || this._laneAdmissionCohorts[lane] === this.population.cohortStartTick) continue;
       const state = this.stall.lanes[lane];
       const stalledLongEnough = this.tickIndex - state.lastProgressTick >= this.stall.settings.secondsWithoutProgress * this.stall.settings.ticksPerSecond;
       const reservedProbe = stalledLongEnough && state.spawnsSinceProgress < this.stall.allowance(state);
-      if (this.activeCount >= this.maxActors && !reservedProbe) { this.admissionPaused = true; continue; }
-      this._spawn(lane); this._laneAdmissionCohorts[lane] = this.population.cohortStartTick;
+      const capacity = this.activeCount < this.maxActors || !this.population.cohortReleaseGesture && reservedProbe, admission = this.population.admitGestureSlot(capacity);
+      this._laneAdmissionCohorts[lane] = this.population.cohortStartTick;
+      if (admission.status !== 'admitted') { this.admissionPaused = admission.status === 'missed' || this.admissionPaused; recordBirthCohortSlot(this, lane, null, admission.reason); if (admission.status === 'missed') this.soundEvents.emitPhysicalFact({ kind: 'BirthAdmissionMissed', laneId: lane, cohortId: `${this.worldId}:${this.generation}:cohort:${this.population.cohortStartTick}`, reason: admission.reason, requestedTick: this.tickIndex, gestureId: admission.gestureId ?? null, gestureRevision: admission.gestureRevision ?? null, sourceCommandId: this.population.releaseGestureCommandId }); continue; }
+      this._spawn(lane);
     }
   }
   _restart(previousDistances) {
@@ -247,9 +275,9 @@ class ProcgenLaneWorld {
     this._assistedColumn.valid = false; this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallRevisions.fill(0); this._edgeWallHazards.length = 0;
     this._musicActorPositions.clear(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     for (const actor of this.actors) { this._clearConstructionCrew(actor); actor._laneRouteAttempt = null; actor._basinSceneId = null; }
-    this.actors.length = 0; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
+    this.actors.length = 0; this.birthCohortRecords = []; this.birthCohortRevision = (this.birthCohortRevision || 0) + 1; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
-    this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.generationStartTick = this.tickIndex;
+    this.generatedThrough.fill(this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.physicalCrewEvidence = createPhysicalCrewEvidence(); this.physicalJunctions.actual.clear(); this.generationStartTick = this.tickIndex;
     const terrainGeneration = this.workstationEnabled ? 1 : this.generation;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(terrainGeneration - 1, 0x85ebca6b));
     this.terrain?.registerLanes?.(this.laneSeeds, this.seed, terrainGeneration);
@@ -263,6 +291,10 @@ class ProcgenLaneWorld {
   }
 
   // Requests enter the existing simulation pass; pause never advances OHNO.
+  preparePhysicalAuthoring(graph, instances = []) { return preparePhysicalAuthoringConfiguration(this, graph, instances); }
+  configurePhysicalAuthoring(graph, instances = []) { return this.preparePhysicalAuthoring(graph, instances).commit(); }
+  prepareInterventions(commands) { return prepareInterventionBatch(this, commands); }
+  prepareIntervention(command) { return prepareIntervention(this, command); }
   enqueueIntervention(command) { return enqueueIntervention(this, command); }
   cancelIntervention(commandId) { return cancelIntervention(this, commandId); }
   nukeLane(lane) {
@@ -306,6 +338,14 @@ class ProcgenLaneWorld {
     if (Number.isInteger(lane) && lane >= 0 && lane < this.laneCount) this.pendingTerrainWork[lane] = Math.max(0, Math.min(65535, Math.trunc(count) || 0));
   }
 
+  queryJunction(id, options) { return queryPhysicalJunction(this, id, options); }
+  prepareTopologyRegions(regions) { return prepareTerrainTopologyConfiguration(this, regions); }
+  configureTopologyRegions(regions) { return configureTerrainTopology(this, regions); }
+  captureTerrainTopology(phase = 'postTransaction') { captureTerrainTopology(this, phase); }
+  planTerrainCommand(command) { return planTerrainCommand(command, this); }
+  commitTerrainWork(metadata) { return commitTerrainScore(this, metadata); }
+  terrainContactProvenance(x, y, revision = this.terrainRevision) { return terrainContactProvenance(this, x, y, revision); }
+
   getLanePolicySignals(lane) { return this.lanePolicy.signals(lane); }
   getLaneMusicSignals(lane) { return this.stall.lanes[lane] || null; }
   retainCompletedPhysicalSnapshots() {
@@ -327,14 +367,17 @@ class ProcgenLaneWorld {
       actorId: actor.id, laneId: actor.laneIndex, x: actor.x, y: actor.y,
       action: actor.action?.getActionName?.() || actor.action?.actionName || null, actionInstanceId: actor._physicalActionInstanceId,
       terminalReason: actor.terminalReason ?? null, spawnTick: actor.spawnTick, spawnLaneIndex: actor.spawnLaneIndex,
-      direction: actor.lookRight ? 'right' : 'left'
+      direction: actor.lookRight ? 'right' : 'left', birthCohortId: actor.birthCohortId ?? null,
+      crewOriginIds: Object.freeze([...(actor.crewOriginIds || [])]), crewOriginComplete: actor.crewOriginComplete !== false,
+      terrainProvenance: Object.freeze(terrainContactProvenance(this, actor.x, actor.y + 1)),
+      abilities: Object.freeze({ climb: !!actor.canClimb, parachute: !!actor.hasParachute })
     })));
     const lanes = Object.freeze(this.stall.lanes.map((lane, index) => Object.freeze({ laneId: index,
       alive: lane.alive, buildingCount: lane.buildingCount, bashingCount: lane.bashingCount,
       diggingCount: lane.diggingCount, miningCount: lane.miningCount, blockingCount: lane.blockingCount,
-      floatingCount: lane.floatingCount })));
+      floatingCount: lane.floatingCount, crew: Object.freeze(this.lanePolicy.projects.signals(index) || {}) })));
     return Object.freeze({ revision: `${this.generation}:${this.tickIndex}`, generation: this.generation,
-      tick: this.tickIndex, terrainRevision: this.terrainRevision, actors, lanes });
+      tick: this.tickIndex, terrainRevision: this.terrainRevision, actors, lanes, cohorts: completedBirthCohorts(this), ...(this.terrainTopology.profiles.length ? { topology: terrainTopologySnapshot(this) } : {}) });
   }
   getLaneMusicActorPosition(id, lane) {
     const record = this._musicActorPositions.get(id);
@@ -494,6 +537,9 @@ class ProcgenLaneWorld {
   _setPixel(x, y, color) {
     if (this._stepping && !this.soundEvents._tick) throw new Error('Physical terrain mutations require a future command boundary.');
     if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+    if (![x, y, color].every(Number.isSafeInteger) || color < 0 || color > 3) return false;
+    const before = this.groundColorAt(x, y); if (before === color) return false;
+    if (!Number.isSafeInteger(this.terrainRevision + 1)) throw new RangeError('Terrain revision exhausted.');
     const key = this._editKey(x, y);
     let chunk = this.editChunks.get(key);
     if (!chunk) {
@@ -505,12 +551,15 @@ class ProcgenLaneWorld {
     }
     const index = (y % this.laneHeight) * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH;
     if (chunk[index] !== color + 1) {
+      rememberTerrainCell(this, x, y, before, color, this.terrainRevision);
       chunk[index] = color + 1; this.terrainRevision++;
+      if (this.soundEvents._tick && this.soundEvents.onBatch.handlers.size) { const b = this._physicalWorkBounds; this._physicalWorkBounds = b ? { x1: Math.min(b.x1, x), y1: Math.min(b.y1, y), x2: Math.max(b.x2, x + 1), y2: Math.max(b.y2, y + 1) } : { x1: x, y1: y, x2: x + 1, y2: y + 1 }; }
       if (x >= this.leftEdgeX && x <= this.leftEdgeX + 12) this._edgeWallRevisions[Math.floor(y / this.laneHeight)]++;
       this.terrainActivityTicks[Math.floor(y / this.laneHeight)] = this.tickIndex;
       const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
       this.terrainTileRevisions.set(Math.floor(y / this.laneHeight) * 0x800000 + Math.floor(x / width), this.terrainRevision);
       this.basinRoutes?.edit(x, y, this._processingActorId); this.tunnelRoutes?.edit(x, y, this._processingActorId); this.lanePolicy?.edit(x, y, this._processingActorId);
+      if (!this._stepping) commitTerrainScore(this, { causeKind: 'direct-world-edit', operation: 'mutation' });
       return true;
     }
     return false;
@@ -667,6 +716,7 @@ class ProcgenLaneWorld {
     const lane = Math.min(this.laneCount - 1, Math.floor(actor.y / this.laneHeight)), previous = actor.laneIndex;
     if (lane === previous) return;
     actor.laneIndex = lane; this._clearConstructionCrew(actor); this.stats.laneTransfers++;
+    this.soundEvents.emitPhysicalFact({ kind: 'ActorLaneTransferred', actorId: actor.id, laneId: lane, previousLaneId: previous, birthLaneId: actor.spawnLaneIndex, birthCohortId: actor.birthCohortId, positionAfter: { x: actor.x, y: actor.y } });
     const departed = this.stall.lanes[previous], arrived = this.stall.lanes[lane];
     departed.transferredOut = (departed.transferredOut || 0) + 1; arrived.transferredIn = (arrived.transferredIn || 0) + 1;
     departed.populationPeak = Math.max(0, (departed.populationPeak ?? departed.peakAlive) - 1);
@@ -898,8 +948,10 @@ class ProcgenLaneWorld {
     }
   }
   step(eventTimeMs = null) {
-    if (this._stepping) throw new Error('A physical tick cannot be reentered.');
+    if (this._stepping || isNotifyingProcgenBoundary(this)) throw new Error('A physical tick cannot be reentered.');
     if (this._failedTick) throw new Error('The previous physical tick was incomplete; restore a checkpoint before stepping.');
+    if (!Number.isSafeInteger(this.tickIndex + 1)) throw new RangeError('Physical tick identity exhausted.');
+    const recoverySpeed = this.timer.speedFactor;
     this._stepping = true;
     try {
       const generation = this.generation, terrainRevisionBefore = this.terrainRevision;
@@ -929,16 +981,19 @@ class ProcgenLaneWorld {
         this.basinRoutes.observeApproach(actor);
         if (this.stall.phase === 'running') this._assist(actor);
         const previousX = actor.x, previousY = actor.y, previousAction = actor.action, motionActionInstanceId = actor._physicalActionInstanceId;
-        this._processingLane = actor.laneIndex; this._processingActorId = actor.id;
+        this._processingLane = actor.laneIndex; this._processingActorId = actor.id; this._physicalWorkBounds = null;
         const next = actor.process(this);
+        commitTerrainScore(this, { actorId: actor.id, actionInstanceId: actor._physicalActionInstanceId, operation: previousAction?.actionName === 'exploding' ? 'explode' : 'mutation' });
+        observePhysicalFlightStep(actor, previousX, previousY);
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;
         if (observePhysical && (actor.x !== previousX || actor.y !== previousY) && actor._physicalMotionFactTick !== this.tickIndex) {
-          this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', actorId: initialId,
+          const contactSpanId = physicalContactForMotion(this, actor, previousX, previousY);
+          this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', contactSpanId, actorId: initialId,
             laneId: actor.laneIndex, positionBefore: { x: previousX, y: previousY }, positionAfter: { x: actor.x, y: actor.y },
-            action: previousAction?.actionName || null, actionInstanceId: motionActionInstanceId,
+            actionPhase: actor.frameIndex, action: previousAction?.actionName || null, actionInstanceId: motionActionInstanceId,
             parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
-            precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - previousX, actor.y - previousY), pathEvidence: 'endpoint-chord' } });
+            precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - previousX, actor.y - previousY), pathEvidence: 'endpoint-chord', contactObserved: contactSpanId !== null, contactEvidence: contactSpanId ? 'consecutive-support-endpoints' : 'unknown' } });
         }
         this.terrainGrowth?.observe(actor.laneIndex, actor.x - previousX);
         this._assistedColumn.valid = false;
@@ -1023,15 +1078,19 @@ class ProcgenLaneWorld {
       if (this.tickIndex % 128 === 0) this._pruneEdits();
       this._musicCompletedSlot = nextMusicSlot; this._musicCompletedTick = this.tickIndex;
       if (observePhysical) for (const actor of this.actors) observePhysicalSupport(this, actor);
-      publishProcgenActorVisibility(this);
+      captureTerrainTopology(this, 'endOfTick');
       this.soundEvents.laneIndex = 0;
       this._completedPhysicalSnapshot = this._physicalSnapshot();
+      this._completedPhysicalBatchId = this.soundEvents.pendingBatchIdentity();
+      publishProcgenActorVisibility(this);
       this.soundEvents.commitTick(this._completedPhysicalSnapshot, this.terrainRevision);
-      this.timer.onGameTick.trigger(this.tickIndex);
+      recordProcgenRecoveryStep(this, Number.isFinite(eventTimeMs) ? eventTimeMs : null, recoverySpeed);
     } catch (error) {
       if (this.soundEvents._tick) { this.soundEvents.abortTick(); this._failedTick = true; }
       throw error;
     } finally { this._stepping = false; }
+    publishProcgenCommittedBoundary(this);
+    this.timer.onGameTick.trigger(this.tickIndex);
   }
   _retainTerrainDescriptors() {
     if (!this.terrain?.retainDescriptors) return;
@@ -1117,8 +1176,9 @@ class ProcgenLaneWorld {
       ...this.stats };
   }
   dispose() {
-    if (this._disposed) return;
+    if (this._disposalError) throw this._disposalError; if (this._disposed) return;
     this._disposed = true;
+    let recoveryRetirementError = null; try { getProcgenRecoveryJournal(this)?.dispose(); } catch (error) { recoveryRetirementError = error; }
     cancelPendingInterventions(this, 'world-disposed');
     if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
       this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,
@@ -1129,7 +1189,8 @@ class ProcgenLaneWorld {
       this.soundEvents.commitTick(snapshot, this.terrainRevision);
     }
     this._completedPhysicalSnapshot = null;
-    this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
+    this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; disposeTerrainTopology(this); this.physicalAuthoring = createPhysicalAuthoringState(); this.physicalJunctions.definitions = []; this.physicalJunctions.actual.clear(); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
+    if (recoveryRetirementError) { this._disposalError = recoveryRetirementError; throw recoveryRetirementError; }
   }
 }
 

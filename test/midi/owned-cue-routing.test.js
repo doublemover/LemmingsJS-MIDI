@@ -13,8 +13,9 @@ function fixture({ play = async () => {}, setSink = async function (id) { this.s
       return Object.assign(node(), { stream: { getTracks: () => [track] } }); }, addEventListener() {}, removeEventListener() {} };
   const mediaDevices = { selectAudioOutput: async () => ({ kind: 'audiooutput', deviceId: 'private-fixture-id' }),
     addEventListener: (type, listener) => deviceListeners.set(type, listener), removeEventListener: type => deviceListeners.delete(type) };
-  const createElement = () => { const element = { sinkId: '', srcObject: null, setSinkId: setSink, play, pause() {}, load() {},
-    addEventListener() {}, removeEventListener() {}, removeAttribute() {} }; elements.push(element); return element; };
+  const createElement = () => { const listeners = new Map(); const element = { sinkId: '', srcObject: null, setSinkId: setSink, play, pause() {}, load() {},
+    addEventListener(type, listener) { listeners.set(type, listener); }, removeEventListener(type) { listeners.delete(type); },
+    emit(type) { listeners.get(type)?.(); }, removeAttribute() {} }; elements.push(element); return element; };
   const master = node(), resources = createAudioResourceLeases({ resourceBudget: budget });
   return { route: createOwnedCueRouting({ context, masterInput: master, resources, mediaDevices, createElement }), context, nodes, elements, tracks, master, budget, deviceListeners };
 }
@@ -47,5 +48,20 @@ describe('owned nondefault prelisten routing', () => {
     try { await first; expect.fail('superseded route must reject'); } catch (error) { expect(error.message).to.include('changed'); }
     expect(f.route.state()).to.include({ mode: 'rehearsal', state: 'ready', muted: true });
     expect(f.tracks.every(track => track.stopped)).to.equal(true); await f.route.dispose().completion;
+  });
+});
+
+
+describe('accepted cue route event identity', () => {
+  for (const event of ['error', 'pause', 'ended', 'sinkchange']) it('revokes the accepted route on ' + event, async () => {
+    const f = fixture(); await f.route.prepare({ mode: 'separate-device' }); f.route.activate();
+    const revision = f.route.state().revision; f.elements[0].emit(event);
+    expect(f.route.state()).to.include({ muted: true, state: 'requires-revalidation', revision: revision + 1 });
+    expect(() => f.route.activate()).to.throw('not ready'); await f.route.dispose().completion;
+  });
+  it('ignores events from an explicitly retired earlier element', async () => {
+    const f = fixture(); await f.route.prepare({ mode: 'separate-device' }); const previous = f.elements[0];
+    await f.route.prepare({ mode: 'rehearsal' }); f.route.activate(); previous.emit('pause');
+    expect(f.route.state()).to.include({ muted: false, state: 'playing-route', mode: 'rehearsal' }); await f.route.dispose().completion;
   });
 });

@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v2',
-  factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
-    'ActorTerminated', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance'] });
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v11',
+  factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
+    'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -28,7 +28,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       !Number.isSafeInteger(sourceCursor.tick) || sourceCursor.tick < 0 || !Number.isSafeInteger(sourceCursor.generation) || sourceCursor.generation < 0 ||
       !Number.isSafeInteger(sourceCursor.lastCausalSequence) || sourceCursor.lastCausalSequence < 0 ||
       !Array.isArray(prefixCoverage?.gaps) || prefixCoverage.gaps.length > 4096 || !boundedKinds(prefixCoverage.observedFactKinds) ||
-      !boundedKinds(prefixCoverage.intentKinds) || !Array.isArray(prefixCoverage.mappingRevisions) || prefixCoverage.mappingRevisions.length > 4096 ||
+      !boundedKinds(prefixCoverage.intentKinds) || prefixCoverage.topologyRegions != null && (!Array.isArray(prefixCoverage.topologyRegions) || prefixCoverage.topologyRegions.length > 4096 || prefixCoverage.topologyRegions.some(region => !name(region?.id) || !Number.isSafeInteger(region.revision) || region.revision < 0)) || !Array.isArray(prefixCoverage.mappingRevisions) || prefixCoverage.mappingRevisions.length > 4096 ||
       prefixCoverage.mappingRevisions.some(revision => !Number.isSafeInteger(revision) || revision < 0) ||
       canonicalJournalText(existingWriter.manifest().captureProfile).text !== canonicalJournalText(profile).text)) throw new Error('A branch recorder requires its admitted writer and qualified clipped prefix cursor.');
   if (!existingWriter && (prefixCoverage || sourceCursor)) throw new Error('Inherited take coverage requires an existing branch writer.');
@@ -36,6 +36,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     initialCheckpoint, mapping: graph, assetRefs });
   const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
+  const topologyRegions = new Map((prefixCoverage?.topologyRegions || []).map(region => [`${region.id}:${region.revision}`, region]));
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
   if (initialPerformance && profile.stateKinds.includes('instrument-performance')) observedStateKinds.add('instrument-performance');
   const coverageIndex = createCausalCoverageIndex({ gaps: prefixCoverage?.gaps || [] }), batches = new Set(), order = [];
@@ -43,7 +44,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
     worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
   const addGap = coverageIndex.add;
-  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [] } = {}) => {
+  const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [], probability = null } = {}) => {
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     if (batch?.version !== 1 || !name(batch.batchId) || !name(batch.worldId) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
         !Number.isSafeInteger(batch.generation) || batch.generation < 0 || !Array.isArray(batch.facts) || batch.facts.length > 8192 ||
@@ -58,8 +59,9 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     }
     for (const intent of intents) if (intent?.version !== 1 || !name(intent.kind) || typeof intent.intentId !== 'string' ||
         !['begin', 'update', 'end'].includes(intent.kind) || !Array.isArray(intent.sourceEventIds) || intent.batchId !== batch.batchId) throw new Error('Invalid canonical musical intent.');
+    if (probability && (probability.version !== 1 || probability.batchId !== batch.batchId || !Number.isSafeInteger(probability.requested) || !Number.isSafeInteger(probability.omitted) || probability.omitted < 0 || !Array.isArray(probability.decisions) || probability.decisions.length > 8192 || probability.requested !== probability.decisions.length + probability.omitted || JSON.stringify(probability).length * 2 > 1050624)) throw new Error('Invalid bounded causal probability evidence.');
     const entries = [{ kind: 'physical-batch', tick: batch.tick, generation: batch.generation, payload: batch },
-      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents } }];
+      { kind: 'musical-intents', tick: batch.tick, generation: batch.generation, payload: { batchId: batch.batchId, intents, ...(probability ? { probability } : {}) } }];
     if (deliveryOutcomes.length) entries.push({ kind: 'sink-outcome', tick: batch.tick, generation: batch.generation,
       payload: { batchId: batch.batchId, outcomes: deliveryOutcomes } });
     const receipt = writer.appendMany(entries);
@@ -73,11 +75,16 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     worldId = batch.worldId; firstTick ??= batch.tick; lastTick = batch.tick; lastGeneration = batch.generation; lastSequence = sequence;
     if (batch.completeness?.status !== 'complete') addGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'incomplete-source-batch', dropped: batch.completeness?.dropped ?? null });
-    let missingMovementPath = false;
+    const topology = batch.snapshot?.topology;
+    if (!topology?.regions?.length || topology.regions.some(region => region.status !== 'complete' || !region.current || region.current.sourceRevision !== batch.snapshot.terrainRevision)) addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'qualified-topology-not-captured' });
+    else for (const region of topology.regions) { const result = region.current, key = `${region.regionId}:${region.regionRevision}`; if (topologyRegions.size < 4096 || topologyRegions.has(key)) topologyRegions.set(key, { id: region.regionId, revision: region.regionRevision, bounds: result.bounds, connectivity: result.connectivity, space: result.space }); else addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'topology-inventory-capacity' }); }
+    let missingMovementPath = false, missingWorkPhase = false;
     for (const fact of batch.facts) {
       if (fact.kind) observedFactKinds.add(fact.kind);
+      if (fact.kind === 'TerrainWorkCommitted' && fact.workVersion !== 2) missingWorkPhase = true;
       if (fact.kind === 'MotionCommitted' && fact.physicalPayload?.pathEvidence !== 'committed-coordinate-write') missingMovementPath = true;
     }
+    if (missingWorkPhase) addGap({ kind: 'work-phase-v2', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'legacy-operation-phase-not-action-frame' });
     if (missingMovementPath) addGap({ kind: 'movement-path', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'endpoint-only-evidence' });
     for (const intent of intents) intentKinds.add(intent.kind);
@@ -95,7 +102,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
         sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
           stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),
-        mappingRevisions: [...mappingRevisions], gaps: cloneJournalData(gaps) } };
+        mappingRevisions: [...mappingRevisions], topologyRegions: [...topologyRegions.values()], gaps: cloneJournalData(gaps) } };
     return writer.stop(stopRequest);
   };
   const recordMapping = (next, boundary) => {
@@ -134,9 +141,30 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
 const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
+  for (const rule of [...(valid.feedback?.conductors || []), ...(valid.feedback?.layers || []).flatMap(layer => layer.rules)]) { add('physical-feedback', rule.id, 'state'); for (const kind of ['CommandApplied', 'CommandRejected', 'CommandWaiting', 'ActorBorn', 'ActorTerminated']) add(kind, rule.id, 'fact'); if (['PickupCrossing', 'RouteLap', 'EncounterBegan', 'RendezvousCompleted', 'MotifCompleted', 'RestStarted', 'RestEnded', 'CargoDelivered'].includes(rule.source.kind)) { add('MotionCommitted', rule.id, 'fact'); add('physical-domain', rule.id, 'state'); } else add(rule.source.kind, rule.id, 'fact'); }
+  if (valid.swarm) { add('swarm', 'swarm-reducer', 'state'); add('voices', 'swarm-reducer', 'state'); }
+  for (const station of valid.cargoStations || []) { add('cargo', station.id, 'state'); add('ActorTerminated', station.id, 'fact'); add('ActorLaneTransferred', station.id, 'fact'); if (station.source.kind === 'contact') add('ContactResolved', station.id, 'fact'); else { add('MotionCommitted', station.id, 'fact'); add('physical-domain', station.id, 'state'); } if (station.source.kind === 'encounter') add('encounters', station.id, 'state'); }
+  for (const definition of valid.encounters || []) { add('encounters', definition.id, 'state'); if (definition.pickupId || definition.routeId || definition.participants.leftEnsembleId || definition.participants.rightEnsembleId) add('physical-domain', definition.id, 'state'); for (const kind of ['ActorBorn', 'ActorTerminated', 'MotionCommitted']) add(kind, definition.id, 'fact'); }
+  for (const definition of valid.activityWindows || []) { add('activity', definition.id, 'state'); add('voices', definition.id, 'state'); if (definition.scope.ensembleId || definition.scope.routeId) add('physical-domain', definition.id, 'state'); if (definition.scope.topologyRegionId) add('topology-geometry-v1', definition.id, 'descriptor'); for (const kind of definition.physicalKinds) { if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else add(kind, definition.id, 'fact'); } if (definition.completionPolicy.kind === 'crew-route') for (const kind of ['CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed']) add(kind, definition.id, 'fact'); }
+  for (const definition of valid.motifs || []) {
+    add('motifs', definition.id, 'state'); if (definition.roles.some(role => role.ensembleId)) add('physical-domain', definition.id, 'state');
+    for (const clause of definition.clauses) { const kind = clause.predicate.kind; if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['RestStarted', 'RestEnded'].includes(kind)) add('activity', definition.id, 'state'); else add(kind, definition.id, 'fact'); }
+  }
   for (const instrument of valid.instruments) {
-    add(instrument.sourceKind, instrument.id, 'fact');
-    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.articulation?.sustain) add('voices', instrument.id, 'state');
+    if (instrument.topologyRegionId) add('topology-geometry-v1', instrument.id, 'descriptor');
+    if (instrument.harmonicFields || instrument.formationId) { add('tonal-interpretation', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
+    if (instrument.actionVoicePolicy) { add('action-admission', instrument.id, 'state'); add('ActionExited', instrument.id, 'fact'); add('MotionCommitted', instrument.id, 'fact'); if (instrument.actionVoicePolicy.beginCondition === 'contact') add('ContactResolved', instrument.id, 'fact'); }
+    if (instrument.voiceTransfer) add('ActorLaneTransferred', instrument.id, 'fact');
+    if (instrument.response) {
+      add('rhythmic-responses', instrument.id, 'state');
+      const sources = instrument.response.type === 'crowdInterval' ? ['MotionCommitted', 'ActorBorn'] : instrument.response.type === 'flightArc' ? ['FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded'] : instrument.response.type === 'workCycle' ? ['TerrainWorkCommitted', 'ActionCycleCompleted', 'ActionExited'] : ['ContactResolved', 'ActorTerminated'];
+      for (const source of sources) add(source, instrument.id, 'fact');
+      if (instrument.response.type === 'crowdInterval') add('physical-domain', instrument.id, 'state');
+      if (instrument.response.type === 'workCycle') add('work-phase-v2', instrument.id, 'descriptor');
+    } else if (instrument.sourceKind === 'CargoDelivery') { add('cargo', instrument.id, 'state'); } else if (instrument.sourceKind === 'CadenceResponse') { add('activity', instrument.id, 'state'); } else if (instrument.sourceKind === 'MotifResponse') { add('motifs', instrument.id, 'state'); } else if (instrument.sourceKind === 'EncounterResponse') { add('encounters', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
+    else add(instrument.sourceKind, instrument.id, 'fact');
+    if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
+    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');
     if (instrument.articulation) {
       add('travel', instrument.id, 'state');
       if (instrument.articulation.metric === 'segment-path') add('movement-path', instrument.id, 'descriptor');
@@ -160,6 +188,7 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     const missing = [...queried.missingRanges, ...queried.unknownRanges];
     const outside = missing.some(gap => gap.reason === 'outside-captured-range');
     const captured = available[keys]?.includes(requirement.kind) === true;
+    if (requirement.kind === 'topology-geometry-v1') { const wanted = validateCausalInstrumentGraph(graph).topologyRegions || []; if (wanted.some(region => !coverage.topologyRegions?.some(captured => captured.id === region.id && captured.revision === region.revision && captured.connectivity === region.connectivity && captured.space === region.space && canonicalJournalText(captured.bounds).text === canonicalJournalText(region.bounds).text))) return { ...requirement, status: 'unavailable', reason: 'topology-region-not-captured' }; }
     if (captured && queried.status === 'known-covered') return { ...requirement, status: 'supported-directly' };
     if (reconstruction?.coverage?.[keys]?.includes(requirement.kind) && reconstruction.firstTick <= requested.firstTick && reconstruction.lastTick >= requested.lastTick) {
       return { ...requirement, status: 'supported-by-verified-reconstruction', artifactId: reconstruction.artifactId };

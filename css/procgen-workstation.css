@@ -178,3 +178,34 @@ body.procgen-workstation {
 .studio-prelisten > output, .studio-prelisten > .studio-sound-actions { grid-column: 1 / -1; overflow-wrap: anywhere; }
 .studio-prelisten > input[type="range"] { width: min(100%, 12rem); }
 .studio-prelisten .studio-sound-actions { display: flex; flex-wrap: wrap; gap: .25rem; }
+
+/* Typed, fixed-center physical controls. No image dependency or animation clock. */
+.parameter-knob { display:grid; grid-template-columns:44px minmax(5rem,1fr) repeat(3,minmax(2rem,auto)); gap:4px; align-items:center; }
+.parameter-knob-label { grid-column:1/-1; font-size:.8rem; }
+.parameter-knob-cap { position:relative; width:44px; height:44px; padding:6px; border-radius:50%; touch-action:none; background:radial-gradient(circle at 38% 28%,#dbe5e9,#8b9aa5 70%); box-shadow:0 2px 3px #0008,inset 0 0 0 3px #253440; }
+.parameter-knob-indicator,.parameter-knob-effective,.parameter-knob-pickup { position:absolute; inset:8px; border-radius:50%; transform-origin:center; pointer-events:none; }
+.parameter-knob-indicator::before { content:''; position:absolute; left:calc(50% - 1px); top:0; width:2px; height:10px; background:#07121c; }
+.parameter-knob-effective { inset:2px; border-top:2px solid #087cc2; }
+.parameter-knob-pickup { inset:0; border-top:2px dashed #8a4700; }
+.parameter-knob-value { font-variant-numeric:tabular-nums; min-width:7ch; }
+.parameter-knob-number { width:7em; grid-column:2; }
+.parameter-knob-error { grid-column:1/-1; color:#9c2424; }
+.parameter-knob[data-unknown=true] .parameter-knob-indicator { visibility:hidden; }
+.parameter-knob-action { min-width:32px; min-height:32px; }
+@media (prefers-contrast:more) { .parameter-knob-cap { box-shadow:none; border:2px solid currentColor; } .parameter-knob-indicator::before { width:3px; background:currentColor; } }
+@media (pointer:coarse) { .parameter-knob-action { min-width:44px; min-height:44px; } }
+
+/* One gesture owner drives rotary and vertical controls; marks never move the handle. */
+.parameter-knob[data-presentation=fader] .parameter-knob-cap { border-radius:5px; background:linear-gradient(90deg,#26333b 43%,#10171d 44%,#10171d 56%,#26333b 57%); }
+.parameter-knob[data-presentation=fader] .parameter-knob-indicator { inset:auto 4px; height:6px; border-radius:2px; background:#b9c9ce; box-shadow:0 1px 2px #000; }
+.parameter-knob[data-presentation=fader] .parameter-knob-indicator::before { display:none; }
+.parameter-knob[data-presentation=fader] .parameter-knob-effective,.parameter-knob[data-presentation=fader] .parameter-knob-pickup { inset:auto 0; height:2px; border-radius:0; }
+.studio-lane-fader { grid-column:1/-1; grid-template-columns:32px 7ch repeat(3,minmax(24px,1fr)); gap:2px; font-size:10px; }
+.studio-lane-fader .parameter-knob-label { display:none; }
+.studio-lane-fader .parameter-knob-cap { width:32px; height:32px; grid-row:1/3; }
+.studio-lane-fader .parameter-knob-value { grid-column:2; min-width:0; font-size:9px; }
+.studio-lane-fader .parameter-knob-number { width:7ch; font-size:10px; grid-row:2; }
+.studio-lane-fader .parameter-knob-action { min-width:24px; min-height:28px; padding:1px; grid-row:1/3; }
+.studio-lane-mix-status { grid-column:1/-1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; opacity:.85; }
+.studio-lane-header:has(.studio-lane-fader) { align-content:start; }
+@media (pointer:coarse) { .studio-lane-fader .parameter-knob-cap,.studio-lane-fader .parameter-knob-action { min-width:44px; min-height:44px; } }
