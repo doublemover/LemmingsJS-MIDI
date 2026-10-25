@@ -3,7 +3,8 @@ import { getOwnedSourceBankIdentity, validateOwnedSourceBank } from './OwnedSour
 
 export async function prepareOwnedSourceBank(id, { resources, owner = null, generation = 0, signal, isCurrent = () => true, jobs = backgroundJobService } = {}) {
   signal?.throwIfAborted(); const expected = getOwnedSourceBankIdentity(id);
-  const workspace = resources?.reserve({ kind: 'source-bank-preparation', owner, generation, estimateBytes: 16 * 1048576, consumerOwned: true });
+  const preparationBytes = id === 'sample-read-v1' ? 24 * 1048576 : 16 * 1048576;
+  const workspace = resources?.reserve({ kind: 'source-bank-preparation', owner, generation, estimateBytes: preparationBytes, consumerOwned: true });
   let result = null, released = false, failure = null;
   const release = () => {
     if (failure) throw failure;
@@ -17,7 +18,7 @@ export async function prepareOwnedSourceBank(id, { resources, owner = null, gene
   };
   try {
     result = await jobs.compute({ kind: 'prepare-owned-source-bank', ownerId: 'source-bank:' + id, ownerEpoch: generation,
-      sourceRevision: expected.hash, inputBytes: 128, maxBytes: 1048576, estimatedPeakBytes: 16 * 1048576,
+      sourceRevision: expected.hash, inputBytes: 128, maxBytes: Math.max(1048576, expected.bytes + 16384), estimatedPeakBytes: preparationBytes,
       signal, isCurrent, deadlineMs: 60000, prepareInput: () => ({ id }) });
     signal?.throwIfAborted(); if (!isCurrent()) throw new Error('Fixed source bank preparation is stale.');
     validateOwnedSourceBank(result.value, id);

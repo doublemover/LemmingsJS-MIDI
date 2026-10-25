@@ -9,7 +9,7 @@ export function prepareSampleCursorProfile(raw) {
   const sourceToDecoded = p.decodedSampleRate / p.sourceSampleRate, decodedStart = p.regionStartFrame * sourceToDecoded, decodedEnd = Math.min(p.decodedFrames, p.regionEndFrame * sourceToDecoded);
   if (decodedEnd - decodedStart < 2) throw new RangeError('The selected region has fewer than two decoded frames.');
   return freezeData({ revision: SAMPLE_CURSOR_REVISION, ...p, parameters: p, sourceToDecoded, decodedStart, decodedEnd, slewFrames: Math.ceil(p.sampleRate * p.slewSeconds), queueWidth: 7,
-    stateBytes: p.capacity * 7 * 8 + 20 * 8, transferBytes: 4096 + p.capacity * 7 * 8 + 20 * 8, maximumCoordinateSourceFrames: 1073741824,
+    stateBytes: p.capacity * 7 * 8 + 21 * 8, transferBytes: 4096 + p.capacity * 7 * 8 + 21 * 8, maximumCoordinateSourceFrames: 1073741824,
     derivativeDomain: 'unwrapped-decoded-source-coordinate-per-output-frame;boundary-remap-is-separate', endpointDomain: 'original-source-frames',
     timing: 'explicit-monotonic-output-frame-segments;no-extrapolation-or-private-distance-accumulator',
     interpolationPolicy: p.interpolation === 'smoothstep' ? 'exact-endpoints;zero-endpoint-velocity-per-segment;maximum-derivative-1.5-times-mean' : 'exact-endpoints;piecewise-linear-velocity',

@@ -5,7 +5,8 @@ export async function computeOwnedSourceBank(id, { signal, current = () => true,
   const check = () => { signal?.throwIfAborted(); if (!current()) throw failure('stale-owner', 'Fixed bank source changed.'); };
   const expected = getOwnedSourceBankIdentity(id); check();
   let planes;
-  if (id === 'choir-v1') { const data = await import('../midi-ui/worklet/ChoirExciterTable.js'); planes = [new Float32Array(data.CHOIR_EXCITER_TABLE)]; }
+  if (id === 'sample-read-v1') { const data = await import('./SampleReadBankComputation.js'); planes = [await data.computeSampleReadBank({ signal, current, yieldControl })]; }
+  else if (id === 'choir-v1') { const data = await import('../midi-ui/worklet/ChoirExciterTable.js'); planes = [new Float32Array(data.CHOIR_EXCITER_TABLE)]; }
   else if (id === 'spectrum-v1') { const data = await import('../midi-ui/worklet/SpectrumSourceTables.js'); planes = [new Float32Array(data.SPECTRUM_TABLES), new Float32Array(data.SPECTRUM_SINE), new Float32Array(data.SPECTRUM_FRAME_GAINS)]; }
   else { const data = await import('../midi-ui/worklet/GrainWindow.js'); planes = [new Float32Array(data.GRAIN_WINDOW)]; }
   check(); const encoded = new Uint8Array(expected.bytes), view = new DataView(encoded.buffer); let offset = 0;

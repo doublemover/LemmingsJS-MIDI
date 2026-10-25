@@ -164,7 +164,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'prepare-owned-source-bank') {
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
     const expected = getOwnedSourceBankIdentity(input.id);
-    if (estimatedPeakBytes < 16 * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
+    if (estimatedPeakBytes < (input.id === 'sample-read-v1' ? 24 : 16) * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
     const value = await computeOwnedSourceBank(input.id, { signal, current, crypto, yieldControl });
     return { value, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }

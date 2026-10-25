@@ -32,6 +32,12 @@ describe('observed source-frame sample cursor', () => {
     expect(cursor.crossfadeRemaining).to.be.greaterThan(0); expect(cursor.seekMix01).to.be.within(0, 1);
     expect(cursor.enqueue(segment(0, 1000, 200, 300, 2))).to.equal(false);
   });
+  it('bounds simultaneous seek heads without dropping or aliasing a second discontinuity', () => {
+    const cursor = new OwnedSampleCursor(parameters());
+    expect(cursor.enqueue(segment(0, 20, 100, 102, 1, 'seek'))).to.equal(true);
+    expect(cursor.enqueue(segment(20, 40, 200, 202, 2, 'seek'))).to.equal(false);
+    expect(cursor.enqueue(segment(20, 1000, 102, 105, 2))).to.equal(true);
+  });
   it('keeps clamping, wrapping and sample-center reflection as distinct prepared boundary policies', () => {
     const stop = new OwnedSampleCursor(parameters(44100, { regionEndFrame: 10, boundary: 'stop' })), wrap = new OwnedSampleCursor(parameters(44100, { regionEndFrame: 10, boundary: 'wrap' })), reflect = new OwnedSampleCursor(parameters(44100, { regionEndFrame: 10, boundary: 'reflect' }));
     expect(stop.map(12)).to.equal(9); expect(wrap.map(12)).to.equal(2); expect(wrap.map(-1)).to.equal(9); expect(reflect.map(12)).to.equal(6);
