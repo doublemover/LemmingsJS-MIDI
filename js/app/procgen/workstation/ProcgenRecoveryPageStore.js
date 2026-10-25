@@ -1,3 +1,4 @@
+import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { validateProcgenRecoveryJournalCooperative } from './ProcgenRecoveryJournal.js';
 const chunkPrefix = 'recovery:chunk:';
 const reference = (key, page) => Object.freeze({ key, sha256: page.sha256, rawBytes: page.rawBytes, storedBytes: page.bytes.byteLength, encoding: page.encoding });
@@ -12,7 +13,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
     source?.addEventListener('abort', abort, { once: true }); if (source?.aborted) abort(); controllers.add(controller);
     return { signal: controller.signal, release() { source?.removeEventListener('abort', abort); controllers.delete(controller); } };
   };
-  const stats = { encodedPages: 0, reusedPages: 0, encodeMs: 0, decodeMs: 0, commitMs: 0 };
+  const stats = { retirementFailures: 0, encodedPages: 0, reusedPages: 0, encodeMs: 0, decodeMs: 0, commitMs: 0 };
   const compute = async (kind, input, signal, epoch, maxBytes = 64 * 1048576, peak = maxBytes * (kind === 'decode-recovery-page' ? 32 : 8) + 1048576) => { const started = performance.now(); const result = await jobs.compute({ kind, ownerId: 'recovery-pages', ownerEpoch: epoch,
     sourceRevision: `recovery-page:${++serial}`, estimatedPeakBytes: Math.min(384 * 1048576, peak),
     priority: 'recovery', budgetAdapter: resourceBudget, signal, maxBytes, prepareInput: () => input, isCurrent: () => !retired && isCurrent() }); stats[kind === 'decode-recovery-page' ? 'decodeMs' : 'encodeMs'] += performance.now() - started; return result; };
@@ -21,7 +22,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
     async save(session, { signal, documentRevision, tick } = {}) {
       check(signal); validateSession(session); if (writing) throw new Error('An incremental recovery write is already pending.');
       if (!Number.isSafeInteger(documentRevision) || documentRevision < 0 || !Number.isSafeInteger(tick) || tick < 0) throw new Error('Invalid incremental recovery revision.');
-      const retained = [], writes = [], published = [], removedKeys = [], nonce = crypto.randomUUID(), lifetime = linked(signal); signal = lifetime.signal; writing = true;
+      const retained = [], writes = [], published = [], removedKeys = [], nonce = crypto.randomUUID(), lifetime = linked(signal); signal = lifetime.signal; writing = true; let durableReceipt = null, operationError = null;
       const encode = async (value, kind, maxBytes, peak) => {
         const prior = cache.get(value); if (prior?.stored) { stats.reusedPages++; return prior.ref; }
         const result = await compute('encode-recovery-page', value, signal, documentRevision, maxBytes, peak); stats.encodedPages++; retained.push(result); check(signal);
@@ -62,8 +63,11 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
           transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); for (const entry of published) entry.stored = true; for (const key of removedKeys) { const entry = entriesByKey.get(key); if (entry) entry.stored = false; entriesByKey.delete(key); } resolve(result); };
           transaction.onabort = () => { signal?.removeEventListener('abort', abort); reject(failed || transaction.error || new Error('Paged recovery transaction aborted.')); };
         });
-        stats.commitMs += performance.now() - commitStarted; return receipt;
-      } finally { writing = false; for (const entry of published) if (!entry.stored) entriesByKey.delete(entry.ref.key); writes.length = 0; for (const result of retained) result.release(); lifetime.release(); }
+        stats.commitMs += performance.now() - commitStarted; durableReceipt = { ...receipt, durable: true, canceledAfterCommit: signal.aborted }; return durableReceipt;
+      } catch (error) { operationError = error; throw error; } finally { writing = false; for (const entry of published) if (!entry.stored) entriesByKey.delete(entry.ref.key); writes.length = 0; const errors = [];
+        for (const result of retained) try { retireBackgroundResult(result); } catch (error) { errors.push(error); } lifetime.release(); stats.retirementFailures += errors.length;
+        const retirement = resourceRetirementSummary(errors); if (durableReceipt) durableReceipt.retirement = retirement; else if (operationError && errors.length) operationError.resourceRetirement = retirement;
+      }
     },
     async load(record, { signal, owned = false } = {}) {
       check(signal); const retained = [], inputToken = {}; let encoded = null;
@@ -76,8 +80,12 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
         if (!page || page.kind !== 'recovery-chunk' || page.sha256 !== ref.sha256 || page.rawBytes !== ref.rawBytes || page.encoding !== ref.encoding) throw Object.assign(new Error('Recovery chunk is missing or differs.'), { name: 'RecoveryCandidateError' });
         const result = await compute('decode-recovery-page', page, signal, record.generation, Math.min(64 * 1048576, Math.max(8192, ref.rawBytes + 4096))); retained.push(result); return result.value;
       };
-      let released = false;
-      const release = () => { if (released) return; released = true; encoded = null; for (const result of retained.splice(0)) result.release(); resourceBudget?.release({ token: inputToken, owner: 'recovery-page-read' }); lifetime.release(); };
+      let released = false, releaseError = null;
+      const release = () => { if (releaseError) throw releaseError; if (released) return; released = true; encoded = null; const errors = [];
+        for (const result of retained.splice(0)) try { retireBackgroundResult(result); } catch (error) { errors.push(error); }
+        try { requireSynchronousResourceAcknowledgement(resourceBudget?.release({ token: inputToken, owner: 'recovery-page-read' }), 'Recovery encoded source'); } catch (error) { errors.push(error); } lifetime.release();
+        if (errors.length) { stats.retirementFailures += errors.length; releaseError = new AggregateError(errors, 'Recovery source retirement is unresolved.'); throw releaseError; }
+      };
       try {
         const db = await open(); check(signal); encoded = await new Promise((resolve, reject) => {
           const transaction = db.transaction('sessions', 'readonly'), store = transaction.objectStore('sessions'), values = new Map(); let bytes = 0;
@@ -98,7 +106,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
         return Object.freeze({ schema: 'procgen-owned-source/v1', kind: 'recovery', generation: record.generation, checksum: record.checksum,
           verification: 'checksum-verified-recovery', signal,
           get session() { check(signal); if (!session) throw new Error('Recovery source released.'); return session; }, release() { session = null; release(); } });
-      } catch (error) { release(); if (!signal?.aborted && !['AbortError', 'BackgroundJobError'].includes(error.name)) error.name = 'RecoveryCandidateError'; throw error; }
+      } catch (error) { try { release(); } catch (retirementError) { error.retirementError = retirementError; } if (!signal?.aborted && !['AbortError', 'BackgroundJobError'].includes(error.name)) error.name = 'RecoveryCandidateError'; throw error; }
     },
     invalidateCache() { cache = new WeakMap(); entriesByKey.clear(); },
     stats: () => ({ ...stats, writing }),

@@ -1,3 +1,4 @@
+import { requireSynchronousResourceAcknowledgement } from '../../resources/ResourceRetirement.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 const owners = new WeakMap(), snapshots = new WeakSet();
 const MAX_RECORD_BYTES = 1048576, PAGE_RECORDS = 128;
@@ -8,7 +9,7 @@ const boundary = world => Object.freeze({ worldId: world.worldId, tick: world.ti
 
 export function createProcgenRecoveryJournal(world, checkpoint, { resourceBudget = null, maxBytes = 8 * 1048576, baseToken = null, replace = null, captureStats = null } = {}) {
   if (owners.has(world) && owners.get(world) !== replace || world._stepping || !checkpoint?.graph || !Number.isSafeInteger(maxBytes) || maxBytes < 16384) throw new Error('Invalid recovery journal owner.');
-  const pages = [], tokens = [], initial = boundary(world); let tail = [], tailBytes = 0, pageToken = null, bytes = 0, sequence = 0, complete = true, failure = null, disposed = false;
+  const pages = [], tokens = [], initial = boundary(world); let tail = [], tailBytes = 0, pageToken = null, bytes = 0, sequence = 0, complete = true, failure = null, disposed = false, retirementError = null;
   const fail = reason => { complete = false; failure = String(reason); };
   const append = record => {
     if (disposed || !complete) return false;
@@ -42,11 +43,11 @@ export function createProcgenRecoveryJournal(world, checkpoint, { resourceBudget
     stats: () => ({ bytes, sequence, capture: captureStats, pages: pages.length + Number(!!tail.length), complete, failure }),
     fail,
     dispose() {
-      if (disposed) return; disposed = true; if (owners.get(world) === journal) owners.delete(world);
+      if (retirementError) throw retirementError; if (disposed) return true; disposed = true; if (owners.get(world) === journal) owners.delete(world);
       pages.length = 0; tail = []; checkpoint = null;
-      for (const token of [...tokens]) { try { resourceBudget?.release({ token, owner: 'recovery-journal' }); tokens.splice(tokens.indexOf(token), 1); } catch (error) { failure = error.message; } }
-      if (baseToken) { try { resourceBudget?.release({ token: baseToken, owner: 'recovery-base' }); baseToken = null; } catch (error) { failure = error.message; } }
-      return tokens.length === 0 && !baseToken;
+      for (const token of [...tokens]) { try { requireSynchronousResourceAcknowledgement(resourceBudget?.release({ token, owner: 'recovery-journal' }), 'Recovery page storage'); tokens.splice(tokens.indexOf(token), 1); } catch (error) { failure = error.message; } }
+      if (baseToken) { try { requireSynchronousResourceAcknowledgement(resourceBudget?.release({ token: baseToken, owner: 'recovery-base' }), 'Recovery base storage'); baseToken = null; } catch (error) { failure = error.message; } }
+      if (tokens.length || baseToken) { retirementError = new Error(failure || 'Recovery storage retirement is unresolved.'); throw retirementError; } return true;
     }
   });
   owners.set(world, journal); return journal;

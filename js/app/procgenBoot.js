@@ -69,7 +69,7 @@ const PROCGEN_SKILLS = {
 let activeProcgenRuntime = null;
 const procgenResourceBudget = createResourceBudget();
 const renderBudget = { budgetAdapter: procgenResourceBudget };
-procgenResourceBudget.registerEvictor('cold-render-buffers', () => activeProcgenRuntime?.lanes?.renderer?.resources?.clearCaches?.());
+procgenResourceBudget.registerEvictor('cold-render-buffers', ({ neededBytes }) => activeProcgenRuntime?.lanes?.renderer?.resources?.reclaim?.(neededBytes), { priority: -2 });
 
 let analytics = null;
 let procgenUi = null;

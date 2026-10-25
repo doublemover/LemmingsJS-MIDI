@@ -1,3 +1,6 @@
+import { prepareProcgenRecoveryJournal } from '../js/app/procgen/workstation/ProcgenRecoveryCapture.js';
+import { getProcgenRecoveryJournal } from '../js/app/procgen/workstation/ProcgenRecoveryJournal.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { expect } from 'chai';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -12,6 +15,20 @@ describe('incremental recovery boundaries', function() {
   this.timeout(30000); let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, seed: 42, laneCount: 2, assists: false, cohorts: true });
+  it('does not free a newly published recovery base when old-base retirement fails', async () => {
+    const world = make(), actual = createResourceBudget(), releases = []; let reject = false;
+    const budget = { reserve: actual.reserve, release(request) { releases.push(request); return reject ? false : actual.release(request); } };
+    const first = await prepareProcgenRecoveryJournal(world, { resourceBudget: budget, isCurrent: () => true }); reject = true;
+    let failure; try { await prepareProcgenRecoveryJournal(world, { resourceBudget: budget, isCurrent: () => true }); } catch (error) { failure = error; }
+    const current = getProcgenRecoveryJournal(world); expect(failure.publishedRecovery).to.equal(current); expect(current).not.to.equal(first); expect(current.checkpoint()).not.to.equal(null);
+    expect(actual.diagnostics().categories.candidate.entries).to.equal(2); expect(releases).to.have.length(1);
+    reject = false; current.dispose(); world.dispose(); expect(actual.diagnostics().categories.candidate.entries).to.equal(1);
+  });
+  it('finishes independent world teardown and preserves the failed retirement outcome', () => {
+    const world = make(), base = captureProcgenCheckpoint(world), journal = createProcgenRecoveryJournal(world, base, { resourceBudget: { reserve() {}, release: () => false } });
+    journal.step(0, 1); expect(() => world.dispose()).to.throw('acknowledge'); expect(world.soundEvents.onBatch.handlers.size).to.equal(0); expect(world._disposed).to.equal(true);
+    expect(() => world.dispose()).to.throw('acknowledge');
+  });
   it('replays clock changes and admitted/canceled inputs, then matches 1000 continued physics ticks', async () => {
     const original = make(), restored = make(), events = [], replayed = [];
     original.soundEvents.onBatch.on(batch => events.push(batch)); restored.soundEvents.onBatch.on(batch => replayed.push(batch));

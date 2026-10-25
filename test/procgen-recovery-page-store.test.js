@@ -9,12 +9,12 @@ const base = { laneCount: 1, seed: 7, graph: { nodes: [], owners: [], estimatedB
 const page = Object.freeze([Object.freeze({ sequence: 1, kind: 'step', eventTimeMs: 0, speedFactor: 1, boundary: boundary(1) })]);
 const session = name => ({ name, world: base, savedAt: '2026-10-25T00:00:00Z', project: { procgen: { lanes: [{}] } },
   recoveryJournal: { schema: 'procgen-recovery-journal/v1', initial: boundary(0), final: boundary(1), sequence: 1, pages: [page] } });
-const setup = () => {
+const setup = ({ releasePhase = 'released' } = {}) => {
   const adapter = recoveryTransactionDb(), budget = createResourceBudget();
   const jobs = { async compute(request) {
     request.signal?.throwIfAborted(); const input = await request.prepareInput();
     const value = request.kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input) : await decodeProcgenRecoveryPage(input);
-    return { value, release() {} };
+    let released = false; return { value, release() { released = true; }, retirementState: () => ({ phase: released ? releasePhase : 'computed' }) };
   } };
   const store = createProcgenRecoveryPageStore({ open: async () => adapter.db, jobs, resourceBudget: budget, isCurrent: () => true, validateSession() {} });
   return { ...adapter, store, budget };
@@ -36,6 +36,19 @@ describe('atomic incremental recovery page publication', () => {
     const before = structuredClone([...f.records]); f.failAfter(writes);
     let error; try { await f.store.save(session('interrupted'), { documentRevision: 1, tick: 1 }); } catch (value) { error = value; }
     expect(error).to.exist; expect([...f.records]).to.deep.equal(before); f.store.dispose();
+  });
+  it('reports a completed commit even when cancellation arrives before its completion callback', async () => {
+    const f = setup(), controller = new AbortController(); f.afterCommit(() => controller.abort(new Error('late cancellation')));
+    const receipt = await f.store.save(session('committed'), { signal: controller.signal, documentRevision: 4, tick: 1 });
+    expect(receipt).to.include({ durable: true, canceledAfterCommit: true, documentRevision: 4 }); expect(receipt.retirement.status).to.equal('complete');
+    const source = await f.store.load(f.records.get('recovery:slot:1'), { owned: true }); expect(source.session.name).to.equal('committed'); source.release(); f.store.dispose();
+  });
+  it('distinguishes durable data from unknown worker-result cleanup', async () => {
+    const f = setup({ releasePhase: 'failed-or-unknown' });
+    const receipt = await f.store.save(session('durable-but-cleanup-unknown'), { documentRevision: 5, tick: 1 });
+    expect(receipt.durable).to.equal(true); expect(receipt.retirement.status).to.equal('unknown'); expect(receipt.retirement.failureCount).to.equal(3);
+    expect(f.records.get('recovery:head').generation).to.equal(receipt.generation); expect(f.store.stats().retirementFailures).to.equal(3);
+    const source = await f.store.load(f.records.get('recovery:slot:1'), { owned: true }); expect(() => source.release()).to.throw('unresolved'); expect(() => source.release()).to.throw('unresolved'); f.store.dispose();
   });
   it('rejects corrupt chunks and invalidates owned readers when storage closes', async () => {
     const f = setup(); await f.store.save(session('durable'), { documentRevision: 0, tick: 1 });

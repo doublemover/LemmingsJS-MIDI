@@ -1,3 +1,4 @@
+import { requireSynchronousResourceAcknowledgement } from './ResourceRetirement.js';
 import { createResourceBudget } from './ResourceBudget.js';
 
 const priorities = Object.freeze({ interactive: 3, recovery: 2, background: 1 });
@@ -11,7 +12,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   const releaseBudget = record => {
     const errors = [];
     for (const budget of record.reservedBudgets) {
-      try { if (budget.release({ token: record.token, owner: record.owner }) === false) throw invalid('Background resource release was not acknowledged.'); }
+      try { requireSynchronousResourceAcknowledgement(budget.release({ token: record.token, owner: record.owner }), 'Background resource release'); }
       catch (error) { errors.push(error); }
     }
     if (errors.length) throw new AggregateError(errors, 'Background resource retirement is incomplete.');

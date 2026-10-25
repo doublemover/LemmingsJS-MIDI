@@ -1,3 +1,4 @@
+import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { createProcgenRecoveryPageStore } from './ProcgenRecoveryPageStore.js';
 import { validateProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
@@ -52,9 +53,9 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     const controller = new AbortController(), cancel = () => controller.abort(signal?.reason || lifetime.signal.reason);
     signal?.addEventListener('abort', cancel, { once: true }); lifetime.signal.addEventListener('abort', cancel, { once: true });
     if (signal?.aborted || lifetime.signal.aborted) cancel();
-    let computed = null, snapshot = null;
+    let computed = null, snapshot = null, released = false, releaseError = null;
     const jobAborted = () => controller.abort(computed?.signal?.reason);
-    const release = () => { signal?.removeEventListener('abort', cancel); lifetime.signal.removeEventListener('abort', cancel); computed?.signal?.removeEventListener('abort', jobAborted); computed?.release(); snapshot = null; };
+    const release = () => { if (releaseError) throw releaseError; if (released) return; released = true; signal?.removeEventListener('abort', cancel); lifetime.signal.removeEventListener('abort', cancel); computed?.signal?.removeEventListener('abort', jobAborted); snapshot = null; try { retireBackgroundResult(computed); } catch (error) { releaseError = error; throw error; } };
     try {
       if (checksumSequence === Number.MAX_SAFE_INTEGER) throw new Error('Recovery checksum operation identity exhausted.');
       computed = await backgroundJobs.compute({ kind: 'recovery-checksum', ownerId: 'procgen-recovery-storage', ownerEpoch: generation,
@@ -64,7 +65,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       computed.signal?.addEventListener('abort', jobAborted, { once: true }); if (computed.signal?.aborted) jobAborted();
       controller.signal.throwIfAborted();
       return { checksum: computed.value, get snapshot() { controller.signal.throwIfAborted(); if (!snapshot) throw namedError('AbortError', 'Checkpoint source was released'); return snapshot; }, signal: controller.signal, release };
-    } catch (error) { release(); throw error; }
+    } catch (error) { try { release(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
   };
   const ownedSource = (computed, metadata) => {
     let owner = computed;
@@ -301,12 +302,16 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       if (incremental) {
         const token = {}, bytes = 8 * 1048576 + Math.max(1, Math.min(1024, laneCount || 1024)) * 131072;
         budgetAdapter?.reserve({ token, owner: 'incremental-recovery-snapshot', category: 'checkpoint', bytes, pinned: true, reloadable: false });
+        let durableReceipt = null, operationError = null;
         try {
           signal?.throwIfAborted(); if (retired) throw new Error('Project storage closed.');
           const session = typeof source === 'function' ? await source() : source;
           if (snapshotMetadata) { const metadata = snapshotMetadata(); documentRevision = metadata.documentRevision; tick = metadata.tick; }
-          return await recoveryPages.save(session, { signal, documentRevision, tick });
-        } finally { budgetAdapter?.release({ token, owner: 'incremental-recovery-snapshot' }); }
+          durableReceipt = await recoveryPages.save(session, { signal, documentRevision, tick }); return durableReceipt;
+        } catch (error) { operationError = error; throw error; } finally {
+          try { requireSynchronousResourceAcknowledgement(budgetAdapter?.release({ token, owner: 'incremental-recovery-snapshot' }), 'Recovery snapshot storage'); }
+          catch (error) { if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([...(durableReceipt.retirement?.failures || []), error]); else if (operationError) operationError.retirementError = error; else throw error; }
+        }
       }
       if (typeof globalThis.structuredClone !== 'function') throw new Error('This browser cannot create an isolated recovery snapshot. Export the project to keep a copy.');
       if (typeof source !== 'function') validateProcgenSession(source);
@@ -319,7 +324,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         return snapshot;
       }, { signal, laneCount });
       const { checksum, snapshot: session } = computed;
-      signal = computed.signal;
+      signal = computed.signal; let durableReceipt = null, operationError = null;
       try {
         if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
         const db = await open();
@@ -339,12 +344,12 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
                 name: session.name, savedAt: session.savedAt, session });
               store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum });
             };
-            transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve(receipt); };
+            transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); durableReceipt = { ...receipt, durable: true, canceledAfterCommit: signal.aborted }; resolve(durableReceipt); };
             transaction.onabort = () => { signal?.removeEventListener('abort', abort);
               reject(storageFailure(transaction.error || request.error || namedError('AbortError', 'Recovery transaction aborted'))); };
           } catch (error) { reject(storageFailure(error)); }
         });
-      } finally { computed.release(); }
+      } catch (error) { operationError = error; throw error; } finally { try { computed.release(); if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([]); } catch (error) { if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([error]); else if (operationError) operationError.retirementError = error; else throw error; } }
     },
     async loadRecovery({ requireVerified = false, signal, owned = false } = {}) {
       await migrateLegacy();

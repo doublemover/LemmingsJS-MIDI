@@ -114,7 +114,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
-  let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null;
+  let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null, recoveryRetirement = null, lastRecoveryCommit = null;
   let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
@@ -171,7 +171,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error,
     recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
-      pendingRevision: editRevision, error: recoveryError } });
+      pendingRevision: editRevision, error: recoveryError, retirement: recoveryRetirement } });
   const inputTarget = lease => {
     const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
     const pattern = lane?.patterns?.[lease.slot];
@@ -1047,8 +1047,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
       const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
         laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
+      if (receipt?.durable) lastRecoveryCommit = Object.freeze({ documentGeneration: sourceDocumentGeneration, documentRevision: capturedRevision, tick: capturedTick, generation: receipt.generation, canceledAfterCommit: receipt.canceledAfterCommit || controller.signal.aborted, retirement: receipt.retirement || null });
       if (disposed) return false;
-      if (controller.signal.aborted || documentGeneration !== sourceDocumentGeneration) { recoveryState = 'pending'; storageStatus(); return false; }
+      if (documentGeneration !== sourceDocumentGeneration || controller.signal.aborted && !receipt?.durable) { recoveryState = 'pending'; storageStatus(); return false; }
+      recoveryRetirement = receipt?.retirement || null;
+      if (recoveryRetirement?.status === 'unknown') status('Recovery is durably saved; resource cleanup is unresolved. New large operations may remain blocked.');
       durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
       durableRecoveryGeneration = receipt?.generation ?? durableRecoveryGeneration;
       recoveryState = editRevision === capturedRevision ? 'saved' : 'pending'; storageStatus();
@@ -1720,7 +1723,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
-      durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
+      durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),

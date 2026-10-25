@@ -1176,9 +1176,9 @@ class ProcgenLaneWorld {
       ...this.stats };
   }
   dispose() {
-    if (this._disposed) return;
+    if (this._disposalError) throw this._disposalError; if (this._disposed) return;
     this._disposed = true;
-    getProcgenRecoveryJournal(this)?.dispose();
+    let recoveryRetirementError = null; try { getProcgenRecoveryJournal(this)?.dispose(); } catch (error) { recoveryRetirementError = error; }
     cancelPendingInterventions(this, 'world-disposed');
     if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
       this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,
@@ -1190,6 +1190,7 @@ class ProcgenLaneWorld {
     }
     this._completedPhysicalSnapshot = null;
     this._manualNukeLanes.fill(0); for (const actor of this.actors) this._clearConstructionCrew(actor); this._musicActorPositions.clear(); this.triggerManager.dispose(); this.hazardPlanner.dispose(); this.basinRoutes.dispose(); this.tunnelRoutes.dispose(); this.lanePolicy.dispose(); this.terrainGrowth?.dispose(); this.scenery?.dispose(); this.edgeBlockers.fill(null); this.accessTasks.fill(null); this._edgeWallCache.fill(null); this._edgeWallHazards.length = 0; disposeTerrainTopology(this); this.physicalAuthoring = createPhysicalAuthoringState(); this.physicalJunctions.definitions = []; this.physicalJunctions.actual.clear(); this.onRestart = null; this.onLaneTransfer = null; this.characterParticles?.clear(); this.timer.onGameTick.dispose(); this.soundEvents.dispose(); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this._laneChunk.fill(null); this._collisionSlots.fill(null); this._laneEdits.fill(null); this._editCache.fill(null); this.terrain?.reset?.();
+    if (recoveryRetirementError) { this._disposalError = recoveryRetirementError; throw recoveryRetirementError; }
   }
 }
 

@@ -1602,3 +1602,22 @@ asynchronous release as unacknowledged, retaining the capsule and pressure inste
 of dropping its sole recoverable state. New real-world/controller and stale-owner
 regressions are authored but unrun. Shared profile estimates and combined allocation
 qualification remain explicitly separate from these source-level contracts.
+
+### Durable recovery versus resource retirement
+
+Recovery now records storage durability and resource retirement as independent
+outcomes. Once IndexedDB commits a generation, a cancellation racing its completion
+callback cannot relabel it unsaved. Worker-result cleanup must expose a released or
+canceled owner receipt; false, asynchronous or unknown release stays visible. A
+completed generation with unresolved cleanup is reported as durably saved with a
+capacity warning, not silently accepted cleanup and not a fabricated failed write.
+Owned read sources repeat their unresolved retirement outcome instead of hiding it
+behind an already-released boolean.
+
+Replacing a recovery base cannot free the newly published base when retirement of
+the previous generation fails. World disposal still retires independent physics
+resources and then preserves that error for repeat callers. Cold renderer pressure
+now reclaims only the accounted deficit, with a finite eviction-work bound, ahead
+of the more expensive decoded-asset caches; active surfaces remain pinned. These
+are deterministic ownership contracts with authored fault-injection coverage, not
+executed browser/IndexedDB or resident-memory qualification.

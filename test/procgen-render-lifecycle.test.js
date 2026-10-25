@@ -221,3 +221,15 @@ describe('ProcGen display resource lifecycle', () => {
     world._musicCompletedTick = world.tickIndex; expect(renderer.render()).to.equal(true); renderer.dispose();
   });
 });
+
+describe('incremental shared render-cache pressure', () => {
+  it('reclaims only the cold accounted deficit and retains active canvases', () => {
+    const { canvas } = fixture(), budget = createResourceBudget({ limitBytes: 16384 }), resources = new ProcgenRenderResources(canvas.ownerDocument, { budgetAdapter: budget });
+    const cold = [resources.canvas(), resources.canvas(), resources.canvas()], active = resources.canvas();
+    for (const value of cold) resources.resize(value, 8, 8, { cache: true }); resources.resize(active, 8, 8);
+    const before = budget.diagnostics().accountedBytes, receipt = resources.reclaim(1);
+    expect(receipt).to.include({ attempted: 1, reclaimedBytes: 384, accounting: 'shared-accounted' });
+    expect(resources.entries.has(cold[0])).to.equal(false); expect(resources.entries.has(cold[1])).to.equal(true); expect(resources.entries.has(active)).to.equal(true);
+    expect(budget.diagnostics().accountedBytes).to.equal(before - 384); resources.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+});

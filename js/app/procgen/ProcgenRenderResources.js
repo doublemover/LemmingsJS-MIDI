@@ -130,6 +130,17 @@ class ProcgenRenderResources {
     try { entry.retire?.(); } catch { this.retirementFailures++; }
     this._retirementReservation(key, entry.bytes);
   }
+  reclaim(neededBytes, { maximumEvictions = 512 } = {}) {
+    if (!Number.isSafeInteger(neededBytes) || neededBytes < 0 || !Number.isSafeInteger(maximumEvictions) || maximumEvictions < 1 || maximumEvictions > 512) throw new Error('Invalid render reclamation request.');
+    const accounted = () => this.budgetAdapter?.diagnostics?.().accountedBytes ?? this.bytes + this.unreleasedBytes;
+    const before = accounted(); let attempted = 0;
+    for (const [key, entry] of this.entries) {
+      if (before - accounted() >= neededBytes || attempted >= maximumEvictions) break;
+      if (!entry.cache || this.reservationsInFlight.has(key)) continue;
+      attempted++; this.release(key); this.evictions++;
+    }
+    return Object.freeze({ attempted, reclaimedBytes: Math.max(0, before - accounted()), accounting: this.budgetAdapter?.diagnostics ? 'shared-accounted' : 'local-estimated', workLimited: attempted === maximumEvictions && before - accounted() < neededBytes });
+  }
   clearCaches() { for (const [key, entry] of this.entries) if (entry.cache && !this.reservationsInFlight.has(key)) this.release(key); }
   clear({ preserveKinds = [] } = {}) { for (const [key, entry] of this.entries) if (!preserveKinds.includes(entry.kind)) this.release(key); }
   getStats() { return { estimatedBytes: this.bytes + this.unreleasedBytes, cachedBitmapBytes: this.cacheBytes, peakEstimatedBytes: this.peakBytes,

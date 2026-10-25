@@ -1,6 +1,6 @@
 // A transactional storage seam: writes become visible only on completion.
 export function recoveryTransactionDb() {
-  const records = new Map(); let failAfter = Infinity;
+  const records = new Map(); let failAfter = Infinity, afterCommit = null;
   const db = { transaction(_store, mode) {
     const staged = new Map(records); let waiting = 0, aborted = false, completed = false, writes = 0;
     const transaction = { error: null, abort() { if (aborted || completed) return; aborted = true; queueMicrotask(() => transaction.onabort?.()); },
@@ -16,12 +16,12 @@ export function recoveryTransactionDb() {
         waiting--;
         if (!waiting && !aborted) queueMicrotask(() => {
           if (waiting || aborted || completed) return; completed = true;
-          if (mode === 'readwrite') { records.clear(); for (const [key, value] of staged) records.set(key, value); }
+          if (mode === 'readwrite') { records.clear(); for (const [key, value] of staged) records.set(key, value); afterCommit?.(); }
           transaction.oncomplete?.();
         });
       }); return result;
     };
     return transaction;
   } };
-  return { db, records, failAfter: value => { failAfter = value; } };
+  return { db, records, failAfter: value => { failAfter = value; }, afterCommit: callback => { afterCommit = callback; } };
 }
