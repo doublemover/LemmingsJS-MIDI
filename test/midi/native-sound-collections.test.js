@@ -30,7 +30,7 @@ describe('independent native sound collection aliases', () => {
             release() { if (!failRelease) { phase = 'released'; value = null; } }, retirementState: () => ({ phase }) };
         } }, owner = createNativeSoundSelection({ resourceBudget: budget, jobs, getCatalog: async () => ({ descriptors }), fetch: async url => new globalThis.Response(await readFile(url), { headers: { 'Content-Type': 'application/json' } }) });
       if (failRelease) { let error; try { await owner.prepare('foundation.soft-triangle'); } catch (caught) { error = caught; } expect(error.retirement.outcome).to.equal('partial'); expect(owner.diagnostics().unknownRetirement).to.equal(true); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); }
-      else { const candidate = await owner.prepare('foundation.soft-triangle'); expect(candidate.reference.patchId).to.equal('foundation.soft-triangle'); expect(budget.diagnostics().accountedBytes).to.equal(262144); await candidate.release().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); }
+      else { const candidate = await owner.prepare('foundation.soft-triangle'); expect(candidate.reference.patchId).to.equal('foundation.soft-triangle'); expect(budget.diagnostics().accountedBytes).to.equal(Math.ceil(262144 * 1.25)); await candidate.release().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); }
       await owner.dispose().completion;
     }
   });

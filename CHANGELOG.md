@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fix checkpoint replay and branch retirement, resumable survey evidence, worker source bounds, audio render cleanup, local MIDI admission accounting, and close-follower containment at source fire bridges.
+
 - Add actor-owned action admission, legato/crossfade and hold limits, with explicit lane handoff policies and native/sample/worklet transition ramps.
 
 - Interpret real crowd arrivals, work phases, blocker pairs and flight arcs with actor-owned sustained responses, explicit grouping ancestry and portable estimator state.

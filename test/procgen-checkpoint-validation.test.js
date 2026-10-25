@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 
 const world = () => ({ laneCount: 1, laneHeight: 144, seed: 7, terrain: {}, actions: {}, timer: { speedFactor: 1, TIME_PER_FRAME_MS: 16 },
-  actors: [], nextActorId: 0, stall: { settings: {} }, soundEvents: { snapshotIdentity: () => ({ version: 1, causalSequence: 0, legacySequence: 0, coverage: 'complete' }), restoreIdentity() {} }, tickIndex: 0, laneSeeds: [], generation: 0, step() { return true; } });
+  triggerManager: { rebuildIndex() {} }, terrainActivityTicks: new Float64Array([-Infinity]), actors: [], nextActorId: 0, stall: { settings: {} }, soundEvents: { snapshotIdentity: () => ({ version: 1, causalSequence: 0, legacySequence: 0, coverage: 'complete' }), restoreIdentity() {} }, tickIndex: 0, laneSeeds: [], generation: 0, step() { return true; } });
 const saved = () => JSON.parse(JSON.stringify(captureProcgenCheckpoint(world())));
 
 describe('ProcGen checkpoint admission', () => {

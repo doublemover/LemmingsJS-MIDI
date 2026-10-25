@@ -55,6 +55,7 @@ const surveyReplayEvidenceProblems = result => {
   if (result.provenance?.harnessVersion !== 1) problems.push('unsupported-harness-version');
   for (const key of ['scenarioHash', 'budgetHash', 'sourceHash']) if (!/^[0-9a-f]{16}$/i.test(result.provenance?.[key] || '')) problems.push(`missing-${key}`);
   for (const key of ['initialStateHash', 'initialScenarioStateHash', 'finalStateHash', 'finalPhysicalStateHash', 'eventHash']) if (!checksum(result[key])) problems.push(`missing-${key}`);
+  if (result.initialPhysicalStateHash !== undefined && !checksum(result.initialPhysicalStateHash)) problems.push('invalid-initialPhysicalStateHash');
   if (!Number.isSafeInteger(result.lastTick) || result.lastTick < 0) problems.push('invalid-last-tick');
   if (result.episodeComplete !== true || !['completed', 'failed', 'timeout'].includes(result.status)) problems.push('incomplete-episode');
   if (!Number.isSafeInteger(result.scenario?.horizonTicks) || result.scenario.horizonTicks < 1 || result.lastTick !== result.scenario.horizonTicks) problems.push('horizon-not-reached');
@@ -80,7 +81,7 @@ const surveyReplayEvidenceProblems = result => {
         index > 0 && entry.tick <= result.milestones[index - 1]?.tick || !checksum(entry?.stateHash) || !checksum(entry?.physicalStateHash) || !checksum(entry?.eventHash))) problems.push('invalid-milestones');
   const milestones = Array.isArray(result.milestones) ? result.milestones : [];
   if (milestones[0]?.stateHash !== result.initialStateHash || milestones.at(-1)?.stateHash !== result.finalStateHash ||
-      milestones.at(-1)?.eventHash !== result.eventHash || milestones[0]?.physicalStateHash !== result.initialScenarioStateHash || milestones.at(-1)?.physicalStateHash !== result.finalPhysicalStateHash) problems.push('milestone-boundary-mismatch');
+      milestones.at(-1)?.eventHash !== result.eventHash || milestones[0]?.physicalStateHash !== (result.initialPhysicalStateHash ?? result.initialScenarioStateHash) || milestones.at(-1)?.physicalStateHash !== result.finalPhysicalStateHash) problems.push('milestone-boundary-mismatch');
   if (!Array.isArray(result.events) || result.events.length > 256 || !Number.isSafeInteger(result.evidence?.eventCount) || result.evidence.eventCount !== result.events.length ||
       result.evidence?.eventsOmitted !== 0 || result.evidence?.milestonesOmitted !== 0) problems.push('incomplete-retention-accounting');
   if (Array.isArray(result.events) && result.evidence?.eventsOmitted === 0) {
@@ -123,6 +124,7 @@ const compareSurveyReplay = (original, replay, { scope = 'exact deterministic re
   if (original?.trialId !== replay?.trialId) reasons.push('different-trial-identities');
   if (original?.provenance?.sourceHash !== replay?.provenance?.sourceHash) reasons.push('different-source-identities');
   const fields = ['scenarioId', 'candidateId', 'scenario', 'candidate', 'policySeed', 'status', 'terminationReason', 'lastTick', 'initialStateHash', 'initialScenarioStateHash', 'finalStateHash', 'finalPhysicalStateHash', 'eventHash', 'accounting', 'metrics', 'provenance', 'episodeComplete', 'events', 'crew'];
+  if (original?.initialPhysicalStateHash !== undefined || replay?.initialPhysicalStateHash !== undefined) fields.push('initialPhysicalStateHash');
   const differences = fields.filter(key => {
     try { return canonicalSurveyJson(original?.[key]) !== canonicalSurveyJson(replay?.[key]); }
     catch { reasons.push('unsupported-canonical-field:' + key); return true; }

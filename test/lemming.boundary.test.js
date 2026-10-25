@@ -17,7 +17,7 @@ describe('Lemming state boundary checks', function () {
     expect(calls).to.deep.equal([[4, 8]]);
   });
 
-  it('process clamps bottom death position', function () {
+  it('process reports bottom exit for manager-owned death recording', function () {
     const level = { width: 20, height: 10 };
     const miniMap = { calls: [], addDeath(...a) { this.calls.push(a); } };
     const lem = new Lemming(3, 27, undefined, { miniMap });
@@ -25,7 +25,7 @@ describe('Lemming state boundary checks', function () {
 
     const res = lem.process(level);
     expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
-    expect(miniMap.calls[0]).to.deep.equal([3, 4]);
+    expect(miniMap.calls).to.have.length(0);
   });
 
   it('process returns whatever the action provides', function () {

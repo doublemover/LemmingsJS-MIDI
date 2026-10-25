@@ -25,7 +25,7 @@ describe('real bounded procgen survey coordination', function() {
     const manifest = declaration(); directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lemmings-survey-coordinator-'));
     const store = await new SurveyEvidenceStore(directory).initialize(manifest), states = [];
     const report = await runSurveyExperiment(manifest, store, { onState: get => states.push(get().status) });
-    expect(report.status).to.equal('complete'); expect(report.results).to.have.length(18); expect(report.verification).to.have.length(4); expect(report.verification.every(check => check.matched)).to.equal(true);
+    expect(report.status, JSON.stringify({ reason: report.reason, verification: report.verification })).to.equal('complete'); expect(report.results).to.have.length(18); expect(report.verification).to.have.length(4); expect(report.verification.every(check => check.matched)).to.equal(true);
     const finalist = report.results.find(result => result.validity.deterministic === true); expect((await store.completed(finalist.trialId)).validity.deterministic).to.equal(null);
     expect(report.rankingsTrusted).to.equal(false); expect(states).to.include('held-out');
     expect(report.admissions).to.have.length(report.persistenceReceipts.length);
@@ -59,7 +59,7 @@ describe('real bounded procgen survey coordination', function() {
       return {};
     };
     const report = await runSurveyExperiment(manifest, store, { runJobs });
-    expect(report.status).to.equal('complete'); expect(report.incompleteTrials).to.deep.equal([]);
+    expect(report.status, JSON.stringify({ reason: report.reason, verification: report.verification })).to.equal('complete'); expect(report.incompleteTrials).to.deep.equal([]);
     expect(report.results).to.have.length(18);
     const successes = report.exemplars.selected.filter(item => item.kind === 'success'); expect(successes).to.have.length(1);
     const qualification = report.successQualification[0]; expect(qualification.originalTrialId).to.equal(successes[0].trialId);

@@ -48,8 +48,8 @@ describe('shared physical observer reservation owners', () => {
   it('unwinds already-created audio owners when initial interpreter admission fails', () => {
     const calls = [], backend = { prepare: async () => ({ status: 'ready' }), dispose() { calls.push('backend'); } };
     const session = { createInstrumentBackend: () => backend, dispose() { calls.push('session'); }, getState: () => ({ enabled: false }) };
-    const audio = { createSession: () => session, getState: () => ({ enabled: false }), subscribe: () => () => calls.push('unsubscribe') };
-    expect(() => createProcgenPhysicalPlayback({ audio, resourceBudget: createResourceBudget({ limitBytes: 4096 }), getGraph: () => empty })).to.throw('accounted bytes');
+    const audio = { createSession: () => session, getAudioClockSnapshot: () => ({ audioTime: 0, sampleRate: 48000, contextEpoch: 1, status: 'running' }), getState: () => ({ enabled: false }), subscribe: () => () => calls.push('unsubscribe') };
+    expect(() => createProcgenPhysicalPlayback({ audio, now: () => 0, resourceBudget: createResourceBudget({ limitBytes: 4096 }), getGraph: () => empty })).to.throw('accounted bytes');
     expect(calls).to.include.members(['backend', 'session', 'unsubscribe']);
   });
 });

@@ -118,7 +118,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       ...([...nodes.values()].some(node => node.detector) ? { detector: ENVELOPE_DETECTOR_REVISION } : {}), ...([...nodes.values()].some(node => node.mapping) ? { envelopeMapping: ENVELOPE_MAPPING_REVISION } : {}), ...([...nodes.values()].some(node => node.vocoder) ? { vocoder: VOCODER_BANK_REVISION } : {}) },
     processingCost: { vocoderBiquadsPerFrame: [...nodes.values()].reduce((sum, node) => sum + (node.vocoder?.filterCount || 0), 0), envelopeFollowersPerFrame: [...nodes.values()].reduce((sum, node) => sum + (node.vocoder?.followerCount || (node.detector ? 1 : 0)), 0), unit: 'prepared-operator-count-not-measured-CPU' },
     nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-linear-fractional-creative-delay-preserved' : 'disabled-unknown-native-latency',
-    tailPolicy: 'hard-owned-deadline-with-conservative-feedback-decay-model', maximumGraphGainBound: Math.max(...amplitude.values()),
+    tailPolicy: 'hard-owned-deadline-with-conservative-feedback-decay-model', maximumGraphGainBound: Math.max(...amplitude.values()), maximumOutputGainBound: Math.max(...outputs.map(id => amplitude.get(id))),
     outputProtection: 'required-shared-owner-master-external-to-creative-graph' });
 }
 

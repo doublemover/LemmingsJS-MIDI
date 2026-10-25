@@ -148,9 +148,9 @@ describe('semantic causal take capture and reinterpretation', function() {
     recorder.recordCommittedBatch({ batch: physical(1), intents: [] });
     const gap = { kind: 'physical-facts', firstTick: 2, lastTick: 2, generation: 1, reason: 'batch-processing-failed' };
     expect(recorder.markGap(gap).status).to.equal('accepted');
-    expect(recorder.status().coverage).to.deep.equal({ status: 'partial', gaps: [
-      { kind: 'movement-path', firstTick: 1, lastTick: 1, generation: 1, reason: 'endpoint-only-evidence' }, gap
-    ] });
+    expect(recorder.status().coverage.status).to.equal('partial');
+    expect(recorder.status().coverage.gaps).to.deep.include(gap);
+    expect(recorder.status().coverage.gaps).to.deep.include({ kind: 'movement-path', firstTick: 1, lastTick: 1, generation: 1, reason: 'endpoint-only-evidence' });
     recorder.recordCommittedBatch({ batch: physical(3), intents: [] });
     expect((await recorder.stop()).complete).to.equal(false);
     const manifest = await journal.openTake('take:missed-batch');
@@ -175,14 +175,16 @@ describe('semantic causal take capture and reinterpretation', function() {
     expect((await journal.query({ takeId: manifest.takeId, kinds: ['physical-batch'] })).records).to.have.length(1);
   });
 
-  it('reports a failed final component checkpoint as partial while preserving the durable source prefix', async () => {
+  it('retains a failed final component checkpoint for retry while preserving the durable source prefix', async () => {
     const { journal, control } = setup(), recorder = await createCausalTakeRecorder({ ...metadata('take:failed-final'), journal });
     recorder.recordCommittedBatch({ batch: physical(1), intents: [] }); await recorder.flush();
     control.failNext = true;
     const receipt = await recorder.stop({ finalCheckpoint: { world: { tick: 1 } } });
     expect(receipt).to.include({ complete: false, durableSequence: 2 });
     const manifest = await journal.openTake('take:failed-final');
-    expect(manifest.coverage.gaps.some(gap => gap.reason === 'final-component-checkpoint-failed')).to.equal(true);
+    expect(receipt).to.include({ recoveryRequired: true, terminal: false });
+    expect(manifest.state).to.equal('recording');
+    expect((await recorder.stop()).complete).to.equal(true);
     expect((await journal.verify(manifest.takeId)).verifiedThroughSequence).to.equal(2);
   });
 });

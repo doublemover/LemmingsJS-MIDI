@@ -18,7 +18,7 @@ export async function browserGenerationFixture() {
       selectedBackends: { browserMidi: 'fixture', nativeUmp: 'fixture', audioRuntime: 'fixture', optionalAudioBank: 'fixture' }, workerSources: [], components: [] }) };
   for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
   for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'js/runtime/BrowserGenerationService.js',
-    'js/runtime/BrowserGenerationClient.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js']) {
+    'js/runtime/BrowserGenerationClient.js', 'js/runtime/BrowserGenerationPins.js', 'js/runtime/InstrumentArtifactManifest.js', 'js/core/CanonicalData.js', 'scripts/InstrumentArtifactClosure.js', 'scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js']) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repository, file), path.join(root, file));
   }
   return { root, build: () => buildBrowserRuntime({ rootDir: root, inventory: ['classic/MAIN.DAT', 'css/shell.css'] }),

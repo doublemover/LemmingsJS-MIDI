@@ -8,7 +8,7 @@ describe('default ordinary crews and sparse permanent abilities', function() {
   let masks, terrain;
   before(async () => { masks = await loadProcgenMasks(); terrain = await loadProcgenTerrain('lemmings', 3); });
   it('starts every new/default and restarted actor ordinary, then floats only delayed scouts with a floating role', () => {
-    const world = new ProcgenLaneWorld({ masks, terrain, laneCount: 2 });
+    const world = new ProcgenLaneWorld({ masks, terrain, laneCount: 2, seed: 2 });
     for (let ordinal = 1; ordinal < 16; ordinal++) world._spawn(0, false);
     const crew = world.actors.filter(a => a.laneIndex === 0);
     expect(crew.filter(a => a.scout)).to.have.length(2);

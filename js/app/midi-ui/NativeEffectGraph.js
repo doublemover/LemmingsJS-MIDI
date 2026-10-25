@@ -145,7 +145,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     } parameterControls.set(entry.id, adapters);
     return value;
   };
-  const checkPublication = () => { signal?.throwIfAborted(); if (disposed || context.state === 'closed' || !isCurrent() || fault) throw fault || failure('stale-effect-publication', 'Prepared effect publication no longer belongs to its owner.'); };
+  const checkPublication = () => { signal?.throwIfAborted(); if (disposed || !offline && context.state === 'closed' || !isCurrent() || fault) throw fault || failure('stale-effect-publication', 'Prepared effect publication no longer belongs to its owner.'); };
   const confirmReady = async () => { await Promise.all(processors.map(entry => entry.awaitReady())); checkPublication(); initializationConfirmed = true; };
   const confirmOfflineCompletion = async () => {
     if (!offline) throw failure('offline-completion-unavailable', 'This effect graph has no offline completion boundary.');

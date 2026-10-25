@@ -167,7 +167,7 @@ describe('bounded game-clock MIDI phrases', function() {
         if (reason === 'mapping') router.setMapping({ ...config, scale: { ...config.scale, root: 2 } });
         if (reason === 'disable') router.setMapping({ ...config, enabled: false });
         if (reason === 'output') router.setOutput(makeOutput([1], [], 'other'));
-        if (reason === 'disconnect') router.setOutputs([]);
+        if (reason === 'disconnect') { router.setOutput(null); router.setOutputs([]); }
         if (reason === 'detach') router.detach();
         if (reason === 'backward') {
           advance();

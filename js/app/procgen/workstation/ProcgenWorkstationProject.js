@@ -132,7 +132,12 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
     changes: Object.freeze(['Physical facts now generate intents directly.', 'Legacy event-advanced phrases were removed.',
       'Builder work, ordinary wall contacts and the x=40 gate use the declared default mapping.']) }) });
 };
-const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+const sameValue = (left, right) => {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
+  const keys = Object.keys(left);
+  return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right, key) && sameValue(left[key], right[key]));
+};
 const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
   if (action.type === 'procgen/releaseGesture') { const releaseGesture = validateReleaseGesture(action.gesture, procgen.lanes.length); if (sameValue(releaseGesture, procgen.releaseGesture)) return project; if (procgen.releaseGesture?.id === releaseGesture.id && releaseGesture.revision <= procgen.releaseGesture.revision) throw new Error('A saved release gesture change requires a newer revision.'); return { ...project, procgen: { ...procgen, releaseGesture } }; }

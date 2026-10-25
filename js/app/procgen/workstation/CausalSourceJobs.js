@@ -22,7 +22,7 @@ export function createCausalSourceJobs({ storage, resourceBudget, jobs = backgro
     if (ordinal === Number.MAX_SAFE_INTEGER) throw journalError('source-identity-exhausted', 'Causal source reader identity is exhausted.');
     const reference = cloneJournalData(ref, { maxBytes: 16384, maxNodes: 4096 }), selected = selection == null ? null : cloneJournalData(selection, { maxBytes: 16384, maxNodes: 4096 });
     const handle = await jobs.compute({ kind: 'verify-causal-source', ownerId, ownerEpoch: ++ordinal,
-      sourceRevision: reference.hash, inputBytes: bytes + metadataBytes, estimatedPeakBytes, budgetAdapter: resourceBudget, signal, maxBytes: bytes,
+      sourceRevision: reference.hash, inputBytes: bytes + metadataBytes, estimatedPeakBytes, budgetAdapter: resourceBudget, signal, maxBytes: bytes + metadataBytes + 4096,
       priority: metadataOnly ? 'background' : 'interactive',
       prepareInput: async ({ signal: ownedSignal }) => {
         const record = await (kind === 'chunk' ? storage.loadCausalChunk(reference.id, { signal: ownedSignal, maxCanonicalBytes: bytes }) :

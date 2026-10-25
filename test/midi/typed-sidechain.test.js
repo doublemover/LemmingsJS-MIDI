@@ -39,7 +39,7 @@ describe('typed signal-rate sidechains (authored; qualification deferred)', () =
       for (let i = 0; i < 1000; i++) { const value = i < 39 ? 0.2 : 0; source.sample(value, -value); restored.sample(value, -value); expect(restored.output).to.equal(source.output); }
     });
     it('keeps donor audio inaudible, shares a detector, and releases toward neutral at ' + sampleRate, async () => {
-      const graph = externalGraph(); graph.nodes.push({ id: 'second-map', kind: 'envelope-mapping', parameters: { neutral01: 0, depth01: 0.2, polarity: 1 } }, { id: 'second-target', kind: 'modulated-gain', parameters: {} });
+      const graph = externalGraph(); graph.nodes.push({ id: 'second-map', kind: 'envelope-mapping', parameters: { mapping: 'linear-amplitude', neutral01: 0, depth01: 0.2, polarity: 1 } }, { id: 'second-target', kind: 'modulated-gain', parameters: {} });
       graph.edges.push(route('follow', 'envelope', 'second-map', 'envelope'), route('source', 'audio', 'second-target', 'audio'), route('second-map', 'modulation', 'second-target', 'gain'), route('second-target', 'audio', 'output', 'audio'));
       const render = await createOwnedEffectGraphKernel({ definition: graph, sampleRate }), donor = new Float32Array([1, -1]);
       render.sample(0, 0, donor); expect(render.leftSample).to.equal(0); expect(render.rightSample).to.equal(0);

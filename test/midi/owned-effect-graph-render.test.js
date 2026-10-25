@@ -49,7 +49,7 @@ describe('one full owned effect graph and simultaneous return taps (deferred)', 
       boundary: { status: 'captured-initial-state', state: { sourceTimeMs: 0, voices: [] } }, finalBoundaryState: { sourceTimeMs: 1000 }, intents };
     const graph = { schema: 'lemmings-effect-graph/v1', id: 'fixture.unexported-donor', revision: 1, latencyPolicy: 'align-declared', maximumLatencyFrames: 0, maximumTailSeconds: 4,
       nodes: [{ id: 'source', kind: 'bus-in', parameters: {} }, { id: 'donor', kind: 'sidechain-in', parameters: { sourceBusId: 'lane:1', tap: 'pre-fader' } },
-        { id: 'detector', kind: 'envelope-detector', parameters: { referenceAmplitude: 0.1 } }, { id: 'map', kind: 'envelope-mapping', parameters: { neutral01: 1, depth01: 0.8, polarity: -1 } },
+        { id: 'detector', kind: 'envelope-detector', parameters: { referenceAmplitude: 0.1 } }, { id: 'map', kind: 'envelope-mapping', parameters: { mapping: 'linear-amplitude', neutral01: 1, depth01: 0.8, polarity: -1 } },
         { id: 'target', kind: 'modulated-gain', parameters: {} }, { id: 'output', kind: 'bus-out', parameters: {} }],
       edges: [edge('source', 'target'), edge('donor', 'detector'), { from: { nodeId: 'detector', port: 'envelope' }, to: { nodeId: 'map', port: 'envelope' }, gain01: 1 },
         { from: { nodeId: 'map', port: 'modulation' }, to: { nodeId: 'target', port: 'gain' }, gain01: 1 }, edge('target', 'output')] };

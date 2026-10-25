@@ -1,5 +1,5 @@
 import { applyInstrumentVariation, validateInstrumentVariation } from './InstrumentIdentityVariation.js';
-const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
+const object = value => value && [Object.prototype, null].includes(Object.getPrototypeOf(value));
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'prototype', 'constructor'].includes(value);
 const finite = (value, minimum, maximum) => Number.isFinite(value) && value >= minimum && value <= maximum;
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));

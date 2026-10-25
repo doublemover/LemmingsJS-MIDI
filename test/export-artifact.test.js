@@ -201,18 +201,19 @@ describe('prepared export artifacts and delivery receipts', () => {
 
   it('cancels an in-flight write and reports picker capabilities without claiming disk durability', async () => {
     const artifact = prepare(new Uint8Array(100000)), controller = new AbortController();
-    let started;
+    let started, finishWrite;
     const entered = new Promise(resolve => { started = resolve; });
     const calls = [];
     const delivery = deliverArtifactToFileHandle(artifact, { async createWritable() { return {
-      write() { calls.push('write'); started(); return new Promise(() => {}); },
+      write() { calls.push('write'); started(); return new Promise(resolve => { finishWrite = resolve; }); },
       async abort() { calls.push('abort'); }, async close() { calls.push('close'); }
     }; } }, { signal: controller.signal });
     await entered; controller.abort();
     const receipt = await delivery;
     expect(receipt).to.include({ state: 'canceled', bytesWritten: 0, abortAttempted: true, abortAcknowledged: true });
     expect(calls).to.deep.equal(['write', 'abort']);
-    expect(artifact.metadata().activeLeases).to.equal(0);
+    expect(artifact.metadata().activeLeases).to.equal(1); expect(receipt.nativeRetirement).to.equal('pending-native-settlement');
+    finishWrite(); await new Promise(resolve => setImmediate(resolve)); expect(artifact.metadata().activeLeases).to.equal(0);
     expect((await requestExportFileHandle(artifact, { windowRef: {} })).state).to.equal('unsupported');
     let invoked = false;
     const pending = requestExportFileHandle(artifact, { windowRef: { showSaveFilePicker() { invoked = true; return Promise.reject(Object.assign(new Error('closed'), { name: 'AbortError' })); } } });
@@ -220,30 +221,31 @@ describe('prepared export artifacts and delivery receipts', () => {
   });
 
   it('cancels an owned in-flight delivery when its prepared artifact is discarded', async () => {
-    const artifact = prepare(new Uint8Array(100000)); let entered;
+    const artifact = prepare(new Uint8Array(100000)); let entered, finishWrite;
     const started = new Promise(resolve => { entered = resolve; });
     const calls = [];
     const delivery = deliverArtifactToFileHandle(artifact, { async createWritable() { return {
-      write() { entered(); return new Promise(() => {}); },
+      write() { entered(); return new Promise(resolve => { finishWrite = resolve; }); },
       async abort() { calls.push('abort'); }, async close() { calls.push('close'); }
     }; } });
     await started; artifact.discard();
     const receipt = await delivery;
     expect(receipt).to.include({ state: 'canceled', abortAcknowledged: true });
     expect(calls).to.deep.equal(['abort']);
-    expect(artifact.metadata()).to.include({ retained: false, activeLeases: 0 });
+    expect(artifact.metadata()).to.include({ retained: false, activeLeases: 1 });
+    finishWrite(); await new Promise(resolve => setImmediate(resolve)); expect(artifact.metadata().activeLeases).to.equal(0);
   });
 
   it('aborts a file handle that arrives after opening was canceled', async () => {
     const artifact = prepare(), controller = new AbortController();
-    let resolveOpen, lateAborted = false;
-    const delivery = deliverArtifactToFileHandle(artifact, { createWritable() { return new Promise(resolve => { resolveOpen = resolve; }); } },
+    let resolveOpen, enteredOpen, lateAborted = false; const opening = new Promise(resolve => { enteredOpen = resolve; });
+    const delivery = deliverArtifactToFileHandle(artifact, { createWritable() { enteredOpen(); return new Promise(resolve => { resolveOpen = resolve; }); } },
       { signal: controller.signal });
-    controller.abort();
+    await opening; controller.abort();
     const receipt = await delivery;
     expect(receipt).to.include({ state: 'canceled', bytesWritten: 0 });
     resolveOpen({ abort() { lateAborted = true; } });
-    await Promise.resolve(); await Promise.resolve();
+    await new Promise(resolve => setImmediate(resolve));
     expect(lateAborted).to.equal(true);
     expect(artifact.metadata().activeLeases).to.equal(0);
   });

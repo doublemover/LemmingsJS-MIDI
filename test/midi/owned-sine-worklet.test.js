@@ -1,5 +1,7 @@
 import { fixedSourceBank } from './fixed-source-bank-fixture.js';
 import { expect } from 'chai';
+import { inspectVoiceInterval, workloadVoiceCount } from '../../js/app/midi-ui/AudioVoiceAdmission.js';
+import { createAudioIntervalAdmission } from '../../js/app/midi-ui/AudioIntervalAdmission.js';
 import { OwnedSineKernel, WIDTH, PROTOCOL, RECEIPT_WIDTH, BEGIN, UPDATE, END, CANCEL, LEASE,
   APPLIED, REJECTED, ENDED, DISPLAY_PROTOCOL, DISPLAY_WIDTH, DISPLAY_VOICES } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { createWorkletInstrumentBackend } from '../../js/app/midi-ui/workletInstrumentBackend.js';
@@ -158,7 +160,7 @@ const setupHost = (engineId = 'worklet-sine') => {
   const preview = { _generation: 0, _sessions: new Map([['owner', { generation: 0 }]]), _voices: new Set(), _semanticVoiceOwners: new Map(),
     _maxVoices: 64, _maxScheduledVoices: 96, _maxNoteSeconds: 8, _voiceSequence: 0, _nowMs: () => context.currentTime * 1000,
     _ownerReady: () => true, _workloadClass: () => 'live', getAudioContext: () => context, _channel: () => ({ gain: {} }), _captureMetadata: fields => fields,
-    _inspectVoiceInterval: () => ({ accepted: true }), _inspectVoiceExtensions: () => ({ accepted: true }),
+    _intervalAdmission: createAudioIntervalAdmission({ maxIntervals: 97 }), _maxLiveScheduledVoices: 96, _workloadVoiceCount: workloadVoiceCount, _inspectVoiceInterval: inspectVoiceInterval, _inspectVoiceExtensions: () => ({ accepted: true }),
     _renderVoiceCount(voices = this._voices) { return [...voices].reduce((sum, voice) => sum + (voice.renderCost || 1), 0); },
     _destroyVoice(voice, reason) { if (this._voices.delete(voice)) { voice.onDestroy?.(reason); voice.resourceLease?.release(); } } };
   if (granular) preview._audioResources = createAudioResourceLeases();
@@ -288,9 +290,9 @@ describe('Owned worklet host lifecycle', () => {
 
   it('does not spend numeric epoch slots on unrelated rejected voice admissions', async () => {
     const { backend, patch, intent, preview } = setupHost(); await backend.prepare(patch);
-    const blockers = Array.from({ length: 32 }, () => ({ start: 0, releaseAt: 8, renderCost: 2 }));
+    const blockers = Array.from({ length: 32 }, () => ({ start: 0, releaseAt: 8, end: 8, renderCost: 2 }));
     for (const voice of blockers) preview._voices.add(voice);
-    for (let index = 0; index < 100; index++) expect(backend.begin(intent('budget'), 480, `rejected-${index}`).reason).to.equal('shared-voice-budget');
+    for (let index = 0; index < 100; index++) expect(backend.begin(intent('budget'), 480, `rejected-${index}`).reason).to.equal('reserved-interval-capacity');
     for (const voice of blockers) preview._voices.delete(voice);
     expect(backend.begin(intent('admitted'), 480, 'fresh').status).to.equal('accepted'); backend.dispose();
   });
@@ -307,8 +309,8 @@ describe('Owned worklet host lifecycle', () => {
 
   it('counts release layers reserved by another local backend before admitting a worklet source', async () => {
     const { backend, patch, intent, preview } = setupHost(); await backend.prepare(patch);
-    for (let n = 0; n < 32; n++) preview._voices.add({ start: 0, releaseAt: 8, renderCost: 2 });
-    expect(backend.begin(intent('over-budget'), 480).reason).to.equal('shared-voice-budget');
+    for (let n = 0; n < 32; n++) preview._voices.add({ start: 0, releaseAt: 8, end: 8, renderCost: 2 });
+    expect(backend.begin(intent('over-budget'), 480).reason).to.equal('reserved-interval-capacity');
     expect(backend.renderDiagnostics().activeVoices).to.equal(0); backend.dispose();
   });
 

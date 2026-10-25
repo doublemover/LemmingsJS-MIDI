@@ -22,6 +22,17 @@ const withMockLogHandler = (fn) => {
 };
 
 describe('BinaryReader', function () {
+  it('copies Buffer-backed logical windows into independent plain byte arrays', async () => {
+    const source = Buffer.from([1, 2, 3, 4]), reader = new BinaryReader(source, 1, 2);
+    const copy = reader.copyBytes(), data = reader.data, ready = await reader.ready;
+    assert.equal(copy.constructor, Uint8Array);
+    assert.deepEqual([...copy], [2, 3]);
+    source.fill(9);
+    assert.deepEqual([...copy], [2, 3]);
+    assert.deepEqual([...data], [1, 2, 3, 4]);
+    assert.deepEqual([...ready], [1, 2, 3, 4]);
+    reader.release();
+  });
   useGlobalLemmings({ game: { showDebug: false } });
 
   it('reads data from Blob asynchronously', async function () {

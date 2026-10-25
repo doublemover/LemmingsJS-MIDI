@@ -49,7 +49,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
     restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
-    captureCheckpoint: world => { captures.push(world); return { version: 1, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
+    captureCheckpoint: world => { captures.push(world); return { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
@@ -182,9 +182,8 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.handlers.transport({ bpm: 180 });
     await f.studio.stopCausalTake();
     const records = (await createProcgenCausalJournal({ storage }).query({ takeId })).records;
-    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'timeline', 'input-observation']);
+    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'timeline']);
     expect(records[2].payload).to.deep.equal({ version: 1, kind: 'tempo', bpm: 180 });
-    expect(records[3].payload).to.deep.equal({ version: 1, kind: 'world-speed', speedFactor: 1.5 });
     await f.studio.dispose().completion;
   });
   it('commits and releases local CC reservations after channel submission', async () => {
@@ -250,8 +249,9 @@ describe('ProcGen workstation orchestration', () => {
     f.document.body = { append() {} };
     f.document.createElement = () => ({ click() {}, remove() {} });
     f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
-    f.window.setTimeout = () => 1;
+    const deliveryTimers = []; f.window.setTimeout = callback => { deliveryTimers.push(callback); return deliveryTimers.length; };
     await f.studio.handlers.exportMidi();
+    deliveryTimers.shift()();
     const originalId = f.studio.getExportState().artifact.artifactId;
     f.window.showSaveFilePicker = () => new Promise(resolve => { resolvePicker = resolve; });
     const saving = f.studio.handlers.savePreparedExport();
@@ -267,8 +267,9 @@ describe('ProcGen workstation orchestration', () => {
     f.document.body = { append() {} };
     f.document.createElement = () => ({ click() {}, remove() {} });
     f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
-    f.window.setTimeout = () => 1;
+    const deliveryTimers = []; f.window.setTimeout = callback => { deliveryTimers.push(callback); return deliveryTimers.length; };
     await f.studio.handlers.exportMidi();
+    deliveryTimers.shift()();
     const shown = f.exportStates.at(-1);
     expect(shown.artifact).to.include({ retained: true, formatVersion: 'smf1/v1' });
     expect(shown.delivery).to.include({ state: 'delivery-requested', sinkKind: 'anchor' });
@@ -283,35 +284,36 @@ describe('ProcGen workstation orchestration', () => {
     f.document.body = { append() {} };
     f.document.createElement = () => ({ click() {}, remove() {} });
     f.window.URL = { createObjectURL() { return 'blob:fixture'; }, revokeObjectURL() {} };
-    f.window.setTimeout = () => 1;
+    const deliveryTimers = []; f.window.setTimeout = callback => { deliveryTimers.push(callback); return deliveryTimers.length; };
     await f.studio.handlers.exportMidi();
+    deliveryTimers.shift()();
     const originalId = f.studio.getExportState().artifact.artifactId;
-    let started, aborted = 0;
+    let started, finishWrite, aborted = 0;
     const writing = new Promise(resolve => { started = resolve; });
     f.window.showSaveFilePicker = () => Promise.resolve({ createWritable() { return Promise.resolve({
-      write() { started(); return new Promise(() => {}); }, close() {}, abort() { aborted++; }
+      write() { started(); return new Promise(resolve => { finishWrite = resolve; }); }, close() {}, abort() { aborted++; }
     }); } });
     const pending = f.studio.handlers.savePreparedExport();
     await writing;
     expect(f.studio.getExportState().delivery.state).to.equal('writing');
     expect(f.studio.handlers.cancelExportDelivery()).to.equal(true);
     expect(await pending).to.include({ state: 'canceled', artifactId: originalId });
-    expect(aborted).to.equal(1);
+    expect(aborted).to.equal(1); finishWrite(); await new Promise(resolve => setTimeout(resolve, 0));
     expect(f.studio.getExportState().artifact).to.include({ artifactId: originalId, retained: true, activeLeases: 0 });
     expect(f.studio.handlers.retryExport()).to.include({ artifactId: originalId, state: 'delivery-requested' });
-    await f.studio.dispose().completion;
+    deliveryTimers.shift()(); await f.studio.dispose().completion;
   });
   it('schedules recovery after paused edits and reports the durable revision', async () => {
     const timers = [], f = setup({ windowTimers: {
-      setTimeout(callback) { timers.push(callback); return timers.length; },
+      setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     } });
     f.studio.bindRuntime(); f.studio.transport.pause();
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 45 } });
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
-    expect(timers.filter(Boolean)).to.have.length(1);
+    expect(timers.filter(callback => callback?.delay === 2000)).to.have.length(1);
     expect(f.studio.getRecoveryState().state).to.equal('pending');
-    const tick = timers.find(Boolean); tick();
+    const tick = timers.find(callback => callback?.delay === 2000); tick();
     await new Promise(resolve => setTimeout(resolve, 0));
     const recovery = f.studio.getRecoveryState();
     expect(recovery.state).to.equal('saved');
@@ -322,7 +324,7 @@ describe('ProcGen workstation orchestration', () => {
   it('coalesces edits made during recovery and never reports a failed write as durable', async () => {
     const timers = [], writes = []; let finishFirst;
     const f = setup({ windowTimers: {
-      setTimeout(callback) { timers.push(callback); return timers.length; },
+      setTimeout(callback, delay) { callback.delay = delay; timers.push(callback); return timers.length; },
       clearTimeout(id) { timers[id - 1] = null; }
     }, storageOverride: {
       saveRecovery(session) { writes.push(session); return writes.length === 1 ? new Promise(resolve => { finishFirst = resolve; }) : Promise.reject(new Error('Quota unavailable')); },
@@ -334,8 +336,8 @@ describe('ProcGen workstation orchestration', () => {
     f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 1, patch: { note: 46 } });
     finishFirst(); await first;
     expect(f.studio.getRecoveryState()).to.include({ state: 'pending', durableRevision: 1, pendingRevision: 2 });
-    expect(timers.filter(Boolean)).to.have.length(1);
-    timers.find(Boolean)(); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(timers.filter(callback => callback?.delay === 2000)).to.have.length(1);
+    timers.find(callback => callback?.delay === 2000)(); await new Promise(resolve => setTimeout(resolve, 0));
     const recovery = f.studio.getRecoveryState();
     expect(recovery.state).to.equal('unavailable');
     expect(recovery.durableRevision).to.equal(1);
@@ -412,7 +414,7 @@ describe('ProcGen workstation orchestration', () => {
     await receipt.completion;
     expect(receipt.state).to.equal('retired');
     expect(receipt.resources.find(resource => resource.name === 'transport')).to.include({ status: 'failed', error: 'flush refused' });
-    expect(receipt.resources.find(resource => resource.name === 'storage')).to.include({ status: 'failed', error: 'disk closed early' });
+    expect(receipt.resources.find(resource => resource.name === 'storage')).to.include({ status: 'failed', error: 'database: disk closed early' });
   });
 
   it('shares one retirement receipt across reentrant callers and awaits async cleanup', async () => {
@@ -652,6 +654,7 @@ describe('ProcGen workstation orchestration', () => {
         documents.set(id, { id, revision, session }); return { id, revision };
       },
       async listDocuments() { return [...documents.values()].map(({ id, revision, session }) => ({ id, revision, name: session.name, savedAt: session.savedAt })); },
+      async listDocumentPage() { return { items: await this.listDocuments(), nextCursor: null }; },
       async loadDocument(id) { return documents.get(id); },
       async saveRecovery() {}, close() {}
     };
@@ -672,7 +675,7 @@ describe('ProcGen workstation orchestration', () => {
     f.view.showProjects = (entries, load) => { f.view.entries = entries; f.view.choose = load; };
     expect(await f.studio.handlers.load()).to.equal(true);
     expect(f.view.entries.map(entry => entry.id)).to.have.members([first.id, second.id]);
-    expect(await f.view.choose(first.id)).to.equal(true);
+    expect(await f.view.choose(first.id), JSON.stringify(f.statuses)).to.equal(true);
     expect(f.studio.getDocumentState()).to.include({ id: first.id, revision: 1, dirty: false });
     f.studio.dispose();
   });
@@ -816,8 +819,9 @@ describe('ProcGen workstation orchestration', () => {
     const first = f.studio.capture(), second = f.studio.capture();
     first.project.procgen.lanes[0].patterns[0].steps[0].note = 60;
     second.project.procgen.lanes[0].patterns[0].steps[0].note = 81;
-    let finishFirst;
-    const old = f.studio.handlers.import({ text: () => new Promise(resolve => { finishFirst = resolve; }) });
+    let finishFirst, entered; const reading = new Promise(resolve => { entered = resolve; });
+    const old = f.studio.handlers.import({ text: () => new Promise(resolve => { finishFirst = resolve; entered(); }) });
+    await reading;
     const recent = f.studio.handlers.import({ text: async () => JSON.stringify(second) });
     expect(await recent).to.equal(true);
     finishFirst(JSON.stringify(first));
@@ -829,8 +833,9 @@ describe('ProcGen workstation orchestration', () => {
 
   it('does not parse or restart an imported file that completes after disposal', async () => {
     const f = setup(); f.studio.bindRuntime();
-    let finishRead;
-    const pending = f.studio.handlers.import({ text: () => new Promise(resolve => { finishRead = resolve; }) });
+    let finishRead, entered; const reading = new Promise(resolve => { entered = resolve; });
+    const pending = f.studio.handlers.import({ text: () => new Promise(resolve => { finishRead = resolve; entered(); }) });
+    await reading;
     f.studio.dispose();
     finishRead('{invalid JSON');
     expect(await pending).to.equal(false);

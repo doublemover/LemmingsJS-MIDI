@@ -174,15 +174,14 @@ describe('FileProvider request and byte ownership', () => {
   });
 
   it('deduplicates content fingerprinting across raw handles and fresh reader cursors', async () => {
-    const { provider, requests } = fixture(); let hashes = 0;
-    const hashBuffer = provider._tryHashBuffer.bind(provider);
-    provider._tryHashBuffer = bytes => { hashes++; return hashBuffer(bytes); };
+    const { provider, requests } = fixture();
+    const before = provider._rawByteMetrics.hashInputCopies;
     const a = provider.resolveAsset('/shared.bin'), b = provider.resolveAsset('/shared.bin');
     requests[0].respond(200, Uint8Array.from([7, 8]).buffer);
     const [first, second] = await Promise.all([a, b]);
     assert.equal(first.identity.contentHash, second.identity.contentHash);
     await provider.resolveAsset('/shared.bin');
-    assert.equal(requests.length, 1); assert.equal(hashes, 1);
+    assert.equal(requests.length, 1); assert.equal(provider._rawByteMetrics.hashInputCopies - before, 1);
     assert.equal(first.createReader().readByte(), second.createReader().readByte());
     provider.dispose();
   });

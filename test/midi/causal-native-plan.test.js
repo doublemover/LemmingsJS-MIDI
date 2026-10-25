@@ -33,7 +33,7 @@ describe('native causal source preflight', () => {
     const a = intent('begin', 100), b = intent('begin', 100, 'world-b');
     const plan = await planCausalSourceRender(await request('native-oscillator', [a, b, intent('end', 500), intent('end', 500, 'world-b')]));
     expect(plan.peakVoices).to.equal(2); expect(plan.voices.size).to.equal(2);
-    expect([...plan.voices.values()].map(voice => voice.begin)).to.deep.equal([a, b]);
+    expect([...plan.voices.values()].map(voice => { const { performanceControls, ...onset } = voice.begin; return onset; })).to.deep.equal([a, b]);
     expect([...plan.voices.values()][0].baseFrequency).to.be.closeTo(440 * 2 ** ((6000.12345 - 6900) / 1200), 1e-10);
   });
   it('uses the actual admitted modal body for one-shot hold and fractional release endpoints', async () => {

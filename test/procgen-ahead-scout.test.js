@@ -31,7 +31,7 @@ const terrainFor = ({ ceiling = false } = {}) => {
 const replay = (masks, count) => {
   const world = new ProcgenLaneWorld({ masks, terrain: terrainFor(), seed: 15, laneHeight: 144, cohorts: true, maxActors: count,
     workerLimits: { builders: 1, bashers: 0, diggers: 0 } });
-  world.generatedThrough.fill(1024);
+  world.laneSeeds[0] = 47; world.generatedThrough.fill(1024);
   const arrivals = new Set(), births = [], brickEvents = [], builds = []; let maximumAhead = 0, firstWalkingTick = null;
   world.soundEvents.onEvent.on(event => { if (event.type === 'lemming-spawn') births.push([event.tick, event.lemmingId, event.x, event.y]); if (event.type === 'builder-step') brickEvents.push([event.tick, event.lemmingId]); });
   while (world.tickIndex < 2400 && arrivals.size < count) {
@@ -73,7 +73,7 @@ describe('actual physically ahead scouts and ordinary shared construction', func
   });
   it('observes the genuine ceiling-rejected CLIMB to FALL turn, shares nearby knowledge, and invalidates only changed local terrain', () => {
     const world = new ProcgenLaneWorld({ masks, terrain: terrainFor({ ceiling: true }), seed: 15, laneHeight: 144, cohorts: true, maxActors: 2,
-      workerLimits: { builders: 0, bashers: 0, diggers: 0 } }); world.generatedThrough.fill(1024);
+      workerLimits: { builders: 0, bashers: 0, diggers: 0 } }); world.laneSeeds[0] = 47; world.generatedThrough.fill(1024);
     let failure = null, climbSeen = false, minimumAbilityTick = Infinity;
     for (let tick = 0; tick < 400 && !failure; tick++) {
       const scout = world.actors[0], previous = scout && { action: scout.action, x: scout.x, right: scout.lookRight };

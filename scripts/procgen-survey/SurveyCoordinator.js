@@ -72,8 +72,8 @@ const runSurveyExperiment = async (manifest, store, { signal, onTelemetry = () =
   const interrupted = reason => ({ ...publicState(), results, performance, attempts, verification, successQualification, status: 'interrupted', reason,
     incompleteTrials: incomplete(), storage: store.snapshot(), persistenceReceipts, admissions, controlReceipts, discardedControlReceipts, recoveryReceipts, presentationErrors: currentExecution?.presentationErrors || [] });
   const retain = (result, job) => ({ ...result, ...result.provenance, sourceHash: hashSurveyValue({ core: result.provenance?.sourceHash || null, codeDigest: manifest.sourceManifest.codeDigest || null }), environmentSeed: job.scenario.environmentSeed, clusterId: 'world-' + job.scenario.environmentSeed,
-    replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit,
-      codeDigest: manifest.sourceManifest.codeDigest, assetHashes: manifest.sourceManifest.assetHashes, harnessVersion: manifest.sourceManifest.harnessVersion, manifestReference: 'manifest.json' },
+    replayManifest: { schemaVersion: 1, scenario: job.scenario, candidate: job.candidate, sourceManifest: { engineCommit: manifest.sourceManifest.engineCommit ?? null,
+      codeDigest: manifest.sourceManifest.codeDigest ?? null, assetHashes: manifest.sourceManifest.assetHashes ?? null, harnessVersion: manifest.sourceManifest.harnessVersion ?? null, manifestReference: 'manifest.json' },
     budgetPolicy: manifest.budgetPolicy, experimentId: manifest.experimentId } });
   const publishWorkerEvidence = async (reference, value, delivery) => {
     await store.writeImmutable(reference, value, delivery); delivery.signal.throwIfAborted();

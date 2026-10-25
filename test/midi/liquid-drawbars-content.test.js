@@ -9,7 +9,7 @@ describe('original liquid-table and additive-drawbar recipes', () => {
     const source = JSON.parse(await readFile(new URL('../../content/sounds/liquid-drawbars.json', import.meta.url), 'utf8'));
     const targets = (await describeNativeInstrumentEngines([{ engineId: 'worklet-spectrum', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));
     const compiled = await compileSoundContent(source, { targets }); expect(compiled.prepared.patches).to.have.length(6);
-    expect(targets[0].descriptor.capabilities).to.include({ perVoiceTimbre: true, renderAcknowledgment: true, offlineRender: false, continuousPhysicalBindings: true });
+    expect(targets[0].descriptor.capabilities).to.include({ perVoiceTimbre: true, renderAcknowledgment: true, offlineRender: true, continuousPhysicalBindings: true });
     const definitions = compiled.prepared.patches.map(patch => patch.definition); expect(definitions.filter(patch => patch.parameters.sourceMode === 0)).to.have.length(3);
     for (const patch of definitions) {
       const plan = compileInstrumentPerformance(patch, Object.values(NATIVE_SPECTRUM_PARAMETERS));

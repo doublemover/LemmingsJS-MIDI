@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { createTestBackgroundJobs } from './helpers/background-worker.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { LemmingStateType as State } from '../js/lemmings/LemmingStateType.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -13,20 +14,21 @@ import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenC
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 
-const versions = { generator: 'procgen-workstation-1', worldCheckpoint: 2, physicalMusic: 1, physicalBatch: 1 };
+const versions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalMusic: 1, physicalBatch: 1 };
 const graph = revision => ({ version: 1, revision, instruments: [
   { id: 'gate', sourceKind: 'MotionCommitted', gateX: 40, pitchCents: 6000 + revision, velocity01: 1, role: 'travel', route: 'local' }
 ] });
 
 describe('replay-qualified physical branch orchestration', function() {
   this.timeout(30000);
-  let masks;
+  let masks; const jobOwners = [];
+  afterEach(() => { for (const jobs of jobOwners.splice(0)) jobs.dispose(); });
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
   const fixture = async ({ futureGap = false } = {}) => {
-    const store = createMemoryCausalStore(), control = { blocked: false };
+    const store = createMemoryCausalStore(), control = { blocked: false }, jobs = createTestBackgroundJobs(); jobOwners.push(jobs);
     const storage = { ...store.storage, commitCausalTake: args => control.blocked ? Promise.reject(new Error('Storage suspended')) : store.storage.commitCausalTake(args) };
-    const budget = createResourceBudget({ limitBytes: 128 * 1048576 }), journal = createProcgenCausalJournal({ storage, resourceBudget: budget });
+    const budget = createResourceBudget({ limitBytes: 256 * 1048576 }), journal = createProcgenCausalJournal({ storage, resourceBudget: budget, jobs });
     const world = make(), clock = createProcgenPhysicalScoreClock(); let currentGraph = graph(1), fork = null;
     for (const actor of world.actors) { actor.y = world.surfaceAt(actor.laneIndex, actor.x); actor.setAction(world.actions[State.WALKING]); }
     const engine = createCausalMusicEngine({ getGraph: () => currentGraph, scoreTimeline: clock });
@@ -80,6 +82,7 @@ describe('replay-qualified physical branch orchestration', function() {
     expect(manifest.checkpoints.some(checkpoint => checkpoint.sequence === fork)).to.equal(true);
     expect(JSON.stringify(await journal.openTake('take:parent'))).to.equal(before);
     await branch.dispose();
+    await journal.releaseQualifications().completion;
     expect(budget.diagnostics().accountedBytes).to.equal(0);
     const replayed = await reperformance.reperform({ takeId: 'take:branch', executionEpoch: 'branch:replay:2' });
     expect(replayed.receipt, JSON.stringify(replayed.receipt)).to.include({ compatibilityMatch: true, finalWorldParity: 'matched-at-captured-component-checkpoint' });
@@ -118,7 +121,9 @@ describe('replay-qualified physical branch orchestration', function() {
     expect((await branch.stop()).complete).to.equal(false);
     let error; try { await branch.dispose(); } catch (failure) { error = failure; }
     expect(error.code).to.equal('undurable-branch-tail'); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    control.blocked = false;
     await branch.dispose({ discardPendingReason: 'explicit-test-discard-of-undurable-tail' });
+    await journal.releaseQualifications().completion;
     expect(budget.diagnostics().accountedBytes).to.equal(0); control.blocked = false;
     const reopened = await journal.openTake('take:branch'); expect(reopened.effectiveStatus).to.equal('partial');
     expect((await journal.verify('take:branch')).verifiedThroughSequence).to.equal(reopened.durableSequence); reperformance.dispose();
@@ -138,6 +143,7 @@ describe('replay-qualified physical branch orchestration', function() {
     let error; try { await branch.advance({ ticks: 8 }); } catch (failure) { error = failure; }
     expect(error.code).to.equal('cancelled'); expect(branch.status().tick).to.equal(8);
     expect((await branch.stop()).complete).to.equal(true); await branch.dispose();
+    await journal.releaseQualifications().completion;
     expect(budget.diagnostics().accountedBytes).to.equal(0);
     const rows = await journal.query({ takeId: 'take:branch', kinds: ['physical-batch'], limit: 100 });
     expect(rows.records.at(-1).tick).to.equal(8);

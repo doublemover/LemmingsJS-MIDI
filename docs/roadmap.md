@@ -3005,3 +3005,26 @@ resource epoch after stop/re-enable. API fixtures check both tap connection poin
 retained dry routing, source disconnection and subsequent epoch preparation. They
 remain unrun. Live cross-lane taps and their owned Worklet producer buses are still
 outstanding; this continuation does not claim full #1163 acceptance.
+
+
+### Consolidated test repair (October 25, 2026)
+
+Pulled the issue branch through `2c956c83`; fetched master was already integrated.
+Repaired the integrated runtime contracts in a frontloaded pass, then retested the
+failures together before the final full run. Fixes cover independent binary
+ownership, bounded worker envelopes, immutable effects, audio admission and
+retirement, checkpoint/replay ownership, incoming-session graph restoration,
+paired survey identities and resumable evidence, and close fire-bridge followers.
+Fixtures now use the current generator/compiler profiles, real paged worker
+transport, explicit resource leases and settlement boundaries.
+
+- **Validation:** `npm test` passed all **5,371 tests**, including the runtime-global
+  and critical type-check guards; exit status 0. Total runner time was 239.51s,
+  above its advisory 180s budget; budget enforcement was not enabled.
+- **Static checks:** `npm run format`, whitespace checks and runtime provenance
+  verification passed (10 components, 188 files).
+- **Focused coverage:** BinaryReader's 17 direct tests passed with 96.18% line
+  and 87.95% branch coverage. Further direct unit coverage can exercise duplicate
+  lease attachment, invalid logical windows and EOF boundary guards.
+- **Acceptance boundary:** This validates the local Node suite, not browser,
+  listening, hardware or performance-soak acceptance for the open issue backlog.

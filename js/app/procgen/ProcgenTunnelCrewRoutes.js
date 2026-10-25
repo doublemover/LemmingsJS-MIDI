@@ -6,7 +6,7 @@ const TUNNEL_GUARD_TICKS = 1000;
 // One current local port per physical lane. A positive shared-action copy proof
 // precedes the request, and an arriving supported actor owns the real BLOCK.
 class ProcgenTunnelCrewRoutes {
-  constructor(world) { this.world = world; this.recovery = new ProcgenGuardRecovery(world); this.scenes = new Array(world.laneCount).fill(null); this.nearby = []; this.stats = { requested: 0, guards: 0, connected: 0, released: 0, failed: 0 }; }
+  constructor(world) { this.world = world; this._claim = null; this.recovery = new ProcgenGuardRecovery(world); this.scenes = new Array(world.laneCount).fill(null); this.nearby = []; this.stats = { requested: 0, guards: 0, connected: 0, released: 0, failed: 0 }; }
   request(actor, evidence, approach = null) {
     const world = this.world;
     if (!evidence || !Number.isFinite(evidence.guardY) || this.scenes[actor.laneIndex] || !world.workerLimits.bashers || !world.lanePolicy.projects.canBegin(actor)) return false;

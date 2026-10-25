@@ -27,7 +27,7 @@ const fixture = (bits = 16, float = false) => {
     decodeVersion: DECODER_VERSION, licenseId: 'NOASSERTION', attribution: 'Original synthetic decode fixture' };
   return { bytes, ref, expected };
 };
-const decode = input => decodeWaveSource(input, { maxBytes: input.bytes.length, estimatedPeakBytes: 16 * 1048576, yieldControl: async () => {} });
+const decode = input => decodeWaveSource({ bytes: input.bytes, ref: input.ref }, { maxBytes: input.bytes.length, estimatedPeakBytes: 16 * 1048576, yieldControl: async () => {} });
 // Authored for the final deferred execution pass.
 describe('source-rate WAV PCM cache variant', () => {
   for (const [bits, float] of [[8, false], [16, false], [24, false], [32, false], [32, true]]) {
@@ -51,10 +51,10 @@ describe('source-rate WAV PCM cache variant', () => {
     const loader = createAudioAssetLoader({ getContext() { contextReads++; return null; }, fetchAsset: async () => input.bytes, resourceBudget: budget, jobs });
     const a = await loader.acquire(input.ref, { decodeProfile: 'source-pcm' }), b = await loader.acquire(input.ref, { decodeProfile: 'source-pcm' });
     expect(contextReads).to.equal(0); expect(a.buffer).to.equal(b.buffer); expect(loader.diagnostics().decodes).to.equal(1);
-    const resources = createAudioResourceLeases({ resourceBudget: budget }), bank = await prepareOwnedPcmBank(a, { resources });
+    const resources = createAudioResourceLeases({ resourceBudget: budget }), bank = await prepareOwnedPcmBank(a, { resources, owner: 'source-test' });
     expect(bank.descriptor.pcmHash).to.equal(a.variant.pcmHash);
     a.buffer.getChannelData(0)[0] = 0.7;
-    let rejected; try { await prepareOwnedPcmBank(a, { resources }); } catch (error) { rejected = error; }
+    let rejected; try { await prepareOwnedPcmBank(a, { resources, owner: 'source-test' }); } catch (error) { rejected = error; }
     expect(rejected?.message).to.include('differs from its verified source variant');
     await bank.discard().completion; a.release(); b.release(); await loader.dispose().completion;
     expect(budget.diagnostics().accountedBytes).to.equal(0);

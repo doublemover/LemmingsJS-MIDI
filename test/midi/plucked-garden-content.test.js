@@ -9,7 +9,7 @@ describe('original Plucked Garden source recipes', () => {
     const source = JSON.parse(await readFile(new URL('../../content/sounds/plucked-garden.json', import.meta.url), 'utf8'));
     const targets = (await describeNativeInstrumentEngines([{ engineId: 'worklet-pluck', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));
     const compiled = await compileSoundContent(source, { targets }); expect(compiled.prepared.patches).to.have.length(4);
-    expect(targets[0].descriptor.capabilities).to.include({ renderAcknowledgment: true, perVoiceDamping: true, offlineRender: false });
+    expect(targets[0].descriptor.capabilities).to.include({ renderAcknowledgment: true, perVoiceDamping: true, offlineRender: true });
     const definitions = compiled.prepared.patches.map(patch => patch.definition);
     expect(new Set(definitions.map(patch => patch.parameters.pluckPosition01)).size).to.equal(4);
     for (const patch of definitions) {

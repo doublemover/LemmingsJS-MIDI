@@ -20,7 +20,8 @@ describe('durable causal take journal', function() {
   it('retains sparse selected records through an owned query without retaining whole chunk inputs', async () => {
     const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
     const { journal } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 2 }), writer = await journal.createTake(definition('take:owned-query'));
-    writer.appendMany([marker(1), marker(2), marker(3), marker(4), marker(5)]); await writer.stop();
+    writer.appendMany([marker(1), marker(2)]); await writer.flush();
+    writer.appendMany([marker(3), marker(4)]); await writer.flush(); writer.append(marker(5)); await writer.stop();
     await journal.openTake('take:owned-query'); const baseline = budget.diagnostics().accountedBytes;
     const query = await journal.queryOwned({ takeId: 'take:owned-query', kinds: ['marker'], limit: 2 });
     expect(query.value.records.map(record => record.tick)).to.deep.equal([1, 2]); expect(query.value.nextSequence).to.equal(3);
@@ -210,7 +211,7 @@ describe('durable causal take journal', function() {
     await writer.stop();
     expect((await journal.openTake('take:named')).takeName).to.equal('Brick chorus');
     manifests.get('take:named').takeName = 'changed title';
-    let error; try { await journal.openTake('take:named'); } catch (failure) { error = failure; }
+    let error; try { await journal.openTake('take:named', { force: true }); } catch (failure) { error = failure; }
     expect(error.code).to.equal('metadata-divergence');
     try { await journal.createTake({ ...definition('take:too-long'), takeName: 'x'.repeat(121) }); } catch (failure) { error = failure; }
     expect(error.message).to.include('bounded name');

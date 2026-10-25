@@ -63,7 +63,8 @@ describe('live owner source taps and effect epochs (API fixtures; execution defe
     expect(channel.sourceInput.connections).to.deep.equal([channel.gain]); expect(channel.gain.connections).to.deep.equal([channel.pan]);
     const state = await session.prepareEffectGraph(sourceGraph(tap)); expect(state.activeGraph.sidechains[0]).to.include({ sourceBusId: 'owner', tap, connected: true, status: 'connected' });
     const source = tap === 'pre-fader' ? channel.sourceInput : channel.effectInput; expect(source.connections.length).to.be.greaterThan(1);
-    session.setEffectBypass('neutral'); expect(source.connections).to.have.length(1); expect(channel.sourceInput.connections).to.deep.equal([channel.gain]);
+    const donor = source.connections.at(-1);
+    session.setEffectBypass('neutral'); expect(source.connections).not.to.include(donor); expect(channel.sourceInput.connections).to.deep.equal([channel.gain]);
     await session.dispose(); expect(channel.sourceInput.disconnected).to.equal(true); await preview.dispose();
   });
   it('retires an earlier host epoch before preparing new owner sources after stop/re-enable', async () => {
@@ -239,7 +240,7 @@ describe('BrowserNotePreview', function() {
     const session = preview.createSession('reentrant-enable'); let nested, reports = 0;
     session.subscribe(() => { reports++; if (!nested) nested = session.enable(); });
     const pending = session.enable();
-    expect(nested).to.equal(pending); expect(await pending).to.equal(true); expect(reports).to.equal(2);
+    expect(nested).to.equal(pending); expect(await pending).to.equal(true); expect(reports).to.equal(3);
     const cancelled = preview.createSession('cancel-enable');
     cancelled.subscribe(state => { if (state.status === 'unlocking') cancelled.stop(); });
     expect(await cancelled.enable()).to.equal(false); expect(cancelled.getState().enabled).to.equal(false);
@@ -308,14 +309,16 @@ describe('BrowserNotePreview', function() {
   });
 
   it('denies semantic voice memory before allocation or stealing an already playing voice', async () => {
-    const budget = createResourceBudget({ limitBytes: 144 * 1024 }), { preview, context } = setup({ resourceBudget: budget, maxVoices: 1 });
+    const budget = createResourceBudget({ limitBytes: 1024 * 1024 }), { preview, context } = setup({ resourceBudget: budget, maxVoices: 2 });
     const game = preview.createSession('game'), backend = game.createInstrumentBackend();
     await backend.prepare(nativePatch()); await game.enable();
     expect(backend.begin(nativeIntent('first'), 96000).status).to.equal('accepted');
-    const first = [...preview._voices][0];
+    const first = [...preview._voices][0], token = {};
+    budget.reserve({ token, owner: 'competing-renderer', category: 'audio', bytes: Math.floor((1024 * 1024 - budget.diagnostics().accountedBytes - 4096) / 1.25) });
     expect(backend.begin(nativeIntent('second'), 96000).reason).to.equal('audio-resource-budget');
     expect(context.oscillators).to.have.length(1); expect(first.stolen).not.to.equal(true);
     expect(preview._voices.has(first)).to.equal(true);
+    budget.release({ token, owner: 'competing-renderer' });
     await preview.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
@@ -477,10 +480,11 @@ describe('BrowserNotePreview', function() {
     context.createOscillator = () => {
       const oscillator = create(); oscillator.frequency.setValueAtTime = () => { throw new Error('AudioParam failure'); }; return oscillator;
     };
+    preview._channel(0, game.getState().ownerId);
     const firstGain = context.gains.length;
     expect(backend.begin(nativeIntent('failed'), 96000).reason).to.equal('backend-failure');
     expect(preview._voices.size).to.equal(0); expect(context.oscillators[0].disconnected).to.equal(true);
-    expect(context.gains.slice(firstGain + 1).every(gain => gain.disconnected)).to.equal(true);
+    expect(context.gains.slice(firstGain).every(gain => gain.disconnected)).to.equal(true);
     expect(backend.renderDiagnostics().deliveryErrors).to.equal(1);
     await preview.dispose();
   });

@@ -16,7 +16,7 @@ export function prepareCausalEffectSelection({ preset = 'none', send01 = 0.35, i
     graph = cloneData(saved.graph, { maxBytes: 65536, maxNodes: 8192 });
     const send = graph.nodes.find(node => node.id === 'send' && node.kind === 'gain');
     if (!send || !graph.nodes.some(node => node.id === 'return') || send01 > send.parameters.gainMaximum01) throw new Error('The saved graph has no compatible Quarry send/return controls.');
-    send.parameters.gain01 = send01;
+    graph = { ...graph, nodes: graph.nodes.map(node => node === send ? { ...node, parameters: { ...node.parameters, gain01: send01 } } : node) };
   }
   const returns = Object.freeze(includeReturn ? ['return'] : []), plan = prepareEffectRenderPlan(graph, sampleRate, returns, { nativeConvolution: true, nativeOwnedProcessors: true });
   return Object.freeze({ effectGraph: plan.definition, effectReturnNodeIds: returns });

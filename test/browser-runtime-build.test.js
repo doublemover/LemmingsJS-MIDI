@@ -22,7 +22,7 @@ describe('immutable browser generation staging', () => {
         selectedBackends: { browserMidi: 'fixture', nativeUmp: 'fixture', audioRuntime: 'fixture', optionalAudioBank: 'fixture' }, workerSources: [], components: [] }) };
     for (const [file, source] of Object.entries(files)) { await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.writeFile(path.join(root, file), source); }
     for (const file of ['js/runtime/ActiveExecutionIdentity.js', 'js/runtime/BrowserBuildManifest.js', 'js/runtime/BrowserGenerationService.js',
-      'js/runtime/BrowserGenerationClient.js', 'js/runtime/InstrumentArtifactManifest.js', 'js/core/CanonicalData.js', 'scripts/BrowserRuntimeBuild.js',
+      'js/runtime/BrowserGenerationClient.js', 'js/runtime/BrowserGenerationPins.js', 'js/runtime/InstrumentArtifactManifest.js', 'js/core/CanonicalData.js', 'scripts/BrowserRuntimeBuild.js',
       'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js']) {
       await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true }); await fs.copyFile(path.join(repo, file), path.join(root, file));
     }

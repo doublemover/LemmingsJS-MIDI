@@ -48,6 +48,6 @@ describe('owned preallocated plucked-string kernel', () => {
     const panic = new Float64Array(PLUCK_WIDTH); panic[2] = 2; panic[3] = PANIC; kernel.accept(panic, 1, 2);
     for (let frame = 128; frame < 1024; frame += 128) kernel.render(new Float32Array(128), null, frame);
     const silence = new Float32Array(128); kernel.render(silence, null, 1024); expect(silence.every(value => value === 0)).to.equal(true);
-    expect(() => kernel.snapshotInto(new Uint8Array(1), {})).to.throw('complete DSP state');
+    expect(() => kernel.snapshotInto(new Uint8Array(1), {})).to.throw('exclusively owned exact-size');
   });
 });

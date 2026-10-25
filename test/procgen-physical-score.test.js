@@ -134,7 +134,7 @@ describe('read-only PhysicalScore projection', () => {
     const { queryPhysicalScore, queryCausalParent, request } = await fixture({ gaps: true });
     const score = await queryPhysicalScore({ ...request, actorOrRoleFilter: { roles: ['builder'] } });
     expect(score.glyphs).to.have.length(10);
-    expect(score.unknownRegions[0]).to.include({ kind: 'physical-facts', firstTick: 4, lastTick: 4, reason: 'missing-source' });
+    expect(score.unknownRegions.find(region => region.kind === 'physical-facts')).to.include({ kind: 'physical-facts', firstTick: 4, lastTick: 4, reason: 'missing-source' });
     const glyph = score.glyphs[0];
     const parent = await queryCausalParent({ ...request, sourceSequence: glyph.source.sequence, eventId: glyph.glyphId });
     expect(parent).to.include({ status: 'found', eventId: 'work:1' });

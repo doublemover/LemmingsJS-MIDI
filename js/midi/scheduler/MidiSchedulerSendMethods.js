@@ -278,6 +278,7 @@ const midiSchedulerSendMethods = {
             if (submission.error) this.lastOutputError = submission.error?.message || String(submission.error);
             this.recordThrottle('local-render-rejected', this._nowMs(), captureMeta);
             this._stopActiveNoteToken(token);
+            if (spec.phraseVoiceKey != null) this.cancelGamePhrase(spec.phraseVoiceKey, { releaseActive: false, complete: true });
             return;
           }
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
@@ -288,7 +289,7 @@ const midiSchedulerSendMethods = {
           this.lastOutputError = error?.message || String(error);
           this._expressionByOutput.delete(output);
           this._stopActiveNoteToken(token);
-          if (spec.phraseVoiceKey != null) this.cancelGamePhrase(spec.phraseVoiceKey, { releaseActive: false });
+          if (spec.phraseVoiceKey != null) this.cancelGamePhrase(spec.phraseVoiceKey, { releaseActive: false, complete: true });
         }
       };
       if (sendTimeMs > now) {
@@ -392,9 +393,11 @@ const midiSchedulerSendMethods = {
     this._armNoteOffTimer();
   },
 
-  cancelGamePhrase(key, { releaseActive = true } = {}) {
+  cancelGamePhrase(key, { releaseActive = true, complete = false } = {}) {
     if (key == null) return false;
+    const phrase = this.gamePhrases.voices.get(key);
     let cancelled = this.gamePhrases.voices.delete(key);
+    if (cancelled && complete) phrase.onComplete?.();
     for (const [token, voice] of this._activeNotes) if (voice.phraseVoiceKey === key && (releaseActive || !voice.hasStarted)) {
       this._stopActiveNoteToken(token, 'phrase-cancelled'); cancelled = true;
     }

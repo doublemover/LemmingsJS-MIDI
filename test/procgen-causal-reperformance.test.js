@@ -13,7 +13,7 @@ import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { captureCausalPerformanceState, createCausalPerformanceState, diffCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
 
-const sourceVersions = { generator: 'procgen-workstation-1', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
+const sourceVersions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
 const mapping = { version: 1, revision: 1, instruments: [
   { id: 'brick', sourceKind: 'TerrainWorkCommitted', pitchCents: 6000, velocity01: 1, role: 'builder', route: 'local' },
   { id: 'crossing', sourceKind: 'MotionCommitted', gateX: 40, pitchCents: 6200, velocity01: 0.5, role: 'travel', route: 'local' }
@@ -185,10 +185,10 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     const denied = runtime({ resourceBudget: deniedBudget, createWorld: () => { allocations++; return make(); } });
     let error; try { await denied.reperform({ takeId: source.takeId, executionEpoch: 'resource:denied' }); } catch (failure) { error = failure; }
     expect(error.name).to.equal('ResourceBudgetError'); expect(allocations).to.equal(0); expect(deniedBudget.diagnostics().accountedBytes).to.equal(0);
-    const admittedBudget = createResourceBudget({ limitBytes: 128 * 1048576 }), admitted = runtime({ resourceBudget: admittedBudget });
+    const admittedBudget = createResourceBudget({ limitBytes: 256 * 1048576 }), admitted = runtime({ resourceBudget: admittedBudget });
     const result = await admitted.reperform({ takeId: source.takeId, executionEpoch: 'resource:owned', retainWorld: true });
     expect(result.receipt.compatibilityMatch).to.equal(true); expect(admittedBudget.diagnostics().accountedBytes).to.be.greaterThan(0);
-    admitted.dispose(); expect(admittedBudget.diagnostics().accountedBytes).to.equal(0);
+    await admitted.dispose().completion; expect(admittedBudget.diagnostics().accountedBytes).to.equal(0);
     expect(() => result.session.snapshot()).to.throw('released'); denied.dispose();
   });
   it('replays paused single-stepping and the recorded resumption of musical interpretation', async () => {

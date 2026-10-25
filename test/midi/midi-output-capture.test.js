@@ -156,7 +156,7 @@ describe('bounded MIDI output capture', function() {
       expect(report.activeChannelChanges).to.have.length(0);
       expect(report.coalescing[0].count).to.equal(3);
       const releases = snapshot.records.filter(record => record.type === 'noteOff' && record.stage === 'api-dispatch');
-      expect(releases.map(record => record.matchedDurationMs)).to.deep.equal([120, 120]);
+      expect(releases.map(record => record.matchedDurationMs)).to.deep.equal([120, 120, 0]);
       expect(snapshot.state.observedOpenGates).to.equal(0);
       expect(report.notes[2].held).to.equal(true);
       expect(formatMidiCaptureSummary(snapshot)).to.include('3 accepted note-on API calls');

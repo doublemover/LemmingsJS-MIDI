@@ -51,8 +51,8 @@ const midiOutputObserverMethods = {
   _submitAccountedOutput(output, channel, method, args = [], meta = {}, rateMeta = {}) {
     let count = 0, bytes = 0;
     const remove = this.addSubmissionObserver(event => {
-      if (event.output !== output || event.channel !== channel || event.method !== method || !event.accepted || !event.midiBytes) return;
-      count++; bytes += event.midiBytes.length;
+      if (event.output !== output || event.channel !== channel || event.method !== method || !event.accepted || !event.midiBytes && !output?.supportsPerNoteInstrument) return;
+      count++; bytes += event.midiBytes?.length ?? 3;
     });
     try { return { ok: this._sendOutput(output, channel, method, args, meta) !== false, acceptedMessages: count, acceptedBytes: bytes, error: null }; }
     catch (error) { return { ok: false, acceptedMessages: count, acceptedBytes: bytes, error }; }

@@ -94,6 +94,8 @@ class TestElement {
     return child;
   }
 
+  remove() { this.parent?.removeChild(this); }
+
   get firstChild() {
     return this.children[0] || null;
   }
@@ -148,6 +150,7 @@ class TestDocument {
     this._elementsById = new Map();
     this._all = [];
     this.documentElement = { clientWidth: 800, clientHeight: 600 };
+    this.body = this.createElement('body');
     this.activeElement = null;
   }
 

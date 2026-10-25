@@ -45,6 +45,11 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
     prepared: prepared?.metadata() || null, materialResources: materialResources.diagnostics(), unresolvedRetirement: unresolved.size, error: lastError,
     capabilities: Object.freeze({ intentSine: true, intentOwnedSources: Object.freeze(['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular']), intentNativeSources: NATIVE_OFFLINE_SOURCE_IDS, nativeOfflineAvailable: typeof globalThis.OfflineAudioContext === 'function', ownedEffects: Object.freeze(['gain', 'feedback-delay', 'nonlinear-chain']), nativeEffects: true, nativeConvolution: true, nativeConvolutionSources: Object.freeze([...OWNED_SOURCE_IDS, ...NATIVE_OFFLINE_SOURCE_IDS]), nativeConvolutionTopology: 'one-full-native-and-owned-worklet-graph-with-offline-completion-fences', maxSharedEffectTaps: 8, capturedPcm: false, admissionHistory: false, arbitraryOfflineEngines: false, maxSeconds: 120, maxOutputBytes: 64 * 1048576 }) });
   const report = () => { try { onState(state()); } catch { /* Rendering ownership does not depend on view callbacks. */ } };
+  const discardArtifact = async artifact => {
+    artifact.discard(); await artifact.digest();
+    const state = artifact.metadata();
+    if (state.activeLeases || state.budgetState === 'failed-or-unknown') throw failure('render-artifact-retirement-unknown', 'A discarded render still has an active consumer or unresolved reservation.');
+  };
   const makeBundle = (entries, manifest) => {
     const scope = createProcgenRetirementScope(); let discarded = false;
     const bundle = Object.freeze({ files: Object.freeze(entries.map(entry => Object.freeze(entry))), manifest: freezeData(manifest),
@@ -52,8 +57,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         frames: manifest.frames, mode: manifest.mode, discarded, files: Object.freeze(entries.map(entry => Object.freeze({ id: entry.id, label: entry.label, artifact: entry.artifact.metadata() }))) }),
       discard() {
         if (scope.getReceipt()) return scope.getReceipt(); discarded = true; if (prepared === bundle) prepared = null;
-        const receipt = scope.retire(entries.map(entry => ({ name: 'render-file-' + entry.id, run: () => entry.artifact.discard() })));
-        if (receipt.outcome === 'complete') bundles.delete(bundle); report(); return receipt;
+        const receipt = scope.retire(entries.map(entry => ({ name: 'render-file-' + entry.id, run: () => discardArtifact(entry.artifact) })));
+        receipt.completion.then(result => { if (result.outcome === 'complete') bundles.delete(bundle); report(); }); report(); return receipt;
       }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
   };
   const prepare = ({ takeId, takeRevision, definition = null, materialReference = null, sampleRate = 48000, startSeconds = 0, endSeconds,
@@ -210,18 +215,18 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         ]);
         await operation.retirement.completion;
         if (operation.retirement.outcome !== 'complete') { unresolved.add(operation); originalError = failure('render-retirement-unknown', 'Causal render ownership is unresolved.', { cause: originalError, retirement: operation.retirement }); }
-        if (active === operation) active = null;
       }
       if (!originalError) { try { check(); } catch (error) { originalError = error; } }
       if (originalError) {
-        const cleanup = bundle ? bundle.discard() : createProcgenRetirementScope().retire(candidates.map(entry => ({ name: 'candidate-' + entry.id, run: () => entry.artifact.discard() })));
+        const cleanup = bundle ? bundle.discard() : createProcgenRetirementScope().retire(candidates.map(entry => ({ name: 'candidate-' + entry.id, run: () => discardArtifact(entry.artifact) })));
+        await cleanup.completion;
         if (cleanup.outcome !== 'complete') { unresolved.add(operation); originalError = failure('render-retirement-unknown', 'Prepared render file cleanup is unresolved.', { cause: originalError, retirement: cleanup }); }
         phase = controller.signal.aborted ? 'canceled' : 'failed'; lastError = originalError.message; report(); throw originalError;
       }
       const previous = prepared; prepared = bundle;
-      const old = previous?.discard(); if (old && old.outcome !== 'complete') { unresolved.add(operation); lastError = 'The previous render has unresolved file retirement.'; }
-      phase = 'prepared'; progress = null; lastError ||= null; report(); return result;
-    })(); return operation.promise;
+      const old = previous?.discard(); if (old) await old.completion; if (old && old.outcome !== 'complete') { unresolved.add(operation); lastError = 'The previous render has unresolved file retirement.'; }
+      if (!disposed) { phase = 'prepared'; progress = null; lastError ||= null; report(); } return result;
+    })().finally(() => { if (active === operation) { active = null; report(); } }); return operation.promise;
   };
   return Object.freeze({ prepare, state, getPrepared: () => prepared,
     cancel() { if (!active) return false; active.controller.abort(failure('render-canceled', 'Causal audio render canceled.')); phase = 'retiring'; report(); return true; },

@@ -33,7 +33,7 @@ const host = ({ owner = 'owner', engineId, resources, getRouteState } = {}) => {
 describe('Worklet-owned display reductions', () => {
   it('names the actual owned source and retains unclipped headroom without inventing sine phase', () => {
     for (const engineId of ['worklet-pluck', 'worklet-choir']) {
-      const owner = host({ engineId }), samples = [], stop = owner.telemetry.observe(sample => samples.push(sample), { identity });
+      const owner = host({ engineId }); owner.context.currentTime = 0; const samples = [], stop = owner.telemetry.observe(sample => samples.push(sample), { identity });
       const incoming = packet(); incoming.data[8] = 0.9; incoming.data[9] = 1.2; owner.telemetry.consume(incoming);
       expect(samples).to.have.length(1); expect(samples[0].nodeId).to.equal(engineId + '.voice-output');
       expect(samples[0].quantities.find(value => value.name === 'peak').value).to.equal(1.2);

@@ -258,6 +258,7 @@ class BrowserNotePreview {
       ]); } finally { session.stopping = false; }
     };
     const enable = () => {
+      this._replaceClosedContext();
       if (session.disposed || session.stopping || this._disposed || this._retirementFaults.has(id)) return Promise.resolve(false);
       if (session.enablePromise) return session.enablePromise;
       if (session.enabled && this._ownerReady(id)) return Promise.resolve(true);
@@ -419,7 +420,8 @@ class BrowserNotePreview {
     const retirement = createProcgenRetirementScope();
     entry.backend = Object.freeze({ ...backend, dispose: () => {
       let native;
-      const receipt = retirement.retire([{ name: 'backend', run: () => native = backend.dispose() }, { name: 'backend-host-storage', run: () => releaseAudioResourceAfterRetirement(metadata, native) }]);
+      const receipt = retirement.retire([{ name: 'backend', run: () => native = createProcgenRetirementScope().retire([{ name: 'native-backend', run: () => backend.dispose() }]) },
+        { name: 'backend-host-storage', run: () => releaseAudioResourceAfterRetirement(metadata, native) }]);
       receipt.completion.then(value => { if (value.outcome === 'complete') this._instrumentBackends.delete(entry); });
       return receipt;
     } });
@@ -525,7 +527,7 @@ class BrowserNotePreview {
       }
       const context = this._context;
       if (context.state !== 'running') {
-        this._setStatus('unlocking', 'Starting browser audioâ€¦');
+        this._setStatus('unlocking', 'Starting browser audio…');
         if (!this._resumePromise) {
           const resumed = Promise.resolve(context.resume());
           this._resumePromise = resumed;

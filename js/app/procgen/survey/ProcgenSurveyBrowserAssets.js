@@ -45,7 +45,8 @@ const verifiedBrowserFiles = async (rawManifest, fetchRef, externalSignal, { res
   const entries = verifyCode ? declared : declared.filter(entry => !entry[2]);
   for (const required of ['js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', 'js/app/procgen/survey/ProcgenSurveyCore.js', 'js/steelSpritesData.js'])
     if (!Object.hasOwn(manifest.codeHashes, required)) throw new Error(`Replay code is missing from provenance: ${required}`);
-  if (await hexSha256(new TextEncoder().encode(JSON.stringify(manifest.codeHashes))) !== manifest.codeDigest) throw new Error('Replay source manifest digest mismatch');
+  const savedOrder = JSON.stringify(rawManifest.codeHashes), legacyOrder = JSON.stringify(Object.fromEntries(code.slice().sort(([left], [right]) => left.localeCompare(right))));
+  if (await hexSha256(new TextEncoder().encode(savedOrder)) !== manifest.codeDigest && await hexSha256(new TextEncoder().encode(legacyOrder)) !== manifest.codeDigest) throw new Error('Replay source manifest digest mismatch');
   const bytes = new Map(), token = {}, owner = 'browser-survey-source'; let totalBytes = 0, admittedStreamBytes = 0, cursor = 0, released = false;
   const producers = new Set(), retirement = createProcgenRetirementScope();
   resourceBudget.reserve({ token, owner, generation: 0, category: 'asset', bytes: MAX_SOURCE_BYTES * 3 + 8 * 65536, pinned: true, reloadable: false });

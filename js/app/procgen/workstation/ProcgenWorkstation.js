@@ -879,7 +879,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     physicalPlayback = createProcgenPhysicalPlayback({ world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
-      getGraph: () => next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
+      getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
@@ -897,7 +897,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
     };
     const onPhysicalBatch = batch => {
-      const applied = batch.facts.findLast(fact => fact.kind === 'CommandApplied' && fact.terrain?.authoring);
+      const applied = Array.isArray(batch?.facts) ? batch.facts.findLast(fact => fact.kind === 'CommandApplied' && fact.terrain?.authoring) : null;
       if (applied) {
         const authored = next.world.physicalAuthoring;
         if (authored.lastApplied?.transactionId === applied.transactionId) {

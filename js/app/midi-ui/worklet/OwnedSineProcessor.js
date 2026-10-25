@@ -98,9 +98,11 @@ class OwnedSineKernel {
   }
   pop() {
     this.queueLength--;
-    if (!this.queueLength) return;
-    for (let field = 0; field < this.width; field++) this.queue[field] = this.queue[this.queueLength * this.width + field];
-    this.siftDown(0);
+    if (this.queueLength) {
+      for (let field = 0; field < this.width; field++) this.queue[field] = this.queue[this.queueLength * this.width + field];
+      this.siftDown(0);
+    }
+    this.queue.fill(0, this.queueLength * this.width, (this.queueLength + 1) * this.width);
   }
 
   receipt(code, sequence, slot, token, frame, reason = 0) {
@@ -162,6 +164,7 @@ class OwnedSineKernel {
         for (let field = 0; field < this.width; field++) queue[kept * this.width + field] = queue[from + field];
         kept++;
       }
+      this.queue.fill(0, kept * this.width, this.queueLength * this.width);
       this.queueLength = kept;
       for (let index = Math.floor(kept / 2) - 1; index >= 0; index--) this.siftDown(index);
       this.receipt(APPLIED, sequence, -1, 0, frame, 3); return;
@@ -218,7 +221,7 @@ class OwnedSineKernel {
   }
 
   render(left, right, frameStart, stems = null) {
-    if (stems && (!(stems.routes instanceof Int8Array) || stems.routes.length !== MAX_VOICES ||
+    if (stems && (!(stems.routes instanceof Int8Array) || stems.routes.length < this.maxVoices || stems.routes.length > MAX_VOICES ||
         !Array.isArray(stems.channels) || stems.channels.length < 1 || stems.channels.length > 16 ||
         stems.channels.some(channels => !Array.isArray(channels) || channels.length !== 2 || channels.some(channel => !(channel instanceof Float32Array) || channel.length !== left.length)) ||
         stems.routes.some(route => route < -1 || route >= stems.channels.length))) throw new TypeError('Invalid bounded sine stem taps.');

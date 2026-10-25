@@ -84,8 +84,8 @@ describe('bounded shared-lane renderer', () => {
     let bounds = { x: 10, y: 10, width: 16, height: 22 }, draws = 0;
     actor.action = { spriteProvider: { getActorDrawBounds: () => bounds } }; actor.render = () => draws++;
     renderer.render(); expect(draws).to.equal(1);
-    bounds = { x: 20000, y: 10, width: 16, height: 22 }; renderer.render(); expect(draws).to.equal(1);
-    bounds = null; renderer.render(); expect(draws).to.equal(1);
+    bounds = { x: 20000, y: 10, width: 16, height: 22 }; world.tickIndex++; renderer.render(); expect(draws).to.equal(1);
+    bounds = null; world.tickIndex++; renderer.render(); expect(draws).to.equal(1);
     renderer.dispose(); world.dispose();
   });
 

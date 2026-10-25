@@ -228,6 +228,6 @@ describe('Action systems events and draws', function() {
     expect(calls[0].type).to.equal(SoundEventTypes.LEMMING_EXPLODE);
     expect(triggerManager.removed[0]).to.equal(lem);
     expect(miniMap.invalidations[0]).to.eql({ x: -2, y: -3, w: 4, h: 5 });
-    expect(miniMap.deaths[0]).to.eql({ x: 0, y: 0 });
+    expect(miniMap.deaths).to.have.length(0);
   });
 });

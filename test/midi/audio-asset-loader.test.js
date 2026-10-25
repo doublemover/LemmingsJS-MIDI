@@ -68,7 +68,7 @@ describe('Content addressed audio asset admission', () => {
     const a = await loader.acquire(first.ref), b = await loader.acquire(second.ref); a.release(); b.release();
     loader.purge(); expect(loader.diagnostics()).to.include({ decodedEntries: 1, decodedBytes: 256, rawEntries: 0, rawBytes: 0 });
     await rejection(loader.acquire(first.ref), 'asset-retirement-unknown');
-    const receipt = loader.dispose(); expect(receipt.outcome).to.equal('partial'); expect(loader.dispose()).to.equal(receipt);
+    const receipt = loader.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('partial'); expect(loader.dispose()).to.equal(receipt);
     expect(budget.diagnostics().residentBytes).to.equal(256);
   });
   it('keeps replacement assets active while recording every independent failed prior release once', async () => {

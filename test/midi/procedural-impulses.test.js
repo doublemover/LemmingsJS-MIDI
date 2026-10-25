@@ -30,7 +30,7 @@ describe('original shared reflection bodies (deferred qualification)', () => {
       expect(descriptor.maximumLinearGain).to.equal(8); expect(descriptor.latency).to.equal('unknown-native-implementation');
       for (const rate of [44100, 48000, 96000]) {
         const graph = createQuarryBody({ bodyId: preset.id }), plan = prepareEffectGraphRevision(graph, { sampleRate: rate });
-        expect(plan.impulseCount).to.equal(1); expect(plan.latencyFrames).to.equal(null); expect(plan.maximumGraphGainBound).to.be.lessThan(3);
+        expect(plan.impulseCount).to.equal(1); expect(plan.latencyFrames).to.equal(null); expect(plan.maximumGraphGainBound).to.be.at.most(0.65 * descriptor.maximumLinearGain); expect(plan.maximumOutputGainBound).to.be.lessThan(3);
         expect(graph.nodes.find(value => value.id === 'send').parameters.gain01).to.equal(0);
         expect(plan.maximumTailFrames).to.be.lessThan(3 * rate);
       }

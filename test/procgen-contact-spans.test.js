@@ -34,7 +34,7 @@ describe('qualified physical support contact spans', () => {
     const { world, actor, batches, intents, engine } = setup();
     world.step(); world.step();
     expect(intents.map(intent => intent.kind)).to.deep.equal(['begin', 'update']);
-    expect(intents[0].expression.contactAnchor).to.deep.equal({ x: actor.x, y: actor.y + 1 });
+    expect(intents[0].articulationState.contactAnchor).to.deep.equal({ x: actor.x, y: actor.y + 1 });
     const begin = batches[0].facts.find(fact => fact.kind === 'ContactSpanBegan');
     expect(begin.physicalPayload).to.include({ evidence: 'completed-support-cell', pressure: null, normal: null });
     world.hasGroundAt = () => false;

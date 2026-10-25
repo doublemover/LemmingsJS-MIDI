@@ -29,7 +29,7 @@ const closest = (a, b, oneDimensional) => {
   return { distance: Math.hypot(x + dx * fraction, y + dy * fraction), fraction, endDistance: Math.hypot(a.after.x - b.after.x, oneDimensional ? 0 : a.after.y - b.after.y) };
 };
 export function createEncounterObserver({ maximumEpisodes = 2048, maximumState = 16384, maximumWork = 262144 } = {}) {
-  if (![maximumEpisodes, maximumState, maximumWork].every(integer) || maximumEpisodes < 1 || maximumEpisodes > 2048 || maximumState < 1 || maximumState > 16384 || maximumWork < 1 || maximumWork > 262144) throw new Error('Invalid encounter observer capacity.');
+  if (![maximumEpisodes, maximumState, maximumWork].every(value => integer(value)) || maximumEpisodes < 1 || maximumEpisodes > 2048 || maximumState < 1 || maximumState > 16384 || maximumWork < 1 || maximumWork > 262144) throw new Error('Invalid encounter observer capacity.');
   let definitions = [], signatures = new Map(), boundary = null, serial = 0, lastTick = -1, diagnostics = [], diagnosticOverflow = 0, lastFacts = [];
   let episodes = new Map(), cooldowns = new Map(), rendezvous = new Map(), pitchMemory = new Map(), coordinates = new Map();
   const report = value => { if (diagnostics.length < 256) diagnostics.push(value); else diagnosticOverflow++; };

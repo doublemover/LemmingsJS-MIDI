@@ -253,21 +253,21 @@ describe('Owned native sample regions', () => {
 
   it('pre-admits the release layer against the shared render budget before allocating or choking', async () => {
     const { backend, context, preview } = await setup({ maxVoices: 1 }, region({ chokeGroup: 'hat', releaseRegion: region() }));
-    expect(backend.begin(intent(), 480, 'take').reason).to.equal('shared-sample-source-budget'); expect(context.sources).to.have.length(0);
+    expect(backend.begin(intent(), 480, 'take').reason).to.equal('reserved-interval-capacity'); expect(context.sources).to.have.length(0);
     expect(preview._voices.size).to.equal(0);
   });
 
-  it('counts potential release layers and steals the entire pending sample parent for an oscillator', async () => {
+  it('retains a committed future sample interval when an earlier oscillator would exceed capacity', async () => {
     const { backend, preview, session } = await setup({ maxVoices: 2 }, region({ releaseRegion: region() }));
     backend.begin(intent(), 4800, 'take'); const oscillator = session.createInstrumentBackend(); await oscillator.prepare(nativePatch);
-    expect(oscillator.begin(intent('quiet', { velocity01: 0.01 }), 480).status).to.equal('accepted');
-    expect(preview._renderVoiceCount()).to.equal(1); expect(backend.renderDiagnostics().activeVoices).to.equal(0);
-    expect(preview.getState().voiceSteals).to.equal(1);
+    expect(oscillator.begin(intent('quiet', { velocity01: 0.01 }), 480).reason).to.equal('reserved-interval-capacity');
+    expect(preview._renderVoiceCount()).to.equal(2); expect(backend.renderDiagnostics().activeVoices).to.equal(1);
+    expect(preview.getState().voiceSteals).to.equal(0);
   });
 
   it('fails memory admission before constructing any source and retains the prepared patch pins', async () => {
     const budget = createResourceBudget({ limitBytes: 160000 }), { backend, context, asset } = await setup({ resourceBudget: budget }, region({ releaseRegion: region() }));
-    const token = {}; budget.reserve({ token, owner: 'renderer', bytes: 50000 });
+    const token = {}; budget.reserve({ token, owner: 'renderer', bytes: Math.floor((160000 - budget.diagnostics().accountedBytes - 4096) / 1.25) });
     expect(backend.begin(intent(), 480, 'take').reason).to.equal('audio-resource-budget'); expect(context.sources).to.have.length(0); expect(asset.shared.pins).to.equal(2);
     budget.release({ token, owner: 'renderer' });
   });

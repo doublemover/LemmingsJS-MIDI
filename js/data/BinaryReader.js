@@ -137,19 +137,19 @@ class BinaryReader extends BaseLogger {
   }
 
   get ready() {
-    return this.#readyPromise.then(() => { this.#assertAvailable(); return this.#data.slice(); });
+    return this.#readyPromise.then(() => { this.#assertAvailable(); return new Uint8Array(this.#data); });
   }
 
   /** @returns {Uint8Array} Independent copy of the backing bytes. */
   get data() {
     this.#assertAvailable();
-    return this.#data.slice();
+    return new Uint8Array(this.#data);
   }
 
   /** Return an owned copy of this reader's logical window. */
   copyBytes() {
     this.#assertAvailable();
-    return this.#data.slice(this.#hiddenOffset, this.#hiddenOffset + this.#length);
+    return new Uint8Array(this.#data.subarray(this.#hiddenOffset, this.#hiddenOffset + this.#length));
   }
 
   _attachStorageLease(group, role = 'consumer') {

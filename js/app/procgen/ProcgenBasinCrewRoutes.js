@@ -20,7 +20,7 @@ const overlap = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.
 // The same live actor owns all sections and naturally finishes each full BUILD.
 class ProcgenBasinCrewRoutes {
   constructor(world) {
-    this.world = world; this.scenes = new Array(world.laneCount).fill(null); this.nearby = [];
+    this.world = world; this._claim = null; this.scenes = new Array(world.laneCount).fill(null); this.nearby = [];
     this.actions = { [State.BUILDING]: new ActionBuildSystem(), [State.SHRUG]: new ActionShrugSystem(),
       [State.WALKING]: new ActionWalkSystem(), [State.FALLING]: new ActionFallSystem(), [State.JUMPING]: new ActionJumpSystem() };
     this.stats = { sections: 0, proofs: 0, probes: 0, actionSteps: 0, connected: 0, completed: 0, failed: 0, maxWork: 0 };

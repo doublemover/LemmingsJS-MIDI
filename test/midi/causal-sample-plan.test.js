@@ -10,7 +10,7 @@ const intent = (kind, ms, voiceId = 'voice-a', extra = {}) => ({ version: 1, kin
   expression: {}, scoreTime: { sourceTimeMs: ms, subTick: 0 }, ...extra });
 const request = async intents => ({ descriptor: (await describeNativeInstrumentEngines([{ engineId: 'native-sample', engineVersion: 1, artifactHash: 'b'.repeat(64) }]))[0],
   definition: { schemaVersion: 2, id: 'sample-fixture', revision: 1, name: 'Sample fixture', author: 'fixture', tags: [], engineId: 'native-sample', engineVersion: 1,
-    parameters: { releaseSeconds: 0.04 }, sampleRefs: [{ sha256: hash, bytes: 64044, required: true }], sampleMap: singleSampleMap(hash, { frames: 32000 }),
+    parameters: { releaseSeconds: 0.04 }, sampleRefs: [{ id: 'fixture-sample', sha256: hash, bytes: 64044, required: true }], sampleMap: singleSampleMap(hash, { frames: 32000 }),
     modulations: [], macros: [], causalBindings: [], voicePolicy: { maxVoices: 1, steal: 'reject' }, mix: { gain01: 0.5, pan01: 0 } },
   nativeAssets: [{ isActive: () => true, ref: { contentHash: hash, sourceSampleRate: 32000, frames: 32000, channels: 1 } }],
   revoice: { operation: 'sound-only-revoice', version: 1, takeId: 'take:sample', takeRevision: 1, sourceCanonicalHash: 'c'.repeat(64), sourceState: 'finalized', nextSequence: null,

@@ -24,7 +24,7 @@ export function loadOwnedWorkletModule(context, source, resources = null) {
   if (context.state === 'closed') { resource?.release(); return Promise.reject(new Error('Owned source context closed during admission.')); }
   const entry = { id: source.id, moduleClass, state: 'loading', resource, promise: null, estimatedBytes: source.heapEstimate }; cache.entries.set(url, entry);
   try { entry.promise = Promise.resolve(context.audioWorklet.addModule(url)); } catch (error) { entry.promise = Promise.reject(error); }
-  entry.promise.then(() => { if (entry.state !== 'closed') entry.state = 'ready'; }, () => { if (entry.state !== 'closed') entry.state = 'failed'; });
+  entry.promise.then(() => { if (entry.state !== 'closed') entry.state = 'ready'; }, () => { if (entry.state !== 'closed') { entry.state = 'failed'; if (!entry.resource && cache.entries.get(url) === entry) cache.entries.delete(url); } });
   return entry.promise;
 }
 export function inspectOwnedWorkletModule(context, url) {

@@ -21,7 +21,7 @@ const stateOwners = ['tickIndex', 'generation', 'generationStartTick', 'seed', '
   'hazards', 'triggerManager', 'terrainTileRevisions', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'];
 
 // Read own data only. No snapshot, terrain query, revision read, or cache get.
-const captureState = (world, records, eventHash, { physicalOnly = false } = {}) => {
+const captureState = (world, records, eventHash, { physicalOnly = false, scenarioOnly = false } = {}) => {
   const actions = new Map(Object.entries(world.actions).map(([id, action]) => [action, Number(id)])), actors = new Map(records.filter(record => record.actor).map(record => [record.actor, record.id]));
   const seen = new Map();
   const encode = (value, path) => {
@@ -39,6 +39,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false } = {}) 
       properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
     const out = {};
     for (const key of Object.keys(value).sort()) {
+      if (scenarioOnly && (path === 'lanePolicy' && key === 'config' || path.startsWith('lanePolicy.lanes.') && key === 'initialBias')) continue;
       if (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
       if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value === 'function') continue;
@@ -116,7 +117,9 @@ class ProcgenSurveyTrial {
       this.world.soundEvents.onBatch.on(this._batchListener);
       if (s.mode === 'controlled') { this.world.cohorts = false; this._installHazards(); this._admit(); }
       this._observe(); this._refreshTelemetry();
-      const initial = this.snapshot(); this.initialStateHash = initial.stateHash; this.initialScenarioStateHash = initial.physicalStateHash;
+      const initial = this.snapshot(); this.initialStateHash = initial.stateHash; this.initialPhysicalStateHash = initial.physicalStateHash; const scenarioState = captureState(this.world, this._records, this._eventHash, { physicalOnly: true, scenarioOnly: true });
+      scenarioState.controlledTriggers = initial.state.controlledTriggers;
+      this.initialScenarioStateHash = hashSurveyValue({ schema: 'paired-initial-physical-v2', state: scenarioState });
       this.observeMilestone();
     } catch (error) { activeTerrainOwners.delete(terrain); this.world?.dispose(); throw error; }
   }
@@ -326,7 +329,7 @@ class ProcgenSurveyTrial {
     return freezeSurveyData({ schemaVersion: 1, trialId: this.trialId, scenarioId: this.scenario.id, candidateId: this.candidate.id, policySeed: this.candidate.configuration.policySeed,
       scenario: this.scenario, candidate: this.candidate, status, episodeComplete, terminationReason: episodeComplete ? status === 'completed' ? 'declared-goal-qualified' : 'declared-horizon' : status,
       lastTick: this.world.tickIndex, accounting, metrics, crew: records,
-      initialStateHash: this.initialStateHash, initialScenarioStateHash: this.initialScenarioStateHash, finalStateHash: final.stateHash, finalPhysicalStateHash: final.physicalStateHash, eventHash: this._eventHash,
+      initialStateHash: this.initialStateHash, initialPhysicalStateHash: this.initialPhysicalStateHash, initialScenarioStateHash: this.initialScenarioStateHash, finalStateHash: final.stateHash, finalPhysicalStateHash: final.physicalStateHash, eventHash: this._eventHash,
       provenance: { scenarioHash: hashSurveyValue(this.scenario), budgetHash: hashSurveyValue({ horizonTicks: this.scenario.horizonTicks, maxActors: this.scenario.maxActors, worldOptions: this.scenario.worldOptions }),
         sourceHash: hashSurveyValue({ engineCommit: this.scenario.engineCommit, assetHashes: this.scenario.assetHashes, generatorVersion: this.scenario.generatorVersion }),
         harnessVersion: 1, stateSchema: SURVEY_STATE_SCHEMA, canonicalSchema: SURVEY_CANONICAL_SCHEMA },

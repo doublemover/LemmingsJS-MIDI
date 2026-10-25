@@ -14,7 +14,7 @@ const createEnvelope = (value, kind, generation) => {
 const stableOutcome = result => ({ schemaVersion: result.schemaVersion, scenarioId: result.scenarioId, candidateId: result.candidateId, policySeed: result.policySeed,
   status: result.status, terminationReason: result.terminationReason, lastTick: result.lastTick, initialStateHash: result.initialStateHash,
   finalStateHash: result.finalStateHash, finalPhysicalStateHash: result.finalPhysicalStateHash, eventHash: result.eventHash,
-  initialScenarioStateHash: result.initialScenarioStateHash, accounting: result.accounting, metrics: result.metrics, crew: result.crew,
+  initialScenarioStateHash: result.initialScenarioStateHash, initialPhysicalStateHash: result.initialPhysicalStateHash, accounting: result.accounting, metrics: result.metrics, crew: result.crew,
   provenance: result.provenance, episodeComplete: result.episodeComplete,
   validity: result.validity && { accountingComplete: result.validity.accountingComplete, protectedTerrain: result.validity.protectedTerrain, legitimateActions: result.validity.legitimateActions } });
 const verifiedEpisode = result => ['completed', 'failed', 'timed-out', 'timeout'].includes(result?.status) &&

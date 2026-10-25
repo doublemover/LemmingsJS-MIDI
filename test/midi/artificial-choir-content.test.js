@@ -9,7 +9,7 @@ describe('original Artificial Choir source recipes', () => {
     const source = JSON.parse(await readFile(new URL('../../content/sounds/artificial-choir.json', import.meta.url), 'utf8'));
     const targets = (await describeNativeInstrumentEngines([{ engineId: 'worklet-choir', engineVersion: 1, artifactHash: 'a'.repeat(64) }])).map(descriptor => ({ descriptor }));
     const compiled = await compileSoundContent(source, { targets }); expect(compiled.prepared.patches).to.have.length(4);
-    expect(targets[0].descriptor.capabilities).to.include({ renderAcknowledgment: true, perVoiceTimbre: true, offlineRender: false });
+    expect(targets[0].descriptor.capabilities).to.include({ renderAcknowledgment: true, perVoiceTimbre: true, offlineRender: true });
     const definitions = compiled.prepared.patches.map(patch => patch.definition);
     expect(new Set(definitions.map(patch => patch.parameters.sizeRatio)).size).to.equal(4);
     expect(definitions.filter(patch => patch.parameters.vowelStep === 1)).to.have.length(1);
