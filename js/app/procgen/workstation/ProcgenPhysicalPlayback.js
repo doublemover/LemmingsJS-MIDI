@@ -1,3 +1,4 @@
+import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
 import { createTravelColorationRecipe } from '../../../midi/content/TravelColorationRecipes.js';
 import { createTravelEffectMotion } from './TravelEffectMotion.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
@@ -11,6 +12,7 @@ import { createRoutedInstrumentBackend } from '../../midi-ui/RoutedInstrumentBac
 import { createLaneInstrumentPreparation } from '../../midi-ui/LaneInstrumentPreparation.js';
 import { connectProcgenActorEffectSource } from '../ProcgenActorEffectSource.js';
 
+let nextEffectStream = 0;
 const nativeResolution = Object.freeze({
   status: 'ready',
   patch: Object.freeze({ id: 'procgen-physical-default', revision: 1, engineId: 'native-oscillator', engineVersion: 1,
@@ -23,7 +25,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  onInstrumentState = () => {}, onReceipt = () => {}, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
+  onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
@@ -45,6 +47,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
+  const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectSequence = 0, effectClockAnchor = null;
   let latestSinkOutcome = null, lastMixPublication = null, declaredSourceLanes = null;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
   let lastAudioEnabled = false, lastAudioContext = null;
@@ -80,23 +83,44 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionEpoch: () => executionEpoch,
     toTargetFrame: scoreTime => permitted() ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
-    onReceipt: receipt => { latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
+    onReceipt: receipt => { if (Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
-  const travelEffects = createTravelEffectMotion({ resourceBudget, update: (id, values, frame, expected) => session.updateEffectGraph(id, values, frame, expected),
-    bypass: (mode, expected) => session?.setEffectBypass?.(mode, expected), toFrame: clock.toTargetFrame, onReceipt });
+  const captureEffect = (operation, state, details = {}) => {
+    if (!state) return;
+    try {
+      if (!isEffectCaptureEnabled()) return;
+      if (effectSequence === Number.MAX_SAFE_INTEGER) throw new Error('Effect capture sequence exhausted.');
+      const packet = validateEffectPerformance({ schema: 'lemmings-effect-performance/v1', status: 'accepted', stage: 'effect-performance-captured', operation,
+        sequence: ++effectSequence, streamId: effectStreamId, ownerRouteRevision: state.ownerRouteRevision, graphDefinitionHash: state.graphDefinitionHash,
+        sampleRate: state.sampleRate, targetFrame: state.targetFrame, executionEpoch, clockAnchor: effectClockAnchor?.executionEpoch === executionEpoch ? effectClockAnchor : null,
+        sourceEventIds: [], acousticReceipt: false, ...details }); onReceipt(packet);
+    } catch (error) { try { onReceipt({ status: 'rejected', stage: 'effect-performance-capture', reason: error.message, acousticReceipt: false }); } catch {} }
+  };
+  const prepareEffectGraph = async (definition, options) => { if (!session?.prepareEffectGraph) throw new Error('Physical owner effects are unavailable.');
+    const result = await session.prepareEffectGraph(definition, options), state = session.getEffectPerformanceState?.();
+    captureEffect('graph', state, { definition: state?.definition }); return result;
+  };
+  const updateEffectGraph = (nodeId, values, frame, expected, cause = null) => {
+    if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.');
+    const receipt = session.updateEffectGraph(nodeId, values, frame, expected), state = session.getEffectPerformanceState?.();
+    if (state && receipt.status === 'accepted') captureEffect('control', { ...state, targetFrame: receipt.targetFrame }, { nodeId, values, sourceEventIds: cause?.sourceEventIds || [] }); return receipt;
+  };
+  const setEffectBypass = (mode, expected) => { const state = session?.getEffectPerformanceState?.(), result = session?.setEffectBypass?.(mode, expected); if (result) captureEffect('bypass', state, { mode }); return result; };
+  const travelEffects = createTravelEffectMotion({ resourceBudget, update: updateEffectGraph,
+    bypass: setEffectBypass, toFrame: clock.toTargetFrame, onReceipt });
   const travelEffectSources = () => {
     const instruments = new Map(getGraph().instruments.filter(instrument => instrument.articulation?.sustain && ['signedX', 'signedY'].includes(instrument.articulation.orientation)).map(instrument => [instrument.id, instrument]));
     return (engine?.snapshot().active || []).filter(voice => instruments.has(voice.instrumentId)).slice(0, 64);
   };
   const prepareTravelEffect = async ({ voiceId, generation, ...parameters }, options = {}) => {
     if (disposed || !session?.prepareEffectGraph || !travelEffectSources().some(voice => voice.voiceId === voiceId && voice.generation === generation)) throw new Error('Choose an active sustained signed-distance voice before preparing travel color.');
-    const model = createTravelColorationRecipe(parameters), state = await session.prepareEffectGraph(model.graph, { ...options, isCurrent: () => !disposed && (!options.isCurrent || options.isCurrent()) });
+    const model = createTravelColorationRecipe(parameters), state = await prepareEffectGraph(model.graph, { ...options, isCurrent: () => !disposed && (!options.isCurrent || options.isCurrent()) });
     const expected = { graphDefinitionHash: state.activeGraph.hash, ownerRouteRevision: state.revision };
     try {
       const source = travelEffectSources().find(voice => voice.voiceId === voiceId && voice.generation === generation);
       if (!source || disposed) throw new Error('The selected physical travel voice ended during preparation.');
       travelEffects.bind({ voiceId, generation, instrumentId: source.instrumentId, control: model.control, expected }); return Object.freeze({ model, state });
-    } catch (error) { try { session.setEffectBypass('tail', expected); } catch {} throw error; }
+    } catch (error) { try { setEffectBypass('tail', expected); } catch {} throw error; }
   };
   let engine;
   try { engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
@@ -151,13 +175,14 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       clock.invalidate(); anchoredEpoch = null;
     }
     previousGeneration = batch.generation;
+    if (executionEpoch !== nextEpoch) effectClockAnchor = null;
     executionEpoch = nextEpoch;
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
     if (prepared && permitted() && session?.getState().enabled &&
         (!clock.isAnchored(executionEpoch, score.epoch, bpm) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
       try {
-        clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm,
+        effectClockAnchor = null; clock.rebase({ executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now(), bpm,
           reason: anchoredEpoch === null ? 'start' : 'source-change' });
         anchoredEpoch = score.epoch; anchoredBpm = bpm;
       } catch { clock.invalidate(); anchoredEpoch = null; }
@@ -175,6 +200,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     try { return engine.processBatch(batch); } catch (error) { error.playbackRetirement = stop(); throw error; }
   };
   const stop = () => {
+    captureEffect('bypass', session?.getEffectPerformanceState?.(), { mode: 'owner-stop' }); effectClockAnchor = null;
     armEnabled = false; enableLease = null;
     const generation = previousGeneration, epoch = executionEpoch;
     executionSerial++; previousGeneration = null; executionEpoch = null;
@@ -199,9 +225,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     ]);
   };
   return { engine, processBatch, stop, dispose, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
-    prepareEffectGraph: (definition, options) => session?.prepareEffectGraph ? session.prepareEffectGraph(definition, options) : Promise.reject(new Error('Physical owner effect routing is unavailable.')),
-    updateEffectGraph: (nodeId, values, frame, expected) => { if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.'); return session.updateEffectGraph(nodeId, values, frame, expected); },
-    setEffectBypass: (mode, expected) => session?.setEffectBypass?.(mode, expected), inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
+    prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),

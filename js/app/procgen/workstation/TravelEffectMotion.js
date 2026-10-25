@@ -31,7 +31,7 @@ export function createTravelEffectMotion({ update, bypass, toFrame, onReceipt = 
         try {
           const frame = toFrame(intent.scoreTime, executionEpoch);
           if (!Number.isSafeInteger(frame) || frame < 0 || frame < binding.lastFrame) throw new Error('Travel effect audio clock is unavailable or out of order.');
-          const receipt = update(binding.control.nodeId, { [binding.control.parameter]: value }, frame, binding.expected);
+          const receipt = update(binding.control.nodeId, { [binding.control.parameter]: value }, frame, binding.expected, { sourceEventIds: intent.sourceEventIds });
           binding.lastValue = value; binding.lastFrame = frame; updates++;
           report({ status: 'accepted', stage: 'effect-control-native-api-scheduled', executionEpoch, generation: intent.generation, voiceId: intent.voiceId,
             intentId: intent.intentId, sourceEventIds: intent.sourceEventIds, signedDistancePixels: distance, targetFrame: frame,

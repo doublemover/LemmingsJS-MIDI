@@ -16,7 +16,8 @@ const fail = (code, message) => { throw Object.assign(new Error(message), { name
 export function prepareOwnedEffectGraphPlan(definition, sampleRate = 48000, returnNodeIds = []) {
   return prepareEffectRenderPlan(definition, sampleRate, returnNodeIds);
 }
-export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48000, returnNodeIds = [] } = {}) {
+export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48000, returnNodeIds = [], frameOrigin = 0 } = {}) {
+  if (!Number.isSafeInteger(frameOrigin) || frameOrigin < 0) throw new TypeError('Effect rendering requires a nonnegative analysis frame origin.');
   const plan = prepareOwnedEffectGraphPlan(definition, sampleRate, returnNodeIds), hash = await effectGraphHash(plan);
   const indices = new Map(plan.order.map((id, i) => [id, i])), values = new Float32Array(plan.nodes.length * 2), presence = new Uint8Array(plan.nodes.length), controls = new Float64Array(plan.nodes.length * 4), gain = new Float64Array(plan.nodes.length * 3);
   const sidechainIndices = new Map(plan.sidechainInputs.map((id, index) => [id, index]));
@@ -29,7 +30,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'sympathetic-network') { controls.set([p.couple01, p.damp01, 0, 0], at); kernel = new SympatheticNetworkKernel({ sampleRate, parameters: p }); }
-    else if (entry.kind === 'spectral-freeze') { controls[at] = 0; kernel = new SpectralFreezeKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'spectral-freeze') { controls[at] = 0; kernel = new SpectralFreezeKernel({ sampleRate, parameters: p, startFrame: frameOrigin }); }
     else if (entry.kind === 'allpass-notch') { controls.set([p.baseFrequencyHz, p.feedback, p.wet01, 0], at); kernel = new AllpassNotchKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'ring-modulator') kernel = new RingModulatorKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'multiband-vocoder') kernel = new VocoderBankKernel({ sampleRate, parameters: p });
@@ -44,35 +45,35 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   let frame = 0, leftSample = 0, rightSample = 0, muted = false;
   const panic = () => { muted = true; for (const record of records) { record.kernel?.panic(); for (const edge of record.incoming) edge.align?.panic(); } values.fill(0); tapSamples.fill(0); leftSample = rightSample = 0; };
   const quarantine = (code, message) => { panic(); fail(code, message); };
-  const update = (nodeId, next) => {
+  const update = (nodeId, next, apply = true) => {
     if (muted) fail('effect-graph-retired', 'This graph was cleared; prepare a new graph for further controls.');
     const index = indices.get(nodeId), record = records[index];
     if (!record || !next || Object.getPrototypeOf(next) !== Object.prototype || !Object.keys(next).length || Object.keys(next).length > 4 || Object.values(next).some(value => !Number.isFinite(value))) fail('invalid-effect-control', 'Invalid owned effect control.');
     const { entry, at, kernel } = record, p = entry.parameters, keys = Object.keys(next), finite = (value, a, b) => Number.isFinite(value) && value >= a && value <= b;
     if (entry.kind === 'gain') {
       if (keys.some(key => key !== 'gain01') || !finite(next.gain01, 0, p.gainMaximum01)) fail('invalid-effect-control', 'Effect gain exceeds its declared bound.');
-      controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008));
+      if (apply) { controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008)); }
     } else if (entry.kind === 'sympathetic-network') {
-      if (keys.some(key => !['couple01', 'damp01'].includes(key)) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body macro exceeds its contraction domain.'); if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01;
+      if (keys.some(key => !['couple01', 'damp01'].includes(key)) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body macro exceeds its contraction domain.'); if (apply) { if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01; }
     } else if (entry.kind === 'spectral-freeze') {
-      if (keys.length !== 1 || keys[0] !== 'hold01' || (next.hold01 !== 0 && next.hold01 !== 1)) fail('invalid-effect-control', 'Spectral capture requires a discrete hold or thaw command.'); controls[at] = next.hold01;
+      if (keys.length !== 1 || keys[0] !== 'hold01' || (next.hold01 !== 0 && next.hold01 !== 1)) fail('invalid-effect-control', 'Spectral capture requires a discrete hold or thaw command.'); if (apply) controls[at] = next.hold01;
     } else if (entry.kind === 'allpass-notch') {
       if (keys.some(key => !['baseFrequencyHz', 'feedback', 'wet01'].includes(key)) || next.baseFrequencyHz != null && !finite(next.baseFrequencyHz, 160, 1600) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) || next.wet01 != null && !finite(next.wet01, 0, 1)) fail('invalid-effect-control', 'Allpass control exceeds its frequency, feedback or mix domain.');
-      if (next.baseFrequencyHz != null) controls[at] = next.baseFrequencyHz; if (next.feedback != null) controls[at + 1] = next.feedback; if (next.wet01 != null) controls[at + 2] = next.wet01;
+      if (apply && next.baseFrequencyHz != null) controls[at] = next.baseFrequencyHz; if (apply && next.feedback != null) controls[at + 1] = next.feedback; if (apply && next.wet01 != null) controls[at + 2] = next.wet01;
     } else if (entry.kind === 'feedback-delay') {
       if (keys.some(key => !['delaySeconds', 'feedback', 'wet01', 'feedbackLowpassHz'].includes(key)) ||
           next.delaySeconds != null && !finite(next.delaySeconds, (p.interpolation === 'lagrange3' ? 2 : 1) / sampleRate, p.maxDelaySeconds) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) ||
           next.wet01 != null && !finite(next.wet01, 0, 1) || next.feedbackLowpassHz != null && !finite(next.feedbackLowpassHz, 200, sampleRate * 0.4)) fail('invalid-effect-control', 'Delay control exceeds its immutable profile.');
-      if (next.delaySeconds != null) { const target = next.delaySeconds * sampleRate; if (!kernel.setDelay(target)) fail('effect-transition-busy', 'The two-tap delay transition is still active.'); controls[at] = target; }
-      if (next.feedback != null) controls[at + 1] = next.feedback;
-      if (next.wet01 != null) controls[at + 2] = next.wet01;
-      if (next.feedbackLowpassHz != null) { kernel.setFeedbackLowpassHz(next.feedbackLowpassHz); controls[at + 3] = next.feedbackLowpassHz; }
+      if (apply && next.delaySeconds != null) { const target = next.delaySeconds * sampleRate; if (!kernel.setDelay(target)) fail('effect-transition-busy', 'The two-tap delay transition is still active.'); controls[at] = target; }
+      if (apply && next.feedback != null) controls[at + 1] = next.feedback;
+      if (apply && next.wet01 != null) controls[at + 2] = next.wet01;
+      if (apply && next.feedbackLowpassHz != null) { kernel.setFeedbackLowpassHz(next.feedbackLowpassHz); controls[at + 3] = next.feedbackLowpassHz; }
     } else if (entry.kind === 'nonlinear-chain') {
       if (keys.some(key => !['driveDb', 'outputTrim01'].includes(key)) || next.driveDb != null && !finite(next.driveDb, 0, 24) || next.outputTrim01 != null && !finite(next.outputTrim01, 0, 1)) fail('invalid-effect-control', 'Nonlinear drive/trim exceeds its declared domain.');
-      if (next.driveDb != null) controls[at] = next.driveDb;
-      if (next.outputTrim01 != null) controls[at + 1] = next.outputTrim01;
+      if (apply && next.driveDb != null) controls[at] = next.driveDb;
+      if (apply && next.outputTrim01 != null) controls[at + 1] = next.outputTrim01;
     } else fail('effect-control-unavailable', 'This routing node has no live parameter adapter.');
-    return Object.freeze({ status: 'applied-to-owned-render', nodeId, frame, graphDefinitionHash: hash, acousticReceipt: false });
+    return !apply || Object.freeze({ status: 'applied-to-owned-render', nodeId, frame, graphDefinitionHash: hash, acousticReceipt: false });
   };
   const sample = (left, right, sidechainSamples = null, sidechainPresence = null) => {
     if (sidechainPresence !== null && (!(sidechainPresence instanceof Uint8Array) || sidechainPresence.length !== plan.sidechainInputs.length)) quarantine('sidechain-input-presence', 'Source presence must match the exact prepared bus inventory.');
@@ -115,7 +116,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];
     for (let i = 0; i < taps.length; i++) { tapSamples[i * 2] = values[taps[i]]; tapSamples[i * 2 + 1] = values[taps[i] + 1]; } frame++;
   };
-  return Object.freeze({ plan, hash, sample, update, tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
+  return Object.freeze({ plan, hash, sample, update, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
     diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, processingCost: plan.processingCost, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',

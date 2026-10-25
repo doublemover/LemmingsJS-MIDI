@@ -100,12 +100,15 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     mode = selected; revision++; poll(); report(); return state();
   };
   return Object.freeze({ prepare, bypass,
+    performanceSnapshot: () => !disposed && current ? Object.freeze({ definition: current.graph.plan.definition, graphDefinitionHash: current.graph.hash, ownerRouteRevision: revision,
+      mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate) }) : null,
     requestInspection: () => current?.graph.requestInspection?.() || false,
     update(nodeId, values, targetFrame, expected = null) { guard(); if (expected && (expected.ownerRouteRevision !== revision || expected.graphDefinitionHash !== current?.graph.hash)) throw failure('stale-effect-control', 'The effect control belongs to an earlier owner route.'); if (!current || !['active', 'mute'].includes(mode)) throw failure('effect-not-active', 'Prepare an active owner rack before performing its controls.'); return Object.freeze({ ...current.graph.update(nodeId, values, targetFrame), ownerRouteRevision: revision }); }, panic: () => bypass('panic'), state,
     dispose() {
       return retirement.retire([{ name: 'effect-host-retirement', run: async () => {
         disposed = true; serial++; if (timer != null) clearTimeout(timer); timer = null;
         dry.gain.cancelScheduledValues(context.currentTime); dry.gain.setValueAtTime(0, context.currentTime);
+        for (const arm of arms) { try { arm.output.gain.cancelScheduledValues(context.currentTime); arm.output.gain.setValueAtTime(0, context.currentTime); } catch (caught) { error = caught.message; } }
         const preparations = [...pending]; for (const operation of preparations) operation.controller.abort(failure('effect-owner-disposed', 'Effect owner retired.'));
         await Promise.allSettled(preparations.map(operation => operation.promise));
         const receipts = [...arms].map(retireArm); await Promise.all(receipts.map(receipt => receipt.completion));

@@ -882,12 +882,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    physicalPlayback = createProcgenPhysicalPlayback({ world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+    physicalPlayback = createProcgenPhysicalPlayback({ isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
+        if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
-        else if (causalTake && physicalReceiptBoundary) causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary);
+        else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
       } });
     void physicalPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);

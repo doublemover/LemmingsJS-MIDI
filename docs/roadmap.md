@@ -3271,3 +3271,51 @@ lifetime. Publication schedules the candidate gates before retiring the previous
 arm so a rejected candidate gate does not unnecessarily cut the working graph.
 A second deferred fixture covers completed UI tokens, later requests, live
 controls, retained old tails and final owner retirement.
+
+
+### Continuation 157 — captured effect commands and bounded owned revoice (#1070, #1046, #1071, #1188)
+
+Actual graph publications, accepted parameter commands and lifecycle requests now
+enter the existing causal take's sink-outcome records. They retain immutable graph
+identity, owner-route revision, per-stream sequence, actual context rate/frame and
+an existing source-intent/audio-clock anchor. Physical travel controls also retain
+their contributing fact IDs; a manual gesture does not invent physical ancestry.
+Clock rebases invalidate stale anchors. Capture/append failures mark effect-history
+coverage gaps rather than silently qualifying an incomplete gesture performance.
+The default capture profile is physical-basic-v12; other profiles must explicitly
+include this state kind. No competing recorder or transport was introduced.
+
+The render surface can explicitly choose captured FX commands independently of
+static authored defaults. It reconstructs one unchanged owned graph from cleared
+initial memory, projects original audio-frame deltas through captured intent time,
+preserves same-frame command order and recreates the owner's input/sidechain fade.
+Source and return taps are still taken simultaneously from the full graph. The
+source journal remains immutable; its separate command-plan hash is bound in both
+main-thread and worker preflight and checked again before artifact publication.
+All parameter domains are validated before allocating the output PCM. Analysis
+frame origin is retained for the spectral kernel's global hop grid.
+
+This is API-command revoice, not exact live PCM/DSP reconstruction. Graph swaps,
+in-range mute/bypass/Panic/stop, missing clock anchors, native convolution and
+native-source command revoice explicitly fail this first profile. Spectral requests
+can be replayed, but original source readiness and the actual captured window are
+not reconstructed from API submission alone. Preexisting effect memory is cleared;
+master capture remains the actual digital-output evidence. Dry stems remain source
+dry; owner gates and creative dry scaling belong to the complete master. These
+limits are visible before render rather than replaced by a silent static fallback.
+
+Fixtures for clock/rate projection, original-history immutability, preparation
+silence, owner fades, same-frame replacement, domain preflight, coverage/route
+rejection and actual take-journal-to-WAV host integration are authored and unrun.
+Runtime/browser/audio qualification remains deferred. Voice-scoped throws, full
+multi-graph/lifecycle replay and portable captured spectral assets remain pending.
+
+
+The integration also closes an owner-stop hole exposed by latched effects: a
+session now retires all of its effect producers even when another owner keeps the
+shared context running. All route-arm outputs mute before asynchronous disposal.
+Re-enabling an owner waits for that producer retirement; complete retirement
+restores its dry path, and unresolved retirement retains accounting and blocks
+reuse. Other owners remain independent. A deferred lifecycle fixture covers a
+latched producer, concurrent owner, pending acknowledgement and rapid re-enable.
+Effect command construction is skipped when no causal take is recording.

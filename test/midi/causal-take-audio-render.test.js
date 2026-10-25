@@ -1,3 +1,4 @@
+import { prepareEffectGraphRevision, effectGraphHash } from '../../js/midi/content/EffectGraphRevision.js';
 import { expect } from 'chai';
 import { createCausalTakeAudioRenderer } from '../../js/app/midi-ui/CausalTakeAudioRender.js';
 import { renderCausalSineTake } from '../../js/app/midi-ui/CausalSineRender.js';
@@ -13,7 +14,7 @@ import { createQuarryEcho, createQuarryTape, createQuarryBody } from '../../js/m
 import { prepareCausalEffectSelection } from '../../js/app/midi-ui/CausalEffectSelection.js';
 
 // The render adapter below exercises host ownership, not real-worker/build qualification.
-const setup = async () => {
+const setup = async ({ capturedEffects = false } = {}) => {
   const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), fallback = createBackgroundJobService({ admission, Worker: null });
   const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), descriptor = descriptors[0];
   const buildId = 'b'.repeat(64), switches = { wrongSource: false, wrongEffect: false, wrongReturn: false, deny: false }, jobs = { async compute(request) {
@@ -38,6 +39,13 @@ const setup = async () => {
     recorder.recordCommittedBatch({ batch: { version: 1, worldId: 'world', generation: 1, tick, batchId, facts: [], completeness: { status: 'complete', dropped: 0 } },
       intents: [{ version: 1, kind, worldId: 'world', batchId, generation: 1, voiceId: 'voice', onsetId: 'voice', intentId: 'intent:' + tick,
         sourceEventIds: [], laneId: 0, pitch: { cents: 6000, referenceHz: 440 }, velocity01: 0.5, expression: {}, scoreTime: { sourceTimeMs: milliseconds, simTick: tick, subTick: 0 } }] });
+  }
+  if (capturedEffects) {
+    const definition = createQuarryEcho({ send01: 0 }), graphDefinitionHash = await effectGraphHash(prepareEffectGraphRevision(definition)), base = {
+      schema: 'lemmings-effect-performance/v1', status: 'accepted', stage: 'effect-performance-captured', streamId: 'captured-effect-fixture', ownerRouteRevision: 1,
+      graphDefinitionHash, sampleRate: 48000, executionEpoch: 'live-capture', clockAnchor: { intentId: 'intent:1', sourceTargetFrame: 4800, executionEpoch: 'live-capture' }, sourceEventIds: [], acousticReceipt: false };
+    recorder.recordSinkOutcome({ ...base, operation: 'graph', sequence: 1, targetFrame: 5000, definition }, { tick: 2, generation: 1 });
+    recorder.recordSinkOutcome({ ...base, operation: 'control', sequence: 2, targetFrame: 7000, nodeId: 'send', values: { gain01: 0.5 } }, { tick: 2, generation: 1 });
   }
   await recorder.stop({ boundaryState: { sourceTimeMs: 1000, voices: [] } });
   const manifest = await journal.openTake('take:render-host'), states = [];
@@ -86,5 +94,20 @@ describe('owned causal render host and prepared file bundles', () => {
     await denied(owner.renderer.prepare(request), 'render-result-mismatch'); expect(owner.renderer.getPrepared()).to.equal(first.bundle);
     expect(first.bundle.files[0].artifact.metadata().retained).to.equal(true); expect(owner.admission.diagnostics().retainedResults).to.equal(0);
     await owner.dispose(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+});
+
+
+describe('captured FX command render host', () => {
+  it('reads existing journal outcomes and binds the requested replay without changing the original take', async () => {
+    const owner = await setup({ capturedEffects: true });
+    try {
+      const originalHash = owner.manifest.canonicalHash, result = await owner.renderer.prepare({ takeId: owner.manifest.takeId, endSeconds: 0.5, capturedEffects: true });
+      expect(result.bundle.manifest.effectGraph.controls).to.equal('captured-native-API-commands-new-owned-realization');
+      expect(result.bundle.manifest.effectGraph.commandReplay.events).to.equal(1); expect(result.bundle.manifest.effectGraph.commandReplay.hash).to.match(/^[a-f0-9]{64}$/);
+      expect(result.bundle.manifest.effectGraph.commandReplay.initialMemory).to.include('cleared'); expect(result.bundle.manifest.sourceCanonicalHash).to.equal(originalHash);
+      expect(result.bundle.files).to.have.length(2);
+    } finally { await owner.dispose(); }
+    expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
   });
 });

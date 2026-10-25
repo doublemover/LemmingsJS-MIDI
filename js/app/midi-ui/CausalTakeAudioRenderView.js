@@ -55,7 +55,7 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
   const rate = select('Render sample rate', [['44100', '44.1 kHz'], ['48000', '48 kHz'], ['96000', '96 kHz']]); rate.value = '48000';
   const tail = select('Render end policy', [['exact-crop', 'Exact crop'], ['bounded-natural', 'Captured releases with bounded tails'], ['boundary-release', 'Derive releases at the end boundary']]);
   const stems = node('input'); stems.type = 'checkbox'; stems.setAttribute('aria-label', 'Include all captured dry lane stems'); label('Include all captured dry lane stems (native: 15; owned: 16)', stems);
-  const effect = select('New render effect', [['none', 'Dry source graph'], ['quarry-echo', 'Quarry Echo · authored static send'], ['quarry-duck', 'Quarry Duck · source-shaped echo return'], ['quarry-tape', 'Quarry Tape · authored static send'], ['quarry-tape-spring', 'Quarry Tape + Spring · shared echo and body'], ['quarry-hollow-spring', 'Hollow Spring · shared body'], ['quarry-stone-courtyard', 'Stone Courtyard · shared body'], ['quarry-crossed-gallery', 'Crossed Gallery · shared body'], ['saved-owner', 'Saved owner rack · new send amount']]);
+  const effect = select('New render effect', [['none', 'Dry source graph'], ['captured-controls', 'Captured FX commands · one graph, cleared memory'], ['quarry-echo', 'Quarry Echo · authored static send'], ['quarry-duck', 'Quarry Duck · source-shaped echo return'], ['quarry-tape', 'Quarry Tape · authored static send'], ['quarry-tape-spring', 'Quarry Tape + Spring · shared echo and body'], ['quarry-hollow-spring', 'Hollow Spring · shared body'], ['quarry-stone-courtyard', 'Stone Courtyard · shared body'], ['quarry-crossed-gallery', 'Crossed Gallery · shared body'], ['saved-owner', 'Saved owner rack · new send amount']]);
   const effectSend = number('New render source send', 0.35, 0.65); effectSend.step = '0.01';
   const effectReturn = node('input'); effectReturn.type = 'checkbox'; effectReturn.checked = true; label('Include the simultaneous shared return WAV', effectReturn);
   const effectInfo = node('p'); effectInfo.setAttribute('aria-label', 'Effect render scope'); fields.append(effectInfo);
@@ -112,11 +112,11 @@ export function createCausalTakeAudioRenderView({ document, window, journal, res
     renderButton.disabled = loading || busy || !source || !!source.unavailable || !!current.unresolvedRetirement || sourceModel.value === 'saved-instrument' && !instrumentSupported || picker || !!delivery;
     cancelRender.disabled = !busy; first.disabled = last.disabled = sourceModel.disabled = rate.disabled = tail.disabled = stems.disabled = busy || loading;
     const selectedEngine = sourceModel.value === 'saved-instrument' ? instrumentReference?.engineRequirement.engineId : sourceModel.value;
-    const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine);
+    const nativeRestore = NATIVE_OFFLINE_SOURCE_IDS.includes(selectedEngine) || effect.value === 'captured-controls';
     const hasEffects = effect.value !== 'none';
-    effect.disabled = busy || loading; effectSend.disabled = effectReturn.disabled = busy || loading || !hasEffects;
+    effect.disabled = busy || loading; effectReturn.disabled = busy || loading || !hasEffects; effectSend.disabled = effectReturn.disabled || effect.value === 'captured-controls';
     effectInfo.textContent = !hasEffects ? 'Dry source graph. No creative effect graph is added.' :
-      'Creates a new realization with a constant authored send. Live effect gestures are not replayed. Dry lanes and shared return come from one full graph; final protection is excluded. Native convolution bodies require their offline adapter.';
+      effect.value === 'captured-controls' ? 'Revoices captured API parameter commands into one owned graph with cleared initial memory. Graph replacements, native bodies and in-range lifecycle transitions are unavailable. This does not reconstruct original live PCM or spectral capture readiness.' : 'Creates a new realization with a constant authored send. Live effect gestures are not replayed. Dry lanes and shared return come from one full graph; final protection is excluded. Native convolution bodies require their offline adapter.';
     tailSeconds.max = hasEffects ? '30' : '4'; if (Number(tailSeconds.value) > Number(tailSeconds.max)) tailSeconds.value = tailSeconds.max;
     restore.disabled = busy || loading || nativeRestore; if (nativeRestore) restore.value = 'forward-preroll';
     tailSeconds.disabled = busy || loading || tail.value === 'exact-crop'; file.disabled = busy || picker || !!delivery || !bundle;

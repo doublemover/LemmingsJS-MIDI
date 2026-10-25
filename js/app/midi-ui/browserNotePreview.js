@@ -105,7 +105,7 @@ class BrowserNotePreview {
     this._disposePromise = null;
     this._retirement = createProcgenRetirementScope();
     this._retiredVoices = new Map();
-    this._retirementFaults = new Set();
+    this._retirementFaults = new Set(); this._effectRetirements = new Map();
     this._generation = 0;
     this._enabled = false;
     this._disposed = false;
@@ -173,7 +173,7 @@ class BrowserNotePreview {
     });
   }
 
-  _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (owner == null || this._sessions.get(owner)?.enabled === true) &&
+  _ownerReady(owner) { return this._ready() && !this._retirementFaults.has(owner) && (!this._effectRetirements.has(owner) || this._effectRetirements.get(owner).scope.getReceipt()?.outcome === 'complete') && (owner == null || this._sessions.get(owner)?.enabled === true) &&
     (this._workloadClass(owner) !== 'cue' || this._cueRouting?.state().state === 'playing-route'); }
 
   _workloadClass(owner) { return this._sessions.get(owner)?.workloadClass || 'live'; }
@@ -238,7 +238,7 @@ class BrowserNotePreview {
       for (const voice of this._voices) if (voice.owner === id) activeVoices++;
       for (const entry of this._previewPending) if (entry.spec.owner === id) pendingNotes++;
       return { ...state, owner: label, ownerId: id, sharedMix: true, activeVoices, pendingNotes, enabled: session.enabled && state.enabled && !this._retirementFaults.has(id),
-        laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, retirement: retirementState(retirement.getReceipt()),
+        laneSources: this._laneSourceBuses.get(id)?.buses.diagnostics() || null, effectRetirement: retirementState(this._effectRetirements.get(id)?.scope.getReceipt()), retirement: retirementState(retirement.getReceipt()),
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
@@ -256,6 +256,7 @@ class BrowserNotePreview {
         { name: 'cue-mute', run: () => { if (workloadClass === 'cue') this._cueRouting?.stop(); } },
         { name: 'session-admission', run: () => session.cancel() },
         { name: 'owned-voices', run: () => this._clearVoices(null, id) },
+        { name: 'owner-effects', run: () => this._retireOwnerEffects(id) },
         { name: 'lane-sources', run: () => this._retireLaneSources(id) },
         { name: 'mix-state', run: () => { if (!this._hasEnabledOwners()) return this.stop(); session.report(); } }
       ]); } finally { session.stopping = false; }
@@ -288,7 +289,7 @@ class BrowserNotePreview {
         session.report();
         if (session.enableOperation !== operation || session.disposed) { settle(false); return promise; }
         // Invoke directly: AudioContext creation/resume must retain the caller's gesture.
-        Promise.resolve(this.enable(id)).then(settle, () => settle(false));
+        Promise.resolve(this.enable(id)).then(async ready => { const receipt = this._effectRetirements.get(id)?.scope.getReceipt(); if (receipt) { await receipt.completion; ready = ready && receipt.outcome === 'complete'; } settle(ready); }, () => settle(false)).catch(() => settle(false));
       } catch { settle(false); }
       return promise;
     };
@@ -343,6 +344,7 @@ class BrowserNotePreview {
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
       setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
+      getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),
       setMasterVolume: value => this.setMasterVolume(value),
@@ -704,6 +706,20 @@ class BrowserNotePreview {
       entry = { context, generation, buses }; this._laneSourceBuses.set(owner, entry);
     }
     return entry.buses;
+  }
+
+  _retireOwnerEffects(owner) {
+    const current = this._effectRetirements.get(owner); if (current) return current.scope.getReceipt();
+    const members = [...this._channels.values()].filter(channel => channel.owner === owner && channel.effects).map(channel => ({ channel, effects: channel.effects }));
+    if (!members.length) return null;
+    const scope = createProcgenRetirementScope({ deadlineMs: 16000 }), entry = { scope }; this._effectRetirements.set(owner, entry);
+    const receipt = scope.retire(members.map(({ channel, effects }, index) => ({ name: 'owner-effect-' + index, run: async () => {
+      const retired = effects.dispose(); await retired.completion;
+      if (retired.outcome !== 'complete') throw new Error('Owner effect producer retirement is unresolved.');
+      if (channel.effects === effects) { channel.effects = null; if (this._context?.state !== 'closed') channel.effectDry.gain.setValueAtTime(1, this._context.currentTime); }
+    } })));
+    receipt.completion.then(() => { if (receipt.outcome === 'complete' && this._effectRetirements.get(owner) === entry) this._effectRetirements.delete(owner); else if (receipt.outcome !== 'complete') this._retirementFaults.add(owner); });
+    return receipt;
   }
 
   _retireChannel(key, channel) {

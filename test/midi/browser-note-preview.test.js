@@ -1,3 +1,4 @@
+import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 import { expect } from 'chai';
 import { EventHandler } from '../../js/util/EventHandler.js';
 import { createMidiEventPlayback, getMidiEventPlaybackEnvelope } from '../../js/app/midi-ui/midiEventPlayback.js';
@@ -1696,5 +1697,20 @@ describe('polyphonic clip dispatch to existing event-card playback feedback', fu
         router.scheduler.allNotesOff(); expect(row.children).to.have.length(0); expect(preview._voices.size).to.equal(0); expect(cells.every(cell => !cell.children.length)).to.equal(true);
       } finally { router.dispose(); preview.dispose(); feedback.dispose(); }
     });
+  });
+});
+
+
+describe('owner Stop retires autonomous creative effects', () => {
+  it('waits for only the stopped owner and prevents enable from racing its producer retirement', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context }), stopped = preview.createSession('stopped'), continuing = preview.createSession('continuing');
+    await stopped.enable(); await continuing.enable();
+    stopped.output.channels[1].sendNoteOn(60, { rawAttack: 100 }); continuing.output.channels[1].sendNoteOn(64, { rawAttack: 100 });
+    const stoppedId = stopped.getState().ownerId, continuingId = continuing.getState().ownerId, channel = [...preview._channels.values()].find(value => value.owner === stoppedId), release = deferred(), scope = createProcgenRetirementScope(); let disposed = 0;
+    channel.effects = { dispose() { disposed++; return scope.retire([{ name: 'latched-body-producer', run: () => release.promise }]); } };
+    const receipt = stopped.stop(); expect(receipt.outcome).to.equal('pending'); expect(disposed).to.equal(1); expect([...preview._voices].some(voice => voice.owner === continuingId)).to.equal(true);
+    const enabling = stopped.enable(); await Promise.resolve(); expect(stopped.getState().enabled).to.equal(false);
+    release.resolve(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(await enabling).to.equal(true); expect(channel.effects).to.equal(null);
+    await stopped.dispose(); await continuing.dispose(); await preview.dispose();
   });
 });

@@ -3,7 +3,8 @@ import { createQuarryEcho, createQuarryDuck, createQuarryTape, createQuarryTapeS
 import { prepareEffectRenderPlan } from './EffectRenderPlan.js';
 
 export function prepareCausalEffectSelection({ preset = 'none', send01 = 0.35, includeReturn = true, rack = null, sampleRate = 48000 } = {}) {
-  if (!['none', 'quarry-echo', 'quarry-duck', 'quarry-tape', 'quarry-tape-spring', 'quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery', 'saved-owner'].includes(preset) || !Number.isFinite(send01) || send01 < 0 || send01 > 0.65 || typeof includeReturn !== 'boolean') throw new TypeError('Choose a bounded authored render effect and source send.');
+  if (!['none', 'quarry-echo', 'quarry-duck', 'quarry-tape', 'quarry-tape-spring', 'quarry-hollow-spring', 'quarry-stone-courtyard', 'quarry-crossed-gallery', 'saved-owner', 'captured-controls'].includes(preset) || !Number.isFinite(send01) || send01 < 0 || send01 > 0.65 || typeof includeReturn !== 'boolean') throw new TypeError('Choose a bounded authored render effect and source send.');
+  if (preset === 'captured-controls') return Object.freeze({ effectGraph: null, effectReturnNodeIds: Object.freeze([]), capturedEffects: true, includeCapturedReturn: includeReturn });
   if (preset === 'none') return Object.freeze({ effectGraph: null, effectReturnNodeIds: Object.freeze([]) });
   let graph;
   if (preset === 'quarry-echo' || preset === 'quarry-tape') graph = (preset === 'quarry-tape' ? createQuarryTape : createQuarryEcho)({ send01 });

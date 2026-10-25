@@ -1,3 +1,4 @@
+import { prepareCapturedEffectReplay } from './CapturedEffectReplay.js';
 import { prepareCausalOwnedConvolutionInput } from './CausalOwnedConvolutionRender.js';
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
@@ -62,9 +63,9 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
   };
   const prepare = ({ takeId, takeRevision, definition = null, materialReference = null, sampleRate = 48000, startSeconds = 0, endSeconds,
-    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, restorationMode = 'forward-preroll', effectGraph = null, effectReturnNodeIds = [], signal: externalSignal, isCurrent = () => true } = {}) => {
+    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, restorationMode = 'forward-preroll', effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, includeCapturedReturn = true, signal: externalSignal, isCurrent = () => true } = {}) => {
     externalSignal?.throwIfAborted();
-    if (!['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
+    if (typeof capturedEffects !== 'boolean' || typeof includeCapturedReturn !== 'boolean' || capturedEffects && (effectGraph !== null || restorationMode !== 'forward-preroll') || !['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
         !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
         new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function' || effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype) ||
@@ -83,8 +84,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         operation.workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId + ':' + ordinal, kind: 'causal-render-input', bytes: 2 * 1048576 });
         const reference = materialReference ? validateSoundContentReference(materialReference) : null;
         const patch = cloneData(definition || reference?.definition || CAUSAL_RENDER_SINE, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
-        const graph = effectGraph ? cloneData(effectGraph, { maxBytes: 65536, maxNodes: 8192 }) : null, returns = Object.freeze(effectReturnNodeIds.slice());
-        if (!policy || Object.getPrototypeOf(policy) !== Object.prototype || !['exact-crop', 'bounded-natural', 'boundary-release'].includes(policy.mode) || Object.keys(policy).some(key => !['mode', 'maxSeconds'].includes(key)) || !Number.isFinite(policy.maxSeconds ?? 4) || (policy.maxSeconds ?? 4) < 0 || (policy.maxSeconds ?? 4) > (graph ? 30 : 4))
+        let effectReplay = null; let graph = effectGraph ? cloneData(effectGraph, { maxBytes: 65536, maxNodes: 8192 }) : null, returns = Object.freeze(effectReturnNodeIds.slice());
+        if (!policy || Object.getPrototypeOf(policy) !== Object.prototype || !['exact-crop', 'bounded-natural', 'boundary-release'].includes(policy.mode) || Object.keys(policy).some(key => !['mode', 'maxSeconds'].includes(key)) || !Number.isFinite(policy.maxSeconds ?? 4) || (policy.maxSeconds ?? 4) < 0 || (policy.maxSeconds ?? 4) > (graph || capturedEffects ? 30 : 4))
           throw failure('render-tail-policy', 'Choose a bounded source/effect tail policy.');
         const definitionHash = await hashData(patch), catalog = await getCatalog(); check();
         const descriptor = catalog.descriptors.find(entry => entry.engineId === patch.engineId && entry.engineVersion === patch.engineVersion);
@@ -92,6 +93,17 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         if (catalog.state !== 'bound-application-engines' || !profile?.controlReferenceRender || !descriptor || !HASH.test(descriptor.artifactHash))
           throw failure('engine-identity-unbound', 'Prepare this render from an immutable application build with the selected owned source.');
         if (native && restorationMode !== 'forward-preroll') throw failure('restore-mode-unavailable', 'Native sources reconstruct from covered history; their hidden DSP state cannot use an owned state cut.');
+        if (capturedEffects) {
+          if (native) throw failure('effect-command-source-unavailable', 'Captured effect commands currently render with owned sources. Select an owned source or explicit static effects.');
+          const requirement = Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, descriptor[key]]));
+          operation.source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision, includeEffects: true,
+            soundPatch: { id: patch.id, revision: patch.revision, definitionHash, engineRequirement: requirement }, executionEpoch: ownerId + ':' + ordinal,
+            limit: 8192, maxIntents: 32768, maxBytes: sourceMaxBytes, signal: controller.signal }); check(); revoice = operation.source.value;
+          operation.workspace.resize(4 * 1048576 + operation.source.receipt.retainedBytes * 4);
+          effectReplay = await prepareCapturedEffectReplay(revoice, sampleRate, Math.round(endSeconds * sampleRate)); check(); graph = effectReplay.definition;
+          if (includeCapturedReturn && !graph.nodes.some(node => node.id === 'return')) throw failure('effect-return-unavailable', 'This captured graph has no named return. Disable the shared return WAV to render its complete output.');
+          returns = Object.freeze(includeCapturedReturn ? ['return'] : []);
+        }
         const effectPlan = graph ? prepareEffectRenderPlan(graph, sampleRate, returns, { nativeConvolution: true, nativeOwnedProcessors: true }) : null, effectHash = effectPlan ? await effectGraphHash(effectPlan) : null;
         const effectDefinitionHash = effectPlan ? await hashData(effectPlan.definition) : null; check();
         const ownedConvolution = !native && !!effectPlan?.impulseCount;
@@ -106,7 +118,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
             engineDescriptors: catalog.descriptors, sampleRate, owner: ownerId, generation: ordinal, signal: controller.signal, isCurrent: () => !disposed && isCurrent() }); check();
         }
         const engineRequirement = Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, descriptor[key]]));
-        operation.source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision,
+        operation.source ||= await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs, takeId, takeRevision,
           soundPatch: { id: patch.id, revision: patch.revision, definitionHash, engineRequirement }, executionEpoch: ownerId + ':' + ordinal,
           limit: 8192, maxIntents: 32768, maxBytes: sourceMaxBytes, signal: controller.signal }); check();
         revoice = operation.source.value;
@@ -119,12 +131,12 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         }
         const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);
         const fileCount = lanes.length + returns.length + 1, pcmBytes = frames * 8 * fileCount, sourceFootprint = operation.source.receipt.retainedBytes;
-        operation.workspace.resize(2 * 1048576 + sourceFootprint + (native ? revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) : 0));
+        operation.workspace.resize(2 * 1048576 + sourceFootprint + (effectReplay ? 4 * 1048576 + effectReplay.events.length * 2048 : 0) + (native ? revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) : 0));
         const binding = { takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash };
         let estimatedPeakBytes = sourceFootprint * 6 + pcmBytes * 4 + revoice.intents.length * Math.max(1024, Object.keys(profile.fields).length * 256) + 32 * 1048576 + (operation.material?.descriptor.bytes || 0) * 6 + (restorationMode === 'owned-state-cut' ? 2 * profile.sourceBytes({ sampleRate, pcm: operation.material?.descriptor, voices: patch.voicePolicy.maxVoices }) + 4 * 1048576 : 0) + (effectPlan ? effectPlan.stateBytes + 4 * 1048576 : 0);
         if (!Number.isSafeInteger(pcmBytes) || pcmBytes + 262208 * fileCount > 64 * 1048576 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes > 512 * 1048576)
           throw failure('render-memory-capacity', 'Choose a shorter output range or fewer stems to fit source, PCM, encoding and transfer overlap.');
-        input = { revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, restorationMode,
+        input = { ...(effectReplay ? { capturedEffects: true, effectReplayHash: effectReplay.hash } : {}), revoice, definition: patch, engineRequirement, sampleRate, startSeconds, endSeconds, tail: policy, stemLaneIds: lanes, restorationMode,
           ...(effectPlan ? { effectGraph: effectPlan.definition, effectReturnNodeIds: returns } : {}), ...(operation.material && !native ? { pcm: operation.material.payload } : {}) };
         phase = native ? 'rendering-native' : 'rendering'; report();
         if (native) {
@@ -172,7 +184,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           throw failure('render-result-mismatch', 'The worker result differs from the selected immutable source, range or renderer.');
         if (effectPlan ? manifest.effectGraph?.hash !== effectHash || !manifest.effectGraph.definition || !manifest.effectGraph.processingRevisions || !Array.isArray(manifest.stems?.sharedReturns) || await hashData(manifest.effectGraph.definition) !== effectDefinitionHash ||
             canonicalDataText(manifest.effectGraph.processingRevisions).text !== canonicalDataText(effectPlan.processingRevisions).text || manifest.effectGraph.latencyFrames !== effectPlan.latencyFrames || manifest.effectGraph.maximumTailFrames !== effectPlan.maximumTailFrames ||
-            manifest.effectGraph.controls !== 'explicit-authored-defaults-not-replayed-live-gestures' || canonicalDataText(manifest.stems.sharedReturns).text !== canonicalDataText(returns).text : manifest.effectGraph != null)
+            manifest.effectGraph.controls !== (effectReplay ? 'captured-native-API-commands-new-owned-realization' : 'explicit-authored-defaults-not-replayed-live-gestures') || effectReplay && manifest.effectGraph.commandReplay?.hash !== effectReplay.hash || canonicalDataText(manifest.stems.sharedReturns).text !== canonicalDataText(returns).text : manifest.effectGraph != null)
           throw failure('render-effect-mismatch', 'The worker result differs from the selected exact effect graph or simultaneous shared taps.');
         let totalBytes = 0;
         for (let index = 0; index < value.files.length; index++) {
