@@ -105,3 +105,12 @@ describe('generation and revision resource leases', () => {
     expect(() => budget.reserve({ token: {}, owner: 'active', category: 'canvas', bytes: Number.MAX_SAFE_INTEGER })).to.throw('exact accounting');
   });
 });
+
+describe('bounded shared resource owner inspection', () => {
+  it('reports actual generation groups without exposing tokens or silently dropping omitted cost', () => {
+    const budget = createResourceBudget();
+    for (let index = 0; index < 4; index++) budget.reserve({ token: {}, owner: 'owner-' + index, generation: index, bytes: 100, category: 'other' });
+    const limited = budget.inspectOwners({ maximum: 2 }); expect(limited.status).to.equal('truncated'); expect(limited.owners).to.have.length(2); expect(limited.omittedEntries).to.equal(2); expect(limited.omittedAccountedBytes).to.equal(200);
+    const complete = budget.inspectOwners(); expect(complete.status).to.equal('complete'); expect(complete.owners.reduce((sum, owner) => sum + owner.accountedBytes, 0)).to.equal(budget.diagnostics().accountedBytes); expect(complete.owners[0]).not.to.have.property('token');
+  });
+});

@@ -114,6 +114,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
+  const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
   let recoveryState = 'unsaved', recoveryError = null, durableRecoveryRevision = -1, durableRecoveryTick = null, durableRecoveryGeneration = null, recoveryRetirement = null, lastRecoveryCommit = null;
   let lastRecoveryError = -Infinity;
   let lastBudgetNotice = -Infinity;
@@ -1041,7 +1042,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
       const captureRecovery = () => {
         if (disposed || documentGeneration !== sourceDocumentGeneration) throw new Error('Recovery document changed before snapshot admission.');
-        const session = snapshotSession(savedName + ' (recovery)', { recovery: true });
+        const snapshotStarted = now(); let session;
+        try { session = snapshotSession(savedName + ' (recovery)', { recovery: true }); }
+        finally { const elapsed = Math.max(0, now() - snapshotStarted); recoverySnapshotStats.calls++; recoverySnapshotStats.lastMs = elapsed; recoverySnapshotStats.totalMs += elapsed; recoverySnapshotStats.maximumMs = Math.max(recoverySnapshotStats.maximumMs, elapsed); }
         capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; return session;
       };
       const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
@@ -1722,7 +1725,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
-    getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
+    getRecoveryState: () => Object.freeze({ snapshot: Object.freeze({ ...recoverySnapshotStats }), state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),

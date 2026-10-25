@@ -697,7 +697,12 @@
         "js/app/procgen/workstation/ProcgenWorkstation.js",
         "js/app/procgen/ProcgenLaneWorld.js",
         "js/runtime/BrowserGenerationPins.js",
-        "js/runtime/BrowserGenerationService.js"
+        "js/runtime/BrowserGenerationService.js",
+        "js/app/resources/ResourceBudget.js",
+        "js/app/resources/BackgroundJobService.js",
+        "scripts/profile-resource-recovery.mjs",
+        "scripts/ResourceRecoveryBrowserScenario.js",
+        "scripts/ResourceRecoveryEvidence.js"
       ],
       "regressions": [
         "test/procgen-incremental-recovery.test.js",
@@ -705,15 +710,19 @@
         "test/resource-retirement.test.js",
         "test/browser-generation-pins.test.js",
         "test/browser-generation-service.test.js",
-        "test/procgen-session-storage.test.js"
+        "test/procgen-session-storage.test.js",
+        "test/resource-recovery-evidence.test.js",
+        "test/background-worker-admission.test.js",
+        "test/resource-budget.test.js"
       ],
       "commits": [
         "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e",
-        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
+        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
+        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
       ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages",
-      "remaining": "Full recovery timing/combined-scene harness implementation remains; source-generation retention is integrated. Execution of authored parity/fault fixtures remains deferred validation.",
+      "remaining": "Large worker-input structured-clone staging must be bounded/cooperative; existing whole-object postMessage can still block. Combined-scene harness is now implemented but unrun; runtime slice/parity/fault qualification remains deferred.",
       "increments": [
         {
           "id": "durable-recovery-and-acknowledged-retirement",
@@ -723,6 +732,11 @@
         {
           "id": "durable-source-generation-retention",
           "summary": "Two metadata-only source pins commit atomically with recovery slots; explicit unbound/unknown provenance, metadata-only conservative legacy migration, and origin-scoped exclusive Web Locks serialize durable publication with cache retirement. Unknown pins or unsupported/busy locking defer trimming; all live browser worker client types participate. Tests authored unrun. Full recovery/combined pressure harness remains development.",
+          "commit": "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
+        },
+        {
+          "id": "combined-resource-recovery-evidence",
+          "summary": "Executable source-bound six-case browser harness uses 8/128/1024 real lanes, 64-step patterns, actual 8192-cell canonical terrain command, pinned 30.72MB native decoded fixtures, eight CCTV views, high-DPR/aspect resizes, worker recovery, trusted click-to-paint and raw scheduling tails, over-cap rejection and old/new candidate overlap. Missing/unknown/failed scenarios fail qualification rather than disappear; native heap/acoustic qualifications remain distinct. Owner/queue/snapshot timing diagnostics and all six durable-write boundaries plus worker fault fixtures authored. Harness and tests unrun.",
           "commit": null
         }
       ]
@@ -3435,7 +3449,11 @@
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
         "js/app/procgen/workstation/ProcgenSessionStorage.js",
         "js/app/procgen/ProcgenLaneWorld.js",
-        "js/runtime/BrowserGenerationPins.js"
+        "js/runtime/BrowserGenerationPins.js",
+        "js/app/resources/BackgroundJobService.js",
+        "scripts/profile-resource-recovery.mjs",
+        "scripts/ResourceRecoveryBrowserScenario.js",
+        "scripts/ResourceRecoveryEvidence.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3457,7 +3475,9 @@
         "test/procgen-incremental-recovery.test.js",
         "test/browser-generation-pins.test.js",
         "test/browser-generation-service.test.js",
-        "test/procgen-session-storage.test.js"
+        "test/procgen-session-storage.test.js",
+        "test/resource-recovery-evidence.test.js",
+        "test/background-worker-admission.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
@@ -3465,11 +3485,12 @@
         "03e36c9d2771537e523f4ec7ba1d86d8c38837ae",
         "87cd69c1",
         "0a21999ba2cfac757279ab44028c48fe690cd020",
-        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
+        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
+        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "Combined resource scenario harness and final auxiliary persistent-owner audit remain development; actual browser/native memory estimate qualification is deferred validation, not missing source implementation.",
+      "remaining": "Final auxiliary persistent-owner audit and large background-input staging admission remain development. Combined resource scenario harness is implemented but unrun; actual browser/native estimate qualification remains deferred validation.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
@@ -3504,10 +3525,15 @@
         {
           "id": "durable-source-generation-retention",
           "summary": "Two metadata-only source pins commit atomically with recovery slots; explicit unbound/unknown provenance, metadata-only conservative legacy migration, and origin-scoped exclusive Web Locks serialize durable publication with cache retirement. Unknown pins or unsupported/busy locking defer trimming; all live browser worker client types participate. Tests authored unrun. Full recovery/combined pressure harness remains development.",
+          "commit": "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
+        },
+        {
+          "id": "combined-resource-recovery-evidence",
+          "summary": "Executable source-bound six-case browser harness uses 8/128/1024 real lanes, 64-step patterns, actual 8192-cell canonical terrain command, pinned 30.72MB native decoded fixtures, eight CCTV views, high-DPR/aspect resizes, worker recovery, trusted click-to-paint and raw scheduling tails, over-cap rejection and old/new candidate overlap. Missing/unknown/failed scenarios fail qualification rather than disappear; native heap/acoustic qualifications remain distinct. Owner/queue/snapshot timing diagnostics and all six durable-write boundaries plus worker fault fixtures authored. Harness and tests unrun.",
           "commit": null
         }
       ],
-      "remainingDevelopment": "Combined resource scenario harness and final auxiliary persistent-owner audit remain development; actual browser/native memory estimate qualification is deferred validation, not missing source implementation."
+      "remainingDevelopment": "Final auxiliary persistent-owner audit and large background-input staging admission remain development. Combined resource scenario harness is implemented but unrun; actual browser/native estimate qualification remains deferred validation."
     },
     {
       "number": 1163,

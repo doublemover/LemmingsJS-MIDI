@@ -8,7 +8,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   resourceBudget = createResourceBudget(), now = () => performance.now() } = {}) {
   if (!Number.isSafeInteger(maxWorkers) || maxWorkers < 1 || maxWorkers > 4 || !Number.isSafeInteger(maxQueuedJobs) || maxQueuedJobs < 0 || maxQueuedJobs > 128 ||
       !Number.isSafeInteger(maxQueuedInputBytes) || maxQueuedInputBytes < 0 || maxQueuedInputBytes > 256 * 1048576) throw invalid('Invalid background worker admission limits.');
-  const queue = [], active = new Set(), retained = new Set(); let sequence = 0, queuedBytes = 0, retired = false, admitted = 0, denied = 0, peakWorkers = 0;
+  const queue = [], active = new Set(), retained = new Set(); let sequence = 0, queuedBytes = 0, retired = false, admitted = 0, denied = 0, peakWorkers = 0, queueWaitMs = 0, peakQueueWaitMs = 0;
   const releaseBudget = record => {
     const errors = [];
     for (const budget of record.reservedBudgets) {
@@ -29,6 +29,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
         (priorities[left.priority] + Math.floor((observedAt - left.queuedAt) / 1000)) || left.sequence - right.sequence);
       const record = queue[0]; removeQueued(record);
       if (record.signal?.aborted) { record.cancel(record.signal.reason || invalid('Background job canceled.')); continue; }
+      record.queueWaitMs = Math.max(0, observedAt - record.queuedAt); queueWaitMs += record.queueWaitMs; peakQueueWaitMs = Math.max(peakQueueWaitMs, record.queueWaitMs);
       active.add(record); peakWorkers = Math.max(peakWorkers, active.size); record.phase = 'running'; admitted++;
       record.resolve(record.lease);
     }
@@ -100,7 +101,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
         record.phase = 'computed'; active.delete(record); retained.add(record); drain(); return true;
       },
       getState: () => Object.freeze({ jobId: `background-${record.sequence}`, kind, phase: record.phase, ownerEpoch, sourceRevision,
-        estimatedPeakBytes, retainedBytes: record.retainedBytes ?? null, inputBytes, reason: record.reason || null }) });
+        queueWaitMs: record.queueWaitMs ?? null, estimatedPeakBytes, retainedBytes: record.retainedBytes ?? null, inputBytes, reason: record.reason || null }) });
     signal?.addEventListener('abort', abort, { once: true });
     record.timer = setTimeout(() => record.cancel(invalid('Background job admission deadline exceeded.')), deadlineMs);
     queue.push(record); queuedBytes += inputBytes; if (signal?.aborted) abort(); else drain();
@@ -108,7 +109,7 @@ export function createBackgroundWorkerAdmission({ maxWorkers = 2, maxQueuedJobs 
   };
   return Object.freeze({ acquire,
     diagnostics: () => Object.freeze({ activeWorkers: active.size, retainedResults: retained.size, queuedJobs: queue.length, queuedInputBytes: queuedBytes, maxWorkers, maxQueuedJobs,
-      maxQueuedInputBytes, admitted, denied, peakWorkers, retired, failedOrUnknown: [...active].filter(record => record.phase === 'failed-or-unknown').length,
+      maxQueuedInputBytes, admitted, denied, peakWorkers, queueWaitMs, peakQueueWaitMs, retired, failedOrUnknown: [...active].filter(record => record.phase === 'failed-or-unknown').length,
       memory: resourceBudget.diagnostics() }),
     dispose() {
       if (retired) return; retired = true;

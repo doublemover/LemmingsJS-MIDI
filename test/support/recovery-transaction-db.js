@@ -1,12 +1,12 @@
 // A transactional storage seam: writes become visible only on completion.
 export function recoveryTransactionDb() {
-  const records = new Map(), pins = new Map(); let failAfter = Infinity, afterCommit = null;
+  const records = new Map(), pins = new Map(); let failAfter = Infinity, failureName = 'Error', afterCommit = null;
   const db = { transaction(_store, mode) {
     const staged = new Map(records), stagedPins = new Map(pins); let waiting = 0, aborted = false, completed = false, writes = 0;
     const transaction = { error: null, abort() { if (aborted || completed) return; aborted = true; queueMicrotask(() => transaction.onabort?.()); },
       objectStore(name) { const selected = name === 'generationPins' ? stagedPins : staged; return {
         get(key) { return request(() => selected.get(key)); },
-        put(value) { return request(() => { if (++writes >= failAfter) { transaction.error = new Error('Injected transaction termination'); transaction.abort(); return; } selected.set(value.id, structuredClone(value)); return value.id; }); },
+        put(value) { return request(() => { if (++writes >= failAfter) { transaction.error = Object.assign(new Error('Injected transaction termination'), { name: failureName }); transaction.abort(); return; } selected.set(value.id, structuredClone(value)); return value.id; }); },
         delete(key) { return request(() => selected.delete(key)); }
       }; } };
     const request = operation => {
@@ -23,5 +23,5 @@ export function recoveryTransactionDb() {
     };
     return transaction;
   } };
-  return { db, records, pins, failAfter: value => { failAfter = value; }, afterCommit: callback => { afterCommit = callback; } };
+  return { db, records, pins, failAfter: (value, name = 'Error') => { failAfter = value; failureName = name; }, afterCommit: callback => { afterCommit = callback; } };
 }

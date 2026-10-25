@@ -110,6 +110,17 @@ export function createResourceBudget({ limitBytes = DEFAULT_LIMIT_BYTES, costFac
       categoryPeakCoverage, categoryPeaks: Object.freeze(Object.fromEntries(categoryPeaks)), evictionPolicy: 'priority-then-least-recently-served',
       evictionOwners: Object.freeze([...evictors.values()].map(entry => Object.freeze({ owner: entry.owner, priority: entry.priority, calls: entry.calls, failures: entry.failures, misses: entry.misses, evictions: entry.evictions, reclaimedBytes: entry.reclaimedBytes }))), categories: Object.freeze(categories) });
   };
+  const inspectOwners = ({ maximum = 64 } = {}) => {
+    if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > 256) throw new RangeError('Invalid resource owner inspection bound.');
+    const owners = new Map(); let omittedEntries = 0, omittedAccountedBytes = 0;
+    for (const entry of entries.values()) { const key = entry.owner + ':' + entry.generation; let value = owners.get(key);
+      if (!value && owners.size >= maximum) { omittedEntries++; omittedAccountedBytes += entry.cost; continue; }
+      if (!value) { value = { owner: entry.owner, generation: entry.generation, entries: 0, residentBytes: 0, accountedBytes: 0, pinned: 0, unreleased: 0 }; owners.set(key, value); }
+      value.entries++; value.residentBytes += entry.bytes; value.accountedBytes += entry.cost; value.pinned += Number(entry.pinned); value.unreleased += Number(entry.unreleased);
+    }
+    const ordered = [...owners.values()].sort((a, b) => b.accountedBytes - a.accountedBytes || a.owner.localeCompare(b.owner) || a.generation - b.generation);
+    return Object.freeze({ status: omittedEntries ? 'truncated' : 'complete', omittedEntries, omittedAccountedBytes, owners: Object.freeze(ordered.map(Object.freeze)) });
+  };
   const retire = () => { retired = true; evictors.clear(); return diagnostics(); };
-  return { reserve, release, transfer, registerEvictor, diagnostics, retire };
+  return { reserve, release, transfer, registerEvictor, diagnostics, inspectOwners, retire };
 }

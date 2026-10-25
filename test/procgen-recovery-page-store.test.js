@@ -9,10 +9,10 @@ const base = { laneCount: 1, seed: 7, graph: { nodes: [], owners: [], estimatedB
 const page = Object.freeze([Object.freeze({ sequence: 1, kind: 'step', eventTimeMs: 0, speedFactor: 1, boundary: boundary(1) })]);
 const session = name => ({ name, world: base, savedAt: '2026-10-25T00:00:00Z', project: { procgen: { lanes: [{}] } },
   recoveryJournal: { schema: 'procgen-recovery-journal/v1', initial: boundary(0), final: boundary(1), sequence: 1, pages: [page] } });
-const setup = ({ releasePhase = 'released' } = {}) => {
-  const adapter = recoveryTransactionDb(), budget = createResourceBudget();
+const setup = ({ releasePhase = 'released', failWorkerAt = () => false } = {}) => {
+  const adapter = recoveryTransactionDb(), budget = createResourceBudget(); let workerCalls = 0;
   const jobs = { async compute(request) {
-    request.signal?.throwIfAborted(); const input = await request.prepareInput();
+    request.signal?.throwIfAborted(); if (failWorkerAt(++workerCalls)) throw Object.assign(new Error('Injected worker termination'), { name: 'BackgroundJobError' }); const input = await request.prepareInput();
     const value = request.kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input) : await decodeProcgenRecoveryPage(input);
     let released = false; return { value, release() { released = true; }, retirementState: () => ({ phase: released ? releasePhase : 'computed' }) };
   } };
@@ -36,6 +36,21 @@ describe('atomic incremental recovery page publication', () => {
     const before = structuredClone([...f.records]), pinsBefore = structuredClone([...f.pins]); f.failAfter(writes);
     let error; try { await f.store.save(session('interrupted'), { documentRevision: 1, tick: 1 }); } catch (value) { error = value; }
     expect(error).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pinsBefore); f.store.dispose();
+  });
+  for (const boundary of [1, 2, 3, 4, 5, 6]) for (const failureName of ['AbortError', 'QuotaExceededError']) it(`retains complete data and source pins at write boundary ${boundary} after ${failureName}`, async () => {
+    const f = setup(); await f.store.save(session('previous'), { documentRevision: 0, tick: 1 });
+    const before = structuredClone([...f.records]), pinsBefore = structuredClone([...f.pins]); f.failAfter(boundary, failureName);
+    const next = { ...session('new'), world: structuredClone(base) }; next.recoveryJournal = { ...next.recoveryJournal, pages: [structuredClone(page)] };
+    let failure; try { await f.store.save(next, { documentRevision: 1, tick: 1 }); } catch (error) { failure = error; }
+    expect(failure).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pinsBefore);
+    const restored = await f.store.load(f.records.get('recovery:slot:1'), { owned: true }); expect(restored.session.name).to.equal('previous'); restored.release(); f.store.dispose();
+  });
+  for (const offset of [1, 2, 3]) it(`never publishes a manifest after worker failure at encoded chunk ${offset}`, async () => {
+    let fail = Infinity; const f = setup({ failWorkerAt: count => count === fail }); await f.store.save(session('previous'), { documentRevision: 0, tick: 1 });
+    const before = structuredClone([...f.records]); fail = 3 + offset;
+    const next = { ...session('new'), world: structuredClone(base) }; next.recoveryJournal = { ...next.recoveryJournal, pages: [structuredClone(page)] };
+    let failure; try { await f.store.save(next, { documentRevision: 1, tick: 1 }); } catch (error) { failure = error; }
+    expect(failure?.name).to.equal('BackgroundJobError'); expect([...f.records]).to.deep.equal(before); f.store.dispose();
   });
   it('commits recovery source pins with the two rotating durable slots, never the current writer identity', async () => {
     const f = setup(), deploymentRoot = 'https://app.invalid/lemmings/';

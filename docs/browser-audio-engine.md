@@ -1646,3 +1646,33 @@ unbound imported session was executed by its current writer.
 The source-pin, interrupted-transaction, deferred-retirement and lock-exclusion
 regressions are written but unrun. Browser cross-context behavior and persistence
 qualification remain deferred, as do combined-scene/recovery timing measurements.
+
+### Combined resource/recovery evidence producer
+
+`profile-resource-recovery.mjs` builds a new immutable local application namespace
+and serves only its hashed inventory plus eight original deterministic PCM memory
+fixtures. Six required cases cover 8/128/1024 lanes at DPR 1/2. They exercise real
+64-step complementary patterns, an 8192-cell canonical terrain command, 30.72 MB
+of pinned native-decoded AudioBuffers, eight real CCTV rasters, quiescent checkpoint
+capture, incremental worker recovery, aspect-ratio resize, pressure refusal and
+candidate replacement while the earlier performance remains owned. Fixtures are
+not field recordings and this is not acoustic qualification.
+
+Receipts separate synchronous session-envelope capture, cooperative full capture,
+worker queue wait, encode elapsed time and IndexedDB commit time. The checkpoint
+cooperator targets 3 ms to leave headroom beneath the declared 4 ms measurement
+limit; the producer reports actual overruns rather than treating the target as a
+measurement. Actual trusted browser clicks measure event-to-next-frame delay;
+separate driver round trips include automation overhead. Raw scheduling/frame
+and interaction tails are retained, with explicit overflow and unsupported
+long-task observation. Memory receipts report category peaks, bounded owner
+snapshots with omitted cost, eviction/reload counters and native overhead estimates.
+Synthetic context-loss events exercise lifecycle handling, not driver-loss proof.
+
+The evaluator rejects missing tiers, missing active ticks, partial combined
+workloads, unknown cleanup, unobserved overlap and lost timing tails. A capacity
+refusal is distinct from a successful replacement and must preserve the current
+world. Browser contexts and reports are private/new; the tool neither publishes nor
+reuses a user's browser. All scenarios and expanded fault fixtures remain unrun.
+Large background worker input still uses whole-object structured cloning at this
+checkpoint and is explicitly remaining development, not hidden behind the harness.

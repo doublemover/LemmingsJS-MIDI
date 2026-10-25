@@ -151,7 +151,7 @@ const captureProcgenCheckpoint = world => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
   return checkpointEnvelope(world, exhaust(graphSteps(world)));
 };
-async function captureProcgenCheckpointCooperative(world, { signal, isCurrent, now = () => performance.now(), yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)), sliceMs = 4, maxGraphBytes = MAX_GRAPH_BYTES, onSlice = () => {} } = {}) {
+async function captureProcgenCheckpointCooperative(world, { signal, isCurrent, now = () => performance.now(), yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)), sliceMs = 3, maxGraphBytes = MAX_GRAPH_BYTES, onSlice = () => {} } = {}) {
   if (!Number.isSafeInteger(maxGraphBytes) || maxGraphBytes < 4096 || maxGraphBytes > MAX_GRAPH_BYTES || typeof isCurrent !== 'function' || !Number.isFinite(sliceMs) || sliceMs <= 0 || sliceMs > 16) throw new Error('Cooperative checkpoints require an exclusive paused owner.');
   const boundary = [world.tickIndex, world.generation, world.terrainRevision, world.interventionState?.sequence, world.timer.speedFactor];
   const check = () => {

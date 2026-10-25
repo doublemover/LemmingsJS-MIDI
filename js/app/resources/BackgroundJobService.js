@@ -128,7 +128,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, result.retainedBytes ?? 0, inferredBytes));
       if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,
-        state: 'computed', publication: 'not-committed', method, elapsedMs: Math.max(0, now() - startedAt),
+        state: 'computed', publication: 'not-committed', method, queueWaitMs: lease.getState().queueWaitMs, elapsedMs: Math.max(0, now() - startedAt),
         inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, executionIdentity });
       return Object.freeze({ get value() { check(); if (released) throw failure('result-retired', 'Background result was released.'); return result.value; }, signal: controller.signal, receipt, release,
         retirementState: () => lease.getState() });
