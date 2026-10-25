@@ -1141,3 +1141,31 @@ physical authoring preview shows those regions and exposes their grouping contra
 Regression and 8/128/512/1024-actor planning profiles are written but **not run**.
 Browser interaction, sound quality, tail latency and memory qualification remain
 deferred; semantic aggregation is not a DSP/render or acoustic receipt.
+
+### Finite physical motif monitors
+
+`PhysicalMotifs` validates sequence/conjunction, finite repeated events and
+anchored absence clauses with tick/pixel units. Actor/cohort roles, distinct
+participants, action-instance constraints, spatial limits and per-clause windows
+are explicit. Conjunction can start with any clause; each observation fills at
+most one compatible unfilled clause in declaration order. This declared greedy
+monitor is not an unbounded backtracking grammar. First/last/all policies choose
+which physical anchors remain eligible; expiry and generation changes retire them.
+
+The owner admits at most 32 definitions, 32 expanded clauses each, 64 partials per
+definition and a shared configurable partial/work cap. The default 8 MiB state
+profile conservatively budgets 128 KiB per admitted partial (64 globally), including
+bounded root/observation identities and role data. Censoring is visible, not a
+successful near-match. Unknown relationship coverage cannot prove absence; an
+absence requires a previously bound physical role and a contiguous complete
+simulation interval. No wall-clock timer advances a motif while paused.
+
+Completions carry exact roots, matched observation IDs, role bindings, any proven
+absence intervals and the **recognition boundary**. Explicit accent/harmony/response
+mappings create bounded rooted responses only there, never backdated notes. Physical
+analysis exposes these facts for next-tick conductor composition; that feedback
+owner remains separate. Checkpoints copy partial state, reject impossible progress,
+and invalidate affected rule/ensemble dependencies. Fragment closure/remapping and
+capture-profile v6 include motif definitions and state. Regression and workload
+profiles are implemented but unexecuted; no recognition/performance qualification
+is inferred from source or syntax checks.

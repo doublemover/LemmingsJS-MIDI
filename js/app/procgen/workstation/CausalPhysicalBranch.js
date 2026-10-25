@@ -37,7 +37,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       return { voices: snapshot.active, travel: snapshot.travel, contactSpans: snapshot.active.filter(voice => voice.lifetimeScope === 'contactSpan'),
         ...(snapshot.performanceInputs ? { 'instrument-performance': snapshot.performanceInputs } : {}),
         ...(snapshot.physicalDomain ? { 'physical-domain': snapshot.physicalDomain } : {}), ...(snapshot.rhythmicResponses ? { 'rhythmic-responses': snapshot.rhythmicResponses } : {}),
-        ...(snapshot.actionAdmission ? { 'action-admission': snapshot.actionAdmission } : {}), ...(snapshot.tonalInterpretation ? { 'tonal-interpretation': snapshot.tonalInterpretation } : {}), ...(snapshot.encounters ? { encounters: snapshot.encounters } : {}),
+        ...(snapshot.actionAdmission ? { 'action-admission': snapshot.actionAdmission } : {}), ...(snapshot.tonalInterpretation ? { 'tonal-interpretation': snapshot.tonalInterpretation } : {}), ...(snapshot?.motifs ? { motifs: snapshot.motifs } : {}), ...(snapshot.encounters ? { encounters: snapshot.encounters } : {}),
         timeline: session.replayState().scoreTimeline ? session.clock.snapshot() : null };
     };
     recorder = await createCausalTakeRecorder({ journal, existingWriter: writer, takeId, documentId: parent.documentId,

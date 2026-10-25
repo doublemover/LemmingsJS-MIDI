@@ -1359,13 +1359,15 @@
         "test/procgen-encounters.test.js",
         "scripts/bench-physical-encounters.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "bounded-physical-encounters",
           "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
-          "commit": null
+          "commit": "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
         }
       ]
     },
@@ -2188,15 +2190,19 @@
         "js/app/procgen/workstation/CausalTake.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
-        "js/app/procgen/workstation/PhysicalAuthoringView.js"
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
       ],
       "regressions": [
         "test/procgen-intervention-commands.test.js",
         "test/procgen-encounters.test.js",
-        "scripts/bench-physical-encounters.mjs"
+        "scripts/bench-physical-encounters.mjs",
+        "test/procgen-physical-motifs.test.js",
+        "scripts/bench-physical-motifs.mjs"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2205,6 +2211,11 @@
         {
           "id": "bounded-physical-encounters",
           "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        },
+        {
+          "id": "finite-physical-motif-monitors",
+          "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
           "commit": null
         }
       ]
@@ -2266,7 +2277,8 @@
         "js/app/procgen/workstation/physical/Encounters.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
-        "js/app/procgen/workstation/PhysicalAuthoringView.js"
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
       ],
       "regressions": [
         "test/procgen-causal-music-engine.test.js",
@@ -2275,12 +2287,15 @@
         "scripts/bench-terrain-topology.mjs",
         "test/physical-authoring-transaction.test.js",
         "test/procgen-encounters.test.js",
-        "scripts/bench-physical-encounters.mjs"
+        "scripts/bench-physical-encounters.mjs",
+        "test/procgen-physical-motifs.test.js",
+        "scripts/bench-physical-motifs.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "68b954ff3e7b84b1ecc109172d917e6a9449291a",
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2298,6 +2313,11 @@
         {
           "id": "bounded-physical-encounters",
           "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        },
+        {
+          "id": "finite-physical-motif-monitors",
+          "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
           "commit": null
         }
       ]
@@ -2315,18 +2335,28 @@
         "js/app/procgen/workstation/CausalTake.js",
         "js/app/procgen/workstation/CausalPhysicalBranch.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
-        "js/app/procgen/workstation/PhysicalAuthoringView.js"
+        "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
       ],
       "regressions": [
         "test/procgen-encounters.test.js",
-        "scripts/bench-physical-encounters.mjs"
+        "scripts/bench-physical-encounters.mjs",
+        "test/procgen-physical-motifs.test.js",
+        "scripts/bench-physical-motifs.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "bounded-physical-encounters",
           "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        },
+        {
+          "id": "finite-physical-motif-monitors",
+          "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
           "commit": null
         }
       ]
@@ -2681,11 +2711,26 @@
       "requirementUpdatedAt": "2026-10-22T09:16:24Z",
       "requirementSha256": "25b775b6700be60aa76ad6b77cec2ba8acb655ee87d21bd3fbd338f637de01cb",
       "initialGap": "No PhysicalMotif restricted temporal grammar/partial-match owner, overlap/absence coverage semantics or motif state checkpoints.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/PhysicalScoreFragment.js"
+      ],
+      "regressions": [
+        "test/procgen-physical-motifs.test.js",
+        "scripts/bench-physical-motifs.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "finite-physical-motif-monitors",
+          "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1143,
@@ -3314,7 +3359,8 @@
         "js/app/procgen/workstation/physical/Encounters.js",
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/workstation/CausalTake.js",
-        "js/app/procgen/workstation/CausalPhysicalBranch.js"
+        "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "js/app/procgen/workstation/physical/PhysicalMotifs.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3328,14 +3374,17 @@
         "scripts/bench-physical-authoring-history.mjs",
         "test/procgen-physical-batch.test.js",
         "test/procgen-encounters.test.js",
-        "scripts/bench-physical-encounters.mjs"
+        "scripts/bench-physical-encounters.mjs",
+        "test/procgen-physical-motifs.test.js",
+        "scripts/bench-physical-motifs.mjs"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
         "6357fa75948baaf475a9da927f6a5eca4143686c",
         "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
         "ca7a899ff9652ce7da596c549fdc0051118526b9",
-        "148bf84c49957839c208a2269f17dbd2d2b11453"
+        "148bf84c49957839c208a2269f17dbd2d2b11453",
+        "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3367,6 +3416,11 @@
         {
           "id": "bounded-physical-encounters",
           "summary": "Relative swept encounters, stable hysteretic episodes, bounded spatial candidates and declared dense aggregation, rooted duet/state exchange, actual-arrival rendezvous windows, portable capture/branch state and fragment/overlay integration. Regression/profile implementations unrun.",
+          "commit": "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e"
+        },
+        {
+          "id": "finite-physical-motif-monitors",
+          "summary": "Typed finite sequence/conjunction/repeat/anchored-absence monitors, actor/cohort/distinct/action/spatial binding, explicit overlap/expiry/censoring, exact rooted recognition-time response, bounded checkpoint and fragment/capture integration. Conductor composition remains separate.",
           "commit": null
         }
       ]
