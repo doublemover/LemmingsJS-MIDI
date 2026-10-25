@@ -1,3 +1,4 @@
+import { recordProcgenRecoveryCommand, recordProcgenRecoveryCancellation } from './workstation/ProcgenRecoveryJournal.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 
@@ -59,7 +60,7 @@ const enqueueIntervention = (world, command) => {
       supersededBy: entry.id, errorBoundAtSimulationBoundaries: 0 });
   }
   if (state.pending.length >= 1024) return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'command-capacity' });
-  state.pending.push(entry);
+  state.pending.push(entry); recordProcgenRecoveryCommand(world, entry);
   return Object.freeze({ status: 'queued', commandId: entry.id, applyAtTick: entry.applyAtTick });
 };
 
@@ -73,7 +74,7 @@ const remember = (state, receipt) => {
 const cancelIntervention = (world, commandId, reason = 'cancelled') => {
   const state = world.interventionState, index = state.pending.findIndex(command => command.id === commandId);
   if (index < 0) return false;
-  state.pending.splice(index, 1);
+  state.pending.splice(index, 1); recordProcgenRecoveryCancellation(world, commandId, reason);
   remember(state, { commandId, status: 'cancelled', appliedTick: null, reason });
   return true;
 };
@@ -163,7 +164,9 @@ const prepareIntervention = (world, command) => {
   return Object.freeze({ outcome, commit() {
     if (committed) return outcome;
     if (world._disposed || world.interventionState !== original || original.sequence !== sequence || !same(original.pending, pending) || !same(original.receipts, receipts) || !same(original.recentIds, recentIds) || world.tickIndex !== tick || world.generation !== generation) throw new Error('Intervention proposal is stale.');
-    committed = true; world.interventionState = staged; return outcome;
+    committed = true; world.interventionState = staged;
+    if (outcome.status === 'queued') recordProcgenRecoveryCommand(world, staged.pending.find(entry => entry.id === outcome.commandId));
+    return outcome;
   } });
 };
 

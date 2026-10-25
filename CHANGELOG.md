@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Journal completed physical steps and interventions for incremental recovery, cooperatively capture quiescent checkpoint bases, and atomically commit SHA-256-verified compressed pages with bounded replay/read ownership.
+
 - Propagate typed lane deltas through shared ID indexes, sparse performance journals and targeted visible controls; coalesce authored preference encoding in an admitted background worker with document-fenced publication.
 
 - Commit accepted world recipes independently of UI drafts, preserve each concurrent musical Undo boundary on terrain rollback, and publish immutable batch-identified actor snapshots with bounded reader leases.

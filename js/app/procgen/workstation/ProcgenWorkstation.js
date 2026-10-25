@@ -1,3 +1,5 @@
+import { getProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
+import { prepareProcgenRecoveryJournal } from './ProcgenRecoveryCapture.js';
 import { createProcgenPreferenceWriter } from './ProcgenPreferenceWriter.js';
 import { procgenLane, procgenProjectChange } from './ProcgenProjectIndex.js';
 import { createProcgenPageLifecycle } from './ProcgenPageLifecycle.js';
@@ -103,7 +105,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let lastBudgetNotice = -Infinity;
   let lastObserverAt = -Infinity, observerCursor = 0;
   let writingLegacy = false;
-  let worldBusy = false;
+  let worldBusy = false, pendingWorldSettings = null;
   let laneObserver = null;
   let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, worldInspector = null;
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
@@ -507,6 +509,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
+    recoveryAbort?.abort();
     if (causalTake) {
       const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
       const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
@@ -759,7 +762,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const settingsFor = (source = project, patch = {}) => ({ ...acceptedWorldSettings, ...patch, workstation: true,
     speed: transport.getState().gameSpeed, laneCount: source.procgen.lanes.length, seed: source.procgen.seed,
     laneAssignments: source.procgen.lanes.map(lane => lane.family) });
-  const prepareSettings = () => { Object.assign(legacy.settings, settingsFor()); return legacy.settings; };
+  const prepareSettings = () => { Object.assign(legacy.settings, settingsFor(project, pendingWorldSettings || {})); return legacy.settings; };
   const acceptWorldSettings = settings => {
     acceptedWorldSettings = { ...settings, laneAssignments: [...(settings.laneAssignments || [])] };
     state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
@@ -885,10 +888,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     startupCommitted = true;
     persist(); return next;
   };
-  const snapshotSession = name => {
+  const snapshotSession = (name, { recovery = false } = {}) => {
     if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
     syncWorldSeed();
-    return createProcgenSession({ name, project: clone(project), settings: clone(settingsFor()), world: captureCheckpoint(runtime().world),
+    const journal = recovery && getProcgenRecoveryJournal(runtime().world);
+    return createProcgenSession({ name, project: recovery ? project : clone(project), settings: clone(settingsFor()),
+      world: journal ? journal.checkpoint() : captureCheckpoint(runtime().world), recoveryJournal: journal ? journal.snapshot() : null,
       transport: transport.snapshot(), patterns: engine.snapshot(), physicalTimeline: physicalScoreClock.snapshot(),
       physicalState: physicalPlayback?.engine.snapshot() || null,
       camera: renderer()?.camera?.getState?.(), ui: { ...state, hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, lastMidi: '' } });
@@ -901,14 +906,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const sourceDocumentGeneration = documentGeneration;
     let capturedRevision = editRevision, capturedTick = runtime().world.tickIndex ?? null;
     try {
+      const world = runtime().world, journal = getProcgenRecoveryJournal(world);
+      if (journal && !journal.stats().complete) {
+        if (transport.getState().playing) throw new Error('Recovery journal needs compaction. Pause playback to capture a new bounded checkpoint.');
+        await prepareProcgenRecoveryJournal(world, { resourceBudget, signal: controller.signal,
+          isCurrent: () => !disposed && runtime()?.world === world && documentGeneration === sourceDocumentGeneration && !transport.getState().playing });
+      }
       const captureRecovery = () => {
         if (disposed || documentGeneration !== sourceDocumentGeneration) throw new Error('Recovery document changed before snapshot admission.');
-        const session = snapshotSession(savedName + ' (recovery)');
+        const session = snapshotSession(savedName + ' (recovery)', { recovery: true });
         capturedRevision = editRevision; capturedTick = runtime().world.tickIndex ?? null; return session;
       };
       const source = storage.supportsRecoveryFactory ? captureRecovery : captureRecovery();
       const receipt = storage.saveRecovery ? await storage.saveRecovery(source, { signal: controller.signal, documentRevision: capturedRevision, tick: capturedTick,
-        laneCount: runtime().world.laneCount, snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
+        laneCount: runtime().world.laneCount, incremental: !!getProcgenRecoveryJournal(runtime().world), snapshotMetadata: () => ({ documentRevision: capturedRevision, tick: capturedTick }) }) : await storage.save('__recovery__', source);
       if (disposed) return false;
       if (controller.signal.aborted || documentGeneration !== sourceDocumentGeneration) { recoveryState = 'pending'; storageStatus(); return false; }
       durableRecoveryRevision = capturedRevision; durableRecoveryTick = capturedTick;
@@ -1038,6 +1049,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const next = freshPlan?.project || { ...source, procgen: { ...source.procgen, seed } };
       if (fresh) { Object.assign(legacy.settings, freshPlan.worldOptions); transport.configure({ ...freshPlan.transport, baseBpm: 120 }); legacy.setSpeed(freshPlan.worldOptions.speed); lastLegacySpeed = legacy.settings.speed; }
       candidateSettings = settingsFor(next, { ...(freshPlan?.worldOptions || {}), ...worldSettings });
+      pendingWorldSettings = candidateSettings;
       syncProject(next, { history }); staged = project;
       Object.assign(legacy.settings, candidateSettings);
       const restarted = await restart({ lease });
@@ -1077,7 +1089,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (previousTransport.playing) play();
       try { view?.render(); } catch { /* Rollback authority remains recoverable without its presentation. */ }
       throw error;
-    } finally { worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
+    } finally { pendingWorldSettings = null; worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
   }
   const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
   const historyMove = async (from, to) => {
@@ -1465,7 +1477,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
-      durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError }),
+      durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,

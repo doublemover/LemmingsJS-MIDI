@@ -98,3 +98,36 @@ patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched laun
 acknowledgments. Reports separate latency percentiles, long tasks, heap observations,
 index counters and preference durability. This harness is implemented but has not
 been run; no 16 ms reference-machine qualification is asserted.
+
+### Incremental recovery
+
+The active world now owns a bounded input/step journal rooted in a checkpoint
+captured while its unpublished candidate is quiescent. The checkpoint walker
+shares the portable graph codec and yields through named assets, graph nodes and
+typed-array elements; it rejects any tick, generation, terrain, command-sequence
+or clock mutation across a yield. Later recovery does not walk the live world:
+it pins immutable completed journal pages, the accepted authored revision and
+current musical state. Accepted and canceled interventions are recorded at their
+input boundary, and every step retains its actual event clock, speed and checked
+physical identity frontier. Recovery replays into an isolated candidate and
+rejects divergence before publishing it.
+
+Base and completed pages encode once in admitted workers. Gzip/UTF-8 binary
+chunks carry SHA-256 and declared expansion bounds; only worker-owned encoded
+buffers transfer. Two manifests and all newly referenced chunks commit in one
+IndexedDB transaction. Readers pin one readonly transaction, then hold decoded
+source leases; replaced generation chunks retire only when neither manifest uses
+them. A full journal reports an explicit pause-to-compact requirement rather than
+claiming an unrecorded tick is durable. Recovery errors preserve the previous
+complete generation. The shared browser storage cap may refuse large candidate
+or decode peaks, and that refusal remains visible.
+
+The compression APIs are available in workers ([CompressionStream](https://developer.mozilla.org/en-US/docs/Web/API/CompressionStream),
+[DecompressionStream](https://developer.mozilla.org/en-US/docs/Web/API/DecompressionStream)).
+The implementation has a 4 ms cooperative target, not a measured hard deadline:
+individual object enumeration, final component metadata, browser structured-clone,
+and an isolated replay physics step are non-preemptible boundaries.
+`scripts/profile-procgen-recovery.mjs` separates capture slices, encoding, commit,
+reuse, scheduling lateness, heap observations and long tasks for 8/128/1024 lanes.
+The new fault-injection and 1000-tick continuation fixtures are written but not
+executed; no latency or replay qualification is claimed.

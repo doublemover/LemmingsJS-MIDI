@@ -45,82 +45,95 @@ const assetIdentity = world => (world.terrain?.themes || [{ terrain: world.terra
   revision: terrain?.recipe?.assetSha256 || terrain?.sourceDescriptor?.sourceRevision || null
 }));
 
-function bindings(world) {
+function* bindingSteps(world) {
   const objects = new Map(), names = new Map(), owners = new Map();
-  const add = (name, value, recursive = false) => {
+  const add = function*(name, value, recursive = false) {
     if (!value || typeof value !== 'object' || objects.has(value)) return;
-    objects.set(value, name); names.set(name, value);
-    if (recursive && !ArrayBuffer.isView(value)) for (const [key, child] of Object.entries(value)) if (!forbidden(key)) add(name + '/' + key, child, true);
+    objects.set(value, name); names.set(name, value); yield;
+    if (recursive && !ArrayBuffer.isView(value)) for (const [key, child] of Object.entries(value)) if (!forbidden(key)) yield* add(name + '/' + key, child, true);
   };
-  for (const key of ['runtime', 'soundEvents', 'timer', 'sprites', 'terrain', 'characterParticles']) add(key, world[key]);
+  for (const key of ['runtime', 'soundEvents', 'timer', 'sprites', 'terrain', 'characterParticles']) yield* add(key, world[key]);
   for (const [key, action] of Object.entries(world.actions)) {
-    add('action/' + key, action);
-    // Predictor actions acquire these lazily; always name shared assets by the live action.
-    for (const field of ['masks', 'sprites']) add(`action/${key}/${field}`, action[field], true);
+    yield* add('action/' + key, action);
+    for (const field of ['masks', 'sprites']) yield* add(`action/${key}/${field}`, action[field], true);
   }
-  add('actions', world.actions);
+  yield* add('actions', world.actions);
   const themes = world.terrain?.themes || [{ terrain: world.terrain }];
-  themes.forEach(({ terrain }, index) => {
-    if (!terrain) return;
-    add('theme/' + index, terrain);
+  for (const [index, { terrain }] of themes.entries()) {
+    if (!terrain) continue;
+    yield* add('theme/' + index, terrain);
     for (const field of ['pieces', 'objects', 'recipe', 'sourceDescriptor', 'assemblyCatalog', 'compiledAssemblies', 'assemblySources', 'sourceGroups', 'wideSourceGroups']) {
       const value = terrain[field];
-      if (value instanceof Map) for (const [key, item] of value) add(`asset/${index}/${field}/${key}`, item, true);
-      else add(`asset/${index}/${field}`, value, true);
+      if (value instanceof Map) for (const [key, item] of value) yield* add(`asset/${index}/${field}/${key}`, item, true);
+      else yield* add(`asset/${index}/${field}`, value, true);
     }
-  });
-  const owner = (name, value) => {
+  }
+  const owner = function*(name, value) {
     if (!value || typeof value !== 'object' || objects.has(value)) return;
-    add(name, value); owners.set(name, value);
-    for (const key of ['actions', 'runtime', 'masks', 'sprites']) add(name + '/' + key, value[key], true);
+    yield* add(name, value); owners.set(name, value);
+    for (const key of ['actions', 'runtime', 'masks', 'sprites']) yield* add(name + '/' + key, value[key], true);
     if (!(value instanceof Map)) for (const [key, child] of Object.entries(value)) {
-      if (child && typeof child === 'object' && !objects.has(child) && !Array.isArray(child) && !ArrayBuffer.isView(child) && !(child instanceof Map) && !(child instanceof Set) && Object.getPrototypeOf(child) !== Object.prototype) owner(name + '/' + key, child);
+      if (child && typeof child === 'object' && !objects.has(child) && !Array.isArray(child) && !ArrayBuffer.isView(child) && !(child instanceof Map) && !(child instanceof Set) && Object.getPrototypeOf(child) !== Object.prototype) yield* owner(name + '/' + key, child);
     }
   };
-  add('world', world); owners.set('world', world);
-  for (const key of ['population', 'stall', 'editChunks', 'terrainTileRevisions', 'hazards', 'triggerManager', 'hazardPlanner', 'basinRoutes', 'tunnelRoutes', 'lanePolicy']) owner(key, world[key]);
-  add('terrainGrowth', world.terrainGrowth); add('scenery', world.scenery);
+  yield* add('world', world); owners.set('world', world);
+  for (const key of ['population', 'stall', 'editChunks', 'terrainTileRevisions', 'hazards', 'triggerManager', 'hazardPlanner', 'basinRoutes', 'tunnelRoutes', 'lanePolicy']) yield* owner(key, world[key]);
+  yield* add('terrainGrowth', world.terrainGrowth); yield* add('scenery', world.scenery);
   return { objects, names, owners };
 }
-
-function createGraph(world) {
-  const bound = bindings(world), nodes = [], seen = new Map();
-  const encode = value => {
+const exhaust = iterator => { let result; do { result = iterator.next(); } while (!result.done); return result.value; };
+const bindings = world => exhaust(bindingSteps(world));
+function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
+  const bound = yield* bindingSteps(world), nodes = [], seen = new Map(); let estimatedBytes = 1024;
+  const props = function*(value, extra = new Set(), array = false) {
+    const output = {};
+    for (const key of Object.keys(value)) if (!forbidden(key) && !OMIT.has(key) && !extra.has(key) && !(array && /^\d+$/.test(key)) && typeof value[key] !== 'function') output[key] = yield* encode(value[key]);
+    return output;
+  };
+  const encode = function*(value) {
+    estimatedBytes += typeof value === 'string' ? value.length * 4 + 32 : 32;
+    if (estimatedBytes > maxBytes) throw new Error('Checkpoint capture graph exceeds its byte bound.');
+    yield;
     if (value === undefined) return { special: 'undefined' };
     if (typeof value === 'number' && (!Number.isFinite(value) || Object.is(value, -0))) return encodeNumber(value);
     if (value === null || typeof value !== 'object') return value;
     if (bound.objects.has(value)) return { external: bound.objects.get(value) };
     if (seen.has(value)) return { ref: seen.get(value) };
-    const index = nodes.length; seen.set(value, index); nodes.push(null);
-    let entry;
+    const index = nodes.length; seen.set(value, index); nodes.push(null); let entry;
     if (ArrayBuffer.isView(value)) {
       if (!Object.hasOwn(TYPES, value.constructor.name)) throw new Error('Unsupported checkpoint view: ' + value.constructor.name);
-      entry = { type: value.constructor.name, values: Array.from(value, encodeNumber) };
-    }
-    else if (value instanceof Map) entry = { type: 'Map', entries: [...Map.prototype.entries.call(value)].map(([k, v]) => [encode(k), encode(v)]) };
-    else if (value instanceof Set) entry = { type: 'Set', values: [...value].map(encode) };
-    else if (value instanceof MapObject) entry = { type: 'MapObject', props: props(value), image: encode(value.animation.objectImg) };
-    else if (value instanceof Animation) entry = { type: 'Animation', props: props(value, new Set(['frames', '_lastFrame', 'frameCount'])), lastFrameIndex: value.frames.indexOf(value._lastFrame) };
-    else if (value instanceof Trigger) entry = { type: 'Trigger', props: props(value), disabledUntilTick: value.disabledUntilTick };
-    else if (value instanceof Lemming) entry = { type: 'Lemming', props: props(value) };
-    else if (Array.isArray(value)) entry = { type: 'Array', values: Array.from(value, encode), props: props(value, new Set(Object.keys(value).filter(k => /^\d+$/.test(k)))) };
-    else {
+      const values = []; for (const number of value) { values.push(encodeNumber(number)); estimatedBytes += 32; if (estimatedBytes > maxBytes) throw new Error('Checkpoint capture graph exceeds its byte bound.'); yield; }
+      entry = { type: value.constructor.name, values };
+    } else if (value instanceof Map) {
+      const entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entries.push([yield* encode(key), yield* encode(child)]);
+      entry = { type: 'Map', entries };
+    } else if (value instanceof Set) {
+      const values = []; for (const child of value) values.push(yield* encode(child)); entry = { type: 'Set', values };
+    } else if (value instanceof MapObject) entry = { type: 'MapObject', props: yield* props(value), image: yield* encode(value.animation.objectImg) };
+    else if (value instanceof Animation) entry = { type: 'Animation', props: yield* props(value, new Set(['frames', '_lastFrame', 'frameCount'])), lastFrameIndex: value.frames.indexOf(value._lastFrame) };
+    else if (value instanceof Trigger) entry = { type: 'Trigger', props: yield* props(value), disabledUntilTick: value.disabledUntilTick };
+    else if (value instanceof Lemming) entry = { type: 'Lemming', props: yield* props(value) };
+    else if (Array.isArray(value)) {
+      const values = []; for (const child of value) values.push(yield* encode(child)); entry = { type: 'Array', values, props: yield* props(value, new Set(), true) };
+    } else {
       if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw new Error('Unsupported checkpoint state: ' + value.constructor?.name);
-      entry = { type: 'Object', props: props(value) };
+      entry = { type: 'Object', props: yield* props(value) };
     }
     nodes[index] = entry; return { ref: index };
   };
-  const props = (value, extra = new Set()) => Object.fromEntries(Object.entries(value).filter(([key, v]) => !forbidden(key) && !OMIT.has(key) && !extra.has(key) && typeof v !== 'function').map(([key, v]) => [key, encode(v)]));
-  const owners = [...bound.owners].map(([name, value]) => ({ name, props: props(value, new Set(name === 'triggerManager' ? PROCGEN_TRIGGER_INDEX_FIELDS : [])),
-    ...(value instanceof Map ? { entries: [...Map.prototype.entries.call(value)].map(([k, v]) => [encode(k), encode(v)]) } : {}) }));
-  return { nodes, owners };
+  const owners = [];
+  for (const [name, value] of bound.owners) {
+    const entry = { name, props: yield* props(value, new Set(name === 'triggerManager' ? PROCGEN_TRIGGER_INDEX_FIELDS : [])) };
+    if (value instanceof Map) { entry.entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entry.entries.push([yield* encode(key), yield* encode(child)]); }
+    owners.push(entry);
+  }
+  return { nodes, owners, estimatedBytes };
 }
-
-const captureProcgenCheckpoint = world => {
+const checkpointEnvelope = (world, graph) => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
   return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-1',
     componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
-    seed: world.seed, assets: assetIdentity(world), graph: createGraph(world),
+    seed: world.seed, assets: assetIdentity(world), graph,
     physicsAlgorithms: { stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1 },
     terrainAssignments: world.terrain?.exportAssignments?.() || null,
     terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
@@ -128,6 +141,27 @@ const captureProcgenCheckpoint = world => {
     physicalIdentity: world.soundEvents.snapshotIdentity(),
     clock: { speedFactor: world.timer.speedFactor, eventTimeMs: world.eventTimeMs, simulationTimeMs: world.simulationTimeMs } };
 };
+
+const captureProcgenCheckpoint = world => {
+  if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
+  return checkpointEnvelope(world, exhaust(graphSteps(world)));
+};
+async function captureProcgenCheckpointCooperative(world, { signal, isCurrent, now = () => performance.now(), yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)), sliceMs = 4, maxGraphBytes = MAX_GRAPH_BYTES, onSlice = () => {} } = {}) {
+  if (!Number.isSafeInteger(maxGraphBytes) || maxGraphBytes < 4096 || maxGraphBytes > MAX_GRAPH_BYTES || typeof isCurrent !== 'function' || !Number.isFinite(sliceMs) || sliceMs <= 0 || sliceMs > 16) throw new Error('Cooperative checkpoints require an exclusive paused owner.');
+  const boundary = [world.tickIndex, world.generation, world.terrainRevision, world.interventionState?.sequence, world.timer.speedFactor];
+  const check = () => {
+    signal?.throwIfAborted();
+    if (!isCurrent() || world._stepping || world._failedTick || [world.tickIndex, world.generation, world.terrainRevision, world.interventionState?.sequence, world.timer.speedFactor].some((value, index) => value !== boundary[index])) throw new Error('Checkpoint source changed while its quiescent lease was held.');
+  };
+  check(); const iterator = graphSteps(world, { maxBytes: maxGraphBytes }); let result, started = now(), units = 0;
+  try {
+    do {
+      result = iterator.next();
+      if (++units % 64 === 0 && now() - started >= sliceMs) { onSlice({ durationMs: now() - started, units }); await yieldTask(); check(); started = now(); }
+    } while (!result.done);
+    check(); const checkpoint = checkpointEnvelope(world, result.value); onSlice({ durationMs: now() - started, units }); return checkpoint;
+  } finally { iterator.return(); }
+}
 
 function validateCheckpointGraph(graph, bound, version) {
   const { nodes, owners } = graph || {};
@@ -297,4 +331,4 @@ function restoreProcgenCheckpoint(world, saved) {
   return world;
 }
 
-export { captureProcgenCheckpoint, restoreProcgenCheckpoint, assetIdentity, CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs };
+export { captureProcgenCheckpoint, captureProcgenCheckpointCooperative, restoreProcgenCheckpoint, assetIdentity, CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs };

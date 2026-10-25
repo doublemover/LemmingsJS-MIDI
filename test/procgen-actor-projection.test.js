@@ -1,3 +1,4 @@
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { expect } from 'chai';
 import { ProcgenActorVisibility } from '../js/app/procgen/ProcgenActorVisibility.js';
 import { ProcgenActorProjection } from '../js/app/procgen/ProcgenActorProjection.js';
@@ -15,10 +16,15 @@ describe('leased completed actor projections', () => {
     expect(index.projections.stats().versions).to.equal(1); expect(() => lease.frame).to.throw('released'); index.dispose();
   });
   it('keeps leased retirement bytes charged after owner disposal', () => {
-    const entries = new Map(), projection = new ProcgenActorProjection({ budgetAdapter: { reserve: request => entries.set(request.token, request.bytes), release: token => entries.delete(token) } });
+    const entries = new Map(), projection = new ProcgenActorProjection({ budgetAdapter: { reserve: request => entries.set(request.token, request.bytes), release: ({ token }) => entries.delete(token) } });
     projection.publish(fixture()); const lease = projection.acquire(); projection.dispose();
     expect(entries.size).to.equal(1); expect(lease.frame.tick).to.equal(1);
     lease.release(); expect(entries.size).to.equal(0); expect(projection.stats().estimatedBytes).to.equal(0);
+  });
+  it('balances the real shared resource-budget adapter rather than an incompatible release stub', () => {
+    const budget = createResourceBudget(), projection = new ProcgenActorProjection({ budgetAdapter: budget });
+    projection.publish(fixture()); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    projection.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('bounds retained versions and refuses mismatched event-batch reads', () => {
     const world = fixture(), projection = new ProcgenActorProjection({ maxVersions: 2 });

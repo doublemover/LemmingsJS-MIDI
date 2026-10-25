@@ -60,7 +60,7 @@ export class ProcgenActorProjection {
   }
   retire(entry) {
     if (!entry || entry === this.current || entry.readers || !this.versions.has(entry)) return;
-    try { this.budget?.release(entry.token); } catch { this.retirementFailures = (this.retirementFailures || 0) + 1; return; }
+    try { const receipt = this.budget?.release({ token: entry.token, owner: 'actor-projection' }); if (receipt === false || receipt?.then) throw new Error('Actor projection retirement was not acknowledged.'); } catch { this.retirementFailures = (this.retirementFailures || 0) + 1; return; }
     this.versions.delete(entry); this.bytes -= entry.bytes; entry.frame = null; entry.liveActors.clear();
   }
   acquire({ batchId = null } = {}) {

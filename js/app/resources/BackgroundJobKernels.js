@@ -1,3 +1,4 @@
+import { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } from '../procgen/workstation/ProcgenRecoveryPageCodec.js';
 import { analyzeImpulseResponse } from './ImpulseResponseAnalysis.js';
 import { encodeNativeOfflineRender } from './NativeOfflineEncoding.js';
 import { decodeWaveSource } from './WaveSourceDecode.js';
@@ -15,7 +16,7 @@ import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 1;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'encode-recovery-page', 'decode-recovery-page', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -240,7 +241,17 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     }
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
-  const metadata = await inspectValue(input, options, { allowBinary: ['recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render'].includes(kind) });
+  if (kind === 'encode-recovery-page' || kind === 'decode-recovery-page') {
+    let value;
+    try { value = kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input, { maxBytes, signal }) : await decodeProcgenRecoveryPage(input, { maxBytes, signal }); }
+    catch (error) { signal?.throwIfAborted(); throw problem('invalid-data', error.message); }
+    guard(signal, current);
+    const output = kind === 'decode-recovery-page' ? await inspectValue(value, options) : null;
+    const retainedBytes = kind === 'encode-recovery-page' ? value.bytes.byteLength * 2 + 4096 : output.bytes * 2 + output.nodes * 64;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Recovery output exceeds its admitted peak.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
   if (kind === 'snapshot-canonical-data') {
     const encoded = canonicalDataText(input, { maxBytes, maxNodes }); guard(signal, current);
     if (encoded.bytes.byteLength * 8 + encoded.nodes * 192 > estimatedPeakBytes) throw problem('memory-capacity', 'Snapshot source exceeds its declared clone overlap.');

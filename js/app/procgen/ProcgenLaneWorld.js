@@ -1,3 +1,4 @@
+import { recordProcgenRecoveryStep, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
 import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
 import { ProcgenTerrainEdits, ProcgenTerrainRevisions } from './ProcgenTerrainRetention.js';
 import { ProcgenTunnelCrewRoutes } from './ProcgenTunnelCrewRoutes.js';
@@ -904,6 +905,7 @@ class ProcgenLaneWorld {
     if (this._stepping) throw new Error('A physical tick cannot be reentered.');
     if (this._failedTick) throw new Error('The previous physical tick was incomplete; restore a checkpoint before stepping.');
     if (!Number.isSafeInteger(this.tickIndex + 1)) throw new RangeError('Physical tick identity exhausted.');
+    const recoverySpeed = this.timer.speedFactor;
     this._stepping = true;
     try {
       const generation = this.generation, terrainRevisionBefore = this.terrainRevision;
@@ -1033,6 +1035,7 @@ class ProcgenLaneWorld {
       this._completedPhysicalBatchId = this.soundEvents.pendingBatchIdentity();
       publishProcgenActorVisibility(this);
       this.soundEvents.commitTick(this._completedPhysicalSnapshot, this.terrainRevision);
+      recordProcgenRecoveryStep(this, Number.isFinite(eventTimeMs) ? eventTimeMs : null, recoverySpeed);
       this.timer.onGameTick.trigger(this.tickIndex);
     } catch (error) {
       if (this.soundEvents._tick) { this.soundEvents.abortTick(); this._failedTick = true; }
@@ -1125,6 +1128,7 @@ class ProcgenLaneWorld {
   dispose() {
     if (this._disposed) return;
     this._disposed = true;
+    getProcgenRecoveryJournal(this)?.dispose();
     cancelPendingInterventions(this, 'world-disposed');
     if (this.soundEvents.onBatch.handlers.size && !this.soundEvents._tick) {
       this.soundEvents.beginTick({ worldId: this.worldId, generation: this.generation, tick: this.tickIndex,

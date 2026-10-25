@@ -239,7 +239,9 @@
         "test/procgen-preference-writer.test.js",
         "test/procgen-workstation-controller.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "c3a0f1b9720fde7be7446bcae56e0bcea722d6ed"
+      ],
       "validation": "deferred-by-request",
       "increment": "changed-data-edit-propagation"
     },
@@ -513,11 +515,23 @@
       "requirementUpdatedAt": "2026-10-22T08:45:33Z",
       "requirementSha256": "9d06d18a9fcac6d877805878587d2c870094847d727a2c69d4df8818f6c448e1",
       "initialGap": "Admitted worker checksum/recovery jobs, durable two-slot verified generations and paused-edit recovery state exist. SnapshotSession still synchronously clones/captures the full mutable graph and no incremental command/terrain page journal/checkpoint coordinator is implemented.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
+        "js/app/procgen/workstation/ProcgenRecoveryCapture.js",
+        "js/app/procgen/workstation/ProcgenRecoveryPageCodec.js",
+        "js/app/procgen/workstation/ProcgenRecoveryPageStore.js",
+        "js/app/procgen/workstation/ProcgenCheckpoint.js",
+        "js/app/procgenBoot.js",
+        "scripts/profile-procgen-recovery.mjs"
+      ],
+      "regressions": [
+        "test/procgen-incremental-recovery.test.js",
+        "test/procgen-recovery-page-store.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "incremental-recovery-journal-and-pages"
     },
     {
       "number": 1008,
