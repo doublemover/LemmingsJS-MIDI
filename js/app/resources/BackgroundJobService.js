@@ -1,3 +1,5 @@
+import { yieldBackgroundTask } from './BackgroundTaskYield.js';
+import { encodeBackgroundSnapshotPages, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES } from './BackgroundSnapshotPages.js';
 import { backgroundWorkerAdmission } from './BackgroundWorkerAdmission.js';
 import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, runBackgroundJobKernel } from './BackgroundJobKernels.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
@@ -11,7 +13,7 @@ const interruptible = (work, signal) => new Promise((resolve, reject) => {
   if (signal.aborted) abort();
 });
 export function createBackgroundJobService({ admission = backgroundWorkerAdmission, Worker = globalThis.Worker,
-  now = () => performance.now(), yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
+  now = () => performance.now(), yieldTask = yieldBackgroundTask } = {}) {
   const owners = new Set(); let disposed = false;
   const compute = async ({ kind, ownerId, ownerEpoch, sourceRevision, inputBytes = 0, estimatedPeakBytes, priority = 'interactive',
     prepareInput, releasePreparedInput = null, signal, budgetAdapter, isCurrent = () => true, onProgress = () => {}, maxBytes = 64 * 1048576,
@@ -23,6 +25,9 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     if (['encode-recovery-page', 'decode-recovery-page', 'analyze-native-impulse', 'encode-native-render', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'prepare-owned-source-bank', 'inspect-wave-asset', 'generate-procedural-sound', 'decode-wave-source'].includes(kind) && typeof Worker !== 'function') throw failure('worker-required', 'This offline computation requires its admitted worker.');
     if (typeof Worker !== 'function' && !['asset-hash', 'recovery-checksum'].includes(kind) && inputBytes > 128 * 1024)
       throw failure('worker-required', 'This computation needs a worker; only small bounded fallback work is supported.');
+    const transportStagingBytes = typeof Worker === 'function' ? BACKGROUND_SNAPSHOT_PACKET_BYTES * 2 : 0, admissionPeakBytes = estimatedPeakBytes + transportStagingBytes;
+    if (!Number.isSafeInteger(admissionPeakBytes) || admissionPeakBytes > 512 * 1048576) throw failure('transport-capacity', 'Background snapshot staging exceeds the worker admission ceiling.');
+    const inputTransport = { schema: 'owned-background-snapshot-pages/v1', packets: 0, operations: 0, bytes: 0, maximumSliceMs: 0, maximumPostMessageMs: 0, elapsedMs: 0, stagingBytes: transportStagingBytes };
     const controller = new AbortController(), identity = getActiveExecutionIdentity('browser-background-jobs'), startedAt = now();
     let lease = null, worker = null, input = null, result = null, released = false, workerFailedRetirement = false;
     let retirementWork = null, ownedWork = null, ownedWorkPending = false, lastProgressAt = -Infinity, progressSequence = 0, rejectWorker = null, preparedInputReleased = false;
@@ -71,7 +76,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
     };
     signal?.addEventListener('abort', cancel, { once: true }); owners.add(retire);
     try {
-      lease = await admission.acquire({ kind, ownerId, ownerEpoch, sourceRevision, inputBytes, estimatedPeakBytes, priority,
+      lease = await admission.acquire({ kind, ownerId, ownerEpoch, sourceRevision, inputBytes, estimatedPeakBytes: admissionPeakBytes, priority,
         signal: controller.signal, budgetAdapter, deadlineMs, onCancel: retire });
       check();
       ownedWorkPending = true;
@@ -83,8 +88,16 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       if (typeof Worker === 'function' && !nativeHash) {
         worker = new Worker(new URL('./BackgroundJobWorker.js', import.meta.url), { type: 'module', name: 'lemmings-background-' + kind });
         result = await interruptible(new Promise((resolve, reject) => {
-          let terminal = false;
-          const failed = error => { if (!terminal) { terminal = true; reject(error); } };
+          let terminal = false, inputReady = false, acknowledgment = null, packetSliceMs = 0;
+          const failed = error => { acknowledgment?.reject(error); acknowledgment = null; if (!terminal) { terminal = true; reject(error); } };
+          const envelope = { protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, ownerEpoch, sourceRevision };
+          const send = (payload, transfers = []) => new Promise((resolveAck, rejectAck) => {
+            check(); if (acknowledgment) throw failure('input-backpressure', 'One input packet must settle before another is sent.');
+            acknowledgment = { sequence: payload.sequence, resolve: resolveAck, reject: rejectAck };
+            try { const started = now(); worker.postMessage({ ...envelope, ...payload }, transfers); const duration = Math.max(0, now() - started);
+              inputTransport.maximumPostMessageMs = Math.max(inputTransport.maximumPostMessageMs, duration); inputTransport.maximumSliceMs = Math.max(inputTransport.maximumSliceMs, (payload.type === 'input-page' ? packetSliceMs : 0) + duration);
+            } catch (error) { acknowledgment = null; rejectAck(error); }
+          });
           rejectWorker = failed;
           worker.onmessage = event => {
             if (terminal) return;
@@ -92,9 +105,13 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
               const message = event.data;
               if (message?.protocol !== BACKGROUND_JOB_PROTOCOL || message.jobId !== lease.jobId || message.ownerEpoch !== ownerEpoch || message.sourceRevision !== sourceRevision)
                 throw failure('stale-envelope', 'Background worker response has stale ownership.');
-              if (message.type === 'progress') { progress(message.progress); return; }
+              if (message.type === 'input-ack') {
+                if (!acknowledgment || message.sequence !== acknowledgment.sequence) throw failure('input-acknowledgment', 'Background snapshot acknowledgment is stale.');
+                const pending = acknowledgment; acknowledgment = null; pending.resolve(); return;
+              }
+              if (message.type === 'progress') { if (!inputReady) throw failure('early-progress', 'Worker computation preceded its completed snapshot.'); progress(message.progress); return; }
               if (message.type === 'failed') { failed(failure(message.error?.code || 'worker-failed', String(message.error?.message || 'Background worker failed.').slice(0, 512))); return; }
-              if (message.type !== 'computed' || !message.result || !Number.isSafeInteger(message.result.inputBytes) || message.result.inputBytes < 0 || message.result.inputBytes > maxBytes ||
+              if (!inputReady || message.type !== 'computed' || !message.result || !Number.isSafeInteger(message.result.inputBytes) || message.result.inputBytes < 0 || message.result.inputBytes > maxBytes ||
                   !Number.isSafeInteger(message.result.nodes) || message.result.nodes < 1 || message.result.nodes > 4000000 ||
                   message.result.retainedBytes != null && (!Number.isSafeInteger(message.result.retainedBytes) || message.result.retainedBytes < 0 || message.result.retainedBytes > estimatedPeakBytes)) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
               if (identity.activeExecution === 'bound' && !compareActiveExecutionIdentity(message.executionIdentity, 'browser-background-jobs').matched)
@@ -104,7 +121,17 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
           };
           worker.onerror = event => { event.preventDefault?.(); failed(failure('worker-crash', 'Background worker crashed before computation completed.')); };
           worker.onmessageerror = () => failed(failure('worker-message', 'Background worker result could not be decoded.'));
-          worker.postMessage({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, ownerEpoch, sourceRevision, kind, input, limits, requiredIdentity: identity });
+          ownedWorkPending = true;
+          ownedWork = Promise.resolve().then(async () => {
+            const started = now(); await send({ type: 'input-start', sequence: 0, kind, limits, requiredIdentity: identity });
+            for await (const packet of encodeBackgroundSnapshotPages(input, { ...limits, signal: controller.signal, isCurrent, yieldTask, now,
+              onSlice: slice => { packetSliceMs = slice.durationMs; } })) {
+              check(); const sequence = packet.sequence; inputTransport.packets++; inputTransport.operations += packet.operations.length; inputTransport.bytes += packet.bytes;
+              await send({ type: 'input-page', sequence, packet }, backgroundSnapshotTransfers(packet));
+            }
+            check(); inputTransport.elapsedMs = Math.max(0, now() - started); inputReady = true;
+            worker.postMessage({ ...envelope, type: 'input-end', sequence: inputTransport.packets });
+          }).catch(failed).finally(() => { ownedWorkPending = false; });
         }), controller.signal);
       } else {
         method = kind === 'asset-hash' ? 'native-crypto' : kind === 'recovery-checksum' ? 'cooperative-main-thread-fallback' : 'bounded-main-thread-fallback';
@@ -129,7 +156,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,
         state: 'computed', publication: 'not-committed', method, queueWaitMs: lease.getState().queueWaitMs, elapsedMs: Math.max(0, now() - startedAt),
-        inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, executionIdentity });
+        inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, inputTransport: Object.freeze({ ...inputTransport }), executionIdentity });
       return Object.freeze({ get value() { check(); if (released) throw failure('result-retired', 'Background result was released.'); return result.value; }, signal: controller.signal, receipt, release,
         retirementState: () => lease.getState() });
     } catch (error) {

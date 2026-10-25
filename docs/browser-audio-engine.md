@@ -1676,3 +1676,30 @@ world. Browser contexts and reports are private/new; the tool neither publishes 
 reuses a user's browser. All scenarios and expanded fault fixtures remain unrun.
 Large background worker input still uses whole-object structured cloning at this
 checkpoint and is explicitly remaining development, not hidden behind the harness.
+
+### Bounded worker input transport
+
+Background protocol v2 no longer posts a complete recovery/project/terrain input
+object. A cooperative value-copy iterator emits at most 256 operations and 64 KiB
+per packet, preserving numeric values, UTF-16 strings and supported binary view
+types. Binary payloads are copied into fresh 32 KiB slabs and only those slabs are
+transferred; live terrain, native AudioBuffer data and pinned checkpoints are never
+detached. Input remains the caller's stable, privately owned snapshot until its
+retirement acknowledgment. Aliasing is not a semantic input to these pure kernels.
+
+There is one unacknowledged packet per worker. Job/epoch/revision/build, sequence,
+shape, depth, cumulative footprint and allowed property checks precede reconstruction.
+A crash or cancellation rejects the pending acknowledgment and joins the producer
+before releasing input ownership; uncertain worker termination retains its charge.
+Each worker job reserves a further 128 KiB for bounded transport overlap before
+input preparation. The producer targets 3 ms, uses feature-detected background
+`postTask` with a macrotask fallback, and reports enumeration plus synchronous
+postMessage cost separately from acknowledgment wait. Those are observed receipts,
+not a hard realtime assertion.
+
+The impulse analysis worker path also now derives source-byte/node inventory from
+its actual validated PCM and descriptor instead of referencing metadata before
+initialization. Large nonbinary **result** messages still need the symmetric paged
+path; recovery's encoded byte buffers already use explicit transfer. Protocol,
+producer-cancellation, stale-stream, source-buffer and kernel regressions remain
+unrun, and no browser/performance qualification has been executed.

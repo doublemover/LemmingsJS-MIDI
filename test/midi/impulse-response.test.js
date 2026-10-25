@@ -1,3 +1,4 @@
+import { runBackgroundJobKernel } from '../../js/app/resources/BackgroundJobKernels.js';
 import { expect } from 'chai';
 import { validateAudioAssetRef, inspectWaveContainer, DECODER_VERSION } from '../../js/app/midi-ui/AudioAssetRef.js';
 import { validateImpulseResponseDescriptor } from '../../js/midi/content/ImpulseResponseDescriptor.js';
@@ -17,6 +18,10 @@ const request = (channels, options = {}) => ({ descriptor: { ...descriptor(chann
   planes: Array.from({ length: channels }, (_, channel) => new Float32Array([channel & 1 ? -1 : 1, 0, 0, 0])) });
 
 describe('shared native impulse-response contracts (deferred qualification)', () => {
+  it('publishes actual impulse source inventory through the worker kernel without an uninitialized metadata reference', async () => {
+    const result = await runBackgroundJobKernel('analyze-native-impulse', request(2), { maxBytes: 65536, estimatedPeakBytes: 16 * 1048576 });
+    expect(result.inputBytes).to.be.greaterThan(32); expect(result.nodes).to.be.greaterThan(2); expect(result.value.schema).to.equal('lemmings-impulse-analysis/v1'); expect(result.retainedBytes).to.equal(65536);
+  });
   it('admits four-channel IR identity while refusing three channels and four-channel sample voices', () => {
     expect(validateAudioAssetRef(descriptor(4).asset).channels).to.equal(4);
     expect(() => validateAudioAssetRef(descriptor(3).asset)).to.throw();

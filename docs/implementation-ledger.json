@@ -702,7 +702,12 @@
         "js/app/resources/BackgroundJobService.js",
         "scripts/profile-resource-recovery.mjs",
         "scripts/ResourceRecoveryBrowserScenario.js",
-        "scripts/ResourceRecoveryEvidence.js"
+        "scripts/ResourceRecoveryEvidence.js",
+        "js/app/resources/BackgroundSnapshotPages.js",
+        "js/app/resources/BackgroundTaskYield.js",
+        "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "js/app/resources/BackgroundJobWorker.js",
+        "js/app/resources/BackgroundJobKernels.js"
       ],
       "regressions": [
         "test/procgen-incremental-recovery.test.js",
@@ -713,16 +718,22 @@
         "test/procgen-session-storage.test.js",
         "test/resource-recovery-evidence.test.js",
         "test/background-worker-admission.test.js",
-        "test/resource-budget.test.js"
+        "test/resource-budget.test.js",
+        "test/background-snapshot-pages.test.js",
+        "test/background-job-worker-endpoint.test.js",
+        "test/background-job-service.test.js",
+        "test/ground-asset-jobs.test.js",
+        "test/midi/impulse-response.test.js"
       ],
       "commits": [
         "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e",
         "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
-        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
+        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
+        "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
       ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages",
-      "remaining": "Large worker-input structured-clone staging must be bounded/cooperative; existing whole-object postMessage can still block. Combined-scene harness is now implemented but unrun; runtime slice/parity/fault qualification remains deferred.",
+      "remaining": "Large nonbinary worker result delivery still requires bounded/cooperative transfer. Input staging and combined-scene harness are implemented; runtime slice/parity/fault qualification remains deferred.",
       "increments": [
         {
           "id": "durable-recovery-and-acknowledged-retirement",
@@ -737,6 +748,11 @@
         {
           "id": "combined-resource-recovery-evidence",
           "summary": "Executable source-bound six-case browser harness uses 8/128/1024 real lanes, 64-step patterns, actual 8192-cell canonical terrain command, pinned 30.72MB native decoded fixtures, eight CCTV views, high-DPR/aspect resizes, worker recovery, trusted click-to-paint and raw scheduling tails, over-cap rejection and old/new candidate overlap. Missing/unknown/failed scenarios fail qualification rather than disappear; native heap/acoustic qualifications remain distinct. Owner/queue/snapshot timing diagnostics and all six durable-write boundaries plus worker fault fixtures authored. Harness and tests unrun.",
+          "commit": "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
+        },
+        {
+          "id": "cooperative-owned-worker-input-pages",
+          "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
           "commit": null
         }
       ]
@@ -3453,7 +3469,12 @@
         "js/app/resources/BackgroundJobService.js",
         "scripts/profile-resource-recovery.mjs",
         "scripts/ResourceRecoveryBrowserScenario.js",
-        "scripts/ResourceRecoveryEvidence.js"
+        "scripts/ResourceRecoveryEvidence.js",
+        "js/app/resources/BackgroundSnapshotPages.js",
+        "js/app/resources/BackgroundTaskYield.js",
+        "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "js/app/resources/BackgroundJobWorker.js",
+        "js/app/resources/BackgroundJobKernels.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3477,7 +3498,12 @@
         "test/browser-generation-service.test.js",
         "test/procgen-session-storage.test.js",
         "test/resource-recovery-evidence.test.js",
-        "test/background-worker-admission.test.js"
+        "test/background-worker-admission.test.js",
+        "test/background-snapshot-pages.test.js",
+        "test/background-job-worker-endpoint.test.js",
+        "test/background-job-service.test.js",
+        "test/ground-asset-jobs.test.js",
+        "test/midi/impulse-response.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
@@ -3486,11 +3512,12 @@
         "87cd69c1",
         "0a21999ba2cfac757279ab44028c48fe690cd020",
         "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
-        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd"
+        "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
+        "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "Final auxiliary persistent-owner audit and large background-input staging admission remain development. Combined resource scenario harness is implemented but unrun; actual browser/native estimate qualification remains deferred validation.",
+      "remaining": "Final auxiliary persistent-owner audit and large nonbinary background-result delivery remain development; combined resource/native estimate qualification remains deferred.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
@@ -3530,10 +3557,15 @@
         {
           "id": "combined-resource-recovery-evidence",
           "summary": "Executable source-bound six-case browser harness uses 8/128/1024 real lanes, 64-step patterns, actual 8192-cell canonical terrain command, pinned 30.72MB native decoded fixtures, eight CCTV views, high-DPR/aspect resizes, worker recovery, trusted click-to-paint and raw scheduling tails, over-cap rejection and old/new candidate overlap. Missing/unknown/failed scenarios fail qualification rather than disappear; native heap/acoustic qualifications remain distinct. Owner/queue/snapshot timing diagnostics and all six durable-write boundaries plus worker fault fixtures authored. Harness and tests unrun.",
+          "commit": "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
+        },
+        {
+          "id": "cooperative-owned-worker-input-pages",
+          "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
           "commit": null
         }
       ],
-      "remainingDevelopment": "Final auxiliary persistent-owner audit and large background-input staging admission remain development. Combined resource scenario harness is implemented but unrun; actual browser/native estimate qualification remains deferred validation."
+      "remainingDevelopment": "Final auxiliary persistent-owner audit and large nonbinary background-result delivery remain development; combined resource/native estimate qualification remains deferred."
     },
     {
       "number": 1163,
@@ -4732,11 +4764,32 @@
       "requirementUpdatedAt": "2026-10-22T12:12:58Z",
       "requirementSha256": "264a5c679f568c8ed0357129217984c4e725a41eed0e2a7c8eb3e69b7008cd4a",
       "initialGap": "Shared bounded admission, worker protocol, retained-result leases, deadlines and stale-publication guards serve imports/recovery/asset/export jobs. Identical pure computations are not coalesced with independent consumer leases: each compute acquires a new admission and worker; no shared content-job registry.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/resources/BackgroundSnapshotPages.js",
+        "js/app/resources/BackgroundTaskYield.js",
+        "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "js/app/resources/BackgroundJobWorker.js",
+        "js/app/resources/BackgroundJobService.js",
+        "js/app/resources/BackgroundJobKernels.js"
+      ],
+      "regressions": [
+        "test/background-snapshot-pages.test.js",
+        "test/background-job-worker-endpoint.test.js",
+        "test/background-job-service.test.js",
+        "test/ground-asset-jobs.test.js",
+        "test/midi/impulse-response.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "cooperative-owned-worker-input-pages",
+          "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
+          "commit": null
+        }
+      ],
+      "remaining": "Large nonbinary result transport, broader pure-job coalescing (existing registry covers ground/hash/parse only), and combined import/export/terrain concurrency harness coverage remain development; no-worker/memory/cancellation qualification deferred."
     },
     {
       "number": 1236,
