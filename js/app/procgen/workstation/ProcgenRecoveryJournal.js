@@ -1,5 +1,5 @@
 const owners = new WeakMap(), snapshots = new WeakSet();
-const MAX_RECORD_BYTES = 8192, PAGE_RECORDS = 128;
+const MAX_RECORD_BYTES = 32768, PAGE_RECORDS = 128;
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const boundary = world => Object.freeze({ worldId: world.worldId, tick: world.tickIndex, generation: world.generation, seed: world.seed,
   terrainRevision: world.terrainRevision, nextActorId: world.nextActorId, simulationTimeMs: world.simulationTimeMs,

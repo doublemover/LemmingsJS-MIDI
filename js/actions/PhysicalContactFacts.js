@@ -23,7 +23,7 @@ const observePhysicalSupport = (level, actor) => {
     actionInstanceId: actor._physicalActionInstanceId, causeKind: 'support', contactRole: 'supported-body',
     positionAfter: { x: actor.x, y: actor.y }, anchor, surfaceRevision: level.terrainRevision,
     observedTick: level.tickIndex, precision: 'tick', physicalPayload: { evidence: 'completed-support-cell',
-      contactContinuity: 'consecutive-discrete-observations', terrainFeatureId: null, pressure: null, normal: null } });
+      contactContinuity: 'consecutive-discrete-observations', terrainProvenance: level.terrainContactProvenance?.(anchor.x, anchor.y) ?? { status: 'unknown' }, terrainFeatureId: null, pressure: null, normal: null } });
 };
 
 export { observePhysicalSupport };

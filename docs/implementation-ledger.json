@@ -833,11 +833,29 @@
       "requirementUpdatedAt": "2026-10-22T11:34:32Z",
       "requirementSha256": "c1d4c52e23c2957a81092401960bb6f23391dfdb14fe14ecd75e298937f8a294",
       "initialGap": "Terrain work spans/revisions exist, but no TerrainScoreLayer retained semantic material/tag provenance index or later-contact\u2192specific-edit ancestry query is implemented in the causal graph/engine.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/actions/PhysicalContactFacts.js",
+        "js/app/procgen/workstation/physical/TonalInterpretation.js"
+      ],
+      "regressions": [
+        "test/procgen-terrain-authoring.test.js",
+        "scripts/bench-terrain-authoring.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "atomic-terrain-and-provenance",
+          "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1021,
@@ -932,12 +950,20 @@
         "js/app/procgen/workstation/physical/FormationHarmony.js",
         "js/app/procgen/workstation/physical/TonalInterpretation.js",
         "js/app/procgen/workstation/CausalMusicEngine.js",
-        "js/app/midi-ui/SmoothedAudioParameter.js"
+        "js/app/midi-ui/SmoothedAudioParameter.js",
+        "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/actions/PhysicalContactFacts.js"
       ],
       "regressions": [
         "test/procgen-tonal-interpretation.test.js",
         "test/midi/smoothed-audio-parameter.test.js",
-        "scripts/bench-tonal-interpretation.mjs"
+        "scripts/bench-tonal-interpretation.mjs",
+        "test/procgen-terrain-authoring.test.js",
+        "scripts/bench-terrain-authoring.mjs"
       ],
       "commits": [
         "d067da10e7e3210325542da460330d6d96123cde"
@@ -948,6 +974,11 @@
           "id": "physical-tonal-interpretation",
           "summary": "World-anchored hysteretic/morph tuning fields, exact ratio metadata, bounded ensemble formation descriptors and deterministic minimum-motion assignments; held-voice causal retune/rearticulation and checkpoint/capture integration; per-event native/sample/worklet slew. Material selector owner, hardware adapters and performer surfaces remain pending; runtime qualification deferred.",
           "commit": "d067da10e7e3210325542da460330d6d96123cde"
+        },
+        {
+          "id": "atomic-terrain-and-provenance",
+          "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
+          "commit": null
         }
       ]
     },
@@ -1396,7 +1427,8 @@
       ],
       "commits": [
         "2705c467aa46b5fb99fb40d652a4638350f06ca2",
-        "3da493ac8ebc701acfae7388fe3bea65d5b99508"
+        "3da493ac8ebc701acfae7388fe3bea65d5b99508",
+        "149de9d92c387cfaea8b394024e3052f41d03c66"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -1413,7 +1445,7 @@
         {
           "id": "owned-lane-mix-and-faders",
           "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
-          "commit": null
+          "commit": "149de9d92c387cfaea8b394024e3052f41d03c66"
         }
       ]
     },
@@ -1706,13 +1738,15 @@
         "test/midi/voice-lane-mix.test.js",
         "test/midi/routed-instrument-backend.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "149de9d92c387cfaea8b394024e3052f41d03c66"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "owned-lane-mix-and-faders",
           "summary": "Native/sample/worklet gain and balance independent from physical pressure, bounded mix commands and snapshot ABI, destination carry mix, sparse captured performance mix, shared transactional header faders and truthful unavailable-signal/event views. Actual lane-sum meters, historical offline mix lowering and interaction/runtime qualification remain pending.",
-          "commit": null
+          "commit": "149de9d92c387cfaea8b394024e3052f41d03c66"
         }
       ]
     },
@@ -2904,11 +2938,29 @@
       "requirementUpdatedAt": "2026-10-22T11:28:47Z",
       "requirementSha256": "18a4081cedc03b49cd7006c9efde84f1dee3404017aad2eb8a41b8a8586a040a",
       "initialGap": "No TerrainAuthoringAdapter canonical transactional terrain-authoring plan; old low-level setters are not that editor boundary.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/actions/PhysicalContactFacts.js",
+        "js/app/procgen/workstation/physical/TonalInterpretation.js"
+      ],
+      "regressions": [
+        "test/procgen-terrain-authoring.test.js",
+        "scripts/bench-terrain-authoring.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "atomic-terrain-and-provenance",
+          "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1181,

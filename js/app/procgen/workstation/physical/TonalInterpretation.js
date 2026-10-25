@@ -9,11 +9,11 @@ export function validateTonalDomain(input, domain) {
   for (const object of [...harmonicFields, ...formations]) if (object.ensembleId && !domain.ensembles.some(value => value.id === object.ensembleId)) throw new Error('Tonal ensemble reference is unavailable.');
   for (const object of formations) if (object.routeId && !domain.routes.some(value => value.id === object.routeId)) throw new Error('Tonal route reference is unavailable.');
   if (input.editCommandId != null && !identity(input.editCommandId)) throw new Error('Invalid applied mapping-edit command ID.');
-  const resolver = createHarmonicFieldResolver(); resolver.configure(harmonicFields, input.revision);
+  const resolver = createHarmonicFieldResolver({ getMaterialTag: actor => actor.terrainProvenance ?? { status: 'unknown' } }); resolver.configure(harmonicFields, input.revision);
   return freeze({ harmonicFields, formations, ...(input.editCommandId ? { editCommandId: input.editCommandId } : {}) });
 }
 export function createTonalInterpretation() {
-  let fields = createHarmonicFieldResolver(), formations = createFormationHarmony(), graph = null, batch = null;
+  let fields = createHarmonicFieldResolver({ getMaterialTag: actor => actor.terrainProvenance ?? { status: 'unknown' } }), formations = createFormationHarmony(), graph = null, batch = null;
   const configure = next => { fields.configure(next.harmonicFields || [], next.revision, next.editCommandId); formations.configure(next.formations || []); graph = next; };
   const resolve = (instrument, actorId, baseCents) => {
     let pitch = { cents: baseCents, referenceHz: 440 }, formation = null, field = null;
@@ -39,6 +39,6 @@ export function createTonalInterpretation() {
   return { configure, observe(value, domain) { batch = value; fields.observe(value, domain); formations.observe(value, domain, fields); }, resolve, cause,
     enabled: () => !!(graph?.harmonicFields?.length || graph?.formations?.length),
     snapshot: () => freeze({ version: 1, fields: fields.snapshot(), formations: formations.snapshot() }),
-    restore(value) { if (value?.version !== 1) throw new Error('Invalid tonal checkpoint.'); const nextFields = createHarmonicFieldResolver(), nextFormations = createFormationHarmony(); nextFields.configure(graph.harmonicFields || [], graph.revision); nextFormations.configure(graph.formations || []); nextFields.restore(value.fields); nextFormations.restore(value.formations); fields = nextFields; formations = nextFormations; },
+    restore(value) { if (value?.version !== 1) throw new Error('Invalid tonal checkpoint.'); const nextFields = createHarmonicFieldResolver({ getMaterialTag: actor => actor.terrainProvenance ?? { status: 'unknown' } }), nextFormations = createFormationHarmony(); nextFields.configure(graph.harmonicFields || [], graph.revision); nextFormations.configure(graph.formations || []); nextFields.restore(value.fields); nextFormations.restore(value.formations); fields = nextFields; formations = nextFormations; },
     reset() { fields.reset(); formations.reset(); batch = null; }, diagnostics: () => freeze({ fields: fields.diagnostics(), formations: formations.diagnostics() }) };
 }
