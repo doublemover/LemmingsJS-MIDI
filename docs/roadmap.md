@@ -3205,3 +3205,42 @@ rates/windows, exact mid-hold restore, capture timing, silence/missing source,
 maximum hold, dry timing and full-graph fixtures are authored and unrun. Measured
 latency/error, browser hop/worst-block cost, pitch/blur quality and listening remain
 deferred; this implementation does not close the qualification acceptance.
+
+
+### Continuation 155 — persistent sparse sympathetic audio bodies (#1135, #1157)
+
+The owned graph now has a shared stereo modal network with at most 64 bodies,
+eight modes per body, 512 total modes/edges and degree four. These are hard
+construction limits, not qualified real-time capacities. Each mode is a damped
+complex rotation. Sparse edges apply a canonical sequence of contractive
+identity-to-Givens transforms; no arbitrary feedback matrix or all-pairs crowd
+network is generated. The excitation vector is normalized against the maximum
+prepared contraction radius, and pickups have bounded norm. Internal finite-state
+and energy containment is independent of master limiting. The conservative input
+normalization still needs musical level calibration; it is not a listening claim.
+
+COUPLE and DAMP move continuously within that domain. Retune, excitation-body,
+pickup and topology edits prepare a new graph; the existing owner retains the
+old tail. Native and offline adapters share the same kernel, exact configuration,
+receipts and state codec. The codec now optionally carries bounded exact immutable
+configuration bytes outside its fixed header, so large body topologies cannot
+alias a small state identity or overflow the transfer header. Existing layouts
+without configuration bytes keep their previous layout. Canonical UTF-8 encoding
+also runs without DOM encoding globals, allowing the same identities to be
+constructed in the Worklet realm; Unicode equivalence fixtures remain deferred. Body energy is inspected
+only on demand and is explicitly modeled audio energy, not terrain deformation.
+
+String Trellis, Metal Constellation and Undertone Basin expose three original
+sparse topologies, prepared TOUCH/TUNE, direct versus sympathetic pickup audition,
+and actual owner/lane excitation taps through the Shared bodies surface. Basin
+coupling is explicitly fundamental-mode-only, not mislabeled as a lowpass filter.
+Actual source PCM excites persistent state; actor end stops that excitation while
+body memory can ring. No new semantic onset or physical intervention is emitted.
+Terrain anchors, per-contact preparation slots, admitted body-command ancestry,
+and the Resonance Terrarium proof scene remain pending integrations.
+
+Decay/contraction, superposition, stereo polarity, exact/foreign state restore,
+full-graph input, invalid coupling and 8/32/64-body construction/accounting fixtures
+are authored and unrun. Those sizes are comparison fixtures, not measured deadline
+or memory acceptance. Device benchmarks, macro level matching and listening remain
+in the deferred qualification pass.

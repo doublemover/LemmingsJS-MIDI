@@ -1,3 +1,26 @@
+const nativeUtf8Encoder = typeof globalThis.TextEncoder === 'function' ? new globalThis.TextEncoder() : null;
+export function encodeUtf8(text) {
+  if (typeof text !== 'string') throw new TypeError('UTF-8 encoding requires text.');
+  return nativeUtf8Encoder ? nativeUtf8Encoder.encode(text) : encodeUtf8Portable(text);
+}
+export function encodeUtf8Portable(text) {
+  if (typeof text !== 'string') throw new TypeError('UTF-8 encoding requires text.');
+  let length = 0;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.codePointAt(index); if (code > 0xffff) index++;
+    length += code < 0x80 ? 1 : code < 0x800 ? 2 : code <= 0xffff ? 3 : 4;
+  }
+  const bytes = new Uint8Array(length); let offset = 0;
+  for (let index = 0; index < text.length; index++) {
+    let code = text.codePointAt(index); if (code > 0xffff) index++; else if (code >= 0xd800 && code <= 0xdfff) code = 0xfffd;
+    if (code < 0x80) bytes[offset++] = code;
+    else if (code < 0x800) { bytes[offset++] = 0xc0 | code >>> 6; bytes[offset++] = 0x80 | code & 0x3f; }
+    else if (code <= 0xffff) { bytes[offset++] = 0xe0 | code >>> 12; bytes[offset++] = 0x80 | code >>> 6 & 0x3f; bytes[offset++] = 0x80 | code & 0x3f; }
+    else { bytes[offset++] = 0xf0 | code >>> 18; bytes[offset++] = 0x80 | code >>> 12 & 0x3f; bytes[offset++] = 0x80 | code >>> 6 & 0x3f; bytes[offset++] = 0x80 | code & 0x3f; }
+  }
+  return bytes;
+}
+
 const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const ownedFrozenGraphs = new WeakSet();
 const plain = value => Array.isArray(value) ? Object.getPrototypeOf(value) === Array.prototype : [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -65,7 +88,7 @@ export function canonicalDataText(value, { maxBytes = 1048576, maxNodes = 200000
     if (text.length > maxBytes) throw new Error(domain + ' record exceeds its byte budget.');
     return text;
   };
-  const text = encode(value, 0), bytes = new TextEncoder().encode(text);
+  const text = encode(value, 0), bytes = encodeUtf8(text);
   if (bytes.length > maxBytes) throw new Error(domain + ' record exceeds its byte budget.');
   return { text, bytes, nodes };
 }
@@ -79,6 +102,6 @@ export const freezeData = value => {
 export const cloneData = (value, options) => freezeData(JSON.parse(canonicalDataText(value, options).text));
 export const hashDataText = async (text, crypto = globalThis.crypto) => {
   if (!crypto?.subtle?.digest) throw new Error('SHA-256 is unavailable for canonical data.');
-  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
+  return [...new Uint8Array(await crypto.subtle.digest('SHA-256', encodeUtf8(text)))].map(byte => byte.toString(16).padStart(2, '0')).join('');
 };
 export const hashData = (value, options) => hashDataText(canonicalDataText(value, options).text);
