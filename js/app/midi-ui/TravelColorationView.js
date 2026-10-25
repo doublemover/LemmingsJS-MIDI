@@ -9,12 +9,13 @@ export function createTravelColorationView({ document, getPlayback, saveRack, on
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
   const select = label => { const wrapper = node('label', label), input = node('select'); input.setAttribute('aria-label', label); wrapper.append(input); fields.append(wrapper); return input; };
   const option = (input, value, text) => { const item = node('option', text); item.value = value; input.append(item); };
-  const source = select('Existing signed-distance voice'), recipe = select('Color'), transition = select('Delay transition'), polarity = select('Delayed polarity');
-  option(recipe, 'rail-comb', 'Rail comb · 0.8–6 milliseconds'); option(recipe, 'return-flange', 'Return flange · 0.4–8 milliseconds');
+  const source = select('Existing signed-distance voice'), recipe = select('Color'), transition = select('Delay transition'), polarity = select('Processed polarity');
+  option(recipe, 'rail-comb', 'Rail comb · 0.8–6 milliseconds'); option(recipe, 'return-flange', 'Return flange · 0.4–8 milliseconds'); option(recipe, 'through-zero', 'Through-zero flange · delayed 4.2 ms reference'); option(recipe, 'hollow-steps', 'Hollow Steps · four moving notches');
   option(transition, 'glide', 'Tape glide · intentional pitch motion'); option(transition, 'jump', 'Two-tap crossfade · coalesce the latest jump');
-  option(polarity, 'normal', 'Normal'); option(polarity, 'inverted', 'Invert delayed branch');
+  option(polarity, 'normal', 'Normal'); option(polarity, 'inverted', 'Invert processed branch');
   const slider = (label, min, max, step, initial) => { const wrapper = node('label', label), input = node('input'); input.type = 'range'; input.min = min; input.max = max; input.step = step; input.value = initial; input.setAttribute('aria-label', label); wrapper.append(input); fields.append(wrapper); return input; };
-  const travel = slider('TRAVEL · world pixels per sweep', 128, 512, 1, 256), depth = slider('DEPTH · delay excursion', 0, 1, 0.01, 0.75), hollow = slider('HOLLOW · feedback', 0, 0.35, 0.01, 0.2), mix = slider('MIX · delayed branch', 0, 0.45, 0.01, 0.3);
+  const travel = slider('TRAVEL · world pixels per sweep', 128, 512, 1, 256), depth = slider('DEPTH · travel excursion', 0, 1, 0.01, 0.75), hollow = slider('HOLLOW · feedback', 0, 0.35, 0.01, 0.2), mix = slider('MIX · processed branch', 0, 0.45, 0.01, 0.3);
+  listen(recipe, 'change', () => { const notch = recipe.value === 'hollow-steps'; hollow.max = notch ? 0.25 : 0.35; mix.max = notch ? 0.5 : 0.45; if (Number(hollow.value) > Number(hollow.max)) hollow.value = hollow.max; if (Number(mix.value) > Number(mix.max)) mix.value = mix.max; transition.hidden = notch; if (notch) transition.value = 'glide'; });
   const controls = [source, recipe, transition, polarity, travel, depth, hollow, mix];
   const refresh = () => {
     sources = getPlayback()?.travelEffectSources?.() || []; source.replaceChildren();
@@ -38,7 +39,7 @@ export function createTravelColorationView({ document, getPlayback, saveRack, on
   const suspend = () => { pending?.controller.abort(); committed = null; if (dialog.open) { dialog.close?.(); dialog.open = false; } };
   button('Close', suspend, true); listen(dialog, 'cancel', () => pending?.controller.abort());
   dialog.append(title, node('p', 'Actual signed world travel moves a smooth spatial curve. Rest and camera motion add no progress. This colors existing voices; there is no oscillator driving the control and no added note clock.'),
-    node('p', 'Experimental Lagrange delay. Changes apply through Prepare. Tape glide changes pitch; jump mode keeps two read taps and one pending target. Through-zero and allpass notch modes are not implied. Master capture can retain the live result; static revoice does not replay these gestures.'), fields, actions, status);
+    node('p', 'Experimental original delay and notch color. Changes apply through Prepare. Tape glide changes pitch; jump mode keeps two read taps and one pending target. Hollow Steps moves allpass frequencies directly; it adds no internal modulation oscillator. Through-zero flange requires a separate delayed-reference mode. Master capture can retain the live result; static revoice does not replay these gestures.'), fields, actions, status);
   (document.body || document.documentElement).append(dialog);
   return Object.freeze({ open() { if (disposed) return; refresh(); if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.open = true; }, suspend,
     dispose() { return retirement.retire([{ name: 'cancel-preparation', run: () => { disposed = true; pending?.controller.abort(); } },

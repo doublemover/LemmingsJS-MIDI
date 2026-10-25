@@ -1,3 +1,4 @@
+import { AllpassNotchKernel } from './worklet/AllpassNotchProcessor.js';
 import { RingModulatorKernel } from './worklet/RingModulatorKernel.js';
 import { VocoderBankKernel } from './worklet/VocoderBankKernel.js';
 import { EnvelopeFollowerKernel } from './worklet/EnvelopeFollowerKernel.js';
@@ -25,6 +26,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'allpass-notch') { controls.set([p.baseFrequencyHz, p.feedback, p.wet01, 0], at); kernel = new AllpassNotchKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'ring-modulator') kernel = new RingModulatorKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'multiband-vocoder') kernel = new VocoderBankKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
@@ -46,6 +48,9 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     if (entry.kind === 'gain') {
       if (keys.some(key => key !== 'gain01') || !finite(next.gain01, 0, p.gainMaximum01)) fail('invalid-effect-control', 'Effect gain exceeds its declared bound.');
       controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008));
+    } else if (entry.kind === 'allpass-notch') {
+      if (keys.some(key => !['baseFrequencyHz', 'feedback', 'wet01'].includes(key)) || next.baseFrequencyHz != null && !finite(next.baseFrequencyHz, 160, 1600) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) || next.wet01 != null && !finite(next.wet01, 0, 1)) fail('invalid-effect-control', 'Allpass control exceeds its frequency, feedback or mix domain.');
+      if (next.baseFrequencyHz != null) controls[at] = next.baseFrequencyHz; if (next.feedback != null) controls[at + 1] = next.feedback; if (next.wet01 != null) controls[at + 2] = next.wet01;
     } else if (entry.kind === 'feedback-delay') {
       if (keys.some(key => !['delaySeconds', 'feedback', 'wet01', 'feedbackLowpassHz'].includes(key)) ||
           next.delaySeconds != null && !finite(next.delaySeconds, (p.interpolation === 'lagrange3' ? 2 : 1) / sampleRate, p.maxDelaySeconds) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) ||
@@ -91,12 +96,12 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         const g = index * 3; a *= gain[g]; b *= gain[g];
         if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
-        if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (kernel.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
       if (kernel?.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
-      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' ? 1 : 0;
+      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' ? 1 : 0;
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);
     }
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];

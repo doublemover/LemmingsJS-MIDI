@@ -3138,3 +3138,29 @@ selected-voice isolation and actual CausalMusicEngine travel intents without ext
 notes. They remain unrun. Allpass-notch/through-zero modes, full gesture replay,
 browser alias/cost/listening qualification and the remaining issue backlog remain
 separate work; no completed acceptance is inferred from this implementation.
+
+
+### Continuation 153 — travel-driven normalized lattice notches (#1188, #1211)
+
+Hollow Steps now shares the existing actor-travel control owner with comb/flange,
+using eight normalized first-order lattice stages per channel, paired at four
+frequencies. Every moving scattering matrix preserves input plus stored energy;
+feedback is owned, delayed by one sample and capped at .25. The declared gain
+bound is an induced L2 energy bound, separately labeled from instantaneous peak
+fault containment. Coefficients slew toward real travel-derived frequency targets;
+there is no free-running LFO or invented musical attack.
+
+The same processor runs in the Worklet and owned offline graph, with exact
+coefficient identity, state transfer, bounded automation, retirement/completion
+receipts and Panic. Phase/group delay remains frequency dependent and is not
+misrepresented as a compensated fixed delay. The source UI exposes four moving
+notches, conservative dry/wet and feedback bounds, and explicit processed polarity.
+
+Fixtures for time-varying energy conservation, static magnitude, mid-modulation
+restore and full-graph control were authored but remain unrun. The hard two-second
+tail ceiling, notch shape, modulation sidebands, browser cost and listening need
+the deferred qualification pass. Through-zero flange uses two strictly causal positive delays around an explicit
+4.2 ms creative reference, with a signed relative-delay domain. This reference is
+not graph alignment or negative physical latency; neutral bypass restores the
+immediate owner dry path. Its route/rate fixture is also deferred. Gesture replay
+and other remaining issues are not claimed complete.
