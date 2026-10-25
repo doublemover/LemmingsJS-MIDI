@@ -1,3 +1,4 @@
+import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -23,6 +24,7 @@ try {
   await page.goto('http://127.0.0.1:8138/');
   const evidence = await page.evaluate(async rates => {
     const { BrowserNotePreview } = await import('/js/app/midi-ui/browserNotePreview.js');
+    const { admitPcmBuffer, measurePcmWindow, comparePcmChannels } = await import('/js/app/midi-ui/PcmEvidence.js');
     const capabilities = { offlineAudioContext: typeof globalThis.OfflineAudioContext === 'function',
       audioWorklet: typeof globalThis.AudioWorkletNode === 'function', sharedArrayBuffer: typeof globalThis.SharedArrayBuffer === 'function',
       crossOriginIsolated: globalThis.crossOriginIsolated === true };
@@ -33,15 +35,7 @@ try {
     const intent = (voiceId, pressure01) => ({ version: 1, kind: 'begin', voiceId, generation: 1,
       pitch: { cents: 6000.125, referenceHz: 440 }, velocity01: 0.7501, expression: { pressure01 },
       sourceEventIds: ['physical:' + voiceId], onsetId: 'onset:' + voiceId, actorId: voiceId });
-    const measure = (values, sampleRate, from, to) => {
-      const first = Math.ceil(from * sampleRate), last = Math.min(values.length, Math.floor(to * sampleRate));
-      let square = 0, peak = 0, dc = 0, nonfinite = 0;
-      for (let i = first; i < last; i++) {
-        const value = values[i]; if (!Number.isFinite(value)) { nonfinite++; continue; }
-        square += value * value; peak = Math.max(peak, Math.abs(value)); dc += value;
-      }
-      return { rms: Math.sqrt(square / (last - first)), peak, dc: dc / (last - first), nonfinite, frames: last - first };
-    };
+    const measure = (values, sampleRate, from, to) => measurePcmWindow([values], sampleRate, from, to);
     const render = async (sampleRate, reversed = false, crowd = 2, held = false) => {
       const seconds = held ? 61 : 0.6, raw = new globalThis.OfflineAudioContext(8, Math.ceil(sampleRate * seconds), sampleRate);
       const adapter = { state: 'running', get currentTime() { return raw.currentTime; }, sampleRate: raw.sampleRate, destination: raw.destination,
@@ -71,8 +65,8 @@ try {
       const panicAt = held ? 60.5 : 0.45, suspension = raw.suspend(panicAt), rendering = raw.startRendering();
       await suspension; preview.panic(); await raw.resume();
       const buffer = await rendering;
-      const data = Array.from({ length: 8 }, (_, index) => buffer.getChannelData(index));
-      const report = { requestedSampleRate: sampleRate, actualSampleRate: raw.sampleRate, crowd, ownedHeld: held,
+      const data = admitPcmBuffer(buffer, 8);
+      const report = { comparisonStatus: { permutation: 'not-applicable' }, metricStatus: { BAfterRelease: held ? 'not-applicable' : 'measured' }, requiredPcm: { channels: 8, frames: buffer.length, scope: 'all-retained-channels' }, requestedSampleRate: sampleRate, actualSampleRate: raw.sampleRate, crowd, ownedHeld: held,
         accepted: receipts.filter(receipt => receipt.status === 'accepted').length, expectedReceipts: receipts.length,
         full: measure(data[0], raw.sampleRate, 0, seconds),
         AAfterBRelease: measure(data[4], raw.sampleRate, held ? 60 : 0.25, held ? 60.15 : 0.29),
@@ -87,16 +81,19 @@ try {
     const reports = [];
     for (const sampleRate of rates) {
       const chronological = await render(sampleRate), shuffled = await render(sampleRate, true);
-      let maxPermutationError = 0;
-      for (let channel = 0; channel < chronological.data.length; channel++) for (let i = 0; i < chronological.data[channel].length; i++)
-        maxPermutationError = Math.max(maxPermutationError, Math.abs(chronological.data[channel][i] - shuffled.data[channel][i]));
-      reports.push({ ...chronological.report, maxPermutationError, permutationTolerance: 1e-6 });
+      const maxPermutationError = comparePcmChannels(chronological.data, shuffled.data);
+      reports.push({ ...chronological.report, comparisonStatus: { permutation: 'measured' }, maxPermutationError, permutationTolerance: 1e-6 });
       for (const crowd of [16, 32, 64]) reports.push((await render(sampleRate, false, crowd)).report);
     }
     const held = await render(48000, false, 1, true); reports.push(held.report);
     return { engine: 'native-oscillator@1', capabilities, reports,
       evidence: { unit: 'separate-mocha-command', digitalOffline: 'executed', digitalRealtime: 'not-run', listened: 'not-run', physicalLoopback: 'not-run' } };
   }, sampleRates);
+  for (const report of evidence.reports) {
+    admitPcmMetrics(report, ['full.rms', 'full.peak', 'full.dc', 'full.frames', 'AAfterBRelease.rms', 'postRelease.peak', 'postPanic.peak']);
+    if (report.comparisonStatus.permutation === 'measured') admitPcmMetrics(report, ['maxPermutationError', 'permutationTolerance']);
+    if (report.metricStatus.BAfterRelease === 'measured') admitPcmMetrics(report, ['BAfterRelease.peak']);
+  }
   evidence.environment = environment; evidence.errors = errors;
   evidence.sourceHashes = Object.fromEntries(await Promise.all(LOCAL_AUDIO_SOURCES.map(async file =>
     [file, createHash('sha256').update(await fs.readFile(path.join(root, file))).digest('hex')])));

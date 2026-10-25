@@ -802,3 +802,34 @@ Permutation fixtures qualify peak accounting separately. Exact request-set
 canonicalization, graph-specific measured cost profiles and device p95/p99
 qualification remain acceptance work. New interval, queue and reproduced
 future-overlap fixtures are authored and unexecuted.
+
+### Render-owned lease cutoff and numerical evidence admission
+
+Owned worklet renewals use **per-voice**, not all-or-nothing kernel admission.
+The host atomically reserves/queues the batch, but each renderer decides at its
+actual application frame. A lease cannot extend a voice at or after
+`effectiveEndFrame - releaseFrames`, nor after any explicit release has begun.
+The exact cutoff is terminal even when the producer submitted before it. A new
+attack needs a new onset/voice; renewal never restarts a release envelope.
+
+Queued extension intervals reserve capacity but are not render acknowledgments.
+Renewal receipts identify each bounded voice/command; diagnostics retain requested,
+pending and effective end frames. Applied receipts commit effective bounds; rejected
+or cancelled leases roll reservations back to the last effective interval (or a
+still-pending extension). A generation lease can remain registered for subsequent
+new voices even when an existing voice misses its cutoff. Owner stop and generation
+cancellation remain terminal. This does not turn semantic owner liveness into an
+acoustic receipt.
+
+The shared, native-semantic, worklet and sample offline producers now use the same
+pure numerical admission module. Every retained channel over the entire rendered
+interval is required finite, including both masters, diagnostic taps, shuffled
+runs, telemetry controls and choke-restoration controls. Window counts must be
+positive, and RMS/peak/DC/delta/pitch/comparison metrics must be finite. Comparisons
+validate both arrays before subtraction and reject overflow. Optional comparisons
+carry measured/not-applicable status; absent pitch evidence fails the required
+fixture rather than becoming JSON null. Evidence source hashes include the helper.
+
+These implementation changes and authored regression controls are not validation
+results: browser/PCM execution, realtime deadlines, acoustic listening, the complete
+product journey and performance qualification remain deferred.

@@ -114,6 +114,28 @@ describe('Owned sine worklet kernel', () => {
     expect(receipts(kernel).some(receipt => receipt[0] === ENDED && receipt[5] === 7)).to.equal(true);
   });
 
+  for (const offset of [-1, 0, 1]) it('makes lease cutoff authoritative at render time, offset ' + offset, () => {
+    const kernel = new OwnedSineKernel(48000), cutoff = 4320;
+    accept(kernel, [row(BEGIN, 0, 1, 0, 1, { 10: 0, 11: 0, 12: 1, 13: 480, 16: 4800 }),
+      row(LEASE, cutoff + offset, 2, 0, 1, { 16: 9600 })]);
+    const pcm = render(kernel, 5000);
+    const outcome = receipts(kernel).find(value => value[1] === 2 && [APPLIED, REJECTED].includes(value[0]));
+    expect(outcome[0]).to.equal(offset < 0 ? APPLIED : REJECTED);
+    expect(outcome[5]).to.equal(offset < 0 ? 0 : 11);
+    expect(kernel.active[0]).to.equal(offset < 0 ? 1 : 0);
+    expect(pcm.left.slice(4800).some(value => value !== 0)).to.equal(offset < 0);
+  });
+
+  it('rejects stale leases and an on-time command delivered after release started without rescuing its PCM', () => {
+    const kernel = new OwnedSineKernel(48000);
+    accept(kernel, [row(BEGIN, 0, 1, 0, 1, { 13: 480, 16: 4800 }), row(LEASE, 100, 2, 0, 1, { 16: 4800 })]);
+    render(kernel, 4560); accept(kernel, [row(LEASE, 4000, 3, 0, 1, { 16: 9600 })]);
+    const pcm = render(kernel, 600, 4560);
+    expect(receipts(kernel).some(value => value[1] === 2 && value[0] === REJECTED && value[5] === 12)).to.equal(true);
+    expect(receipts(kernel).some(value => value[1] === 3 && value[0] === REJECTED && value[5] === 11)).to.equal(true);
+    expect(pcm.left.slice(240).every(value => value === 0)).to.equal(true);
+  });
+
   it('silences a nonfinite voice while another voice and the render loop continue', () => {
     const kernel = new OwnedSineKernel(48000); accept(kernel, [row(BEGIN, 0, 1), row(BEGIN, 0, 2, 1)]);
     render(kernel, 128); kernel.voice[3] = NaN;
@@ -165,6 +187,26 @@ const setupHost = (engineId = 'worklet-sine') => {
 };
 
 describe('Owned worklet host lifecycle', () => {
+  it('reconciles delayed per-voice renewal with requested, queued and effective bounds kept separate', async () => {
+    const { backend, nodes, patch, intent, context, preview } = setupHost();
+    patch.patch.parameters = { attackSeconds: 0, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.01 };
+    await backend.prepare(patch); backend.renewExecutionLease(1, 'live', 4800); backend.begin(intent('early'), 0);
+    await Promise.resolve(); nodes[0].render(4000);
+    context.currentTime = 4000 / 48000;
+    const pending = [], send = nodes[0].port.postMessage;
+    nodes[0].port.postMessage = data => pending.push(data);
+    const receipt = backend.renewExecutionLease(1, 'live', 9600); await Promise.resolve();
+    expect(receipt).to.include({ status: 'accepted', stage: 'queued', applied: false, renewalSemantics: 'per-voice' });
+    expect(backend.renderDiagnostics().executionLeases[0]).to.include({ requestedLeaseEndFrame: 9600, effectiveLeaseEndFrame: 4800, pending: 1 });
+    nodes[0].render(560, 4000); context.currentTime = 4560 / 48000;
+    nodes[0].port.postMessage = send; for (const packet of pending) send(packet);
+    nodes[0].render(1, 4560);
+    expect(backend.renderDiagnostics().executionLeases[0]).to.include({ effectiveLeaseEndFrame: 4800, pending: 0, failure: 'execution-lease-too-late' });
+    expect([...preview._voices][0].end).to.equal(0.1);
+    expect(backend.renderDiagnostics({ includeTraces: true }).traces.some(trace => trace.status === 'rejected' && trace.operation === 'execution-lease' && trace.effectiveLeaseEndFrame === 4800)).to.equal(true);
+    nodes[0].render(300, 4561); expect(preview._voices.size).to.equal(0); backend.dispose();
+  });
+
   it('prepares every non-PCM source with the real resource owner and retains runtime storage through disposal', async () => {
     for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
       const { backend, nodes, patch, preview, context } = setupHost(engineId), resources = createAudioResourceLeases(); preview._audioResources = resources;

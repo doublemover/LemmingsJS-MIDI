@@ -725,13 +725,15 @@
       "regressions": [
         "test/procgen-action-voice-policy.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "3da493ac8ebc701acfae7388fe3bea65d5b99508"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "action-admission-and-voice-transfers",
           "summary": "Typed action admission, legato/crossfade/hold policies, bounded continuous expression and explicit lane-transfer ownership; native/sample/worklet crossfade lowering; external endpoint capability and performer surfaces remain pending.",
-          "commit": null
+          "commit": "3da493ac8ebc701acfae7388fe3bea65d5b99508"
         }
       ]
     },
@@ -1346,7 +1348,8 @@
         "test/procgen-action-voice-policy.test.js"
       ],
       "commits": [
-        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2",
+        "3da493ac8ebc701acfae7388fe3bea65d5b99508"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -1358,7 +1361,7 @@
         {
           "id": "action-admission-and-voice-transfers",
           "summary": "Typed action admission, legato/crossfade/hold policies, bounded continuous expression and explicit lane-transfer ownership; native/sample/worklet crossfade lowering; external endpoint capability and performer surfaces remain pending.",
-          "commit": null
+          "commit": "3da493ac8ebc701acfae7388fe3bea65d5b99508"
         }
       ]
     },
@@ -1613,11 +1616,23 @@
       "requirementUpdatedAt": "2026-10-23T15:45:05Z",
       "requirementSha256": "4abde20ae4d53b55603d865d15da206275f247a46bdc1d246ef270731958c793",
       "initialGap": "Owned-gate physical integration, explicit renewals and native finite-envelope repair are implemented. Kernel LEASE still extends end frame without rejecting an already-started release, so a queued-on-time but late-applied renewal can report applied after irreversible cutoff.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/midi-ui/worklet/OwnedSineProcessor.js",
+        "js/app/midi-ui/workletInstrumentBackend.js"
+      ],
+      "regressions": [
+        "test/midi/owned-sine-worklet.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "render-lease-and-pcm-admission",
+          "summary": "Authoritative irreversible kernel renewal cutoff with per-voice requested/queued/effective reconciliation; shared fail-closed all-channel numerical producer/metric/comparison admission. Full lifetime/journey acceptance and runtime qualification remain deferred; this increment addresses verified latest gaps, not every historical checklist.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1080,
@@ -1649,11 +1664,27 @@
       "requirementUpdatedAt": "2026-10-24T13:48:53Z",
       "requirementSha256": "1cc0c61596c1203a028edcc1e2ac6e38c6670b2b44dcabb395c2e22bd1f1919e",
       "initialGap": "Portable browser selectors and native/worklet/sample digital conformance harnesses implemented. Latest shared-mix numerical admission still lacks nonfinite scan and its comparison-only final predicate admits NaN; shuffled/right-channel full-output finite acceptance also incomplete.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/midi-ui/PcmEvidence.js",
+        "scripts/audio-evidence-runtime.js",
+        "scripts/measure-shared-local-audio.js",
+        "scripts/measure-native-semantic-audio.js",
+        "scripts/measure-worklet-audio.js",
+        "scripts/measure-sample-audio.js"
+      ],
+      "regressions": [
+        "test/midi/pcm-evidence.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "render-lease-and-pcm-admission",
+          "summary": "Authoritative irreversible kernel renewal cutoff with per-voice requested/queued/effective reconciliation; shared fail-closed all-channel numerical producer/metric/comparison admission. Full lifetime/journey acceptance and runtime qualification remain deferred; this increment addresses verified latest gaps, not every historical checklist.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1083,

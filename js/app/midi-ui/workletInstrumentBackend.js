@@ -22,7 +22,7 @@ const sineCapabilities = Object.freeze({ independentSamePitch: true, perVoicePit
 const finite = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 const keyFor = (epoch, id) => JSON.stringify([epoch, id]);
 const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-full', 3: 'generation-cancelled', 4: 'late-command',
-  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget' });
+  5: 'kernel-voice-budget-or-range', 6: 'stale-voice-slot', 7: 'owner-lease-expired', 8: 'nonfinite-dsp', 9: 'pending-onset-cancelled', 10: 'kernel-excitation-budget', 11: 'execution-lease-too-late', 12: 'stale-execution-lease' });
 
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
   traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine', prepareSourceBank = prepareOwnedSourceBank } = {}) {
@@ -152,6 +152,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     counters.queued++; schedulePump(); return record({ status: 'accepted', stage: 'queued', voiceId: voice?.voiceId ?? null,
       executionEpoch: voice?.semanticEpoch ?? values.epoch, targetFrame: frame, sequence: serial, appliedFrame: null });
   };
+  const reconcileLease = voice => {
+    if (voice.released) return;
+    const reserved = Math.max(voice.effectiveLeaseEndFrame ?? voice.initialLeaseEndFrame, ...voice.pendingLeases.values());
+    voice.end = reserved / context.sampleRate; voice.releaseAt = voice.end - voice.release;
+  };
   const onReceipts = data => {
     if (data.protocol !== PROTOCOL || !(data.data instanceof Float64Array) || !Number.isInteger(data.count) || data.count < 0 ||
         data.count * RECEIPT_WIDTH > data.data.length || data.count > 64) { markFault('invalid-kernel-receipt'); return; }
@@ -170,7 +175,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       if (code === APPLIED) {
         if (reason === 2 && slot === -1) { ownerStopped = false; ownerStopReceipt = null; }
         counters.applied++; inFlight.delete(serial);
-        if (voice) { voice.appliedFrame = frame; voice.lastAppliedSequence = serial; }
+        if (voice) {
+          voice.appliedFrame = frame; voice.lastAppliedSequence = serial;
+          if (original?.opcode === BEGIN || original?.opcode === LEASE) {
+            voice.effectiveLeaseEndFrame = Math.max(voice.effectiveLeaseEndFrame || 0, original.data[16]);
+            voice.pendingLeases.delete(serial); reconcileLease(voice);
+          }
+        }
       } else if (code === ENDED || code === FAULTED) {
         counters.ended++; if (code === FAULTED) counters.faults++;
         if (voice) { voice.kernelEnded = true; voice.appliedFrame = frame;
@@ -179,6 +190,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } else if (code === REJECTED || code === CANCELLED) {
         if (code === REJECTED) counters.rejected++;
         if (reason === 4) counters.late++; if (code === CANCELLED) counters.kernelCancelled++;
+        if (voice && original?.opcode === LEASE) {
+          voice.pendingLeases.delete(serial); voice.leaseFailure = kernelReasons[reason] || 'lease-not-applied'; reconcileLease(voice);
+        }
         if (voice && (original?.opcode === BEGIN || reason === 9)) {
           voice.kernelEnded = true; preview._destroyVoice(voice, kernelReasons[reason] || 'kernel-rejected'); slots[slot] = null;
         }
@@ -188,7 +202,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         stage: code === APPLIED ? 'render-kernel-applied' : code === ENDED ? 'render-kernel-ended' : 'render-kernel-outcome',
         voiceId: voice?.voiceId ?? original?.voiceId ?? null, executionEpoch: voice?.semanticEpoch ?? original?.epoch ?? null,
         generation: voice?.semanticGeneration ?? original?.generation ?? null, sequence: serial, appliedFrame: frame,
-        targetFrame: original?.frame ?? null, reason: reason === 2 && code !== REJECTED ? 'panic' : kernelReasons[reason] || null });
+        targetFrame: original?.frame ?? null,
+        ...(original?.opcode === LEASE ? { operation: 'execution-lease', requestedLeaseEndFrame: original.data[16],
+          effectiveLeaseEndFrame: voice?.effectiveLeaseEndFrame ?? null, renewalSemantics: 'per-voice' } : {}), reason: reason === 2 && code !== REJECTED ? 'panic' : kernelReasons[reason] || null });
     }
   };
   const validate = resolution => {
@@ -331,7 +347,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const prior = leases.get(key); if (prior && validUntilFrame <= prior) return reject('stale-execution-lease');
     if (!prior && leases.size >= 64) return reject('execution-lease-budget');
     if ([...voices.values()].some(voice => voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch &&
-        !voice.released && voice.releaseAt <= now / context.sampleRate)) return reject('execution-lease-too-late');
+        !voice.released && ((voice.effectiveLeaseEndFrame ?? voice.initialLeaseEndFrame) - Math.max(1, Math.round(voice.release * context.sampleRate)) <= now || voice.leaseFailure === 'execution-lease-too-late'))) return reject('execution-lease-too-late');
     const changes = new Map(), commands = []; let serial = sequence;
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch && !voice.released) {
       if (++serial > Number.MAX_SAFE_INTEGER) return reject('command-sequence-exhausted');
@@ -350,8 +366,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       sequence = serial; counters.queued += commands.length; schedulePump();
     }
     leases.set(key, validUntilFrame);
-    for (const [voice, interval] of changes) { voice.end = interval.end; voice.releaseAt = interval.releaseAt; }
-    return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: 'queued' });
+    for (const item of commands) {
+      const voice = voices.get(keyFor(item.epoch, item.voiceId));
+      voice.requestedLeaseEndFrame = validUntilFrame; voice.pendingLeases.set(item.sequence, validUntilFrame); reconcileLease(voice);
+    }
+    return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: commands.length ? 'queued' : 'registered',
+      renewalSemantics: 'per-voice', applied: false,
+      voices: Object.freeze(commands.map(item => Object.freeze({ voiceId: item.voiceId, sequence: item.sequence,
+        requestedLeaseEndFrame: validUntilFrame, effectiveLeaseEndFrame: voices.get(keyFor(item.epoch, item.voiceId))?.effectiveLeaseEndFrame ?? null }))) });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
     if (!validVoiceTransition(intent?.voiceTransition)) return reject('invalid-voice-transition', intent?.voiceId);
@@ -397,7 +419,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
     const voice = { owner, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
-      resourceLease,
+      resourceLease, initialLeaseEndFrame: endFrame, requestedLeaseEndFrame: endFrame, effectiveLeaseEndFrame: null,
+      pendingLeases: new Map(), leaseFailure: null,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
       note: Math.round(intent.pitch.cents / 100), velocity: intent.velocity01 * 127,
       startMs: preview._nowMs() + (targetFrame - now) * 1000 / context.sampleRate,
@@ -521,7 +544,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let count = 0;
     for (const voice of voices.values()) if (voice.semanticGeneration === generation && voice.semanticEpoch === executionEpoch) {
       if (!voice.submitted) { voice.kernelEnded = true; preview._destroyVoice(voice, 'generation-cancel-before-submission'); slots[voice.slot] = null; count++; continue; }
-      voice.released = true; voice.releaseAt = context.currentTime; voice.end = context.currentTime + 0.005; count++;
+      voice.pendingLeases.clear(); voice.released = true; voice.releaseAt = context.currentTime; voice.end = context.currentTime + 0.005; count++;
     }
     const receipt = Object.freeze({ generation, executionEpoch, count, removedBeforeSubmission: removed, frontierFrame: frameNow(),
       stage: outcome?.status === 'accepted' ? 'scheduled-cancellation-requested' : 'not-submitted', appliedFrame: null, renderedStatus: 'unknown' });
@@ -532,7 +555,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     ownerStopped = true; preparing++;
     return ownerStopReceipt = createProcgenRetirementScope().retire([
       { name: 'timer', run: clearTimer },
-      { name: 'commands', run: () => { counters.producerCancelled += queue?.clear() || 0; leases.clear(); inFlight.clear(); kernelQueued.clear(); } },
+      { name: 'commands', run: () => { counters.producerCancelled += queue?.clear() || 0; leases.clear(); inFlight.clear(); kernelQueued.clear(); for (const voice of voices.values()) voice.pendingLeases.clear(); } },
       ...[...voices.values()].filter(voice => !voice.submitted).map(voice => ({ name: 'unsent-voice-' + voice.id, run: () => {
         voice.kernelEnded = true; const receipt = preview._destroyVoice(voice, 'owner-stop-before-submission'); slots[voice.slot] = null; return receipt;
       } })),
@@ -548,6 +571,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, outstandingCommands: inFlight.size + (queue?.diagnostics().queued || 0), outstandingCapacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, cancellationReceipts: cancellationReceipts.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
     ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),
+    executionLeases: Object.freeze([...voices.values()].map(voice => Object.freeze({ voiceId: voice.voiceId, executionEpoch: voice.semanticEpoch,
+      generation: voice.semanticGeneration, requestedLeaseEndFrame: voice.requestedLeaseEndFrame, effectiveLeaseEndFrame: voice.effectiveLeaseEndFrame,
+      pending: voice.pendingLeases.size, failure: voice.leaseFailure, released: voice.released }))),
     awaitingKernelAdmission: inFlight.size - kernelQueued.size,
     traceCount: traces.length, truncatedTraces: truncated, cancellationHistoryFull, display: display.diagnostics(),
     commandObservers: commandObservers.size, commandObservationFailures,

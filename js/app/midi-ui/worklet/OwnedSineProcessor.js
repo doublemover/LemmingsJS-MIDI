@@ -200,7 +200,14 @@ class OwnedSineKernel {
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
       this.source?.applyUpdate(slot, mask, queue);
     } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
-    else if (opcode === LEASE) voices[at + 16] = Math.max(voices[at + 16], queue[16]);
+    else if (opcode === LEASE) {
+      // The render boundary, not producer time, owns the irreversible release cutoff.
+      if (voices[at + 18] > 0 || frame >= voices[at + 16] - voices[at + 17]) {
+        this.receipt(REJECTED, sequence, slot, token, frame, 11); return;
+      }
+      if (queue[16] <= voices[at + 16]) { this.receipt(REJECTED, sequence, slot, token, frame, 12); return; }
+      voices[at + 16] = queue[16];
+    }
     voices[at + 26] = frame; voices[at + 27] = sequence;
     this.receipt(APPLIED, sequence, slot, token, frame);
   }
