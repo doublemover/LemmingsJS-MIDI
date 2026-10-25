@@ -2,7 +2,7 @@ import { createQuarryEcho, createQuarryDuck, createQuarryTape, createQuarryTapeS
 import { ORIGINAL_IMPULSE_PRESETS } from '../../midi/content/ProceduralImpulseMaterial.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onStatus = () => {} } = {}) {
+export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onCrossExcitation = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || typeof getPlayback !== 'function' || typeof getSavedRack !== 'function' || typeof saveRack !== 'function') throw new TypeError('Quarry Echo needs the physical owner and saved project settings.');
   const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, pending = null, held = null, revision = 0, springBlend01 = 0.15, inspectionTimer = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -66,6 +66,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
       const state = await operation.promise; if (!disposed && pending === operation) say('Quarry effect prepared at owner route ' + state.revision + '. Hold THROW when physical voices are playing.'); }
     finally { if (pending === operation) pending = null; prepare.disabled = false; for (const control of controls) control.disabled = false; }
   }));
+  if (typeof onCrossExcitation === 'function') button('Interlocking lanes', () => { release(); onCrossExcitation(); });
   button('Save defaults', run(async () => { const rack = validateOwnerEffectRack({ schema: 'lemmings-owner-effect-rack/v1', graph: model(), bypass: 'active' }); await saveRack(rack); say('Quarry Echo defaults saved in this project. Live gestures remain separate from saved defaults.'); }));
   const load = () => {
     const rack = getSavedRack(); if (!rack) return;

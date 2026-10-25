@@ -1,3 +1,4 @@
+import { RingModulatorKernel } from './worklet/RingModulatorKernel.js';
 import { VocoderBankKernel } from './worklet/VocoderBankKernel.js';
 import { EnvelopeFollowerKernel } from './worklet/EnvelopeFollowerKernel.js';
 import { EnvelopeMappingKernel } from './worklet/EnvelopeMappingKernel.js';
@@ -24,6 +25,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'ring-modulator') kernel = new RingModulatorKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'multiband-vocoder') kernel = new VocoderBankKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-detector') kernel = new EnvelopeFollowerKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'envelope-mapping') kernel = new EnvelopeMappingKernel({ sampleRate, parameters: p });
@@ -78,7 +80,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       if (entry.kind === 'sidechain-in') {
         const input = record.sidechainOffset; audioPresent = sidechainPresence ? Boolean(sidechainPresence[input / 2]) : sidechainSamples !== null; a = sidechainSamples?.[input] ?? 0; b = entry.parameters.inputLayout === 'audioMono' ? 0 : sidechainSamples?.[input + 1] ?? 0;
         if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(a) > 32 || Math.abs(b) > 32) quarantine('sidechain-input-headroom', 'Sidechain input is nonfinite or exceeds its admitted audio domain.');
-      } else if (entry.kind === 'multiband-vocoder') { kernel.sample(donorLeft, donorRight, a, b, donorPresent, audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
+      } else if (entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator') { kernel.sample(donorLeft, donorRight, a, b, donorPresent, audioPresent); a = kernel.leftSample; b = kernel.rightSample; }
       else if (entry.kind === 'envelope-detector') { kernel.sample(a, b, audioPresent); a = kernel.output; b = 0; }
       else if (entry.kind === 'envelope-mapping') { kernel.sample(modulation); a = kernel.output; b = 0; }
       else if (entry.kind === 'modulated-gain') { a *= modulation; b *= modulation; }
@@ -93,7 +95,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       }
       if (kernel?.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
-      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' ? 1 : 0;
+      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' ? 1 : 0;
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);
     }
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];

@@ -7,7 +7,7 @@ export function describeEffectNodePorts(kind, parameters = {}) {
   if (kind === 'bus-in') inputs = {};
   else if (kind === 'bus-out') outputs = {};
   else if (kind === 'sidechain-in') { inputs = {}; outputs = { audio: audio(parameters.inputLayout) }; }
-  else if (kind === 'multiband-vocoder') inputs = { donorAudio: audio(parameters.donorLayout, 0), carrierAudio: audio('audioStereo', 1) };
+  else if (['multiband-vocoder', 'ring-modulator'].includes(kind)) inputs = { donorAudio: audio(parameters.donorLayout, 0), carrierAudio: audio('audioStereo', 1) };
   else if (kind === 'envelope-detector') { inputs = { audio: audio(parameters.inputLayout) }; outputs = { envelope: envelope() }; }
   else if (kind === 'envelope-mapping') { inputs = { envelope: envelope() }; outputs = { modulation: modulation() }; }
   else if (kind === 'modulated-gain') inputs = { audio: audio(), gain: modulation() };

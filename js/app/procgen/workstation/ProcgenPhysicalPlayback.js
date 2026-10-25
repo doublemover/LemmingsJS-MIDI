@@ -25,6 +25,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
+  session?.configureLaneSources?.(getLanes().map(lane => lane.id));
   const nativeBackend = session?.createInstrumentBackend?.({ gateMode: 'owned' }) || null;
   let routed = null, routingUnavailable = null;
   try { if (nativeBackend?.inspectExecution) routed = createRoutedInstrumentBackend({ defaultBackend: nativeBackend, resourceBudget, getContext: () => audio.getAudioContext(),

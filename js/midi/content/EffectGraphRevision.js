@@ -1,3 +1,4 @@
+import { prepareRingModulatorProfile, RING_MODULATOR_REVISION } from './RingModulatorProfile.js';
 import { prepareVocoderBankProfile, VOCODER_BANK_REVISION } from './VocoderBankProfile.js';
 import { describeEffectNodePorts, isAudioEffectPort } from './EffectPorts.js';
 import { prepareEnvelopeDetectorProfile, ENVELOPE_DETECTOR_REVISION } from './EnvelopeDetectorProfile.js';
@@ -27,12 +28,14 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
   const nodes = new Map(), incoming = new Map(), outgoing = new Map(); let stateBytes = 0, impulseCount = 0, impulseDecodedBytes = 0, impulseNativeEstimateBytes = 0, nonlinearCount = 0;
   for (const entry of graph.nodes) {
     keys(entry, ['id', 'kind', 'parameters', 'impulse']);
-    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'stereo-to-mono', 'multiband-vocoder'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
+    if (!id(entry.id) || nodes.has(entry.id) || !['bus-in', 'bus-out', 'gain', 'feedback-delay', 'convolution-native', 'nonlinear-chain', 'sidechain-in', 'envelope-detector', 'envelope-mapping', 'modulated-gain', 'mono-to-stereo', 'stereo-to-mono', 'multiband-vocoder', 'ring-modulator'].includes(entry.kind)) fail('Unknown, duplicate or unsupported effect processor.');
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
-    let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, vocoder = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
+    let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, vocoder = null, ring = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
     if (entry.kind === 'sidechain-in') {
       keys(entry.parameters, ['sourceBusId', 'tap', 'inputLayout']); parameters = { tap: 'pre-fader', inputLayout: 'audioStereo', ...entry.parameters };
       if (typeof parameters.sourceBusId !== 'string' || !/^(?:owner|lane:[a-zA-Z0-9._:-]{1,96})$/.test(parameters.sourceBusId) || !['pre-fader', 'post-fader'].includes(parameters.tap) || !['audioMono', 'audioStereo'].includes(parameters.inputLayout)) fail('Sidechain buses require a bounded same-owner source identity, tap and explicit audio layout.');
+    } else if (entry.kind === 'ring-modulator') {
+      ring = prepareRingModulatorProfile(entry.parameters, sampleRate); parameters = ring.parameters; bytes = ring.stateBytes; maximumTailFrames = ring.maximumTailFrames; processingLatencyFrames = ring.processingLatencyFrames;
     } else if (entry.kind === 'multiband-vocoder') {
       vocoder = prepareVocoderBankProfile(entry.parameters, sampleRate); parameters = vocoder.parameters; bytes = vocoder.stateBytes; maximumTailFrames = vocoder.maximumTailFrames;
     } else if (entry.kind === 'envelope-detector') {
@@ -61,9 +64,9 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
       maximumTailFrames = Math.ceil((impulse.asset.frames / impulse.asset.sourceSampleRate + impulse.predelaySeconds) * sampleRate);
     } else { keys(entry.parameters, []); parameters = {}; }
     stateBytes += bytes;
-    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ...(nonlinear ? { nonlinear } : {}), ...(detector ? { detector } : {}), ...(mapping ? { mapping } : {}), ...(vocoder ? { vocoder } : {}), ports: describeEffectNodePorts(entry.kind, parameters),
-      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
-      costClass: entry.kind === 'multiband-vocoder' ? 'four-biquads-and-one-linked-envelope-per-band' : entry.kind === 'envelope-detector' ? 'fixed-window-linked-envelope' : entry.kind === 'envelope-mapping' ? 'prepared-signal-rate-gain-mapping' : entry.kind === 'modulated-gain' ? 'audio-rate-external-gain-control' : entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : entry.kind === 'nonlinear-chain' ? 'bounded-polyphase-nonlinear-chain' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
+    nodes.set(entry.id, { id: entry.id, kind: entry.kind, parameters, ...(impulse ? { impulse } : {}), ...(nonlinear ? { nonlinear } : {}), ...(detector ? { detector } : {}), ...(mapping ? { mapping } : {}), ...(vocoder ? { vocoder } : {}), ...(ring ? { ring } : {}), ports: describeEffectNodePorts(entry.kind, parameters),
+      processingLatencyFrames, maximumTailFrames, stateBytes: bytes, stateCapability: ['feedback-delay', 'convolution-native', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder', 'ring-modulator'].includes(entry.kind) ? 'deterministic-preroll' : 'stateless',
+      costClass: entry.kind === 'ring-modulator' ? 'four-input-and-two-output-polyphase2-FIRs' : entry.kind === 'multiband-vocoder' ? 'four-biquads-and-one-linked-envelope-per-band' : entry.kind === 'envelope-detector' ? 'fixed-window-linked-envelope' : entry.kind === 'envelope-mapping' ? 'prepared-signal-rate-gain-mapping' : entry.kind === 'modulated-gain' ? 'audio-rate-external-gain-control' : entry.kind === 'feedback-delay' ? 'fixed-stereo-two-tap-delay' : entry.kind === 'convolution-native' ? 'shared-native-convolution' : entry.kind === 'nonlinear-chain' ? 'bounded-polyphase-nonlinear-chain' : 'native-gain-routing', qualification: 'implementation-awaiting-full-graph-qualification' });
     incoming.set(entry.id, []); outgoing.set(entry.id, []);
   }
   if (stateBytes > maxStateBytes) fail('Effect graph exceeds the admitted delay storage.');
@@ -96,14 +99,15 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     const timingInputs = Object.keys(node.ports.outputs).some(port => isAudioEffectPort(node.ports.outputs[port])) || node.kind === 'bus-out' ? signalInputs : inputs;
     const inputLatencies = timingInputs.map(edge => latency.get(edge.from.nodeId)), arrival = inputLatencies.includes(null) ? null : Math.max(0, ...inputLatencies);
     for (const edge of inputs) edge.alignmentFrames = graph.latencyPolicy === 'align-declared' && isAudioEffectPort(node.ports.inputs[edge.to.port]) && (node.kind !== 'multiband-vocoder' || edge.to.port === 'carrierAudio') ? arrival - latency.get(edge.from.nodeId) : 0;
-    const inputBound = sourceNode ? 1 : signalInputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
+    const amplitudeInputs = node.kind === 'ring-modulator' ? signalInputs.filter(edge => edge.to.port === 'carrierAudio') : signalInputs;
+    const inputBound = sourceNode ? 1 : amplitudeInputs.reduce((sum, edge) => sum + amplitude.get(edge.from.nodeId) * edge.gain01, 0);
     const gainBound = node.kind === 'gain' ? node.parameters.gainMaximum01 : node.kind === 'feedback-delay' ? 1 / (1 - node.parameters.feedbackMaximum * 1.1) : node.kind === 'convolution-native' ? node.impulse.maximumLinearGain : 1;
-    amplitude.set(key, ['envelope-detector', 'envelope-mapping'].includes(node.kind) ? 1 : node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * (node.vocoder?.maximumLinearGain ?? gainBound)); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
+    amplitude.set(key, ['envelope-detector', 'envelope-mapping'].includes(node.kind) ? 1 : node.nonlinear ? Math.min(inputBound * node.nonlinear.maximumLinearGain, node.nonlinear.maximumOutputAmplitude) : inputBound * (node.ring?.maximumLinearGain ?? node.vocoder?.maximumLinearGain ?? gainBound)); if (amplitude.get(key) > 16) fail('Compounded effect route gain exceeds its admitted headroom.');
     latency.set(key, arrival === null || node.processingLatencyFrames === null ? null : arrival + node.processingLatencyFrames); tails.set(key, Math.max(0, ...inputs.map(edge => tails.get(edge.from.nodeId) + edge.alignmentFrames)) + node.maximumTailFrames);
     if (sourceNode || inputs.some(edge => reachable.has(edge.from.nodeId))) reachable.add(key);
   }
   const sidechainInputs = [...nodes.values()].filter(node => node.kind === 'sidechain-in').map(node => node.id).sort(before);
-  if ([...nodes.values()].filter(node => node.vocoder).length > 2 || sidechainInputs.length > 8 || [...nodes.values()].filter(node => node.detector).length > 16 || [...nodes.values()].filter(node => node.mapping).length > 16) fail('Sidechain bus, detector or mapping count exceeds its prepared profile.');
+  if ([...nodes.values()].filter(node => node.ring).length > 2 || [...nodes.values()].filter(node => node.vocoder).length > 2 || sidechainInputs.length > 8 || [...nodes.values()].filter(node => node.detector).length > 16 || [...nodes.values()].filter(node => node.mapping).length > 16) fail('Sidechain bus, detector or mapping count exceeds its prepared profile.');
   const inputs = [...nodes.values()].filter(node => node.kind === 'bus-in').map(node => node.id).sort(before), outputs = [...nodes.values()].filter(node => node.kind === 'bus-out').map(node => node.id).sort(before);
   const outputLatencies = outputs.map(key => latency.get(key)), latencyFrames = outputLatencies.includes(null) ? null : Math.max(0, ...outputLatencies), maximumTailFrames = Math.max(0, ...outputs.map(key => tails.get(key)));
   const alignmentStateBytes = edges.reduce((sum, edge) => sum + (edge.alignmentFrames ? (Math.ceil(edge.alignmentFrames) + 2) * 8 : 0), 0); stateBytes += alignmentStateBytes;
@@ -114,7 +118,7 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     edges: edges.map(({ from, to, gain01 }) => ({ from, to, gain01 })).sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))) };
   canonicalDataText(definition, { maxBytes: 65536, maxNodes: 8192 });
   return freezeData({ schema: 'lemmings-effect-plan/v1', definition, sampleRate, order, nodes: order.map(key => nodes.get(key)), edges: edges.sort((a, b) => before(JSON.stringify(a), JSON.stringify(b))), inputs, outputs, sidechainInputs, latencyFrames, maximumTailFrames, stateBytes, impulseCount, impulseDecodedBytes, nonlinearCount, alignmentStateBytes,
-    processingRevisions: { delay: [...nodes.values()].some(node => node.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinear: nonlinearCount ? NONLINEAR_KERNEL_REVISION : null, alignment: alignmentStateBytes ? ALIGNMENT_KERNEL_REVISION : null,
+    processingRevisions: { ...( [...nodes.values()].some(node => node.ring) ? { ring: RING_MODULATOR_REVISION } : {}), delay: [...nodes.values()].some(node => node.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinear: nonlinearCount ? NONLINEAR_KERNEL_REVISION : null, alignment: alignmentStateBytes ? ALIGNMENT_KERNEL_REVISION : null,
       ...([...nodes.values()].some(node => node.detector) ? { detector: ENVELOPE_DETECTOR_REVISION } : {}), ...([...nodes.values()].some(node => node.mapping) ? { envelopeMapping: ENVELOPE_MAPPING_REVISION } : {}), ...([...nodes.values()].some(node => node.vocoder) ? { vocoder: VOCODER_BANK_REVISION } : {}) },
     processingCost: { vocoderBiquadsPerFrame: [...nodes.values()].reduce((sum, node) => sum + (node.vocoder?.filterCount || 0), 0), envelopeFollowersPerFrame: [...nodes.values()].reduce((sum, node) => sum + (node.vocoder?.followerCount || (node.detector ? 1 : 0)), 0), unit: 'prepared-operator-count-not-measured-CPU' },
     nativeNodeEstimateBytes: (nodes.size * 4 + edges.length) * 8192 + impulseNativeEstimateBytes, feedbackPolicy: 'only-inside-bounded-delay-operator', alignment: graph.latencyPolicy === 'align-declared' ? 'declared-processing-latency-only-linear-fractional-creative-delay-preserved' : 'disabled-unknown-native-latency',
@@ -122,4 +126,4 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     outputProtection: 'required-shared-owner-master-external-to-creative-graph' });
 }
 
-export const effectGraphHash = plan => hashData({ schema: plan.schema, definition: plan.definition, sampleRate: plan.sampleRate, processingRevisions: plan.processingRevisions, ...(plan.nodes.some(node => node.vocoder) ? { vocoderRealizations: plan.nodes.filter(node => node.vocoder).map(node => ({ id: node.id, bands: node.vocoder.bands, sumScale: node.vocoder.sumScale })) } : {}) });
+export const effectGraphHash = plan => hashData({ schema: plan.schema, definition: plan.definition, sampleRate: plan.sampleRate, processingRevisions: plan.processingRevisions, ...(plan.nodes.some(node => node.ring) ? { ringRealizations: plan.nodes.filter(node => node.ring).map(node => ({ id: node.id, filter: node.ring.filter, processingLatencyFrames: node.ring.processingLatencyFrames })) } : {}), ...(plan.nodes.some(node => node.vocoder) ? { vocoderRealizations: plan.nodes.filter(node => node.vocoder).map(node => ({ id: node.id, bands: node.vocoder.bands, sumScale: node.vocoder.sumScale })) } : {}) });

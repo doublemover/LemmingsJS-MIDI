@@ -310,6 +310,7 @@ const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
+    this.laneRouteCount = 0;
     this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routes: new Int8Array(MAX_VOICES).fill(-1), tokens: new Uint32Array(MAX_VOICES),
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
@@ -324,6 +325,7 @@ class OwnedSineProcessor extends ProcessorBase {
       }
       else if (data?.type === 'lane-route' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.slot) && data.slot >= 0 && data.slot < this.kernel.maxVoices &&
           Number.isSafeInteger(data.token) && data.token > 0 && data.token <= 0xffffffff && Number.isSafeInteger(data.route) && data.route >= -1 && data.route < LIVE_LANE_TAP_LIMIT) {
+        if (this.laneTaps.routes[data.slot] >= 0) this.laneRouteCount--; if (data.route >= 0) this.laneRouteCount++;
         this.laneTaps.routes[data.slot] = data.route; this.laneTaps.tokens[data.slot] = data.token;
       }
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
@@ -360,12 +362,12 @@ class OwnedSineProcessor extends ProcessorBase {
   process(_inputs, outputs) {
     const output = outputs[0];
     if (!output?.[0]) return true;
-    if (this.laneTaps) for (let index = 0; index < LIVE_LANE_TAP_LIMIT; index++) {
+    if (this.laneTaps && this.laneRouteCount) for (let index = 0; index < LIVE_LANE_TAP_LIMIT; index++) {
       const pre = outputs[1 + index * 2], post = outputs[2 + index * 2];
       if (!pre?.[0] || !pre[1] || !post?.[0] || !post[1] || pre[0].length !== output[0].length || post[0].length !== output[0].length) { this.kernel.panicPending = true; return false; }
       this.laneTaps.preChannels[index][0] = pre[0]; this.laneTaps.preChannels[index][1] = pre[1]; this.laneTaps.channels[index][0] = post[0]; this.laneTaps.channels[index][1] = post[1];
     }
-    this.kernel.render(output[0], output[1], globalThis.currentFrame, this.laneTaps); this.flushReceipts(); this.flushDisplay(); return true;
+    this.kernel.render(output[0], output[1], globalThis.currentFrame, this.laneRouteCount ? this.laneTaps : null); this.flushReceipts(); this.flushDisplay(); return true;
   }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-sine-v1', OwnedSineProcessor);

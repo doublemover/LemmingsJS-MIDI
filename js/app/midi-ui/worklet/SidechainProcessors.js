@@ -1,3 +1,5 @@
+import { RingModulatorKernel } from './RingModulatorKernel.js';
+import { RING_MODULATOR_REVISION } from '../../../midi/content/RingModulatorProfile.js';
 import { VocoderBankKernel } from './VocoderBankKernel.js';
 import { VOCODER_BANK_REVISION, vocoderRealizationKey } from '../../../midi/content/VocoderBankProfile.js';
 import { EnvelopeFollowerKernel } from './EnvelopeFollowerKernel.js';
@@ -45,8 +47,8 @@ export class EnvelopeFollowerProcessor extends SidechainProcessorBase { construc
 export class EnvelopeMappingProcessor extends SidechainProcessorBase { constructor(options) { super(); this.initialize(options, true); } }
 export class VocoderBankProcessor extends ProcessorBase {
   constructor(options) {
-    super(); this.kernel = new VocoderBankKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters });
-    this.revision = VOCODER_BANK_REVISION; this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = options?.processorOptions?.donorAvailable ?? null; this.carrierOverride = options?.processorOptions?.carrierAvailable ?? null;
+    super(); this.kernel = this.createKernel(options);
+    this.revision = this.runtimeRevision(); this.disposed = false; this.sourceEpoch = options?.processorOptions?.sourceEpoch ?? 0; this.donorOverride = options?.processorOptions?.donorAvailable ?? null; this.carrierOverride = options?.processorOptions?.carrierAvailable ?? null;
     this.lastInspect = -Infinity; this.reportedFaults = 0; this.faultMessage = { type: 'effect-fault', revision: this.revision, frame: 0, faults: 0 };
     this.offlineCompletion = new OfflineEffectCompletion({ endFrame: options?.processorOptions?.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate,
       revision: this.revision, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
@@ -61,12 +63,15 @@ export class VocoderBankProcessor extends ProcessorBase {
         this.lastInspect = this.kernel.frame; const kernel = this.kernel;
         this.port.postMessage({ type: 'effect-health', revision: this.revision, frame: kernel.frame, faults: kernel.faults, muted: kernel.muted,
           donorAvailable: kernel.donorAvailable, carrierAvailable: kernel.carrierAvailable, donorPeak: kernel.donorPeak, carrierPeak: kernel.carrierPeak,
-          envelopePeak: kernel.envelopePeak, bandEnvelopes: Array.from({ length: kernel.parameters.bands }, (_, i) => kernel.state[i * 9 + 8]) });
+          envelopePeak: kernel.envelopePeak, bandEnvelopes: Array.from({ length: kernel.parameters.bands || 0 }, (_, i) => kernel.state[i * 9 + 8]) });
       }
     };
     this.port.postMessage({ type: 'ready', revision: this.revision, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes,
-      configurationKey: this.kernel.identity, realizationKey: vocoderRealizationKey(this.kernel.profile) });
+      configurationKey: this.kernel.identity, ...(this.realizationKey() ? { realizationKey: this.realizationKey() } : {}) });
   }
+  createKernel(options) { return new VocoderBankKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters }); }
+  runtimeRevision() { return VOCODER_BANK_REVISION; }
+  realizationKey() { return vocoderRealizationKey(this.kernel.profile); }
   process(inputs, outputs) {
     const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
     if (this.disposed) { left.fill(0); right.fill(0); return false; }
@@ -77,7 +82,13 @@ export class VocoderBankProcessor extends ProcessorBase {
     this.offlineCompletion.observe(globalThis.currentFrame, left.length, this.kernel.faults, this.kernel.muted); return true;
   }
 }
+export class RingModulatorProcessor extends VocoderBankProcessor {
+  createKernel(options) { return new RingModulatorKernel({ sampleRate: globalThis.sampleRate, parameters: options?.processorOptions?.parameters }); }
+  runtimeRevision() { return RING_MODULATOR_REVISION; }
+  realizationKey() { return null; }
+}
 if (typeof globalThis.registerProcessor === 'function') {
+  globalThis.registerProcessor('lemmings-ring-modulator-v1', RingModulatorProcessor);
   globalThis.registerProcessor('lemmings-multiband-vocoder-v1', VocoderBankProcessor);
   globalThis.registerProcessor('lemmings-envelope-follower-v1', EnvelopeFollowerProcessor);
   globalThis.registerProcessor('lemmings-envelope-gain-map-v1', EnvelopeMappingProcessor);

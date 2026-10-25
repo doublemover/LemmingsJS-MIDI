@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add prepared Tools Talk, Rust Bloom, Footstep Air and Mirror Breath lane interactions, including shared live/offline stereo ring DSP and owned state transfers.
+
 - Publish owned live lane pre/post-fader source taps across native and Worklet instruments, with bounded shared donor routing and explicit source retirement.
 
 - Fix checkpoint replay and branch retirement, resumable survey evidence, worker source bounds, audio render cleanup, local MIDI admission accounting, and close-follower containment at source fire bridges.

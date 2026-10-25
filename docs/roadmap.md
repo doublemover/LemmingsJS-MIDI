@@ -3062,3 +3062,39 @@ API and production-kernel fixtures cover native pre/post isolation, donor sharin
 source deletion, finite capacity, slot reuse and sample-exact stereo sums at
 44.1/48/96 kHz. They are authored but deliberately unrun. Browser routing, device
 cost and listening acceptance remain deferred; this does not close those gates.
+
+
+### Continuation 151 — interlocking source recipes and real stereo ring DSP (#1165)
+
+The shared graph now includes a typed two-input bipolar ring processor. Independent
+100 Hz highpasses feed two original 2x polyphase FIR input paths, a bounded donor
+multiplier and the original FIR decimator. Source order, linked frame clock,
+16-frame FIR delay, frequency-dependent highpass phase, fixed drive, L1/output
+bounds and conservative memory/tail profiles are explicit. The live two-input
+Worklet and owned offline graph use the same binary64 kernel. Both native mixed
+graph initialization and terminal receipts check its exact coefficients/config;
+full graph identity includes the actual fixed filter realization. Complete CRC-
+protected state transfers preserve both input histories, decimator histories,
+cursors, source-presence and diagnostic frontiers, with all checks before mutation.
+
+Four original rack recipes now connect actual declared donor/carrier lane taps:
+Tools Talk's resolved 12-band 120–6000 Hz bank; Rust Bloom's stereo ring return;
+Footstep Air's filtered full-band follower; and a prepared one-way Mirror Breath
+swap. Each keeps the original owner dry path, adds a bounded carrier-only return
+and emits no semantic onsets. WHO SPEAKS, BITE and AIR use explicit prepared
+revisions; MERGE controls the active return. The route panel distinguishes source
+connection and latest DSP receipts without a new animation-rate polling loop.
+Saved defaults reuse project Undo and existing explicit saved-rack revoice; they
+do not silently journal live effect gestures. Master capture remains available.
+
+The rack is reachable from Quarry Echo's Interlocking lanes control. It stages
+route changes, supports source swaps, cancellation, bypass/tail clear and scoped
+retirement, and rejects self donors before preparing a graph. Empty source taps
+remain distinct from unavailable lanes. Processor tap summation is skipped when
+no donor is connected. Standalone APIs declare lanes even while the world is
+paused so initial preparation cannot permanently bind a false missing source.
+
+Authored fixtures cover all recipes/rates, real ring sidebands and stereo polarity,
+unchanged aligned dry output, exact state continuation, invalid/foreign state,
+source loss and Panic. Runtime, browser, spectral/listening and cost qualification
+remain deliberately deferred with the implementation-first backlog pass.
