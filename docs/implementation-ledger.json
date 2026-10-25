@@ -2438,11 +2438,21 @@
       "requirementUpdatedAt": "2026-10-22T08:58:52Z",
       "requirementSha256": "036539c9601a23ac853cdf3c1053b26fa9efc3ec6ad3ca703c8180190cfa3184",
       "initialGap": "No semantic SwarmReducer neighborhood/cohort grouping, centroid/density representation or individual-aggregate ownership handover. Backend voice limits and display aggregation are distinct.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "implemented-validation-deferred",
+      "source": [
+        "js/app/procgen/workstation/physical/SwarmReducer.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/procgen/workstation/PhysicalDomainEditor.js"
+      ],
+      "regressions": [
+        "test/procgen-swarm-reducer.test.js",
+        "scripts/bench-swarm-reducer.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "semantic-swarm-reduction-and-owned-handover",
+      "implementation": "Versioned semantic policy, stable onset neighborhood/action/cohort grouping, authored salience and bounded fairness/windows, four representations, source/count/extrema/loss references, raw-fact isolation, owned held handovers/ends, declared simpler capacity fallbacks, capture/restore and canonical scene editing. Fixtures and reducer-only environment-bound profile are written; all runtime/performance qualification deferred."
     },
     {
       "number": 1108,
@@ -3334,7 +3344,7 @@
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "New topology/relationship physical owners still need shared-budget reservations and peak composition; the audited raster replacement, asset-pressure and reentrant-reservation defects are repaired.",
+      "remaining": "Global shared resource reservations/retirement are still required for physical observers including cargo and swarm; bounded local byte/owner caps are not a substitute.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",

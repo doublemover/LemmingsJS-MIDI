@@ -1291,3 +1291,55 @@ actual tokens, roots and family budgets. Fragment remapping and causal capture v
 include the cargo domain. Written regressions use real walking/blocker actions to
 vary delivery time, plus copy/swap, checkpoint, expiry, gap and no-delivery fixtures.
 Those regressions and the cargo profile remain **unrun**.
+
+### Semantic swarm reduction before output budgets
+
+`physicalGraph.swarm` is a versioned, backend-independent interpretation policy:
+`representation` is `individual`, `centroidChord`, `densityCloud`, or
+`representativeStrikes`; `groupBy` selects onset neighborhood/action/cohort,
+lane, mapping, and/or role. Routes never coalesce. `windowInSimTime` is an
+integer simulation-tick window (1–600), not a wall-clock timer. Authored
+`priorityRules` match source kind, role, mapping, action, or lane; ties use
+stable identities and least-recently-served groups. The scene editor stages a
+64-voice density policy with explicit cadence/route/contact salience, and its
+inspection reports requested versus represented events, raw coverage, owners,
+rolling state and capacity fallbacks. JSON editing uses the existing canonical
+revision/Undo boundary rather than an independent live configuration.
+
+The engine admits up to 4096 raw physical begins before this semantic policy;
+its default legacy source cap remains unchanged when reduction is absent.
+Individual mode selects exact source voices. Centroid mode allocates a mean,
+minimum, maximum and bounded intermediate chord; density mode represents a
+group's actual activity with a bounded mean-pitch texture; representative mode
+selects an authored-salience physical source. Each intent carries source count,
+actor/cohort/root set references, covered source time, extrema *as metadata*,
+and explicit detail loss. Bounded sampled references are not claimed complete
+root lists or cryptographic identities: the unchanged physical journal is the
+source of truth. Aggregate textures are never described as exact replay.
+
+Held physical owners and audible aggregate owners are separate. A policy
+handover first ends previous audible identities, then explicitly revoices
+still-held physical sources at the handover boundary; it is not a new physical
+strike. Every physical end is consumed, and the last aggregate member ends its
+owned voice. Omitted held voices do not autonomously restart when capacity
+opens. No rolling-window timer creates an attack, and no backend receipt,
+transport, mute, or DSP admission participates in reduction decisions.
+
+Bounds are 4096 held sources (4 MiB), 512 retained groups, 4096 tick buckets,
+512 audible voices (2 MiB), 4 MiB transient source records, and an 8 MiB serialized
+continuation. Neighborhood/action/cohort bindings are fixed at the physical
+onset rather than silently retriggering moving actors. Group/window/source
+capacity selects declared representative-strike fallback with bounded rotating
+priority-band coverage; owner-byte refusal further reduces to one explicitly
+lossy bounded representative strike. Window state retires with simulation time,
+not total session duration. Full reducer continuation, including a pending
+policy handover, is included in physical capture profile v11 and engine replay
+identity v5. Raw journal thinning remains a separate coverage outcome.
+
+`test/procgen-swarm-reducer.test.js` covers the 4096-strike/1024-lane/64-voice
+case, order/backend independence, priority/fairness, held handovers and terminal
+ownership, restore, quiet-state retirement and raw-fact isolation.
+`scripts/bench-swarm-reducer.mjs` profiles these four modes independently of DSP,
+records environment/source identity, p95/max timing, retained heap delta and
+retirement. Both are implemented but **not run**; no timing, allocation,
+browser or acoustic qualification is asserted.
