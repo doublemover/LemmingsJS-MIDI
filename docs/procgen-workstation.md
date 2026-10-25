@@ -250,3 +250,16 @@ historical performance or certify acoustic output. Initial rehearsal admission
 supports up to eight local assetless lanes. Sampled and shared-body scenes need
 additional complete material adapters. Independent render, listening and device
 qualification remain pending.
+
+
+The seed lab's **Observed travel audio → modal body** recipe requires an actual
+committed local signed-axis journey mapping. Select that mapping, set original
+source frames per world pixel and declare the body's tuning independently.
+The physical editor can stage a suitable mapping for review and saving. Actor
+motion drives the frozen source cursor; stopping motion stops new body excitation
+while its existing tail decays. Direction reversal traverses the source back under
+the same semantic voice. Reflection is driven by observed coordinates and is not
+a background loop. Missing/discontinuous travel follows the existing end-voice
+policy. The compact anatomy keeps EXCITER, BODY and PICKUP/MIX separate, and saved
+patches retain exact component and traversal references. Audition uses an explicitly
+labeled control fixture; actual physical rendering and listening remain unqualified.

@@ -1,12 +1,15 @@
 import { expect } from 'chai';
 import { createSoundSeedGraftRecipe } from '../../js/midi/content/SoundSeedGraftRecipe.js';
-import { prepareFeedforwardGraftDescriptor } from '../../js/midi/content/InstrumentGraft.js';
+import { prepareFeedforwardGraftDescriptor, prepareObservedMotionGraftDescriptor, createMotionBodyTraversalBinding } from '../../js/midi/content/InstrumentGraft.js';
+import { sampleTraversalBinding, sampleTravelGraph } from '../helpers/sampleTraversal.js';
+import { prepareSampleBodyProfile } from '../../js/midi/content/SampleBodyProfile.js';
+import { OwnedSampleBody } from '../../js/app/midi-ui/worklet/OwnedSampleBody.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
 import { OwnedSampleKernel } from '../../js/app/midi-ui/worklet/OwnedSampleProcessor.js';
 import { OWNED_SAMPLE_STATE_WIDTH } from '../../js/app/midi-ui/worklet/OwnedSampleSource.js';
 import { SAMPLE_LAYOUT } from '../../js/app/midi-ui/OwnedSourceLayout.js';
-import { BEGIN, END, APPLIED, REJECTED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+import { BEGIN, UPDATE, END, APPLIED, REJECTED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
 import { computeOwnedSourceBank } from '../../js/app/resources/OwnedSourceBankComputation.js';
 import { createOwnedPcmSetDescriptor } from '../../js/app/resources/OwnedPcmSetVerification.js';
 import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from '../../js/app/midi-ui/worklet/OwnedSourceState.js';
@@ -36,6 +39,38 @@ describe('finite sample excitation into an owned modal body (runtime qualificati
       parameters: { releaseSeconds: 0.01, graftModeCount: 4, graftEnergyBudget: energy, graftSupportSeconds: 0.25 }, voicePolicy: { maxVoices: 2 } };
   };
   const create = (material = pcm, energy = 1) => new OwnedSampleKernel(48000, material, patch(energy), 2, bank);
+  const motionPatch = () => { const value = patch(); value.parameters.graftExcitationMode = 1; value.sampleMap.zones[0].playbackMode = 'positionDriven'; value.sampleMap.zones[0].positionPolicy = { boundary: 'reflect', interpolation: 'linear', slewSeconds: 0.01, maximumReadDerivative: 4, crossfadeFrames: 0, gainLaw: 'linear', traversal: sampleTraversalBinding() }; return value; };
+  const moving = (material = pcm) => new OwnedSampleKernel(48000, material, motionPatch(), 2, bank);
+  const position = (frame, end, sequence = 2, from = 0, to = 4096) => packet(UPDATE, frame, sequence, { 15: 8, 18: frame, 19: end, 20: from, 21: to, 22: sequence - 1, 23: 0 });
+  it('waits silently for actual cursor input beyond finite support and retains only the admitted body tail at rest', () => {
+    const kernel = moving(); submit(kernel, [packet(BEGIN, 0, 1), position(50000, 52048), packet(END, 60000, 3)]);
+    expect(render(kernel, 50000).every(plane => plane.every(value => value === 0))).to.equal(true); const driven = render(kernel, 2400);
+    expect(driven.some(plane => plane.some(value => Math.abs(value) > 1e-10))).to.equal(true); const before = kernel.source.inspect().voices[0].body;
+    expect(before).to.include({ excitationMode: 1, injectedEnergy: null, energyBudget: null, calibrationExceeded: false }); expect(before.maximumObservedInputPeak).to.be.at.most(1);
+    const tail = render(kernel, 3000); expect(tail.some(plane => plane.some(value => Math.abs(value) > 1e-12))).to.equal(true);
+    const quiet = moving(silent); submit(quiet, [packet(BEGIN, 0, 1), position(0, 2048), packet(END, 3000, 3)]); expect(render(quiet, 6000).every(plane => plane.every(value => value === 0))).to.equal(true);
+  });
+  it('restores moving source, DC and private modal state without changing future PCM', () => {
+    const first = moving(), restored = moving(); submit(first, [packet(BEGIN, 0, 1), position(0, 2048), position(2048, 4096, 3, 4096, 0), packet(END, 5000, 4)]); render(first, 1234);
+    const bytes = new Uint8Array(ownedSourceStateBytes(first)); writeOwnedSourceState(first, bytes, identity); restoreOwnedSourceState(restored, bytes, identity); expect(render(restored, 8192)).to.deep.equal(render(first, 8192));
+  });
+  it('keeps two same-pitch journey bodies independent when only one has observed input', () => {
+    const kernel = moving(); submit(kernel, [packet(BEGIN, 0, 1), packet(BEGIN, 0, 2, { 4: 1, 5: 2 }), position(0, 2048, 3)]); render(kernel, 1000);
+    const voices = kernel.source.inspect().voices; expect(voices).to.have.length(2); expect(voices.find(voice => voice.slot === 0).body.maximumObservedInputPeak).to.be.greaterThan(0); expect(voices.find(voice => voice.slot === 1).body.maximumObservedInputPeak).to.equal(0);
+    expect(results(kernel).filter(receipt => receipt[0] === APPLIED && receipt[1] <= 2)).to.have.length(2);
+  });
+  it('stops a violated normalized input contract without erasing the already excited body', () => {
+    const profile = prepareSampleBodyProfile({ graftModeCount: 4, graftExcitationMode: 1 }, 48000), state = new Float64Array(OWNED_SAMPLE_STATE_WIDTH), body = new OwnedSampleBody(profile, state, OWNED_SAMPLE_STATE_WIDTH, 1); body.begin(0, 440, packet(BEGIN, 0, 1), 0);
+    body.sample(0, 0, 0.8, -0.4, true); body.sample(0, 1, 1.1, 0, true); expect(body.inspect(0, 2).calibrationExceeded).to.equal(true); let amplitude = 0;
+    for (let frame = 2; frame < 100; frame++) { body.sample(0, frame, 0, 0, true); amplitude += Math.abs(body.left) + Math.abs(body.right); } expect(amplitude).to.be.greaterThan(0); expect(body.inspect(0, 100).maximumObservedInputPeak).to.be.at.most(1);
+    body.validate(0, index => state[index]);
+  });
+  it('retains a canonical release frontier after a finite body has expired and accepts the exact damping endpoint', () => {
+    const profile = prepareSampleBodyProfile({ graftModeCount: 4 }, 48000), state = new Float64Array(OWNED_SAMPLE_STATE_WIDTH), body = new OwnedSampleBody(profile, state, OWNED_SAMPLE_STATE_WIDTH, 1);
+    body.begin(0, 440, packet(BEGIN, 0, 1, { 35: 0.02, 36: 1 }), 0); expect(() => body.validate(0, index => state[index])).not.to.throw();
+    const last = profile.supportFrames + profile.maximumTailFrames + 100; body.sample(0, last, 0, 0); body.release(0, 64, last + 1, false, last + 1000);
+    expect(() => body.validate(0, index => state[index], { released: true, releaseFrame: last + 1 })).not.to.throw();
+  });
   it('has no backing oscillator for a silent source and rings after an actual source release', () => {
     const quiet = create(silent); submit(quiet, [packet(BEGIN, 0, 1), packet(END, 128, 2)]); expect(render(quiet, 5000).every(plane => plane.every(value => value === 0))).to.equal(true);
     const actual = create(); submit(actual, [packet(BEGIN, 0, 1), packet(END, 128, 2)]); render(actual, 3000); const [tail] = render(actual, 1000);
@@ -71,5 +106,10 @@ describe('finite sample excitation into an owned modal body (runtime qualificati
       expect(patch.macros.map(macro => macro.name)).to.deep.equal(['EXCITE', 'BODY', 'DAMP', 'MIX']); expect(recipe.contract.graft.articulationPolicy).to.include('one-semantic-source');
       expect(() => prepareFeedforwardGraftDescriptor({ ...recipe.contract.graft, exciterRef: { port: 'detector-envelope', assetHash: hash } })).to.throw('detector envelopes');
     }
+    const traversalBinding = createMotionBodyTraversalBinding(sampleTravelGraph().instruments[0], { framesPerWorldPixel: 20 }), movingRecipe = await createSoundSeedGraftRecipe({ manifest, assetHash: hash, byteLength: 100000, pitch: { mode: 'pitched', rootCents: 6000 }, graftBody: 'wood', transform: 'motion-body-graft', traversalBinding });
+    const result = await compileSoundContent(movingRecipe.source, { targets: descriptors.map(descriptor => ({ descriptor })) }), definition = result.prepared.patches[0].definition;
+    expect(definition.parameters.graftExcitationMode).to.equal(1); expect(definition.sampleMap.zones[0].playbackMode).to.equal('positionDriven'); expect(definition.sampleMap.zones[0].positionPolicy.traversal).to.deep.equal(traversalBinding); expect(movingRecipe.contract.graft.requiredCapabilities).to.include('feedforwardMotionBody');
+    expect(() => prepareObservedMotionGraftDescriptor({ ...movingRecipe.contract.graft, exciterRef: { port: 'detector-envelope', assetHash: hash } })).to.throw('Detector');
+    expect(() => createMotionBodyTraversalBinding({ ...sampleTravelGraph().instruments[0], route: 'midi' })).to.throw('actual local');
   });
 });

@@ -1,6 +1,6 @@
 import { freezeData } from '../../core/CanonicalData.js';
 
-export const SAMPLE_BODY_REVISION = 'finite-sample-modal-feedforward-v1';
+export const SAMPLE_BODY_REVISION = 'finite-or-observed-motion-modal-feedforward-v2';
 export const SAMPLE_BODY_STATE_OFFSET = 48;
 export const SAMPLE_BODY_CONTROL_SCALARS = 20;
 export const SAMPLE_BODY_MODE_STRIDE = 8;
@@ -9,8 +9,9 @@ const finite = (value, low, high) => Number.isFinite(value) && value >= low && v
 const fail = message => { throw new TypeError('Sample body: ' + message); };
 
 export function prepareSampleBodyProfile(parameters = {}, sampleRate) {
-  const count = parameters.graftModeCount ?? 0;
+  const count = parameters.graftModeCount ?? 0, excitationMode = parameters.graftExcitationMode ?? 0;
   if (!Number.isInteger(count) || count < 0 || count > SAMPLE_BODY_MAX_MODES) fail('mode count exceeds the prepared body tier');
+  if (![0, 1].includes(excitationMode) || !count && excitationMode) fail('motion excitation requires a prepared body and its explicit source contract');
   if (!count) return null;
   const energyBudget = parameters.graftEnergyBudget ?? 1, supportSeconds = parameters.graftSupportSeconds ?? 0.25;
   if (![44100, 48000, 96000].includes(sampleRate) || !finite(energyBudget, 1e-9, 1000000) || !finite(supportSeconds, 0.001, 0.5)) fail('excitation needs a declared finite energy/support calibration');
@@ -22,11 +23,12 @@ export function prepareSampleBodyProfile(parameters = {}, sampleRate) {
     maximumL1 += Math.max(Math.abs(pickupA), Math.abs(pickupB)); return { ratio, t60Scale, pickupA, pickupB };
   });
   if (maximumL1 < 1e-10) fail('the prepared observation is silent');
-  return freezeData({ revision: SAMPLE_BODY_REVISION, count, modes, maximumL1: Math.max(1, maximumL1), energyBudget, supportFrames: Math.ceil(supportSeconds * sampleRate), sampleRate,
-    dcPole: Math.exp(-2 * Math.PI * 20 / sampleRate), maximumTailFrames: sampleRate * 4, outputGain: 0.4,
-    policy: 'next-onset-only;finite-audio-excitation;independent-body-tail', observation: 'authored-signed-mode-weights;not-geometric-pickup',
-    stability: 'contractive-complex-rotation;injection-sqrt(1-r^2)/sqrt(declared-input-energy);L1-bounded-observation',
-    calibrationOverflow: 'cap-final-injection-and-stop-body-input;retain-tail-and-diagnostic;dry-path-independent' });
+  return freezeData({ revision: SAMPLE_BODY_REVISION, count, modes, maximumL1: Math.max(1, maximumL1), excitationMode, energyBudget, supportFrames: excitationMode ? 0 : Math.ceil(supportSeconds * sampleRate), sampleRate,
+    dcPole: Math.exp(-2 * Math.PI * 20 / sampleRate), maximumTailFrames: sampleRate * 4, outputGain: 0.4, denormalFloor: 1e-24,
+    inputPeakBound: 1, accumulatorBound: excitationMode ? 1 : energyBudget,
+    policy: excitationMode ? 'next-onset-only;observed-motion-audio-excitation;independent-body-tail' : 'next-onset-only;finite-audio-excitation;independent-body-tail', observation: 'authored-signed-mode-weights;not-geometric-pickup',
+    stability: excitationMode ? 'contractive-complex-rotation;injection=(1-r)/(2*sqrt(2)*owned-normalized-input-peak);DC-L1-bound=2;stereo-state-L2<=1' : 'contractive-complex-rotation;injection-sqrt(1-r^2)/sqrt(declared-input-energy);L1-bounded-observation',
+    calibrationOverflow: excitationMode ? 'peak-bound-violation-stops-body-input;retain-tail-and-diagnostic;dry-path-independent' : 'cap-final-injection-and-stop-body-input;retain-tail-and-diagnostic;dry-path-independent' });
 }
 
 export function acceptsSampleBodyOnset(profile, frequency, controls) {

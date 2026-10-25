@@ -38,7 +38,7 @@ export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
 
 const nativeComponents = descriptor => {
   const roles = descriptor.engineId === 'worklet-sample' ? {
-    exciter: ['sampleLowpassHz', 'sampleVelocityTone01', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'], resonator: descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft') && !['graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'].includes(id)), envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
+    exciter: ['sampleLowpassHz', 'sampleVelocityTone01', 'graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'], resonator: descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft') && !['graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'].includes(id)), envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-granular' ? {
     exciter: ['pitchRatio', 'regionStart01', 'regionEnd01', 'motionRequired', 'reverse', 'rootHz'],
     resonator: ['position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'],

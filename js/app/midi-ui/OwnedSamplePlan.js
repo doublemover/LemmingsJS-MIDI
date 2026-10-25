@@ -5,7 +5,7 @@ import { prepareSampleCursorProfile } from '../../midi/content/SampleCursorProfi
 import { sampleRegionRate, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 
-export const OWNED_SAMPLE_PLAN_REVISION = 'owned-sample-region-plan-v1';
+export const OWNED_SAMPLE_PLAN_REVISION = 'owned-sample-region-plan-motion-body-v2';
 export const OWNED_SAMPLE_VOICES = 2;
 export const OWNED_SAMPLE_CURSOR_CAPACITY = 32;
 const fail = message => { throw Object.assign(new Error(message), { name: 'OwnedSamplePreflightError', code: 'owned-sample-preflight' }); };
@@ -42,7 +42,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       positionSeam, traversal: policy?.traversal ?? null,
       filterGuard: 'clamp-actual-region-sample-indices', periodDomain: 'fractional-decoded-source-frames;crossfade-does-not-shorten-loop' });
   };
-  if (body && map.zones.some(zone => zone.playbackMode !== 'forward' || zone.loop || zone.releaseRegion)) fail('A finite sample-body graft requires forward one-shot excitation without loops or release-trigger material.');
+  if (body && map.zones.some(zone => zone.loop || zone.releaseRegion || (body.excitationMode ? zone.playbackMode !== 'positionDriven' || !zone.positionPolicy?.traversal : zone.playbackMode !== 'forward'))) fail('A body graft requires its exact finite one-shot or canonical-motion cursor source without loop/release-trigger children.');
   const entries = map.zones.map(zone => freezeData({ zoneId: zone.id, attack: compile(zone), release: zone.releaseRegion ? compile(zone.releaseRegion, true) : null }));
   const byZone = new Map(entries.map((entry, index) => [entry.zoneId, index]));
   let cursorBytes = 0, cursorTransferBytes = 0, cursorCount = 0;
@@ -67,7 +67,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       if (entry.attack.mode === 'positionDriven' && offset !== 0) fail('Position-driven varispeed uses observed cursor derivative; an independent pitch offset is unavailable.');
       return freezeData({ zoneIndex, region, velocity01: intent.velocity01, rateRatio: attack.ratio, readDerivative: entry.attack.mode === 'reverse' ? -attack.derivative : entry.attack.mode === 'positionDriven' ? 0 : attack.derivative,
         releaseRateRatio: release?.ratio ?? null, releaseReadDerivative: release?.derivative ?? null,
-        articulation: { ...sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04), ...(body ? { bodyTailSeconds: 4, policy: 'finite-exciter-plus-independent-body;bounded-four-second-tail' } : {}) },
+        articulation: { ...sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04), ...(body ? { bodyTailSeconds: 4, policy: body.excitationMode ? 'observed-motion-exciter-plus-independent-body;bounded-four-second-release-tail' : 'finite-exciter-plus-independent-body;bounded-four-second-tail' } : {}) },
         pitchPolicy: entry.attack.mode === 'positionDriven' ? 'note-selects-zone;observed-position-derivative-owns-varispeed-pitch' : entry.attack.pitchTracking === 'fixed' ? 'unpitched-fixed-source-rate;note-selects-zone-only' : 'independent-varispeed-ratio',
         evidenceClass: 'prepared-source-region-selection', acousticReceipt: false });
     }, rateFor

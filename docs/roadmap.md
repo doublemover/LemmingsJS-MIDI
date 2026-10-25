@@ -4684,3 +4684,46 @@ fixtures has executed in this frontloaded pass. Only format, syntax, provenance
 and limited critical typecheck checks are used. An observed comparison result,
 degenerate-subspace support, larger refined shape families, geometric pickup fields,
 physical scene lessons and listening/device qualification remain pending.
+
+
+### Continuation 193 — observed travel audio into private modal bodies (#1216, #1233)
+
+The ordinary owned sampler now supports a second explicit one-way body template:
+canonical signed journey travel drives frozen audio into a private modal body.
+The existing sample cursor owns direction, reflection, rest, missing coverage and
+frame segments. Only actual cursor motion can admit body input; there is no time
+oscillator, invented travel accumulator or periodic source. Rest closes the drive
+and clears only the exciter DC memory; existing modal state continues its decay.
+Semantic end admits the existing bounded four-second body tail. Same-pitch actors
+retain separate cursor, DC, calibration, modal and retirement state.
+
+This source uses the sampler reader's verified peak normalization rather than a
+fictional finite-energy budget for an indefinitely held gesture. Each modal
+injection is (1-r)/(2*sqrt(2)*inputPeak), combining the DC filter's L1 bound of two
+with a bounded stereo input. Positive radii contract and the signed L1 pickup
+remains bounded. A violated input-peak contract latches further body input off,
+retains the tail and reports the fault; the dry path remains independent.
+Finite sample grafts retain their energy-capped support policy. Exact cuts include
+the actual semantic release frontier and reject another prepared source policy.
+No per-sample allocation or extra semantic source is introduced.
+
+Typed descriptors distinguish observed audio, detector and sealed-feedback ports.
+The compiler produces an ordinary saved sampler patch with pinned source/body/
+observation references, exact traversal binding and EXCITE/BODY/DAMP/MIX macros.
+The seed lab selects a committed local sustained signed-axis journey mapping and
+an explicit source-frames/world-pixel scale. A physical-editor helper stages that
+mapping for review; it does not move actors or start output. New body tuning stays
+separate from source varispeed. Original frozen PCM and baked ancestry are retained.
+The selected derived rebuild path carries the exact traversal binding into its
+separate branch instead of silently replacing the source's physical contract.
+
+Sampler source/profile revisions and its worklet's actual runtime identity advance
+together. Fixed footprints, source/voice admission, command transport, cue ownership,
+old-tail replacement and offline/state-cut rendering keep their existing owners.
+Authored fixtures cover silence without motion, input after the finite-support
+window, motion/rest/tail, independent actors, peak violation, exact restored PCM,
+typed rejection, canonical mapping and ordinary pack compilation. They remain
+unrun. Only formatting, syntax/provenance and limited critical typecheck checks
+are used in this development pass. Procedural sand/cloth-to-body variants, sealed
+bow/reed outer-body templates, the complete Nursery scene, matched-level spectra,
+listening and device qualification remain pending.

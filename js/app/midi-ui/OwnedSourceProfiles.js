@@ -54,7 +54,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
 };
 const profiles = Object.freeze({
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
-    buildId: 'owned-sample-v5-feedforward-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
+    buildId: 'owned-sample-v6-motion-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
     cost: parameters => 32 + (parameters.graftModeCount || 0) * 2, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
     acceptsExpression: (expression, voice) => !voice.sourceValues?.graftModeCount || expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,

@@ -37,7 +37,7 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
         const bundle = operation.bundle = { scope: createProcgenRetirementScope(), workspace, analysis: null, components: null, modal: null, instrument: null, asset: null, target, summary: null };
         const options = { resourceBudget, jobs, onState: report };
         bundle.analysis = createSoundSeedAnalysisOwner(options); bundle.components = createSoundSeedDerivedOwner(options); bundle.modal = createSoundSeedDerivedOwner({ ...options, kind: 'body-fit' });
-        bundle.instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB, keyRange, getCatalog, onState: report, onReveal,
+        bundle.instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB, keyRange, getCatalog, getTargetIdentity, onState: report, onReveal,
           onApply: (candidate, request) => { if (disposed || identity() !== target) throw fail('The target changed after this derived branch was prepared.'); return onApply(candidate, request); } });
         check(); await bundle.analysis.selectSource(replacement); check();
         const base = await bundle.analysis.prepare({ firstFrame: plan.parentRegionFrames[0], endFrame: plan.parentRegionFrames[1], fades: plan.fades, signal: operation.controller.signal, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
@@ -51,7 +51,7 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
         }
         bundle.asset = plan.transform === 'modal-body' ? modalParent : plan.selectedMaterial === 'original' ? base : plan.selectedMaterial.startsWith('modal-') ? bundle.modal.component(plan.selectedMaterial) : bundle.components.component(plan.selectedMaterial);
         if (!bundle.asset?.metadata().assetReady) throw fail('The selected rebuilt material was not prepared.');
-        phase = 'compiling-derived-branch'; report(); await bundle.instrument.prepare(bundle.asset, { transform: plan.transform, graftBody: plan.graftBody, pitch: plan.pitch, modalFit: bundle.modal.state().analysis, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
+        phase = 'compiling-derived-branch'; report(); await bundle.instrument.prepare(bundle.asset, { transform: plan.transform, graftBody: plan.graftBody, traversalBinding: plan.traversalBinding, pitch: plan.pitch, modalFit: bundle.modal.state().analysis, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
         bundle.summary = freezeData({ schema: 'lemmings-prepared-seed-branch/v1', planHash: plan.planHash, generation: operation.generation, originalAssetHash: plan.originalAssetHash,
           newRegionAssetHash: base.metadata().assetHash, newSelectedAssetHash: bundle.asset.metadata().assetHash, selectedMaterial: plan.selectedMaterial,
           contentHash: bundle.instrument.state().contentHash, patchIdentity: bundle.instrument.state().patchIdentity, sourceTake: plan.sourceTake, sourceProfile: plan.sourceProfile,

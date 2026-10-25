@@ -1,3 +1,4 @@
+import { createMotionBodyTraversalBinding } from '../../midi/content/InstrumentGraft.js';
 import { planSoundSeedRebuild } from '../../midi/content/SoundSeedRebuildPlan.js';
 import { createSoundSeedRebuildOwner } from './SoundSeedRebuildOwner.js';
 import { createSoundSeedDerivedOwner } from './SoundSeedDerivedOwner.js';
@@ -7,7 +8,7 @@ import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplay
 import { deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createSoundSeedLabView({ document, window, audio, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, onStatus = () => {} } = {}) {
+export function createSoundSeedLabView({ document, window, audio, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
   let analysis, instrument, derived, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
@@ -27,7 +28,11 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   const transform = select('Seed recipe', [['hammer-seed', 'Hammer seed · new contact'], ['ice-dust', 'Ice dust · granular tail'], ['route-relic', 'Route relic · recorded phrase']]);
   { const option = node('option', 'Found body · fitted modal approximation'); option.value = 'modal-body'; transform.append(option); }
   { const option = node('option', 'Finite sample → modal body graft'); option.value = 'feedforward-graft'; transform.append(option); }
+  { const option = node('option', 'Observed travel audio → modal body'); option.value = 'motion-body-graft'; transform.append(option); }
   const graftBody = select('Graft body component', [['tin', 'Original tin modal body · 6 modes'], ['wood', 'Original dry wood modal body · 4 modes'], ['fitted', 'Current reviewed fitted body']]);
+  const travelMapping = select('Committed local travel mapping', []), travelScale = numeric('Source frames per world pixel', 100, 0.000001, 1000000); travelScale.step = '0.1';
+  const refreshTravelChoices = () => { const old = travelMapping.value; travelMapping.replaceChildren(); const mappings = getTravelMappings().slice(0, 512); for (const mapping of mappings) { const option = node('option', mapping.id + ' · ' + mapping.articulation.orientation); option.value = mapping.id; travelMapping.append(option); } if (!mappings.length) { const option = node('option', 'No supported committed local journey mapping'); option.value = ''; travelMapping.append(option); } else if (mappings.some(mapping => mapping.id === old)) travelMapping.value = old; };
+  const currentTraversalBinding = () => transform.value === 'motion-body-graft' ? createMotionBodyTraversalBinding(getTravelMappings().find(mapping => mapping.id === travelMapping.value), { framesPerWorldPixel: Number(travelScale.value) }) : null; refreshTravelChoices();
   const pitch = select('Pitch declaration', [['unpitched', 'Unpitched · fixed source rate'], ['pitched', 'Declared root · varispeed']]), rootPitch = numeric('Declared root · MIDI cents', 6000, 2400, 9600);
   const zoom = select('Waveform zoom', [['1', 'Whole prepared window'], ['2', '2×'], ['4', '4×'], ['8', '8×']]), viewFirst = numeric('Waveform first local frame', 0);
   const auditionMode = select('Audition repeat', [['1', 'Once'], ['3', 'Explicit loop · 3 passes, up to 8s per sample pass']]);
@@ -43,7 +48,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   const rebuildPage = node('details'), rebuildTitle = node('summary', 'REVOICE BRANCH · keep frozen material or rebuild selected descendants'), rebuildInfo = node('output'), branchCanvas = node('canvas'); branchCanvas.width = 960; branchCanvas.height = 96;
   rebuildPage.className = 'studio-seed-rebuild'; branchCanvas.setAttribute('role', 'img'); branchCanvas.setAttribute('aria-label', 'Prepared rebuilt material waveform; original frozen seed remains unchanged');
   rebuildPage.append(rebuildTitle, node('p', 'Revoicing creates new material. Existing seeds and other project references retain their original PCM. Only a matching immutable take, rate, tap and complete selected interval can rebuild this closure.'), rebuildInfo, branchCanvas);
-  const anatomy = node('div'); anatomy.className = 'studio-graft-anatomy'; anatomy.setAttribute('aria-label', 'Typed sound anatomy'); const exciterSlot = node('span'), bodySlot = node('span'), pickupSlot = node('span'); anatomy.append(exciterSlot, node('span', '→'), bodySlot, node('span', '→'), pickupSlot, node('p', 'EXCITE multiplies finite input. BODY sets amplitude T60. DAMP multiplies T60 by (1 − 0.9 × DAMP). MIX blends dry sample and body observation. Existing voices keep their prepared components.'));
+  const anatomy = node('div'); anatomy.className = 'studio-graft-anatomy'; anatomy.setAttribute('aria-label', 'Typed sound anatomy'); const exciterSlot = node('span'), bodySlot = node('span'), pickupSlot = node('span'); anatomy.append(exciterSlot, node('span', '→'), bodySlot, node('span', '→'), pickupSlot, node('p', 'EXCITE multiplies the admitted finite or observed-motion input. BODY sets amplitude T60. DAMP multiplies T60 by (1 − 0.9 × DAMP). MIX blends dry sample and body observation. Existing voices keep their prepared components. Observed travel gates the cursor input; rest leaves the existing body to decay. A committed local signed-axis journey mapping is required for the travel template.'));
   const actions = node('div'); actions.className = 'studio-sound-actions';
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
   const refresh = () => surface?.invalidate();
@@ -57,6 +62,8 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   const invalidateModal = () => { modalRevision++; compiledDraft = -1; rebuildPlan = null; rebuild.stop(); modal.cancel(); instrument.stop(); refresh(); };
   const invalidateTrim = () => { rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); derivedSelection = null; derivedDraft = -1; derived.cancel(); draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
   const invalidateRecipe = () => { rebuildPlan = null; rebuild.stop(); recipeDraft++; compiledDraft = -1; instrument.stop(); refresh(); };
+  const refreshTravelButton = button('Refresh committed travel mappings', () => { refreshTravelChoices(); invalidateRecipe(); });
+  listen(transform, 'change', refreshTravelChoices);
   const nudge = (input, amount) => () => { input.value = String(Math.max(Number(input.min), Math.min(Number(input.max), Number(input.value) + amount))); trimIn.value = first.value; trimOut.value = end.value; invalidateTrim(); };
   button('In −1 frame', nudge(first, -1)); button('In +1 frame', nudge(first, 1)); button('Out −1 frame', nudge(end, -1)); button('Out +1 frame', nudge(end, 1));
   const prepare = button('Freeze selected region', run(async () => {
@@ -68,7 +75,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   const compile = button('Compile seed instrument', run(async () => {
     if (candidateDraft !== draft || modalSelection && (modalDraft !== draft || preparedModalRevision !== modalRevision)) throw new Error('Freeze or refit the edited material before compiling.');
     const revision = draft, recipeRevision = recipeDraft, fitRevision = modalRevision;
-    await instrument.prepare(chosenCandidate(), { modalFit: (transform.value === 'modal-body' || transform.value === 'feedforward-graft' && graftBody.value === 'fitted') && modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, transform: transform.value, graftBody: graftBody.value, pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' },
+    await instrument.prepare(chosenCandidate(), { modalFit: (transform.value === 'modal-body' || ['feedforward-graft', 'motion-body-graft'].includes(transform.value) && graftBody.value === 'fitted') && modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, transform: transform.value, graftBody: graftBody.value, traversalBinding: currentTraversalBinding(), pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' },
       isCurrent: () => revision === draft && recipeRevision === recipeDraft && fitRevision === modalRevision });
     compiledDraft = recipeRevision; say('Instrument compiled. Audition this exact revision before saving and applying it.');
   }));
@@ -142,7 +149,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     const selectedSerial = offeredSerial;
     const plan = await planSoundSeedRebuild({ seed: analysis.candidate(), replacement: offeredSource, components: derivedDraft === draft ? derived.state().analysis : null,
       modal: modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, selectedMaterial: modalSelection || derivedSelection || 'original',
-      transform: transform.value, graftBody: graftBody.value, pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' } });
+      transform: transform.value, graftBody: graftBody.value, traversalBinding: currentTraversalBinding(), pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' } });
     if (selectedSerial !== offeredSerial) return; rebuildPlan = plan; refresh();
   }));
   const buildBranch = button('Prepare selected derived branch', run(async () => {
@@ -188,13 +195,13 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   function paint() {
     if (disposed || !analysis || !instrument || !derived || !modal || !rebuild) return; const a = analysis.state(), i = instrument.state(), d = derived.state(), m = modal.state(), branch = rebuild.state(), candidate = chosenCandidate(), meta = candidate?.metadata(), validAsset = !!meta?.assetReady && candidateDraft === draft && (!modalSelection || modalDraft === draft && preparedModalRevision === modalRevision), validPatch = validAsset && compiledDraft === recipeDraft && i.compiledPatchReady;
     sourceText.textContent = a.source ? a.source.originKind + ' · ' + a.source.sourceTap + ' · ' + a.source.sourceFrames.toLocaleString() + ' original frames at ' + a.source.sampleRate + ' Hz · ' + a.source.immutableSourceRef : 'No retained source selected.';
-    readiness.textContent = 'ASSET ' + (validAsset ? 'ready in memory' : meta?.assetReady ? 'stale draft' : 'not frozen') + ' · PATCH ' + (validPatch ? 'compiled' : 'not prepared for draft') + ' · AUDITION ' + (validPatch && i.audibleAuditionReady ? 'completed' : 'not completed') + ' · STORAGE ' + (validPatch && i.durable ? 'committed locally' : 'not durable');
+    readiness.textContent = 'ASSET ' + (validAsset ? 'ready in memory' : meta?.assetReady ? 'stale draft' : 'not frozen') + ' · PATCH ' + (validPatch ? 'compiled' : 'not prepared for draft') + ' · AUDITION ' + (validPatch && i.audibleAuditionReady ? 'completed' : 'not completed') + ' · STORAGE ' + (validPatch && i.durable ? 'committed locally' : 'not durable') + (i.targetCurrent === false ? ' · MOTION TARGET changed; prepare for this document and lane again' : '');
     if (a.active || i.active) status.textContent = a.active ? a.phase + (a.progress ? ' · ' + a.progress.completedUnits + '/' + a.progress.totalUnits : '') : i.phase;
     warnings.textContent = [a.error, i.error, ...(validPatch ? i.recipe.warnings : []), meta ? 'Coverage: ' + meta.coverage.status + ' · peak ' + meta.statistics.peak.toFixed(5) + ' · clipped samples ' + meta.statistics.clippedSamples + ' · stereo correlation ' + (meta.statistics.stereoCorrelation == null ? 'undefined for silent channel' : meta.statistics.stereoCorrelation.toFixed(4)) : '',
-      pitch.value === 'unpitched' && ['modal-body', 'feedforward-graft'].includes(transform.value) ? 'Declare a body reference pitch; the graft exciter remains fixed-rate.' : pitch.value === 'unpitched' && transform.value === 'ice-dust' ? 'Ice dust requires a declared root for the current granular renderer. Choose a sampler recipe for Unpitched material.' : ''].filter(Boolean).join(' ');
+      pitch.value === 'unpitched' && ['modal-body', 'feedforward-graft', 'motion-body-graft'].includes(transform.value) ? transform.value === 'motion-body-graft' ? 'Declare body tuning independently; source speed follows observed travel.' : 'Declare a body reference pitch; the finite graft exciter remains fixed-rate.' : pitch.value === 'unpitched' && transform.value === 'ice-dust' ? 'Ice dust requires a declared root for the current granular renderer. Choose a sampler recipe for Unpitched material.' : ''].filter(Boolean).join(' ');
     const busy = !!active || branch.active || branch.unknownRetirement || m.active || m.unknownRetirement || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
     prepare.disabled = busy || !a.source; compile.disabled = busy || !validAsset; audition.disabled = busy || !validPatch; save.disabled = busy || !validPatch || !i.audibleAuditionReady;
-    apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection || !!modalSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch || transform.value === 'modal-body'; useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
+    apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable || i.targetCurrent === false; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection || !!modalSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch || transform.value === 'modal-body'; useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
     fit.disabled = busy || !validAsset; refit.disabled = busy || modalDraft !== draft || !editableModes.length; mergeModes.disabled = busy || selectedModes.size < 2;
     harvestNew.disabled = busy || !offeredSource; planBranch.disabled = busy || !offeredSource || !analysis.candidate()?.metadata().assetReady;
     buildBranch.disabled = busy || rebuildPlan?.state !== 'rebuildable' || !offeredSource; auditionBranch.disabled = busy || !branch.summary; saveBranch.disabled = busy || !branch.instrument?.audibleAuditionReady;
@@ -203,8 +210,8 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     if (branch.summary && branchDrawn !== branch.summary.generation) { branchDrawn = branch.summary.generation; const candidate = rebuild.candidate(), context = branchCanvas.getContext('2d');
       if (candidate && context) candidate.withWaveform(wave => { const level = wave.levels[0]; context.clearRect(0, 0, 960, 96); context.strokeStyle = '#326b80'; context.beginPath();
         for (let x = 0; x < 960; x++) { const bin = Math.min(level.bins - 1, Math.floor(x * level.bins / 960)); for (let channel = 0; channel < 2; channel++) { const at = bin * 4 + channel * 2, center = channel ? 72 : 24; context.moveTo(x, center - Math.max(-1, level.minMax[at]) * 22); context.lineTo(x, center - Math.min(1, level.minMax[at + 1]) * 22); } } context.stroke(); }); }
-    anatomy.hidden = transform.value !== 'feedforward-graft'; graftBody.disabled = transform.value !== 'feedforward-graft' || busy;
-    exciterSlot.textContent = 'EXCITER · fixed-rate frozen audio · ' + (meta?.assetHash.slice(0, 12) || 'missing material'); bodySlot.textContent = 'BODY · ' + (graftBody.value === 'fitted' ? m.analysis ? m.analysis.estimate.modes.length + ' reviewed modes · ' + m.analysis.recipe.algorithmRevision : 'fit a body first' : graftBody.value === 'tin' ? 'original tin v1 · 6 modes' : 'original dry wood v1 · 4 modes'); pickupSlot.textContent = 'PICKUP / MIX · authored signed A/B weights · private actor body · next-onset only';
+    const isGraft = ['feedforward-graft', 'motion-body-graft'].includes(transform.value), motionGraft = transform.value === 'motion-body-graft'; anatomy.hidden = !isGraft; graftBody.disabled = !isGraft || busy; travelMapping.disabled = travelScale.disabled = !motionGraft || busy; travelMapping.parentNode.hidden = travelScale.parentNode.hidden = !motionGraft; refreshTravelButton.hidden = !motionGraft; refreshTravelButton.disabled = busy;
+    exciterSlot.textContent = (motionGraft ? 'EXCITER · observed travel cursor · ' : 'EXCITER · fixed-rate frozen audio · ') + (meta?.assetHash.slice(0, 12) || 'missing material'); bodySlot.textContent = 'BODY · ' + (graftBody.value === 'fitted' ? m.analysis ? m.analysis.estimate.modes.length + ' reviewed modes · ' + m.analysis.recipe.algorithmRevision : 'fit a body first' : graftBody.value === 'tin' ? 'original tin v1 · 6 modes' : 'original dry wood v1 · 4 modes'); pickupSlot.textContent = 'PICKUP / MIX · authored signed A/B weights · private actor body · next-onset only';
     const modalSummary = m.analysis;
     bodyInfo.textContent = m.active ? m.phase : m.error || (modalSummary ? (modalDraft !== draft || preparedModalRevision !== modalRevision ? 'STALE · ' : '') + modalSummary.estimate.status + ' · observed ' + modalSummary.recipe.observationFrames + ' frames / FFT ' + modalSummary.recipe.fftSize + ' / padding ' + modalSummary.recipe.zeroPaddingFrames + ' · minimum resolvable separation ' + modalSummary.recipe.resolutionHz.toFixed(3) + ' Hz · model RMS error ' + modalSummary.estimate.modelRmsError.toExponential(3) + ' · ' + modalSummary.estimate.declined.length + ' declined tracks. Root pitch not inferred.' : 'Fit the original seed or a selected sustained component. Observation length bounds frequency separation; FFT padding alone adds no observed information.');
     if (modalSummary && modalDrawn !== modalSummary.generation) { modalDrawn = modalSummary.generation; editableModes = modalSummary.estimate.modes.map(mode => ({ id: mode.id, frequencyHz: mode.frequencyHz, t60Seconds: mode.t60Seconds, pinned: mode.pinned, sourceAmplitude: mode.amplitude, confidence: mode.confidence.level })); selectedModes.clear(); renderModes();
@@ -231,7 +238,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   for (const input of [first, end, fadeIn, fadeOut, law]) listen(input, 'change', () => { trimIn.value = first.value; trimOut.value = end.value; invalidateTrim(); });
   for (const [input, target] of [[trimIn, first], [trimOut, end]]) listen(input, 'input', () => { target.value = input.value; invalidateTrim(); });
   for (const input of [observation, padding]) listen(input, 'change', invalidateModal);
-  for (const input of [transform, pitch, rootPitch, graftBody]) listen(input, 'change', invalidateRecipe);
+  for (const input of [transform, pitch, rootPitch, graftBody, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, rebuildPage, actions);
@@ -240,7 +247,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
   derived = createSoundSeedDerivedOwner({ resourceBudget, jobs, onState: refresh });
   modal = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'body-fit', onState: refresh });
-  instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
+  instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, getTargetIdentity, onApply, onState: refresh,
     onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   rebuild = createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
     getTargetIdentity: () => ({ target: getTargetIdentity(), draft, recipeDraft, modalRevision, offeredSerial }), onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
@@ -250,7 +257,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
   }
   return Object.freeze({ async open(source) {
-    if (disposed) return; if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
+    if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
   }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
   suspend() { analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); },

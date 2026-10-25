@@ -38,7 +38,7 @@ export class OwnedSampleSource {
       const index = zone * voices + slot, entry = this.plan.entries[zone].attack;
       this.cursors[index] = new OwnedSampleCursor(entry.cursorProfile.parameters, { sourceFrame: entry.sourceFirst, queueStorage: this.cursorQueues.subarray(index * QUEUE, (index + 1) * QUEUE) });
     }
-    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v3-feedforward-body', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v4-motion-body', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
     this.beginFrontier = { frame: 0, released: false, length: 0, lastSequence: 0, lastEndFrame: 0, lastEndPosition: 0, lastSeekFrame: 0 };
     this.leftSample = this.rightSample = this.readLeft = this.readRight = 0;
   }
@@ -178,7 +178,7 @@ export class OwnedSampleSource {
       l = s[at + S.filterLeft] * fade; r = s[at + S.filterRight] * fade;
     }
     s[at + S.frame] = frame + 1; this.leftSample = l * this.sourceGain; this.rightSample = r * this.sourceGain;
-    if (this.body) { const active = this.body.sample(slot, frame, this.leftSample, this.rightSample); this.leftSample = this.body.left; this.rightSample = this.body.right; if (active) s[at + S.active] = 1; }
+    if (this.body) { const active = this.body.sample(slot, frame, this.leftSample, this.rightSample, !s[at + S.released] && (this.cursor(slot)?.gain ?? 0) > 0); this.leftSample = this.body.left; this.rightSample = this.body.right; if (active) s[at + S.active] = 1; }
     return (this.leftSample + this.rightSample) * 0.5;
   }
   retire(slot) { this.body?.clear(slot); this.cursor(slot)?.panic(); this.state[slot * OWNED_SAMPLE_STATE_WIDTH + S.active] = 0; }
@@ -210,7 +210,7 @@ export class OwnedSampleSource {
       for (let field = S.filterHz + 1; field < SAMPLE_BODY_STATE_OFFSET; field++) if (get(field)) throw new Error('Reserved sample state is noncanonical.');
     }
     for (let slot = 0; slot < this.voices; slot++) {
-      if (this.body) { this.body.validate(slot, read); if (read(slot * OWNED_SAMPLE_STATE_WIDTH + SAMPLE_BODY_STATE_OFFSET) && !read(slot * OWNED_SAMPLE_STATE_WIDTH + S.active)) throw new Error('An active graft body has no logical source owner.'); }
+      if (this.body) { const at = slot * OWNED_SAMPLE_STATE_WIDTH; this.body.validate(slot, read, { released: !!read(at + S.released), releaseFrame: read(at + S.releaseFrame) }); if (read(at + SAMPLE_BODY_STATE_OFFSET) && !read(at + S.active)) throw new Error('An active graft body has no logical source owner.'); }
       else for (let field = SAMPLE_BODY_STATE_OFFSET; field < OWNED_SAMPLE_STATE_WIDTH; field++) if (read(slot * OWNED_SAMPLE_STATE_WIDTH + field)) throw new Error('Unprepared graft state is noncanonical.');
     }
     for (let index = 0; index < this.cursors.length; index++) {
