@@ -192,3 +192,21 @@ Candidate restores validate all interpretation owners before swapping live state
 These regressions are authored but not run; acoustic, dense-scene and lifecycle
 qualification remains deferred. Ratio-fold/delayed arrival modes and the deeper
 performer editors are separate remaining implementation work, not claimed here.
+
+Action voices now declare entry/motion/contact admission, same-action reentry,
+release/legato/crossfade transitions, tick-based maximum hold, and bounded changed
+expression mappings. Deferred admission retains the original action cause and the
+actual triggering motion/contact. Legato preserves onset identity and links action
+instances; crossfade lowers to owned native/sample/worklet attack and release
+ramps (linear envelope transition, not an equal-loudness claim). Maximum hold is a
+safety release, never a periodic retrigger. Pending admission and held expression
+state participate in transactional checkpoint restore.
+
+Canonical lane transfers support carry, revoice, release-and-attack and silent
+handoff. They retain actor identity and ancestry, release the prior route before
+replacement, and silence unavailable/muted destinations. Repeated crossings use a
+bounded root voice identity rather than an ever-growing chain of IDs. Physical
+multi-stripe movement publishes one synchronized destination, not inferred swept
+stripe crossings. Native transition behavior is implemented but unqualified;
+external endpoint capability negotiation and the full mix/visual controls remain
+separate work.

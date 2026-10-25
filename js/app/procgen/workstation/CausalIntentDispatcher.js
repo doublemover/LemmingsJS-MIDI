@@ -108,7 +108,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
             : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
             ? { mode: 'one-shot', tailSeconds: physicalDuration == null ? oneShotTailSeconds : Math.min(4, Math.max(0, physicalDuration)), seconds: releaseSeconds, ...(physicalDuration != null ? { durationSource: 'physical-interval' } : {}) }
-            : { seconds: releaseSeconds }, frame, identity.execution);
+            : { seconds: intent.voiceTransition?.kind === 'crossfade' ? intent.voiceTransition.seconds : releaseSeconds, ...(intent.voiceTransition ? { transitionPolicy: 'crossfade' } : {}) }, frame, identity.execution);
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';

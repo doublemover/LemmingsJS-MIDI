@@ -98,7 +98,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   const voiceCall = (method, voiceId, value, frame, epoch) => {
     if (disposed) return reject('disposed'); const voice = voices.get(keyFor(epoch, voiceId));
     if (!voice) return reject('voice-unavailable');
-    if (method === 'end' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
+    if (method === 'end' && value?.transitionPolicy !== 'crossfade' && voice.articulation.releaseSeconds != null) value = { ...value, seconds: voice.articulation.releaseSeconds,
       ...(value?.mode === 'one-shot' && value.durationSource !== 'physical-interval' && voice.articulation.oneShotTailSeconds != null ? { tailSeconds: voice.articulation.oneShotTailSeconds } : {}) };
     if (method === 'updatePhysical' && typeof voice.child.backend.updatePhysical !== 'function') return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' });
     return voice.child.backend[method](voiceId, value, frame, voice.execution);

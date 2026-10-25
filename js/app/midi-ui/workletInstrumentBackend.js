@@ -1,3 +1,4 @@
+import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
 import { prepareOwnedSourceBank } from './OwnedSourceBankPreparation.js';
 import { getOwnedSourceBankIdentity } from './OwnedSourceBank.js';
@@ -353,6 +354,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     return Object.freeze({ status: 'accepted', generation, executionEpoch, validUntilFrame, stage: 'queued' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceTransition(intent?.voiceTransition)) return reject('invalid-voice-transition', intent?.voiceId);
     if (!isExtended && (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros'))) return reject('performance-controls-unavailable', intent?.voiceId);
     if (!ready || !patch || !preview._ownerReady(owner) || context !== preview.getAudioContext()) return reject(fault || 'audio-not-ready', intent?.voiceId);
     if (ownerStopped) return reject('kernel-stop-pending', intent?.voiceId);
@@ -402,7 +404,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       captureMeta: preview._captureMetadata({ semanticVoiceId: intent.voiceId, generation: intent.generation, executionEpoch,
         onsetId: intent.onsetId, intentId: intent.intentId, sourceEventIds: intent.sourceEventIds?.slice(0, 32) }, owner),
       end: endFrame / context.sampleRate, release: parameters.releaseSeconds, releaseAt: endFrame / context.sampleRate - parameters.releaseSeconds,
-      released: false, attack: parameters.attackSeconds, decay: parameters.decaySeconds, sustain: parameters.sustain01,
+      released: false, attack: transitionAttackSeconds(intent, parameters.attackSeconds), decay: parameters.decaySeconds, sustain: parameters.sustain01,
       peak: intent.velocity01 * parameters.gain01 * patch.gain01, priority: 1, laneIndex: intent.laneId ?? 0,
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
@@ -428,7 +430,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
     const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
-      10: Math.round(parameters.attackSeconds * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
+      10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
     if (result.status === 'rejected') {
       resourceLease?.release();

@@ -75,6 +75,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     onReceipt: receipt => { if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
   const engine = createCausalMusicEngine({ getGraph, scoreTimeline,
+    getLaneState: laneId => { const lanes = getLanes(), lane = typeof laneId === 'number' ? lanes[laneId] : lanes.find(value => value.id === laneId), solo = lanes.some(value => value.solo && !value.mute); return { available: !!lane && !lane.mute && (!solo || lane.solo) }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])

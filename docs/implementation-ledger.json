@@ -346,13 +346,15 @@
       "regressions": [
         "test/procgen-rhythmic-responses.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "fbba47795de058da700e2a01b562df553870814c"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-rhythm-and-flight-responses",
           "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
-          "commit": null
+          "commit": "fbba47795de058da700e2a01b562df553870814c"
         }
       ]
     },
@@ -401,13 +403,15 @@
       "regressions": [
         "test/procgen-rhythmic-responses.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "fbba47795de058da700e2a01b562df553870814c"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-rhythm-and-flight-responses",
           "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
-          "commit": null
+          "commit": "fbba47795de058da700e2a01b562df553870814c"
         }
       ]
     },
@@ -663,13 +667,15 @@
       "regressions": [
         "test/procgen-rhythmic-responses.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "fbba47795de058da700e2a01b562df553870814c"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-rhythm-and-flight-responses",
           "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
-          "commit": null
+          "commit": "fbba47795de058da700e2a01b562df553870814c"
         }
       ]
     },
@@ -710,11 +716,24 @@
       "requirementUpdatedAt": "2026-10-22T09:00:35Z",
       "requirementSha256": "87dc9d14b7e03af3f3deb48d55b372d9158c2be0b3560edd22718f4a870ccfe0",
       "initialGap": "Action instance begin/update/end, actor termination and owned sustained backend leases exist. Validated graph has no requested ActionVoicePolicy transition/legato/crossfade/maximumHold configuration or corresponding action-transition lowering.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/midi-ui/VoiceTransition.js"
+      ],
+      "regressions": [
+        "test/procgen-action-voice-policy.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "action-admission-and-voice-transfers",
+          "summary": "Typed action admission, legato/crossfade/hold policies, bounded continuous expression and explicit lane-transfer ownership; native/sample/worklet crossfade lowering; external endpoint capability and performer surfaces remain pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1015,
@@ -763,13 +782,15 @@
       "regressions": [
         "test/procgen-rhythmic-responses.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "fbba47795de058da700e2a01b562df553870814c"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "physical-rhythm-and-flight-responses",
           "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
-          "commit": null
+          "commit": "fbba47795de058da700e2a01b562df553870814c"
         }
       ]
     },
@@ -1315,11 +1336,14 @@
         "js/app/procgen/workstation/physical/",
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/ProcgenBirthCohorts.js",
-        "js/app/procgen/ProcgenLaneWorld.js"
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
+        "js/app/midi-ui/VoiceTransition.js"
       ],
       "regressions": [
         "test/procgen-spatial-instruments.test.js",
-        "scripts/bench-physical-query-plan.mjs"
+        "scripts/bench-physical-query-plan.mjs",
+        "test/procgen-action-voice-policy.test.js"
       ],
       "commits": [
         "2705c467aa46b5fb99fb40d652a4638350f06ca2"
@@ -1330,6 +1354,11 @@
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
           "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+        },
+        {
+          "id": "action-admission-and-voice-transfers",
+          "summary": "Typed action admission, legato/crossfade/hold policies, bounded continuous expression and explicit lane-transfer ownership; native/sample/worklet crossfade lowering; external endpoint capability and performer surfaces remain pending.",
+          "commit": null
         }
       ]
     },

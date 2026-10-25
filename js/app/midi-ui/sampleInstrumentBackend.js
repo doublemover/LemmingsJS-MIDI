@@ -1,3 +1,4 @@
+import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { sampleRegionRate as rateFor, sampleRegionArticulation } from './NativeSamplePlan.js';
 import { DECODER_VERSION } from './AudioAssetRef.js';
 import { createSmoothedAudioParameter } from './SmoothedAudioParameter.js';
@@ -205,6 +206,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     armExpiry(); return trace({ status: 'accepted', stage: 'scheduled', generation, executionEpoch, validUntilFrame });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceTransition(intent?.voiceTransition)) return reject('invalid-voice-transition', intent?.voiceId);
     if (Object.keys(intent?.performanceControls?.macros || {}).length || Object.keys(intent?.performanceControls || {}).some(key => key !== 'macros')) return reject('performance-controls-unavailable', intent?.voiceId);
     if (disposed || !prepared || !preview._ownerReady(owner)) return reject(disposed ? 'disposed' : !prepared ? 'patch-unprepared' : 'audio-not-ready', intent?.voiceId);
     const context = preview._context, start = timeFor(targetFrame), expression = intent?.expression ?? {};
@@ -263,7 +265,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         start, end: hardEnd, hardEnd, releaseAt: hardEnd - values.releaseSeconds, released: false, renderCost, startedAt: start, priority: 1, laneIndex: intent.laneId ?? 0,
         main: components[0], child: components[1] || null, components, gain: components[0].gain, pressureGain, pan, nativeNodesOwnedByBackend: true,
         onContextClosed: () => reconcileComponents(components),
-        peak: intent.velocity01 * values.gain01 * prepared.mix.gain01 * region.gain01, patchGain: values.gain01 * prepared.mix.gain01, attack: values.attackSeconds, decay: values.decaySeconds,
+        peak: intent.velocity01 * values.gain01 * prepared.mix.gain01 * region.gain01, patchGain: values.gain01 * prepared.mix.gain01, attack: transitionAttackSeconds(intent, values.attackSeconds), decay: values.decaySeconds,
         sustain: values.sustain01, release: values.releaseSeconds, ownedGate: gateMode === 'owned', region, pitch: Object.freeze({ ...intent.pitch }),
         mixPan: prepared.mix.pan01, semanticGeneration: intent.generation, semanticEpoch: executionEpoch, patchId: prepared.id, patchRevision: prepared.revision,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, playback: { voiceId: intent.voiceId, onsetId: intent.onsetId, actorId: intent.actorId },

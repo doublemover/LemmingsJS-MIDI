@@ -524,6 +524,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
       ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
       ...(physical?.rhythmicResponses ? { 'rhythmic-responses': physical.rhythmicResponses } : {}),
+      ...(physical?.actionAdmission ? { 'action-admission': physical.actionAdmission } : {}),
       timeline: physicalScoreClock.snapshot() };
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,

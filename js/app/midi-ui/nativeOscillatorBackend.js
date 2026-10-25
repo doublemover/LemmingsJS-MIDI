@@ -1,3 +1,4 @@
+import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
 import { scheduleNativeHeldEnvelope } from './NativeAdsrEnvelope.js';
 export { nativeVoiceFinished, nativeRenderVoiceCount, releaseNativeVoice, destroyNativeVoice } from './NativeVoiceLifetime.js';
 export { workloadVoiceCount, inspectVoiceInterval, inspectVoiceExtensions } from './AudioVoiceAdmission.js';
@@ -132,6 +133,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       policy: 'authoritative-execution-liveness', stage: 'scheduled' });
   };
   const begin = (intent, targetFrame, executionEpoch = 'live') => {
+    if (!validVoiceTransition(intent?.voiceTransition)) return failure('invalid-voice-transition', intent);
     if (disposed) return failure('disposed', intent);
     if (!prepared) return failure('patch-unprepared', intent);
     if (!preview._ownerReady(owner)) return failure('audio-not-ready', intent);
@@ -192,7 +194,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
         start, end, releaseAt: end - release, released: false, id: ++preview._voiceSequence,
         startMs: preview._nowMs() + (start - context.currentTime) * 1000, token: null,
         basePeak, peak: basePeak,
-        attack: values.attackSeconds, decay: values.decaySeconds, sustain: values.sustain01, release,
+        attack: transitionAttackSeconds(intent, values.attackSeconds), decay: values.decaySeconds, sustain: values.sustain01, release,
         velocity: intent.velocity01 * 127, instrument: prepared.patch,
         priority: 1, laneIndex: intent.laneId ?? 0, startedAt: start,
         semanticKey: identity, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,

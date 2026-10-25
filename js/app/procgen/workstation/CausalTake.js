@@ -15,7 +15,7 @@ const validateCaptureProfile = value => {
 const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v3',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -137,6 +137,8 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const instrument of valid.instruments) {
+    if (instrument.actionVoicePolicy) { add('action-admission', instrument.id, 'state'); add('ActionExited', instrument.id, 'fact'); add('MotionCommitted', instrument.id, 'fact'); if (instrument.actionVoicePolicy.beginCondition === 'contact') add('ContactResolved', instrument.id, 'fact'); }
+    if (instrument.voiceTransfer) add('ActorLaneTransferred', instrument.id, 'fact');
     if (instrument.response) {
       add('rhythmic-responses', instrument.id, 'state');
       const sources = instrument.response.type === 'crowdInterval' ? ['MotionCommitted', 'ActorBorn'] : instrument.response.type === 'flightArc' ? ['FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded'] : instrument.response.type === 'workCycle' ? ['TerrainWorkCommitted', 'ActionCycleCompleted', 'ActionExited'] : ['ContactResolved', 'ActorTerminated'];

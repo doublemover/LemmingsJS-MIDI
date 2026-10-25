@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add actor-owned action admission, legato/crossfade and hold limits, with explicit lane handoff policies and native/sample/worklet transition ramps.
+
 - Interpret real crowd arrivals, work phases, blocker pairs and flight arcs with actor-owned sustained responses, explicit grouping ancestry and portable estimator state.
 
 - Add indexed world-space pickup geometry, actor-owned occupancy, stable birth/crew ensembles and marker-qualified route coordinates with portable causal boundary state.

@@ -953,7 +953,7 @@ class ProcgenLaneWorld {
           const contactSpanId = physicalContactForMotion(this, actor, previousX, previousY);
           this.soundEvents.emitPhysicalFact({ kind: 'MotionCommitted', contactSpanId, actorId: initialId,
             laneId: actor.laneIndex, positionBefore: { x: previousX, y: previousY }, positionAfter: { x: actor.x, y: actor.y },
-            action: previousAction?.actionName || null, actionInstanceId: motionActionInstanceId,
+            actionPhase: actor.frameIndex, action: previousAction?.actionName || null, actionInstanceId: motionActionInstanceId,
             parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
             precision: 'endpoint', physicalPayload: { displacementPixels: Math.hypot(actor.x - previousX, actor.y - previousY), pathEvidence: 'endpoint-chord', contactObserved: contactSpanId !== null, contactEvidence: contactSpanId ? 'consecutive-support-endpoints' : 'unknown' } });
         }

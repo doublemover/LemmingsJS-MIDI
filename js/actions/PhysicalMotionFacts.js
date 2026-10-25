@@ -12,7 +12,7 @@ const recordPhysicalMotion = (level, actor, beforeX, beforeY) => {
   if (!facts?.enabled?.(actor) || beforeX === actor.x && beforeY === actor.y) return;
   const contactSpanId = physicalContactForMotion(level, actor, beforeX, beforeY);
   facts.emit({ kind: 'MotionCommitted', contactSpanId, actorId: actor.id, laneId: actor.laneIndex ?? null,
-    action: actor.action?.actionName || null, actionInstanceId: actor._physicalActionInstanceId,
+    actionPhase: actor.frameIndex, action: actor.action?.actionName || null, actionInstanceId: actor._physicalActionInstanceId,
     parentCauseIds: actor._physicalInterventionId ? [actor._physicalInterventionId] : [],
     positionBefore: { x: beforeX, y: beforeY }, positionAfter: { x: actor.x, y: actor.y }, precision: 'tick',
     physicalPayload: { displacementPixels: Math.hypot(actor.x - beforeX, actor.y - beforeY),
