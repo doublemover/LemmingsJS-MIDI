@@ -4056,3 +4056,57 @@ unrun. The integrated closure currently covers a direct revoice window, its
 components, fitted bodies and current ordinary recipes. Arbitrary imported DAGs,
 qualified warp/graft descendants, reinterpretation/reperformance coordination and
 shared two-project storage/browser acceptance remain subsequent work.
+
+
+### Continuation 178 — finite audio exciter into an actor-owned body (#1216, #1233)
+
+The existing owned sampler now optionally feeds a private 1–8 mode linear body.
+This is an actual audio-excitation path: silent PCM leaves every mode at zero.
+Detector envelopes, parameter modulation and sealed feedback ports reject the
+finite-audio template. A typed graft descriptor retains exact exciter/body/pickup
+references, declared calibration, articulation, cost dimensions and capability
+requirements. It compiles to an ordinary sampler patch, not a cable-graph runtime.
+
+Each modal state contracts by a damped complex rotation. Injection coefficients
+sqrt(1-r²)/sqrt(declared input energy), a measured cumulative stereo-input cap and
+an L1-bounded signed observation bound the state/output independently of master
+protection. Coefficients prepare at onset; the audio loop has no allocation or
+trigonometric/table construction. The input has 20 Hz DC blocking, declared finite
+support and a terminal drive fade. Calibration overflow caps the last injection,
+stops further drive and retains a processor diagnostic; the dry path stays under
+its own source envelope. This is normalized audio calibration, not physical force.
+
+A body tail continues after the sample gate/release and ends under its explicit
+four-second/owner deadline or forced fade. Both states remain on one logical
+source and reuse the existing physical pool/tail admission. Same-pitch actors own
+independent modal/DC/calibration state. Normal release preserves resonance;
+choke, Stop and Panic clear only the owned body. Loops, reverse/position-driven
+excitation and release-trigger layers are unavailable in this finite template.
+Independent bends reject rather than retuning a ringing body silently.
+
+Original tin/wood modal body components and a reviewed fitted body can receive a
+frozen seed. Exciter playback stays fixed-rate while the body has a separately
+declared root. EXCITE, BODY, DAMP and MIX map to real onset parameters with their
+equations visible in three compact EXCITER → BODY → PICKUP/MIX slots. Signed A/B
+pickup weights are authored observation maps, not spatial geometry. Replacements
+are next-onset-only; existing voices keep their prepared bodies. The same recipe,
+isolated cue, save/Apply and selected lineage-rebuild paths are reused.
+
+Sampler state storage expands to 144 scalars per slot, within its unchanged
+40-field command width and shared logical voice stride. Source cuts bind the exact
+body profile and validate radius, rotation, injection, observation, finite support,
+control and calibration state before mutation. Render cost includes modal count;
+byte reservations include the enlarged source plane. Live/offline control and
+causal renders retain the independent body tail budget. Current runtime becomes
+owned-sample-v5-feedforward-body with source configuration v3.
+
+Silent/excited input, tail ownership, calibration overflow, same-pitch isolation,
+forced cleanup, register rejection, complete state restore, typed-port rejection
+and normal compiled recipes have authored, unrun fixtures. Formatting/syntax and
+provenance only. Peak/decay/listening/device-grid qualification remains deferred.
+Continuous travel excitation, shared prepared surfaces, sealed reed/bow outer-body
+templates and their nursery scene remain subsequent work; they are not relabeled
+as supported by this finite-strike adapter.
+Context: [Bilbao, Ducceschi and Webb, DAFx 2019](https://dafx.de/paper-archive/2019/DAFx2019_paper_22.pdf)
+motivates explicit treatment of nonlinear feedback. This original feed-forward
+contraction does not implement that paper's nonlinear mechanical network.

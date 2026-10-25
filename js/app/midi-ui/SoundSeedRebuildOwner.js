@@ -51,7 +51,7 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
         }
         bundle.asset = plan.transform === 'modal-body' ? modalParent : plan.selectedMaterial === 'original' ? base : plan.selectedMaterial.startsWith('modal-') ? bundle.modal.component(plan.selectedMaterial) : bundle.components.component(plan.selectedMaterial);
         if (!bundle.asset?.metadata().assetReady) throw fail('The selected rebuilt material was not prepared.');
-        phase = 'compiling-derived-branch'; report(); await bundle.instrument.prepare(bundle.asset, { transform: plan.transform, pitch: plan.pitch, modalFit: bundle.modal.state().analysis, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
+        phase = 'compiling-derived-branch'; report(); await bundle.instrument.prepare(bundle.asset, { transform: plan.transform, graftBody: plan.graftBody, pitch: plan.pitch, modalFit: bundle.modal.state().analysis, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
         bundle.summary = freezeData({ schema: 'lemmings-prepared-seed-branch/v1', planHash: plan.planHash, generation: operation.generation, originalAssetHash: plan.originalAssetHash,
           newRegionAssetHash: base.metadata().assetHash, newSelectedAssetHash: bundle.asset.metadata().assetHash, selectedMaterial: plan.selectedMaterial,
           contentHash: bundle.instrument.state().contentHash, patchIdentity: bundle.instrument.state().patchIdentity, sourceTake: plan.sourceTake, sourceProfile: plan.sourceProfile,

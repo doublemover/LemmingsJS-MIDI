@@ -44,7 +44,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   const child = selected ? samplePlan.entries[selected.zoneIndex].release : null;
   const finalOffset = fixture.events.reduce((value, event) => event.expression?.pitchOffsetCents ?? value, 0);
   const childFrames = child ? Math.ceil(Math.min(4, (child.sourceEnd - child.sourceFirst) / child.sourceSampleRate / (selected.releaseRateRatio * (child.pitchTracking === 'fixed' ? 1 : 2 ** (finalOffset / 1200)))) * sampleRate) : 0;
-  const tailFrames = Math.max(releaseFrames, childFrames), frames = releaseFrame + tailFrames + 128;
+  const tailFrames = Math.max(releaseFrames, childFrames, samplePlan?.body ? sampleRate * 4 : 0), frames = releaseFrame + tailFrames + 128;
   const packet = new Float64Array(fixture.events.length * WIDTH);
   const frequency = cents => 440 * 2 ** ((cents - 6900) / 1200);
   const basePitch = fixture.events[0].pitchCents;

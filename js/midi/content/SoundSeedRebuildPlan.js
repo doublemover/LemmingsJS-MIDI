@@ -5,11 +5,11 @@ const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInt
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const fail = message => { throw new TypeError('Seed rebuild: ' + message); };
 
-export async function planSoundSeedRebuild({ seed, replacement, components = null, modal = null, selectedMaterial = 'original', transform = 'hammer-seed', pitch = { mode: 'unpitched' } } = {}) {
+export async function planSoundSeedRebuild({ seed, replacement, components = null, modal = null, selectedMaterial = 'original', transform = 'hammer-seed', graftBody = 'tin', pitch = { mode: 'unpitched' } } = {}) {
   const metadata = seed?.metadata?.(), original = seed?.manifest, next = replacement?.manifest, replacementMetadata = replacement?.artifact?.metadata?.();
   if (!metadata?.assetReady || original?.schema !== 'lemmings-sound-seed/v1' || !hash(metadata.assetHash) || !Array.isArray(original.ancestry) || !original.ancestry.length || original.ancestry.length > 16 ||
       !['original', 'transient-like', 'sustained-like', 'residual', 'neutral-recombined', 'modal-reconstruction', 'modal-residual'].includes(selectedMaterial) ||
-      !['hammer-seed', 'ice-dust', 'route-relic', 'modal-body'].includes(transform)) fail('Select one frozen seed and its exact supported derived closure.');
+      !['hammer-seed', 'ice-dust', 'route-relic', 'modal-body', 'feedforward-graft'].includes(transform)) fail('Select one frozen seed and its exact supported derived closure.');
   const parent = original.ancestry.at(-1), blockers = [];
   if (!replacementMetadata?.retained || next?.schema !== 'lemmings-causal-audio-render/v1') blockers.push({ node: 'source', state: 'missing-prerequisite', reason: 'A retained causal revoice file is required; captured master PCM is not an exact intent-render source.' });
   if (parent.originKind !== 'OFFLINE REVOICE' || !parent.takeId || !integer(parent.takeRevision, 1) || !hash(parent.sourceCanonicalHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The frozen origin does not bind an exact original take/revision and covered semantic hash. Keep recorded material, or explicitly harvest a new source.' });
@@ -21,7 +21,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
     if (!hash(next.definitionHash) || !hash(next.engineRequirement?.artifactHash) || !hash(next.engineRequirement?.parameterSchemaHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The replacement lacks its exact resolved patch/engine receipt.' });
   }
   if (original.coverage?.status !== 'known-material' || original.coverage.gaps?.length) blockers.push({ node: 'region', state: 'missing-prerequisite', reason: 'The original seed has missing or unknown coverage; frozen playback and regeneration are separate facts.' });
-  const modalNeeded = selectedMaterial.startsWith('modal-') || transform === 'modal-body';
+  const modalNeeded = selectedMaterial.startsWith('modal-') || transform === 'modal-body' || transform === 'feedforward-graft' && graftBody === 'fitted';
   const componentKinds = ['transient-like', 'sustained-like', 'residual', 'neutral-recombined'], componentNeeded = componentKinds.includes(selectedMaterial) || modalNeeded && !!modal && modal.parentAssetHash !== metadata.assetHash;
   if (componentNeeded && (!components || components.parentAssetHash !== metadata.assetHash || components.recipe?.algorithmRevision !== 'linked-stereo-median-masks-v1')) blockers.push({ node: 'components', state: 'missing-prerequisite', reason: 'The selected component lacks a matching parent/algorithm recipe.' });
   if (transform === 'modal-body' && selectedMaterial.startsWith('modal-')) blockers.push({ node: 'patch', state: 'unsupported-realization', reason: 'A new modal body consumes its fitted parent, not an already rendered reconstruction/residual.' });
@@ -54,7 +54,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
     sourceTake: { takeId: parent.takeId ?? null, revision: parent.takeRevision ?? null, canonicalHash: parent.sourceCanonicalHash ?? null }, oldPatchReceipt: parent.sourcePatchReceipt ?? null,
     newPatchReceipt: next ? { definitionHash: next.definitionHash ?? null, engineRequirement: next.engineRequirement ?? null } : null,
     sourceProfile: 'new-render-all-covered-intents;not-original-live-admission-PCM', sourceTap: parent.sourceTap, sampleRate: parent.parentSampleRate, channelLayout: 'stereo',
-    parentRegionFrames: [parent.firstFrame, parent.endFrame], expectedRegionFrames: frames, fades: original.fades, componentOptions, modalOptions, modalParentMaterial, selectedMaterial, transform, pitch,
+    parentRegionFrames: [parent.firstFrame, parent.endFrame], expectedRegionFrames: frames, fades: original.fades, componentOptions, modalOptions, modalParentMaterial, selectedMaterial, transform, graftBody, pitch,
     nodes: nodes.map(node => ({ ...node, state: blockers.find(blocker => blocker.node === node.id)?.state ?? (blockers.length ? 'blocked-by-prerequisite' : 'rebuildable') })), blockers,
     frozenOriginal: { playable: true, sourceAssetAvailable: !!seed.artifact.metadata().retained, projectReferences: 'preserved', deletion: 'never-part-of-rebuild' },
     determinism: 'unqualified-numerical-build;recipe-and-resolved-patch-inputs-hashed;no-cross-build-byte-equivalence-claim', maxNodes: 128, maxDepth: 16, boundedFrames: frames * nodes.length,

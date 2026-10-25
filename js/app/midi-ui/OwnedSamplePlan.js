@@ -1,3 +1,4 @@
+import { prepareSampleBodyProfile } from '../../midi/content/SampleBodyProfile.js';
 import { createSampleMapResolver, sampleMapRenderIdentity, OWNED_SAMPLE_MAP_PROFILE } from '../../midi/content/SampleInstrumentMap.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
 import { prepareSampleCursorProfile } from '../../midi/content/SampleCursorProfile.js';
@@ -19,7 +20,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
   if (refs.size !== descriptor.assetHashes.length || descriptor.assetHashes.some(hash => !refs.has(hash))) fail('Prepared sample assets differ from the complete patch inventory.');
   descriptor = freezeData({ ...descriptor, assetHashes: [...descriptor.assetHashes], banks: descriptor.banks.map(bank => ({ ...bank })) });
   const resolve = createSampleMapResolver(patch.sampleMap, patch.sampleRefs, { patchId: patch.id, patchRevision: patch.revision, rendererProfile: OWNED_SAMPLE_MAP_PROFILE });
-  const map = resolve.map, indices = new Map(descriptor.assetHashes.map((hash, index) => [hash, index]));
+  const body = prepareSampleBodyProfile(patch.parameters, sampleRate), map = resolve.map, indices = new Map(descriptor.assetHashes.map((hash, index) => [hash, index]));
   const compile = (region, child = false) => {
     const assetIndex = indices.get(region.assetHash), bank = descriptor.banks[assetIndex];
     if (!bank || region.endFrame > bank.sourceFrames || region.endFrame - region.onsetFrame < 2) fail('An owned source region exceeds its pinned original source frames.');
@@ -41,6 +42,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
       positionSeam, traversal: policy?.traversal ?? null,
       filterGuard: 'clamp-actual-region-sample-indices', periodDomain: 'fractional-decoded-source-frames;crossfade-does-not-shorten-loop' });
   };
+  if (body && map.zones.some(zone => zone.playbackMode !== 'forward' || zone.loop || zone.releaseRegion)) fail('A finite sample-body graft requires forward one-shot excitation without loops or release-trigger material.');
   const entries = map.zones.map(zone => freezeData({ zoneId: zone.id, attack: compile(zone), release: zone.releaseRegion ? compile(zone.releaseRegion, true) : null }));
   const byZone = new Map(entries.map((entry, index) => [entry.zoneId, index]));
   let cursorBytes = 0, cursorTransferBytes = 0, cursorCount = 0;
@@ -49,22 +51,23 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
     cursorTransferBytes = Math.max(cursorTransferBytes, entry.attack.cursorProfile.transferBytes);
   }
   const identity = canonicalDataText({ revision: OWNED_SAMPLE_PLAN_REVISION, patchId: patch.id, patchRevision: patch.revision, map: sampleMapRenderIdentity(map),
-    bankHash: descriptor.bankHash, sampleRate, cursorCapacity: OWNED_SAMPLE_CURSOR_CAPACITY }, { maxBytes: 262144, maxNodes: 32768 }).text;
+    bankHash: descriptor.bankHash, sampleRate, ...(body ? { body } : {}), cursorCapacity: OWNED_SAMPLE_CURSOR_CAPACITY }, { maxBytes: 262144, maxNodes: 32768 }).text;
   const rateFor = (entry, pitch, offset = 0) => {
     const ratio = sampleRegionRate(entry, pitch, offset), derivative = ratio == null ? NaN : ratio * entry.decodedSampleRate / sampleRate;
     return Number.isFinite(derivative) && derivative > 0 && (entry.mode === 'positionDriven' || derivative <= 4) ? { ratio, derivative } : null;
   };
-  return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity,
+  return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity, body,
     footprint: freezeData({ cursorCount, cursorBytes, maximumCursorTransferBytes: cursorTransferBytes, metadataEstimateBytes: 524288 + cursorCount * 6144,
       layersPerVoice: 2, maximumReadHeadsPerVoice: 4, maximumVoices: OWNED_SAMPLE_VOICES, realTimeCapacityQualified: false }),
     select(intent) {
       const region = resolve(intent), zoneIndex = byZone.get(region.selection.zoneId), entry = entries[zoneIndex], offset = intent.expression?.pitchOffsetCents ?? 0;
       const attack = rateFor(entry.attack, intent.pitch, offset), release = entry.release ? rateFor(entry.release, intent.pitch, offset) : null;
+      if (body && offset !== 0) fail('The feed-forward body keeps its prepared onset tuning; independent pitch bends require a separate qualified template.');
       if (!attack || entry.release && !release) fail('Selected attack or release exceeds its authored pitch or four-decoded-frame/output-frame read bound.');
       if (entry.attack.mode === 'positionDriven' && offset !== 0) fail('Position-driven varispeed uses observed cursor derivative; an independent pitch offset is unavailable.');
       return freezeData({ zoneIndex, region, velocity01: intent.velocity01, rateRatio: attack.ratio, readDerivative: entry.attack.mode === 'reverse' ? -attack.derivative : entry.attack.mode === 'positionDriven' ? 0 : attack.derivative,
         releaseRateRatio: release?.ratio ?? null, releaseReadDerivative: release?.derivative ?? null,
-        articulation: sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04),
+        articulation: { ...sampleRegionArticulation(region, entry.attack.sourceSampleRate, attack.ratio, patch.parameters?.releaseSeconds ?? 0.04), ...(body ? { bodyTailSeconds: 4, policy: 'finite-exciter-plus-independent-body;bounded-four-second-tail' } : {}) },
         pitchPolicy: entry.attack.mode === 'positionDriven' ? 'note-selects-zone;observed-position-derivative-owns-varispeed-pitch' : entry.attack.pitchTracking === 'fixed' ? 'unpitched-fixed-source-rate;note-selects-zone-only' : 'independent-varispeed-ratio',
         evidenceClass: 'prepared-source-region-selection', acousticReceipt: false });
     }, rateFor

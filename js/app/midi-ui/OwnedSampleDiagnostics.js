@@ -14,10 +14,11 @@ export function retainOwnedSampleDiagnostics(data, plan) {
         !finite(voice.readDerivative, -4, 4) || !finite(voice.rateRatio, 1 / 16, 16) || !finite(voice.sourcePosition, -1073741824, 1073741824) || !integer(voice.readHeads, 0, 4) ||
         typeof voice.childActive !== 'boolean' || voice.childActive && !entry.release || !finite(voice.childDecodedPosition, 0, (entry.release?.end ?? 0) + 4) ||
         typeof voice.loopActive !== 'boolean' || voice.loopActive && !region.loop || !integer(voice.loopTurns, 0)) throw new Error('Source diagnostics contain an invalid selected voice or frame domain.');
+    if (plan.body && (!voice.body || voice.body.modes !== plan.body.count || voice.body.energyBudget !== plan.body.energyBudget || !finite(voice.body.injectedEnergy, 0, plan.body.energyBudget) || !integer(voice.body.remainingTailFrames, 0, plan.sampleRate * 5) || typeof voice.body.active !== 'boolean' || typeof voice.body.calibrationExceeded !== 'boolean')) throw new Error('Graft diagnostics differ from the prepared body profile.');
     slots.add(voice.slot);
     return { slot: voice.slot, token: voice.token, epoch: voice.epoch, generation: voice.generation, zoneId: entry.zoneId, assetHash: region.assetHash,
       sourceRegionFrames: [region.sourceFirst, region.sourceEnd], sourceSampleRate: region.sourceSampleRate, decodedSampleRate: region.decodedSampleRate,
-      decodedPosition: voice.decodedPosition, sourcePosition: voice.sourcePosition, rateRatio: voice.rateRatio, readDerivative: voice.readDerivative, pitchTracking: region.pitchTracking, mode: region.mode, readHeads: voice.readHeads,
+      decodedPosition: voice.decodedPosition, sourcePosition: voice.sourcePosition, rateRatio: voice.rateRatio, readDerivative: voice.readDerivative, pitchTracking: region.pitchTracking, mode: region.mode, readHeads: voice.readHeads, ...(plan.body ? { body: voice.body } : {}),
       loop: region.loop ? { mode: region.loop.mode, startFrame: region.loop.startFrame, endFrame: region.loop.endFrame, crossfadeFrames: region.loop.crossfadeFrames, gainLaw: region.loop.gainLaw, active: voice.loopActive, turns: voice.loopTurns } : null,
       child: entry.release ? { active: voice.childActive, assetHash: entry.release.assetHash, sourceRegionFrames: [entry.release.sourceFirst, entry.release.sourceEnd], decodedPosition: voice.childDecodedPosition } : null };
   });

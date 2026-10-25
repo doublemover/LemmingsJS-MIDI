@@ -37,5 +37,5 @@ export function nativeSampleReleaseFrames(plan, releaseSeconds, sampleRate) {
   const child = plan.region.releaseRegion;
   const childRate = child?.pitchTracking === 'fixed' ? 1 : child ? plan.minimumRateRatio * 2 ** ((plan.region.rootCents - child.rootCents + child.tuningCents - plan.region.tuningCents) / 1200) : 1;
   const childSeconds = child ? Math.min(4, (child.endFrame - child.onsetFrame) / plan.childSourceRate / childRate) : 0;
-  return Math.max(releaseSeconds, childSeconds) * sampleRate;
+  return Math.max(releaseSeconds, childSeconds, plan.articulation?.bodyTailSeconds ?? 0) * sampleRate;
 }

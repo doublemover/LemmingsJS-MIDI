@@ -1,4 +1,5 @@
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel } from '../../midi/content/CircularSpectrum.js';
+import { prepareSampleBodyProfile, acceptsSampleBodyOnset } from '../../midi/content/SampleBodyProfile.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
 import { SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
@@ -53,12 +54,13 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
 };
 const profiles = Object.freeze({
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
-    buildId: 'owned-sample-v4-fixed-rate', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
+    buildId: 'owned-sample-v5-feedforward-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
-    cost: () => 32, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
-    acceptsOnset: (parameters, frequency, pcm) => validOwnedPcmSetDescriptor(pcm),
+    cost: parameters => 32 + (parameters.graftModeCount || 0) * 2, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
+    acceptsExpression: (expression, voice) => !voice.sourceValues?.graftModeCount || expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsOnset: (parameters, frequency, pcm, rate = 48000) => { try { return validOwnedPcmSetDescriptor(pcm) && acceptsSampleBodyOnset(prepareSampleBodyProfile(parameters, rate), frequency, { mix01: parameters.graftMix01, t60Seconds: parameters.graftT60Seconds, damping01: parameters.graftDamping01, excite01: parameters.graftExcite01, pickup01: parameters.graftPickup01 }); } catch { return false; } },
     beginFields: (parameters, seed, pcm, selected) => { if (!selected || !Number.isInteger(selected.zoneIndex)) throw new TypeError('An owned sample onset requires its prepared semantic selection.');
-      return { 18: selected.zoneIndex, 19: selected.region.selectionSeed, 31: parameters.sampleLowpassHz, 32: parameters.sampleVelocityTone01, 33: selected.velocity01 }; } }),
+      return { 18: selected.zoneIndex, 19: selected.region.selectionSeed, 31: parameters.sampleLowpassHz ?? 20000, 32: parameters.sampleVelocityTone01 ?? 0, 33: selected.velocity01 ?? 1, 34: parameters.graftMix01 ?? 0.7, 35: parameters.graftT60Seconds ?? 0.7, 36: parameters.graftDamping01 ?? 0, 37: parameters.graftExcite01 ?? 1, 38: parameters.graftPickup01 ?? 0.5, 39: parameters.graftModeCount ?? 0 }; } }),
   'worklet-granular': createProfile({ id: 'worklet-granular', controlReferenceRender: true, bankId: 'grain-window-v1', width: GRANULAR_LAYOUT.width, voices: GRANULAR_LAYOUT.voices, fields: NATIVE_GRANULAR_FIELDS, parameters: NATIVE_GRANULAR_PARAMETERS,
     buildId: 'owned-granular-v6-owned-retirement', abi: 'owned-granular-f64-command-v1', workletUrl: new URL('./worklet/OwnedGranularProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'grain-choices-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     storageBytes: granularSourceBytes, heapEstimate: GRANULAR_SOURCE_HEAP_ESTIMATE, cost: () => 16, minimumControlSeconds: 0.008, requiresPCM: true,

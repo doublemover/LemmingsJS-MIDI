@@ -257,3 +257,8 @@ body.procgen-workstation {
 
 .studio-seed-rebuild > output { display:block; overflow-wrap:anywhere; margin-block:4px; }
 .studio-seed-rebuild canvas { display:block; width:100%; height:96px; background:#dce8ed; }
+
+.studio-graft-anatomy { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px; border:1px solid #a8bac6; border-radius:4px; }
+.studio-graft-anatomy[hidden] { display:none; }
+.studio-graft-anatomy > span { flex:1 1 140px; overflow-wrap:anywhere; }
+.studio-graft-anatomy > p { flex-basis:100%; }
