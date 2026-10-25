@@ -88,7 +88,7 @@ const profiles = Object.freeze({
     beginFields: (parameters, seed) => ({ 18: seed, 19: parameters.vowel01, 20: parameters.breath01, 21: parameters.sizeRatio, 22: parameters.chorusCents,
       23: parameters.vibratoCents, 24: parameters.vowelStep, 25: parameters.bandwidthScale }) }),
   'worklet-spectrum': createProfile({ id: 'worklet-spectrum', controlReferenceRender: true, bankId: 'spectrum-v1', width: SPECTRUM_LAYOUT.width, voices: SPECTRUM_LAYOUT.voices, fields: NATIVE_SPECTRUM_FIELDS, parameters: NATIVE_SPECTRUM_PARAMETERS,
-    buildId: 'owned-spectrum-v7-circular-partials', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
+    buildId: 'owned-spectrum-v8-contact-coordinate', abi: 'owned-spectrum-f64-command-v1', workletUrl: new URL('./worklet/OwnedSpectrumProcessor.js', import.meta.url).href, rateLimit: true, seedDomain: 'spectrum-phase-v1', minHz: 20, maxHz: 2000, bendCents: 200,
     travelPlanner: planCircularTravel, acceptsExpression: (expression, voice) => voice.sourceValues?.sourceMode !== 2 || !['scan01', 'body01', 'edge01'].some(id => expression[id] != null),
     acceptsOnset: (parameters, frequency, pcm, rate) => { if (parameters.sourceMode !== 2) return true; try { resolveCircularSpectrum(circularSpectrumParameters(parameters), rate, frequency / 261.6255653005986); return true; } catch { return false; } },
     storageBytes: spectrumSourceBytes, heapEstimate: SPECTRUM_SOURCE_HEAP_ESTIMATE, acceptsParameters: acceptsSpectrum,

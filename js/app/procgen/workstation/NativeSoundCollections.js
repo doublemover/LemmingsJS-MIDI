@@ -8,7 +8,7 @@ export const NATIVE_SOUND_COLLECTIONS = Object.freeze([
   collection('plucked-garden', 'Plucked garden', new URL('../../../../content/sounds/plucked-garden.json', import.meta.url), ['pluck.burrow-thumb', 'pluck.wire-ladder', 'pluck.moss-nylon', 'pluck.suspended-zither']),
   collection('artificial-choir', 'Artificial choir', new URL('../../../../content/sounds/artificial-choir.json', import.meta.url), ['choir.hollow-ooh', 'choir.paper-aah', 'choir.tiny-ee', 'choir.robot-choir']),
   collection('liquid-drawbars', 'Liquid tables / drawbars', new URL('../../../../content/sounds/liquid-drawbars.json', import.meta.url), ['spectrum.bubble-reed', 'spectrum.prism-pad', 'spectrum.acid-current-dry', 'spectrum.pipe-crew', 'spectrum.glass-drawbars', 'spectrum.falling-stars']),
-  collection('circular-travel', 'Circular travel spectra', new URL('../../../../content/sounds/circular-travel.json', import.meta.url), ['circular.endless-stair', 'circular.counter-walk', 'circular.action-stair'])
+  collection('circular-travel', 'Circular travel spectra', new URL('../../../../content/sounds/circular-travel.json', import.meta.url), ['circular.endless-stair', 'circular.counter-walk', 'circular.action-stair', 'circular.stepping-stones'])
 ]);
 const byPatch = new Map(NATIVE_SOUND_COLLECTIONS.flatMap(entry => entry.patchIds.map(id => [id, entry])));
 const lead = { rock: 'material.slate', 'holiday-snow': 'forge.copper-tine', brick: 'forge.alarm-bloom', snow: 'choir.hollow-ooh', bubble: 'spectrum.bubble-reed', dirt: 'pluck.burrow-thumb', fire: 'forge.rubber-bolt', squasher: 'foundation.short-square', pillar: 'spectrum.pipe-crew', crystal: 'forge.glass-rivet' };

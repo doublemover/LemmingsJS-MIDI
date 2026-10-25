@@ -1,3 +1,4 @@
+import { captureCircularContactCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
 import { estimateJournalBytes } from './CausalJournalCanonical.js';
@@ -126,6 +127,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const timeFor = (batch, fact) => fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
   const basePitchFor = (instrument, fact) => fact?.topologyBinding?.status === 'complete' ? fact.topologyBinding.pitchCents : (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents + ((fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchOffsetCents) ? fact.pitchOffsetCents : 0);
   const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null) => {
+    const contactCoordinate = kind === 'begin' ? captureCircularContactCoordinate(batch, fact, instrument.id, graph?.revision ?? 0) : null;
+    if (contactCoordinate) articulationState = { ...articulationState, contactCoordinate };
     const baseCents = basePitchFor(instrument, fact);
     const tonal = kind === 'begin' && (instrument.formationId || instrument.harmonicFields) ? tones.resolve(instrument, fact?.actorId, baseCents) : null;
     const pitch = tonal?.pitch || { cents: baseCents, referenceHz: 440 };

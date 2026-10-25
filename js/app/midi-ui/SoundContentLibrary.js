@@ -290,7 +290,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         const p = patch.definition.parameters;
         modelInfo.textContent = 'Circular spectrum: octave period 2 · lattice reference ' + (p.circularReferenceHz ?? 55) + ' Hz · spectral center ' + (p.circularCenterHz ?? 700) +
           ' Hz · Gaussian amplitude width ' + (p.circularWidthOctaves ?? 1.2) + ' octaves · one cycle per ' + (p.circularPixelsPerCycle ?? 512) +
-          ' canonical signed-axis world pixels. Rests preserve distance phase; wraps retain active oscillator phases. Carrier oscillation continues only within the original held voice. Other periods and route-coordinate mappings are unavailable. Listening, band-edge and real-time qualification are pending.';
+          (p.circularControlMode === 1 ? ' world pixels on the declared contact axis. Each onset uses an observed contact coordinate; no motion is inferred between contacts.' : ' canonical signed-axis world pixels. Rests preserve distance phase;') + ' Active oscillator phases survive wraps. Carrier oscillation continues only within the original held voice. Other periods and route-coordinate mappings are unavailable. Listening, band-edge and real-time qualification are pending.';
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular') {
         const parameters = patch.definition.parameters;

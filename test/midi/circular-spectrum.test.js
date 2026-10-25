@@ -69,16 +69,44 @@ describe('travel-owned octave circular spectra (deferred runtime qualification)'
   it('compiles the original four-control recipes and renders the same canonical circular history through a state cut', async () => {
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-spectrum', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
     const raw = JSON.parse(await readFile(new URL('../../content/sounds/circular-travel.json', import.meta.url), 'utf8'));
-    const content = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(content.prepared.patches).to.have.length(3);
+    const content = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(content.prepared.patches).to.have.length(4);
     expect(content.prepared.patches[0].definition.macros.map(macro => macro.name)).to.have.members(['CLIMB', 'WINDOW', 'CENTER', 'WEIGHT']);
     expect(() => validateInstrumentPatchV2({ ...definition(), parameters: { sourceMode: 2, circularPeriodRatio: 3 } }, descriptor)).to.throw('only octave');
     const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() }), intents = [engine.processBatch(sampleMotionBatch(1, 0, 1))[0], engine.processBatch(sampleMotionBatch(2, 1, 1))[0], engine.processBatch(sampleMotionBatch(3, 1, 0))[0]];
     intents.push({ ...intents[2], kind: 'end', intentId: 'circular:end', articulationState: null, scoreTime: { ...intents[2].scoreTime, sourceTimeMs: 180 } });
     const revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'take:circular', takeRevision: 1, sourceCanonicalHash: 'c'.repeat(64), sourceState: 'finalized', nextSequence: null,
-      sourceVersions: { physicalMusic: 8 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 500 }, intents };
+      sourceVersions: { physicalMusic: 9 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 500 }, intents };
     const input = { definition: definition(), descriptor, revoice, sampleRate: 48000, startSeconds: 0.08, endSeconds: 0.3, tail: { mode: 'bounded-natural', maxSeconds: 1 } };
     const a = await renderCausalOwnedTake(input, { yieldControl: async () => {} }), b = await renderCausalOwnedTake({ ...input, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
     expect(a.manifest.realization.circularTravel).to.include({ voices: 1, segments: 3 }); expect(a.manifest.commands.capturedBegins).to.equal(1);
     expect(b.files.map(file => file.manifest.pcmHash)).to.deep.equal(a.files.map(file => file.manifest.pcmHash)); engine.dispose();
   });
+  it('samples only real completed contact coordinates for stepping-stone onsets and retains negative phase', () => {
+    const graph = { version: 1, revision: 3, instruments: [{ id: 'stones', sourceKind: 'ContactResolved', causeKind: 'wall', pitchCents: 6000, velocity01: 0.7, role: 'pulse', route: 'local' }] };
+    const engine = createCausalMusicEngine({ getGraph: () => graph });
+    const point = x => {
+      const batch = sampleMotionBatch(1, x, x); batch.facts[0] = { ...batch.facts[0], kind: 'ContactResolved', contactId: 'contact-a', causeKind: 'wall', positionAfter: { x, y: 40 } };
+      return batch;
+    };
+    const intent = engine.processBatch(point(-64)).find(intent => intent.kind === 'begin'), p = { ...parameters(), circularControlMode: 1, circularPixelsPerCycle: 256 };
+    expect(intent.articulationState.contactCoordinate.coordinate).to.deep.equal({ x: -64, y: 40 });
+    const plan = planCircularTravel(p, intent, 100, 48000); expect(plan).to.include({ from: -0.25, to: -0.25, firstFrame: 100, endFrame: 101 });
+    expect(plan.receipt).to.include({ schema: 'lemmings-circular-contact-receipt/v1', graphRevision: 3, coordinateMeaning: 'actor-position-at-resolved-contact', precision: 'completed-contact-coordinate' });
+    expect(() => planCircularTravel(p, { ...intent, sourceEventIds: [] }, 100, 48000)).to.throw('matching completed contact');
+    expect(() => planCircularTravel(p, { ...intent, articulationState: null }, 100, 48000)).to.throw('matching completed contact');
+    expect(() => planCircularTravel({ ...p, circularRequireSegments: 1 }, intent, 100, 48000)).to.throw('matching completed contact');
+    expect(planCircularTravel(p, { controlFixture: true }, 100, 48000)).to.equal(null); engine.dispose();
+  });
+  it('revoices one contact as one onset with a constant coordinate-selected phase', async () => {
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-spectrum', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
+    const graph = { version: 1, revision: 1, instruments: [{ id: 'stones', sourceKind: 'ContactResolved', causeKind: 'wall', pitchCents: 6000, velocity01: 0.7, role: 'pulse', route: 'local' }] }, engine = createCausalMusicEngine({ getGraph: () => graph });
+    const batch = sampleMotionBatch(1, 128, 128); batch.facts[0] = { ...batch.facts[0], kind: 'ContactResolved', contactId: 'contact-a', causeKind: 'wall' };
+    const intents = engine.processBatch(batch), revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'take:stones', takeRevision: 1, sourceCanonicalHash: 'c'.repeat(64), sourceState: 'finalized', nextSequence: null,
+      sourceVersions: { physicalMusic: 9 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 500 }, intents };
+    const patch = definition(); patch.parameters.circularControlMode = 1; patch.parameters.circularPixelsPerCycle = 256;
+    const result = await renderCausalOwnedTake({ definition: patch, descriptor, revoice, sampleRate: 48000, startSeconds: 0, endSeconds: 0.3, tail: { mode: 'bounded-natural', maxSeconds: 1 } }, { yieldControl: async () => {} });
+    expect(result.manifest.commands.capturedBegins).to.equal(1); expect(result.manifest.realization.circularTravel.policy).to.include('observed-contact-coordinate');
+    expect(result.manifest.realization.circularTravel).to.include({ voices: 1, segments: 1 }); engine.dispose();
+  });
+
 });

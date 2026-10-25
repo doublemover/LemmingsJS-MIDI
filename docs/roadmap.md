@@ -4110,3 +4110,33 @@ as supported by this finite-strike adapter.
 Context: [Bilbao, Ducceschi and Webb, DAFx 2019](https://dafx.de/paper-archive/2019/DAFx2019_paper_22.pdf)
 motivates explicit treatment of nonlinear feedback. This original feed-forward
 contraction does not implement that paper's nonlinear mechanical network.
+
+
+### Continuation 179 — contact-coordinate circular stepping stones (#1226)
+
+Circular spectra now have an explicit contact-coordinate mode alongside continuous
+canonical travel. A completed ContactSpanBegan support anchor or ContactResolved
+actor position projects a bounded immutable observation with world/generation,
+actor, mapping/graph revision, source event/sequence, contact instance and source
+tick. Support-cell coordinates and actor positions at a resolved contact have
+distinct labels. Partial/stale/missing observations cannot become valid contact
+pitch, and old captures are not promoted to containing these coordinates.
+
+A new onset samples the declared world axis, origin and pixels/cycle exactly once.
+Its one-frame constant phase segment adds no interpolated travel, timer ascent or
+extra semantic trigger. Negative phase uses the same floor-based lattice as the
+continuous adapter. The existing kernel, command width, partial pool and live/
+offline/state-cut paths are reused. Authored control auditions remain explicitly
+nonphysical and need no invented contact.
+
+The original Stepping stones recipe uses percussive envelopes and actual observed
+contact coordinates. It is available through the circular collection, now content
+version 0.2.0. Source/library and render summaries distinguish contact onsets from
+continuous signed-axis observations. Runtime becomes owned-spectrum-v8-contact-coordinate;
+physicalMusic is 9 and capture profile physical-basic-v15.
+
+Negative contact phase, identity/coverage rejection, source event ancestry and
+one-contact/one-onset revoice fixtures are authored and unrun; existing collection
+fixtures now expect the additional recipe. Formatting/syntax and provenance only.
+Directed-route coordinates, authored Impossible Staircase geometry and listening/
+spectral/browser acceptance remain pending independent integrations.

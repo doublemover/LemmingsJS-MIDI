@@ -33,10 +33,44 @@ export function circularSpectrumWeight(recipe, frequency) {
   return Math.exp(-0.5 * z * z) * (0.5 - 0.5 * Math.cos(Math.PI * edge));
 }
 
+export function captureCircularContactCoordinate(batch, fact, mappingId, graphRevision) {
+  const support = fact?.kind === 'ContactSpanBegan', resolved = fact?.kind === 'ContactResolved', point = support ? fact.anchor : fact?.positionAfter;
+  if ((!support && !resolved) || typeof batch?.worldId !== 'string' || !batch.worldId || batch.worldId.length > 512 || !Number.isSafeInteger(batch.generation) || batch.generation < 0 || !Number.isSafeInteger(batch.tick) || batch.tick < 0 || typeof mappingId !== 'string' || !mappingId || mappingId.length > 128 || !Number.isSafeInteger(graphRevision) || graphRevision < 0 || batch?.completeness?.status !== 'complete' || !point || !finite(point.x, -1000000000, 1000000000) || !finite(point.y, -1000000000, 1000000000) ||
+      !Number.isSafeInteger(fact.actorId) || fact.actorId < 0 || !Number.isSafeInteger(fact.causalSequence) || fact.causalSequence < 1 || typeof fact.eventId !== 'string' || !fact.eventId || fact.eventId.length > 512 ||
+      fact.observedTick != null && fact.observedTick !== batch.tick || fact.physicalCauseFact && fact.physicalCauseFact.actorId !== fact.actorId) return null;
+  const contactInstanceId = support ? fact.spanId : fact.contactId;
+  if (typeof contactInstanceId !== 'string' || !contactInstanceId || contactInstanceId.length > 512) return null;
+  return freezeData({ schema: 'lemmings-canonical-contact-coordinate/v1', worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, mappingId, graphRevision,
+    contactInstanceId, sourceEventId: fact.eventId, sourceSequence: fact.causalSequence, observedTick: batch.tick, coordinate: { x: point.x, y: point.y },
+    coordinateMeaning: support ? 'observed-completed-support-cell-anchor' : 'actor-position-at-resolved-contact', precision: 'completed-contact-coordinate',
+    surfaceRevision: Number.isSafeInteger(fact.surfaceRevision) && fact.surfaceRevision >= 0 ? fact.surfaceRevision : null });
+}
+
+function planCircularContact(parameters, intent, targetFrame, sampleRate) {
+  const o = intent?.articulationState?.contactCoordinate;
+  if (intent?.kind !== 'begin' || !o || o.schema !== 'lemmings-canonical-contact-coordinate/v1' || o.worldId !== intent.worldId || o.generation !== intent.generation || o.actorId !== intent.actorId || o.mappingId !== intent.mappingId ||
+      !['ContactSpanBegan', 'ContactResolved'].includes(intent.physicalSourceKind) || typeof o.worldId !== 'string' || !o.worldId || o.worldId.length > 512 || !Number.isSafeInteger(o.generation) || o.generation < 0 || !Number.isSafeInteger(o.actorId) || o.actorId < 0 ||
+      !Number.isSafeInteger(o.graphRevision) || o.graphRevision < 0 || typeof o.mappingId !== 'string' || !o.mappingId || o.mappingId.length > 128 ||
+      typeof o.contactInstanceId !== 'string' || !o.contactInstanceId || o.contactInstanceId.length > 512 || typeof o.sourceEventId !== 'string' || !o.sourceEventId || o.sourceEventId.length > 512 || !intent.sourceEventIds?.includes(o.sourceEventId) ||
+      !Number.isSafeInteger(o.sourceSequence) || o.sourceSequence < 1 || !Number.isSafeInteger(o.observedTick) || o.observedTick < 0 || o.precision !== 'completed-contact-coordinate' || !['observed-completed-support-cell-anchor', 'actor-position-at-resolved-contact'].includes(o.coordinateMeaning) || o.surfaceRevision !== null && (!Number.isSafeInteger(o.surfaceRevision) || o.surfaceRevision < 0) || parameters.circularRequireSegments === 1 ||
+      ![0, 1].includes(parameters.circularAxis) || !Number.isSafeInteger(targetFrame) || targetFrame < 0 || !Number.isSafeInteger(targetFrame + 1) || ![44100, 48000, 96000].includes(sampleRate) || !finite(parameters.circularPixelsPerCycle, 1, 1000000)) fail('This circular onset requires its matching completed contact coordinate.');
+  const coordinate = o.coordinate?.[parameters.circularAxis === 0 ? 'x' : 'y'];
+  if (!finite(coordinate, -1000000000, 1000000000)) fail('The observed contact has no bounded coordinate on this declared axis.');
+  const phase = parameters.circularPhaseOrigin + (coordinate - parameters.circularOriginPixels) / parameters.circularPixelsPerCycle;
+  if (!finite(phase, -1000000, 1000000)) fail('The contact coordinate exceeds the declared circular origin/phase domain.');
+  return freezeData({ from: phase, to: phase, firstFrame: targetFrame, endFrame: targetFrame + 1, sequence: o.sourceSequence,
+    ownerIdentity: JSON.stringify([o.worldId, o.generation, o.actorId, o.mappingId, o.graphRevision, o.contactInstanceId, o.sourceEventId]),
+    receipt: { schema: 'lemmings-circular-contact-receipt/v1', rendererRevision: CIRCULAR_SPECTRUM_REVISION, mappingId: o.mappingId, graphRevision: o.graphRevision, contactInstanceId: o.contactInstanceId,
+      sourceEventId: o.sourceEventId, observedTick: o.observedTick, surfaceRevision: o.surfaceRevision, coordinate, coordinateMeaning: o.coordinateMeaning, precision: o.precision,
+      orientation: parameters.circularAxis === 0 ? 'world-x' : 'world-y', phaseCycles: phase, originPixels: parameters.circularOriginPixels, pixelsPerCycle: parameters.circularPixelsPerCycle,
+      timing: 'onset-samples-one-observed-coordinate;no-distance-interpolation-or-time-driven-ascent', firstFrame: targetFrame, endFrame: targetFrame + 1, acousticReceipt: false } });
+}
 
 export function planCircularTravel(parameters, intent, targetFrame, sampleRate) {
   if (parameters.sourceMode !== 2) return null;
-  if (!intent?.articulationState?.travel && intent?.controlFixture === true) return null;
+  if (![0, 1].includes(parameters.circularControlMode ?? 0)) fail('Unsupported circular coordinate control mode.');
+  if (intent?.controlFixture === true && !intent?.articulationState?.travel && !intent?.articulationState?.contactCoordinate) return null;
+  if (parameters.circularControlMode === 1) return planCircularContact(parameters, intent, targetFrame, sampleRate);
   const o = intent?.articulationState?.travel, scope = ['actorJourney', 'contactSpan', 'actionInstance'][parameters.circularScope], orientation = parameters.circularAxis === 0 ? 'signedX' : 'signedY';
   if (!scope || ![0, 1].includes(parameters.circularAxis) || ![0, 1].includes(parameters.circularRequireSegments) || typeof intent.mappingId !== 'string' || !intent.mappingId || intent.mappingId.length > 128 || !o || typeof o.worldId !== 'string' || !o.worldId || o.worldId.length > 512 || !Number.isSafeInteger(o.actorId) || o.actorId < 0 || !Number.isSafeInteger(o.generation) || o.generation < 0 || o.schema !== 'lemmings-canonical-travel-observation/v1' || o.worldId !== intent.worldId || o.generation !== intent.generation || o.actorId !== intent.actorId || o.instrumentId !== intent.mappingId ||
       o.lifetimeScope !== scope || o.orientation !== orientation || o.metric !== 'axis-projection' || typeof o.scopeInstanceId !== 'string' || !o.scopeInstanceId || o.scopeInstanceId.length > 512 ||

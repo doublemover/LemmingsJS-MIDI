@@ -2,7 +2,7 @@
   "schema": "lemmings-sound-recipes/v1",
   "pack": {
     "id": "lemmings.circular-travel",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "name": "Circular spectra from physical travel",
     "author": "LemmingsJS-MIDI contributors",
     "sourceUrl": "https://github.com/doublemover/LemmingsJS-MIDI",
@@ -101,6 +101,10 @@
               "unit": "enum"
             },
             "circularRequireSegments": {
+              "value": 0,
+              "unit": "enum"
+            },
+            "circularControlMode": {
               "value": 0,
               "unit": "enum"
             }
@@ -597,6 +601,56 @@
               "clamp": true
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "circular.stepping-stones",
+      "revision": 1,
+      "name": "Stepping stones \u00b7 observed contacts",
+      "author": "LemmingsJS-MIDI contributors",
+      "extends": "circular.base",
+      "tags": [
+        "circular-spectrum",
+        "observed-contact",
+        "unqualified-content"
+      ],
+      "components": [
+        {
+          "id": "exciter",
+          "role": "exciter",
+          "parameters": {
+            "circularControlMode": {
+              "value": 1,
+              "unit": "enum"
+            },
+            "circularScope": {
+              "value": 1,
+              "unit": "enum"
+            }
+          }
+        },
+        {
+          "id": "envelope",
+          "role": "envelope",
+          "parameters": {
+            "attackSeconds": {
+              "value": 0.005,
+              "unit": "s"
+            },
+            "decaySeconds": {
+              "value": 0.22,
+              "unit": "s"
+            },
+            "sustain01": {
+              "value": 0,
+              "unit": "ratio"
+            },
+            "releaseSeconds": {
+              "value": 0.05,
+              "unit": "s"
+            }
+          }
         }
       ]
     }
