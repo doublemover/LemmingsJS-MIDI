@@ -1,3 +1,4 @@
+import { applyRecordedPhysicalFeedback } from './physical/PhysicalFeedback.js';
 import { createCausalMusicEngine, validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from './ProcgenCheckpoint.js';
@@ -267,7 +268,8 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
             } else if (record.kind === 'input-observation') {
               const input = record.payload;
               if (record.tick !== world.tickIndex || record.generation !== world.generation || input?.version !== 1) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
-              if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+              if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
+              else if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
               else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
               else if (input.kind === 'instrument-performance' && performance) {
                 const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;

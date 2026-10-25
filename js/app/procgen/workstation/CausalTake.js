@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v8',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v9',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -140,6 +140,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
 const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
+  for (const rule of [...(valid.feedback?.conductors || []), ...(valid.feedback?.layers || []).flatMap(layer => layer.rules)]) { add('physical-feedback', rule.id, 'state'); for (const kind of ['CommandApplied', 'CommandRejected', 'CommandWaiting', 'ActorBorn', 'ActorTerminated']) add(kind, rule.id, 'fact'); if (['PickupCrossing', 'RouteLap', 'EncounterBegan', 'RendezvousCompleted', 'MotifCompleted', 'RestStarted', 'RestEnded'].includes(rule.source.kind)) { add('MotionCommitted', rule.id, 'fact'); add('physical-domain', rule.id, 'state'); } else add(rule.source.kind, rule.id, 'fact'); }
   for (const definition of valid.encounters || []) { add('encounters', definition.id, 'state'); if (definition.pickupId || definition.routeId || definition.participants.leftEnsembleId || definition.participants.rightEnsembleId) add('physical-domain', definition.id, 'state'); for (const kind of ['ActorBorn', 'ActorTerminated', 'MotionCommitted']) add(kind, definition.id, 'fact'); }
   for (const definition of valid.activityWindows || []) { add('activity', definition.id, 'state'); add('voices', definition.id, 'state'); if (definition.scope.ensembleId || definition.scope.routeId) add('physical-domain', definition.id, 'state'); if (definition.scope.topologyRegionId) add('topology-geometry-v1', definition.id, 'descriptor'); for (const kind of definition.physicalKinds) { if (['PickupCrossing', 'RouteLap'].includes(kind)) { add('physical-domain', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else if (['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) { add('encounters', definition.id, 'state'); add('MotionCommitted', definition.id, 'fact'); } else add(kind, definition.id, 'fact'); } if (definition.completionPolicy.kind === 'crew-route') for (const kind of ['CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed']) add(kind, definition.id, 'fact'); }
   for (const definition of valid.motifs || []) {

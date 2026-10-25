@@ -1,3 +1,5 @@
+import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
+import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
 import { releaseLanePhases } from './ReleaseGesture.js';
 import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
 import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
@@ -177,6 +179,7 @@ class ProcgenLaneWorld {
     };
     for (const action of Object.values(this.actions)) { action.setRuntime(runtime); action.characterParticles = this.characterParticles; }
     this.basinRoutes = new ProcgenBasinCrewRoutes(this); this.tunnelRoutes = new ProcgenTunnelCrewRoutes(this);
+    this.physicalFeedback = createPhysicalFeedbackState('initial', this.generation, this.tickIndex);
     this.actors = []; this.birthCohortRecords = []; this.birthCohortRevision = 0; this._physicalWorkBounds = null;
     this._musicActorPositions = new Map(); this._musicCompletedSlot = 0; this._musicCompletedTick = this.tickIndex;
     if (!cohorts) for (let lane = 0; lane < this.laneCount; lane++) this._spawn(lane, false);
@@ -945,7 +948,7 @@ class ProcgenLaneWorld {
     }
   }
   step(eventTimeMs = null) {
-    if (this._stepping) throw new Error('A physical tick cannot be reentered.');
+    if (this._stepping || isNotifyingProcgenBoundary(this)) throw new Error('A physical tick cannot be reentered.');
     if (this._failedTick) throw new Error('The previous physical tick was incomplete; restore a checkpoint before stepping.');
     if (!Number.isSafeInteger(this.tickIndex + 1)) throw new RangeError('Physical tick identity exhausted.');
     const recoverySpeed = this.timer.speedFactor;
@@ -1082,11 +1085,12 @@ class ProcgenLaneWorld {
       publishProcgenActorVisibility(this);
       this.soundEvents.commitTick(this._completedPhysicalSnapshot, this.terrainRevision);
       recordProcgenRecoveryStep(this, Number.isFinite(eventTimeMs) ? eventTimeMs : null, recoverySpeed);
-      this.timer.onGameTick.trigger(this.tickIndex);
     } catch (error) {
       if (this.soundEvents._tick) { this.soundEvents.abortTick(); this._failedTick = true; }
       throw error;
     } finally { this._stepping = false; }
+    publishProcgenCommittedBoundary(this);
+    this.timer.onGameTick.trigger(this.tickIndex);
   }
   _retainTerrainDescriptors() {
     if (!this.terrain?.retainDescriptors) return;

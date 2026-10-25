@@ -1225,3 +1225,39 @@ frontier, and command-tape replay uses the same owner. The release profile and
 regressions cover real-world births, downstream moving-actor gate attacks,
 capacity misses, continuation and renderer-time independence; they are written
 but **not run**, and no audio/latency qualification is implied.
+
+### Explicit physical feedback and intervention layers
+
+Authored `physicalGraph.feedback` conductors and gate/motif-anchored layers read
+committed facts, not sink receipts or renderer time. Bounded count/density windows,
+hysteresis, occurrence selection and cooldowns produce canonical commands for
+**tick + 1 or later**. Commands retain exact counted roots, rule revision, epoch,
+feedback root and an eight-hop cycle-checked rule path. Manual commands win the
+existing actor/resource arbitration; physical worker inventory and approved
+junction geometry remain authoritative. An eligibility wait keeps the original
+actor and expires; it never chooses a replacement or creates a fake action.
+
+Dry-run suggestions never enter the world. Explicit Arm starts a new epoch;
+loading does not arm, Stop/Panic disarms and cancels only owned pending commands.
+Layer mute leaves already-built terrain/skills intact and consumes no missed
+anchors on unmute. Bounded retained human command receipts can be captured with
+an **explicit** gate/motif anchor and actor/cohort/motif-role binding. The editor
+shows a definition/resource plan separately from actual accepted outcomes.
+Fragment transplant remaps gate/motif/ensemble/route references and disables
+transplanted rules; stable live actor targets cannot be copied into fragments.
+
+Publication runs synchronously after a committed simulation boundary, with
+reentrant stepping forbidden. A single journal input contains the prepared
+canonical command batch and feedback state before publication; exact replay
+applies that input without evaluating rules again. Incremental recovery records
+the same command/state owners. A physical branch may explicitly regenerate under
+a new epoch; event-tape inspection remains nonphysical. Capture refusal disarms
+feedback and pauses the workstation rather than publishing an unrecorded effect.
+
+Bounds are 64 rules, 16 proposals/boundary, 32 proposals/54 ticks, 1,024 proposals
+per epoch, 16 per actor, 256 trace entries, 4,096 non-evicting occurrence identities,
+2,048 recent root-ancestry entries, 262,144 predicate visits and 512 KiB of state.
+Rule fuel is consumed by an attempted rejection; command-batch admission is
+all-or-none. Unknown/censored ancestry, unresolved references and exhausted
+budgets fail closed. These are implemented bounds, not measured performance.
+Regressions and the 8/128/1,024-actor planning profile are written but **unrun**.

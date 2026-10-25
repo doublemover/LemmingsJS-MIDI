@@ -10,7 +10,7 @@ const validatePhysicalEventIdentity = value => {
   return value;
 };
 const copyFact = source => {
-  const seen = new Set(), extended = ['CommandApplied', 'CommandRejected', 'TerrainWorkCommitted'].includes(source?.kind), budget = { remaining: extended ? 4096 : 512, bytes: 0, maximumBytes: extended ? 131072 : 32768 };
+  const seen = new Set(), extended = ['CommandApplied', 'CommandRejected', 'CommandWaiting', 'TerrainWorkCommitted'].includes(source?.kind), budget = { remaining: extended ? 4096 : 512, bytes: 0, maximumBytes: extended ? 131072 : 32768 };
   const account = bytes => { budget.bytes += bytes; if (budget.bytes > budget.maximumBytes) throw new Error('Physical fact byte budget exceeded.'); };
   const copy = (value, depth) => {
     if (--budget.remaining < 0 || depth > 8) throw new Error('Physical fact exceeds its data budget.');

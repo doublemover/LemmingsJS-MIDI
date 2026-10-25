@@ -1,3 +1,4 @@
+import { validateFeedbackCausality, FEEDBACK_COMMANDS } from './workstation/physical/PhysicalFeedbackSchema.js';
 import { validateReleaseGesture } from './ReleaseGesture.js';
 import { normalizePhysicalAuthoringCommand, preparePhysicalAuthoringCommand, applyPhysicalAuthoringCommand } from './PhysicalAuthoring.js';
 import { normalizeJunctionRequest, applyJunctionRequest, normalizeJunctionDefinitionCommand, applyJunctionDefinition } from './PhysicalJunctions.js';
@@ -31,6 +32,8 @@ const enqueueIntervention = (world, command) => {
   if (state.recentIds.includes(command.id) || state.pending.some(item => item.id === command.id)) {
     return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'duplicate-command' });
   }
+  const causality = command.causality == null ? null : validateFeedbackCausality(command.causality);
+  if (command.eligibilityUntilTick != null && (!causality || !Number.isSafeInteger(command.eligibilityUntilTick) || command.eligibilityUntilTick < (command.applyAtTick ?? world.tickIndex + 1) || command.eligibilityUntilTick > world.tickIndex + 601)) throw new Error('Invalid physical eligibility deadline.');
   const parameters = {};
   if (command.kind === 'set-release-gesture') { if (!world.cohorts) throw new Error('Release gestures require physical cohort admission.'); parameters.gesture = validateReleaseGesture(command.parameters?.gesture, world.laneCount); }
   if (command.kind === 'physical-authoring') {
@@ -67,7 +70,7 @@ const enqueueIntervention = (world, command) => {
     target.actorId = command.target.actorId;
   }
   if (!Number.isSafeInteger(state.sequence + 1)) throw new RangeError('Intervention sequence exhausted.');
-  const draft = { version: 1, id: command.id, kind: command.kind, target: Object.freeze(target),
+  const draft = { version: 1, ...(causality ? { causality, eligibilityUntilTick: command.eligibilityUntilTick ?? command.applyAtTick ?? world.tickIndex + 1 } : {}), id: command.id, kind: command.kind, target: Object.freeze(target),
     parameters: Object.freeze(parameters), requestedAt: command.requestedAt ?? world.simulationTimeMs,
     applyAtTick: command.applyAtTick ?? world.tickIndex + 1, ...(command.kind === 'junction-request' ? { requestedBoundaryTick: command.applyAtTick ?? world.tickIndex + 1 } : {}), origin: command.origin ?? 'manual',
     expectedStateRevision: command.expectedStateRevision ?? null, transactionId: command.transactionId ?? null,
@@ -133,7 +136,8 @@ const applyInterventions = world => {
   for (const command of due) {
     const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : command.kind.startsWith('nuke') ? 'nuke:' + (command.target.laneId ?? 'all') : ['terrain-edit', 'junction-request', 'physical-authoring'].includes(command.kind) ? 'terrain-authoring' : command.kind === 'junction-define' ? 'junction-definition:' + command.parameters.definition.junctionId : 'release-policy';
     let status = 'rejected', reason = null, conflictCommandId = null, decision = null, terrainResult = null;
-    if (command.target.generation !== world.generation) { status = 'stale'; reason = 'stale-generation'; }
+    if (command.eligibilityUntilTick != null && world.tickIndex > command.eligibilityUntilTick) { status = 'expired'; reason = 'eligibility-window-expired'; }
+    else if (command.target.generation !== world.generation) { status = 'stale'; reason = 'stale-generation'; }
     else if (command.expectedStateRevision && command.expectedStateRevision !== boundaryRevision) { status = 'stale'; reason = 'stale-state-revision'; }
     else if (!['set-release-gesture', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
       status = 'stale'; reason = 'stale-target';
@@ -184,7 +188,7 @@ const applyInterventions = world => {
           if (accepted) { status = 'accepted'; reason = 'applied'; claimed.set(resource, command.id); }
           else {
             if (mutated() || populationMutated()) throw new Error('Rejected intervention mutated physical owner state.');
-            status = terrainResult?.status ?? status; reason = terrainResult?.reason ?? 'ineligible-command'; if (actor) actor._physicalInterventionId = previousCommand;
+            status = terrainResult?.status ?? status; reason = terrainResult?.reason ?? 'ineligible-command'; if (reason === 'ineligible-command' && command.eligibilityUntilTick > world.tickIndex) { status = 'waiting'; reason = 'waiting-for-existing-target-eligibility'; } else if (reason === 'ineligible-command' && command.lastWaitReason && command.eligibilityUntilTick <= world.tickIndex) { status = 'expired'; reason = 'eligibility-window-expired'; } if (actor) actor._physicalInterventionId = previousCommand;
           }
         } catch (error) {
           reason = 'adapter-exception';
@@ -198,7 +202,7 @@ const applyInterventions = world => {
     if (status === 'waiting') { state.pending.push(Object.freeze({ ...command, applyAtTick: world.tickIndex + 1, lastWaitReason: reason })); state.pendingBytes += commandStorageBytes(command); }
     if (status === 'waiting' && command.lastWaitReason === reason) continue;
     const junctionId = command.parameters.request?.junctionId ?? command.parameters.definition?.junctionId;
-    const receipt = { commandId: command.id, ...(junctionId ? { junctionId } : {}), transactionId: command.transactionId, status, appliedTick: world.tickIndex,
+    const receipt = { commandId: command.id, ...(command.causality ? { causality: command.causality, parentCauseIds: command.causality.parentCauseIds } : {}), ...(FEEDBACK_COMMANDS.includes(command.kind) && ['manual', 'live-controller'].includes(command.origin) && JSON.stringify(command.parameters).length * 2 <= 8192 && (command.parameters.gesture?.lanePhase.length ?? 0) <= 64 ? { requestedCommand: { id: command.id, kind: command.kind, target: command.target, parameters: command.parameters, requestedAt: command.requestedAt, applyAtTick: command.applyAtTick, origin: command.origin } } : {}), ...(junctionId ? { junctionId } : {}), transactionId: command.transactionId, status, appliedTick: world.tickIndex,
       reason, conflictCommandId, origin: command.origin, target: command.target, decision, ...(terrainResult ? { terrain: terrainResult } : {}) };
     remember(state, receipt);
     world.soundEvents.emitPhysicalFact({ kind: status === 'accepted' ? 'CommandApplied' : status === 'waiting' ? 'CommandWaiting' : 'CommandRejected',

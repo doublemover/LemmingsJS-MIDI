@@ -1,3 +1,4 @@
+import { validatePhysicalFeedback } from './physical/PhysicalFeedbackSchema.js';
 import { validateActivityWindows, createActivityWindowObserver } from './physical/ActivityWindows.js';
 import { validatePhysicalMotifs, createPhysicalMotifObserver } from './physical/PhysicalMotifs.js';
 import { freeze as freezePhysical } from './physical/PhysicalSchema.js';
@@ -23,6 +24,7 @@ const validateCausalInstrumentGraph = value => {
   if (!plain(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0 ||
       !Array.isArray(value.instruments) || value.instruments.length > 256) throw new Error('Unsupported causal instrument graph.');
   const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions), encounterDefinitions = validateEncounterDomain(value, domain), activityDefinitions = validateActivityWindows(value, { ...domain, topologyRegions }), motifDefinitions = validatePhysicalMotifs(value, { ...domain, encounters: encounterDefinitions, activityWindows: activityDefinitions });
+  const feedback = validatePhysicalFeedback(value.feedback, { ...domain, motifs: motifDefinitions });
   const ids = new Set();
   const instruments = value.instruments.map(input => {
     if (!plain(input) || !nonempty(input.id) || ids.has(input.id) || !SOURCE_KINDS.has(input.sourceKind) ||
@@ -66,7 +68,7 @@ const validateCausalInstrumentGraph = value => {
       route: input.route, role: input.role, mute: input.mute === true, solo: input.solo === true });
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
-  return Object.freeze({ version: 1, revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
+  return Object.freeze({ version: 1, ...(feedback ? { feedback } : {}), revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
     ...(value.activityWindows ? { activityWindows: activityDefinitions } : {}), ...(value.motifs ? { motifs: motifDefinitions } : {}), ...(value.encounters ? { encounters: encounterDefinitions } : {}), ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };
@@ -217,7 +219,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const activityById = new Map(activityResult.windows.map(value => [value.id, value]));
     endMatching(batch, record => activityById.get(record.instrument.activityWindowId)?.releasesHeldVoices, null, 'physical-activity-policy', output);
     const recognized = motifs.observe(batch, [...batch.facts, ...observations.facts, ...relationships.facts, ...activityResult.facts], physical, { activity: activityResult.completeness.status, encounters: relationships.completeness.status });
-    latestPhysicalAnalysis = freezePhysical({ batchId: batch.batchId, tick: batch.tick, generation: batch.generation, facts: Object.freeze([...observations.facts, ...relationships.facts, ...recognized.facts, ...activityResult.facts]), windows: activityResult.windows, completeness: { status: relationships.completeness.status === 'complete' && recognized.completeness.status === 'complete' && activityResult.completeness.status === 'complete' ? 'complete' : 'censored', encounters: relationships.completeness, motifs: recognized.completeness, activity: activityResult.completeness } });
+    latestPhysicalAnalysis = freezePhysical({ batchId: batch.batchId, tick: batch.tick, generation: batch.generation, ensembles: observations.ensembles || [], facts: Object.freeze([...observations.facts, ...relationships.facts, ...recognized.facts, ...activityResult.facts]), windows: activityResult.windows, completeness: { status: relationships.completeness.status === 'complete' && recognized.completeness.status === 'complete' && activityResult.completeness.status === 'complete' ? 'complete' : 'censored', encounters: relationships.completeness, motifs: recognized.completeness, activity: activityResult.completeness } });
     endMatching(batch, record => { if (!record.instrument.ensembleId) return false; const member = physical.membership(record.instrument.ensembleId, record.actorId); return member.status !== 'complete' || !member.includes; }, null, 'ensemble-membership-ended', output);
     endMatching(batch, record => record.instrument.actionVoicePolicy && batch.tick - record.startedTick >= record.instrument.actionVoicePolicy.maximumHoldTicks, null, 'maximum-hold', output);
     let begins = 0, physicalUpdates = 0;

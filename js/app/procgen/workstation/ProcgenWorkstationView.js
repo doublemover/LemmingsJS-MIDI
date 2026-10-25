@@ -202,6 +202,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     button('Export', () => handlers.export?.()), button('MIDI', () => handlers.exportMidi?.()),
     button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo'),
     button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases'),
+    button('Feedback…', () => handlers.openPhysicalFeedback?.(), 'Author, inspect and explicitly arm physical conductors and intervention layers'),
     button('Junctions…', () => handlers.openPhysicalJunctions?.(), 'Request safe physical route changes and inspect pending versus applied configurations'),
     button('Quarry Echo…', () => handlers.openQuarryEcho?.(), 'Prepare an original echo rack for the physical audio owner'),
     button('Record audio…', () => handlers.openMasterCapture?.(), 'Capture the running shared browser master as a bounded stereo WAV'),
@@ -407,6 +408,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           } else {
             const step = button('Step branch 32 ticks', () => handlers.advanceCausalBranch?.({ ticks: 32 })); step.disabled = !branch.canStep;
             const finish = button('Save and close branch', () => handlers.finishCausalBranch?.()); finish.disabled = !!branch.busy; branchControls.append(step, finish);
+            const feedback = button(branch.active.inspection?.physicalLayers ? 'Disarm branch feedback' : 'Regenerate physical feedback', () => branch.active.inspection?.physicalLayers ? handlers.disarmCausalBranchFeedback?.() : handlers.armCausalBranchFeedback?.()); feedback.disabled = !branch.canStep; branchControls.append(feedback);
             if (branch.active.playbackAdmission) {
               const interpretation = button(branch.active.interpretationPlaying ? 'Pause branch interpretation' : 'Enable branch interpretation', () => handlers.setCausalBranchPlayback?.(!branch.active.interpretationPlaying));
               interpretation.disabled = !branch.canStep; branchControls.append(interpretation);

@@ -1,3 +1,4 @@
+import { createPhysicalFeedbackController } from './physical/PhysicalFeedback.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
@@ -34,7 +35,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       .map(gap => gap.firstTick == null ? { ...gap } : ({ ...gap, firstTick: Math.max(gap.firstTick, inventory.sourceRange.firstTick ?? gap.firstTick), lastTick: Math.min(gap.lastTick, world.tickIndex) }));
     const boundary = () => {
       const snapshot = session.engine.snapshot();
-      return { voices: snapshot.active, travel: snapshot.travel, contactSpans: snapshot.active.filter(voice => voice.lifetimeScope === 'contactSpan'),
+      return { ...(world.physicalFeedback ? { 'physical-feedback': world.physicalFeedback } : {}), voices: snapshot.active, travel: snapshot.travel, contactSpans: snapshot.active.filter(voice => voice.lifetimeScope === 'contactSpan'),
         ...(snapshot.performanceInputs ? { 'instrument-performance': snapshot.performanceInputs } : {}),
         ...(snapshot.physicalDomain ? { 'physical-domain': snapshot.physicalDomain } : {}), ...(snapshot.rhythmicResponses ? { 'rhythmic-responses': snapshot.rhythmicResponses } : {}),
         ...(snapshot.actionAdmission ? { 'action-admission': snapshot.actionAdmission } : {}), ...(snapshot.tonalInterpretation ? { 'tonal-interpretation': snapshot.tonalInterpretation } : {}), ...(snapshot?.activity ? { activity: snapshot.activity } : {}), ...(snapshot?.motifs ? { motifs: snapshot.motifs } : {}), ...(snapshot.encounters ? { encounters: snapshot.encounters } : {}),
@@ -49,6 +50,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const boundaryMarker = recorder.mark({ type: 'physical-branch-boundary', qualification }, { tick: world.tickIndex, generation: world.generation });
     if (boundaryMarker.status !== 'accepted') throw journalError('branch-admission', 'The branch boundary marker was not admitted.');
     let phase = 'paused', failure = null, disposed = false, stopPromise = null, disposePromise = null, completedBatches = 0, lastIntents = [];
+    const feedback = createPhysicalFeedbackController({ world, getGraph: session.graph, recordInput: (input, boundary) => recorder.recordInput(input, boundary), onFailure: error => { failure = { code: 'feedback-publication', reason: error.message, tick: world.tickIndex }; } });
     let lastReplayState = session.replayState();
     const replayState = () => {
       if (!['retiring', 'retirement-unknown', 'disposed'].includes(phase)) lastReplayState = session.replayState();
@@ -58,7 +60,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const status = () => cloneJournalData({ schema: 'lemmings-physical-branch', version: 1, takeId, parentTakeId,
       executionEpoch, phase, tick: world.tickIndex, generation: world.generation, completedBatches, recording: recorder.status(),
       qualification, failure, interpretationPlaying: replayState().playing ?? true, playbackAdmission: replayState().version === 2,
-      inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: false } });
+      inspection: { paused: phase !== 'advancing', hardware: false, thru: false, physicalLayers: feedback.diagnostics().armed, feedback: feedback.diagnostics() } });
     const writable = () => {
       const recording = recorder.status();
       if (disposed || world._disposed || phase !== 'paused' || world._failedTick || failure || recording.state !== 'recording' || recording.failure || recording.coverage?.status !== 'complete') throw journalError('branch-state', 'The physical branch is not at a writable paused boundary.');
@@ -72,6 +74,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         const receipt = recorder.recordCommittedBatch({ batch, intents: lastIntents });
         completedBatches++;
         if (receipt.status === 'rejected') failure = { code: 'capture-admission', reason: receipt.reason, tick: batch.tick };
+        else feedback.observe(batch, session.engine.physicalAnalysis());
       } catch (error) {
         failure = { code: error.code || error.name || 'branch-capture', reason: error.message, tick: batch.tick };
         recorder.markGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'branch-batch-processing-failed' });
@@ -128,6 +131,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const stop = ({ reason = 'physical-branch-stop' } = {}) => {
       if (stopPromise) return stopPromise;
       if (phase === 'advancing') throw journalError('branch-state', 'Stop at a completed physical branch boundary.');
+      feedback.disarm(); feedback.dispose();
       phase = 'stopping'; world.soundEvents.onBatch.off(onBatch);
       let finalCheckpoint = null;
       if (!world._failedTick && !world._disposed) finalCheckpoint = session.snapshot();
@@ -156,7 +160,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
         disposed = true; phase = 'disposed';
       })().catch(error => { if (!recorder.canReplaceDocument()) disposePromise = null; throw error; }); return disposePromise;
     };
-    return { receipt: qualification, branch: { status, advance, enqueueIntervention, setTempo, setSpeed, setPlayback, setMapping,
+    return { receipt: qualification, branch: { status, advance, armFeedback: ({ epoch } = {}) => { writable(); return feedback.arm({ mode: 'regenerate', epoch: epoch || `branch:${executionEpoch}:${world.generation}:${world.tickIndex}` }); }, disarmFeedback: () => { writable(); return feedback.disarm(); }, enqueueIntervention, setTempo, setSpeed, setPlayback, setMapping,
       mark: marker => { writable(); return recorder.mark(marker, sourceBoundary()); }, flush: recorder.flush,
       checkpoint: () => { writable(); return recorder.checkpoint({ value: session.snapshot(), ...sourceBoundary() }); },
       stop, dispose } };
