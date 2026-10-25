@@ -17,15 +17,15 @@ const advanceProcgenClock = (elapsed, deltaMs, speed, step, now) => {
   return elapsed;
 };
 
-const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, renderBudget, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, workstation = false, hazardSpacing = 160, initialWorld = null, windowRef = window }) => {
+const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, renderBudget, sprites, masks, assets, laneCount, seed, terrain, laneHeight = DEFAULT_LANE_HEIGHT, previousDistances = [], workerLimits, populationPolicy, onMetrics, onActiveCount, speed = 3, workstation = false, hazardSpacing = 160, initialWorld = null, initiallySuspended = false, windowRef = window }) => {
   const retirement = createProcgenRetirementScope();
   let world = null, renderer = null, constructionFrame = null, constructionVisibility = null;
   try {
     world = initialWorld || new ProcgenLaneWorld({ laneCount, laneHeight, seed, sprites, masks, speed, cohorts: true, populationPolicy,
       terrain, previousDistances, workerLimits, workstation, hazardSpacing,
       particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
-    renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef, renderBudget });
-    let paused = false;
+    renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef, renderBudget, deferPresentation: initiallySuspended });
+    let paused = initiallySuspended, activated = !initiallySuspended;
     let clockDriven = false, clockTime = null;
     let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;
     let displayedActiveCount = -1;
@@ -45,9 +45,9 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       }
     };
     world.gameResources = resources;
-    world.render = () => renderer.render();
+    world.render = () => { if (activated) renderer.render(); };
     const update = time => {
-      if (!running) return;
+      if (!running || !activated) return;
       if (!clockDriven && lastTime != null && !paused && !windowRef.document.hidden) {
         elapsed = advanceProcgenClock(elapsed, time - lastTime, world.timer.speedFactor,
           () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
@@ -68,23 +68,31 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       lastTime = null; clockTime = null; elapsed = 0; renderer.camera.resetPresentationClock(); renderer.actorEffects?.setVisible(!windowRef.document.hidden);
       if (windowRef.document.hidden) { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); }
     };
-    constructionVisibility = visibilityChanged;
-    windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
-    frame = windowRef.requestAnimationFrame(update); constructionFrame = frame;
+    const activate = () => {
+      if (!running) return false; if (constructionVisibility) return true;
+      if (!renderer.activatePresentation()) return false;
+      constructionVisibility = visibilityChanged;
+      windowRef.document.addEventListener?.('visibilitychange', visibilityChanged);
+      activated = true; lastTime = clockTime = null; elapsed = 0;
+      frame = windowRef.requestAnimationFrame(update); constructionFrame = frame; return true;
+    };
+    if (!initiallySuspended) activate();
     const getDebugState = () => ({ ...world.getDebugState(), selectedTheme: terrain?.recipe.family || assets.styleName,
       renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits, actorCandidates: renderer.actorVisibility.candidates.length, actorIndexRebuilds: renderer.actorVisibility.rebuilds || 0, display: renderer.getDisplayState() } });
-    return { view, game: world, world, renderer, getDebugState,
+    return { view, game: world, world, renderer, getDebugState, activate,
+      isActivated: () => activated && running,
       setClockDriven(value) { clockDriven = !!value; clockTime = null; elapsed = 0; },
       pump(time) {
-        if (!clockDriven || !running) return;
+        if (!clockDriven || !running || !activated) return;
         if (windowRef.document.hidden) { clockTime = null; elapsed = 0; return; }
         if (!paused && clockTime != null) elapsed = advanceProcgenClock(elapsed, Math.max(0, time - clockTime), world.timer.speedFactor,
           () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
         clockTime = time; reportActiveCount();
       },
       pause() { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
-      resume() { paused = false; lastTime = null; clockTime = null; },
+      resume() { if (!activated || !running) return false; paused = false; lastTime = null; clockTime = null; return true; },
       step(count = 1) {
+        if (!activated || !running) throw new Error('A prepared world cannot step before publication.');
         const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
         for (let i = 0; i < Math.max(1, Math.min(10000, Math.trunc(count))); i++) world.step(now);
         renderer.render(); reportActiveCount(); onMetrics?.(world.getDebugState());
@@ -106,7 +114,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
           { name: 'asset-provider-lease', run: () => resourceLease?.release() }
         ]);
       },
-      resize() { renderer.resize(); } };
+      resize() { if (activated && running) renderer.resize(); } };
   } catch (error) {
     retirement.retire([
       { name: 'visibility-listener', run: () => { if (constructionVisibility) windowRef.document.removeEventListener?.('visibilitychange', constructionVisibility); } },

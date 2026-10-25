@@ -134,6 +134,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Animate actual local note pitches and releases across event rows; move the persistent editor smoothly between layouts without per-frame canvas resizing.
 
 ### Added
+- Added pinned physical-scene manifests, complete dependency/variant preflight and fenced candidate ownership; staged browser worlds defer animation and input until publication.
 - Replace hydro's pixel-warp wobble with 24 authored all-chrome articulated dance poses, fixed foot registration and native-rate previews; rebuild neon tubes and classic-style smoke curls.
 - Refine the casino hydro performer to a fully cobalt body, slim enamel triangle head, winged eyeliner and futuristic chrome/luminous stagewear while preserving the three dance loops.
 - Expand the casino into a playable Grand Revue with large marble/gold architecture, long festoon lights,192px image-generated triangle-headed hydro performers, modern chip inlays, and a dense smoke hazard using the shared action system.

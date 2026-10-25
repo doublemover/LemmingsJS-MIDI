@@ -406,7 +406,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
     if (session) restoreProcgenCheckpoint(candidate, session.world);
     if (session?.recoveryJournal) await replayProcgenRecoveryJournal(candidate, session.recoveryJournal, { signal: lease?.signal });
     await prepareProcgenRecoveryJournal(candidate, { resourceBudget: procgenResourceBudget, signal: lease?.signal, isCurrent: () => canCommit() && !committed });
-    lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true,
+    lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true, initiallySuspended: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
@@ -426,6 +426,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
         preset: settings.preset, mode: settings.mode }),
       view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
     committed = true;
+    if (!lanes.activate()) throw new Error('The admitted world presentation could not activate.');
     window.procgenSeed = candidate.seed; window.procgenSelectedTheme = 'mixed'; window.procgenDebugState = lanes.getDebugState;
     const params = new URLSearchParams(window.location.search);
     if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: candidate, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };

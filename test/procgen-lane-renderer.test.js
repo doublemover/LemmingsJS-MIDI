@@ -1,3 +1,4 @@
+import { createProcgenLaneRuntime } from '../js/app/procgen/ProcgenLaneRuntime.js';
 import { expect } from 'chai';
 import { CharacterParticles } from '../js/lemmings/CharacterParticles.js';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
@@ -111,4 +112,28 @@ describe('bounded shared-lane renderer', () => {
     renderer.dispose(); world.dispose();
   });
 
+});
+
+
+describe('deferred candidate presentation', () => {
+  it('owns a prepared world without drawing, ticking, binding canvas gestures or scheduling animation', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 4 }), canvas = canvasFixture(), callbacks = new Map(), visible = new Set(); let next = 0;
+    const windowRef = { document: { hidden: false, addEventListener: (event, fn) => visible.add(fn), removeEventListener: (event, fn) => visible.delete(fn) }, performance, devicePixelRatio: 1,
+      requestAnimationFrame: fn => { callbacks.set(++next, fn); return next; }, cancelAnimationFrame: id => callbacks.delete(id) };
+    const runtime = createProcgenLaneRuntime({ canvas, initialWorld: world, assets: { groundPieces: [] }, windowRef, initiallySuspended: true });
+    const initial = { tick: world.tickIndex, width: canvas.width, height: canvas.height };
+    expect(runtime.isActivated()).to.equal(false); expect(callbacks.size).to.equal(0); expect(canvas.listeners.size).to.equal(0); expect(visible.size).to.equal(0);
+    runtime.setClockDriven(true); runtime.pump(1000); world.render(); runtime.resize(); expect(runtime.resume()).to.equal(false); expect(() => runtime.step()).to.throw('before publication');
+    expect(world.tickIndex).to.equal(initial.tick); expect(canvas.pixels).to.have.length(0); expect(canvas.width).to.equal(initial.width); expect(canvas.height).to.equal(initial.height);
+    expect(runtime.activate()).to.equal(true); expect(runtime.activate()).to.equal(true); expect(callbacks.size).to.equal(1); expect(canvas.listeners.has('pointerdown')).to.equal(true); expect(visible.size).to.equal(1);
+    runtime.pump(1000); runtime.pump(1100); expect(world.tickIndex).to.equal(initial.tick); runtime.resume(); runtime.pump(1200); runtime.pump(1300); expect(world.tickIndex).to.be.greaterThan(initial.tick);
+    const receipt = runtime.stop(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(callbacks.size).to.equal(0); expect(canvas.listeners.size).to.equal(0); expect(visible.size).to.equal(0);
+  });
+  it('cancels an unpublished candidate without changing the live canvas backing size', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 4 }), canvas = canvasFixture();
+    const runtime = createProcgenLaneRuntime({ canvas, initialWorld: world, assets: { groundPieces: [] }, initiallySuspended: true,
+      windowRef: { document: { hidden: false }, performance, devicePixelRatio: 1, requestAnimationFrame() { throw new Error('Candidate scheduled animation.'); }, cancelAnimationFrame() {} } });
+    const size = [canvas.width, canvas.height], receipt = runtime.stop(); await receipt.completion;
+    expect(receipt.outcome).to.equal('complete'); expect([canvas.width, canvas.height]).to.deep.equal(size); expect(canvas.pixels).to.have.length(0); expect(canvas.listeners.size).to.equal(0);
+  });
 });

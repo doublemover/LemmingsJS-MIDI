@@ -6,10 +6,11 @@ const PROCGEN_MAX_SCALE = 6;
 const FOLLOW_TAU_MS = 130;
 const MAX_FOLLOW_DELTA_MS = 50;
 
-const createProcgenCameraController = renderer => {
+const createProcgenCameraController = (renderer, { deferBinding = false } = {}) => {
+  let inputActive = !deferBinding;
   let { canvas, window: windowRef, world } = renderer;
   const listeners = [], pointerArbiter = getPointerGestureArbiter(canvas.ownerDocument || windowRef.document || canvas);
-  const listen = (event, handler, options) => { canvas.addEventListener(event, handler, options); listeners.push([event, handler, options]); };
+  const listen = (event, handler, options) => { if (inputActive) canvas.addEventListener(event, handler, options); listeners.push([event, handler, options]); };
   const dimensions = () => {
     if (!canvas) return { width: 0, height: 0, fullHeight: 0, bandHeight: 0 };
     const dpr = Math.min(2, windowRef.devicePixelRatio || 1);
@@ -133,6 +134,7 @@ const createProcgenCameraController = renderer => {
     renderer.follow = state.follow !== false; lastFollowMs = null; clamp();
   };
   return { pan: (...args) => !disposed && pan(...args), setZoom: (...args) => !disposed && setZoom(...args), followFrontier: () => !disposed && followFrontier(), update, getState, applyState: state => !disposed && applyState(state), viewport, minimumScale,
+    activate() { if (disposed || inputActive) return !disposed; for (const [event, handler, options] of listeners) canvas.addEventListener(event, handler, options); inputActive = true; return true; },
     resetPresentationClock() { lastFollowMs = null; },
     dispose() { drag?.lease.cancel('disposed'); for (const [event, handler, options] of listeners) canvas.removeEventListener(event, handler, options);
       listeners.length = 0; disposed = true; drag = null; cachedLeader = null; leaderActors = null; lastFollowMs = null; world = canvas = windowRef = null; } };

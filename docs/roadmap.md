@@ -3365,3 +3365,46 @@ conflicting indices and unbound onsets reject explicitly. Legacy takes without
 an inventory retain their explicit numeric source namespace and do not guess
 stable IDs. Render manifests hash the routing evidence. Fixtures are authored;
 runtime validation remains deferred with the broader implementation batch.
+
+### Continuation 159 — pinned scene contracts and candidate ownership (#1097, #1151, #1175)
+
+The scene layer now has an immutable versioned manifest validator, exact-version
+registry, bounded metadata pages, user-derived parent/override identities and
+future-schema inspection without activation. Physical controls expose units,
+ranges and geometry/physical/sound ownership. Complete patch references, world
+source/score references, physical observation requirements, paused transport,
+landmarks, source credits and authored resource bounds are explicit.
+
+Dependency preflight resolves the complete enabled variant: source, score,
+patch definitions, engine artifacts, parameter schemas, assets and observations.
+Optional missing material remains distinct from required missing dependencies.
+Named approximations require an explicit choice and retain changed-behavior
+receipts. Embedded/frozen playable material can remain available while optional
+source lineage cannot regenerate it. These are availability/API receipts, never
+listening or measured realtime-capacity evidence.
+
+The new candidate loader serializes preparation/retirement, fences selection and
+live document/routing identity, retains late canceled resources until confirmed
+retirement, and requires complete admission before exposing Apply. Its only
+publication policy is a synchronous fenced stopped replacement with a paused,
+unarmed receipt; it never implies a seamless transition. Isolated rehearsal is
+an optional independently owned adapter, and absence is explicit. Metadata
+selection and checks cannot mutate the active world. Final confirmation rechecks
+the base, preserving concurrent edits and output choices. Failed retirement stays
+charged and blocks replacement; committed state remains distinct from cleanup.
+
+These modules are the shared contract foundation. The boot/world candidate
+adapter, installed scene catalog, scene browser/cue integration, authored scores,
+save/reopen lineage and browser proof paths remain pending; no scene issue is
+marked complete by this contract work. Four/eight-lane sparse/medium/dense content,
+closure, lineage, future versions, cancellation and base-change fixtures are
+authored but unrun. Runtime testing remains deferred until implementation ends.
+
+Boot candidates now construct with deferred presentation: no animation callback,
+physical ticking, visibility listener, camera input or canvas resizing is admitted
+until explicit publication activation. A candidate cannot resume/step itself while
+unpublished, and cancellation does not own the active canvas backing store.
+Ordinary runtime creation retains immediate activation. Real-world candidate
+fixtures cover paused activation and canceled-candidate canvas preservation;
+these join the deferred runtime batch. Long-lived staged world leases and the
+scene-specific publication adapter remain the next integration step.
