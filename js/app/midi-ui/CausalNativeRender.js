@@ -24,7 +24,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
   const { sampleRate, outputFrames, outputEnd, firstFrame, endFrame, stemLaneIds } = plan;
-  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, assets: input.nativeAssets || [],
+  const native = await renderNativeOfflineGraph({ patch: plan.patch, events, frames: outputEnd, sampleRate, stemLaneIds, panicFrame: input.panicFrame ?? null, assets: input.nativeAssets || [],
     ...(nativeEffects ? { effectGraph: plan.effectPlan.definition, effectReturnNodeIds: plan.effectReturnNodeIds } : {}) },
   { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent });
   try {
@@ -44,7 +44,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
         scheduledNativeCalls: native.receipt.submitted, nativeAppliedFrames: 'not-reported-by-native-api', peakVoices: plan.peakVoices },
       realization: { scope: 'new-local-native-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
         smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldPolicy: plan.owned.requiresNativeAssets ? 'selected-region-varispeed-duration-capped-at-four-seconds' : 'per-onset-effective-native-source-parameters',
-        sourcePerformanceControls: 'captured-controls-retained-new-target-defaults-and-recorded-onset-physical-causes-applied',
+        sourcePerformanceControls: 'captured-controls-retained-explicit-new-target-controls-and-recorded-onset-physical-causes-applied',
         sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), continuousPhysicalBindings: 'not-supported-by-these-native-sources' },
         sourceBank: input.materialDescriptor || null, sourceResampling: plan.owned.requiresNativeAssets ? 'native-varispeed-source-rate-conversion' : 'none', normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded',
         nativeSourceProfile: { indexLimitedOnsets, omittedModes, qualification: 'native-source-register-plans-not-measured-alias-or-listening-evidence' } },

@@ -1476,3 +1476,51 @@ not acquire decorative macros. Native and owned renderers still advertise their
 actual onset/continuous capabilities. Endpoint/grid PCM qualification and the
 broader qualification/listening package are not yet implemented in this increment;
 no audible result, safe continuum, sensitivity study or completed #971 is claimed.
+
+### Source-bound sound qualification implementation (not executed)
+
+`SoundQualificationPlan` compiles an exact patch/build/fixture plan for MIDI
+36/60/84, velocities 24/64/110, short/held gates, repeat/Panic/unsupported-control
+and over-budget cases. Every macro has 0/0.5/1 note/real-event samples; every pair
+has a finite 5×5 grid. Missing sparse/medium/dense real captures remain explicit
+coverage gaps. The separate fixture-capture command runs the real shared walking
+world and causal engine, preserving checkpoint/fact/intent/source hashes; authored
+isolated notes are never mislabeled as recorded physical takes.
+
+The runner uses the existing native OfflineAudioContext driver or owned source
+kernel render path, with explicit target controls rather than rewriting immutable
+patch defaults. Shared native onset submission now retains those admitted controls.
+An owned Panic opcode and quantum-aligned native source teardown are measured as
+separate offline stop probes; **live worklet-port/Panic-button conformance remains
+separate**, not inferred from these probes. Source metadata preserves effective
+render inputs, semantic voice counts, backend admission and actual PCM as separate
+receipts; source subevents never become composition onsets.
+
+The measurement pass records peak/RMS/DC, nonfinite/full-scale samples, silence,
+attack slope, censored decay, channel-energy spectra and onset/body/decay slices.
+Anti-phase stereo does not disappear into a mono sum. Pair comparisons normalize
+spectral power, RMS envelope and declared pitch reference; similarity flags a human
+review candidate, never musical quality. Reports retain failed inputs, missing
+physical controls, omitted modes, exact per-engine/rate repeat tolerances, velocity
+plateaus and partial/cancelled/budget-limited coverage. The runner serializes work,
+reserves bounded analysis/report/repeat storage and emits every completed case
+before moving on. Unknown renderer retirement blocks subsequent work.
+
+`qualify-sound-content.mjs` snapshots and serves only its complete local module
+closure, binds actual engine artifact hashes, and writes private WAV/case/plan/report
+artifacts under a new `temp/` directory. No runtime bundle receives generated audio.
+`create-sound-listening-set.mjs` creates identity-neutral, pair-relative level-matched
+A/B files and a keyboard-accessible browser review form; exact sources and intended
+differences stay in the separate private key. Review imports hash-bind each version,
+retain reviewer aliases and headphone/small-speaker plus quiet/dense conditions,
+and leave skipped/incomplete reviews pending. A listening-accepted record does not
+by itself accept the patch.
+
+Still-development work for the full #1002 contract includes the complete imported
+fork/derived scene/instrument-journey matrix, modeled/decomposed material reference
+corpus and tier-specific conformance linkage. The default CLI does not install
+sample assets: required assets must be supplied through the shared renderer's owned
+asset adapter; otherwise the exact case is degraded, never replaced by silent or
+unrelated audio. Sensitivity-study/domain-map integration for physical or nonlinear
+controls is also unfinished. All newly authored qualification code and fixtures are
+unrun; no PCM, listening, corpus capture, benchmark or browser result is claimed.

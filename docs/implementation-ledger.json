@@ -86,17 +86,24 @@
         "js/midi/content/InstrumentPerformance.js",
         "js/midi/content/SoundContentCompiler.js",
         "content/sounds/native.json",
-        "content/sounds/fm-forge.json"
+        "content/sounds/fm-forge.json",
+        "js/midi/content/SoundContentPack.js",
+        "js/midi/qualification/SoundQualificationPlan.js",
+        "js/midi/qualification/SoundQualificationRunner.js",
+        "js/midi/qualification/SharedSoundQualificationRenderer.js"
       ],
       "regressions": [
         "test/midi/instrument-macro-gestures.test.js",
         "test/parameter-controls.test.js",
-        "test/midi/instrument-performance.test.js"
+        "test/midi/instrument-performance.test.js",
+        "test/midi/sound-qualification.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "5ee738b7a012f032619e01a89205e73c066e0cf6"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-macro-performer-leases",
-      "remaining": "Shared knob, momentary/bipolar normalized pressure, endpoint-epoch pickup, bounded ephemeral overlays and causal-boundary recording implemented. Full fixed-note/fixed-event endpoint and paired-grid qualification tooling, unsupported-effective diagnostics and sensitivity/domain receipt integration remain development work; continuous macro targets remain explicitly unsupported by current renderers."
+      "remaining": "Endpoint/fixed-event/paired-grid qualification runner and exact explicit-controls render path now implemented; sensitivity/domain receipt integration and final effective-control diagnostic UI remain development. Continuous macro targets remain explicitly unsupported by current renderers. All runtime/PCM/listening validation deferred."
     },
     {
       "number": 972,
@@ -506,7 +513,8 @@
         "test/parameter-controls.test.js"
       ],
       "commits": [
-        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1",
+        "5ee738b7a012f032619e01a89205e73c066e0cf6"
       ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership",
@@ -625,11 +633,24 @@
       "requirementUpdatedAt": "2026-10-22T12:10:51Z",
       "requirementSha256": "c0f5c4aed17fe49f59ac6d04804c6c7a89f1b8462529406ed74bcb7139e6ddd1",
       "initialGap": "Fixed-control/semantic PCM render helpers exist. No complete content qualification runner with required note/velocity/release/crowd catalog, level-normalized duplicate detection, blind A/B package and versioned reviewer-state workflow is implemented; this is missing tooling, not merely unrun listening.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/midi/qualification/SoundQualificationPlan.js",
+        "js/midi/qualification/SoundQualificationRunner.js",
+        "js/midi/qualification/SharedSoundQualificationRenderer.js",
+        "js/midi/qualification/SoundRenderAnalysis.js",
+        "js/midi/qualification/SoundListeningReview.js",
+        "scripts/qualify-sound-content.mjs",
+        "scripts/create-sound-qualification-fixtures.mjs",
+        "scripts/create-sound-listening-set.mjs"
+      ],
+      "regressions": [
+        "test/midi/sound-qualification.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "source-bound-render-and-blind-review-tooling",
+      "remaining": "Shared real-render runner, complete note/velocity/gate and macro grids, owned/native stop probes, finite/normalized feature analysis, duplicate review, blind A/B package and versioned review intake implemented. Full imported/derived instrument-journey matrix, learned/decomposed reference corpus, material-adapter CLI integration and per-tier live conformance linkage remain substantive development. No qualification artifacts have been generated or validated."
     },
     {
       "number": 1003,
