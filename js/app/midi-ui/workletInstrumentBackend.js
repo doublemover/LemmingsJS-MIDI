@@ -1,3 +1,4 @@
+import { retainOwnedSampleDiagnostics } from './OwnedSampleDiagnostics.js';
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment, SAMPLE_CURSOR_DISCONTINUITIES } from '../../midi/content/SampleCursorProfile.js';
 import { prepareOwnedPcmSet } from './OwnedPcmSet.js';
@@ -44,6 +45,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
   let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
+  let sourceInspection = null, sourceInspectionSerial = 0, lastSourceInspection = null;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
   let ownerStopped = false, ownerStopReceipt = null;
   let runtimeResourceLease = null, pcmDescriptor = null, samplePlan = null;
@@ -331,7 +333,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate, true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate + (source.requiresPCMSet ? 131072 : 0), true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
@@ -371,6 +373,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           if (disposed || !ready || node !== connectedNode) return;
           if (event.data?.type === 'receipts') onReceipts(event.data);
           else if (event.data?.type === 'lane-route-ready' && event.data.protocol === LIVE_LANE_TAP_PROTOCOL && event.data.stage === 'rendered-source-routing' && Number.isSafeInteger(event.data.frame) && event.data.frame >= 0) { const barrier = routeBarriers.get(event.data.barrierId); if (barrier?.producer === connectedNode) { clearTimeout(barrier.timer); routeBarriers.delete(event.data.barrierId); barrier.resolve(Object.freeze({ protocol: LIVE_LANE_TAP_PROTOCOL, appliedFrame: event.data.frame, stage: event.data.stage, acousticReceipt: false })); } }
+          else if (event.data?.type === 'health' && event.data.protocol === PROTOCOL && sourceInspection?.producer === connectedNode && event.data.requestId === sourceInspection.requestId) {
+            try { settleSourceInspection(retainOwnedSampleDiagnostics(event.data, samplePlan)); } catch (error) { settleSourceInspection(null, error); }
+          }
           else if (event.data?.type === 'display-samples') display.consume(event.data);
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
@@ -715,11 +720,25 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       { name: 'display', run: () => display.stop() }
     ]);
   };
+  const settleSourceInspection = (value = null, error = null) => {
+    const pending = sourceInspection; if (!pending) return; sourceInspection = null; clearTimeout(pending.timer);
+    if (error) pending.reject(error); else { lastSourceInspection = value; pending.resolve(value); }
+  };
+  const inspectSourceState = () => {
+    if (!source.requiresPCMSet || !ready || disposed || !node || sourceInspectionSerial === Number.MAX_SAFE_INTEGER) return Promise.reject(new Error('Prepared sample source diagnostics are unavailable.'));
+    if (sourceInspection) return sourceInspection.promise;
+    let resolve, reject; const promise = new Promise((accept, deny) => { resolve = accept; reject = deny; });
+    const pending = sourceInspection = { requestId: ++sourceInspectionSerial, producer: node, promise, resolve, reject, timer: null };
+    pending.timer = setTimeout(() => { if (sourceInspection === pending) settleSourceInspection(null, new Error('Sample processor diagnostics timed out.')); }, 1000);
+    try { node.port.postMessage({ type: 'inspect', protocol: PROTOCOL, requestId: pending.requestId }); } catch (error) { settleSourceInspection(null, error); }
+    return promise;
+  };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     module: inspectOwnedWorkletModule(context || preview.getAudioContext(), runtime.workletUrl),
     readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, outstandingCommands: inFlight.size + (queue?.diagnostics().queued || 0), outstandingCapacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, cancellationReceipts: cancellationReceipts.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
     ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),
+    sourceState: lastSourceInspection, sourceInspectionPending: !!sourceInspection,
     executionLeases: Object.freeze([...voices.values()].map(voice => Object.freeze({ voiceId: voice.voiceId, executionEpoch: voice.semanticEpoch,
       generation: voice.semanticGeneration, requestedLeaseEndFrame: voice.requestedLeaseEndFrame, effectiveLeaseEndFrame: voice.effectiveLeaseEndFrame,
       pending: voice.pendingLeases.size, failure: voice.leaseFailure, released: voice.released }))),
@@ -732,7 +751,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (retirement.getReceipt()) return retirement.getReceipt();
     const retiringNode = node;
     const receipt = retirement.retire([
-      { name: 'admission', run: () => { disposed = true; ready = false; } },
+      { name: 'admission', run: () => { disposed = true; ready = false; settleSourceInspection(null, new Error('Sample diagnostic owner retired.')); } },
       { name: 'kernel-stop', run: onOwnerStop },
       { name: 'pending-source-preparation', run: async () => {
         await Promise.allSettled([...pendingPreparations]); if (faultRetirement?.outcome === 'partial') return faultRetirement;
@@ -755,7 +774,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     },
     cancelGeneration: (generation, epoch) => cancelGenerationWithReceipt(generation, epoch).count,
     setDisplayContext: display.setContext, observeDisplaySamples: display.observe, getDisplaySamples: display.inspect,
-    onOwnerStop, renderDiagnostics, dispose }, {
+    onOwnerStop, renderDiagnostics, inspectSourceState, dispose }, {
     getContext: () => preview.getAudioContext(), getGeneration: () => preview._sessions.get(owner)?.generation ?? preview._generation,
     isSettled: epochSettled,
     isVoiceSettled: (voiceId, epoch) => faultRetirement?.outcome !== 'partial' && !voices.has(keyFor(epoch, voiceId)),

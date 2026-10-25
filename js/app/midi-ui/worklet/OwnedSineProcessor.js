@@ -389,7 +389,7 @@ class OwnedSineProcessor extends ProcessorBase {
       else if (data?.type === 'lane-route-barrier' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.barrierId) && data.barrierId > 0 && Number.isInteger(data.index) && data.index >= 0 && data.index < LIVE_LANE_TAP_LIMIT) { if (!this.routeBarriers[data.index]) this.routeBarrierCount++; this.routeBarriers[data.index] = data.barrierId; }
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
       else if (data?.type === 'display-ack' && data.sequence === this.displayAwaiting) { this.displayAwaiting = 0; this.flushDisplay(); }
-      else if (data?.type === 'inspect') this.port.postMessage({ type: 'health', protocol: PROTOCOL,
+      else if (data?.type === 'inspect') this.port.postMessage({ type: 'health', protocol: PROTOCOL, ...(Number.isSafeInteger(data.requestId) && data.requestId > 0 ? { requestId: data.requestId } : {}),
         counters: Array.from(this.kernel.counters), nonfinite: this.kernel.nonfinite, queued: this.kernel.queueLength, frame: this.kernel.lastFrame,
         ...(typeof this.kernel.source?.inspect === 'function' ? { source: this.kernel.source.inspect() } : {}) });
       else this.port.postMessage({ type: 'protocol-error', protocol: PROTOCOL });

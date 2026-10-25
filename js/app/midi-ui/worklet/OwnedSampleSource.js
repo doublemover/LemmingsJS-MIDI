@@ -200,7 +200,8 @@ export class OwnedSampleSource {
     const voices = [];
     for (let slot = 0; slot < this.voices; slot++) { const at = slot * OWNED_SAMPLE_STATE_WIDTH, s = this.state; if (!s[at + S.active]) continue;
       const entry = this.plan.entries[s[at + S.zone]]; voices.push({ slot, zoneId: entry.zoneId, token: s[at + S.token], epoch: s[at + S.epoch], generation: s[at + S.generation],
-        frame: s[at + S.frame], decodedPosition: s[at + S.position], readDerivative: s[at + S.derivative], mode: entry.attack.mode, childActive: !!s[at + S.childActive], childDecodedPosition: s[at + S.childPosition], readHeads: s[at + S.heads] }); }
+        frame: s[at + S.frame], assetHash: entry.attack.assetHash, sourcePosition: this.cursor(slot)?.position ?? s[at + S.position] * entry.attack.sourceSampleRate / entry.attack.decodedSampleRate,
+        rateRatio: s[at + S.frequency] / entry.attack.rootFrequencyHz, loopActive: !!s[at + S.looping], loopTurns: s[at + S.turns], decodedPosition: s[at + S.position], readDerivative: s[at + S.derivative], mode: entry.attack.mode, childActive: !!s[at + S.childActive], childDecodedPosition: s[at + S.childPosition], readHeads: s[at + S.heads] }); }
     return { kind: 'owned-sample-source', pcmHash: this.descriptor.pcmHash, bankHash: this.descriptor.bankHash, mapId: this.plan.map.mapId, mapRevision: this.plan.map.revision,
       sourceGain: this.sourceGain, voices, sourceFrames: 'authored-original-rate', decodedFrames: 'private-PCM-rate', panPolicy: 'mono-equal-power-or-stereo-balance', interpolation: this.reader.profile, realTimeCapacityQualified: false };
   }

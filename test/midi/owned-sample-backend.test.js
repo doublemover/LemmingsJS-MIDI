@@ -58,6 +58,11 @@ describe('owned sample host preparation and command ownership (deferred integrat
     const end = f.backend.end('held', { seconds: 0.01, velocity01: 0.7 }, 512); expect(end.effectiveEndFrame).to.equal(48000);
     await turn(); f.nodes[0].render(1500); await turn(); expect(f.preview._voices.size).to.equal(1);
     expect(f.nodes[0].processor.kernel.source.inspect().voices[0].childActive).to.equal(true);
+    const sourceState = await f.backend.inspectSourceState(); expect(sourceState.frame).to.equal(1500);
+    expect(sourceState.voices[0]).to.include({ assetHash: a, mode: 'forward', rateRatio: 1 });
+    expect(sourceState.voices[0].child).to.include({ active: true, assetHash: b });
+    expect(sourceState.voices[0].sourceRegionFrames).to.deep.equal([0, 8000]); expect(sourceState.acousticReceipt).to.equal(false);
+    expect(f.backend.renderDiagnostics().sourceState).to.equal(sourceState);
     f.nodes[0].render(8000); await turn(); expect(f.preview._voices.size).to.equal(0);
     const stopped = f.backend.dispose(); await stopped.completion; expect(stopped.outcome).to.equal('complete'); expect(f.nodes[0].processor.kernel).to.equal(null);
     expect(f.resources.diagnostics().reservations).to.equal(0); expect(f.preview._retirementFaults.size).to.equal(0); await f.resources.dispose().completion;
@@ -109,6 +114,14 @@ describe('owned sample host preparation and command ownership (deferred integrat
     expect(f.backend.renderDiagnostics().counters.rejected).to.equal(1); expect(f.preview._voices.size).to.equal(1);
     f.nodes[0].render(600); await turn(); expect(f.preview._voices.size).to.equal(0);
     engine.dispose(); await f.backend.dispose().completion; expect(f.resources.diagnostics().reservations).to.equal(0); await f.resources.dispose().completion;
+  });
+
+  it('rejects a pending source inspection when its concrete processor owner retires', async () => {
+    const f = setup(bank); await f.backend.prepare(f.patch, f.assets);
+    const port = f.nodes[0].processor.port, send = port.postMessage.bind(port); port.postMessage = data => { if (data.type !== 'health') send(data); };
+    const query = f.backend.inspectSourceState().then(() => null, error => error);
+    const retirement = f.backend.dispose(); expect((await query).message).to.include('owner retired'); await retirement.completion;
+    expect(retirement.outcome).to.equal('complete'); expect(f.resources.diagnostics().reservations).to.equal(0); await f.resources.dispose().completion;
   });
 
 });

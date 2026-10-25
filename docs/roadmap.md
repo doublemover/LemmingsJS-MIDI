@@ -3785,3 +3785,19 @@ live owner continuity and identical forward/state-cut offline rendering. These
 fixtures are unrun. Only source formatting/lint, syntax and provenance checks have
 been performed; acoustic, listening, spectral and real-time qualification await
 the consolidated acceptance pass after the remaining development work.
+
+
+### Continuation 171 — actual sampler state inspection (#1130)
+
+Sampler tools can request one deduplicated, request-fenced processor snapshot.
+The response identifies its completed output frame, prepared PCM/map, selected
+zone and asset, original-rate region, nominal note ratio, actual decoded read
+derivative, unwrapped source cursor, loop activity/turns and the original release
+child. The main owner verifies frame/asset/range bounds and projects only bounded
+metadata; PCM and coefficient planes never enter UI state.
+
+Timeout, wrong producer/request identity and renderer retirement cannot publish
+a stale response as current state. Disposing the owner rejects a pending read.
+The retained diagnostic remains labeled processor state at its reported frame,
+not acoustic output. Actual child-state and pending-read retirement fixtures are
+authored and unrun; broad runtime validation remains deferred.
