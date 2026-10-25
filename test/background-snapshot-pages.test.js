@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { encodeBackgroundSnapshotPages, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES, BACKGROUND_SNAPSHOT_PACKET_OPERATIONS } from '../js/app/resources/BackgroundSnapshotPages.js';
 const limits = { maxBytes: 1048576, maxNodes: 100000, estimatedPeakBytes: 16 * 1048576 };
 const roundTrip = async (value, extra = {}) => {
-  const receiver = createBackgroundSnapshotReceiver(limits), packets = []; let sequence = 0;
+  const receiver = createBackgroundSnapshotReceiver({ ...limits, ...extra.receiverOptions }), packets = []; let sequence = 0;
   for await (const packet of encodeBackgroundSnapshotPages(value, { ...limits, yieldTask: async () => {}, ...extra })) {
     packets.push({ bytes: packet.bytes, operations: packet.operations.length }); sequence = packet.sequence;
     const transferred = structuredClone(packet, { transfer: backgroundSnapshotTransfers(packet) }); receiver.push(transferred);
@@ -16,6 +16,21 @@ describe('bounded owned background snapshot pages', () => {
     const result = await roundTrip(input); expect(result.value).to.deep.equal(input); expect(Object.is(result.value.nested[2], -0)).to.equal(true);
     expect(source.byteLength).to.equal(240000); expect(source[34]).to.equal(-.25); expect(result.value.source.buffer).not.to.equal(source.buffer);
     expect(result.packets.length).to.be.greaterThan(2); expect(result.packets.every(packet => packet.bytes <= BACKGROUND_SNAPSHOT_PACKET_BYTES && packet.operations <= BACKGROUND_SNAPSHOT_PACKET_OPERATIONS)).to.equal(true);
+  });
+  it('moves only explicitly owned complete result buffers and refuses aliases before publishing', async () => {
+    const source = new Uint8Array(100000); source[10] = 7;
+    const result = await roundTrip({ bytes: source }, { ownedTransferBuffers: new Set([source.buffer]), receiverOptions: { allowOwnedBinary: true } });
+    expect(result.value.bytes[10]).to.equal(7); expect(source.buffer.byteLength).to.equal(0); expect(result.packets).to.have.length(1);
+    const alias = new Uint8Array(4); let failure;
+    try { await roundTrip({ a: alias, b: alias }, { ownedTransferBuffers: new Set([alias.buffer]), receiverOptions: { allowOwnedBinary: true } }); } catch (error) { failure = error; }
+    expect(failure.message).to.include('more than once');
+  });
+  it('cooperatively receives object results and keeps incomplete results unpublished on cancellation', async () => {
+    const receiver = createBackgroundSnapshotReceiver(limits), canceled = new AbortController(); let clock = 0, yielded = 0, failure;
+    try { for await (const packet of encodeBackgroundSnapshotPages(Array(3000).fill(1), { ...limits, yieldTask: async () => {} })) await receiver.pushCooperative(packet, {
+      signal: canceled.signal, now: () => clock++, yieldTask: async () => { yielded++; canceled.abort(new Error('owner gone')); }
+    }); } catch (error) { failure = error; }
+    expect(yielded).to.equal(1); expect(failure.message).to.equal('owner gone'); expect(() => receiver.finish(0)).to.throw('Incomplete'); receiver.dispose();
   });
   it('yields during large array enumeration and checks cancellation before further pages', async () => {
     let yields = 0, clock = 0; const canceled = new AbortController(); let failure;

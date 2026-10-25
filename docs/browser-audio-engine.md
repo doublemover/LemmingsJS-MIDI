@@ -1703,3 +1703,28 @@ initialization. Large nonbinary **result** messages still need the symmetric pag
 path; recovery's encoded byte buffers already use explicit transfer. Protocol,
 producer-cancellation, stale-stream, source-buffer and kernel regressions remain
 unrun, and no browser/performance qualification has been executed.
+
+### Symmetric worker result ownership
+
+Protocol v3 streams object results back through the same bounded value grammar,
+with one result packet awaiting acknowledgment and cooperative main-thread
+reconstruction. The host checks executing build and owner identity before creating
+a result receiver and exposes no value until its final sequence is complete.
+Cancellation drops the partial graph and waits for any in-progress host slice
+before acknowledging resource retirement. Observed retained representation cost
+must fit admission; it is no longer silently clamped to the requested estimate.
+
+An explicit allowlist of up to 32 **complete, worker-owned** output buffers retains
+zero-copy transfer for PCM and encoded recovery/export bytes. These buffers can be
+larger than the 64 KiB cloned-metadata packet bound, but remain constrained by the
+admitted output footprint and are reported separately as owned-transferred bytes.
+Aliased ownership is rejected rather than detaching a later reference silently.
+Other binary views use bounded copied slabs. Strings are assembled incrementally,
+not joined in one final main-thread traversal; engine-specific rope flattening and
+native transfer costs still require the deferred browser measurements.
+
+Result-slice timing joins the resource/recovery harness. Stale, partial, canceled,
+corrupt and duplicate-ownership streams have authored regression coverage, still
+unrun. The remaining recovery algorithm work is separate: its manifest still
+re-encodes the complete authored project instead of reusing immutable lane pages,
+and transaction scheduling needs bounded chunk publication.

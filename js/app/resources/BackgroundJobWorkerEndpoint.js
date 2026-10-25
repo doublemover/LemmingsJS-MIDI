@@ -1,13 +1,17 @@
 import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, runBackgroundJobKernel } from './BackgroundJobKernels.js';
-import { createBackgroundSnapshotReceiver } from './BackgroundSnapshotPages.js';
+import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from './BackgroundSnapshotPages.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 
 export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel = runBackgroundJobKernel,
   identity = () => getActiveExecutionIdentity('browser-background-jobs'), compareIdentity = required => compareActiveExecutionIdentity(required, 'browser-background-jobs').matched } = {}) {
-  let source = null, receiver = null, phase = 'new';
+  let source = null, receiver = null, phase = 'new', outputAcknowledgment = null;
   const respond = (payload, transfers = []) => postMessage({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: source?.jobId, ownerEpoch: source?.ownerEpoch, sourceRevision: source?.sourceRevision, ...payload }, transfers);
-  const fail = error => { if (phase === 'closed') return; phase = 'closed'; receiver?.dispose(); receiver = null;
+  const fail = error => { if (phase === 'closed') return; phase = 'closed'; receiver?.dispose(); receiver = null; outputAcknowledgment?.reject(error); outputAcknowledgment = null;
     try { respond({ type: 'failed', error: { code: String(error.code || error.name).slice(0, 64), message: String(error.message || error).slice(0, 512) } }); } finally { close(); } };
+  const sendOutput = (payload, transfers = []) => new Promise((resolve, reject) => {
+    if (phase !== 'sending' || outputAcknowledgment) throw new Error('Invalid result transport backpressure.');
+    outputAcknowledgment = { sequence: payload.sequence, resolve, reject }; try { respond(payload, transfers); } catch (error) { outputAcknowledgment = null; reject(error); }
+  });
   const validEnvelope = request => request?.protocol === BACKGROUND_JOB_PROTOCOL && /^background-[0-9]+$/.test(request.jobId || '') && Number.isSafeInteger(request.ownerEpoch) && request.ownerEpoch >= 0 &&
     ['number', 'string'].includes(typeof request.sourceRevision) && (typeof request.sourceRevision !== 'number' || Number.isSafeInteger(request.sourceRevision)) && String(request.sourceRevision).length <= 256;
   return Object.freeze({ async receive(request) {
@@ -18,18 +22,29 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
         source = { jobId: request.jobId, ownerEpoch: request.ownerEpoch, sourceRevision: request.sourceRevision, kind: request.kind, limits: request.limits };
         if (request.type !== 'input-start' || !BACKGROUND_JOB_KINDS.includes(request.kind) || request.sequence !== 0 || Object.hasOwn(request, 'input')) throw new Error('Background worker requires a bounded snapshot stream.');
         if (request.requiredIdentity?.activeExecution === 'bound' && !compareIdentity(request.requiredIdentity)) throw new Error('Background worker executes a different immutable build.');
+        if (request.limits?.maxBytes > 64 * 1048576) throw new Error('Worker input exceeds the protocol byte ceiling.');
         receiver = createBackgroundSnapshotReceiver(request.limits); phase = 'receiving'; respond({ type: 'input-ack', sequence: 0 }); return;
+      }
+      if (phase === 'sending' && request.type === 'output-ack') {
+        if (!outputAcknowledgment || request.sequence !== outputAcknowledgment.sequence) throw new Error('Stale background result acknowledgment.');
+        const pending = outputAcknowledgment; outputAcknowledgment = null; pending.resolve(); return;
       }
       if (phase !== 'receiving') throw new Error('Background worker received input after computation began.');
       if (request.type === 'input-page') { const receipt = receiver.push(request.packet); respond({ type: 'input-ack', sequence: receipt.sequence }); return; }
       if (request.type !== 'input-end') throw new Error('Invalid background snapshot message.');
-      const input = receiver.finish(request.sequence); receiver = null; phase = 'computing';
+      let input = receiver.finish(request.sequence); receiver = null; phase = 'computing';
       const result = await kernel(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });
-      if (phase !== 'computing') return;
+      input = null; if (phase !== 'computing') return;
       const transfers = ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
         ['encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
           ['encode-native-render', 'render-causal-sine-take'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) : [];
-      respond({ type: 'computed', result, executionIdentity: identity() }, transfers); phase = 'closed'; close();
+      const ownedTransferBuffers = new Set(transfers);
+      if (ownedTransferBuffers.size !== transfers.length || ownedTransferBuffers.size > 32) ownedTransferBuffers.clear();
+      const resultLimits = { maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };
+      phase = 'sending'; await sendOutput({ type: 'output-start', sequence: 0, metadata: { inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes: result.retainedBytes ?? null }, executionIdentity: identity() });
+      let sequence = 0;
+      for await (const packet of encodeBackgroundSnapshotPages(result.value, { ...resultLimits, ownedTransferBuffers, isCurrent: () => phase === 'sending' })) { sequence = packet.sequence; await sendOutput({ type: 'output-page', sequence, packet }, backgroundSnapshotTransfers(packet)); }
+      respond({ type: 'computed', sequence }); phase = 'closed'; close();
     } catch (error) { fail(error); }
   }, fail, diagnostics: () => ({ phase, input: receiver?.diagnostics() || null }) });
 }

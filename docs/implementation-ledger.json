@@ -729,11 +729,12 @@
         "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e",
         "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
         "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
-        "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
+        "6cb45c908ccfba6b87696ce0ba738be3e631c87d",
+        "0b9dcd9d956caec2bb691503f33734d7504c1371"
       ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages",
-      "remaining": "Large nonbinary worker result delivery still requires bounded/cooperative transfer. Input staging and combined-scene harness are implemented; runtime slice/parity/fault qualification remains deferred.",
+      "remaining": "Immutable project-lane recovery pages and bounded transactional chunk scheduling remain development: current manifest re-encodes the full authored project. Input/result transport is integrated; runtime slice/parity/fault qualification remains deferred.",
       "increments": [
         {
           "id": "durable-recovery-and-acknowledged-retirement",
@@ -753,6 +754,11 @@
         {
           "id": "cooperative-owned-worker-input-pages",
           "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
+          "commit": "0b9dcd9d956caec2bb691503f33734d7504c1371"
+        },
+        {
+          "id": "cooperative-owned-worker-result-pages",
+          "summary": "Protocol v3 symmetrically stages results behind one ACK, cooperatively reconstructs bounded object packets, checks source identity before allocation and exposes no partial value. Explicit complete result buffers retain zero-copy transfer under admitted footprint and reject duplicate ownership; strings are incrementally assembled without final monolithic join. Partial result cancellation joins host reconstruction before release; observed receiver footprint cannot be silently clamped below its reservation. Transport diagnostics and regressions authored unrun.",
           "commit": null
         }
       ]
@@ -3513,11 +3519,12 @@
         "0a21999ba2cfac757279ab44028c48fe690cd020",
         "e490dacdbac56f948f89aba43ec3cf97ad9eeae7",
         "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
-        "6cb45c908ccfba6b87696ce0ba738be3e631c87d"
+        "6cb45c908ccfba6b87696ce0ba738be3e631c87d",
+        "0b9dcd9d956caec2bb691503f33734d7504c1371"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "Final auxiliary persistent-owner audit and large nonbinary background-result delivery remain development; combined resource/native estimate qualification remains deferred.",
+      "remaining": "Final auxiliary persistent-owner audit remains development; combined resource/native estimate qualification remains deferred. Worker input and output ownership staging now integrated.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
@@ -3562,10 +3569,15 @@
         {
           "id": "cooperative-owned-worker-input-pages",
           "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
+          "commit": "0b9dcd9d956caec2bb691503f33734d7504c1371"
+        },
+        {
+          "id": "cooperative-owned-worker-result-pages",
+          "summary": "Protocol v3 symmetrically stages results behind one ACK, cooperatively reconstructs bounded object packets, checks source identity before allocation and exposes no partial value. Explicit complete result buffers retain zero-copy transfer under admitted footprint and reject duplicate ownership; strings are incrementally assembled without final monolithic join. Partial result cancellation joins host reconstruction before release; observed receiver footprint cannot be silently clamped below its reservation. Transport diagnostics and regressions authored unrun.",
           "commit": null
         }
       ],
-      "remainingDevelopment": "Final auxiliary persistent-owner audit and large nonbinary background-result delivery remain development; combined resource/native estimate qualification remains deferred."
+      "remainingDevelopment": "Final auxiliary persistent-owner audit remains development; combined resource/native estimate qualification remains deferred. Worker input and output ownership staging now integrated."
     },
     {
       "number": 1163,
@@ -4780,16 +4792,23 @@
         "test/ground-asset-jobs.test.js",
         "test/midi/impulse-response.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "0b9dcd9d956caec2bb691503f33734d7504c1371"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "cooperative-owned-worker-input-pages",
           "summary": "Protocol v2 replaces whole-input structured clone with 64KiB/256-operation pages, copied-and-transferred 32KiB binary slabs, one outstanding acknowledgment, 3ms producer targets, source/sequence/build checks, explicit extra 128KiB admission and retirement through producer quiescence. Native source buffers never detach; worker reconstruction validates cumulative footprint/depth/shape before allocation. Feature-detected postTask plus timer fallback, measured enumeration/postMessage slices, fault and real-kernel fixtures authored unrun. Corrected impulse kernel metadata publication. Large nonbinary result delivery and generalized content coalescing remain development.",
+          "commit": "0b9dcd9d956caec2bb691503f33734d7504c1371"
+        },
+        {
+          "id": "cooperative-owned-worker-result-pages",
+          "summary": "Protocol v3 symmetrically stages results behind one ACK, cooperatively reconstructs bounded object packets, checks source identity before allocation and exposes no partial value. Explicit complete result buffers retain zero-copy transfer under admitted footprint and reject duplicate ownership; strings are incrementally assembled without final monolithic join. Partial result cancellation joins host reconstruction before release; observed receiver footprint cannot be silently clamped below its reservation. Transport diagnostics and regressions authored unrun.",
           "commit": null
         }
       ],
-      "remaining": "Large nonbinary result transport, broader pure-job coalescing (existing registry covers ground/hash/parse only), and combined import/export/terrain concurrency harness coverage remain development; no-worker/memory/cancellation qualification deferred."
+      "remaining": "Broader pure-job coalescing beyond the existing ground/hash/parse registry and combined import/export/terrain concurrency harness coverage remain development; no-worker/memory/cancellation qualification deferred."
     },
     {
       "number": 1236,

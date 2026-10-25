@@ -1,5 +1,5 @@
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
-import { encodeBackgroundSnapshotPages, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES } from './BackgroundSnapshotPages.js';
+import { encodeBackgroundSnapshotPages, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers, BACKGROUND_SNAPSHOT_PACKET_BYTES } from './BackgroundSnapshotPages.js';
 import { backgroundWorkerAdmission } from './BackgroundWorkerAdmission.js';
 import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, runBackgroundJobKernel } from './BackgroundJobKernels.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
@@ -27,6 +27,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       throw failure('worker-required', 'This computation needs a worker; only small bounded fallback work is supported.');
     const transportStagingBytes = typeof Worker === 'function' ? BACKGROUND_SNAPSHOT_PACKET_BYTES * 2 : 0, admissionPeakBytes = estimatedPeakBytes + transportStagingBytes;
     if (!Number.isSafeInteger(admissionPeakBytes) || admissionPeakBytes > 512 * 1048576) throw failure('transport-capacity', 'Background snapshot staging exceeds the worker admission ceiling.');
+    const outputTransport = { mode: 'not-used', packets: 0, operations: 0, bytes: 0, ownedTransferredBytes: 0, maximumSliceMs: 0, elapsedMs: 0, retainedEstimateBytes: 0 };
     const inputTransport = { schema: 'owned-background-snapshot-pages/v1', packets: 0, operations: 0, bytes: 0, maximumSliceMs: 0, maximumPostMessageMs: 0, elapsedMs: 0, stagingBytes: transportStagingBytes };
     const controller = new AbortController(), identity = getActiveExecutionIdentity('browser-background-jobs'), startedAt = now();
     let lease = null, worker = null, input = null, result = null, released = false, workerFailedRetirement = false;
@@ -88,8 +89,8 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       if (typeof Worker === 'function' && !nativeHash) {
         worker = new Worker(new URL('./BackgroundJobWorker.js', import.meta.url), { type: 'module', name: 'lemmings-background-' + kind });
         result = await interruptible(new Promise((resolve, reject) => {
-          let terminal = false, inputReady = false, acknowledgment = null, packetSliceMs = 0;
-          const failed = error => { acknowledgment?.reject(error); acknowledgment = null; if (!terminal) { terminal = true; reject(error); } };
+          let terminal = false, inputReady = false, acknowledgment = null, packetSliceMs = 0, outputReceiver = null, outputMetadata = null, outputReceiving = false, outputStarted = null;
+          const failed = error => { outputReceiver?.dispose(); outputReceiver = null; acknowledgment?.reject(error); acknowledgment = null; if (!terminal) { terminal = true; reject(error); } };
           const envelope = { protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, ownerEpoch, sourceRevision };
           const send = (payload, transfers = []) => new Promise((resolveAck, rejectAck) => {
             check(); if (acknowledgment) throw failure('input-backpressure', 'One input packet must settle before another is sent.');
@@ -102,7 +103,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
           worker.onmessage = event => {
             if (terminal) return;
             try {
-              const message = event.data;
+              check(); const message = event.data;
               if (message?.protocol !== BACKGROUND_JOB_PROTOCOL || message.jobId !== lease.jobId || message.ownerEpoch !== ownerEpoch || message.sourceRevision !== sourceRevision)
                 throw failure('stale-envelope', 'Background worker response has stale ownership.');
               if (message.type === 'input-ack') {
@@ -111,12 +112,30 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
               }
               if (message.type === 'progress') { if (!inputReady) throw failure('early-progress', 'Worker computation preceded its completed snapshot.'); progress(message.progress); return; }
               if (message.type === 'failed') { failed(failure(message.error?.code || 'worker-failed', String(message.error?.message || 'Background worker failed.').slice(0, 512))); return; }
-              if (!inputReady || message.type !== 'computed' || !message.result || !Number.isSafeInteger(message.result.inputBytes) || message.result.inputBytes < 0 || message.result.inputBytes > maxBytes ||
-                  !Number.isSafeInteger(message.result.nodes) || message.result.nodes < 1 || message.result.nodes > 4000000 ||
-                  message.result.retainedBytes != null && (!Number.isSafeInteger(message.result.retainedBytes) || message.result.retainedBytes < 0 || message.result.retainedBytes > estimatedPeakBytes)) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
-              if (identity.activeExecution === 'bound' && !compareActiveExecutionIdentity(message.executionIdentity, 'browser-background-jobs').matched)
-                throw failure('worker-build-mismatch', 'Background worker executes a different application build.');
-              executionIdentity = message.executionIdentity; terminal = true; resolve(message.result);
+              if (!inputReady) throw failure('early-result', 'Worker result preceded its completed input snapshot.');
+              if (message.type === 'output-start') {
+                const metadata = message.metadata;
+                if (outputReceiver || message.sequence !== 0 || !metadata || Object.hasOwn(message, 'result') || !Number.isSafeInteger(metadata.inputBytes) || metadata.inputBytes < 0 || metadata.inputBytes > maxBytes ||
+                    !Number.isSafeInteger(metadata.nodes) || metadata.nodes < 1 || metadata.nodes > 4000000 || metadata.retainedBytes != null && (!Number.isSafeInteger(metadata.retainedBytes) || metadata.retainedBytes < 0 || metadata.retainedBytes > estimatedPeakBytes)) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
+                if (identity.activeExecution === 'bound' && !compareActiveExecutionIdentity(message.executionIdentity, 'browser-background-jobs').matched) throw failure('worker-build-mismatch', 'Background worker executes a different application build.');
+                executionIdentity = message.executionIdentity; outputMetadata = { inputBytes: metadata.inputBytes, nodes: metadata.nodes, retainedBytes: metadata.retainedBytes };
+                outputReceiver = createBackgroundSnapshotReceiver({ maxBytes: Math.min(256 * 1048576, Math.floor(estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes, allowOwnedBinary: true });
+                outputTransport.mode = 'acknowledged-snapshot-pages'; outputStarted = now(); worker.postMessage({ ...envelope, type: 'output-ack', sequence: 0 }); return;
+              }
+              if (message.type === 'output-page') {
+                if (!outputReceiver || outputReceiving || message.sequence !== message.packet?.sequence) throw failure('result-backpressure', 'Unexpected or overlapping background result packet.');
+                outputReceiving = true; ownedWorkPending = true; const receiver = outputReceiver;
+                const receiveWork = receiver.pushCooperative(message.packet, { signal: controller.signal, isCurrent, yieldTask, now,
+                  onSlice: slice => { outputTransport.maximumSliceMs = Math.max(outputTransport.maximumSliceMs, slice.durationMs); } }).then(receipt => {
+                  check(); if (terminal || outputReceiver !== receiver) throw failure('result-retired', 'Background result receiver retired.');
+                  outputTransport.ownedTransferredBytes += message.packet.operations.reduce((sum, operation) => sum + (operation[0] === 'owned-binary' ? operation[2].byteLength : 0), 0);
+                  outputTransport.packets++; outputTransport.operations += message.packet.operations.length; outputTransport.bytes += message.packet.bytes; outputTransport.retainedEstimateBytes = receipt.retainedEstimateBytes;
+                  outputReceiving = false; worker.postMessage({ ...envelope, type: 'output-ack', sequence: receipt.sequence });
+                }).catch(failed).finally(() => { if (ownedWork === receiveWork) ownedWorkPending = false; }); ownedWork = receiveWork; return;
+              }
+              if (message.type !== 'computed' || !outputReceiver || outputReceiving || Object.hasOwn(message, 'result')) throw failure('invalid-result', 'Background result lacks its completed owned snapshot.');
+              const value = outputReceiver.finish(message.sequence); outputReceiver = null; outputTransport.elapsedMs = Math.max(0, now() - outputStarted);
+              terminal = true; resolve({ ...outputMetadata, value });
             } catch (error) { failed(error); }
           };
           worker.onerror = event => { event.preventDefault?.(); failed(failure('worker-crash', 'Background worker crashed before computation completed.')); };
@@ -144,7 +163,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
           signal: controller.signal, current: isCurrent, onProgress: progress, yieldControl: yieldTask })).finally(() => { ownedWorkPending = false; });
         result = await interruptible(ownedWork, controller.signal);
       }
-      check();
+      check(); if (ownedWorkPending) { await interruptible(ownedWork, controller.signal); check(); }
       if (!terminate()) throw failure('worker-retirement-unknown', 'Background worker retirement could not be confirmed.');
       ownedWork = null;
       if (!retainInput) { input = null; releaseInput(); }
@@ -152,11 +171,12 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
       if (kind === 'verify-causal-source' && !Number.isSafeInteger(result.retainedBytes)) throw failure('invalid-result', 'Verified causal source omitted its result footprint.');
       const inferredBytes = kind === 'verify-causal-source' && !retainInput ? 0 : (typeof result.value === 'string' ? result.value.length * 2 : 0) +
         (retainInput || objectResult ? result.inputBytes * 2 + result.nodes * 64 : 0);
-      const retainedBytes = Math.min(estimatedPeakBytes, Math.max(4096, result.retainedBytes ?? 0, inferredBytes));
+      const retainedBytes = Math.max(4096, result.retainedBytes ?? 0, inferredBytes, outputTransport.retainedEstimateBytes);
+      if (retainedBytes > estimatedPeakBytes) throw failure('result-capacity', 'Computed result exceeds its admitted retained footprint.');
       if (!lease.computationFinished({ retainedBytes })) throw failure('ownership-retired', 'Background computation owner retired before publication.');
       const receipt = Object.freeze({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: lease.jobId, kind, ownerId, ownerEpoch, sourceRevision,
         state: 'computed', publication: 'not-committed', method, queueWaitMs: lease.getState().queueWaitMs, elapsedMs: Math.max(0, now() - startedAt),
-        inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, inputTransport: Object.freeze({ ...inputTransport }), executionIdentity });
+        inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes, inputTransport: Object.freeze({ ...inputTransport }), outputTransport: Object.freeze({ ...outputTransport }), executionIdentity });
       return Object.freeze({ get value() { check(); if (released) throw failure('result-retired', 'Background result was released.'); return result.value; }, signal: controller.signal, receipt, release,
         retirementState: () => lease.getState() });
     } catch (error) {

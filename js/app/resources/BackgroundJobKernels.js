@@ -15,7 +15,7 @@ import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
-export const BACKGROUND_JOB_PROTOCOL = 2;
+export const BACKGROUND_JOB_PROTOCOL = 3;
 export const BACKGROUND_JOB_KINDS = Object.freeze(['analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'encode-recovery-page', 'decode-recovery-page', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
