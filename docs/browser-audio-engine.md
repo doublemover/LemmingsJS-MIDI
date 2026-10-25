@@ -1773,3 +1773,22 @@ read payload maximum is reported separately. Missing/corrupt/reordered parts and
 termination/quota failure at every physical-write boundary have authored fixtures.
 No fixtures or browser measurements have been run. Continuation snapshot capture
 and initial project publication costs remain distinct from bounded storage I/O.
+
+### Shared content retirement barriers
+
+Shared pure computations retain their identity until the last consumer and the
+backend have acknowledged retirement. Pending cancellation is not an available
+cache slot. False/asynchronous cleanup acknowledgments, unknown worker teardown,
+and failed duplicate-input cleanup remain quarantined and visible in bounded
+registry diagnostics. One consumer's cancellation does not cancel another;
+backend disposal does invalidate all delivered views without pretending their
+retained ownership has already been released.
+
+The explicit pure-kind registry now includes deterministic encoders, verified
+source decoders, content compilation and inspectors. Identity includes declared
+content/decoder versions, limits, budget scope, deadline and priority. The caller
+must supply the complete immutable input identity and treat borrowed shared data
+as read-only; membership in this registry alone is not a producer integration or
+publication authority. Ground decoding uses the acknowledged lease contract and
+clears its hydrated wrapper on release. Other producer integrations and the full
+concurrent import/export/terrain qualification workload remain development.
