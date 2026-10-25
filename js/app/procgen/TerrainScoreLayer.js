@@ -55,6 +55,7 @@ const commitTerrainScore = (world, metadata = {}, suppliedCells = null) => {
   }
   state.transactions.push(record); state.spans += record.spans.length;
   while (state.transactions.length > MAX_TRANSACTIONS || state.spans > 16384) state.spans -= state.transactions.shift().spans.length;
+  world.captureTerrainTopology?.('postTransaction');
   return record;
 };
 const terrainScoreAt = (world, x, y, revision = world.terrainRevision, tick = world.tickIndex) => {

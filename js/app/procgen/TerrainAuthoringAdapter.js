@@ -151,6 +151,7 @@ const applyTerrainPlan = (plan, world) => {
     for (const lane of laneChanges) world.terrainActivityTicks[lane] = world.tickIndex;
   }
   world._assistedColumn.valid = false;
+  world.captureTerrainTopology?.('postTransaction');
   return { status: 'accepted', reason: 'applied', counts: current.counts, edit, planDigest: plan.digest };
 };
 export { normalizeTerrainCommand, readTerrainCell, readonlyRevision, planTerrainCommand, applyTerrainPlan, digestPlan };

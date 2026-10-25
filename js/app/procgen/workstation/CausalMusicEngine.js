@@ -1,3 +1,4 @@
+import { validateTopologyRegions, bindTopologyFact, validateTopologyResult } from './physical/TopologyInstrumentRegion.js';
 import { validateTonalDomain, createTonalInterpretation } from './physical/TonalInterpretation.js';
 import { validateActionVoicePolicy, validateVoiceTransferPolicy, createActionVoiceAdmission, actionExpression } from './physical/ActionVoicePolicy.js';
 import { createRhythmicResponses, validateRhythmicResponse, RHYTHMIC_SOURCE_KINDS } from './physical/RhythmicResponses.js';
@@ -17,7 +18,7 @@ const voiceIdentity = value => typeof value === 'string' && value.length > 0 && 
 const validateCausalInstrumentGraph = value => {
   if (!plain(value) || value.version !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0 ||
       !Array.isArray(value.instruments) || value.instruments.length > 256) throw new Error('Unsupported causal instrument graph.');
-  const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain);
+  const domain = validatePhysicalDomain(value), tonal = validateTonalDomain(value, domain), topologyRegions = validateTopologyRegions(value.topologyRegions);
   const ids = new Set();
   const instruments = value.instruments.map(input => {
     if (!plain(input) || !nonempty(input.id) || ids.has(input.id) || !SOURCE_KINDS.has(input.sourceKind) ||
@@ -25,6 +26,7 @@ const validateCausalInstrumentGraph = value => {
         !Number.isFinite(input.velocity01) || input.velocity01 < 0 || input.velocity01 > 1 ||
         !nonempty(input.route) || !nonempty(input.role)) throw new Error('Invalid causal instrument.');
     ids.add(input.id);
+    if (input.topologyRegionId && (!topologyRegions.some(r => r.id === input.topologyRegionId) || !['TerrainWorkCommitted', 'ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) || input.harmonicFields || input.formationId || input.response || input.articulation)) throw new Error('Unsupported topology instrument composition.');
     if (input.formationId && !tonal.formations.some(value => value.id === input.formationId)) throw new Error('Unknown formation harmony.');
     if (input.sourceKind === 'PickupCrossing' && !domain.pickups.some(pickup => pickup.id === input.pickupId)) throw new Error('Pickup instrument needs a valid pickup reference.');
     if (input.sourceKind === 'RouteLap' && !domain.routes.some(route => route.id === input.routeId)) throw new Error('Route instrument needs a valid route reference.');
@@ -43,7 +45,7 @@ const validateCausalInstrumentGraph = value => {
     if (input.sourceKind === 'TerrainWorkCommitted' && input.operationKind != null && !nonempty(input.operationKind)) throw new Error('Invalid work operation.');
     if (['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) && input.causeKind != null && !nonempty(input.causeKind)) throw new Error('Invalid contact cause.');
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
-    return Object.freeze({ id: input.id, ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
+    return Object.freeze({ id: input.id, ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
       ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}),
       operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
@@ -57,7 +59,7 @@ const validateCausalInstrumentGraph = value => {
   });
   if (value.seed != null && !Number.isSafeInteger(value.seed)) throw new Error('Invalid causal graph seed.');
   return Object.freeze({ version: 1, revision: value.revision, seed: value.seed ?? 0, instruments: Object.freeze(instruments),
-    ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
+    ...(value.topologyRegions ? { topologyRegions } : {}), ...(value.harmonicFields ? { harmonicFields: tonal.harmonicFields } : {}), ...(value.formations ? { formations: tonal.formations } : {}), ...(tonal.editCommandId ? { editCommandId: tonal.editCommandId } : {}),
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };
 
@@ -88,7 +90,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const remember = intent => { if (traceLimit > 0) { trace.push(intent); if (trace.length > traceLimit) trace.shift(); } };
   const timeFor = (batch, fact) => fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
   const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null) => {
-    const baseCents = (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents;
+    const baseCents = fact?.topologyBinding?.status === 'complete' ? fact.topologyBinding.pitchCents : (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents;
     const tonal = kind === 'begin' && (instrument.formationId || instrument.harmonicFields) ? tones.resolve(instrument, fact?.actorId, baseCents) : null;
     const pitch = tonal?.pitch || { cents: baseCents, referenceHz: 440 };
     if (kind === 'begin' && tonal) onsetPlans.set(voiceId, { baseCents, pitch, tonalState: tonal.state, sourceEventIds: fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []) });
@@ -98,6 +100,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       worldId: batch.worldId, batchId: batch.batchId, generation: voiceGeneration,
       kind, onsetId: voiceId, voiceId, actorId: fact?.actorId ?? null, laneId: fact?.laneId ?? null,
       sourceEventIds: Object.freeze(fact?.sourceEventIds ? [...fact.sourceEventIds] : fact?.eventId ? [fact.eventId] : []),
+      ...(fact?.topologyBinding ? { topologyBinding: fact.topologyBinding } : {}),
       ...(fact?.voiceTransition ? { voiceTransition: Object.freeze(fact.voiceTransition) } : {}),
       ...(fact?.responseDescriptor ? { responseDescriptor: Object.freeze(fact.responseDescriptor) } : {}),
       ...(Number.isFinite(fact?.gateTicks) ? { responseGateTicks: fact.gateTicks } : {}),
@@ -111,7 +114,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
-      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
+      ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...getOnsetControls(fact?.laneId), macros: { ...getOnsetControls(fact?.laneId)?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
     }); };
   const publish = (batch, intents) => {
     onsetPlans.clear();
@@ -201,8 +204,19 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     if (observations.completeness.status !== 'complete' || responses.completeness.status !== 'complete' || actionAdmissions.completeness.status !== 'complete') { endMatching(batch, () => true, null, 'incomplete-physical-observation', output); recoveryRequired = true; return publish(batch, output); }
     endMatching(batch, record => { if (!record.instrument.ensembleId) return false; const member = physical.membership(record.instrument.ensembleId, record.actorId); return member.status !== 'complete' || !member.includes; }, null, 'ensemble-membership-ended', output);
     endMatching(batch, record => record.instrument.actionVoicePolicy && batch.tick - record.startedTick >= record.instrument.actionVoicePolicy.maximumHoldTicks, null, 'maximum-hold', output);
-    const sourceFacts = [...batch.facts, ...observations.facts, ...responses.facts, ...actionAdmissions.facts].sort((a, b) => a.causalSequence - b.causalSequence || (a.subTick || 0) - (b.subTick || 0) || (a.observationId || '').localeCompare(b.observationId || ''));
     let begins = 0, physicalUpdates = 0;
+    for (const record of [...active.values()]) if (record.topologyBinding) {
+      const region = current.topologyRegions?.find(r => r.id === record.instrument.topologyRegionId), result = batch.snapshot?.topology?.regions?.find(r => r.regionId === region?.id)?.current;
+      if (result?.status === 'complete') { try { validateTopologyResult(result); } catch { endVoice(batch, record, null, 'invalid-topology-descriptor', output); continue; } }
+      const component = result?.status === 'complete' && result.worldId === batch.worldId && result.generation === batch.generation && result.sourceRevision === batch.snapshot?.terrainRevision && result.regionRevision === region.revision ? result.components.find(c => c.id === record.topologyBinding.componentId) : null;
+      if (!component || component.musical.status !== 'complete' || result.sourceRevision !== record.topologyBinding.boundTopologyRevision && (component.lineage.kind !== 'unchanged' || region.heldPolicy === 'release-on-change' && component.geometryChanged)) { endVoice(batch, record, null, 'topology-component-changed', output); continue; }
+      if (region.heldPolicy === 'retune-stable' && component.musical.pitchCents !== record.topologyPitchCents) {
+        const offset = component.musical.pitchCents - record.topologyBinding.pitchCents;
+        if (Math.abs(offset) > 24000 || physicalUpdates >= maxPhysicalUpdatesPerBatch) { endVoice(batch, record, null, 'topology-pitch-range', output); continue; }
+        output.push(intentFor(batch, { actorId: record.actorId, laneId: record.laneId }, record.instrument, 'update', record.voiceId, null, batch.generation, { pitchOffsetCents: offset }, { slewSeconds: 0.03, topology: { componentId: component.id, boundTopologyRevision: result.sourceRevision } })); record.topologyPitchCents = component.musical.pitchCents; physicalUpdates++;
+      }
+    }
+    const sourceFacts = [...batch.facts, ...observations.facts, ...responses.facts, ...actionAdmissions.facts].sort((a, b) => a.causalSequence - b.causalSequence || (a.subTick || 0) - (b.subTick || 0) || (a.observationId || '').localeCompare(b.observationId || ''));
     const responds = (instrument, fact, stableCauseId = fact.eventId) => {
       const decision = causalRandomDecision({ seed: current.seed, mappingId: instrument.id, generation: batch.generation,
         stableCauseId: stableCauseId || fact.observationId, probability01: instrument.probability01 });
@@ -339,6 +353,13 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           if (!(positive && instrument.crossingDirection !== 'negative' || negative && instrument.crossingDirection !== 'positive')) continue;
         }
         if (instrument.changedOnly && !((fact.physicalPayload?.changedSolidCells || 0) > 0 || (fact.physicalPayload?.changedAppearanceCells || 0) > 0)) continue;
+        let topologyBinding = null;
+        if (instrument.topologyRegionId) {
+          if (fact.kind === 'TerrainWorkCommitted' && !(fact.physicalPayload?.changedSolidCells > 0)) continue;
+          const region = current.topologyRegions.find(r => r.id === instrument.topologyRegionId); try { topologyBinding = bindTopologyFact(region, batch, fact); } catch { reject(instrument); continue; }
+          if (topologyBinding.status !== 'complete' || topologyBinding.dampingMacroId && new Set([...Object.keys(getOnsetControls(fact.laneId)?.macros || {}), topologyBinding.dampingMacroId]).size > 4) { reject(instrument); continue; }
+        }
+        const voiceFact = topologyBinding ? { ...fact, topologyBinding } : fact;
         if (!responds(instrument, fact)) continue;
         if (begins >= maxBeginsPerBatch || ((['ActionEntered', 'ContactSpanBegan'].includes(fact.kind) || fact.occupancy) && active.size + suppressed.size >= maxVoices)) {
           rejected++; rejectedByInstrument.set(instrument.id, (rejectedByInstrument.get(instrument.id) || 0) + 1); continue;
@@ -347,12 +368,12 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         if (!voiceIdentity(sourceId)) continue;
         const voiceId = `${batch.worldId}:${batch.generation}:${instrument.id}:r${instrumentEpochs.get(instrument.id)}:${sourceId}`;
         if (active.has(voiceId) || suppressed.has(voiceId)) continue;
-        output.push(intentFor(batch, fact, instrument, 'begin', voiceId, null, batch.generation, {},
+        output.push(intentFor(batch, voiceFact, instrument, 'begin', voiceId, null, batch.generation, {},
           fact.kind === 'ContactSpanBegan' ? { contactAnchor: Object.freeze({ ...fact.anchor }), surfaceRevision: fact.surfaceRevision,
             observedTick: fact.observedTick } : null)); begins++;
         accepted.set(instrument.id, (accepted.get(instrument.id) || 0) + 1);
         if (fact.kind === 'ActionEntered' || fact.kind === 'ContactSpanBegan' || fact.occupancy) addVoice(voiceId, { voiceId, instrument, graphRevision: current.revision, generation: batch.generation,
-          actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId, startedTick: batch.tick,
+          actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId, startedTick: batch.tick, ...(topologyBinding ? { topologyBinding, topologyPitchCents: topologyBinding.pitchCents } : {}),
           ...(fact.occupancy ? { lifetimeScope: 'pickupOccupancy', scopeInstanceId: `${fact.gateId}:${fact.actorId}` } : fact.kind === 'ContactSpanBegan' ? { lifetimeScope: 'contactSpan', scopeInstanceId: fact.spanId } : {}) });
         else output.push(intentFor(batch, fact, instrument, 'end', voiceId, 'one-shot'));
       }
@@ -390,6 +411,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const serializeVoices = records => Object.freeze([...records.values()].map(record => Object.freeze({ voiceId: record.voiceId,
     instrumentId: record.instrument.id, graphRevision: record.graphRevision, generation: record.generation, actorId: record.actorId,
     laneId: record.laneId, actionInstanceId: record.actionInstanceId,
+    ...(record.topologyBinding ? { topologyBinding: record.topologyBinding, topologyPitchCents: record.topologyPitchCents } : {}),
     ...(record.onsetPitch ? { basePitchCents: record.basePitchCents, onsetPitch: record.onsetPitch, tonalState: record.tonalState, rootedSourceEventIds: record.rootedSourceEventIds, tonalOffset: record.tonalOffset } : {}),
     ...(record.rootVoiceId ? { rootVoiceId: record.rootVoiceId } : {}),
     ...(record.startedTick != null ? { startedTick: record.startedTick } : {}), ...(record.lastExpression ? { lastExpression: Object.freeze({ ...record.lastExpression }), lastExpressionTick: record.lastExpressionTick } : {}),
@@ -415,6 +437,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           record.lifetimeScope && (!voiceIdentity(record.scopeInstanceId) || record.lifetimeScope !== (instrument.articulation?.lifetimeScope ??
             (instrument.response ? record.lifetimeScope === 'actionInstance' ? 'actionInstance' : 'actorJourney' : instrument.sourceKind === 'PickupCrossing' ? 'pickupOccupancy' : instrument.sourceKind === 'ContactSpanBegan' ? 'contactSpan' : null))) ||
           record.onsetPitch && (!Number.isFinite(record.basePitchCents) || Math.abs(record.basePitchCents) > 24000 || !Number.isFinite(record.onsetPitch.cents) || Math.abs(record.onsetPitch.cents) > 24000 || !Number.isFinite(record.onsetPitch.referenceHz) || record.onsetPitch.referenceHz <= 0 || !Number.isFinite(record.tonalOffset) || Math.abs(record.tonalOffset) > 24000 || !plain(record.tonalState) || !Array.isArray(record.rootedSourceEventIds) || record.rootedSourceEventIds.length > 128 || record.rootedSourceEventIds.some(id => !nonempty(id))) ||
+          record.topologyBinding && (!instrument.topologyRegionId || !plain(record.topologyBinding) || record.topologyBinding.status !== 'complete' || !voiceIdentity(record.topologyBinding.componentId) || !Number.isFinite(record.topologyPitchCents) || Math.abs(record.topologyPitchCents) > 24000 || !Number.isFinite(record.topologyBinding.pitchCents)) ||
           record.rootVoiceId != null && !voiceIdentity(record.rootVoiceId) ||
           instrument.actionVoicePolicy && (!Number.isSafeInteger(record.startedTick) || record.startedTick < 0 || record.startedTick > nextCursor.tick) ||
           record.lastExpression && (!plain(record.lastExpression) || Object.entries(record.lastExpression).some(([key, value]) => !['pitchOffsetCents', 'pressure01', 'pan01'].includes(key) || !Number.isFinite(value)) || !Number.isSafeInteger(record.lastExpressionTick)) ||

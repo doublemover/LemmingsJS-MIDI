@@ -12,10 +12,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v3',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v4',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -28,7 +28,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       !Number.isSafeInteger(sourceCursor.tick) || sourceCursor.tick < 0 || !Number.isSafeInteger(sourceCursor.generation) || sourceCursor.generation < 0 ||
       !Number.isSafeInteger(sourceCursor.lastCausalSequence) || sourceCursor.lastCausalSequence < 0 ||
       !Array.isArray(prefixCoverage?.gaps) || prefixCoverage.gaps.length > 4096 || !boundedKinds(prefixCoverage.observedFactKinds) ||
-      !boundedKinds(prefixCoverage.intentKinds) || !Array.isArray(prefixCoverage.mappingRevisions) || prefixCoverage.mappingRevisions.length > 4096 ||
+      !boundedKinds(prefixCoverage.intentKinds) || prefixCoverage.topologyRegions != null && (!Array.isArray(prefixCoverage.topologyRegions) || prefixCoverage.topologyRegions.length > 4096 || prefixCoverage.topologyRegions.some(region => !name(region?.id) || !Number.isSafeInteger(region.revision) || region.revision < 0)) || !Array.isArray(prefixCoverage.mappingRevisions) || prefixCoverage.mappingRevisions.length > 4096 ||
       prefixCoverage.mappingRevisions.some(revision => !Number.isSafeInteger(revision) || revision < 0) ||
       canonicalJournalText(existingWriter.manifest().captureProfile).text !== canonicalJournalText(profile).text)) throw new Error('A branch recorder requires its admitted writer and qualified clipped prefix cursor.');
   if (!existingWriter && (prefixCoverage || sourceCursor)) throw new Error('Inherited take coverage requires an existing branch writer.');
@@ -36,6 +36,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     initialCheckpoint, mapping: graph, assetRefs });
   const observedFactKinds = new Set(prefixCoverage?.observedFactKinds || []), intentKinds = new Set(prefixCoverage?.intentKinds || []),
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
+  const topologyRegions = new Map((prefixCoverage?.topologyRegions || []).map(region => [`${region.id}:${region.revision}`, region]));
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
   if (initialPerformance && profile.stateKinds.includes('instrument-performance')) observedStateKinds.add('instrument-performance');
   const coverageIndex = createCausalCoverageIndex({ gaps: prefixCoverage?.gaps || [] }), batches = new Set(), order = [];
@@ -73,6 +74,9 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     worldId = batch.worldId; firstTick ??= batch.tick; lastTick = batch.tick; lastGeneration = batch.generation; lastSequence = sequence;
     if (batch.completeness?.status !== 'complete') addGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'incomplete-source-batch', dropped: batch.completeness?.dropped ?? null });
+    const topology = batch.snapshot?.topology;
+    if (!topology?.regions?.length || topology.regions.some(region => region.status !== 'complete' || !region.current || region.current.sourceRevision !== batch.snapshot.terrainRevision)) addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'qualified-topology-not-captured' });
+    else for (const region of topology.regions) { const result = region.current, key = `${region.regionId}:${region.regionRevision}`; if (topologyRegions.size < 4096 || topologyRegions.has(key)) topologyRegions.set(key, { id: region.regionId, revision: region.regionRevision, bounds: result.bounds, connectivity: result.connectivity, space: result.space }); else addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'topology-inventory-capacity' }); }
     let missingMovementPath = false, missingWorkPhase = false;
     for (const fact of batch.facts) {
       if (fact.kind) observedFactKinds.add(fact.kind);
@@ -97,7 +101,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
         sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
           stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),
-        mappingRevisions: [...mappingRevisions], gaps: cloneJournalData(gaps) } };
+        mappingRevisions: [...mappingRevisions], topologyRegions: [...topologyRegions.values()], gaps: cloneJournalData(gaps) } };
     return writer.stop(stopRequest);
   };
   const recordMapping = (next, boundary) => {
@@ -137,6 +141,7 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const instrument of valid.instruments) {
+    if (instrument.topologyRegionId) add('topology-geometry-v1', instrument.id, 'descriptor');
     if (instrument.harmonicFields || instrument.formationId) { add('tonal-interpretation', instrument.id, 'state'); add('MotionCommitted', instrument.id, 'fact'); if (valid.ensembles?.length) add('physical-domain', instrument.id, 'state'); }
     if (instrument.actionVoicePolicy) { add('action-admission', instrument.id, 'state'); add('ActionExited', instrument.id, 'fact'); add('MotionCommitted', instrument.id, 'fact'); if (instrument.actionVoicePolicy.beginCondition === 'contact') add('ContactResolved', instrument.id, 'fact'); }
     if (instrument.voiceTransfer) add('ActorLaneTransferred', instrument.id, 'fact');
@@ -173,6 +178,7 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     const missing = [...queried.missingRanges, ...queried.unknownRanges];
     const outside = missing.some(gap => gap.reason === 'outside-captured-range');
     const captured = available[keys]?.includes(requirement.kind) === true;
+    if (requirement.kind === 'topology-geometry-v1') { const wanted = validateCausalInstrumentGraph(graph).topologyRegions || []; if (wanted.some(region => !coverage.topologyRegions?.some(captured => captured.id === region.id && captured.revision === region.revision && captured.connectivity === region.connectivity && captured.space === region.space && canonicalJournalText(captured.bounds).text === canonicalJournalText(region.bounds).text))) return { ...requirement, status: 'unavailable', reason: 'topology-region-not-captured' }; }
     if (captured && queried.status === 'known-covered') return { ...requirement, status: 'supported-directly' };
     if (reconstruction?.coverage?.[keys]?.includes(requirement.kind) && reconstruction.firstTick <= requested.firstTick && reconstruction.lastTick >= requested.lastTick) {
       return { ...requirement, status: 'supported-by-verified-reconstruction', artifactId: reconstruction.artifactId };

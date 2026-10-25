@@ -841,18 +841,33 @@
         "js/app/procgen/ProcgenLaneWorld.js",
         "js/actions/PhysicalWorkFacts.js",
         "js/actions/PhysicalContactFacts.js",
-        "js/app/procgen/workstation/physical/TonalInterpretation.js"
+        "js/app/procgen/workstation/physical/TonalInterpretation.js",
+        "js/app/procgen/ProcgenTerrainTopology.js",
+        "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js"
       ],
       "regressions": [
         "test/procgen-terrain-authoring.test.js",
-        "scripts/bench-terrain-authoring.mjs"
+        "scripts/bench-terrain-authoring.mjs",
+        "test/procgen-terrain-topology.test.js",
+        "test/midi/routed-instrument-backend.test.js",
+        "scripts/bench-terrain-topology.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "atomic-terrain-and-provenance",
           "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
+          "commit": "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
+        },
+        {
+          "id": "revision-qualified-topology-instruments",
+          "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
           "commit": null
         }
       ]
@@ -966,7 +981,8 @@
         "scripts/bench-terrain-authoring.mjs"
       ],
       "commits": [
-        "d067da10e7e3210325542da460330d6d96123cde"
+        "d067da10e7e3210325542da460330d6d96123cde",
+        "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -978,7 +994,7 @@
         {
           "id": "atomic-terrain-and-provenance",
           "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
-          "commit": null
+          "commit": "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
         }
       ]
     },
@@ -2107,18 +2123,32 @@
       "requirementUpdatedAt": "2026-10-23T10:56:06Z",
       "requirementSha256": "a932b50c636634215709217b0bff5b44eb3f75a0af265c1cb77857b48f765df6",
       "initialGap": "Validated indexed causal instrument list and requirements extractor exist, not typed DAG node/edge compiler. Latest unchanged-owner swap bug remains: global graph revision mismatch ends every active owner and travel accumulator even when only another instrument changed.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
-        "js/app/procgen/workstation/CausalMusicEngine.js"
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenTerrainTopology.js",
+        "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js"
       ],
       "regressions": [
-        "test/procgen-causal-music-engine.test.js"
+        "test/procgen-causal-music-engine.test.js",
+        "test/procgen-terrain-topology.test.js",
+        "test/midi/routed-instrument-backend.test.js",
+        "scripts/bench-terrain-topology.mjs"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity"
+      "increment": "causal-boundary-and-publication-integrity",
+      "increments": [
+        {
+          "id": "revision-qualified-topology-instruments",
+          "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1109,
@@ -2952,13 +2982,15 @@
         "test/procgen-terrain-authoring.test.js",
         "scripts/bench-terrain-authoring.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "atomic-terrain-and-provenance",
           "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
-          "commit": null
+          "commit": "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
         }
       ]
     },
@@ -3009,11 +3041,28 @@
       "requirementUpdatedAt": "2026-10-22T11:58:33Z",
       "requirementSha256": "d9bcaf211d304ded44bdc720d5d41b0ed1f5132602b0f0372d036206653a07f4",
       "initialGap": "No TopologyInstrumentRegion compiler/route-derived instrument region.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/ProcgenTerrainTopology.js",
+        "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/workstation/CausalTake.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js"
+      ],
+      "regressions": [
+        "test/procgen-terrain-topology.test.js",
+        "test/midi/routed-instrument-backend.test.js",
+        "scripts/bench-terrain-topology.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "revision-qualified-topology-instruments",
+          "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1184,

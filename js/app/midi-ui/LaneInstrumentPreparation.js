@@ -80,7 +80,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
       return Object.freeze({ reference,
         commit() {
           check(); if (operation.retired) throw failure('candidate-retired', 'Lane instrument candidate was retired.');
-          routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds }); operation.committed = true;
+          routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds, bodyId: resolution.patch.id, macroIds: (resolution.patch.macros || []).map(macro => macro.id) }); operation.committed = true;
           observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); release(); report(laneId, 'ready'); return reference;
         }, release });
     } catch (error) { operation.preparing = false; const receipt = release(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } report(laneId, 'unavailable', error.code || 'preparation-failed'); throw error; }

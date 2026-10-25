@@ -89,6 +89,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const assigned = assignments.get(lane), child = assigned || defaults; if (child.blocked) return reject(child.reason);
     let expected; try { expected = requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
     if (expected && assigned?.key !== expected) return reject('pinned-instrument-not-prepared');
+    if (intent.topologyBinding && (intent.topologyBinding.bodyId !== child.bodyId || intent.topologyBinding.dampingMacroId && !child.macroIds?.includes(intent.topologyBinding.dampingMacroId))) return reject('topology-body-or-macro-unavailable');
     const execution = executionFor(child, epoch, intent.generation); if (!execution) return reject('renderer-execution-unavailable');
     try { reserveMetadata({ voices: 1 }); } catch { return reject('audio-resource-budget'); }
     const laneMix = getLaneMix(lane, intent.laneId); if (!laneMix) return reject('lane-unavailable');
@@ -192,13 +193,14 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
   });
   return Object.freeze({ backend: lifecycle.api,
     canAssign(key) { collect(); const child = children.get(key); return !disposed && (child ? !child.retirementScope : children.size < maxChildren); },
-    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null } = {}) {
+    assign(lane, key, renderer, { releaseSeconds = null, oneShotTailSeconds = null, bodyId = null, macroIds = [] } = {}) {
       if (!validLane(lane) || typeof key !== 'string' || !key || key.length > 256 || key === 'default' || disposed || !renderer?.inspectExecution) throw new TypeError('Invalid lane instrument assignment.');
       if ([releaseSeconds, oneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid authored release policy.');
+      if (bodyId != null && (typeof bodyId !== 'string' || bodyId.length > 128) || !Array.isArray(macroIds) || macroIds.length > 4 || macroIds.some(id => typeof id !== 'string' || id.length > 128)) throw new TypeError('Invalid prepared body identity.');
       collect(); if (!assignments.has(lane) && assignments.size >= maxLanes) throw new Error('Routed lane capacity exceeded.'); let child = children.get(key);
-      if (child && (child.backend !== renderer || child.retirementScope) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
+      if (child && (child.backend !== renderer || child.retirementScope || child.bodyId !== bodyId || JSON.stringify(child.macroIds) !== JSON.stringify(macroIds)) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1, renderers: child ? 0 : 1 });
-      if (!child) { child = { key, backend: renderer, retirement: null, assignedLanes: 0, pins: 0, releaseSeconds, oneShotTailSeconds }; children.set(key, child);
+      if (!child) { child = { key, backend: renderer, retirement: null, assignedLanes: 0, pins: 0, releaseSeconds, oneShotTailSeconds, bodyId, macroIds: [...macroIds] }; children.set(key, child);
         if (displayContext) { try { renderer.setDisplayContext?.(displayContext); } catch { /* Presentation cannot prevent prepared sound assignment. */ } }
       }
       const previous = assignments.get(lane);

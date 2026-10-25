@@ -27,6 +27,15 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('requires the prepared authored body and damping macro for topology excitation', () => {
+    const fallback = renderer(), child = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'body-pack', child.backend, { bodyId: 'modal:clay', macroIds: ['damping'] });
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'topology' }).execution;
+    expect(router.backend.begin({ ...onset('wrong'), topologyBinding: { bodyId: 'modal:metal' } }, 100, execution).reason).to.equal('topology-body-or-macro-unavailable');
+    expect(router.backend.begin({ ...onset('missing'), topologyBinding: { bodyId: 'modal:clay', dampingMacroId: 'missing' } }, 100, execution).reason).to.equal('topology-body-or-macro-unavailable');
+    expect(router.backend.begin({ ...onset('right'), topologyBinding: { bodyId: 'modal:clay', dampingMacroId: 'damping' } }, 100, execution).status).to.equal('accepted');
+    expect(child.calls.filter(call => call[0] === 'begin')).to.have.length(1); router.backend.dispose();
+  });
   it('routes carried voices through destination lane mix while retaining their original renderer', async () => {
     const fallback = renderer(), child = renderer(); let muted = false;
     const router = root(fallback.backend, { getLaneMix: lane => ({ gain: muted ? 0 : lane === 'lane-2' ? 0.25 : 1, pan: lane === 'lane-2' ? 1 : 0, muted }) });

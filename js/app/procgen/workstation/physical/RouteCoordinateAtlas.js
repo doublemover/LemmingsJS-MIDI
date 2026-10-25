@@ -51,8 +51,8 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
     currentTick = batch.tick; const actors = new Map((batch.snapshot?.actors || []).map(actor => [actor.actorId, actor])), observations = [], motionDistances = new Map();
     for (const fact of batch.facts) if (fact.kind === 'MotionCommitted') motionDistances.set(fact.actorId, (motionDistances.get(fact.actorId) || 0) + Math.hypot(fact.positionAfter.x - fact.positionBefore.x, fact.positionAfter.y - fact.positionBefore.y));
     for (const [id, state] of trackers) if (batch.snapshot && !actors.has(state.actorId)) trackers.delete(id);
-    for (const fact of batch.facts) if (fact.kind === 'TerrainWorkCommitted' && (fact.physicalPayload?.changedSolidCells || fact.physicalPayload?.changedAppearanceCells)) {
-      const spans = fact.physicalPayload?.spans;
+    for (const fact of batch.facts) if (fact.kind === 'TerrainWorkCommitted' && fact.physicalPayload?.changedSolidCells > 0 || fact.kind === 'CommandApplied' && (fact.terrain?.counts?.solidAdded > 0 || fact.terrain?.counts?.solidRemoved > 0)) {
+      const spans = fact.terrain?.edit?.spans || fact.physicalPayload?.terrainEdit?.spans || fact.physicalPayload?.spans;
       const region = fact.bounds || fact.physicalPayload?.bounds || (Array.isArray(spans) && spans.length ? { x1: Math.min(...spans.map(span => span.x1)), x2: Math.max(...spans.map(span => span.x2)), y1: Math.min(...spans.map(span => span.y)), y2: Math.max(...spans.map(span => span.y)) + 1 } : null);
       for (const route of definitions) for (const segment of route.segments) if (segment.dependencies.some(dependency => !region || intersects(dependency.bounds, region))) { let ids = invalid.get(route.id); if (!ids) { ids = new Set(); invalid.set(route.id, ids); } ids.add(segment.id); }
     }

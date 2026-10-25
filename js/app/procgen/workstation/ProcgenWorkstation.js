@@ -248,6 +248,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
       : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
+    if (project.procgen.physicalGraph !== next.procgen.physicalGraph) for (const collection of ['harmonicFields', 'topologyRegions']) {
+      const previous = project.procgen.physicalGraph[collection] || [], values = next.procgen.physicalGraph[collection];
+      if (!values) continue;
+      const rebased = values.map(value => { const old = previous.find(prior => prior.id === value.id); if (!old || equal(old, value) || value.revision > old.revision) return value; if (!Number.isSafeInteger(old.revision + 1)) throw new Error('Physical region revision exhausted.'); return { ...value, revision: old.revision + 1 }; });
+      if (rebased.some((value, index) => value !== values[index])) next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, [collection]: rebased } } };
+    }
     if (project.procgen.physicalGraph !== next.procgen.physicalGraph && JSON.stringify(project.procgen.physicalGraph.harmonicFields || []) !== JSON.stringify(next.procgen.physicalGraph.harmonicFields || [])) {
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, editCommandId: `field-edit:${project.procgen.physicalGraph.revision + 1}` } } };
     }
@@ -256,6 +262,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
     }
+    const topologyProposal = graphChanged ? runtime()?.world?.prepareTopologyRegions?.(next.procgen.physicalGraph.topologyRegions || []) : null;
     const mappingChanged = causalTake && graphChanged;
     if (causalTake && (mappingChanged || performanceChange)) {
       const world = runtime()?.world, boundary = { tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 };
@@ -263,6 +270,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
       if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
     }
+    topologyProposal?.commit();
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
         if (historyCost != null) historySizes.set(project, historyCost);
@@ -789,6 +797,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
+    next.world?.configureTopologyRegions?.(project.procgen.physicalGraph.topologyRegions || []);
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
     const physicalBus = next.world?.soundEvents?.onBatch;

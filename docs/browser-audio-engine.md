@@ -927,3 +927,37 @@ Integer/no-op, cold-patch, occupancy/stale/protected, allocation-failure, checkp
 ancestry and retention regression coverage and an 8/128/1024-lane preview profile
 are written. They have not been executed; no performance or interactive qualification
 is claimed.
+
+### Collision topology as an authored instrument descriptor
+
+A topology profile declares integer ROI/halo, free/solid space, 4/8 connectivity,
+anchors, binding policy and an explicit existing patch/body identity. The reference
+flood fill computes area in square world pixels, cardinal boundary length,
+centroids, opening spans and one-cell-separated adjacency. Anchor/overlap matching
+preserves identities through unchanged components, splits and merges; vanished
+identities have explicit retirement. Unknown coverage, excessive component count
+or exhausted computation budget is unavailable, not a sealed chamber.
+
+Up to eight regions / 262,144 total ROI cells are admitted, each at most 65,536 cells
+and 256 components. Separate 262,144-cell post-transaction and completed-boundary
+budgets reserve the final observation. Four revision-qualified descriptor versions
+per region support bounded exact-local binding. Analysis jobs fence world,
+generation, mapping/ROI epoch and terrain revision at publication. Late results are
+discarded; unavailable old excitations are never replayed as a catch-up burst.
+`endOfTick` explicitly preserves the original work/contact revision alongside the
+completed topology revision; `postTransaction` refuses absent exact local evidence.
+
+Successful worker/contact facts—not topology analysis—excite authored pitch and
+onset damping-macro mappings. The routed owner requires the declared prepared body
+and macro; there is no parallel resonator implementation. Held contacts retain onset
+pitch, retune stable components, or release on change according to policy, and
+split/merge/removal cannot silently leak a prior component voice. Damping remains
+onset-only. Checkpoints retain topology history; physical-state projections exclude
+this observational owner. Capture profile v4 records descriptor coverage and ROI
+identities so a different or missing chamber cannot be claimed reinterpretable.
+
+Reference fixtures cover sealed area, open/unknown boundaries, diagonal connectivity,
+merge/split identity, two worker revisions, held retirement, stale publication and
+checkpoint restore. A bounded analysis-only profile separates CPU descriptors from
+DSP cost. UI cavity overlays, authoring interactions, source-builder and acoustic
+qualification remain outstanding; no fixture/profile has been run.
