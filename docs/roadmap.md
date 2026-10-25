@@ -3711,3 +3711,35 @@ without treating cleanup as another semantic release. Native choke rebuilding
 retains that force policy. Source-forced release has its own kernel reason code,
 so its receipt is not mislabeled as Panic. Matching active-child cleanup fixtures
 are authored for both renderers and remain unrun.
+
+
+### Continuation 169 — shared sampler auditions and offline planning (#1130, #1162, #1058)
+
+The owned sampler now has a pinned two-slot engine descriptor, lane preparation,
+complete multi-asset source material, authored gesture controls and a fixed WAV
+adapter. Live and offline auditions resolve the same immutable onset identity and
+map selection. Forward/reverse loops, source-rate conversion, selected release
+children and fractional-region reading use the same processor. Position auditions
+carry a clearly labeled authored outbound/return source-frame program; they do not
+claim canonical physical traversal. Public capability metadata distinguishes the
+advanced renderer from the existing native forward-only sample profile.
+
+Offline causal planning counts full release/choke tails against the physical pool
+while enforcing the patch's logical gate limit separately. Forced choke events
+stop every owned layer without triggering another release. Finished custom-source
+slots retire before commands at the exact reuse frame. Captured lane inventories
+include explicit carried-voice transfers, and pitch updates preflight both selected
+reader domains. Position-driven causal export still refuses absent canonical
+travel binding instead of producing an unexplained silent cursor.
+
+Source material preflight charges the complete decoded PCM aggregate before
+decoding; render loans verify the exact asset inventory. Isolated auditions admit
+a four-second maximum child tail and retain actual kernel-end evidence separately
+from command application. Their selection receipts now include the actual asset
+and stable selection seed. Stereo Float32 WAV writing has a shared bounded encoder.
+
+Multi-rate forward/reverse/position control exports, deterministic selection,
+original release ownership and exact frame reuse fixtures are authored and unrun.
+Only formatting/lint and source provenance checks accompany this development
+batch. Listening, spectral/capacity qualification, the full suite and CI remain
+deferred until the remaining development backlog is implemented.

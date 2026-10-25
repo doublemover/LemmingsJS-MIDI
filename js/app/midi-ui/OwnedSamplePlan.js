@@ -52,7 +52,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
     bankHash: descriptor.bankHash, sampleRate, cursorCapacity: OWNED_SAMPLE_CURSOR_CAPACITY }, { maxBytes: 262144, maxNodes: 32768 }).text;
   const rateFor = (entry, pitch, offset = 0) => {
     const ratio = sampleRegionRate(entry, pitch, offset), derivative = ratio == null ? NaN : ratio * entry.decodedSampleRate / sampleRate;
-    return Number.isFinite(derivative) && derivative > 0 && derivative <= 4 ? { ratio, derivative } : null;
+    return Number.isFinite(derivative) && derivative > 0 && (entry.mode === 'positionDriven' || derivative <= 4) ? { ratio, derivative } : null;
   };
   return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity,
     footprint: freezeData({ cursorCount, cursorBytes, maximumCursorTransferBytes: cursorTransferBytes, metadataEstimateBytes: 524288 + cursorCount * 6144,

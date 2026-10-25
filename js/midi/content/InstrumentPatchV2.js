@@ -107,7 +107,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     sampleIds.add(sample.id);
     return { id: sample.id, sha256: sample.sha256.toLowerCase(), bytes: sample.bytes, required: sample.required !== false };
   });
-  if (input.sampleMap != null && engine.capabilities.sampleMaps !== true || input.engineId === 'native-sample' && input.sampleMap == null)
+  if (input.sampleMap != null && engine.capabilities.sampleMaps !== true || ['native-sample', 'worklet-sample'].includes(input.engineId) && input.sampleMap == null)
     throw new Error('An authored resolved sample map is required for this engine capability.');
   const sampleMap = input.sampleMap == null ? null : validateSampleInstrumentMap(input.sampleMap, sampleRefs, {
     rendererProfile: engine.capabilities.advancedSampleMaps === true ? OWNED_SAMPLE_MAP_PROFILE : NATIVE_SAMPLE_MAP_PROFILE });

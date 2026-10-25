@@ -22,9 +22,10 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   return Object.freeze({ id, width, voices, fields, parameters: parameters ? Object.freeze(Object.values(parameters)) : null, seedDomain, runtime,
     minHz, maxHz, bendCents, heapEstimate, sourceBytes(options = {}) {
       if (!options || Object.getPrototypeOf(options) !== Object.prototype || Object.keys(options).some(key => !['sampleRate', 'voices', 'pcm'].includes(key))) throw new TypeError('Owned source footprint requires named rate, voice capacity and PCM fields.');
-      const { sampleRate, voices: capacity = voices, pcm = null } = options;
+      const { sampleRate, voices: requestedCapacity = voices, pcm = null } = options;
+      const capacity = requiresPCMSet ? voices : requestedCapacity;
       if (!Number.isSafeInteger(sampleRate) || !finite(sampleRate, 8000, 384000) || rateLimit && ![44100, 48000, 96000].includes(sampleRate) ||
-          !Number.isSafeInteger(capacity) || capacity < 1 || capacity > voices) throw new RangeError('Invalid owned source footprint rate or voice capacity.');
+          !Number.isSafeInteger(requestedCapacity) || requestedCapacity < 1 || requestedCapacity > voices) throw new RangeError('Invalid owned source footprint rate or voice capacity.');
       if (requiresPCMSet ? !validOwnedPcmSetDescriptor(pcm) : requiresPCM ? !pcm || pcm.schema !== 'lemmings-owned-pcm-bank/v1' || !Number.isSafeInteger(pcm.frames) || pcm.frames < 1 || ![1, 2].includes(pcm.channels) ||
           !Number.isSafeInteger(pcm.sampleRate) || !finite(pcm.sampleRate, 8000, 192000) || !Number.isSafeInteger(pcm.bytes) || pcm.bytes !== pcm.frames * pcm.channels * 4 || pcm.bytes > 16 * 1048576 : pcm != null)
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
@@ -48,7 +49,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
-  'worklet-sample': createProfile({ id: 'worklet-sample', width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_SAMPLE_FIELDS,
+  'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_SAMPLE_FIELDS,
     buildId: 'owned-sample-v2-owned-retirement', abi: 'owned-sample-f64-command-v1', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
     cost: () => 32, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,

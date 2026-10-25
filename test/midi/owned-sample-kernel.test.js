@@ -58,6 +58,11 @@ describe('pooled owned sample source and logical release children (runtime quali
     render(kernel, 1); expect(kernel.active[0]).to.equal(0); expect(value(kernel, F.childActive)).to.equal(0);
     expect(receipts(kernel).filter(item => item[0] === APPLIED)).to.have.length(2); expect(receipts(kernel).some(item => item[0] === REJECTED)).to.equal(false);
   });
+  it('retires a completed source before a new onset reuses its exact frame and slot', () => {
+    const kernel = create(); submit(kernel, [row(BEGIN, 0, 1), row(END, 512, 2, { 13: 64, 16: 576, 7: 0, 8: 1 }), row(BEGIN, 576, 3, { 5: 2 })]);
+    render(kernel, 700); expect(receipts(kernel).some(item => item[0] === REJECTED)).to.equal(false); expect(kernel.active[0]).to.equal(1);
+    expect(value(kernel, F.token)).to.equal(2); expect(value(kernel, F.start)).to.equal(576);
+  });
 
   it('resumes independent mutable source, future-control, cursor and release state inside an actual child tail', () => {
     for (const position of [false, true]) {

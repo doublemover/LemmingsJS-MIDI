@@ -41,7 +41,7 @@ export class OwnedSampleSource {
   frequencyValid(entry, frequency) {
     if (!finite(frequency, 0.1, this.rate / 2 - 1)) return false;
     const cents = 6900 + 1200 * Math.log2(frequency / 440), ratio = frequency / entry.rootFrequencyHz, derivative = ratio * entry.decodedSampleRate / this.rate;
-    return finite(cents, entry.pitchRange.minCents - 1e-9, entry.pitchRange.maxCents + 1e-9) && finite(ratio, 1 / 16, 16) && derivative <= 4;
+    return finite(cents, entry.pitchRange.minCents - 1e-9, entry.pitchRange.maxCents + 1e-9) && finite(ratio, 1 / 16, 16) && (entry.mode === 'positionDriven' || derivative <= 4);
   }
   validFrequency(slot, frequency) {
     const at = slot * OWNED_SAMPLE_STATE_WIDTH, entry = this.plan.entries[this.state[at + S.zone]];
@@ -72,7 +72,7 @@ export class OwnedSampleSource {
     const age = frame - s[at + S.start], attack = s[at + S.attack], decay = s[at + S.decay];
     return age < attack ? age / attack : age < attack + decay ? 1 - (1 - s[at + S.sustain]) * (age - attack) / decay : s[at + S.sustain];
   }
-  validRelease(packet, frame) { return integer(packet[13], 1, this.rate * 4) && [0, 1].includes(packet[20]) && [0, 1].includes(packet[21]) && [0, 1].includes(packet[8]) && (packet[8] === 0 || finite(packet[7], 0, 1)) && (packet[16] === 0 || integer(packet[16], frame + packet[13])); }
+  validRelease(packet, frame) { return integer(packet[13], 1, this.rate * 4) && [0, 1].includes(packet[20]) && [0, 1].includes(packet[21]) && [0, 1].includes(packet[8]) && (packet[8] === 0 || finite(packet[7], 0, 1)) && (packet[16] === 0 || integer(packet[16], frame + 1)); }
   release(slot, frames, frame, reason = 1, packet = null, parentDeadline = Number.MAX_SAFE_INTEGER) {
     const at = slot * OWNED_SAMPLE_STATE_WIDTH, s = this.state; if (!s[at + S.active] || reason === 1 && s[at + S.released]) return;
     const entry = this.plan.entries[s[at + S.zone]], gain = packet?.[21] === 1 && frame === s[at + S.start] ? 0 : this.envelope(at, frame);

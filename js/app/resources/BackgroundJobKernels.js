@@ -265,7 +265,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
         metadata.bytes * 4 + 16 * 1048576 > estimatedPeakBytes) throw problem('invalid-contract', 'Native encoding requires its admitted PCM and representation overlap.');
     const catalog = await getNativeInstrumentCatalog(), requirement = input.manifest?.engineRequirement;
     const descriptor = catalog.descriptors.find(engine => engine.engineId === requirement?.engineId); guard(signal, current);
-    if (catalog.state !== 'bound-application-engines' || !descriptor || !(['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) || input.mode === 'causal-take' && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(descriptor.engineId)) ||
+    if (catalog.state !== 'bound-application-engines' || !descriptor || !(['native-oscillator', 'native-fm', 'native-modal', 'native-sample'].includes(descriptor.engineId) || input.mode === 'causal-take' && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(descriptor.engineId)) ||
         !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => requirement?.[key] === descriptor[key]) || input.manifest.applicationBuildId !== catalog.executionIdentity.buildId)
       throw problem('engine-identity-unbound', 'Native encoding requires the same immutable application and source artifact.');
     if (input.manifest.nativeScheduling?.effectGraph || input.manifest.effectGraph?.definition?.nodes?.some(node => node.kind === 'convolution-native')) {
@@ -279,12 +279,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
   }
   if (kind === 'render-sound-controls') {
-    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source', 'pcm'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
+    if (!input || Object.keys(input).some(key => !['definition', 'engineRequirement', 'sampleRate', 'source', 'pcm', 'sampleGesture'].includes(key)) || estimatedPeakBytes < 32 * 1048576)
       throw problem('invalid-contract', 'Sound control rendering requires its bounded fixed-job contract.');
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing source artifact.');
-    const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source, pcm: input.pcm,
+    const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source, pcm: input.pcm, sampleGesture: input.sampleGesture,
       applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 65536;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Rendered control reference exceeds admitted output storage.');

@@ -30,11 +30,11 @@ export function createSoundContentRenderReferences({ resourceBudget, jobs = back
       try {
         check(); const patch = source.prepared.patches.find(entry => entry.identity === patchIdentity);
         const sample = patch?.definition.engineId === 'native-sample', native = NATIVE_OFFLINE_SOURCE_IDS.includes(patch?.definition.engineId), owned = OWNED_SOURCE_IDS.includes(patch?.definition.engineId) ? getOwnedSourceProfile(patch.definition.engineId) : null;
-        if (!patch || patch.state !== 'definition-admitted' || !native && !owned?.controlReferenceRender || (sample ? patch.definition.sampleRefs.length < 1 || patch.definition.sampleRefs.length > 32 : owned?.requiresPCM ? patch.definition.sampleRefs.length !== 1 : patch.definition.sampleRefs.length !== 0) ||
+        if (!patch || patch.state !== 'definition-admitted' || !native && !owned?.controlReferenceRender || (sample || owned?.requiresPCMSet ? patch.definition.sampleRefs.length < 1 || patch.definition.sampleRefs.length > 32 : owned?.requiresPCM ? patch.definition.sampleRefs.length !== 1 : patch.definition.sampleRefs.length !== 0) ||
             patch.definition.modulations.length) throw failure('This reference requires an available owned renderer with its required material.');
         const plan = planSoundContentSelection(source.prepared, [patchIdentity], { availableHashes: source.metadata.assetHashes });
         if (plan.missingReferences.length || plan.missingAssetBytes.length && !owned?.requiresPCM && !sample) throw failure('Rendered reference material is incomplete.');
-        const input = { definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, sampleRate,
+        const input = { definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement, sampleRate, ...(owned?.requiresPCMSet ? { sampleGesture } : {}),
           source: { packId: source.prepared.pack.id, packVersion: source.prepared.pack.version, contentHash: source.prepared.contentHash,
             patchIdentity, definitionHash: patch.definitionHash, attribution: plan.credits.map(entry => entry.subject + ': ' + entry.rights.attribution).join('\n') } };
         if (owned?.requiresPCM || sample) {

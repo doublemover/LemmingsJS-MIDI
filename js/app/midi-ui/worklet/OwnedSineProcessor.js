@@ -242,7 +242,7 @@ class OwnedSineKernel {
   }
 
   render(left, right, frameStart, stems = null) {
-    const maskedStems = stems?.routeMode === 'mask';
+    const maskedStems = stems?.routeMode === 'mask', sourceEnvelope = this.source?.ownsEnvelope === true;
     if (stems) {
       if (stems.routeMode != null && !maskedStems || !(maskedStems ? stems.routes instanceof Uint16Array : stems.routes instanceof Int8Array) || stems.routes.length < this.maxVoices || stems.routes.length > MAX_VOICES ||
           !Array.isArray(stems.channels) || !stems.channels.length || stems.channels.length > 16 ||
@@ -270,6 +270,11 @@ class OwnedSineKernel {
     }
     for (let offset = 0; offset < left.length; offset++) {
       const frame = frameStart + offset;
+      if (sourceEnvelope) for (let slot = 0; slot < this.maxVoices; slot++) if (this.active[slot] && this.source.finished(slot)) {
+        const at = slot * 28;
+        if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
+        this.active[slot] = 0; this.source.retire(slot); this.receipt(ENDED, this.voice[at + 22], slot, this.voice[at + 2], frame, this.voice[at + 20]);
+      }
       while (this.queueLength && this.queue[1] <= frame) {
         this.apply(frame); this.pop();
       }
@@ -278,11 +283,6 @@ class OwnedSineKernel {
       for (let slot = 0; slot < this.maxVoices; slot++) {
         if (!this.active[slot]) continue;
         const at = slot * 28, voices = this.voice, age = frame - voices[at + 15];
-        const sourceEnvelope = this.source?.ownsEnvelope === true;
-        if (sourceEnvelope && this.source.finished(slot)) {
-          if (this.displayEnabled) this.measureDisplay(slot, 0, frame, 0, 2);
-          this.active[slot] = 0; this.source.retire(slot); this.receipt(ENDED, voices[at + 22], slot, voices[at + 2], frame, voices[at + 20]); continue;
-        }
         if (!voices[at + 18] && frame >= voices[at + 16] - voices[at + 17]) this.release(slot, voices[at + 17], frame, 7);
         if (voices[at + 18]) {
           voices[at + 4] = Math.max(0, voices[at + 4] - voices[at + 19]); voices[at + 18]--;

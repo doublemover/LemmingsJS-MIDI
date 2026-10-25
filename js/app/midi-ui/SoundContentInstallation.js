@@ -1,3 +1,5 @@
+import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
+import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
 import { planSoundSourceComparison } from './SoundSourceComparison.js';
 import { SOUND_CONTENT_CONTROL_FIXTURE as fixture, sampleMapControlFixture } from '../../midi/content/SoundContentControlFixture.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
@@ -38,14 +40,14 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     let lease;
     try { lease = borrowSoundContentStage(stage); } catch (error) { return Promise.reject(error); }
     const patch = lease.prepared.patches.find(entry => entry.identity === patchIdentity);
-    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ||
-        patch.definition.sampleRefs.length && !['worklet-granular', 'native-sample'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
+    if (!patch || patch.state !== 'definition-admitted' || !['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(patch.definition.engineId) ||
+        patch.definition.sampleRefs.length && !['worklet-granular', 'native-sample', 'worklet-sample'].includes(patch.definition.engineId) || patch.definition.modulations.length || patch.definition.engineId === 'worklet-sine' && (patch.definition.macros.length || patch.definition.causalBindings.length || patch.definition.variation)) {
       lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'This instrument needs an available renderer and a realized gesture/material adapter.'));
     }
     if (sourceMode !== null && (!['original', 'region'].includes(sourceMode) || patch.definition.engineId !== 'worklet-granular' || patch.definition.sampleRefs.length !== 1)) {
       lease.release(); return Promise.reject(failure('source-comparison-unavailable', 'Select a granular instrument with one local source to compare.'));
     }
-    if (sampleGesture !== null && (patch.definition.engineId !== 'native-sample' || !patch.definition.sampleMap?.articulations?.some(entry => entry.id === sampleGesture))) {
+    if (sampleGesture !== null && (!['native-sample', 'worklet-sample'].includes(patch.definition.engineId) || !patch.definition.sampleMap?.articulations?.some(entry => entry.id === sampleGesture))) {
       lease.release(); return Promise.reject(failure('sample-gesture-unavailable', 'Choose an authored gesture for this sample instrument.'));
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });
@@ -100,7 +102,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           if (patch.definition.engineId === 'native-sample') {
             if (!operation.session.createSampleInstrumentBackend) throw failure('sample-adapter-unavailable', 'This audio session cannot prepare mapped samples.');
             operation.backend = await operation.session.createSampleInstrumentBackend({ gateMode: 'owned' });
-          } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
+          } else operation.backend = ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(patch.definition.engineId) ? await operation.session.createWorkletInstrumentBackend({ engineId: patch.definition.engineId }) : operation.session.createInstrumentBackend({ gateMode: 'owned', engineId: patch.definition.engineId }); check();
         }
         const prepared = await interruptible(operation.backend.prepare(resolution, operation.material?.assets || []), signal); check();
         if (prepared.status !== 'ready') throw failure('preparation-rejected', 'Audition renderer rejected the effective patch: ' + prepared.reason);
@@ -111,13 +113,15 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         }
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
+        if (patch.definition.engineId === 'worklet-sample') auditionFixture = createOwnedSampleControlFixture(prepareOwnedSamplePlan(resolution.patch, prepared.sourceBank, rate), sampleGesture ?? patch.definition.sampleMap.neutralArticulationId).fixture;
         const registered = operation.backend.registerExecution({ executionEpoch: 'sound-audition:' + number, generation: number });
         if (registered.status !== 'accepted') throw failure('audition-admission', 'Audition execution could not be registered.'); operation.execution = registered.execution;
-        const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null;
+        const requiresApplication = !sourceMode && ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(patch.definition.engineId), applications = new Map(); let commandFailure = null, sourceEndedFrame = null;
         if (requiresApplication) {
           if (typeof operation.backend.observeCommandOutcomes !== 'function') throw failure('application-evidence-unavailable', 'This renderer cannot provide owned command-application receipts.');
           operation.stopObservation = operation.backend.observeCommandOutcomes(value => {
             if (['rejected', 'faulted', 'cancelled'].includes(value.status)) commandFailure = value;
+            if (value.stage === 'render-kernel-ended' && value.voiceId === 'control-fixture' && value.status === 'accepted' && Number.isSafeInteger(value.appliedFrame)) sourceEndedFrame = value.appliedFrame;
             const command = applications.get(value.sequence);
             if (command && value.stage === 'render-kernel-applied' && value.status === 'accepted' && Number.isSafeInteger(value.appliedFrame))
               command.appliedFrame = value.appliedFrame;
@@ -125,7 +129,8 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         }
         const base = Math.ceil(context.currentTime * rate) + Math.ceil(0.15 * rate), releaseSeconds = comparison?.releaseSeconds ?? patch.definition.parameters.releaseSeconds ?? 0.04;
         const fixtureEndSeconds = Math.max(...auditionFixture.events.map(event => event.seconds));
-        const endFrame = base + Math.ceil((fixtureEndSeconds + releaseSeconds + 0.15) * rate), outcomes = [];
+        const sample = ['native-sample', 'worklet-sample'].includes(patch.definition.engineId);
+        const endFrame = base + Math.ceil((fixtureEndSeconds + (sample ? Math.max(4, releaseSeconds) : releaseSeconds) + 0.15) * rate), outcomes = [];
         const leaseReceipt = operation.backend.renewExecutionLease(number, operation.execution, endFrame + Math.ceil(rate));
         if (leaseReceipt.status !== 'accepted') throw failure('audition-admission', 'Audition voice lifetime could not be admitted.');
         operation.auditionLease?.markReady();
@@ -134,6 +139,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           if (event.kind === 'begin') outcome = operation.backend.begin({ version: 1, kind: 'begin', generation: number, voiceId: 'control-fixture', onsetId: 'control-fixture', actorId: null, laneId: 0,
             intentId: 'sound-audition:' + number, sourceEventIds: [], pitch: { cents: event.pitchCents, referenceHz: 440 }, velocity01: event.velocity01, expression: event.expression,
             ...(event.sampleGesture ? { sampleGesture: event.sampleGesture } : {}) }, frame, operation.execution);
+          else if (event.kind === 'position') outcome = operation.backend.updateSamplePosition('control-fixture', { ...event.segment, firstOutputFrame: base + event.segment.firstOutputFrame, endOutputFrame: base + event.segment.endOutputFrame }, frame, operation.execution);
           else if (event.kind === 'update') outcome = operation.backend.update('control-fixture', event.expression, frame, operation.execution);
           else outcome = operation.backend.end('control-fixture', { seconds: releaseSeconds }, frame, operation.execution);
           outcomes.push(outcome); if (outcome?.status !== 'accepted') throw failure('audition-command-rejected', 'Audition command was rejected: ' + outcome?.reason);
@@ -149,17 +155,17 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           const now = Math.floor(context.currentTime * rate), applied = !requiresApplication || [...applications.values()].every(value => value.appliedFrame != null);
           const onsetApplied = !requiresApplication || [...applications.values()].some(value => value.kind === 'begin' && value.appliedFrame != null);
           if (!markedPlaying && now >= base && onsetApplied) { operation.auditionLease?.markPlaying(); markedPlaying = true; }
-          if (now >= endFrame && applied) break;
+          if (now >= (sourceEndedFrame === null ? endFrame : Math.min(endFrame, sourceEndedFrame + Math.ceil(0.15 * rate))) && applied) break;
           if (now > endFrame + 2 * rate) throw failure('application-evidence-unavailable', 'Audition finished its clock range without complete command-application evidence.');
           await delay(30, signal);
         }
         check(); const fixtureHash = await hashData(auditionFixture); check();
         receipt = freezeData({ schema: sourceMode ? 'lemmings-isolated-source-comparison/v1' : 'lemmings-isolated-sound-audition/v1', contentHash: lease.metadata.contentHash, patchIdentity,
           definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: auditionFixture.id, ...(comparison ? { sourceComparison: comparison.source, sourceMode, comparisonEngineRequirement } : {}),
-          sampleRate: rate, targetFrame: base, endFrame, commandsAccepted: outcomes.length, source: auditionFixture.source,
+          sampleRate: rate, targetFrame: base, endFrame, sourceEndedFrame, commandsAccepted: outcomes.length, source: auditionFixture.source,
           commandsApplied: requiresApplication ? applications.size : null, applications: [...applications.values()],
-          sourceSelections: outcomes.filter(outcome => outcome.region?.selection).map(outcome => ({ targetFrame: outcome.targetFrame, assetHash: outcome.assetHash,
-            onsetFrame: outcome.region.onsetFrame, endFrame: outcome.region.endFrame, rootCents: outcome.region.rootCents, rateRatio: outcome.rateRatio, selectionSeed: outcome.selectionSeed, selection: outcome.region.selection })),
+          sourceSelections: outcomes.filter(outcome => outcome.region?.selection).map(outcome => ({ targetFrame: outcome.targetFrame, assetHash: outcome.assetHash ?? outcome.region.assetHash,
+            onsetFrame: outcome.region.onsetFrame, endFrame: outcome.region.endFrame, rootCents: outcome.region.rootCents, rateRatio: outcome.rateRatio, selectionSeed: outcome.selectionSeed ?? outcome.region.selectionSeed, selection: outcome.region.selection })),
           status: sourceMode ? 'source-comparison-completed' : 'control-fixture-completed', evidenceClass: requiresApplication ? 'render-kernel-command-application-and-running-clock' : 'backend-api-command-admission-and-running-clock', physicalTakeEvidence: false,
           renderQualification: 'not-independently-qualified', acousticReceipt: false, monitorRoute: audio.getMonitorRouteState?.() || null,
           auditionLease: operation.auditionLease?.snapshot() || null });

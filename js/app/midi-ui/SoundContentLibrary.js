@@ -257,11 +257,12 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       sourceComparable = patch?.state === 'definition-admitted' && patch.definition.engineId === 'worklet-granular' && patch.definition.sampleRefs.length === 1;
       localProceduralMaterial = !!patch?.definition?.sampleRefs?.length && patch.definition.sampleRefs.every(ref => lease.prepared.pack.files.some(file => file.sha256 === ref.sha256 && getProceduralSoundMaterial(file)));
       renderable = patch?.state === 'definition-admitted' && (NATIVE_OFFLINE_SOURCE_IDS.includes(patch.definition.engineId) || OWNED_SOURCE_IDS.includes(patch.definition.engineId) && getOwnedSourceProfile(patch.definition.engineId).controlReferenceRender);
-      if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-sample') {
+      if (patch?.state === 'definition-admitted' && ['native-sample', 'worklet-sample'].includes(patch.definition.engineId)) {
         const map = patch.definition.sampleMap, chosen = installation.getAudition(stage, selection)?.sourceSelections?.[0]?.selection;
         sampleMap = map; sampleMapSource = patch.definitionHash;
         modelInfo.textContent = 'Sample instrument: ' + map.articulations.map(entry => entry.name).join(', ') + ' · ' + map.zones.length +
           ' mapped regions. The authored pitch and velocity ranges apply; playback speed changes pitch and duration.' +
+          (patch.definition.engineId === 'worklet-sample' ? ' Owned source pool: two voices including release tails; source and workspace quotas apply. Forward, reverse and explicit source-frame position controls use the same prepared reader in live and offline playback. Position control auditions use an authored outbound/return program, not physical motion. Listening and real-time capacity qualification are pending.' : '') +
           (chosen ? ' Last control selection: ' + chosen.zoneId + ' · alternate ' + (chosen.alternateIndex + 1) + '/' + chosen.alternates + (chosen.neutralFallback ? ' · declared neutral fallback.' : '.') : '');
       }
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {

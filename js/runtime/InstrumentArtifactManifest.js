@@ -9,11 +9,12 @@ export const INSTRUMENT_ARTIFACT_ROOTS = Object.freeze({
   'worklet-pluck': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-spectrum': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-granular': 'js/app/midi-ui/workletInstrumentBackend.js',
+  'worklet-sample': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-sine': 'js/app/midi-ui/workletInstrumentBackend.js'
 });
 
 export async function computeInstrumentArtifacts(files, profiles) {
-  if (!Array.isArray(files) || !Array.isArray(profiles) || profiles.length > 9) throw new Error('Unsupported instrument artifact inventory.');
+  if (!Array.isArray(files) || !Array.isArray(profiles) || profiles.length > 10) throw new Error('Unsupported instrument artifact inventory.');
   const inventory = new Map(files.map(file => [file.path, file])), artifacts = [], seen = new Set(); let previous = '';
   for (const profile of profiles) {
     if (!profile || !Object.hasOwn(INSTRUMENT_ARTIFACT_ROOTS, profile.engineId) || seen.has(profile.engineId) || profile.engineId <= previous ||

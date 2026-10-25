@@ -38,7 +38,8 @@ const schemas = freezeData({
   'worklet-choir': [parameter('vowel01', 0, 1, 0, 'normalized'), parameter('breath01', 0, 1, 0.1, 'normalized'), parameter('sizeRatio', 0.5, 2, 1, 'ratio'),
     parameter('chorusCents', 0, 12, 3, 'cents'), parameter('vibratoCents', 0, 12, 2, 'cents'), parameter('vowelStep', 0, 1, 0, 'enum', true), parameter('bandwidthScale', 0.5, 2, 1, 'ratio')]
     .map(spec => Object.freeze({ ...spec, liveSafe: !spec.discrete, causalLiveSafe: !spec.discrete })).concat(envelope(0.025, 0.1, 0.8, 0.5)),
-  'native-sample': envelope(0.005, 0, 1, 0.7)
+  'native-sample': envelope(0.005, 0, 1, 0.7),
+  'worklet-sample': envelope(0.005, 0, 1, 0.7)
 });
 export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
   [spec.id, { ...spec, integer: spec.discrete }])));
@@ -54,9 +55,9 @@ export const NATIVE_GRANULAR_PARAMETERS = freezeData(Object.fromEntries(schemas[
 export const NATIVE_FM_PARAMETERS = freezeData(Object.fromEntries(schemas['native-fm'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['native-modal'].map(spec => [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
-const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-granular'].includes(id), sampleMaps: id === 'native-sample', independentSamePitch: true, perVoicePitch: true,
-  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: id === 'native-sample',
-  forwardLoops: id === 'native-sample', displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), offlineRender: ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
+const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-granular', 'worklet-sample'].includes(id), sampleMaps: ['native-sample', 'worklet-sample'].includes(id), advancedSampleMaps: id === 'worklet-sample', reverseSamples: id === 'worklet-sample', positionDrivenSamples: id === 'worklet-sample', independentSamePitch: true, perVoicePitch: true,
+  perVoicePressure: true, perVoicePan: true, perVoiceTimbre: ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: ['native-sample', 'worklet-sample'].includes(id),
+  forwardLoops: ['native-sample', 'worklet-sample'].includes(id), displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), offlineRender: ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id),
   modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), continuousMacroPerformance: false,
   identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
@@ -64,12 +65,12 @@ const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-g
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length > 9) throw new TypeError('Invalid native engine artifact inventory.');
+  if (!Array.isArray(artifacts) || artifacts.length > 10) throw new TypeError('Invalid native engine artifact inventory.');
   const descriptors = [];
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
+    const maximumVoices = engineId === 'worklet-sample' ? 2 : ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }
