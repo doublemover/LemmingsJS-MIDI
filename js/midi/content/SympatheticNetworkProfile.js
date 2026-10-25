@@ -1,8 +1,9 @@
 import { cloneData, freezeData, canonicalDataText, encodeUtf8 } from '../../core/CanonicalData.js';
 
-export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-v1';
+export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-prepared-loss-v2';
+export const NETWORK_LOSS_CONTROLS = Object.freeze(Array.from({ length: 4 }, (_, index) => 'modeLoss' + index + 'Amount01'));
 export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
-  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01'];
+  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks'];
   const id = value => typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9._:-]{0,95}$/.test(value), finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
   const keys = (value, names) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => names.includes(key));
   if (![44100, 48000, 96000].includes(sampleRate) || !keys(p, allowed) || !Array.isArray(p.bodies) || p.bodies.length < 1 || p.bodies.length > 64 || !Array.isArray(p.edges) || p.edges.length > 512 || !finite(p.couple01, 0, 1) || !finite(p.damp01, 0, 1)) throw new TypeError('Invalid bounded sympathetic network.');
@@ -20,6 +21,11 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     ids.set(body.id, { first, count: body.modes.length });
   }
   if (modes.length > 512 || excitationNorm === 0 || pickupNorm === 0) throw new RangeError('A shared body requires bounded audible excitation and pickup routes.');
+  if (p.lossMasks != null && (!Array.isArray(p.lossMasks) || p.lossMasks.length > 4 || new Set(p.lossMasks.map(mask => mask?.id)).size !== p.lossMasks.length)) throw new TypeError('Prepare at most four unique authored mode-loss masks.');
+  const lossMasks = (p.lossMasks || []).map(mask => {
+    if (!keys(mask, ['id', 'extraAmplitudeT60Seconds', 'weights']) || !id(mask.id) || !finite(mask.extraAmplitudeT60Seconds, 0.02, 4) || !Array.isArray(mask.weights) || mask.weights.length !== modes.length || mask.weights.some(value => !finite(value, 0, 1)) || !mask.weights.some(value => value > 0)) throw new TypeError('A mode-loss mask needs explicit nonnegative weights and additional amplitude-T60 seconds.');
+    return { id: mask.id, extraAmplitudeT60Seconds: mask.extraAmplitudeT60Seconds, weights: mask.weights, poleDepths: mask.weights.map(weight => -Math.expm1(-Math.log(1000) * weight / (mask.extraAmplitudeT60Seconds * sampleRate))) };
+  });
   const degree = new Uint8Array(modes.length), seen = new Set(), edges = p.edges.map(edge => {
     if (!keys(edge, ['fromBody', 'fromMode', 'toBody', 'toMode', 'amount']) || !ids.has(edge.fromBody) || !ids.has(edge.toBody) || !Number.isInteger(edge.fromMode) || !Number.isInteger(edge.toMode) || edge.fromMode < 0 || edge.toMode < 0 || edge.fromMode >= ids.get(edge.fromBody).count || edge.toMode >= ids.get(edge.toBody).count || !finite(edge.amount, 0, 0.1)) throw new TypeError('Invalid sparse sympathetic edge.');
     const from = ids.get(edge.fromBody).first + edge.fromMode, to = ids.get(edge.toBody).first + edge.toMode, key = Math.min(from, to) + ':' + Math.max(from, to);
@@ -29,18 +35,19 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
   }).sort((a, b) => a.from - b.from || a.to - b.to);
   const inputScale = (1 - maximumRadius) / Math.sqrt(excitationNorm), outputScale = 1 / Math.sqrt(pickupNorm);
   for (const mode of modes) { mode.excitation *= inputScale; mode.pickup *= outputScale; }
-  const profile = { revision: SYMPATHETIC_NETWORK_REVISION, sampleRate, parameters: p, modes, edges, maximumRadius, inputScale, outputScale,
-    stateBytes: (10 * modes.length + 2 * edges.length) * 8 + edges.length * 8, bodyCount: p.bodies.length, modeCount: modes.length, maximumDegree: 4,
+  const profile = { revision: SYMPATHETIC_NETWORK_REVISION, sampleRate, parameters: p, modes, edges, lossMasks, maximumRadius, inputScale, outputScale,
+    stateBytes: (10 * modes.length + 2 * edges.length + 8 + (lossMasks.length + Number(lossMasks.length > 0)) * modes.length) * 8 + edges.length * 8, bodyCount: p.bodies.length, modeCount: modes.length, maximumDegree: 4,
     processingLatencyFrames: 0, maximumTailFrames: Math.ceil(longest * 2 * sampleRate), maximumLinearGain: 1, maximumOutputAmplitude: 32.000001,
     gainBoundDomain: 'bounded-input-history-to-complex-state-L2-to-pickup-peak;not-one-sample-energy',
     stability: 'damped-unitary-mode-rotations;canonical-sequential-contractive-I-to-Givens-edge-interpolants',
     excitationPolicy: 'L2-normalized-input-vector-scaled-by-one-minus-maximum-prepared-radius',
     couplingPolicy: 'same-frame-canonical-sequential-scattering;no-graph-cycle-or-physical-feedback',
     tuningPolicy: 'prepared-revision-only;old-network-keeps-admitted-tail', tailPolicy: 'hard-two-T60-ceiling-at-longest-prepared-damping',
-    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2 },
+    preparation: { kind: 'authored-selected-mode-positive-loss;not-spatial-mode-shapes', overlap: 'maximum-additional-pole-depth-per-mode', slots: lossMasks.length, slewSeconds: 0.008, release: 'future-decay-returns;dissipated-energy-not-restored' },
+    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length },
     qualification: 'implementation-awaiting-decay-mode-cost-and-listening-qualification' };
   profile.configurationBytes = encodeUtf8(sympatheticNetworkIdentity(profile)).length; profile.stateBytes += profile.configurationBytes;
   return freezeData(profile);
 }
 export const sympatheticNetworkIdentity = p => canonicalDataText({ revision: p.revision, sampleRate: p.sampleRate, parameters: p.parameters,
-  realization: p.modes.map(m => [m.cosine, m.sine, m.longRadius, m.shortRadius, m.excitation, m.pickup]), edges: p.edges }).text;
+  realization: p.modes.map(m => [m.cosine, m.sine, m.longRadius, m.shortRadius, m.excitation, m.pickup]), edges: p.edges, lossMasks: p.lossMasks }).text;

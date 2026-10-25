@@ -4488,3 +4488,37 @@ independent audition/install before Apply and checks final reservation retiremen
 All runtime/UI fixtures and actual worker/browser preparation remain unrun. The
 Pocket Foundry physical-zone scene, mesh-refinement qualification and listening/
 device measurements remain pending; this UI does not promote those absent gates.
+
+
+### Continuation 188 — authored selected-mode loss on shared bars (#1215)
+
+The existing persistent modal network now prepares up to four explicit nonnegative
+mode-loss masks. Each has a fixed body mode inventory, normalized weights
+and additional amplitude-T60 seconds. A smoothed amount multiplies only a prepared
+contractive pole factor. Overlap takes the maximum additional pole depth per mode;
+release changes future decay without restoring already dissipated energy. Mask
+movement adds no excitation and no musical begin. The masks are expressly authored
+mode selections, not exact spatial finger damping or inferred material geometry.
+
+Felt Bridge adds one six-mode body with open amplitude T60 2/1.6/1.1/.8/.5/.3
+seconds at DAMP=0 and released masks, plus two complementary authored felt masks.
+The existing shared-body UI exposes their manual loss amounts, alongside the
+actual bus excitation and old-tail preparation policy. Live AudioParams, captured
+normal effect controls and owned graph rendering use the same Float32 targets and
+8-ms slew. Private state cuts include both active and target mask amounts and
+reject changed masks/rates/topology before mutation.
+
+Prepared depths, state planes and scratch factors are charged before allocation;
+mode-mask comparisons are computed once per mode/frame and reused by both stereo
+branches. Realization hashes bind the prepared pole factors. Runtime revision is
+owned-contractive-complex-modal-network-prepared-loss-v2. A faulty shared modal
+branch now quarantines locally in live/owned graph processing; export still
+requires all branches healthy and cannot publish a silently partial result.
+
+Authored fixtures check the open T60 oracle, selected versus untouched modal loss,
+silent preparation, independent mask targets/release, monotonic energy, exact
+in-flight slew restoration, foreign-mask rejection and normal graph controls.
+They remain unrun. Only formatting/syntax/provenance checks are performed here.
+Observed contact ownership for named modal masks, travel-based pickup weighting,
+Three Hands/Felt Bridge physical proof lessons and listening/device qualification
+remain dependent work; manual controls are never labeled observed contacts.

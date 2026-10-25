@@ -1,6 +1,6 @@
 import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_LIVE_CONTROLS, membraneControlValid, membraneInitialControl, membraneTouchSupported, membraneControlTarget } from '../../midi/content/RectangularMembraneProfile.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
-import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity } from '../../midi/content/SympatheticNetworkProfile.js';
+import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity, NETWORK_LOSS_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
 import { ALLPASS_NOTCH_REVISION, allpassNotchIdentity } from '../../midi/content/AllpassNotchProfile.js';
 import { RING_MODULATOR_REVISION, ringModulatorIdentity } from '../../midi/content/RingModulatorProfile.js';
@@ -143,7 +143,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         try { processor.strikes?.assertComplete(); processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
           if (!completeSettled) { completeSettled = true; clearTimeout(completeTimer); completeTimer = null; resolveComplete(); }
         } catch (error) { failComplete(error); }
-      } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { if (entry.membrane && !offline) { processor.health = Object.freeze({ ...data, muted: true, containment: 'body-only' }); return; } fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
+      } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { if ((entry.membrane || entry.network) && !offline) { processor.health = Object.freeze({ ...data, muted: true, containment: 'body-only' }); return; } fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
       } else if (['delay-health', 'effect-health'].includes(data?.type) && data.revision === revision) processor.health = Object.freeze({ ...data });
     };
     value.onprocessorerror = () => { const error = failure('effect-processor-fault', 'The owned effect processor failed.'); fault = error; failReady(error); failComplete(error); rejectDisposed(error); try { onFault(error); } catch {} };
@@ -182,7 +182,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
           parameterData: Object.fromEntries(MEMBRANE_LIVE_CONTROLS.map(key => [key, membraneInitialControl(key, entry.parameters)] )), processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'sympathetic-network') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-sympathetic-network-v1', revision: SYMPATHETIC_NETWORK_REVISION, configurationKey: sympatheticNetworkIdentity(entry.network),
-          parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01 }, processorOptions: { parameters: entry.parameters } });
+          parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01, ...Object.fromEntries(NETWORK_LOSS_CONTROLS.map(name => [name, 0])) }, processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'spectral-freeze') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-spectral-freeze-v1', revision: SPECTRAL_FREEZE_REVISION, configurationKey: spectralFreezeIdentity(entry.spectral),
           parameterData: { hold: 0 }, processorOptions: { parameters: entry.parameters, sourceEpoch: generation } });
@@ -254,8 +254,10 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       for (let index = 0; index < 4; index++) { const key = 'touch' + index, x = membraneControlTarget(key + 'X01', next[key + 'X01'] ?? 0.5), y = membraneControlTarget(key + 'Y01', next[key + 'Y01'] ?? 0.5), radius = membraneControlTarget(key + 'Radius01', next[key + 'Radius01'] ?? 0.12); if ((next[key + 'Amount01'] ?? 0) > 0 && !membraneTouchSupported(entry.parameters.gridSize, x, y, radius)) throw failure('unsupported-touch-position', 'This touch patch has no interior grid support.'); }
       for (const key of Object.keys(values)) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Membrane control automation is full.'); changes.push([adapter, values[key]]); }
     } else if (entry?.kind === 'sympathetic-network') {
-      if (Object.keys(values).some(key => !['couple01', 'damp01'].includes(key)) || !Number.isFinite(next.couple01) || next.couple01 < 0 || next.couple01 > 1 || !Number.isFinite(next.damp01) || next.damp01 < 0 || next.damp01 > 1) throw failure('invalid-effect-control', 'Shared-body macros exceed their contraction domain.');
+      if (processors.find(processor => processor.nodeId === nodeId)?.health?.muted) throw failure('effect-body-quarantined', 'Prepare a new shared body after its state was quarantined.');
+      if (Object.keys(values).some(key => !['couple01', 'damp01'].includes(key) && (!NETWORK_LOSS_CONTROLS.slice(0, entry.network.lossMasks.length).includes(key) || !Number.isFinite(values[key]) || values[key] < 0 || values[key] > 1)) || !Number.isFinite(next.couple01) || next.couple01 < 0 || next.couple01 > 1 || !Number.isFinite(next.damp01) || next.damp01 < 0 || next.damp01 > 1) throw failure('invalid-effect-control', 'Shared-body macros or authored mode-loss masks exceed their prepared contraction domain.');
       for (const [key, name] of [['couple01', 'couple'], ['damp01', 'damp']]) if (values[key] != null) { const adapter = parameterControls.get(nodeId)?.get(name); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Shared-body automation is full.'); changes.push([adapter, next[key]]); }
+      for (const key of NETWORK_LOSS_CONTROLS) if (values[key] != null) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Mode-loss automation is full.'); next[key] = Math.fround(values[key]); changes.push([adapter, next[key]]); }
     } else if (entry?.kind === 'spectral-freeze') {
       if (Object.keys(values).some(key => key !== 'hold01') || (values.hold01 !== 0 && values.hold01 !== 1)) throw failure('invalid-effect-control', 'Spectral capture is a discrete hold or thaw command.');
       const adapter = parameterControls.get(nodeId)?.get('hold'); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Spectral capture automation is full.'); changes.push([adapter, values.hold01]);

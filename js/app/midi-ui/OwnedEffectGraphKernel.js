@@ -58,7 +58,10 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     } else if (entry.kind === 'rectangular-membrane') {
       kernel.setControls(next, apply);
     } else if (entry.kind === 'sympathetic-network') {
-      if (keys.some(key => !['couple01', 'damp01'].includes(key)) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body macro exceeds its contraction domain.'); if (apply) { if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01; }
+      if (kernel.muted) fail('effect-body-quarantined', 'Prepare a new shared body after its state was quarantined.');
+      const masks = ['modeLoss0Amount01', 'modeLoss1Amount01', 'modeLoss2Amount01', 'modeLoss3Amount01'];
+      if (keys.some(key => !['couple01', 'damp01'].includes(key) && (!masks.slice(0, entry.network.lossMasks.length).includes(key) || !finite(next[key], 0, 1))) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body macro or authored mode-loss exceeds its prepared contraction domain.');
+      if (apply) { if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01; for (let index = 0; index < entry.network.lossMasks.length; index++) if (next[masks[index]] != null) record.kernel.setLossMask(index, next[masks[index]]); }
     } else if (entry.kind === 'spectral-freeze') {
       if (keys.length !== 1 || keys[0] !== 'hold01' || (next.hold01 !== 0 && next.hold01 !== 1)) fail('invalid-effect-control', 'Spectral capture requires a discrete hold or thaw command.'); if (apply) controls[at] = next.hold01;
     } else if (entry.kind === 'allpass-notch') {
@@ -111,9 +114,9 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       } else if (kernel) {
         if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (entry.membrane) kernel.strikes.discardReceipts();
-        if (kernel.faults && !entry.membrane) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
+        if (kernel.faults && !entry.membrane && !entry.network) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
-      if (kernel?.faults && !entry.membrane) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
+      if (kernel?.faults && !entry.membrane && !entry.network) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
       presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' || entry.kind === 'spectral-freeze' || entry.kind === 'sympathetic-network' || entry.kind === 'rectangular-membrane' ? 1 : 0;
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);

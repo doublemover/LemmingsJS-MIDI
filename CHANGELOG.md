@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add Felt Bridge's six-mode shared body and independently releasable positive mode-loss masks with live/offline controls and exact preparation-state transfer.
+
 - Prepare original shape bodies in an admitted worker, prelisten explicit sites and save/apply through the existing sound-content owners.
 
 - Add an offline original-solid modal foundry with bounded tetrahedral solves, signed strike/pickup sites, numerical receipts and ordinary sampler pack builds.

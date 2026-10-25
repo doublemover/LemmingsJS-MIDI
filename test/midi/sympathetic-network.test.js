@@ -46,4 +46,35 @@ describe('owned sparse sympathetic body networks', () => {
     const a = new SympatheticNetworkKernel({ parameters: parametersFor('string-trellis') }), b = new SympatheticNetworkKernel({ parameters: parametersFor('string-trellis') }); a.state[0] = NaN; a.sample(0, 0); expect(a.faults).to.equal(1); expect(a.state.every(value => value === 0)).to.equal(true); expect(b.muted).to.equal(false);
     graph.panic(); graph.sample(1, 1, source, present); expect(graph.leftSample).to.equal(0);
   });
+  it('prepares the explicit six-mode open Felt Bridge decays without a spatial damping claim', () => {
+    const recipe = createSympatheticMapRecipe({ recipe: 'felt-bridge', damp01: 0 }), profile = prepareSympatheticNetworkProfile(recipe.graph.nodes.find(node => node.id === 'bodies').parameters);
+    expect(profile.modes).to.have.length(6); expect(profile.lossMasks).to.have.length(2); expect(recipe.openModeT60Seconds).to.deep.equal([2, 1.6, 1.1, 0.8, 0.5, 0.3]);
+    for (let i = 0; i < 6; i++) expect(-Math.log(1000) / (Math.log(profile.modes[i].longRadius) * 48000)).to.be.closeTo(recipe.openModeT60Seconds[i], 1e-9);
+    expect(profile.preparation.kind).to.include('not-spatial'); expect(recipe.preparationMeaning).to.include('authored-mode-masks');
+  });
+  it('removes selected modal energy without exciting silence and never restores dissipated energy on mask release', () => {
+    const parameters = JSON.parse(JSON.stringify(parametersFor('felt-bridge', { damp01: 0 }))); parameters.lossMasks[0].weights = [0, 1, 0, 1, 0, 1];
+    const open = new SympatheticNetworkKernel({ parameters }), felt = new SympatheticNetworkKernel({ parameters }), silent = new SympatheticNetworkKernel({ parameters });
+    open.sample(1, 1); felt.sample(1, 1); felt.setLossMask(0, 1); silent.setLossMask(0, 1); let prior = energy(felt);
+    for (let frame = 0; frame < 2500; frame++) { open.sample(0, 0); felt.sample(0, 0); silent.sample(0, 0); expect(energy(felt)).to.be.at.most(prior + 1e-20); prior = energy(felt); }
+    expect(energy(silent)).to.equal(0); expect(felt.state[0]).to.equal(open.state[0]); expect(felt.state[1]).to.equal(open.state[1]);
+    expect(felt.state[2] ** 2 + felt.state[3] ** 2).to.be.lessThan((open.state[2] ** 2 + open.state[3] ** 2) * 0.05);
+    felt.setLossMask(1, 0.7); felt.setLossMask(0, 0); expect(felt.lossMasks[4]).to.equal(0); expect(felt.lossMasks[5]).to.equal(Math.fround(0.7));
+    for (let frame = 0; frame < 1000; frame++) { felt.sample(0, 0); expect(energy(felt)).to.be.at.most(prior + 1e-20); prior = energy(felt); }
+  });
+  it('restores in-flight mask slews and rejects another prepared mask before mutation', () => {
+    const parameters = parametersFor('felt-bridge'), a = new SympatheticNetworkKernel({ parameters }), b = new SympatheticNetworkKernel({ parameters }); a.setLossMask(0, 0.8); a.setLossMask(1, 0.4);
+    for (let frame = 0; frame < 117; frame++) a.sample(frame === 0 ? 1 : 0, 0);
+    const bytes = new Uint8Array(a.snapshotBytes); a.snapshotInto(bytes); b.restoreFrom(bytes);
+    for (let frame = 0; frame < 1000; frame++) { a.sample(0, 0); b.sample(0, 0); expect(a.leftSample).to.equal(b.leftSample); expect(a.lossMasks).to.deep.equal(b.lossMasks); }
+    const changed = JSON.parse(JSON.stringify(parameters)); changed.lossMasks[0].weights[0] = 0.9; const foreign = new SympatheticNetworkKernel({ parameters: changed }); expect(() => foreign.restoreFrom(bytes)).to.throw(); expect(energy(foreign)).to.equal(0);
+    a.panic(); a.snapshotInto(bytes); b.restoreFrom(bytes); expect(b.lossMasks.every(value => value === 0)).to.equal(true);
+  });
+  it('uses the same authored mask controls in the owned graph and rejects undeclared slots', async () => {
+    const recipe = createSympatheticMapRecipe({ recipe: 'felt-bridge', damp01: 0 }), graph = await createOwnedEffectGraphKernel({ definition: recipe.graph });
+    graph.update('bodies', { modeLoss0Amount01: 0.7 }); expect(graph.diagnostics().sympatheticStates[0].lossMasks[0].target01).to.equal(Math.fround(0.7));
+    expect(() => graph.update('bodies', { modeLoss3Amount01: 1 })).to.throw('prepared'); expect(() => graph.update('bodies', { modeLoss0Amount01: -0.1 })).to.throw();
+    graph.sample(0, 0); graph.assertHealthy(); expect(graph.plan.processingCost.sympatheticModeMaskComparisonsPerFrame).to.equal(12);
+    const invalid = JSON.parse(JSON.stringify(parametersFor('felt-bridge'))); invalid.lossMasks[0].weights[0] = -1; expect(() => prepareSympatheticNetworkProfile(invalid)).to.throw();
+  });
 });
