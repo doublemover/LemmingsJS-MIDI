@@ -4415,3 +4415,43 @@ replay without duplicate notes, source-state cuts and pre-anchor capture ownersh
 All runtime fixtures remain unrun under the requested frontloaded development
 policy. Native browser equivalence, listening, device qualification, compliant
 collision/rattle models and the Three Hands proof scene remain pending.
+
+
+### Continuation 186 — original offline solid-to-modal foundry (#1217)
+
+The original foundry implements constant-strain tetrahedral elasticity with
+explicit SI material/scale assumptions, lumped mass, mass whitening and bounded
+cyclic Jacobi diagonalization. It verifies positive nonoverlapping volumes,
+closed manifold boundary and face connectivity, rejects unused/degenerate inputs,
+checks the expected rigid modes, and reports actual residual/orthogonality error.
+Angular frequency, damped frequency and amplitude T60 have distinct units; the
+analytic decay contract uses ln(1000)/(zeta*omega), addressing the candidate's
+reported 2π ambiguity without importing its native solver.
+
+Original bar, slotted plate and asymmetric pebble source generators use curated
+excitation vertices and independent pickup directions. Assets retain mesh/source
+and solver-build hashes, full signed mass-normalized mode shapes and separate
+signed site vectors. Explicit 8/16/32-mode selection ranks the supported curated
+site-response residue energy and reports retained numerical salience. Unsupported
+or negligible modes are excluded and insufficient tiers decline without fallback.
+
+A bounded offline calibration path renders same-onset signed modal impulses at
+all sites using one conservative all-site peak calibration. It writes ordinary
+fixed-rate sampler recipes with the complete mesh/material/solver/asset closure;
+playback uses existing sample maps, not a live FEM engine. Two fixed shared worker
+job kinds expose solve and calibration under normal admission. The standalone
+build tool compiles normal sound packs and publishes immutable hash directories
+plus an atomic head, retaining last-good output on failure or cancellation.
+
+Authored numerical fixtures cover affine strain energy, symmetric stiffness,
+lumped mass, rigid rotation, six rigid modes, modulus scaling, exact angular T60,
+malformed/canceled/budgeted sources, forged decay units, selected-site response
+and ordinary pack compilation. They are unrun. The build command has also not
+been executed. Only formatting/syntax/provenance checks belong to this frontloaded
+pass.
+
+This provides the production baseline, not comprehensive #1217 acceptance.
+Mesh-refinement qualification (a refined bar is authored), level-matched listening,
+render/runtime device measurements, in-app foundry controls and Pocket Foundry's
+actual physical-zone proof scene remain pending. Output labels distinguish
+algebraic convergence from geometric/acoustic/perceptual qualification.
