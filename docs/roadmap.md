@@ -4140,3 +4140,54 @@ one-contact/one-onset revoice fixtures are authored and unrun; existing collecti
 fixtures now expect the additional recipe. Formatting/syntax and provenance only.
 Directed-route coordinates, authored Impossible Staircase geometry and listening/
 spectral/browser acceptance remain pending independent integrations.
+
+
+### Continuation 180 — owned rectangular audio membrane foundation (#1210)
+
+An original centered-time, five-point finite-difference membrane is now an owned
+shared graph processor in both the live Worklet and offline kernel. The initial
+8/16-site interior grids have a one-cell fixed-zero Dirichlet halo. Lossless
+fundamental tuning derives lambda-squared from the discrete minimum eigenvalue;
+the actual two-dimensional Courant bound is enforced at <= .49, below .5.
+Positive centered velocity loss has separate prepared long/short amplitude T60
+coefficients. DAMP slews their positive interpolation; tuning/grid changes prepare
+a new graph and retain the old body's independently owned tail.
+
+The discrete energy is half the squared time difference plus half lambda-squared
+times the cross-time edge-gradient product. The strict Courant domain makes it
+positive. Bilinear excitation has L1 one and L2 <= one. Before each nonzero
+injection, an energy-norm triangle bound caps admitted force against the remaining
+unit energy budget. This is independent of output protection; cap counts remain
+visible. The positive energy lower bound derives a conservative displacement and
+pickup peak bound. Nonfinite/excess energy clears and quarantines only this body
+in live/owned graphs; a faulty offline render still cannot publish a clean receipt.
+
+Three Float64 wave planes and controls allocate at preparation, with no per-sample
+allocation or coefficient construction. Independent strike and left/right pickup
+coordinates use normalized interior-grid units, not meters/Newtons. Stereo input
+is explicitly (L+R)/2, including anti-phase cancellation. Moving a pickup changes
+observation only. The full plane rotation, wave history, smoothing targets, energy,
+frame and fault state transfer under exact rate/configuration identity. Graph-level
+restoration continues to use deterministic preroll. Cost includes grid updates,
+energy edges and update rate, with up to four prepared bodies plus host overlap.
+
+Quarry effects now expose a compact Rectangular skin surface: actual excitation
+bus, prepared grid/tuning/T60/return and independent live coordinate/loss controls.
+Inspection requests decimated 8x8 modeled-audio displacement and actual energy at
+the existing four-Hz maximum; it never drives DSP stepping or terrain deformation.
+Saved defaults reuse the normal rack; captured controls and causal revoice use the
+existing shared clock/receipt path. The authored rectangle explicitly has no
+terrain topology binding yet.
+
+Sine-mode independent reference, symmetry, small-signal superposition, positive
+loss, boundary zeros, observation-only movement, internal excitation caps, state
+restore, unsupported masks and 8/16-grid with 1/4-body cost fixtures are authored
+and unrun. No dispersion/deadline/listening/browser qualification is claimed.
+Mapped/admitted contact excitation, terrain revision binding, independent held
+preparation owners and proof scenes remain subsequent work for #1210/#1215.
+Research context: [Fontana and Rocchesso](https://arxiv.org/abs/cs/0101003)
+discusses geometry-dependent wave-mesh dispersion. This original finite-difference
+implementation does not copy or claim qualification of the Faust mesh.
+
+Static API review also corrected travel-effect reservation retirement to call the
+owned reservation release method, including source end and disposal paths.

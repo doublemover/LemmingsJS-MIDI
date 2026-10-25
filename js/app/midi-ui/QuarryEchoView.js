@@ -2,7 +2,7 @@ import { scopeQuarryThrowToVoices, createQuarryEcho, createQuarryDuck, createQua
 import { ORIGINAL_IMPULSE_PRESETS } from '../../midi/content/ProceduralImpulseMaterial.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onCrossExcitation = null, onTravelColoration = null, onSpectralFreeze = null, onSympatheticMap = null, onStatus = () => {} } = {}) {
+export function createQuarryEchoView({ document, window, getPlayback, getSavedRack, saveRack, onCrossExcitation = null, onTravelColoration = null, onSpectralFreeze = null, onSympatheticMap = null, onRectangularMembrane = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || typeof getPlayback !== 'function' || typeof getSavedRack !== 'function' || typeof saveRack !== 'function') throw new TypeError('Quarry Echo needs the physical owner and saved project settings.');
   const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, pending = null, held = null, revision = 0, springBlend01 = 0.15, inspectionTimer = null, preparedToken = null, preparedVoices = null, selectableVoices = [];
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -80,6 +80,7 @@ export function createQuarryEchoView({ document, window, getPlayback, getSavedRa
       const state = await operation.promise; if (!disposed && pending === operation) { preparedToken = { graphDefinitionHash: state.activeGraph.hash, ownerRouteRevision: state.revision }; preparedVoices = members; say('Quarry effect prepared at owner route ' + state.revision + (members ? ' for ' + members.length + ' selected causal voices.' : ' for the physical owner sum.')); } }
     finally { if (pending === operation) pending = null; prepare.disabled = false; for (const control of controls) control.disabled = false; }
   }));
+  if (typeof onRectangularMembrane === 'function') button('Rectangular skin', () => { release(); onRectangularMembrane(); });
   if (typeof onSympatheticMap === 'function') button('Shared bodies', () => { release(); onSympatheticMap(); });
   if (typeof onSpectralFreeze === 'function') button('Glass Hold', () => { release(); onSpectralFreeze(); });
   if (typeof onTravelColoration === 'function') button('Travel color', () => { release(); onTravelColoration(); });

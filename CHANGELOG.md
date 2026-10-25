@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add an owned rectangular membrane with bounded discrete energy, independent stereo pickups, persistent graph tails and exact ringing-state transfer.
+
 - Scope Quarry throws to immutable causal voice selections, with acknowledged overlapping live taps and simultaneous owned-source export.
 
 - Capture effect API commands in causal takes and offer explicit owned-graph command revoice with clock anchors, coverage checks and bound replay manifests.

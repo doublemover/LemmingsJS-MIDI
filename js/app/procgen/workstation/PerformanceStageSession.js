@@ -2,7 +2,7 @@ import { freezeData } from '../../../core/CanonicalData.js';
 
 const performanceCommands = new Set(['stage', 'stageExit', 'stageGo', 'stagePlay', 'stagePause', 'scenes', 'stopOutput', 'panicOutput', 'transport', 'clearSolos', 'laneMixView',
   'beginMacroGesture', 'previewMacroGesture', 'finishMacroGesture', 'commitPerformedMacros', 'reconcileSoundPreview', 'cancelLearn',
-  'openQuarryEcho', 'openCrossExcitation', 'openTravelColoration', 'openSpectralFreeze', 'openSympatheticMap', 'openPrelistenMonitor', 'openMasterCapture',
+  'openQuarryEcho', 'openCrossExcitation', 'openTravelColoration', 'openSpectralFreeze', 'openSympatheticMap', 'openRectangularMembrane', 'openPrelistenMonitor', 'openMasterCapture',
   'openReleaseGestures', 'performReleaseGesture', 'cancelReleaseGestures', 'openPhysicalJunctions', 'requestJunction', 'cancelJunctionRequest',
   'captureInterventionLayer', 'markCausalTake', 'rearmPhysicalMusic', 'retryDisplay', 'observe', 'disarmPhysicalFeedback', 'disarmCausalBranchFeedback',
   'cancelCausalWorkbench', 'cancelProjectPicker', 'cancelExportDelivery', 'discardExport', 'historyBusy', 'historyState', 'preferences']);

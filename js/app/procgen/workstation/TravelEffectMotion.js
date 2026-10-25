@@ -8,7 +8,7 @@ export function createTravelEffectMotion({ update, bypass, toFrame, onReceipt = 
   const clear = (reason = 'source-ended', tail = false) => {
     const previous = current; current = null; if (!previous) return;
     if (tail) { try { bypass('tail', previous.expected); } catch (error) { report({ status: 'rejected', stage: 'effect-source-retirement', reason: error.code || error.message }); } }
-    try { reservation?.dispose(); reservation = null; } catch (error) { blocked = true; throw error; }
+    try { reservation?.release(); reservation = null; } catch (error) { blocked = true; throw error; }
     report({ status: 'accepted', stage: 'effect-source-retired', reason, voiceId: previous.voiceId, generation: previous.generation });
   };
   const stopSafely = reason => { try { clear(reason); } catch (error) { failures++; blocked = true; report({ status: 'rejected', stage: 'effect-motion-retirement', reason: error.message }); } };
@@ -41,6 +41,6 @@ export function createTravelEffectMotion({ update, bypass, toFrame, onReceipt = 
     }, clear,
     state: () => Object.freeze({ active: current ? { voiceId: current.voiceId, generation: current.generation, instrumentId: current.instrumentId,
       control: current.control, lastValue: current.lastValue, lastFrame: current.lastFrame } : null, updates, failures, blocked, disposed }),
-    dispose() { if (disposed) { if (blocked) reservation?.dispose(); return; } disposed = true; clear('owner-retired', true); if (blocked) reservation?.dispose(); }
+    dispose() { if (disposed) { if (blocked) reservation?.release(); return; } disposed = true; clear('owner-retired', true); if (blocked) reservation?.release(); }
   });
 }

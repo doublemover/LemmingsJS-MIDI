@@ -1,3 +1,4 @@
+import './RectangularMembraneProcessor.js';
 import './SympatheticNetworkProcessor.js';
 import './SpectralFreezeProcessor.js';
 import './AllpassNotchProcessor.js';
