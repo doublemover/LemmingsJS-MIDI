@@ -209,11 +209,27 @@
       "requirementUpdatedAt": "2026-10-22T11:39:31Z",
       "requirementSha256": "3199b96b3a22c0125d48b25bf3d3fd60f80df64e34d6d3acb3f32cdadb9e540e",
       "initialGap": "Typed resolution scaling and MIDI2 channel-voice lowering exist. No general parseWords/validatePacket framing/reassembly or supported all-message-type tagged codec exists; the protocol directory contains only the lowering module.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/midi/protocol/UmpPacketCodec.js",
+        "js/midi/protocol/UmpStreamDecoder.js",
+        "js/midi/protocol/UmpPayloadCollector.js"
+      ],
+      "regressions": [
+        "test/midi/ump-packet-codec.test.js",
+        "test/midi/ump-stream-decoder.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "bounded-ump-codec-foundation-parked",
+      "remaining": "PARKED INCOMPLETE: general framing and typed channel-value codecs, structural tagged Flex/Stream/data preservation and bounded split/payload collectors implemented. Complete normative reserved-field/errata review, full typed Flex/Stream semantic validation, selected native dependency wrapper, executable independent parity/fuzz harness and production endpoint integration remain development. Literal upstream-derived fixtures are authored, not executed cross-library evidence.",
+      "increments": [
+        {
+          "id": "bounded-ump-codec-foundation-parked",
+          "summary": "All sixteen UMP framing widths; separate MIDI1-in-UMP/MIDI2 semantics, unsigned/relative typed values, source-resolution receipts, groupless utility/Stream, explicit big-endian wire conversion, bounded poisoned-on-error split streams and bounded expiring SysEx/text payload collectors. Unknown packets remain diagnostic-only. Parked at user request before native/parity/endpoint integration; regression fixtures authored unrun.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 981,
@@ -4820,7 +4836,8 @@
       "commits": [
         "0b9dcd9d956caec2bb691503f33734d7504c1371",
         "23cf47945edc65d175e30c20cc3118e728f4a24f",
-        "1514cfda9fbf6a347f304a47ca79e0e5a014f705"
+        "1514cfda9fbf6a347f304a47ca79e0e5a014f705",
+        "8f347fd5d8d8b9cdbbb3523ec53d0dffc606d8de"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -4842,7 +4859,7 @@
         {
           "id": "shared-original-material-producer",
           "summary": "Integrated admitted pure generation for original biome/tactile/impulse sources across material-provider instances sharing a job service and resource budget. Exact original byte hash plus generator/id version selects shared work; each provider owns its own encoded Blob loan and cancellation cannot revoke another consumer. Service-scoped weak registry supports injected services without conflating their ownership. Cross-provider cancellation/one-generation regression authored unrun.",
-          "commit": null
+          "commit": "8f347fd5d8d8b9cdbbb3523ec53d0dffc606d8de"
         }
       ],
       "remaining": "Shared ground decode and original procedural material generation are integrated. Import/export/native compilation/verified source-PCM producer sharing and combined import/export/terrain concurrency harness coverage remain development; all runtime qualification deferred."
@@ -4915,5 +4932,11 @@
       "validation": "deferred-by-request",
       "increment": "owner-publication-and-retirement"
     }
-  ]
+  ],
+  "parking": {
+    "requestedAt": "2026-10-25T06:54:42Z",
+    "status": "parked-incomplete-validation-deferred",
+    "lastPreviouslyPushedCommit": "8f347fd5d8d8b9cdbbb3523ec53d0dffc606d8de",
+    "handoff": "Resume from per-issue remaining fields; UMP codec foundation is the only newly parked incomplete edit. No tests, browser/PCM runtime validation, benchmarks or acoustic qualification executed during this implementation task. Draft PR is a handoff, not a full-backlog completion claim."
+  }
 }
