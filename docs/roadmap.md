@@ -4335,3 +4335,36 @@ pending. Reverse traversal through an ambiguous/unqualified loop seam still
 ends under the atlas policy; this batch does not infer route orientation there.
 Full multi-segment path qualification and broader route-atlas acceptance remain
 separate from this completed-endpoint adapter.
+
+
+### Continuation 184 — finite spatial sources inside persistent bodies (#1210, #1215)
+
+The membrane now accepts four independent fixed-point finite exciters through a
+64-command frame-addressed heap. Prepared 4/8/12 ms raised-cosine pulses have unit
+sample area; amplitude is normalized model impulse area, not Newtons. Stereo
+input and all source forces share one spatial L2 energy admission budget before
+injection into the existing wave field. The body, loss preparations and pickups
+persist after each source ends. There are no per-actor mesh copies or implicit
+restarts. Sample processing uses fixed typed storage without per-sample packets.
+
+The worklet reports queue admission, exact application and exclusive finite-end
+frames. Main-thread transport validates entire bounded receipt packets before
+releasing command ownership. Malformed evidence or uncertain delivery quarantines
+that body and retains its metadata until producer retirement. Offline completion
+requires every admitted strike to finish. Native owner routes expose exact body
+command submission and observers; old graph tail deadlines now include the last
+admitted finite drive. New strikes require the current body, while already queued
+sources remain with the retiring body. Owned graph export rejects quarantined or
+rejected body branches before artifact publication.
+
+Complete private state cuts include pending heap entries, active pulse cursors,
+receipt rings and their frame frontier. Authored fixtures cover spatial
+superposition, finite support, queue order/capacity, overlap rejection, panic,
+exact transfer and atomic malformed-receipt rejection. A separate capture repair
+marks rejected effect capture as a coverage gap for immediate and buffered
+outcomes. These fixtures are unrun; only formatting, syntax and provenance checks
+are performed during this development pass.
+
+This is the DSP/transport primitive. Physical mapping to finite source intents,
+captured body-strike replay and the multi-actor proof scene remain dependent work;
+API queue submission alone is never reported as applied acoustic evidence.

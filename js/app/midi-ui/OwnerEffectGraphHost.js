@@ -6,9 +6,9 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 const summary = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome } : null;
 
 export function createOwnerEffectGraphHost({ context, input, dry, destination, resources, owner, generation = 0, isCurrent = () => true,
-  onChange = () => {}, resolveSidechainSource = null, getMaterialProvider = null, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
+  onChange = () => {}, onBodyReceipt = () => {}, resolveSidechainSource = null, getMaterialProvider = null, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
   if (!context?.createGain || !input?.connect || !dry?.gain || !destination || !resources?.reserve || typeof isCurrent !== 'function' ||
-      typeof onChange !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' || typeof prepareGraph !== 'function' || !Number.isFinite(transitionSeconds) || transitionSeconds < 0.005 || transitionSeconds > 0.2)
+      typeof onChange !== 'function' || typeof onBodyReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' || typeof prepareGraph !== 'function' || !Number.isFinite(transitionSeconds) || transitionSeconds < 0.005 || transitionSeconds > 0.2)
     throw new TypeError('An owner effect host needs the existing source, dry route, destination and shared resource owner.');
   const metadata = resources.reserve({ kind: 'effect-host-metadata', owner, generation, bytes: 8192, consumerOwned: true });
   const dryAutomation = createSmoothedAudioParameter({ param: dry.gain, initialValue: 1, startTime: context.currentTime, smoothingSeconds: transitionSeconds, maxEvents: 32 });
@@ -41,7 +41,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
     if (!disposed && [...arms].some(arm => arm !== current && !arm.retirement)) timer = setTimeout(poll, context.state === 'running' ? 50 : 250);
   };
   const tail = arm => { if (!arm) return; if (arm.graph.gateSidechains) arm.graph.gateSidechains(0, context.currentTime, transitionSeconds); else arm.graph.deactivateSidechains?.(); arm.inAutomation.insert(0, context.currentTime, context.currentTime);
-    arm.retireAt = context.currentTime + transitionSeconds + arm.graph.plan.maximumTailFrames / context.sampleRate; };
+    arm.retireAt = Math.max(context.currentTime + transitionSeconds, (arm.graph.lastBodyDriveFrame?.() || 0) / context.sampleRate) + arm.graph.plan.maximumTailFrames / context.sampleRate; };
   const prepare = async (definition, { signal, isCurrent: requestCurrent = () => true } = {}) => {
     guard(); signal?.throwIfAborted();
     if (pending.size || arms.size >= 2) throw failure('effect-transition-capacity', 'Two effect revisions already own their transition or tails. Clear tails or wait before preparing another.');
@@ -57,6 +57,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
           return { node: input, context, owner, generation, sourceBusId: 'owner', tap: 'post-fader', layout: 'audioStereo', stage: 'upstream-owner-effects',
             isActive: () => !disposed && context.state !== 'closed' && isCurrent(), release() {} };
         }, context, resources, owner, generation, getMaterialProvider, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && (published || requestCurrent() && request === serial),
+        onBodyReceipt: receipt => { const member = [...arms].find(candidate => candidate.graph === ownedGraph); if (member) { try { onBodyReceipt(Object.freeze({ ...receipt, owner, ownerGeneration: generation, ownerRouteRevision: member.routeRevision })); } catch {} } },
         onFault: caught => {
           error = caught.message;
           for (const member of arms) if (member.graph === ownedGraph) { if (current === member) { current = null; dryAutomation.insert(1, context.currentTime, context.currentTime); mode = 'neutral'; revision++; } retireArm(member); }
@@ -105,7 +106,12 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
   };
   return Object.freeze({ prepare, bypass,
     preparedBodyInventory: () => [...arms].flatMap(arm => arm.graph.plan.nodes.filter(node => node.membrane).map(node => Object.freeze({ owner, ownerGeneration: generation, ownerRouteRevision: arm.routeRevision, graphDefinitionHash: arm.graph.hash, nodeId: node.id,
-      processorRevision: node.membrane.revision, quarantined: arm.graph.isBodyQuarantined?.(node.id) === true, sampleRate: context.sampleRate, active: arm === current && ['active', 'mute'].includes(mode), retiring: !!arm.retirement || arm !== current, retireAtFrame: Number.isFinite(arm.retireAt) ? Math.ceil(arm.retireAt * context.sampleRate) : null }))),
+      processorRevision: node.membrane.revision, pulses: node.membrane.pulses.map(pulse => ({ milliseconds: pulse.milliseconds, frames: pulse.frames })), quarantined: arm.graph.isBodyQuarantined?.(node.id) === true, sampleRate: context.sampleRate, active: arm === current && ['active', 'mute'].includes(mode), retiring: !!arm.retirement || arm !== current, retireAtFrame: Number.isFinite(arm.retireAt) ? Math.ceil(arm.retireAt * context.sampleRate) : null }))),
+    enqueueBodyStrike(nodeId, command, expected) {
+      const arm = preparedArm(expected);
+      if (arm !== current || !['active', 'mute'].includes(mode)) throw failure('stale-prepared-body', 'New exciters require the active prepared body.');
+      return Object.freeze({ ...arm.graph.enqueueBodyStrike(nodeId, command), ownerRouteRevision: arm.routeRevision });
+    },
     updatePreparedBody(nodeId, values, targetFrame, expected) { const arm = preparedArm(expected); if (!arm.graph.plan.nodes.some(node => node.id === nodeId && node.membrane)) throw failure('stale-prepared-body', 'The named node is not an owned membrane.');
       if (Number.isFinite(arm.retireAt) && targetFrame >= Math.ceil(arm.retireAt * context.sampleRate)) throw failure('stale-prepared-body', 'The command falls after the retained body deadline.');
       return Object.freeze({ ...arm.graph.update(nodeId, values, targetFrame), ownerRouteRevision: arm.routeRevision, bodyLifecycle: arm === current ? 'active' : 'retained-tail' }); },

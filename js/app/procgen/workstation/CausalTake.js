@@ -47,6 +47,15 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     lastGeneration = sourceCursor?.generation ?? null, nextGenerationBoundary = null, lastSequence = sourceCursor?.lastCausalSequence ?? -1,
     worldId = sourceCursor?.worldId ?? null, stopped = false, stopRequest = null;
   const addGap = coverageIndex.add;
+  const observeEffectCoverage = (outcomes, tick, generation) => {
+    for (const outcome of outcomes) {
+      if (outcome?.stage === 'effect-performance-capture' && outcome.status === 'rejected') addGap({ kind: 'effect-performance', firstTick: tick, lastTick: tick, generation, reason: 'effect-performance-capture-rejected' });
+      else if (outcome?.schema === 'lemmings-effect-performance/v1') {
+        if (profile.stateKinds.includes('effect-performance')) observedStateKinds.add('effect-performance');
+        else addGap({ kind: 'effect-performance', firstTick: tick, lastTick: tick, generation, reason: 'effect-performance-not-in-capture-profile' });
+      }
+    }
+  };
   const recordCommittedBatch = ({ batch, intents, deliveryOutcomes = [], probability = null, bodyCommands = [] } = {}) => {
     if (stopped) return Object.freeze({ status: 'rejected', reason: 'take-stopped' });
     if (batch?.version !== 1 || !name(batch.batchId) || !name(batch.worldId) || !Number.isSafeInteger(batch.tick) || batch.tick < 0 ||
@@ -70,7 +79,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       payload: { batchId: batch.batchId, outcomes: deliveryOutcomes } });
     const receipt = writer.appendMany(entries);
     if (receipt.status !== 'accepted') return receipt;
-    if (deliveryOutcomes.some(outcome => outcome?.schema === 'lemmings-effect-performance/v1')) { if (profile.stateKinds.includes('effect-performance')) observedStateKinds.add('effect-performance'); else addGap({ kind: 'effect-performance', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'effect-performance-not-in-capture-profile' }); }
+    observeEffectCoverage(deliveryOutcomes, batch.tick, batch.generation);
     if (lastTick != null && batch.tick > lastTick + 1) addGap({ kind: 'physical-facts', firstTick: lastTick + 1,
       lastTick: batch.tick - 1, generation: lastGeneration, reason: 'unobserved-source-ticks' });
     if (lastGeneration != null && batch.generation !== lastGeneration && batch.generation !== nextGenerationBoundary) addGap({
@@ -137,7 +146,10 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     },
     recordInput: (observation, boundary) => record('input-observation', observation, boundary),
     recordTimeline: (timeline, boundary) => { const receipt = record('timeline', timeline, boundary); if (receipt.status === 'accepted') observedStateKinds.add('timeline'); return receipt; }, recordMapping,
-    recordSinkOutcome: (outcome, boundary) => { if (outcome?.schema === 'lemmings-effect-performance/v1' && !profile.stateKinds.includes('effect-performance')) return Object.freeze({ status: 'rejected', reason: 'effect-performance-not-in-capture-profile' }); const receipt = record('sink-outcome', outcome, boundary); if (receipt.status === 'accepted' && outcome?.schema === 'lemmings-effect-performance/v1') observedStateKinds.add('effect-performance'); return receipt; },
+    recordSinkOutcome: (outcome, boundary) => {
+      if (outcome?.schema === 'lemmings-effect-performance/v1' && !profile.stateKinds.includes('effect-performance')) return Object.freeze({ status: 'rejected', reason: 'effect-performance-not-in-capture-profile' });
+      const receipt = record('sink-outcome', outcome, boundary); if (receipt.status === 'accepted') observeEffectCoverage([outcome], boundary?.tick ?? lastTick ?? 0, boundary?.generation ?? lastGeneration ?? 0); return receipt;
+    },
     mark: (marker, boundary) => record('marker', marker, boundary), markGap, checkpoint: writer.checkpoint,
     flush: writer.flush, status, canReplaceDocument: writer.canReplaceDocument, stop, manifest: writer.manifest,
     discardPending: writer.discardPending };

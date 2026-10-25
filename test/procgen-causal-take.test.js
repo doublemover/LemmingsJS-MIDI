@@ -30,6 +30,17 @@ const setup = (options = {}) => {
 describe('semantic causal take capture and reinterpretation', function() {
   this.timeout(15000);
 
+  it('marks failed effect capture as a coverage gap for buffered and immediate delivery outcomes', async () => {
+    for (const buffered of [false, true]) {
+      const { journal } = setup(), takeId = 'take:effect-gap-' + buffered, recorder = await createCausalTakeRecorder({ ...metadata(takeId), journal }), batch = physical(1);
+      const outcome = { status: 'rejected', stage: 'effect-performance-capture', reason: 'unknown-body-command-delivery', acousticReceipt: false };
+      recorder.recordCommittedBatch({ batch, intents: [], deliveryOutcomes: buffered ? [outcome] : [] });
+      if (!buffered) recorder.recordSinkOutcome(outcome, { tick: 1, generation: 1 });
+      await recorder.stop(); const take = await journal.openTake(takeId);
+      expect(take.coverage.gaps).to.deep.include({ kind: 'effect-performance', firstTick: 1, lastTick: 1, generation: 1, reason: 'effect-performance-capture-rejected' });
+    }
+  });
+
   it('captures 1000 real world ticks with ordered interventions and output failures independently', async () => {
     const { journal } = setup(), masks = await loadProcgenMasks();
     const world = new ProcgenLaneWorld({ masks, seed: 42, assists: false }), mapping = graph();

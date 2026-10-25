@@ -1,3 +1,4 @@
+import { MembraneStrikeQueue } from './MembraneStrikeQueue.js';
 import { encodeUtf8 } from '../../../core/CanonicalData.js';
 import { prepareRectangularMembraneProfile, rectangularMembraneIdentity, MEMBRANE_CONTROLS, MEMBRANE_TOUCH_CONTROLS, membraneControlValid, membraneTouchSupported, membraneControlTarget } from '../../../midi/content/RectangularMembraneProfile.js';
 import { createOwnedEffectState } from './OwnedEffectState.js';
@@ -13,7 +14,7 @@ function energyBetween(readA, readB, size, stride, lambdaSquared) {
 }
 export class RectangularMembraneKernel {
   constructor({ sampleRate = 48000, parameters } = {}) {
-    this.profile = prepareRectangularMembraneProfile(parameters, sampleRate); this.identity = rectangularMembraneIdentity(this.profile);
+    this.profile = prepareRectangularMembraneProfile(parameters, sampleRate); this.identity = rectangularMembraneIdentity(this.profile); this.strikes = new MembraneStrikeQueue(this.profile); this.forces = new Float64Array(this.profile.nodeCount);
     const count = this.profile.stride ** 2;
     this.planes = [new Float64Array(count), new Float64Array(count), new Float64Array(count)];
     this.controls = new Float64Array(MEMBRANE_CONTROLS.length * 2); this.touches = new Float64Array(16); this.touchField = new Float64Array(this.profile.nodeCount * 2); this.touchDirty = false;
@@ -22,7 +23,7 @@ export class RectangularMembraneKernel {
     this.previous = 0; this.current = 1; this.next = 2; this.frame = this.faults = this.energy = this.overflows = this.leftSample = this.rightSample = 0; this.muted = false;
     this.smoothing = 1 - Math.exp(-1 / (sampleRate * 0.008));
     // Prepared readers are used only for transfer validation, never in the render loop.
-    this.stateTransfer = createOwnedEffectState({ kernel: this, identity: this.profile.revision + ':' + sampleRate, configurationBytes: encodeUtf8(this.identity), arrays: [...this.planes, this.controls, this.touches, this.touchField],
+    this.stateTransfer = createOwnedEffectState({ kernel: this, identity: this.profile.revision + ':' + sampleRate, configurationBytes: encodeUtf8(this.identity), arrays: [...this.planes, this.controls, this.touches, this.touchField, this.strikes.queue, this.strikes.voices, this.strikes.receipts, this.strikes.frontier],
       scalars: [...['previous', 'current', 'next', 'frame', 'faults', 'energy', 'overflows', 'leftSample', 'rightSample'].map(name => ({ name, type: 'number' })), { name: 'muted', type: 'boolean' }, { name: 'touchDirty', type: 'boolean' }],
       validate: data => {
         for (const key of ['previous', 'current', 'next']) if (!Number.isInteger(data.named(key)) || data.named(key) < 0 || data.named(key) > 2) throw new Error('Invalid membrane plane frontier.');
@@ -47,6 +48,7 @@ export class RectangularMembraneKernel {
         const measured = energyBetween(data.planes[data.named('current')].read, data.planes[data.named('previous')].read, size, stride, this.profile.lambdaSquared);
         if (measured < -1e-8 || measured > 1.0000001 || Math.abs(data.named('energy') - measured) > 1e-8 || data.named('energy') < 0 ||
             Math.abs(data.named('leftSample')) > this.profile.maximumOutputAmplitude || Math.abs(data.named('rightSample')) > this.profile.maximumOutputAmplitude) throw new Error('Invalid membrane discrete energy or pickup state.');
+        this.strikes.validateTransfer(data, 6, data.named('muted') === 1);
         if (data.named('muted') && (measured !== 0 || data.named('leftSample') !== 0 || data.named('rightSample') !== 0)) throw new Error('Cleared membrane contains active energy.');
       } });
   }
@@ -76,17 +78,19 @@ export class RectangularMembraneKernel {
     }
     this.touchDirty = false;
   }
-  panic() { this.touchField.fill(0); this.touchDirty = false; for (let i = 3; i < 16; i += 4) this.touches[i] = 0; for (const plane of this.planes) plane.fill(0); this.energy = this.leftSample = this.rightSample = 0; this.muted = true; }
+  enqueueStrike(command) { return !this.muted && this.strikes.enqueue(command); }
+  panic(audioFrame) { this.strikes.panic(audioFrame); this.forces.fill(0); this.touchField.fill(0); this.touchDirty = false; for (let i = 3; i < 16; i += 4) this.touches[i] = 0; for (const plane of this.planes) plane.fill(0); this.energy = this.leftSample = this.rightSample = 0; this.muted = true; }
   pickup(plane, x01, y01) {
     const size = this.profile.parameters.gridSize, stride = this.profile.stride, x = 1 + x01 * (size - 1), y = 1 + y01 * (size - 1), ix = Math.floor(x), iy = Math.floor(y), a = x - ix, b = y - iy, i = iy * stride + ix;
     return (plane[i] * (1 - a) + plane[i + 1] * a) * (1 - b) + (plane[i + stride] * (1 - a) + plane[i + stride + 1] * a) * b;
   }
-  sample(left, right, strikeX = this.controls[7], strikeY = this.controls[8], leftX = this.controls[9], leftY = this.controls[10], rightX = this.controls[11], rightY = this.controls[12], damp = this.controls[13]) {
+  sample(left, right, strikeX = this.controls[7], strikeY = this.controls[8], leftX = this.controls[9], leftY = this.controls[10], rightX = this.controls[11], rightY = this.controls[12], damp = this.controls[13], audioFrame = this.strikes.lastFrame + 1) {
     this.frame++; this.leftSample = this.rightSample = 0; if (this.muted) return;
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32 ||
         !Number.isFinite(strikeX) || strikeX < 0 || strikeX > 1 || !Number.isFinite(strikeY) || strikeY < 0 || strikeY > 1 ||
         !Number.isFinite(leftX) || leftX < 0 || leftX > 1 || !Number.isFinite(leftY) || leftY < 0 || leftY > 1 ||
         !Number.isFinite(rightX) || rightX < 0 || rightX > 1 || !Number.isFinite(rightY) || rightY < 0 || rightY > 1 || !Number.isFinite(damp) || damp < 0 || damp > 1) { this.faults++; this.panic(); return; }
+    this.forces.fill(0); if (!this.strikes.advance(audioFrame, this.forces)) { this.faults++; this.panic(); return; }
     const c = this.controls, slew = this.smoothing;
     c[0] += (strikeX - c[0]) * slew; c[1] += (strikeY - c[1]) * slew; c[2] += (leftX - c[2]) * slew; c[3] += (leftY - c[3]) * slew;
     c[4] += (rightX - c[4]) * slew; c[5] += (rightY - c[5]) * slew; c[6] += (damp - c[6]) * slew;
@@ -97,16 +101,14 @@ export class RectangularMembraneKernel {
       const loss = baseLoss + (p.touchLoss - baseLoss) * this.touchField[field], inverse = 1 / (1 + loss);
       next[i] = (2 * now - (1 - loss) * previous[i] + lambda * (current[i - 1] + current[i + 1] + current[i - stride] + current[i + stride] - 4 * now)) * inverse;
     }
-    let force = (left + right) * 0.5 * p.parameters.excitationGain01 * 0.02;
-    if (force !== 0) {
-      const available = Math.SQRT2 * Math.max(0, 1 - Math.sqrt(this.energy));
-      if (Math.abs(force) > available) { force = Math.sign(force) * available; this.overflows++; }
-      const x = 1 + c[0] * (size - 1), y = 1 + c[1] * (size - 1), ix = Math.floor(x), iy = Math.floor(y), a = x - ix, b = y - iy, i = iy * stride + ix;
-      const f = (iy - 1) * size + ix - 1;
-      next[i] += force * (1 - a) * (1 - b) / (1 + baseLoss + (p.touchLoss - baseLoss) * this.touchField[f]);
-      if (a !== 0) next[i + 1] += force * a * (1 - b) / (1 + baseLoss + (p.touchLoss - baseLoss) * this.touchField[f + 1]);
-      if (b !== 0) next[i + stride] += force * (1 - a) * b / (1 + baseLoss + (p.touchLoss - baseLoss) * this.touchField[f + size]);
-      if (a !== 0 && b !== 0) next[i + stride + 1] += force * a * b / (1 + baseLoss + (p.touchLoss - baseLoss) * this.touchField[f + size + 1]);
+    const force = (left + right) * 0.5 * p.parameters.excitationGain01 * 0.02;
+    if (force !== 0) this.strikes.scatter(this.forces, c[0], c[1], force);
+    let normSquared = 0; for (let i = 0; i < this.forces.length; i++) normSquared += this.forces[i] * this.forces[i];
+    if (!Number.isFinite(normSquared)) { this.faults++; this.panic(); return; }
+    if (normSquared > 0) {
+      const norm = Math.sqrt(normSquared), available = Math.SQRT2 * Math.max(0, 1 - Math.sqrt(this.energy)), scale = norm > available ? available / norm : 1;
+      if (scale < 1) this.overflows++;
+      for (let y = 1; y <= size; y++) for (let x = 1; x <= size; x++) { const field = (y - 1) * size + x - 1; next[y * stride + x] += this.forces[field] * scale / (1 + baseLoss + (p.touchLoss - baseLoss) * this.touchField[field]); }
     }
     let kinetic = 0, potential = 0;
     for (let y = 1; y <= size; y++) for (let x = 1; x <= size; x++) {
@@ -125,7 +127,7 @@ export class RectangularMembraneKernel {
   diagnostics() {
     const size = this.profile.parameters.gridSize, plane = this.planes[this.current], displacement = [];
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) displacement.push(plane[(1 + Math.round(y * (size - 1) / 7)) * this.profile.stride + 1 + Math.round(x * (size - 1) / 7)]);
-    return { revision: this.profile.revision, frame: this.frame, faults: this.faults, muted: this.muted, energy: this.energy, excitationCaps: this.overflows, displacement,
+    return { revision: this.profile.revision, frame: this.frame, faults: this.faults, muted: this.muted, energy: this.energy, excitationCaps: this.overflows, strikes: this.strikes.diagnostics(), displacement,
       touches: Array.from({ length: 4 }, (_, index) => ({ slot: index, x01: this.touches[index * 4], y01: this.touches[index * 4 + 1], radius01: this.touches[index * 4 + 2], amount01: this.touches[index * 4 + 3] })), preparation: this.profile.preparation,
       displayGridSize: 8, gridSize: size, energyDomain: 'discrete-modeled-audio-state;not-physical-terrain-energy', cost: this.profile.cost };
   }

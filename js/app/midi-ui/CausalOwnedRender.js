@@ -376,7 +376,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     if (++blocks % 32 === 0) { onProgress({ phase: frame < firstFrame ? 'reconstructing-intent-history' : 'rendering-causal-take', completedUnits: frame + count, totalUnits: outputEnd }); await yieldControl(); }
     frame += count;
   }
-  signal?.throwIfAborted();
+  signal?.throwIfAborted(); effects?.assertHealthy();
   const common = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
     takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash,
     ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,

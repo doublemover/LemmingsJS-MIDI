@@ -110,6 +110,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
         if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        if (entry.membrane) kernel.strikes.discardReceipts();
         if (kernel.faults && !entry.membrane) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
       if (kernel?.faults && !entry.membrane) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
@@ -123,6 +124,14 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
   return Object.freeze({ plan, hash, sample, update, validateUpdate: (id, values) => update(id, values, false), tapSamples, returnNodeIds: Object.freeze([...returnNodeIds]), get frame() { return frame; }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; },
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
+    enqueueBodyStrike(nodeId, command) {
+      const record = records[indices.get(nodeId)];
+      if (muted || !record?.entry.membrane || !record.kernel.enqueueStrike(command)) fail('body-strike-admission', 'The exact owned body declined its finite strike queue or payload.');
+      return Object.freeze({ status: 'accepted', stage: 'owned-body-strike-queued', nodeId, token: command.token, targetFrame: command.frame, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
+    },
+    assertHealthy() {
+      if (records.some(record => record.kernel?.faults || record.entry.membrane && record.kernel.strikes.frontier[6])) fail('effect-render-incomplete', 'An owned effect branch faulted or rejected an admitted finite strike.'); return true;
+    },
     diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, processingCost: plan.processingCost, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
       membraneStates: records.filter(record => record.entry.membrane).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), sympatheticStates: records.filter(record => record.entry.network).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), spectralStates: records.filter(record => record.entry.spectral).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
 }

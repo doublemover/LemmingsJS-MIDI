@@ -19,6 +19,7 @@ import { ALIGNMENT_KERNEL_REVISION } from '../../midi/content/EffectRuntimeRevis
 import { fixedFractionalDelayIdentity } from './worklet/FixedFractionalDelayProcessor.js';
 import { NONLINEAR_KERNEL_REVISION, nonlinearChainIdentity } from '../../midi/content/NonlinearChainProfile.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { createMembraneStrikeTransport } from './MembraneStrikeTransport.js';
 
 const delayModule = Object.freeze({ id: 'effect-delay', moduleClass: 'effect', heapEstimate: 524288,
   runtime: Object.freeze({ workletUrl: new URL('./worklet/BoundedDelayProcessor.js', import.meta.url).href }) });
@@ -27,11 +28,11 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
+  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, onBodyReceipt = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
   let fault = null;
   const guard = () => { signal?.throwIfAborted(); if (fault) throw fault; if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
-  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
+  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || typeof onBodyReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
       !Number.isSafeInteger(initializationTimeoutMs) || initializationTimeoutMs < 1 || initializationTimeoutMs > 30000) throw new TypeError('Effect graphs need an owned native context and resource budget.');
   const offline = offlineEndFrame !== null;
   if (offline && (!Number.isSafeInteger(offlineEndFrame) || offlineEndFrame < 1 || offlineEndFrame > context.sampleRate * 150 || context.state !== 'suspended' ||
@@ -128,15 +129,18 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       awaitComplete: () => { if (!completeSettled && completeTimer === null) completeTimer = setTimeout(() => failComplete(failure('effect-completion-timeout', 'Offline effect omitted its terminal frame and fault receipt.')), initializationTimeoutMs); return terminal; },
       waitDisposed: () => Promise.race([retired, new Promise((_, reject) => { retireTimer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })])
     }; processors.push(processor);
+    if (entry.membrane) processor.strikes = createMembraneStrikeTransport({ profile: entry.membrane, node: value, context, nodeId: entry.id, graphDefinitionHash: hash, offline, onReceipt: onBodyReceipt,
+      onUnknown: error => { processor.health = Object.freeze({ muted: true, containment: 'body-only', reason: error.code }); try { value.port.postMessage({ type: 'panic' }); } catch {} if (offline) { fault ||= error; failComplete(error); } } });
     context.addEventListener?.('statechange', closed); signal?.addEventListener('abort', abort, { once: true });
     value.port.onmessage = event => {
       const data = event.data;
+      if (processor.strikes?.consume(data)) return;
       if (data?.type === 'disposed') { resolveDisposed(); return; }
       if (data?.type === 'ready') {
         if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey || realizationKey !== null && data.realizationKey !== realizationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));
         else if (!readySettled) { readySettled = true; processor.ready = true; clearTimeout(readyTimer); readyTimer = null; resolveReady(); }
       } else if (data?.type === 'offline-complete' && offline) {
-        try { processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
+        try { processor.strikes?.assertComplete(); processor.completion = validateOfflineEffectCompletion(data, { revision, sampleRate: context.sampleRate, stateBytes: entry.stateBytes, configurationKey, endFrame: offlineEndFrame });
           if (!completeSettled) { completeSettled = true; clearTimeout(completeTimer); completeTimer = null; resolveComplete(); }
         } catch (error) { failComplete(error); }
       } else if (['delay-fault', 'effect-fault'].includes(data?.type) && data.revision === revision) { if (entry.membrane && !offline) { processor.health = Object.freeze({ ...data, muted: true, containment: 'body-only' }); return; } fault ||= failure('effect-state-containment', 'The ' + entry.kind + ' branch cleared excessive or nonfinite internal state.'); try { onFault(fault); } catch {}
@@ -333,6 +337,12 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   return Object.freeze({ plan, hash, update, checkPublication, confirmReady, confirmOfflineCompletion, activateSidechains, deactivateSidechains, gateSidechains, requestInspection, getInput: id => disposed ? null : inputs.get(id) || null, getOutput: id => disposed ? null : outputs.get(id) || null,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane')?.health?.muted === true,
+    enqueueBodyStrike(nodeId, command) {
+      checkPublication(); const processor = processors.find(entry => entry.nodeId === nodeId && entry.strikes);
+      if (!processor || processor.health?.muted) throw failure('stale-prepared-body', 'The exact finite-strike body is unavailable.');
+      return processor.strikes.enqueue(command);
+    },
+    lastBodyDriveFrame: () => Math.max(0, ...processors.map(entry => entry.strikes?.lastDriveFrame() || 0)),
     panicBody(nodeId) {
       const processor = processors.find(processor => processor.nodeId === nodeId && processor.kind === 'rectangular-membrane');
       if (disposed || !processor) throw failure('stale-prepared-body', 'The named body is unavailable.'); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only' });
@@ -344,7 +354,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       initialization: { mode: offline ? 'offline-before-publication' : 'live-before-route', confirmed: offline ? initializationConfirmed : processors.every(entry => entry.ready),
         offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },
       processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,
-        offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, vocoderProfile: entry.vocoderProfile, health: entry.health })),
+        offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, vocoderProfile: entry.vocoderProfile, health: entry.health, strikes: entry.strikes?.state() || null })),
       sidechainGating: { source: 'owned-API-automation-not-a-render-receipt', gains: [...sidechainGates].map(([id, gate]) => ({ id, gain01: gate.valueAt(context.currentTime) })) },
       sidechains: plan.sidechainInputs.map(id => ({ id, ...plan.nodes.find(entry => entry.id === id).parameters, status: sidechainBindings.get(id).status, sourceRouting: sidechainBindings.get(id).routing || null, connected: sidechainBindings.get(id).connected, faderScope: sidechainBindings.get(id).pin?.faderScope || 'owner-channel', missingPolicy: 'zero-input-detector-release-to-neutral' })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
