@@ -3319,3 +3319,49 @@ restores its dry path, and unresolved retirement retains accounting and blocks
 reuse. Other owners remain independent. A deferred lifecycle fixture covers a
 latched producer, concurrent owner, pending acknowledgement and rapid re-enable.
 Effect command construction is skipped when no causal take is recording.
+
+
+### Continuation 158 — selected causal-voice throws and overlapping source taps (#1070, #1163, #1046)
+
+Quarry can now prepare THROW for an immutable selection of admitted causal voice
+IDs/generations, independently of owner-sum sends. Same-lane unrelated voices and
+later onsets are excluded. The dry owner path stays intact. Pre/post lane taps are
+explicit; post-fader is the initial selection policy. Saved defaults remain owner
+sum, while transient selections and command history belong to the performance.
+Quarry controls retain the prepared route token so an old surface cannot perform
+a replacement rack. Initially unadmitted or entirely ended selections fail preparation before replacing
+the current rack; release closes new send input and retains admitted echo memory.
+
+Native oscillator/FM/modal and sample voices can feed overlapping lane/selection
+buses. Worklet routing uses bounded token-fenced bitmasks, accumulating all taps
+in the same source pass. A routing acknowledgement barrier, emitted after the actual source render quantum,
+precedes source pin publication, preventing a reused output slot from exposing its previous routing.
+Cancellation/retirement settles that barrier; bookkeeping is bounded per producer
+and bus. Ended kernel routes release their idle rendering cost without clearing a
+new slot token. Source routing protocol/build identities are bumped explicitly.
+
+Offline owned rendering captures lane and selected-voice sums simultaneously,
+with at most sixteen combined source taps. Selections preserve exact semantic
+voice/generation identity and do not fall back to the owner mix when absent.
+Native-source/native-convolution selected-source export remains explicitly
+unavailable in this adapter; live native throws are independent of that limit.
+The causal engine exposes a bounded small voice view so source inspection does
+not clone full travel, motif, encounter and checkpoint state.
+
+Source bus memory estimates now include bounded fan-in connection overhead and
+producer routing/barrier metadata. Same-lane isolation, overlapping native pins,
+source retirement/acknowledgement, immutable selection validation, actual offline
+selection taps, multi-mask PCM invariance at three rates and ended-token cost
+fixtures are authored and unrun. Browser routing latency, full source/export
+matrices, correlated gain, click behavior and listening remain in the deferred
+qualification pass.
+
+Captured lane performance inventories now resolve physical source indices into
+stable project IDs at each recorded onset, including covered lane reorders.
+Revoice carries a separate bounded routing timeline derived from the existing
+instrument-performance journal; semantic intents remain unchanged. Live and
+rendered cross-excitation therefore address the same donor IDs. Missing coverage,
+conflicting indices and unbound onsets reject explicitly. Legacy takes without
+an inventory retain their explicit numeric source namespace and do not guess
+stable IDs. Render manifests hash the routing evidence. Fixtures are authored;
+runtime validation remains deferred with the broader implementation batch.

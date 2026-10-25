@@ -5,7 +5,7 @@ import { releaseAudioResourceAfterRetirement } from './AudioResourceLeases.js';
 export const validVoiceLaneMix = value => value == null || value && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype &&
   Object.keys(value).every(key => ['gain', 'pan', 'revision', 'muted', 'soloSuppressed'].includes(key)) && Number.isFinite(value.gain) && value.gain >= 0 && value.gain <= 2 &&
   Number.isFinite(value.pan) && value.pan >= -1 && value.pan <= 1 && (value.revision == null || Number.isSafeInteger(value.revision) && value.revision >= 0);
-export function createVoiceLaneMix({ preview, context, owner, generation, destination, start, laneId = null, value = { gain: 1, pan: 0 } }) {
+export function createVoiceLaneMix({ preview, context, owner, generation, destination, start, laneId = null, voiceId = null, value = { gain: 1, pan: 0 } }) {
   value ||= { gain: 1, pan: 0 };
   if (!validVoiceLaneMix(value)) throw new Error('Invalid lane mix.');
   const lease = preview._audioResources?.reserve({ kind: 'voice-lane-mix', owner, generation, estimateBytes: laneId && preview._laneSourcesFor ? 24576 : 16384, consumerOwned: true });
@@ -21,7 +21,7 @@ export function createVoiceLaneMix({ preview, context, owner, generation, destin
     gain.connect(pan || destination); pan?.connect(destination);
     if (laneId && preview._laneSourcesFor) {
       source = context.createGain(); source.connect(gain);
-      unregister = preview._laneSourcesFor(owner, context).registerVoice({ laneId, pre: source, post: pan || gain });
+      unregister = preview._laneSourcesFor(owner, context).registerVoice({ laneId, voiceId, sourceGeneration: generation, pre: source, post: pan || gain });
     }
     const gainCurve = createSmoothedAudioParameter({ param: gain.gain, initialValue: value.gain, startTime: start });
     const panCurve = pan ? createSmoothedAudioParameter({ param: pan.pan, initialValue: value.pan, startTime: start }) : null;

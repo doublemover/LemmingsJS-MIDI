@@ -1,5 +1,6 @@
+import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
 import { prepareCapturedEffectReplay, createCapturedEffectReplayDriver } from './CapturedEffectReplay.js';
-import { prepareEffectSourceBindings, createEffectSourceSampler } from './EffectSourceBindings.js';
+import { prepareEffectSourceBindings, createEffectSourceSampler, effectVoiceStemMask } from './EffectSourceBindings.js';
 import { prepareNativeSamplePlan, sampleRegionRate, nativeSampleReleaseFrames } from './NativeSamplePlan.js';
 import { getNativeOfflineProfile, NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineProfile.js';
 import { RECEIPT_WIDTH, BEGIN, UPDATE, END, PANIC, APPLIED, REJECTED, FAULTED, CANCELLED } from './worklet/OwnedSineProcessor.js';
@@ -91,6 +92,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   const effectReplay = capturedEffects ? await prepareCapturedEffectReplay(revoice, sampleRate, endFrame) : null;
   if (effectReplay && (effectReplay.hash !== effectReplayHash || effectReplay.graphHash !== await effectGraphHash(effectPlan))) throw failure('effect-replay-preflight-identity', 'The captured effect command plan differs from the requested source and graph.');
   if (endFrame <= firstFrame) throw failure('empty-range', 'The selected range contains no output frames.');
+  const resolveSourceLane = createCausalRenderLaneResolver(revoice);
   const sourceIds = new Set(), voices = new Map(), events = [], lanes = new Set(); let lastSourceMs = -Infinity, ordinal = 0, capturedBegins = 0, capturedUpdates = 0, capturedEnds = 0;
   for (const intent of revoice.intents) {
     if (intent?.version !== 1 || !['begin', 'update', 'end'].includes(intent.kind) || !text(intent.intentId) || !text(intent.voiceId) ||
@@ -105,7 +107,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     if (intent.kind === 'begin') {
       if (voice || !finite(intent.velocity01, 0, 1) || intent.laneId != null && !(natural(intent.laneId) || text(intent.laneId, 128)))
         throw failure('invalid-voice-history', 'Captured voice onsets are repeated or malformed.', { intentId: intent.intentId });
-      const laneId = String(intent.laneId ?? 'unassigned'); lanes.add(laneId);
+      const laneId = resolveSourceLane(intent, ordinal - 1); lanes.add(laneId);
       let initialCause = null;
       try { initialCause = intent.performanceCause ? retainInstrumentCause(intent.performanceCause) : null; } catch { throw failure('invalid-physical-control', 'Captured onset physical evidence is malformed.'); }
       const performance = performancePlan?.resolve(admittedTargetControls, frame, { ...intent, performanceCause: initialCause });
@@ -211,13 +213,15 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     if (selected < 0) throw failure('intent-voice-capacity', 'The selected patch cannot realize every captured onset without dropping a voice.', { intentId: voice.begin.intentId });
     voice.slot = selected; voice.token = ++tokens[selected]; slots[selected] = voice; peakVoices = Math.max(peakVoices, occupied + 1);
   }
-  const effectSourceBindings = effectPlan ? prepareEffectSourceBindings(effectPlan, [...lanes]) : null;
-  const captureLaneIds = Object.freeze([...new Set([...stemLaneIds, ...(effectSourceBindings?.laneIds || [])])]);
-  if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined exported and detector source lanes.');
+  const effectSourceBindings = effectPlan ? prepareEffectSourceBindings(effectPlan, [...lanes], effectPlan.nodes.some(node => node.parameters.voiceSelection) ? [...voices.values()].map(voice => ({ voiceId: voice.begin.voiceId, generation: voice.begin.generation })) : []) : null;
+  const captureLaneIds = Object.freeze([...new Set([...stemLaneIds, ...(effectSourceBindings?.laneIds || []), ...(effectSourceBindings?.voiceSelections || []).map(selection => selection.stemId)])]);
+  if (effectSourceBindings?.voiceSelections?.length && (NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) || nativeConvolution)) throw failure('selected-source-render-unavailable', 'Selected-voice donors currently require one complete owned-source render without native convolution.');
+  if (!NATIVE_OFFLINE_SOURCE_IDS.includes(owned.id) && captureLaneIds.length > 16) throw failure('sidechain-tap-capacity', 'Choose at most sixteen combined dry-lane and lane/voice-selection source taps.');
   for (let index = events.length - 1; index >= 0; index--) if (events[index].voice?.silentChoke) events.splice(index, 1);
   events.sort((left, right) => left.frame - right.frame || left.order - right.order);
   return { owned, sourcePCM, pcmDescriptor, planningBytes, sourceControls, patch, parameters, events, voices, source: revoice, descriptor, applicationBuildId, sampleRate, firstFrame, endFrame, outputEnd, outputFrames,
     sourceOriginMs, startSeconds, endSeconds, tail, releaseFrames, articulation, derivedReleases, capturedBegins, capturedUpdates, capturedEnds, peakVoices, stemLaneIds, lanes, pcmBytes,
+    laneRoutingReceipt: revoice.laneRouting ? { schema: revoice.laneRouting.schema, hash: await hashData(revoice.laneRouting, { maxBytes: 4194304, maxNodes: 524288 }), initialLanes: revoice.laneRouting.initial.length, changes: revoice.laneRouting.changes.length, policy: 'captured-index-to-stable-id-at-onset;semantic-intents-unchanged' } : null,
     effectReplay, effectPlan, effectSourceBindings, captureLaneIds, effectReturnNodeIds, effectHash: effectPlan ? await effectGraphHash(effectPlan) : null, effectTailTruncated: !!effectPlan && tail.mode !== 'exact-crop' && naturalEnd > outputEnd,
     timing: { ...timing.receipt(), sourceTimelineHash: timing.sourceTimeline ? await hashData(timing.sourceTimeline, { maxBytes: 1048576, maxNodes: 65536 }) : null },
     definitionHash: await hashData(definition), intentHash: await hashData(revoice.intents, { maxBytes: 8 * 1048576, maxNodes: 1000000 }) };
@@ -257,7 +261,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   const planes = sourcePhase ? Array.from({ length: 2 + captureLaneIds.length * 2 }, () => new Float32Array(outputEnd)) : null;
   const pcm = Array.from({ length: renderedLaneIds.length + (sourcePhase ? 0 : plan.effectReturnNodeIds.length) + 1 }, () => sourcePhase ? null : new Uint8Array(outputFrames * 8));
   const views = sourcePhase ? null : pcm.map(bytes => new DataView(bytes.buffer)), left = new Float32Array(128), right = new Float32Array(128);
-  const stemChannels = captureLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = new Int8Array(plan.owned.voices); routes.fill(-1);
+  const stemChannels = captureLaneIds.map(() => [new Float32Array(128), new Float32Array(128)]), routes = plan.effectSourceBindings?.voiceSelections?.length ? new Uint16Array(plan.owned.voices) : new Int8Array(plan.owned.voices); if (routes instanceof Int8Array) routes.fill(-1);
   const selectedStemChannels = renderedLaneIds.map(id => stemChannels[captureLaneIds.indexOf(id)]);
   const sourceSampler = effects && plan.effectSourceBindings.routes.length ? createEffectSourceSampler(plan.effectSourceBindings, captureLaneIds, stemChannels) : null;
   const returnChannels = (sourcePhase ? [] : plan.effectReturnNodeIds).map(() => [new Float32Array(128), new Float32Array(128)]);
@@ -283,7 +287,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     while (cursor < events.length && events[cursor].frame <= frame) {
       const event = events[cursor++], voice = event.voice;
       if (event.frame >= outputEnd) break;
-      if (event.kind === 'begin') routes[voice.slot] = captureLaneIds.indexOf(voice.laneId);
+      if (event.kind === 'begin') routes[voice.slot] = plan.effectSourceBindings?.voiceSelections?.length ? effectVoiceStemMask(plan.effectSourceBindings, voice, captureLaneIds) : captureLaneIds.indexOf(voice.laneId);
       packet.fill(0); packet[0] = 1; packet[1] = event.frame; packet[2] = ++sequence; packet[3] = event.kind === 'begin' ? BEGIN : event.kind === 'update' ? UPDATE : END;
       packet[4] = voice.slot; packet[5] = voice.token; packet[17] = 1;
       for (const [field, value] of Object.entries(event.values)) packet[Number(field)] = value;
@@ -292,7 +296,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     }
     const count = Math.min(128, outputEnd - frame, panicFrame != null && frame < panicFrame ? panicFrame - frame : Infinity, cursor < events.length ? events[cursor].frame - frame : Infinity, transfer && frame < firstFrame ? firstFrame - frame : Infinity);
     const a = count === 128 ? left : left.subarray(0, count), b = count === 128 ? right : right.subarray(0, count);
-    const taps = stemChannels.length ? { routes, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
+    const taps = stemChannels.length ? { ...(plan.effectSourceBindings?.voiceSelections?.length ? { routeMode: 'mask' } : {}), routes, channels: count === 128 ? stemChannels : stemChannels.map(channels => channels.map(channel => channel.subarray(0, count))) } : null;
     kernel.render(a, b, frame, taps); checkReceipts();
     if (effects) for (let index = 0; index < count; index++) {
       const sidechains = sourceSampler?.fill(a[index], b[index], index) ?? null;
@@ -312,7 +316,8 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
   }
   signal?.throwIfAborted();
   const common = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
-    takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
+    takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash,
+    ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
     sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
     timing: plan.timing,
     sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame, exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,

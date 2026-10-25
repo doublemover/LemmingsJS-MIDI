@@ -1,5 +1,5 @@
 export const LIVE_LANE_TAP_LIMIT = 8;
-export const LIVE_LANE_TAP_PROTOCOL = 1;
+export const LIVE_LANE_TAP_PROTOCOL = 2;
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
 export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });

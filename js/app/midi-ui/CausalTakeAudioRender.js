@@ -1,3 +1,4 @@
+import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
 import { prepareCapturedEffectReplay } from './CapturedEffectReplay.js';
 import { prepareCausalOwnedConvolutionInput } from './CausalOwnedConvolutionRender.js';
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
@@ -125,8 +126,8 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         if (revoice.nextSequence != null) throw failure('render-source-capacity', 'This take exceeds the bounded source window. Prepare a shorter qualified take instead of silently dropping later intent pages.');
         if (includeAllLaneStems) {
           const timing = createCausalRenderTiming(revoice, sampleRate), cutoff = Math.round(endSeconds * sampleRate);
-          lanes = Object.freeze([...new Set(revoice.intents.filter(intent => intent.kind === 'begin' && timing.frameFor(intent) < cutoff)
-            .map(intent => String(intent.laneId ?? 'unassigned')))].sort());
+          const resolveLane = createCausalRenderLaneResolver(revoice);
+          lanes = Object.freeze([...new Set(revoice.intents.flatMap((intent, index) => intent.kind === 'begin' && timing.frameFor(intent) < cutoff ? [resolveLane(intent, index)] : []))].sort());
           if (lanes.length > (native ? 15 : 16) || effectPlan?.impulseCount && lanes.length + returns.length > 15) throw failure('stem-capacity', 'This range exceeds the selected engine stem limit (' + (native ? 15 : 16) + '). Render the complete graph or select fewer lanes.');
         }
         const frames = Math.round((endSeconds - startSeconds + (policy.mode === 'exact-crop' ? 0 : policy.maxSeconds ?? 4)) * sampleRate);

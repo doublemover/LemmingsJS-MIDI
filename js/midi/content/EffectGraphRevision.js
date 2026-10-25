@@ -1,3 +1,4 @@
+import { validateEffectVoiceSelection } from './EffectVoiceSelection.js';
 import { prepareSympatheticNetworkProfile, SYMPATHETIC_NETWORK_REVISION } from './SympatheticNetworkProfile.js';
 import { prepareSpectralFreezeProfile, SPECTRAL_FREEZE_REVISION } from './SpectralFreezeProfile.js';
 import { prepareAllpassNotchProfile, ALLPASS_NOTCH_REVISION } from './AllpassNotchProfile.js';
@@ -35,8 +36,10 @@ export function prepareEffectGraphRevision(raw, { sampleRate = 48000, maxStateBy
     if (entry.kind !== 'convolution-native' && entry.impulse != null) fail('Only a convolution processor accepts an impulse descriptor.');
     let parameters, impulse = null, nonlinear = null, detector = null, mapping = null, vocoder = null, ring = null, allpass = null, spectral = null, network = null, maximumTailFrames = 0, bytes = 0, processingLatencyFrames = 0;
     if (entry.kind === 'sidechain-in') {
-      keys(entry.parameters, ['sourceBusId', 'tap', 'inputLayout']); parameters = { tap: 'pre-fader', inputLayout: 'audioStereo', ...entry.parameters };
-      if (typeof parameters.sourceBusId !== 'string' || !/^(?:owner|lane:[a-zA-Z0-9._:-]{1,96})$/.test(parameters.sourceBusId) || !['pre-fader', 'post-fader'].includes(parameters.tap) || !['audioMono', 'audioStereo'].includes(parameters.inputLayout)) fail('Sidechain buses require a bounded same-owner source identity, tap and explicit audio layout.');
+      keys(entry.parameters, ['sourceBusId', 'tap', 'inputLayout', 'voiceSelection']); parameters = { tap: 'pre-fader', inputLayout: 'audioStereo', ...entry.parameters };
+      if (typeof parameters.sourceBusId !== 'string' || !/^(?:owner|lane:[a-zA-Z0-9._:-]{1,96}|voices:selected)$/.test(parameters.sourceBusId) || !['pre-fader', 'post-fader'].includes(parameters.tap) || !['audioMono', 'audioStereo'].includes(parameters.inputLayout)) fail('Sidechain buses require a bounded same-owner source identity, tap and explicit audio layout.');
+      if (parameters.sourceBusId === 'voices:selected') parameters.voiceSelection = validateEffectVoiceSelection(parameters.voiceSelection);
+      else if (parameters.voiceSelection != null) fail('Only a selected-voice source accepts causal voice members.');
     } else if (entry.kind === 'sympathetic-network') {
       network = prepareSympatheticNetworkProfile(entry.parameters, sampleRate); parameters = network.parameters; bytes = network.stateBytes; maximumTailFrames = network.maximumTailFrames; processingLatencyFrames = network.processingLatencyFrames;
     } else if (entry.kind === 'spectral-freeze') {

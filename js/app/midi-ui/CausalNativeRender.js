@@ -29,7 +29,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   { resources, signal, onProgress, OfflineAudioContext, resourceBudget, admission, getMaterialProvider, jobs, isCurrent });
   try {
     const manifest = { schema: 'lemmings-causal-audio-render/v1', mode: 'intent-render', operation: 'sound-only-revoice', takeId: plan.source.takeId,
-      takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
+      takeRevision: plan.source.takeRevision, sourceCanonicalHash: plan.source.sourceCanonicalHash, ...(plan.laneRoutingReceipt ? { sourceLaneRouting: plan.laneRoutingReceipt } : {}), sourceVersions: plan.source.sourceVersions, intentHash: plan.intentHash,
       sourceEvidence: 'provided-covered-semantic-snapshot', sourceOriginMs: plan.sourceOriginMs, timeDomain: 'captured-source-time', inputRange: { startSeconds: plan.startSeconds, endSeconds: plan.endSeconds },
       timing: plan.timing, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames: outputFrames, timelineZeroSourceFrame: firstFrame,
       exactEndSourceFrame: endFrame, renderedEndSourceFrame: outputEnd,

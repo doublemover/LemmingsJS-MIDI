@@ -1,3 +1,4 @@
+import { validateEffectVoiceSelection } from './EffectVoiceSelection.js';
 import { freezeData } from '../../core/CanonicalData.js';
 import { prepareEffectGraphRevision } from './EffectGraphRevision.js';
 import { createOriginalImpulseDescriptor } from './ProceduralImpulseMaterial.js';
@@ -61,4 +62,12 @@ export function validateOwnerEffectRack(value) {
       value.schema !== 'lemmings-owner-effect-rack/v1' || !['active', 'neutral', 'tail', 'mute'].includes(value.bypass)) throw new TypeError('Invalid saved owner effect rack.');
   const graph = prepareEffectGraphRevision(value.graph, { sampleRate: 96000 }).definition;
   return freezeData({ schema: 'lemmings-owner-effect-rack/v1', graph, bypass: value.bypass });
+}
+
+
+export function scopeQuarryThrowToVoices(graph, voiceSelection, tap = 'post-fader') {
+  const members = validateEffectVoiceSelection(voiceSelection), plan = prepareEffectGraphRevision(graph), sourceEdge = plan.definition.edges.find(edge => edge.from.nodeId === 'source' && edge.to.nodeId === 'send' && edge.from.port === 'audio' && edge.to.port === 'audio');
+  if (!sourceEdge || plan.nodes.some(node => node.id === 'throw-source') || !['pre-fader', 'post-fader'].includes(tap)) throw new TypeError('Selected throws require the authored Quarry source/send boundary and an explicit lane tap.');
+  return prepareEffectGraphRevision({ ...plan.definition, id: plan.definition.id + '.voices', nodes: [...plan.definition.nodes, { id: 'throw-source', kind: 'sidechain-in', parameters: { sourceBusId: 'voices:selected', tap, inputLayout: 'audioStereo', voiceSelection: members } }],
+    edges: plan.definition.edges.map(edge => edge === sourceEdge ? { ...edge, from: { nodeId: 'throw-source', port: 'audio' } } : edge) }).definition;
 }

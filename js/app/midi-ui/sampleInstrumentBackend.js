@@ -260,7 +260,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         }
       }
       const channel = preview._channel(0, owner), values = prepared.parameters;
-      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, value: intent.laneMix });
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, value: intent.laneMix });
       pressureGain = context.createGain(); pan = context.createStereoPanner?.() || null;
       for (const component of components) component.gain.connect(pressureGain);
       pressureGain.connect(pan || laneMix.input); pan?.connect(laneMix.input);

@@ -187,7 +187,7 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     try {
       const frequency = frequencyFor(intent.pitch);
       const channel = preview._channel(0, owner), release = values.releaseSeconds;
-      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, value: intent.laneMix });
+      laneMix = createVoiceLaneMix({ preview, context, owner, generation: intent.generation, destination: channel.sourceInput || channel.gain, start, laneId: intent.audioLaneId ?? null, voiceId: intent.voiceId, value: intent.laneMix });
       oscillator = fmPlan ? createNativeFmSourceOwner(context, fmPlan, start) : modalPlan ? createNativeModalSourceOwner(context, modalPlan, start) : context.createOscillator();
       if (sourcePlan) oscillator.prepare(); gain = context.createGain();
       pressureGain = context.createGain();

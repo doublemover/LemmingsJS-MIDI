@@ -539,7 +539,16 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     graph = graphSource = graphFingerprint = liveIds = indexed = snapshotCache = latestPhysicalAnalysis = probabilityAnalysis = null;
     tones = swarm = cargo = activity = motifs = encounters = physical = rhythmic = actionAdmission = travel = null;
     disposed = true; try { resourceOwner.dispose(); } catch (error) { disposalError = error; throw error; } return true; };
-  return { processBatch, snapshot, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  const activeVoiceView = ({ limit = 64, instrumentIds = null } = {}) => {
+    resourceOwner.check(); getCurrentGraph();
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 4096 || instrumentIds !== null && (!Array.isArray(instrumentIds) || instrumentIds.length > 512 || instrumentIds.some(id => typeof id !== 'string' || !id || id.length > 128))) throw new TypeError('Voice inspection requires bounded identities and count.');
+    const selected = instrumentIds && new Set(instrumentIds), result = [];
+    for (const record of active.values()) { if (selected && !selected.has(record.instrument.id)) continue;
+      result.push(Object.freeze({ voiceId: record.voiceId, instrumentId: record.instrument.id, generation: record.generation, actorId: record.actorId, laneId: record.laneId })); if (result.length === limit) break;
+    }
+    return Object.freeze(result);
+  };
+  return { processBatch, snapshot, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     resourceOwner.check(); snapshotCache = null;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });

@@ -1,3 +1,4 @@
+import { captureRevoiceLaneRouting } from './CausalLaneRouting.js';
 import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
 import { cloneJournalData, canonicalJournalText, freezeJournalData, journalError } from './CausalJournalCanonical.js';
 import { validateCausalInstrumentGraph } from './CausalMusicEngine.js';
@@ -221,7 +222,7 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
     if (takeRevision != null && manifest.revision !== takeRevision) throw journalError('stale-revision', 'Revoice source revision has changed.');
     const range = { firstTick: firstTick ?? manifest.coverage?.sourceRange?.firstTick, lastTick: lastTick ?? manifest.coverage?.sourceRange?.lastTick };
     const coverage = queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'musical-intents', generation });
-    const slice = await workspace.page({ takeId, takeRevision: manifest.revision, ...range, generation, firstSequence, kinds: includeEffects ? ['musical-intents', 'sink-outcome'] : ['musical-intents'], limit, signal });
+    const slice = await workspace.page({ takeId, takeRevision: manifest.revision, ...range, generation, firstSequence, kinds: ['musical-intents', 'input-observation', ...(includeEffects ? ['sink-outcome'] : [])], limit, signal });
     let count = 0;
     for (const record of slice.records) {
       if (record.kind !== 'musical-intents') continue;
@@ -236,11 +237,12 @@ const querySoundOnlyRevoiceOwned = async ({ journal, takeId, takeRevision, sound
       if (outcome?.schema === 'lemmings-effect-performance/v1') { if (effectEvents.length >= 8192) throw journalError('effect-performance-capacity', 'Captured effect commands exceed the render window.'); effectEvents.push(validateEffectPerformance(outcome)); }
     }
     const initialBoundary = firstSequence === 1 && generation == null && !manifest.prefix && range.firstTick === manifest.coverage?.sourceRange?.firstTick;
+    const laneRouting = initialBoundary ? captureRevoiceLaneRouting(slice.records, manifest.boundaryState?.['instrument-performance'] || manifest.initialCheckpoint?.engine?.performanceInputs, manifest.coverage?.available?.stateKinds?.includes('instrument-performance') === true && queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'instrument-performance', generation }).status === 'known-covered' && queryCausalCoverage({ coverage: manifest.coverage, range, kind: 'input-observation', generation }).status === 'known-covered') : null;
     return await workspace.publish({ version: 1, operation: 'sound-only-revoice', takeId, takeRevision: slice.takeRevision,
       sourceCanonicalHash: manifest.canonicalHash, sourceVersions: manifest.sourceVersions, sourceState: manifest.state, sourceComplete: manifest.complete,
       finalBoundaryState: manifest.stopBoundaryState || null, executionEpoch, soundPatch: patch,
       ...(includeEffects ? { effectEvents, effectCoverage: { captured: manifest.coverage?.available?.stateKinds?.includes('effect-performance') === true, gaps: (manifest.coverage?.gaps || []).filter(gap => ['effect-performance', 'all'].includes(gap.kind)) } } : {}),
-      intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
+      ...(laneRouting ? { laneRouting } : {}), intents, intentCount: count, nextSequence: slice.nextSequence, range, generation: generation ?? null, coverage,
       boundary: { status: initialBoundary ? 'captured-initial-state' : 'requires-state-reconstruction',
         state: initialBoundary ? manifest.boundaryState : null, sourceOnsetsSynthesized: false },
       sourceRecords: { firstSequence: slice.records[0]?.sequence ?? null, lastSequence: slice.records.at(-1)?.sequence ?? null, count: slice.records.length },

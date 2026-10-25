@@ -110,7 +110,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     bypass: setEffectBypass, toFrame: clock.toTargetFrame, onReceipt });
   const travelEffectSources = () => {
     const instruments = new Map(getGraph().instruments.filter(instrument => instrument.articulation?.sustain && ['signedX', 'signedY'].includes(instrument.articulation.orientation)).map(instrument => [instrument.id, instrument]));
-    return (engine?.snapshot().active || []).filter(voice => instruments.has(voice.instrumentId)).slice(0, 64);
+    return engine ? engine.activeVoiceView({ limit: 64, instrumentIds: [...instruments.keys()] }) : [];
   };
   const prepareTravelEffect = async ({ voiceId, generation, ...parameters }, options = {}) => {
     if (disposed || !session?.prepareEffectGraph || !travelEffectSources().some(voice => voice.voiceId === voiceId && voice.generation === generation)) throw new Error('Choose an active sustained signed-distance voice before preparing travel color.');
@@ -224,7 +224,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
   };
-  return { engine, processBatch, stop, dispose, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
+  return { engine, processBatch, stop, dispose,
+    effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
+    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
     prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),

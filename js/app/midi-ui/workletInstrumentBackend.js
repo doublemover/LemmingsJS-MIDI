@@ -1,3 +1,4 @@
+import { sourceVoiceMatches } from '../../midi/content/EffectVoiceSelection.js';
 import { LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL } from './OwnedSourceLayout.js';
 import { validVoiceLaneMix } from './VoiceLaneMix.js';
 import { validVoiceTransition, transitionAttackSeconds } from './VoiceTransition.js';
@@ -57,29 +58,39 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     getRouteState: () => ({ muted: !preview._ownerReady(owner) || preview.getState().masterVolume === 0, evidenceClass: 'owner-routing-state' }),
     getVoices: () => voices.values(), resources: preview._audioResources, send: message => { if (!node || disposed) return false; node.port.postMessage(message); return true; } });
   let queue = null, laneProducer = null, laneRegistry = null, releaseLaneProducer = null;
-  const laneRoutes = new Map(), attachedLaneBuses = new Map(), laneTapsEnabled = typeof preview._laneSourcesFor === 'function';
-  const sendLaneRoute = (voice, route) => node.port.postMessage({ type: 'lane-route', protocol: LIVE_LANE_TAP_PROTOCOL, slot: voice.slot, token: voice.slotToken, route });
+  const attachedLaneBuses = new Map(), routeBarriers = new Map(), laneTapsEnabled = typeof preview._laneSourcesFor === 'function'; let nextRouteBarrier = 0;
+  const voiceRouteMask = voice => { let mask = 0; for (const bus of attachedLaneBuses.keys()) if (bus.voiceSelection ? sourceVoiceMatches(bus.voiceSelection, voice.voiceId, voice.semanticGeneration) : voice.audioLaneId === bus.laneId) mask |= 1 << bus.index; return mask; };
+  const sendLaneRoute = (voice, route, producer = node) => producer.port.postMessage({ type: 'lane-route', protocol: LIVE_LANE_TAP_PROTOCOL, slot: voice.slot, token: voice.slotToken, route });
+  const routeBarrier = (producer, bus) => {
+    if (routeBarriers.size >= LIVE_LANE_TAP_LIMIT || nextRouteBarrier === Number.MAX_SAFE_INTEGER) throw new Error('Source route barrier capacity exceeded.');
+    const barrierId = ++nextRouteBarrier; let resolve, reject;
+    const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); promise.catch(() => {});
+    const timer = setTimeout(() => { routeBarriers.delete(barrierId); reject(new Error('Source route acknowledgement timed out.')); markFault('source-route-timeout'); }, 5000);
+    routeBarriers.set(barrierId, { producer, bus, resolve, reject, timer });
+    try { producer.port.postMessage({ type: 'lane-route-barrier', protocol: LIVE_LANE_TAP_PROTOCOL, barrierId, index: bus.index }); }
+    catch (error) { clearTimeout(timer); routeBarriers.delete(barrierId); reject(error); markFault('source-route-port-failed'); }
+    return promise;
+  };
   const ensureLaneProducer = () => {
     if (!laneTapsEnabled || !node) return;
     const registry = preview._laneSourcesFor(owner, context);
     if (laneRegistry === registry && laneProducer === node) return;
     releaseLaneProducer?.(); laneRegistry = registry; laneProducer = node; const producer = node;
     releaseLaneProducer = registry.registerRenderer({
+      hasVoice(member) { for (const voice of voices.values()) if (voice.voiceId === member.voiceId && voice.semanticGeneration === member.generation) return true; return false; },
       attach(bus) {
         if (attachedLaneBuses.has(bus)) return;
         attachedLaneBuses.set(bus, { pre: false, post: false }); const connected = attachedLaneBuses.get(bus);
         producer.connect(bus.pre, 1 + bus.index * 2, 0); connected.pre = true;
         producer.connect(bus.post, 2 + bus.index * 2, 0); connected.post = true;
-        laneRoutes.set(bus.laneId, bus.index);
-        for (const voice of voices.values()) if (voice.audioLaneId === bus.laneId) sendLaneRoute(voice, bus.index);
+        for (const voice of voices.values()) sendLaneRoute(voice, voiceRouteMask(voice), producer); return routeBarrier(producer, bus);
       },
       detach(bus) {
-        const connected = attachedLaneBuses.get(bus); if (!connected) return;
-        laneRoutes.delete(bus.laneId);
-        for (const voice of voices.values()) if (voice.audioLaneId === bus.laneId) sendLaneRoute(voice, -1);
+        const connected = attachedLaneBuses.get(bus); if (!connected) return; attachedLaneBuses.delete(bus);
+        for (const [id, barrier] of routeBarriers) if (barrier.bus === bus) { clearTimeout(barrier.timer); barrier.reject(new Error('Source route retired before publication.')); routeBarriers.delete(id); }
+        for (const voice of voices.values()) sendLaneRoute(voice, voiceRouteMask(voice), producer);
         if (connected.pre) { producer.disconnect(bus.pre, 1 + bus.index * 2, 0); connected.pre = false; }
         if (connected.post) { producer.disconnect(bus.post, 2 + bus.index * 2, 0); connected.post = false; }
-        attachedLaneBuses.delete(bus);
       }
     });
   };
@@ -105,7 +116,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let nativeRetirement;
     const receipt = createProcgenRetirementScope().retire([
       { name: 'native-worklet', run: () => { nativeRetirement = createProcgenRetirementScope().retire([
-        { name: 'lane-source-producer', run: () => { if (laneProducer === retiringNode) { releaseLaneProducer?.(); releaseLaneProducer = null; laneRegistry = laneProducer = null; laneRoutes.clear(); } } },
+        { name: 'source-route-barriers', run: () => { for (const [id, barrier] of routeBarriers) if (barrier.producer === retiringNode) { clearTimeout(barrier.timer); barrier.reject(new Error('Source producer retired during routing.')); routeBarriers.delete(id); } } },
+        { name: 'lane-source-producer', run: () => { if (laneProducer === retiringNode) { releaseLaneProducer?.(); releaseLaneProducer = null; laneRegistry = laneProducer = null; } } },
         { name: 'processor-handler', run: () => { if (retiringNode) retiringNode.onprocessorerror = null; } },
         { name: 'message-handler', run: () => { if (retiringNode) retiringNode.port.onmessage = null; } },
         { name: 'disconnect', run: () => retiringNode?.disconnect() },
@@ -328,6 +340,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         node.port.onmessage = event => {
           if (disposed || !ready || node !== connectedNode) return;
           if (event.data?.type === 'receipts') onReceipts(event.data);
+          else if (event.data?.type === 'lane-route-ready' && event.data.protocol === LIVE_LANE_TAP_PROTOCOL && event.data.stage === 'rendered-source-routing' && Number.isSafeInteger(event.data.frame) && event.data.frame >= 0) { const barrier = routeBarriers.get(event.data.barrierId); if (barrier?.producer === connectedNode) { clearTimeout(barrier.timer); routeBarriers.delete(event.data.barrierId); barrier.resolve(Object.freeze({ protocol: LIVE_LANE_TAP_PROTOCOL, appliedFrame: event.data.frame, stage: event.data.stage, acousticReceipt: false })); } }
           else if (event.data?.type === 'display-samples') display.consume(event.data);
           else if (event.data?.type === 'protocol-error') markFault('kernel-protocol-error');
         };
@@ -472,6 +485,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       },
       onDestroy: reason => {
         if (voices.get(key) === voice) voices.delete(key);
+        if (laneTapsEnabled) { if (voice.kernelEnded && node && !fault && !disposed) sendLaneRoute(voice, 0); laneRegistry?.refreshSources(); }
         display.retire(voice);
         const shared = JSON.stringify([owner, executionEpoch, intent.voiceId]);
         if (preview._semanticVoiceOwners.get(shared) === voice) preview._semanticVoiceOwners.delete(shared);
@@ -484,11 +498,12 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       } };
     const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
     const sourceFields = source.beginFields(parameters, excitationSeed, pcmDescriptor);
-    if (laneTapsEnabled) { try { sendLaneRoute(voice, laneRoutes.get(voice.audioLaneId) ?? -1); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
+    if (laneTapsEnabled) { try { sendLaneRoute(voice, voiceRouteMask(voice)); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
       14: 1 + (intent.laneMix?.gain ?? 1), 15: intent.laneMix?.pan ?? 0, 12: parameters.sustain01, 13: Math.round(parameters.releaseSeconds * context.sampleRate), 16: endFrame, ...sourceFields });
     if (result.status === 'rejected') {
+      if (laneTapsEnabled && node) { try { sendLaneRoute(voice, 0); } catch { markFault('lane-route-port-failed'); } }
       resourceLease?.release();
       if (![...slots].some(existing => existing?.semanticEpoch === executionEpoch)) epochs.delete(executionEpoch);
       return result;

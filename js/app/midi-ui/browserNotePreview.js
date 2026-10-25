@@ -344,6 +344,7 @@ class BrowserNotePreview {
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
       setEffectBypass: (mode, expected) => this._channels.get(id + ':0')?.effects?.bypass(mode, expected) || null,
+      isSourceVoiceAvailable: member => this._laneSourceBuses.get(id)?.buses.hasVoice(member) || false,
       getEffectPerformanceState: () => this._channels.get(id + ':0')?.effects?.performanceSnapshot() || null,
       inspectEffectGraph: ({ requestHealth = false } = {}) => { const effects = this._channels.get(id + ':0')?.effects; if (requestHealth) effects?.requestInspection(); return effects?.state() || null; },
       preview: (notes, options) => this.preview(notes, { ...options, owner: id }),

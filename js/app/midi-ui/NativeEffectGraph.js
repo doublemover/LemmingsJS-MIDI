@@ -1,3 +1,4 @@
+import { canonicalDataText } from '../../core/CanonicalData.js';
 import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
 import { ALLPASS_NOTCH_REVISION, allpassNotchIdentity } from '../../midi/content/AllpassNotchProfile.js';
@@ -294,11 +295,12 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!binding.pin && resolveSidechainSource) binding.pin = await resolveSidechainSource(Object.freeze({ ...parameters, owner, generation }));
       guard(); if (disposed) throw failure('stale-sidechain-activation', 'The prepared source route retired before activation.');
       const pin = binding.pin;
-      if (!pin) { binding.status = 'missing'; continue; }
+      if (!pin) { binding.status = 'missing'; if (parameters.voiceSelection) throw failure('selected-source-unavailable', 'A selected voice has ended or was not admitted locally.'); continue; }
       if (!pin.node?.connect || pin.context !== context || pin.owner !== owner || pin.generation !== generation || pin.sourceBusId !== parameters.sourceBusId ||
-          pin.tap !== parameters.tap || pin.layout !== parameters.inputLayout || pin.stage !== 'upstream-owner-effects' || typeof pin.release !== 'function' || typeof pin.isActive !== 'function')
+          pin.tap !== parameters.tap || pin.layout !== parameters.inputLayout || parameters.voiceSelection && canonicalDataText(pin.voiceSelection).text !== canonicalDataText(parameters.voiceSelection).text || pin.stage !== 'upstream-owner-effects' || typeof pin.release !== 'function' || typeof pin.isActive !== 'function')
         throw failure('sidechain-source-boundary', 'A sidechain pin must identify the exact upstream owner, context, generation, bus, tap and layout.');
-      if (!pin.isActive()) { binding.status = 'stale'; continue; }
+      binding.routing = await pin.confirmReady?.({ signal }) || null; guard(); if (disposed) throw failure('stale-sidechain-source', 'Source routing retired during preparation.');
+      if (!pin.isActive()) { binding.status = 'stale'; if (parameters.voiceSelection) throw failure('selected-source-unavailable', 'The selected source retired during preparation.'); continue; }
       pin.node.connect(sidechainInputs.get(binding.id)); binding.connected = true; binding.status = 'connected';
       binding.unsubscribe = pin.onUnavailable?.(() => {
         if (!disposed && binding.pin === pin) { try { disconnectSidechain(binding); binding.status = 'missing'; refreshSourcePresence(); } catch (caught) { fault ||= caught; try { onFault(caught); } catch {} } }
@@ -325,7 +327,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,
         offlineActive: entry.offlineActive, completion: entry.completion, nonlinearProfile: entry.profile, vocoderProfile: entry.vocoderProfile, health: entry.health })),
       sidechainGating: { source: 'owned-API-automation-not-a-render-receipt', gains: [...sidechainGates].map(([id, gate]) => ({ id, gain01: gate.valueAt(context.currentTime) })) },
-      sidechains: plan.sidechainInputs.map(id => ({ id, ...plan.nodes.find(entry => entry.id === id).parameters, status: sidechainBindings.get(id).status, connected: sidechainBindings.get(id).connected, faderScope: sidechainBindings.get(id).pin?.faderScope || 'owner-channel', missingPolicy: 'zero-input-detector-release-to-neutral' })),
+      sidechains: plan.sidechainInputs.map(id => ({ id, ...plan.nodes.find(entry => entry.id === id).parameters, status: sidechainBindings.get(id).status, sourceRouting: sidechainBindings.get(id).routing || null, connected: sidechainBindings.get(id).connected, faderScope: sidechainBindings.get(id).pin?.faderScope || 'owner-channel', missingPolicy: 'zero-input-detector-release-to-neutral' })),
       impulses: impulses.map(entry => ({ nodeId: entry.nodeId, descriptor: entry.material.descriptor, analysis: entry.material.analysis })),
       controls: Object.fromEntries(controls), controlSequence, controlEvidence: 'native-control-submission-not-applied-acknowledgment',
       processingCost: plan.processingCost, latencyFrames: plan.latencyFrames, maximumTailFrames: plan.maximumTailFrames, stateBytes: plan.stateBytes, protection: 'external-shared-master', qualification: 'implementation-awaiting-full-graph-qualification' }),
