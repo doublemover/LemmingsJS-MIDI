@@ -77,4 +77,27 @@ describe('owned sparse sympathetic body networks', () => {
     graph.sample(0, 0); graph.assertHealthy(); expect(graph.plan.processingCost.sympatheticModeMaskComparisonsPerFrame).to.equal(12);
     const invalid = JSON.parse(JSON.stringify(parametersFor('felt-bridge'))); invalid.lossMasks[0].weights[0] = -1; expect(() => prepareSympatheticNetworkProfile(invalid)).to.throw();
   });
+  it('moves signed pickup weights without adding energy or changing either stereo state trajectory', () => {
+    const parameters = parametersFor('felt-bridge', { damp01: 0 }), moved = new SympatheticNetworkKernel({ parameters }), fixed = new SympatheticNetworkKernel({ parameters }), silent = new SympatheticNetworkKernel({ parameters });
+    moved.sample(1, 1); fixed.sample(1, 1); moved.setPickupPosition('pickupLeftX01', 1); moved.setPickupPosition('pickupRightX01', 0); silent.setPickupPosition('pickupLeftX01', 1); let difference = 0;
+    for (let frame = 0; frame < 5000; frame++) { moved.sample(0, 0); fixed.sample(0, 0); silent.sample(0, 0); difference += Math.abs(moved.leftSample - fixed.leftSample); }
+    expect(difference).to.be.greaterThan(0); expect(moved.state).to.deep.equal(fixed.state); expect(energy(silent)).to.equal(0); expect(silent.leftSample).to.equal(0);
+    const count = moved.profile.modeCount; for (let side = 0; side < 2; side++) { let norm = 0; for (let mode = 0; mode < count; mode++) norm += moved.pickupWeights[side * count + mode] ** 2; expect(norm).to.be.at.most(1); }
+    expect(moved.profile.pickupGrid.units).to.include('not-a-solved'); expect(moved.profile.pickupPreparation.energyPolicy).to.include('read-existing');
+  });
+  it('restores independent in-flight pickup positions and rejects a different observation field before mutation', () => {
+    const parameters = parametersFor('felt-bridge'), a = new SympatheticNetworkKernel({ parameters }), b = new SympatheticNetworkKernel({ parameters }); a.setPickupPosition('pickupLeftX01', 0.9); a.setPickupPosition('pickupRightY01', 0.1);
+    for (let frame = 0; frame < 123; frame++) a.sample(frame === 0 ? 1 : 0, frame === 0 ? 0.5 : 0);
+    const bytes = new Uint8Array(a.snapshotBytes); a.snapshotInto(bytes); b.restoreFrom(bytes);
+    for (let frame = 0; frame < 1000; frame++) { a.sample(0, 0); b.sample(0, 0); expect(a.leftSample).to.equal(b.leftSample); expect(a.rightSample).to.equal(b.rightSample); expect(a.pickupPositions).to.deep.equal(b.pickupPositions); }
+    const changed = JSON.parse(JSON.stringify(parameters)); changed.pickupGrid.weights[0] = 0.64; const other = new SympatheticNetworkKernel({ parameters: changed }); expect(() => other.restoreFrom(bytes)).to.throw(); expect(energy(other)).to.equal(0);
+    a.panic(); a.snapshotInto(bytes); b.restoreFrom(bytes); expect(b.pickupPositions.every(value => value === 0)).to.equal(true);
+  });
+  it('declines unbounded or missing observation fields and routes the supported controls through the owned graph', async () => {
+    const parameters = JSON.parse(JSON.stringify(parametersFor('felt-bridge'))); parameters.pickupGrid.weights[0] = 1; parameters.pickupGrid.weights[1] = 1; expect(() => prepareSympatheticNetworkProfile(parameters)).to.throw('L2');
+    const plain = new SympatheticNetworkKernel({ parameters: parametersFor('string-trellis') }); expect(() => plain.setPickupPosition('pickupLeftX01', 0.2)).to.throw('observation');
+    const recipe = createSympatheticMapRecipe({ recipe: 'felt-bridge' }), graph = await createOwnedEffectGraphKernel({ definition: recipe.graph }); graph.update('bodies', { pickupLeftX01: 0.2, pickupRightX01: 0.8 }); graph.sample(0, 0); graph.assertHealthy();
+    const state = graph.diagnostics().sympatheticStates[0]; expect(state.pickups.targets[0]).to.equal(Math.fround(0.2)); expect(state.pickups.targets[2]).to.equal(Math.fround(0.8)); expect(graph.plan.processingCost.sympatheticPickupWeightProductsPerFrame).to.equal(48);
+    expect(() => graph.update('bodies', { pickupLeftY01: -0.1 })).to.throw();
+  });
 });

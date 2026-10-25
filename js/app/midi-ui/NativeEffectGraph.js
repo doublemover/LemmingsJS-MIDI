@@ -1,6 +1,6 @@
 import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_LIVE_CONTROLS, membraneControlValid, membraneInitialControl, membraneTouchSupported, membraneControlTarget } from '../../midi/content/RectangularMembraneProfile.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
-import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity, NETWORK_LOSS_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
+import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity, NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
 import { ALLPASS_NOTCH_REVISION, allpassNotchIdentity } from '../../midi/content/AllpassNotchProfile.js';
 import { RING_MODULATOR_REVISION, ringModulatorIdentity } from '../../midi/content/RingModulatorProfile.js';
@@ -182,7 +182,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
           parameterData: Object.fromEntries(MEMBRANE_LIVE_CONTROLS.map(key => [key, membraneInitialControl(key, entry.parameters)] )), processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'sympathetic-network') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-sympathetic-network-v1', revision: SYMPATHETIC_NETWORK_REVISION, configurationKey: sympatheticNetworkIdentity(entry.network),
-          parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01, ...Object.fromEntries(NETWORK_LOSS_CONTROLS.map(name => [name, 0])) }, processorOptions: { parameters: entry.parameters } });
+          parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01, ...Object.fromEntries(NETWORK_LOSS_CONTROLS.map(name => [name, 0])),
+            ...Object.fromEntries(NETWORK_PICKUP_CONTROLS.map((name, index) => [name, entry.network.pickupGrid ? (index < 2 ? entry.network.pickupGrid.leftPosition : entry.network.pickupGrid.rightPosition)[index % 2 ? 'y01' : 'x01'] : 0.5])) }, processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'spectral-freeze') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-spectral-freeze-v1', revision: SPECTRAL_FREEZE_REVISION, configurationKey: spectralFreezeIdentity(entry.spectral),
           parameterData: { hold: 0 }, processorOptions: { parameters: entry.parameters, sourceEpoch: generation } });
@@ -255,9 +256,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       for (const key of Object.keys(values)) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Membrane control automation is full.'); changes.push([adapter, values[key]]); }
     } else if (entry?.kind === 'sympathetic-network') {
       if (processors.find(processor => processor.nodeId === nodeId)?.health?.muted) throw failure('effect-body-quarantined', 'Prepare a new shared body after its state was quarantined.');
-      if (Object.keys(values).some(key => !['couple01', 'damp01'].includes(key) && (!NETWORK_LOSS_CONTROLS.slice(0, entry.network.lossMasks.length).includes(key) || !Number.isFinite(values[key]) || values[key] < 0 || values[key] > 1)) || !Number.isFinite(next.couple01) || next.couple01 < 0 || next.couple01 > 1 || !Number.isFinite(next.damp01) || next.damp01 < 0 || next.damp01 > 1) throw failure('invalid-effect-control', 'Shared-body macros or authored mode-loss masks exceed their prepared contraction domain.');
+      if (Object.keys(values).some(key => !['couple01', 'damp01'].includes(key) && (!NETWORK_LOSS_CONTROLS.slice(0, entry.network.lossMasks.length).includes(key) && !(entry.network.pickupGrid && NETWORK_PICKUP_CONTROLS.includes(key)) || !Number.isFinite(values[key]) || values[key] < 0 || values[key] > 1)) || !Number.isFinite(next.couple01) || next.couple01 < 0 || next.couple01 > 1 || !Number.isFinite(next.damp01) || next.damp01 < 0 || next.damp01 > 1) throw failure('invalid-effect-control', 'Shared-body controls exceed their prepared loss or observation domain.');
       for (const [key, name] of [['couple01', 'couple'], ['damp01', 'damp']]) if (values[key] != null) { const adapter = parameterControls.get(nodeId)?.get(name); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Shared-body automation is full.'); changes.push([adapter, next[key]]); }
-      for (const key of NETWORK_LOSS_CONTROLS) if (values[key] != null) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Mode-loss automation is full.'); next[key] = Math.fround(values[key]); changes.push([adapter, next[key]]); }
+      for (const key of [...NETWORK_LOSS_CONTROLS, ...NETWORK_PICKUP_CONTROLS]) if (values[key] != null) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Body loss or observation automation is full.'); next[key] = Math.fround(values[key]); changes.push([adapter, next[key]]); }
     } else if (entry?.kind === 'spectral-freeze') {
       if (Object.keys(values).some(key => key !== 'hold01') || (values.hold01 !== 0 && values.hold01 !== 1)) throw failure('invalid-effect-control', 'Spectral capture is a discrete hold or thaw command.');
       const adapter = parameterControls.get(nodeId)?.get('hold'); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Spectral capture automation is full.'); changes.push([adapter, values.hold01]);
@@ -341,6 +342,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     isBodyQuarantined: nodeId => processors.find(processor => processor.nodeId === nodeId && ['rectangular-membrane', 'sympathetic-network'].includes(processor.kind))?.health?.muted === true,
     bodyLossTargets: nodeId => NETWORK_LOSS_CONTROLS.map(key => Math.max(controls.get(nodeId)?.[key] ?? 0, parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0)),
     bodyLossFuture: nodeId => NETWORK_LOSS_CONTROLS.map(key => parameterControls.get(nodeId)?.get(key)?.hasFutureEvents(context.currentTime) === true),
+    bodyPickupControls: nodeId => Object.fromEntries(NETWORK_PICKUP_CONTROLS.map(key => [key, { target01: controls.get(nodeId)?.[key] ?? parameterControls.get(nodeId)?.get(key)?.valueAt(context.currentTime) ?? 0.5, pendingFuture: parameterControls.get(nodeId)?.get(key)?.hasFutureEvents(context.currentTime) === true }])),
     enqueueBodyStrike(nodeId, command) {
       checkPublication(); const processor = processors.find(entry => entry.nodeId === nodeId && entry.strikes);
       if (!processor || processor.health?.muted) throw failure('stale-prepared-body', 'The exact finite-strike body is unavailable.');
@@ -348,7 +350,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     },
     lastBodyDriveFrame: () => Math.max(0, ...processors.map(entry => entry.strikes?.lastDriveFrame() || 0)),
     panicBody(nodeId) {
-      const processor = processors.find(processor => processor.nodeId === nodeId && (processor.kind === 'rectangular-membrane' || processor.kind === 'sympathetic-network' && plan.nodes.find(node => node.id === nodeId).network.lossMasks.length));
+      const processor = processors.find(processor => processor.nodeId === nodeId && (processor.kind === 'rectangular-membrane' || processor.kind === 'sympathetic-network' && (plan.nodes.find(node => node.id === nodeId).network.lossMasks.length || plan.nodes.find(node => node.id === nodeId).network.pickupGrid)));
       if (disposed || !processor) throw failure('stale-prepared-body', 'The named body is unavailable.'); processor.node.port.postMessage({ type: 'panic' }); processor.health = Object.freeze({ muted: true, containment: 'body-only' });
       return Object.freeze({ status: 'accepted', stage: 'body-panic-submitted', nodeId, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
     },

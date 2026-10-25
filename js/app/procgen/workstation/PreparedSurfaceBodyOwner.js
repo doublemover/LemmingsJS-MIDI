@@ -45,10 +45,11 @@ export function createPreparedSurfaceBodyOwner({ documentEpoch, inventory, apply
     if (disposed || serial !== request || !currentTarget) throw new Error('A later body preparation superseded this binding.');
     if (bodies.has(identity.bodyInstanceId)) return bodies.get(identity.bodyInstanceId).identity;
     if (currentTarget.lossMasks?.some(mask => mask.target01 !== 0 || mask.pendingFuture)) throw new Error('Release the authored manual mode-loss controls and finish future manual automation before assigning physical contact owners.');
+    if (Object.values(currentTarget.pickupGrid?.controls || {}).some(control => control.pendingFuture)) throw new Error('Finish future manual pickup automation before assigning observed contact owners.');
     if ([...bodies.values()].some(body => targetKey(body.identity) === targetKey(identity))) throw new Error('Prepare a separate body revision before assigning this node to another surface or map.');
     if (bodies.size >= 8) throw new Error('The retained prepared-body limit is full.');
     const previous = active.get(surfaceId); if (previous && bodies.has(previous)) bodies.get(previous).active = false;
-    bodies.set(identity.bodyInstanceId, { identity, active: true, quarantined: false, preparationKinds: [...capabilities], lossMasks: (currentTarget.lossMasks || []).map(({ id, index }) => ({ id, index })) }); active.set(surfaceId, identity.bodyInstanceId); execution = executionEpoch; worldId = boundWorld; generation = boundGeneration;
+    bodies.set(identity.bodyInstanceId, { identity, active: true, quarantined: false, preparationKinds: [...capabilities], pickupFieldId: currentTarget.pickupGrid?.id || null, lossMasks: (currentTarget.lossMasks || []).map(({ id, index }) => ({ id, index })) }); active.set(surfaceId, identity.bodyInstanceId); execution = executionEpoch; worldId = boundWorld; generation = boundGeneration;
     return identity;
   };
   const consume = (raw, executionEpoch) => {
@@ -123,7 +124,7 @@ export function createPreparedSurfaceBodyOwner({ documentEpoch, inventory, apply
   };
   return Object.freeze({ bind, consume, prune, clear,
     resolveActiveBody(surfaceId) { prune(); const body = bodies.get(active.get(surfaceId)); if (disposed || blocked || !body?.active || body.quarantined) return null; const target = inventory().find(target => targetKey(target) === targetKey(body.identity)); return target ? Object.freeze({ ...body.identity, pulses: target.pulses, sampleRate: target.sampleRate }) : null; },
-    state: () => Object.freeze({ disposed, blocked: blocked?.message || null, documentEpoch, executionEpoch: execution, bodies: [...bodies.values()].map(body => ({ ...body.identity, active: body.active, quarantined: body.quarantined, preparationKinds: [...body.preparationKinds], lossMasks: body.lossMasks.map(mask => ({ ...mask, amount01: maskAmount(body.identity.bodyInstanceId, mask.id) })) })), bindings: [...bindings.values()].map(binding => ({ ...binding })),
+    state: () => Object.freeze({ disposed, blocked: blocked?.message || null, documentEpoch, executionEpoch: execution, bodies: [...bodies.values()].map(body => ({ ...body.identity, active: body.active, quarantined: body.quarantined, preparationKinds: [...body.preparationKinds], pickupFieldId: body.pickupFieldId, lossMasks: body.lossMasks.map(mask => ({ ...mask, amount01: maskAmount(body.identity.bodyInstanceId, mask.id) })) })), bindings: [...bindings.values()].map(binding => ({ ...binding })),
       limits: { retainedBodies: 8, bindings: 32, touchSlotsPerBody: 4, pickupOwnersPerSide: 1, recentCommandAndClosureEntries: 256 }, preparationPolicy: 'separate-contact-owner-per-slot;keep-old-tail;no-implicit-rebind', restoration: 'canonical-command-preroll;no-foreign-body-identity-restore' }),
     dispose() { if (disposed) return false; clear('document-owner-retired'); storage.release(); disposed = true; return true; } });
 }

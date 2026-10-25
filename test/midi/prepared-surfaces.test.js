@@ -24,7 +24,7 @@ async function fixture(options = {}) {
   const definition = revision => options.modal ? createSympatheticMapRecipe({ recipe: 'felt-bridge', revision, damp01: 0 }).graph : createRectangularMembraneRecipe({ gridSize: 16, revision }).graph;
   const graphs = [await createOwnedEffectGraphKernel({ definition: definition(1) }), await createOwnedEffectGraphKernel({ definition: definition(2) })];
   const targets = graphs.map((graph, index) => { const profile = graph.plan.nodes.find(node => node.membrane || node.network), body = profile.membrane || profile.network; return { owner: 'audio-owner', ownerGeneration: 0, ownerRouteRevision: index + 1, graphDefinitionHash: graph.hash, nodeId: profile.id, processorRevision: body.revision, active: index === 0,
-    ...(options.modal ? { preparationKinds: ['mode-loss'], lossMasks: body.lossMasks.map((mask, index) => ({ id: mask.id, index, target01: 0, pendingFuture: false })) } : {}) }; });
+    ...(options.modal ? { preparationKinds: ['mode-loss', 'pickup-left', 'pickup-right'], pickupGrid: { id: body.pickupGrid.id, controls: { pickupLeftX01: { pendingFuture: false } } }, lossMasks: body.lossMasks.map((mask, index) => ({ id: mask.id, index, target01: 0, pendingFuture: false })) } : {}) }; });
   const submissions = [], receipts = [], panics = []; let present = [targets[0]];
   const owner = createPreparedSurfaceBodyOwner({ documentEpoch: 'document-execution-a', resourceBudget: options.resourceBudget, inventory: () => present, toFrame: score => score.frame, onReceipt: value => receipts.push(value),
     apply: (nodeId, values, targetFrame, expected) => { const index = graphs.findIndex(graph => graph.hash === expected.graphDefinitionHash); graphs[index].update(nodeId, values); submissions.push({ index, values, targetFrame }); return { status: 'accepted', targetFrame, graphDefinitionHash: expected.graphDefinitionHash }; },
@@ -35,6 +35,20 @@ async function fixture(options = {}) {
 }
 describe('mapped shared-surface preparation ownership', () => {
   const modeCommand = (sequence, values = {}) => command(sequence, { kind: 'mode-loss', lossMaskId: 'felt-alternating', preparationSlot: 'felt', mappingId: 'skin.felt', radius01: null, amount01: 0.7, ...values });
+  const pickupCommand = (sequence, values = {}) => command(sequence, { kind: 'pickup-left', preparationSlot: 'observer-left', mappingId: 'skin.observer-left', radius01: null, amount01: null, ...values });
+  it('keeps independent observed modal pickups on their actual body through replacement and holds the last position on release', async () => {
+    const f = await fixture({ modal: true }); await f.bind(0); expect(f.owner.consume(pickupCommand(1, { position: { x: 20, y: 40 } }), 'execution-a').status).to.equal('accepted');
+    expect(f.owner.consume(pickupCommand(2, { actorId: 2, contactSpanId: 'span-b' }), 'execution-a').reason).to.equal('pickup-owner-capacity');
+    expect(f.owner.consume(pickupCommand(3, { kind: 'pickup-right', actorId: 2, contactSpanId: 'span-b', preparationSlot: 'observer-right', mappingId: 'skin.observer-right', position: { x: 80, y: 60 } }), 'execution-a').status).to.equal('accepted');
+    f.replace(); await f.bind(1, map(1), 2); f.owner.consume(pickupCommand(4, { operation: 'update', sourceKind: 'ContactSpanUpdated', position: { x: 30, y: 40 } }), 'execution-a');
+    const old = f.graphs[0].diagnostics().sympatheticStates[0].pickups; expect(old.targets[0]).to.equal(Math.fround(0.3)); expect(old.targets[2]).to.equal(Math.fround(0.8));
+    const writes = f.submissions.length; f.owner.consume(pickupCommand(5, { operation: 'end', sourceKind: 'ContactSpanEnded', position: null }), 'execution-a'); expect(f.submissions.length).to.equal(writes);
+    expect(f.owner.state().bindings).to.have.length(1); expect(f.graphs[0].diagnostics().sympatheticStates[0].pickups.targets[0]).to.equal(old.targets[0]); f.owner.dispose();
+  });
+  it('requires future manual observation automation to finish before physical handoff', async () => {
+    const f = await fixture({ modal: true }); f.targets[0].pickupGrid.controls.pickupLeftX01.pendingFuture = true; let error; try { await f.bind(0); } catch (caught) { error = caught; }
+    expect(error.message).to.include('future manual pickup'); expect(f.owner.state().bodies).to.have.length(0); f.targets[0].pickupGrid.controls.pickupLeftX01.pendingFuture = false; await f.bind(0); f.owner.dispose();
+  });
   it('maps actual completed support to named authored mode loss without spatial radius or musical onsets', () => {
     const value = surface(); value.preparations = [{ id: 'felt', kind: 'mode-loss', lossMaskId: 'felt-alternating', sourceLanes: [0], actions: ['blocking'], beginPolicy: 'current-observed-contact', amount01: 0.7 }];
     const mapping = { version: 1, revision: 1, instruments: [], preparedSurfaces: [value] }, engine = createCausalMusicEngine({ getGraph: () => mapping });

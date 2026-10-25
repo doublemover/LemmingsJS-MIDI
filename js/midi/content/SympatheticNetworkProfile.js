@@ -1,9 +1,10 @@
 import { cloneData, freezeData, canonicalDataText, encodeUtf8 } from '../../core/CanonicalData.js';
 
-export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-prepared-loss-v2';
+export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-prepared-pickups-v3';
 export const NETWORK_LOSS_CONTROLS = Object.freeze(Array.from({ length: 4 }, (_, index) => 'modeLoss' + index + 'Amount01'));
+export const NETWORK_PICKUP_CONTROLS = Object.freeze(['pickupLeftX01', 'pickupLeftY01', 'pickupRightX01', 'pickupRightY01']);
 export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
-  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks'];
+  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks', 'pickupGrid'];
   const id = value => typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9._:-]{0,95}$/.test(value), finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
   const keys = (value, names) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => names.includes(key));
   if (![44100, 48000, 96000].includes(sampleRate) || !keys(p, allowed) || !Array.isArray(p.bodies) || p.bodies.length < 1 || p.bodies.length > 64 || !Array.isArray(p.edges) || p.edges.length > 512 || !finite(p.couple01, 0, 1) || !finite(p.damp01, 0, 1)) throw new TypeError('Invalid bounded sympathetic network.');
@@ -21,6 +22,16 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     ids.set(body.id, { first, count: body.modes.length });
   }
   if (modes.length > 512 || excitationNorm === 0 || pickupNorm === 0) throw new RangeError('A shared body requires bounded audible excitation and pickup routes.');
+  let pickupGrid = null;
+  if (p.pickupGrid != null) {
+    const grid = p.pickupGrid, point = value => keys(value, ['x01', 'y01']) && finite(value.x01, 0, 1) && finite(value.y01, 0, 1);
+    if (!keys(grid, ['id', 'width', 'height', 'weights', 'leftPosition', 'rightPosition']) || !id(grid.id) || !Number.isInteger(grid.width) || grid.width < 2 || grid.width > 4 || !Number.isInteger(grid.height) || grid.height < 2 || grid.height > 4 ||
+        !point(grid.leftPosition) || !point(grid.rightPosition) || !Array.isArray(grid.weights) || grid.weights.length !== grid.width * grid.height * modes.length || grid.weights.some(value => !finite(value, -1, 1))) throw new TypeError('Pickup observation needs a bounded authored grid of signed mode weights and two normalized positions.');
+    let maximumSquaredNorm = 0;
+    for (let at = 0; at < grid.weights.length; at += modes.length) { let sum = 0; for (let mode = 0; mode < modes.length; mode++) sum += grid.weights[at + mode] ** 2; maximumSquaredNorm = Math.max(maximumSquaredNorm, sum); }
+    if (maximumSquaredNorm === 0 || maximumSquaredNorm > 1) throw new RangeError('Each authored pickup vector must retain its declared relative gain within the unit L2 observation bound.');
+    pickupGrid = { ...grid, maximumSquaredNorm, interpolation: 'bilinear-convex-signed-mode-weights', units: 'normalized-authored-observation-field;not-a-solved-geometric-mode-shape' };
+  }
   if (p.lossMasks != null && (!Array.isArray(p.lossMasks) || p.lossMasks.length > 4 || new Set(p.lossMasks.map(mask => mask?.id)).size !== p.lossMasks.length)) throw new TypeError('Prepare at most four unique authored mode-loss masks.');
   const lossMasks = (p.lossMasks || []).map(mask => {
     if (!keys(mask, ['id', 'extraAmplitudeT60Seconds', 'weights']) || !id(mask.id) || !finite(mask.extraAmplitudeT60Seconds, 0.02, 4) || !Array.isArray(mask.weights) || mask.weights.length !== modes.length || mask.weights.some(value => !finite(value, 0, 1)) || !mask.weights.some(value => value > 0)) throw new TypeError('A mode-loss mask needs explicit nonnegative weights and additional amplitude-T60 seconds.');
@@ -35,8 +46,8 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
   }).sort((a, b) => a.from - b.from || a.to - b.to);
   const inputScale = (1 - maximumRadius) / Math.sqrt(excitationNorm), outputScale = 1 / Math.sqrt(pickupNorm);
   for (const mode of modes) { mode.excitation *= inputScale; mode.pickup *= outputScale; }
-  const profile = { revision: SYMPATHETIC_NETWORK_REVISION, sampleRate, parameters: p, modes, edges, lossMasks, maximumRadius, inputScale, outputScale,
-    stateBytes: (10 * modes.length + 2 * edges.length + 8 + (lossMasks.length + Number(lossMasks.length > 0)) * modes.length) * 8 + edges.length * 8, bodyCount: p.bodies.length, modeCount: modes.length, maximumDegree: 4,
+  const profile = { revision: SYMPATHETIC_NETWORK_REVISION, sampleRate, parameters: p, modes, edges, lossMasks, pickupGrid, maximumRadius, inputScale, outputScale,
+    stateBytes: (10 * modes.length + 2 * edges.length + 16 + (lossMasks.length + Number(lossMasks.length > 0)) * modes.length + (pickupGrid ? pickupGrid.weights.length + 2 * modes.length : 0)) * 8 + edges.length * 8, bodyCount: p.bodies.length, modeCount: modes.length, maximumDegree: 4,
     processingLatencyFrames: 0, maximumTailFrames: Math.ceil(longest * 2 * sampleRate), maximumLinearGain: 1, maximumOutputAmplitude: 32.000001,
     gainBoundDomain: 'bounded-input-history-to-complex-state-L2-to-pickup-peak;not-one-sample-energy',
     stability: 'damped-unitary-mode-rotations;canonical-sequential-contractive-I-to-Givens-edge-interpolants',
@@ -44,10 +55,11 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     couplingPolicy: 'same-frame-canonical-sequential-scattering;no-graph-cycle-or-physical-feedback',
     tuningPolicy: 'prepared-revision-only;old-network-keeps-admitted-tail', tailPolicy: 'hard-two-T60-ceiling-at-longest-prepared-damping',
     preparation: { kind: 'authored-selected-mode-positive-loss;not-spatial-mode-shapes', overlap: 'maximum-additional-pole-depth-per-mode', slots: lossMasks.length, slewSeconds: 0.008, release: 'future-decay-returns;dissipated-energy-not-restored' },
-    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length },
+    pickupPreparation: { kind: pickupGrid ? 'two-independent-authored-observation-positions' : 'fixed-normalized-pickup-vector', energyPolicy: 'read-existing-modal-state;no-excitation-or-damping-change', slewSeconds: 0.008, maximumL2Norm: 1, release: 'hold-last-observation-position' },
+    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length, pickupWeightProductsPerFrame: pickupGrid ? modes.length * 8 : 0 },
     qualification: 'implementation-awaiting-decay-mode-cost-and-listening-qualification' };
   profile.configurationBytes = encodeUtf8(sympatheticNetworkIdentity(profile)).length; profile.stateBytes += profile.configurationBytes;
   return freezeData(profile);
 }
 export const sympatheticNetworkIdentity = p => canonicalDataText({ revision: p.revision, sampleRate: p.sampleRate, parameters: p.parameters,
-  realization: p.modes.map(m => [m.cosine, m.sine, m.longRadius, m.shortRadius, m.excitation, m.pickup]), edges: p.edges, lossMasks: p.lossMasks }).text;
+  realization: p.modes.map(m => [m.cosine, m.sine, m.longRadius, m.shortRadius, m.excitation, m.pickup]), edges: p.edges, lossMasks: p.lossMasks, pickupGrid: p.pickupGrid }).text;

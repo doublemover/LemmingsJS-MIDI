@@ -1,5 +1,6 @@
 import { RectangularMembraneKernel } from './worklet/RectangularMembraneKernel.js';
 import { SympatheticNetworkKernel } from './worklet/SympatheticNetworkKernel.js';
+import { NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SpectralFreezeKernel } from './worklet/SpectralFreezeKernel.js';
 import { AllpassNotchKernel } from './worklet/AllpassNotchProcessor.js';
 import { RingModulatorKernel } from './worklet/RingModulatorKernel.js';
@@ -59,9 +60,8 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       kernel.setControls(next, apply);
     } else if (entry.kind === 'sympathetic-network') {
       if (kernel.muted) fail('effect-body-quarantined', 'Prepare a new shared body after its state was quarantined.');
-      const masks = ['modeLoss0Amount01', 'modeLoss1Amount01', 'modeLoss2Amount01', 'modeLoss3Amount01'];
-      if (keys.some(key => !['couple01', 'damp01'].includes(key) && (!masks.slice(0, entry.network.lossMasks.length).includes(key) || !finite(next[key], 0, 1))) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body macro or authored mode-loss exceeds its prepared contraction domain.');
-      if (apply) { if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01; for (let index = 0; index < entry.network.lossMasks.length; index++) if (next[masks[index]] != null) record.kernel.setLossMask(index, next[masks[index]]); }
+      if (keys.some(key => !['couple01', 'damp01'].includes(key) && (!NETWORK_LOSS_CONTROLS.slice(0, entry.network.lossMasks.length).includes(key) && !(entry.network.pickupGrid && NETWORK_PICKUP_CONTROLS.includes(key)) || !finite(next[key], 0, 1))) || next.couple01 != null && !finite(next.couple01, 0, 1) || next.damp01 != null && !finite(next.damp01, 0, 1)) fail('invalid-effect-control', 'Shared-body control exceeds its prepared loss or observation domain.');
+      if (apply) { if (next.couple01 != null) controls[at] = next.couple01; if (next.damp01 != null) controls[at + 1] = next.damp01; for (let index = 0; index < entry.network.lossMasks.length; index++) if (next[NETWORK_LOSS_CONTROLS[index]] != null) record.kernel.setLossMask(index, next[NETWORK_LOSS_CONTROLS[index]]); for (const name of NETWORK_PICKUP_CONTROLS) if (next[name] != null) kernel.setPickupPosition(name, next[name]); }
     } else if (entry.kind === 'spectral-freeze') {
       if (keys.length !== 1 || keys[0] !== 'hold01' || (next.hold01 !== 0 && next.hold01 !== 1)) fail('invalid-effect-control', 'Spectral capture requires a discrete hold or thaw command.'); if (apply) controls[at] = next.hold01;
     } else if (entry.kind === 'allpass-notch') {

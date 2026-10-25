@@ -4603,3 +4603,42 @@ frontloaded; only formatting, syntax, provenance and limited critical typecheck
 checks are used here. Named authored layouts, thumbnails, sampled/shared-body
 scene materialization, full browser acceptance and listening/device evidence
 remain pending.
+
+
+### Continuation 191 — independent authored modal pickup observation (#1215, #1233)
+
+Prepared sympathetic networks may now own a bounded two-dimensional table of
+signed mode-observation weights with independent left/right positions. Every
+grid-point vector must have L2 norm at most one; bilinear convex interpolation
+retains that bound without separately normalizing away site-level dynamics.
+Changing either observation reads the existing complex state and changes neither
+excitation, modal loss nor coupling. Four coordinates slew over eight milliseconds;
+all current/target positions transfer through exact state cuts. The audio loop
+uses preallocated coefficients and weight scratch, with declared storage and
+per-frame operator counts. Pickup movement on an unexcited body stays silent.
+
+Live worklet parameters, native scheduling, deterministic owned rendering and
+captured control replay share the same prepared coordinate contract. The exact
+network revision, authored table, control targets and field identity participate
+in graph preparation and retained-body ownership. A saved surface map can assign
+actual complete supported contacts to separate left/right observers; each side
+admits one owner, contact end holds its last observation, and old contacts remain
+with the original ringing body during replacement. Future manual pickup automation
+must finish before physical handoff. No preparation command creates a note.
+
+Felt Bridge now includes an explicit signed x-varying response field, manual left
+and right observation controls, renderer-reported position inspection and a staged
+observed-contact map. Its y field is deliberately invariant. Both content and UI
+label the weights as authored response data, not solved geometric mode shapes.
+Manual controls disable under physical ownership; arbitrary networks without a
+prepared table decline position controls. The two authored loss masks retain their
+independent per-contact maximum aggregation and positive-loss contract.
+
+Fixtures cover unchanged internal state under movement, silence, unit observation
+bounds, independent positions, in-flight restoration, foreign-grid rejection,
+unsupported tables, future manual automation, pickup owner capacity, retained-body
+replacement and hold-last release. They are authored but unrun. Formatting,
+syntax/provenance and the limited critical typecheck remain the checks for this
+frontloaded development pass. Geometric foundry-derived pickup fields, the complete
+Three Hands lesson, measured spectra, listening and device qualification remain
+pending.
