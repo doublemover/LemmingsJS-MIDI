@@ -1,3 +1,4 @@
+import { GENERATION_PIN_STORE, recoveryGenerationPin, withBrowserGenerationRetentionLock } from '../../../runtime/BrowserGenerationPins.js';
 import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { validateProcgenRecoveryJournalCooperative } from './ProcgenRecoveryJournal.js';
 const chunkPrefix = 'recovery:chunk:';
@@ -38,8 +39,9 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
         const root = await encode(manifest, 'manifest', Math.min(64 * 1048576, 2 * 1048576 + session.world.laneCount * 32768 + pages.length * 512)), references = [root.key, base.key, ...pages.map(page => page.key)];
         check(signal); const db = await open(); check(signal);
         const commitStarted = performance.now();
-        const receipt = await new Promise((resolve, reject) => {
-          const transaction = db.transaction('sessions', 'readwrite'), store = transaction.objectStore('sessions'); let result, failed;
+        const receipt = await withBrowserGenerationRetentionLock(() => new Promise((resolve, reject) => {
+          check(signal);
+          const transaction = db.transaction(['sessions', GENERATION_PIN_STORE], 'readwrite'), store = transaction.objectStore('sessions'); let result, failed;
           const abort = () => { try { transaction.abort(); } catch { /* Completion already owns the transaction. */ } };
           signal?.addEventListener('abort', abort, { once: true });
           const head = store.get('recovery:head');
@@ -54,6 +56,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
                   for (const key of old.result?.references || []) if (!keep.has(key)) { store.delete(key); removedKeys.push(key); }
                   for (const chunk of writes) store.put(chunk);
                   result = { generation, checksum: root.sha256, documentRevision, tick, journalSequence: journal.sequence };
+                  transaction.objectStore(GENERATION_PIN_STORE).put(recoveryGenerationPin(session, slot, generation));
                   store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...result, paged: root, references, storedBytes: root.storedBytes + base.storedBytes + pages.reduce((sum, ref) => sum + ref.storedBytes, 0), name: session.name, savedAt: session.savedAt });
                   store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum: root.sha256 });
                 } catch (error) { failed = error; transaction.abort(); }
@@ -62,7 +65,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
           };
           transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); for (const entry of published) entry.stored = true; for (const key of removedKeys) { const entry = entriesByKey.get(key); if (entry) entry.stored = false; entriesByKey.delete(key); } resolve(result); };
           transaction.onabort = () => { signal?.removeEventListener('abort', abort); reject(failed || transaction.error || new Error('Paged recovery transaction aborted.')); };
-        });
+        }), { signal });
         stats.commitMs += performance.now() - commitStarted; durableReceipt = { ...receipt, durable: true, canceledAfterCommit: signal.aborted }; return durableReceipt;
       } catch (error) { operationError = error; throw error; } finally { writing = false; for (const entry of published) if (!entry.stored) entriesByKey.delete(entry.ref.key); writes.length = 0; const errors = [];
         for (const result of retained) try { retireBackgroundResult(result); } catch (error) { errors.push(error); } lifetime.release(); stats.retirementFailures += errors.length;

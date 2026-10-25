@@ -695,23 +695,34 @@
         "js/app/resources/BackgroundWorkerAdmission.js",
         "js/app/procgen/workstation/ProcgenSessionStorage.js",
         "js/app/procgen/workstation/ProcgenWorkstation.js",
-        "js/app/procgen/ProcgenLaneWorld.js"
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/runtime/BrowserGenerationPins.js",
+        "js/runtime/BrowserGenerationService.js"
       ],
       "regressions": [
         "test/procgen-incremental-recovery.test.js",
         "test/procgen-recovery-page-store.test.js",
-        "test/resource-retirement.test.js"
+        "test/resource-retirement.test.js",
+        "test/browser-generation-pins.test.js",
+        "test/browser-generation-service.test.js",
+        "test/procgen-session-storage.test.js"
       ],
       "commits": [
-        "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e"
+        "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e",
+        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
       ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages",
-      "remaining": "Source-generation retention pin composition and full recovery timing/combined-scene harness implementation remain; execution of authored parity/fault fixtures is deferred validation.",
+      "remaining": "Full recovery timing/combined-scene harness implementation remains; source-generation retention is integrated. Execution of authored parity/fault fixtures remains deferred validation.",
       "increments": [
         {
           "id": "durable-recovery-and-acknowledged-retirement",
           "summary": "Separate known IndexedDB commit from late cancellation and unresolved worker/storage retirement; preserve published new recovery base when old generation retirement fails, finish independent world teardown, retain unknown source outcomes. Incremental accounted cold-render reclaim before assets. Fault-injection regressions authored unrun.",
+          "commit": "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
+        },
+        {
+          "id": "durable-source-generation-retention",
+          "summary": "Two metadata-only source pins commit atomically with recovery slots; explicit unbound/unknown provenance, metadata-only conservative legacy migration, and origin-scoped exclusive Web Locks serialize durable publication with cache retirement. Unknown pins or unsupported/busy locking defer trimming; all live browser worker client types participate. Tests authored unrun. Full recovery/combined pressure harness remains development.",
           "commit": null
         }
       ]
@@ -3423,7 +3434,8 @@
         "js/app/procgen/workstation/ProcgenRecoveryCapture.js",
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
         "js/app/procgen/workstation/ProcgenSessionStorage.js",
-        "js/app/procgen/ProcgenLaneWorld.js"
+        "js/app/procgen/ProcgenLaneWorld.js",
+        "js/runtime/BrowserGenerationPins.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3442,14 +3454,18 @@
         "test/procgen-physical-authoring-controller.test.js",
         "test/resource-retirement.test.js",
         "test/procgen-recovery-page-store.test.js",
-        "test/procgen-incremental-recovery.test.js"
+        "test/procgen-incremental-recovery.test.js",
+        "test/browser-generation-pins.test.js",
+        "test/browser-generation-service.test.js",
+        "test/procgen-session-storage.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
         "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
         "03e36c9d2771537e523f4ec7ba1d86d8c38837ae",
         "87cd69c1",
-        "0a21999ba2cfac757279ab44028c48fe690cd020"
+        "0a21999ba2cfac757279ab44028c48fe690cd020",
+        "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
@@ -3483,6 +3499,11 @@
         {
           "id": "durable-recovery-and-acknowledged-retirement",
           "summary": "Separate known IndexedDB commit from late cancellation and unresolved worker/storage retirement; preserve published new recovery base when old generation retirement fails, finish independent world teardown, retain unknown source outcomes. Incremental accounted cold-render reclaim before assets. Fault-injection regressions authored unrun.",
+          "commit": "e490dacdbac56f948f89aba43ec3cf97ad9eeae7"
+        },
+        {
+          "id": "durable-source-generation-retention",
+          "summary": "Two metadata-only source pins commit atomically with recovery slots; explicit unbound/unknown provenance, metadata-only conservative legacy migration, and origin-scoped exclusive Web Locks serialize durable publication with cache retirement. Unknown pins or unsupported/busy locking defer trimming; all live browser worker client types participate. Tests authored unrun. Full recovery/combined pressure harness remains development.",
           "commit": null
         }
       ],

@@ -1,13 +1,13 @@
 // A transactional storage seam: writes become visible only on completion.
 export function recoveryTransactionDb() {
-  const records = new Map(); let failAfter = Infinity, afterCommit = null;
+  const records = new Map(), pins = new Map(); let failAfter = Infinity, afterCommit = null;
   const db = { transaction(_store, mode) {
-    const staged = new Map(records); let waiting = 0, aborted = false, completed = false, writes = 0;
+    const staged = new Map(records), stagedPins = new Map(pins); let waiting = 0, aborted = false, completed = false, writes = 0;
     const transaction = { error: null, abort() { if (aborted || completed) return; aborted = true; queueMicrotask(() => transaction.onabort?.()); },
-      objectStore() { return {
-        get(key) { return request(() => staged.get(key)); },
-        put(value) { return request(() => { if (++writes >= failAfter) { transaction.error = new Error('Injected transaction termination'); transaction.abort(); return; } staged.set(value.id, structuredClone(value)); return value.id; }); },
-        delete(key) { return request(() => staged.delete(key)); }
+      objectStore(name) { const selected = name === 'generationPins' ? stagedPins : staged; return {
+        get(key) { return request(() => selected.get(key)); },
+        put(value) { return request(() => { if (++writes >= failAfter) { transaction.error = new Error('Injected transaction termination'); transaction.abort(); return; } selected.set(value.id, structuredClone(value)); return value.id; }); },
+        delete(key) { return request(() => selected.delete(key)); }
       }; } };
     const request = operation => {
       waiting++; const result = { result: null, error: null };
@@ -16,12 +16,12 @@ export function recoveryTransactionDb() {
         waiting--;
         if (!waiting && !aborted) queueMicrotask(() => {
           if (waiting || aborted || completed) return; completed = true;
-          if (mode === 'readwrite') { records.clear(); for (const [key, value] of staged) records.set(key, value); afterCommit?.(); }
+          if (mode === 'readwrite') { records.clear(); for (const [key, value] of staged) records.set(key, value); pins.clear(); for (const [key, value] of stagedPins) pins.set(key, value); afterCommit?.(); }
           transaction.oncomplete?.();
         });
       }); return result;
     };
     return transaction;
   } };
-  return { db, records, failAfter: value => { failAfter = value; }, afterCommit: callback => { afterCommit = callback; } };
+  return { db, records, pins, failAfter: value => { failAfter = value; }, afterCommit: callback => { afterCommit = callback; } };
 }

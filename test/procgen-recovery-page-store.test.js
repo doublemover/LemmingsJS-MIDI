@@ -33,9 +33,15 @@ describe('atomic incremental recovery page publication', () => {
   });
   for (const writes of [1, 2, 3]) it(`preserves the previous manifest when terminated at write ${writes}`, async () => {
     const f = setup(); await f.store.save(session('durable'), { documentRevision: 0, tick: 1 });
-    const before = structuredClone([...f.records]); f.failAfter(writes);
+    const before = structuredClone([...f.records]), pinsBefore = structuredClone([...f.pins]); f.failAfter(writes);
     let error; try { await f.store.save(session('interrupted'), { documentRevision: 1, tick: 1 }); } catch (value) { error = value; }
-    expect(error).to.exist; expect([...f.records]).to.deep.equal(before); f.store.dispose();
+    expect(error).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pinsBefore); f.store.dispose();
+  });
+  it('commits recovery source pins with the two rotating durable slots, never the current writer identity', async () => {
+    const f = setup(), deploymentRoot = 'https://app.invalid/lemmings/';
+    for (let revision = 0; revision < 3; revision++) await f.store.save({ ...session('source ' + revision), executionIdentity: { activeExecution: 'bound', buildId: String(revision).repeat(64), deploymentRoot } }, { documentRevision: revision, tick: 1 });
+    expect(f.pins.size).to.equal(2); expect(f.pins.get('recovery:slot:1').source.buildId).to.equal('2'.repeat(64)); expect(f.pins.get('recovery:slot:0').source.buildId).to.equal('1'.repeat(64));
+    for (const [key, pin] of f.pins) expect(pin.generation).to.equal(f.records.get(key).generation); f.store.dispose();
   });
   it('reports a completed commit even when cancellation arrives before its completion callback', async () => {
     const f = setup(), controller = new AbortController(); f.afterCommit(() => controller.abort(new Error('late cancellation')));

@@ -1,3 +1,4 @@
+import { readDurableBrowserGenerationPins, withBrowserGenerationRetentionLock } from './BrowserGenerationPins.js';
 import { hashBrowserBuildBytes, validBrowserBuildPath, verifyBrowserBuildManifest, BROWSER_ENTRY_ROUTES } from './BrowserBuildManifest.js';
 
 const MANIFEST_LIMIT = 2 * 1048576, CACHE_LIMIT = 512 * 1048576;
@@ -55,7 +56,7 @@ export async function readBrowserBuildResponse(response, maximum, signal, { clai
 }
 
 export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage = globalThis.caches, fetchFile = globalThis.fetch,
-  getClients = async () => [], candidatePending = () => false, maximumCacheBytes = CACHE_LIMIT } = {}) {
+  getClients = async () => [], retentionLocks = globalThis.navigator?.locks, getDurableBuildPins = () => readDurableBrowserGenerationPins({ scopeUrl }), candidatePending = () => false, maximumCacheBytes = CACHE_LIMIT } = {}) {
   const scope = new URL(scopeUrl), tag = encodeURIComponent(scope.pathname), prefix = `lemmings-generation-${tag}-v1-`;
   if (!digestPattern.test(buildId) || !['https:', 'http:'].includes(scope.protocol) || !scope.pathname.endsWith('/') || scope.search || scope.hash ||
       !Number.isSafeInteger(maximumCacheBytes) || maximumCacheBytes < 1 || maximumCacheBytes > 1024 * 1048576) throw new Error('Invalid browser generation owner.');
@@ -239,21 +240,28 @@ export function createBrowserGenerationService({ scopeUrl, buildId, cacheStorage
     }
     return new globalThis.Response('The requested browser generation is unavailable or incomplete.', { status: 503 });
   };
-  const trim = async () => {
-    if (candidatePending()) return;
-    const active = new Set([buildId]);
+  const trimLocked = async () => {
+    if (candidatePending()) return { status: 'deferred', reason: 'candidate-pending' };
+    let pins; try { pins = await getDurableBuildPins(); } catch { return { status: 'deferred', reason: 'recovery-pins-unavailable' }; }
+    if (pins?.status !== 'complete' || !Array.isArray(pins.buildIds) || pins.buildIds.length > 2 || pins.buildIds.some(id => !digestPattern.test(id))) return { status: 'deferred', reason: pins?.reason || 'recovery-pins-unresolved' };
+    const active = new Set([buildId, ...pins.buildIds]);
     for (const client of await getClients()) {
       const url = new URL(client.url); if (url.origin !== scope.origin || !url.pathname.startsWith(scope.pathname)) continue;
       const first = url.pathname.slice(scope.pathname.length).split('/')[0]; if (digestPattern.test(first)) active.add(first);
     }
     for (const record of await records(undefined, { strict: false })) if (!active.has(record.marker.buildId)) { await cacheStorage.delete(record.name); catalog.delete(record.name); qualifications.delete(record.name); }
+    return { status: 'complete', retainedBuildIds: [...active].sort() };
+  };
+  const trim = async () => {
+    try { return await withBrowserGenerationRetentionLock(trimLocked, { locks: retentionLocks, required: true, ifAvailable: true }); }
+    catch (error) { return { status: 'deferred', reason: error.code || 'generation-retention-unresolved' }; }
   };
   return Object.freeze({ install, restore, verifyInstalledBuild, responseFor, trim, getState: () => Object.freeze({ ...state }) });
 }
 
 export function installBrowserGenerationWorker({ buildId, worker = globalThis } = {}) {
   const owner = createBrowserGenerationService({ buildId, scopeUrl: worker.registration.scope, cacheStorage: worker.caches,
-    fetchFile: worker.fetch.bind(worker), getClients: () => worker.clients.matchAll({ includeUncontrolled: true }),
+    fetchFile: worker.fetch.bind(worker), getClients: () => worker.clients.matchAll({ includeUncontrolled: true, type: 'all' }),
     candidatePending: () => !!worker.registration.installing || !!worker.registration.waiting });
   worker.addEventListener('install', event => event.waitUntil(owner.install().then(() => worker.skipWaiting())));
   worker.addEventListener('activate', event => event.waitUntil(owner.restore().then(() => owner.trim()).then(() => worker.clients.claim())));

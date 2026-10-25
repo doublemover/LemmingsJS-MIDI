@@ -1,3 +1,5 @@
+import { getActiveExecutionIdentity, getApplicationDeploymentRoot } from '../../../runtime/ActiveExecutionIdentity.js';
+import { RECOVERY_DATABASE_NAME, RECOVERY_DATABASE_VERSION, GENERATION_PIN_STORE, recoveryGenerationPin, upgradeBrowserGenerationPins, withBrowserGenerationRetentionLock } from '../../../runtime/BrowserGenerationPins.js';
 import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { createProcgenRecoveryPageStore } from './ProcgenRecoveryPageStore.js';
 import { validateProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
@@ -16,12 +18,13 @@ const validateProcgenSession = value => {
       value.camera != null && (typeof value.camera !== 'object' || Array.isArray(value.camera)) ||
       value.ui != null && (typeof value.ui !== 'object' || Array.isArray(value.ui))) throw new Error('Project presentation state is invalid.');
   if (!Number.isInteger(value.world.laneCount) || value.world.laneCount < 1 || value.world.laneCount > 1024 || !Number.isFinite(value.world.seed)) throw new Error('Invalid world settings.');
+  if (value.executionIdentity != null && (typeof value.executionIdentity !== 'object' || Array.isArray(value.executionIdentity) || JSON.stringify(value.executionIdentity).length > 4096)) throw new Error('Invalid bounded session execution provenance.');
   if (value.recoveryJournal != null) validateProcgenRecoveryJournal(value.recoveryJournal);
   return value;
 };
-const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, physicalTimeline = null, physicalState = null, recoveryJournal = null, camera, ui }) => ({
+const createProcgenSession = ({ name = 'Untitled session', project, settings, world, transport, patterns, physicalTimeline = null, physicalState = null, recoveryJournal = null, camera, ui, executionIdentity = { ...getActiveExecutionIdentity(), deploymentRoot: getApplicationDeploymentRoot()?.href || null } }) => ({
   format: 'lemmings-procgen-session', version: SESSION_VERSION, name: String(name).slice(0, 120), savedAt: new Date().toISOString(),
-  project, settings: { ...settings }, world, transport, patterns, physicalTimeline, physicalState, ...(recoveryJournal ? { recoveryJournal } : {}), camera, ui
+  executionIdentity, project, settings: { ...settings }, world, transport, patterns, physicalTimeline, physicalState, ...(recoveryJournal ? { recoveryJournal } : {}), camera, ui
 });
 let documentIdSequence = 0;
 const createProcgenDocumentId = (crypto = globalThis.crypto) => {
@@ -108,13 +111,14 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     };
     if (!indexedDB) { finish(namedError('SecurityError', 'IndexedDB is unavailable')); return promise; }
     try {
-      request = indexedDB.open('lemmings.procgen.sessions', 5);
-      request.onupgradeneeded = () => {
+      request = indexedDB.open(RECOVERY_DATABASE_NAME, RECOVERY_DATABASE_VERSION);
+      request.onupgradeneeded = event => {
         if (!request.result.objectStoreNames.contains('sessions')) request.result.createObjectStore('sessions', { keyPath: 'id' });
         const metadata = request.result.objectStoreNames.contains('projectMetadata') ? request.transaction.objectStore('projectMetadata') :
           request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
         if (!metadata.indexNames.contains('byUpdated')) metadata.createIndex('byUpdated', ['savedAt', 'id']);
         upgradeCausalJournalStores(request.result, request.transaction);
+        upgradeBrowserGenerationPins(request.result, request.transaction, event.oldVersion);
       };
       request.onsuccess = () => finish(null, request.result);
       request.onerror = () => finish(request.error || new Error('IndexedDB open failed'));
@@ -329,10 +333,11 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         if (signal?.aborted) throw namedError('AbortError', 'Recovery write canceled');
         const db = await open();
         if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry recovery.');
-        return await new Promise((resolve, reject) => {
+        return await withBrowserGenerationRetentionLock(() => new Promise((resolve, reject) => {
+          signal?.throwIfAborted(); if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry recovery.');
           let transaction, receipt;
           try {
-            transaction = db.transaction('sessions', 'readwrite');
+            transaction = db.transaction(['sessions', GENERATION_PIN_STORE], 'readwrite');
             const abort = () => { try { transaction.abort(); } catch { /* A completed transaction needs no cancellation. */ } };
             signal?.addEventListener('abort', abort, { once: true });
             const store = transaction.objectStore('sessions'), request = store.get('recovery:head');
@@ -340,6 +345,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
               if (signal?.aborted) { transaction.abort(); return; }
               const generation = (request.result?.generation || 0) + 1, slot = generation % 2;
               receipt = { generation, checksum, documentRevision, tick };
+              transaction.objectStore(GENERATION_PIN_STORE).put(recoveryGenerationPin(session, slot, generation));
               store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...receipt,
                 name: session.name, savedAt: session.savedAt, session });
               store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum });
@@ -348,7 +354,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
             transaction.onabort = () => { signal?.removeEventListener('abort', abort);
               reject(storageFailure(transaction.error || request.error || namedError('AbortError', 'Recovery transaction aborted'))); };
           } catch (error) { reject(storageFailure(error)); }
-        });
+        }), { signal });
       } catch (error) { operationError = error; throw error; } finally { try { computed.release(); if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([]); } catch (error) { if (durableReceipt) durableReceipt.retirement = resourceRetirementSummary([error]); else if (operationError) operationError.retirementError = error; else throw error; } }
     },
     async loadRecovery({ requireVerified = false, signal, owned = false } = {}) {

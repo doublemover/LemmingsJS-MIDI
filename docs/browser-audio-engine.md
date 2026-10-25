@@ -1621,3 +1621,28 @@ now reclaims only the accounted deficit, with a finite eviction-work bound, ahea
 of the more expensive decoded-asset caches; active surfaces remain pinned. These
 are deterministic ownership contracts with authored fault-injection coverage, not
 executed browser/IndexedDB or resident-memory qualification.
+
+### Recovery source generations and cross-storage retention
+
+Recovery database version 6 commits two small source-provenance records in the
+same IndexedDB transaction as each rotating recovery manifest. They identify the
+saved session's bound deployment/build, not the code currently writing an imported
+session. Explicitly unbound sessions make no historical-source claim. Legacy slots
+are migrated using existence counts only; unknown provenance conservatively blocks
+cache retirement until both slots have been superseded with known provenance.
+
+CacheStorage deletion and the final recovery write transaction share an
+origin-scoped exclusive Web Locks name. Encoding and checkpoint capture occur
+outside that lock. This closes the read-pins/commit/delete race between independent
+storage systems; atomic IndexedDB records alone would not suffice. Recovery remains
+available where Web Locks are absent, but source trimming is then deferred. A busy
+lock or unresolved pin read also defers trimming, never steals a lock or deletes
+recordings. The worker inspects only two metadata records, bounds their read wait,
+and includes live worker clients as well as windows when retaining generations.
+Pins retain already-installed source packages; they do not manufacture missing
+historical code, guarantee storage against browser eviction, or attest that an
+unbound imported session was executed by its current writer.
+
+The source-pin, interrupted-transaction, deferred-retirement and lock-exclusion
+regressions are written but unrun. Browser cross-context behavior and persistence
+qualification remain deferred, as do combined-scene/recovery timing measurements.
