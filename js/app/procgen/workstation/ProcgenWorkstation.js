@@ -1,3 +1,5 @@
+import { prepareProjectJunctions } from './PhysicalJunctionProject.js';
+import { createPhysicalJunctionView } from './PhysicalJunctionView.js';
 import { getProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
 import { prepareProcgenRecoveryJournal } from './ProcgenRecoveryCapture.js';
 import { createProcgenPreferenceWriter } from './ProcgenPreferenceWriter.js';
@@ -37,7 +39,7 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -117,7 +119,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
   let soundLibrary = null;
   let masterCapture = null;
-  let quarryEchoView = null;
+  let quarryEchoView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -248,6 +250,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       ? diffCausalLanePerformance(project.procgen.lanes, next.procgen.lanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
       : diffCausalPerformanceState(captureCausalPerformanceState(project.procgen.lanes), captureCausalPerformanceState(next.procgen.lanes)) : null;
     if ((causalTakeStart || causalTakeStop) && performanceChange) throw new Error('Wait for causal take arming or saving before changing instrument controls.');
+    const junctionsChanged = !equal(project.procgen.junctions || [], next.procgen.junctions || []);
+    if (junctionsChanged && (causalTake || causalTakeStart || causalTakeStop)) throw new Error('Finish the causal take before editing junction definitions. Existing junction requests remain available while recording.');
+    if (junctionsChanged) next = { ...next, procgen: { ...next.procgen, junctions: (next.procgen.junctions || []).map(value => {
+      const previous = project.procgen.junctions?.find(prior => prior.id === value.id); if (!previous || equal(previous, value) || value.revision > previous.revision) return value;
+      if (!Number.isSafeInteger(previous.revision + 1)) throw new Error('Junction revision exhausted.'); return { ...value, revision: previous.revision + 1 };
+    }) } };
+    const junctionProposal = junctionsChanged && runtime()?.world ? prepareProjectJunctions(runtime().world, next.procgen.junctions || []) : null;
     if (project.procgen.physicalGraph !== next.procgen.physicalGraph) for (const collection of ['harmonicFields', 'topologyRegions']) {
       const previous = project.procgen.physicalGraph[collection] || [], values = next.procgen.physicalGraph[collection];
       if (!values) continue;
@@ -270,7 +279,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         : causalTake.recordMapping(next.procgen.physicalGraph, boundary);
       if (receipt.status !== 'accepted') throw new Error(`Causal take could not admit the performance change: ${receipt.reason}. Stop the take before editing it.`);
     }
-    topologyProposal?.commit();
+    topologyProposal?.commit(); junctionProposal?.commit();
     if (history) {
       if (historyGroup == null || historyGroup !== lastHistoryGroup) {
         if (historyCost != null) historySizes.set(project, historyCost);
@@ -798,6 +807,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     recoveryAbort?.abort();
     unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
     next.world?.configureTopologyRegions?.(project.procgen.physicalGraph.topologyRegions || []);
+    if (next.world?.prepareInterventions) prepareProjectJunctions(next.world, project.procgen.junctions || []).commit();
     laneObserver = createProcgenLaneObserver(next.world);
     const bus = next.world?.soundEvents?.onEvent;
     const physicalBus = next.world?.soundEvents?.onBatch;
@@ -821,6 +831,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       catch (error) { status('Causal take coverage gap could not be written: ' + error.message); }
     };
     const onPhysicalBatch = batch => {
+      physicalJunctionView?.refresh();
       let position;
       try {
         position = physicalScoreClock.observe(batch, transport.getState());
@@ -1154,6 +1165,29 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         home: document.getElementById('procgenStudioFooter') || document.body, onStatus: status });
       prelistenMonitor.mountHome(); return prelistenMonitor;
     },
+    openPhysicalJunctions() {
+      physicalJunctionView ||= createPhysicalJunctionView({ document, displayScheduler: view?.displayScheduler,
+        getDefinitions: () => project.procgen.junctions || [], query: id => runtime()?.world?.queryJunction?.(id, { includeDefinition: false }),
+        save: junctions => { if (worldBusy || pendingHistory) throw new Error('Wait for the world/history transaction.'); dispatch({ type: 'procgen/junctions', junctions }); },
+        request: (junctionId, configurationId, policy) => handlers.requestJunction(junctionId, configurationId, policy), cancel: id => handlers.cancelJunctionRequest(id), onStatus: status });
+      physicalJunctionView.open();
+    },
+    requestJunction(junctionId, configurationId, policy = 'waitForSafeBoundary') {
+      const world = runtime()?.world; if (!world || worldBusy || pendingHistory || causalTakeStart || causalTakeStop) throw new Error('Wait for a committed world boundary.');
+      const definition = world.physicalJunctions.definitions.find(value => value.id === junctionId); if (!definition) throw new Error('Junction definition has not reached its command boundary.');
+      if (!Number.isSafeInteger(++junctionRequestSerial)) throw new Error('Junction request identity exhausted.');
+      const id = `junction:${world.generation}:${world.tickIndex}:${junctionRequestSerial}`, command = { id, transactionId: id, kind: 'junction-request', origin: 'manual', target: { generation: world.generation },
+        parameters: { request: { junctionId, configurationId, authoringRevision: definition.revision, expiryTick: world.tickIndex + 120, policy, coalesce: true } } };
+      const proposal = world.prepareIntervention(command);
+      if (causalTake && causalTake.recordIntervention(command, proposal.outcome, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Junction request was not admitted by the take.');
+      const result = proposal.commit(); if (result.status !== 'queued') throw new Error(result.reason); status('Junction request queued; no route success is implied.'); return result;
+    },
+    cancelJunctionRequest(commandId) {
+      const world = runtime()?.world; if (!world || worldBusy || causalTakeStart || causalTakeStop) throw new Error('Wait for the committed world.');
+      if (!world.interventionState.pending.some(command => command.id === commandId && command.kind === 'junction-request')) return false;
+      if (causalTake && causalTake.recordInput({ version: 1, kind: 'intervention-cancel', commandId }, { tick: world.tickIndex, generation: world.generation }).status !== 'accepted') throw new Error('Take could not admit the cancellation.');
+      return world.cancelIntervention(commandId);
+    },
     openQuarryEcho() {
       if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
       quarryEchoView ||= createQuarryEchoView({ document, window, getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
@@ -1454,7 +1488,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
-    quarryEchoView?.suspend();
+    quarryEchoView?.suspend(); physicalJunctionView?.suspend();
     void masterCapture?.suspend();
     causalAudioRender?.suspend();
     causalWorkbenchSourceSerial++;
@@ -1532,6 +1566,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },
         { name: 'quarry-echo-view', run: () => quarryEchoView?.dispose() },
         { name: 'master-capture', run: () => masterCapture?.dispose() },
         { name: 'causal-audio-render', run: () => causalAudioRender?.dispose() },

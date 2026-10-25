@@ -961,3 +961,39 @@ merge/split identity, two worker revisions, held retirement, stale publication a
 checkpoint restore. A bounded analysis-only profile separates CPU descriptors from
 DSP cost. UI cavity overlays, authoring interactions, source-builder and acoustic
 qualification remain outstanding; no fixture/profile has been run.
+
+### Safe physical junction requests
+
+Canonical projects can now contain bounded two/three-state junction definitions,
+real inlet/outlet contracts, explicit binary collision footprints and a conservative
+influence hull. Definitions themselves are future-boundary commands, so project
+Undo/Redo rebases authoring revisions and supersedes only uncommitted definitions.
+The Junctions panel edits validated definitions and separates desired/waiting state
+from the last applied configuration and stale geometry. It uses the shared display
+scheduler, bounded DOM, focus-restoring modal lifetime and no preview MIDI output.
+
+Requests use the same intervention queue as manual workers and terrain strokes.
+They recheck source assets, region revisions, whole influence occupancy, support/
+head/next-step envelopes, source objects and work claims. Waiting holds no worker
+or terrain reservation; it is bounded by 64 requests and an explicit deadline.
+Original requested-boundary order prevents new same-priority inputs from starving
+older waiting requests. Coalescing records supersession and never rewrites a
+committed result. Cancellation, expiry and rejection emit no fake worker/contact
+success. Applied geometry invalidates route dependencies; earlier travel facts and
+unrelated voice tails are not reset. An identical already-realized configuration is
+an explicit no-op application rather than a fictional collision change.
+
+Mixed add/remove patches publish atomically through the terrain adapter. Current
+configuration receipts contain actual tile revision identities, not a future route
+guarantee. A bounded qualification adapter checks actual configured geometry, port
+support and real crew state before invoking the independent shared-action route
+qualifier; its report covers only tested inputs and retains actual replay results,
+never assumed width/timing ratios. Project/session checkpoints, incremental recovery
+and causal-take cancellation replay carry pending inputs and outcomes. Mapping
+replay also restores topology profile changes rather than observing stale ROIs.
+
+Queued safety, stale/cancel/expiry, supersession, twenty-switch replay, checkpoint,
+port compatibility and mixed-patch fixtures are written, as is an 8/128/1024-lane
+controller/whole-world-tick profile. No fixtures, timing qualification, profiles or
+browser interaction checks have been executed. Reusable fragment remapping and
+source-qualified authored short/long branch content remain explicit follow-on work.

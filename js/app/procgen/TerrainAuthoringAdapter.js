@@ -26,19 +26,19 @@ const readTerrainCell = (world, x, y) => {
   return { status: 'complete', color: edit ? edit - 1 : base, steel, tile, revision: readonlyRevision(world, tile), source };
 };
 const normalizeTerrainCommand = input => {
-  if (!input || !['addSolid', 'removeSolid', 'annotate'].includes(input.operation) || !identity(input.transactionId) || !Number.isSafeInteger(input.generation) ||
+  if (!input || !['addSolid', 'removeSolid', 'annotate', 'replaceSolid'].includes(input.operation) || !identity(input.transactionId) || !Number.isSafeInteger(input.generation) ||
       input.occupancyPolicy != null && input.occupancyPolicy !== 'reject-occupied' || input.materialId != null && !identity(input.materialId) || input.tag != null && !identity(input.tag) ||
       input.operation === 'annotate' && !identity(input.tag) || input.expectedScoreRevision != null && (!Number.isSafeInteger(input.expectedScoreRevision) || input.expectedScoreRevision < 0) || input.expiresAtTick != null && (!Number.isSafeInteger(input.expiresAtTick) || input.expiresAtTick < 0) ||
       !Array.isArray(input.spans) || !input.spans.length || input.spans.length > 128) throw new Error('Invalid bounded terrain command.');
   const rows = new Map(); let count = 0;
   for (const span of input.spans) {
-    if (![span.x1, span.x2, span.y].every(Number.isSafeInteger) || span.x1 < 0 || span.y < 0 || span.x2 <= span.x1 || span.x2 - span.x1 > MAX_CELLS) throw new Error('Invalid integer terrain span.');
-    const row = rows.get(span.y) || []; row.push([span.x1, span.x2]); rows.set(span.y, row);
+    if (![span.x1, span.x2, span.y].every(Number.isSafeInteger) || span.x1 < 0 || span.y < 0 || span.x2 <= span.x1 || span.x2 - span.x1 > MAX_CELLS || input.operation === 'replaceSolid' && typeof span.solid !== 'boolean') throw new Error('Invalid integer terrain span.');
+    const row = rows.get(span.y) || []; row.push([span.x1, span.x2, input.operation === 'replaceSolid' ? span.solid : null]); rows.set(span.y, row);
   }
   const spans = [];
   for (const [y, row] of [...rows].sort((a, b) => a[0] - b[0])) {
     row.sort((a, b) => a[0] - b[0]); let current = null;
-    for (const range of row) { if (current && range[0] <= current.x2) current.x2 = Math.max(current.x2, range[1]); else { current = { y, x1: range[0], x2: range[1] }; spans.push(current); } }
+    for (const range of row) { if (current && range[0] < current.x2 && input.operation === 'replaceSolid' && current.solid !== range[2]) throw new Error('Conflicting collision patch spans.'); if (current && range[0] <= current.x2 && (input.operation !== 'replaceSolid' || current.solid === range[2])) current.x2 = Math.max(current.x2, range[1]); else { current = { y, x1: range[0], x2: range[1], ...(input.operation === 'replaceSolid' ? { solid: range[2] } : {}) }; spans.push(current); } }
   }
   for (const span of spans) count += span.x2 - span.x1;
   const maxCells = input.maxCells ?? MAX_CELLS, maxChunks = input.maxChunks ?? MAX_CHUNKS;
@@ -51,7 +51,7 @@ const normalizeTerrainCommand = input => {
 };
 const protectionBounds = world => {
   const bounds = [];
-  for (const actor of world.actors) if (!actor.removed && !actor.failureReason && !actor.terminalReason) bounds.push({ x1: actor.x - 16, x2: actor.x + 17, y1: actor.y - 24, y2: actor.y + 17, reason: 'occupied-footprint', actorId: actor.id });
+  for (const actor of world.actors) if (!actor.removed && !actor.failureReason && !actor.terminalReason) bounds.push({ x1: actor.x - 16, x2: actor.x + 17, y1: actor.y - 24, y2: actor.y + 17, reason: 'occupied-footprint', actorId: actor.id, actionName: actor.action?.actionName });
   for (let lane = 0; lane < world.laneCount; lane++) {
     for (const task of world.accessTasks?.[lane] || []) for (const b of [task.footprint, task.buildAttempt?.bounds]) if (b) bounds.push({ ...b, reason: 'claimed-work' });
     for (const project of world.lanePolicy?.projects.lanes[lane]?.projects || []) if (project.phase === 'working' || project.phase === 'connected') for (const b of [project.bounds, project.chain?.bounds]) if (b) bounds.push({ ...b, reason: 'claimed-work' });
@@ -60,6 +60,20 @@ const protectionBounds = world => {
   }
   for (const record of world.hazards?.chunks.values() || []) for (const entry of record.entries) if (entry?.trigger) bounds.push({ ...entry.trigger, reason: 'protected-trigger' });
   return bounds;
+};
+const inspectTerrainInfluence = (world, bounds) => {
+  if (!bounds || ![bounds.x1, bounds.x2, bounds.y1, bounds.y2].every(Number.isSafeInteger) || bounds.x1 < 0 || bounds.y1 < 0 || bounds.x2 <= bounds.x1 || bounds.y2 <= bounds.y1 || (bounds.x2 - bounds.x1) * (bounds.y2 - bounds.y1) > 65536) throw new Error('Invalid bounded influence region.');
+  const protections = protectionBounds(world), revisions = new Map(), conflicts = [], inspectedSources = new Set();
+  const supported = new Set(['walk', 'falling', 'floating', 'blocking', 'building', 'bashing', 'digging', 'mining', 'climbing', 'hoist', 'jump', 'shrug', 'ohno', 'exploding', 'drowning', 'frying', 'splatter', 'exiting']);
+  for (const b of protections) if (bounds.x1 < b.x2 && bounds.x2 > b.x1 && bounds.y1 < b.y2 && bounds.y2 > b.y1) { conflicts.push({ reason: b.actorId != null && !supported.has(b.actionName) ? 'unknown-actor-footprint' : b.reason, actorId: b.actorId ?? null }); if (conflicts.length >= 64) break; }
+  for (let y = bounds.y1; y < bounds.y2; y++) for (let x = bounds.x1; x < bounds.x2; x++) {
+    const cell = readTerrainCell(world, x, y); if (cell.status !== 'complete') return { status: 'unsupported', reason: cell.reason, revisions: [], conflicts };
+    if (cell.source && !inspectedSources.has(cell.tile)) { inspectedSources.add(cell.tile);
+      for (const object of cell.source.objects || []) { const image = object.piece?.image, top = Math.floor(y / world.laneHeight) * world.laneHeight; if (image && bounds.x1 < object.x + image.width + 2 && bounds.x2 > object.x - 2 && bounds.y1 < top + object.y + image.height + 2 && bounds.y2 > top + object.y - 2) return { status: 'unsupported', reason: 'protected-source-object', revisions: [], conflicts }; }
+    }
+    revisions.set(cell.tile, cell.revision); if (revisions.size > MAX_CHUNKS) return { status: 'unsupported', reason: 'influence-chunk-capacity', revisions: [], conflicts };
+  }
+  return { status: conflicts.length ? 'busy' : 'safe', reason: conflicts[0]?.reason ?? null, conflicts, revisions: [...revisions].sort((a, b) => a[0] - b[0]) };
 };
 const protectionIndex = bounds => {
   const grid = new Map(); let memberships = 0;
@@ -101,7 +115,7 @@ const planTerrainCommand = (input, world) => {
       const object = value.source?.objects?.find(item => { const image = item.piece?.image; return image && inside(x, y, { x1: item.x, x2: item.x + image.width, y1: Math.floor(y / world.laneHeight) * world.laneHeight + item.y, y2: Math.floor(y / world.laneHeight) * world.laneHeight + item.y + image.height }, 2); });
       if (value.steel || x < world.leftEdgeX + 16 || protection || object) { reason = value.steel ? 'protected-steel' : protection?.reason ?? 'protected-source'; if (reason === 'occupied-footprint') counts.occupied++; else counts.protected++; }
       else {
-        const after = command.operation === 'addSolid' ? value.color || 3 : command.operation === 'removeSolid' ? 0 : value.color;
+        const after = command.operation === 'replaceSolid' ? span.solid ? value.color || 3 : 0 : command.operation === 'addSolid' ? value.color || 3 : command.operation === 'removeSolid' ? 0 : value.color;
         if (after !== value.color || command.operation === 'annotate') { cells.push({ x, y, before: value.color, after }); if (command.operation === 'annotate') counts.annotationChanged++; else if (!value.color && after) counts.solidAdded++; else if (value.color && !after) counts.solidRemoved++; else counts.appearanceChanged++; }
       }
     }
@@ -154,4 +168,4 @@ const applyTerrainPlan = (plan, world) => {
   world.captureTerrainTopology?.('postTransaction');
   return { status: 'accepted', reason: 'applied', counts: current.counts, edit, planDigest: plan.digest };
 };
-export { normalizeTerrainCommand, readTerrainCell, readonlyRevision, planTerrainCommand, applyTerrainPlan, digestPlan };
+export { inspectTerrainInfluence, normalizeTerrainCommand, readTerrainCell, readonlyRevision, planTerrainCommand, applyTerrainPlan, digestPlan };

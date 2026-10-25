@@ -1,3 +1,4 @@
+import { validateProjectJunctions } from './PhysicalJunctionProject.js';
 import { procgenLaneIndex, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
 import { validateOwnerEffectRack } from '../../../midi/content/DubQuarryRack.js';
 import { PROCGEN_ROLES, PROCGEN_SOUND_COLLECTIONS, PROCGEN_DEFAULT_PAIRS, resolveProcgenSound } from './ProcgenSoundCollections.js';
@@ -94,7 +95,8 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const seed = integer(value?.seed, 777, 0, 0xffffffff);
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
-  return { version: PROCGEN_PROJECT_VERSION, playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  const junctions = validateProjectJunctions(value.junctions);
+  return { version: PROCGEN_PROJECT_VERSION, ...(junctions.length ? { junctions } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;
@@ -123,6 +125,11 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
 const sameValue = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const reduceCanonicalProcgenProjectValue = (project, action) => {
   const procgen = project.procgen, lanes = procgen.lanes;
+  if (action.type === 'procgen/junctions') {
+    const junctions = validateProjectJunctions(action.junctions);
+    if (sameValue(junctions, procgen.junctions || [])) return project;
+    return { ...project, procgen: { ...procgen, junctions } };
+  }
   if (action.type === 'procgen/effectRack') {
     const rack = validateOwnerEffectRack(action.rack);
     if (sameValue(rack, procgen.effectRack || null)) return project;

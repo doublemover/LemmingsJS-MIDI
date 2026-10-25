@@ -1,10 +1,11 @@
+import { normalizeJunctionRequest, applyJunctionRequest, normalizeJunctionDefinitionCommand, applyJunctionDefinition } from './PhysicalJunctions.js';
 import { normalizeTerrainCommand, planTerrainCommand, applyTerrainPlan } from './TerrainAuthoringAdapter.js';
 import { recordProcgenRecoveryCommand, recordProcgenRecoveryCancellation } from './workstation/ProcgenRecoveryJournal.js';
 import { LemmingStateType as State } from '../../lemmings/LemmingStateType.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 
 const ORIGIN_PRIORITY = Object.freeze({ manual: 0, 'live-controller': 0, replay: 0, layer: 1, ensemble: 1, conductor: 2, 'auto-assist': 3 });
-const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit']);
+const KINDS = new Set(['assign-worker', 'place-blocker', 'release-blocker', 'set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define']);
 const boundedId = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const plain = value => value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const createInterventionState = () => ({ version: 1, pending: [], receipts: [], recentIds: [], sequence: 0 });
@@ -29,6 +30,11 @@ const enqueueIntervention = (world, command) => {
     return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'duplicate-command' });
   }
   const parameters = {};
+  if (command.kind === 'junction-request') {
+    parameters.request = normalizeJunctionRequest(world, command.parameters?.request);
+    if (state.pending.filter(entry => entry.kind === 'junction-request').length >= 64 && !(parameters.request.coalesce && state.pending.some(entry => entry.kind === 'junction-request' && entry.parameters.request.junctionId === parameters.request.junctionId && entry.origin === (command.origin ?? 'manual')))) return Object.freeze({ status: 'rejected', commandId: command.id, reason: 'junction-request-capacity' });
+  }
+  if (command.kind === 'junction-define') parameters.definition = normalizeJunctionDefinitionCommand(command.parameters?.definition);
   if (command.kind === 'terrain-edit') {
     const normalized = normalizeTerrainCommand(command.parameters?.terrain);
     if (normalized.generation !== command.target.generation || command.transactionId !== normalized.transactionId) throw new Error('Terrain command identity mismatch.');
@@ -37,13 +43,13 @@ const enqueueIntervention = (world, command) => {
     parameters.terrain = preview.command;
     const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } }; freeze(parameters.terrain);
   }
-  for (const [key, value] of Object.entries(command.kind === 'terrain-edit' ? {} : command.parameters || {})) {
+  for (const [key, value] of Object.entries(['terrain-edit', 'junction-request', 'junction-define'].includes(command.kind) ? {} : command.parameters || {})) {
     if (!['workerKind', 'targetX', 'spawnBeatTicks', 'spawnSpreadTicks'].includes(key) ||
         !(typeof value === 'string' && value.length <= 32 || Number.isFinite(value))) throw new Error('Unsupported intervention parameter.');
     parameters[key] = value;
   }
   const target = { generation: command.target.generation };
-  if (['set-release-policy', 'nuke-all', 'terrain-edit'].includes(command.kind)) {
+  if (['set-release-policy', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define'].includes(command.kind)) {
     if (command.target.laneId != null) throw new Error('Release policy currently targets the whole world.');
   } else if (command.kind === 'nuke-lane') {
     if (!Number.isSafeInteger(command.target.laneId) || command.target.laneId < 0 || command.target.laneId >= world.laneCount) throw new Error('Invalid nuke lane.');
@@ -55,10 +61,18 @@ const enqueueIntervention = (world, command) => {
   if (!Number.isSafeInteger(state.sequence + 1)) throw new RangeError('Intervention sequence exhausted.');
   const entry = Object.freeze({ version: 1, id: command.id, kind: command.kind, target: Object.freeze(target),
     parameters: Object.freeze(parameters), requestedAt: command.requestedAt ?? world.simulationTimeMs,
-    applyAtTick: command.applyAtTick ?? world.tickIndex + 1, origin: command.origin ?? 'manual',
+    applyAtTick: command.applyAtTick ?? world.tickIndex + 1, ...(command.kind === 'junction-request' ? { requestedBoundaryTick: command.applyAtTick ?? world.tickIndex + 1 } : {}), origin: command.origin ?? 'manual',
     expectedStateRevision: command.expectedStateRevision ?? null, transactionId: command.transactionId ?? null,
     coalesceKey: command.coalesceKey ?? null,
     probability01: command.probability01 ?? 1, sequence: state.sequence + 1 });
+  const replaceJunction = entry.kind === 'junction-request' && entry.parameters.request.coalesce || entry.kind === 'junction-define' && entry.parameters.definition.replacePending;
+  if (replaceJunction) {
+    const field = entry.kind === 'junction-request' ? 'request' : 'definition';
+    for (let index = state.pending.length - 1; index >= 0; index--) { const previous = state.pending[index];
+      if (previous.kind !== entry.kind || previous.parameters[field].junctionId !== entry.parameters[field].junctionId || previous.target.generation !== entry.target.generation || previous.origin !== entry.origin) continue;
+      state.pending.splice(index, 1); remember(state, { commandId: previous.id, junctionId: entry.parameters[field].junctionId, status: 'superseded', appliedTick: null, reason: 'uncommitted-junction-last-wins', supersededBy: entry.id });
+    }
+  }
   const prior = state.pending.at(-1);
   if (entry.coalesceKey && prior?.coalesceKey === entry.coalesceKey && prior.kind === entry.kind &&
       prior.transactionId === entry.transactionId && prior.applyAtTick === entry.applyAtTick &&
@@ -83,8 +97,8 @@ const remember = (state, receipt) => {
 const cancelIntervention = (world, commandId, reason = 'cancelled') => {
   const state = world.interventionState, index = state.pending.findIndex(command => command.id === commandId);
   if (index < 0) return false;
-  state.pending.splice(index, 1); recordProcgenRecoveryCancellation(world, commandId, reason);
-  remember(state, { commandId, status: 'cancelled', appliedTick: null, reason });
+  const pending = state.pending[index]; state.pending.splice(index, 1); recordProcgenRecoveryCancellation(world, commandId, reason);
+  remember(state, { commandId, ...(pending.parameters.request?.junctionId ? { junctionId: pending.parameters.request.junctionId } : {}), status: 'cancelled', appliedTick: null, reason });
   return true;
 };
 const cancelPendingInterventions = (world, reason) => {
@@ -95,16 +109,17 @@ const applyInterventions = world => {
   if (!state.pending.length) return;
   const due = state.pending.filter(command => command.applyAtTick <= world.tickIndex).sort((a, b) =>
     a.applyAtTick - b.applyAtTick || ORIGIN_PRIORITY[a.origin] - ORIGIN_PRIORITY[b.origin] ||
+    (a.requestedBoundaryTick ?? a.applyAtTick) - (b.requestedBoundaryTick ?? b.applyAtTick) ||
     (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   state.pending = state.pending.filter(command => command.applyAtTick > world.tickIndex);
   if (!due.length) return;
   const actors = new Map(world.actors.map(actor => [actor.id, actor])), claimed = new Map();
   for (const command of due) {
-    const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : command.kind.startsWith('nuke') ? 'nuke:' + (command.target.laneId ?? 'all') : command.kind === 'terrain-edit' ? 'terrain-authoring' : 'release-policy';
+    const actor = actors.get(command.target.actorId), resource = actor ? `actor:${actor.id}` : command.kind.startsWith('nuke') ? 'nuke:' + (command.target.laneId ?? 'all') : ['terrain-edit', 'junction-request'].includes(command.kind) ? 'terrain-authoring' : command.kind === 'junction-define' ? 'junction-definition:' + command.parameters.definition.junctionId : 'release-policy';
     let status = 'rejected', reason = null, conflictCommandId = null, decision = null, terrainResult = null;
     if (command.target.generation !== world.generation) { status = 'stale'; reason = 'stale-generation'; }
     else if (command.expectedStateRevision && command.expectedStateRevision !== boundaryRevision) { status = 'stale'; reason = 'stale-state-revision'; }
-    else if (!['set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
+    else if (!['set-release-policy', 'nuke-lane', 'nuke-all', 'terrain-edit', 'junction-request', 'junction-define'].includes(command.kind) && (!actor || actor.removed || actor.disabled || actor.failureReason || actor.terminalReason)) {
       status = 'stale'; reason = 'stale-target';
     } else if (claimed.has(resource)) { reason = 'conflicting-command'; conflictCommandId = claimed.get(resource); }
     else {
@@ -120,7 +135,9 @@ const applyInterventions = world => {
         world.soundEvents._interventionCommandId = command.id;
         try {
           let accepted = false;
-          if (command.kind === 'terrain-edit') { terrainResult = applyTerrainPlan(planTerrainCommand(command.parameters.terrain, world), world); accepted = terrainResult.status === 'accepted'; }
+          if (command.kind === 'junction-request') { terrainResult = applyJunctionRequest(world, command.parameters.request, command); accepted = terrainResult.status === 'accepted'; }
+          else if (command.kind === 'junction-define') { terrainResult = applyJunctionDefinition(world, command.parameters.definition); accepted = terrainResult.status === 'accepted'; }
+          else if (command.kind === 'terrain-edit') { terrainResult = applyTerrainPlan(planTerrainCommand(command.parameters.terrain, world), world); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'assign-worker') accepted = world.assignWorker(actor, command.parameters.workerKind, command.parameters.targetX ?? actor.x);
           else if (command.kind === 'place-blocker') {
             if (actor.action === world.actions[State.WALKING] && world.hasGroundAt(actor.x, actor.y + 1)) {
@@ -146,7 +163,7 @@ const applyInterventions = world => {
           if (accepted) { status = 'accepted'; reason = 'applied'; claimed.set(resource, command.id); }
           else {
             if (mutated()) throw new Error('Rejected intervention mutated actor state.');
-            reason = terrainResult?.reason ?? 'ineligible-command'; if (actor) actor._physicalInterventionId = previousCommand;
+            status = terrainResult?.status ?? status; reason = terrainResult?.reason ?? 'ineligible-command'; if (actor) actor._physicalInterventionId = previousCommand;
           }
         } catch (error) {
           reason = 'adapter-exception';
@@ -157,27 +174,35 @@ const applyInterventions = world => {
         } finally { world.soundEvents._interventionCommandId = null; }
       }
     }
-    const receipt = { commandId: command.id, transactionId: command.transactionId, status, appliedTick: world.tickIndex,
+    if (status === 'waiting') state.pending.push(Object.freeze({ ...command, applyAtTick: world.tickIndex + 1, lastWaitReason: reason }));
+    if (status === 'waiting' && command.lastWaitReason === reason) continue;
+    const junctionId = command.parameters.request?.junctionId ?? command.parameters.definition?.junctionId;
+    const receipt = { commandId: command.id, ...(junctionId ? { junctionId } : {}), transactionId: command.transactionId, status, appliedTick: world.tickIndex,
       reason, conflictCommandId, origin: command.origin, target: command.target, decision, ...(terrainResult ? { terrain: terrainResult } : {}) };
     remember(state, receipt);
-    world.soundEvents.emitPhysicalFact({ kind: status === 'accepted' ? 'CommandApplied' : 'CommandRejected',
+    world.soundEvents.emitPhysicalFact({ kind: status === 'accepted' ? 'CommandApplied' : status === 'waiting' ? 'CommandWaiting' : 'CommandRejected',
       ...receipt, actorId: actor?.id ?? command.target.actorId ?? null, laneId: actor?.laneIndex ?? null });
   }
 };
 
-const prepareIntervention = (world, command) => {
+const prepareInterventionBatch = (world, commands) => {
+  if (!Array.isArray(commands) || !commands.length || commands.length > 128 || JSON.stringify(commands).length * 2 > 1048576) throw new Error('Intervention batch capacity exceeded.');
   const original = world.interventionState, tick = world.tickIndex, generation = world.generation;
   const sequence = original.sequence, pending = [...original.pending], receipts = [...original.receipts], recentIds = [...original.recentIds];
   const same = (left, right) => left.length === right.length && left.every((entry, index) => entry === right[index]);
   const staged = { ...original, pending: [...original.pending], receipts: [...original.receipts], recentIds: [...original.recentIds] };
-  const outcome = enqueueIntervention(Object.assign(Object.create(Object.getPrototypeOf(world)), world, { interventionState: staged }), command); let committed = false;
-  return Object.freeze({ outcome, commit() {
-    if (committed) return outcome;
+  const candidate = Object.assign(Object.create(Object.getPrototypeOf(world)), world, { interventionState: staged }), outcomes = [], admitted = [];
+  for (const command of commands) { const outcome = enqueueIntervention(candidate, command); outcomes.push(outcome); if (outcome.status === 'queued') admitted.push(staged.pending.find(entry => entry.id === outcome.commandId)); }
+  const accepted = outcomes.every(outcome => outcome.status === 'queued'); let committed = false;
+  return Object.freeze({ status: accepted ? 'prepared' : 'rejected', outcomes: Object.freeze(outcomes), commit() {
+    if (committed) return outcomes;
+    if (!accepted) return outcomes;
     if (world._disposed || world.interventionState !== original || original.sequence !== sequence || !same(original.pending, pending) || !same(original.receipts, receipts) || !same(original.recentIds, recentIds) || world.tickIndex !== tick || world.generation !== generation) throw new Error('Intervention proposal is stale.');
     committed = true; world.interventionState = staged;
-    if (outcome.status === 'queued') recordProcgenRecoveryCommand(world, staged.pending.find(entry => entry.id === outcome.commandId));
-    return outcome;
+    for (const entry of admitted) recordProcgenRecoveryCommand(world, entry);
+    return outcomes;
   } });
 };
+const prepareIntervention = (world, command) => { const proposal = prepareInterventionBatch(world, [command]); return Object.freeze({ outcome: proposal.outcomes[0], commit: () => proposal.commit()[0] }); };
 
-export { prepareIntervention, ORIGIN_PRIORITY, createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions };
+export { prepareInterventionBatch, prepareIntervention, ORIGIN_PRIORITY, createInterventionState, enqueueIntervention, cancelIntervention, cancelPendingInterventions, applyInterventions };

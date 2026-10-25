@@ -253,7 +253,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
                 causeId: record.payload.command?.id || null, kind: 'intervention-admission' }; break; }
             } else if (record.kind === 'mapping') {
               if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Mapping changed outside its recorded source boundary.', { firstSequence: record.sequence });
-              current.graph = validateCausalInstrumentGraph(record.payload);
+              current.graph = validateCausalInstrumentGraph(record.payload); world.configureTopologyRegions?.(current.graph.topologyRegions || []);
               mappingRevisions.add(current.graph.revision);
               if (mappingRevisions.size > 4096) throw journalError('replay-capacity', 'Mapping revision inventory reached its bound.', { firstSequence: record.sequence });
             }
@@ -265,11 +265,12 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               const input = record.payload;
               if (record.tick !== world.tickIndex || record.generation !== world.generation || input?.version !== 1) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
               if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+              else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
               else if (input.kind === 'instrument-performance' && performance) {
                 const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;
                 if (mapping && (mapping.revision <= current.graph.revision || mappingRevisions.size >= 4096)) throw journalError('unsupported-recorded-input', 'Performance mapping revision is stale or exceeds capacity.');
                 performance.apply(input.change);
-                if (mapping) { current.graph = mapping; mappingRevisions.add(mapping.revision); }
+                if (mapping) { current.graph = mapping; world.configureTopologyRegions?.(mapping.topologyRegions || []); mappingRevisions.add(mapping.revision); }
               }
               else if (input.kind === 'transport-state' && typeof input.playing === 'boolean' && initial.replay.version === 2) current.playing = input.playing;
               else if (!(input.kind === 'transport-state' && typeof input.playing === 'boolean' ||

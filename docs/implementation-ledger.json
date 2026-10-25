@@ -856,7 +856,8 @@
         "scripts/bench-terrain-topology.mjs"
       ],
       "commits": [
-        "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
+        "224d91e7fde8ff16e55ef9ec92121e161ccea9fc",
+        "68b954ff3e7b84b1ecc109172d917e6a9449291a"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -868,7 +869,7 @@
         {
           "id": "revision-qualified-topology-instruments",
           "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
-          "commit": null
+          "commit": "68b954ff3e7b84b1ecc109172d917e6a9449291a"
         }
       ]
     },
@@ -1922,16 +1923,33 @@
       "requirementUpdatedAt": "2026-10-24T13:26:23Z",
       "requirementSha256": "6503e5ac3029b0a870955106c37835dffe0b8f7cbb63e8b3247408fdf42fbc3a",
       "initialGap": "Chunk/checkpoint/branch journal, shared semantic archive validators and recorded take infrastructure implemented. Latest valid compact numeric checkpoint round-trip mismatch persists: archive parse reserves line.byteLength*8+1MiB while kernel charges nodes*32 too.",
-      "state": "implemented-validation-deferred",
+      "state": "in-progress",
       "source": [
-        "js/app/procgen/workstation/CausalTakeArchive.js"
+        "js/app/procgen/workstation/CausalTakeArchive.js",
+        "js/app/procgen/PhysicalJunctions.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/physical/PhysicalPorts.js",
+        "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "js/solver/PhysicalJunctionQualification.js"
       ],
-      "regressions": [],
+      "regressions": [
+        "test/procgen-physical-junctions.test.js",
+        "scripts/bench-physical-junctions.mjs"
+      ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity"
+      "increment": "causal-boundary-and-publication-integrity",
+      "increments": [
+        {
+          "id": "queued-physical-junctions",
+          "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1093,
@@ -2138,7 +2156,8 @@
         "scripts/bench-terrain-topology.mjs"
       ],
       "commits": [
-        "d7a2a95289548ff7097403178a5310fc72790e98"
+        "d7a2a95289548ff7097403178a5310fc72790e98",
+        "68b954ff3e7b84b1ecc109172d917e6a9449291a"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2146,7 +2165,7 @@
         {
           "id": "revision-qualified-topology-instruments",
           "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
-          "commit": null
+          "commit": "68b954ff3e7b84b1ecc109172d917e6a9449291a"
         }
       ]
     },
@@ -2976,11 +2995,18 @@
         "js/app/procgen/ProcgenLaneWorld.js",
         "js/actions/PhysicalWorkFacts.js",
         "js/actions/PhysicalContactFacts.js",
-        "js/app/procgen/workstation/physical/TonalInterpretation.js"
+        "js/app/procgen/workstation/physical/TonalInterpretation.js",
+        "js/app/procgen/PhysicalJunctions.js",
+        "js/app/procgen/workstation/physical/PhysicalPorts.js",
+        "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "js/solver/PhysicalJunctionQualification.js"
       ],
       "regressions": [
         "test/procgen-terrain-authoring.test.js",
-        "scripts/bench-terrain-authoring.mjs"
+        "scripts/bench-terrain-authoring.mjs",
+        "test/procgen-physical-junctions.test.js",
+        "scripts/bench-physical-junctions.mjs"
       ],
       "commits": [
         "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
@@ -2991,6 +3017,11 @@
           "id": "atomic-terrain-and-provenance",
           "summary": "Bounded read-only author admission, shadow patch publication through the canonical command queue, physical work span ancestry, material contact/field evidence and checkpoint state. Brush/history-branch UX and runtime qualification remain.",
           "commit": "224d91e7fde8ff16e55ef9ec92121e161ccea9fc"
+        },
+        {
+          "id": "queued-physical-junctions",
+          "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
+          "commit": null
         }
       ]
     },
@@ -3000,11 +3031,29 @@
       "requirementUpdatedAt": "2026-10-22T11:50:37Z",
       "requirementSha256": "bd285192d3274ce547c32cfa3050e9d181b5d71aecd908fdcbd7e78f729cadbe",
       "initialGap": "No PhysicalScoreFragment schema, port remapping/placement or qualification transaction.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/PhysicalJunctions.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/physical/PhysicalPorts.js",
+        "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "js/solver/PhysicalJunctionQualification.js"
+      ],
+      "regressions": [
+        "test/procgen-physical-junctions.test.js",
+        "scripts/bench-physical-junctions.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "queued-physical-junctions",
+          "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1182,
@@ -3047,19 +3096,35 @@
         "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
         "js/app/procgen/workstation/CausalMusicEngine.js",
         "js/app/procgen/workstation/CausalTake.js",
-        "js/app/midi-ui/RoutedInstrumentBackend.js"
+        "js/app/midi-ui/RoutedInstrumentBackend.js",
+        "js/app/procgen/PhysicalJunctions.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/physical/PhysicalPorts.js",
+        "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "js/solver/PhysicalJunctionQualification.js"
       ],
       "regressions": [
         "test/procgen-terrain-topology.test.js",
         "test/midi/routed-instrument-backend.test.js",
-        "scripts/bench-terrain-topology.mjs"
+        "scripts/bench-terrain-topology.mjs",
+        "test/procgen-physical-junctions.test.js",
+        "scripts/bench-physical-junctions.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "68b954ff3e7b84b1ecc109172d917e6a9449291a"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "revision-qualified-topology-instruments",
           "summary": "Bounded reference collision topology, overlap/anchor lineage, exact-local versus completed-tick excitation binding, authored existing-body pitch/onset damping, held retirement, capture coverage and checkpoint owners. Interactive overlays and runtime/performance/acoustic qualification remain.",
+          "commit": "68b954ff3e7b84b1ecc109172d917e6a9449291a"
+        },
+        {
+          "id": "queued-physical-junctions",
+          "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
           "commit": null
         }
       ]
@@ -3401,11 +3466,29 @@
       "requirementUpdatedAt": "2026-10-22T11:47:44Z",
       "requirementSha256": "f2d9346bff90cdc935f66c7b0c7b9d3fa82609ed5ed9e066f1d658c1cd59e071",
       "initialGap": "No PhysicalJunction configurations/request/safety/wait-for-boundary service. Ordinary action admission does not implement safe route switching.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/PhysicalJunctions.js",
+        "js/app/procgen/TerrainAuthoringAdapter.js",
+        "js/app/procgen/ProcgenInterventionCommands.js",
+        "js/app/procgen/workstation/physical/PhysicalPorts.js",
+        "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "js/solver/PhysicalJunctionQualification.js"
+      ],
+      "regressions": [
+        "test/procgen-physical-junctions.test.js",
+        "scripts/bench-physical-junctions.mjs"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "queued-physical-junctions",
+          "summary": "Canonical junction/port definitions, speculative command batches, bounded safe-boundary requests, mixed collision patches, expiry/cancel/fairness, project editor and pending/actual UI, checkpoint/take replay and real-runtime qualification adapter. Fragment remapping, authored branch scenes and deferred qualification remain.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1215,
