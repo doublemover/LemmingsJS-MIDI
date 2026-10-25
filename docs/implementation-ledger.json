@@ -3397,7 +3397,10 @@
         "js/app/procgen/workstation/CausalTake.js",
         "js/app/procgen/survey/ProcgenSurveyBrowserAssets.js",
         "js/app/procgen/survey/ProcgenSurveyCore.js",
-        "js/runtime/BrowserGenerationService.js"
+        "js/runtime/BrowserGenerationService.js",
+        "js/app/procgen/workstation/CausalObserverResources.js",
+        "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js"
       ],
       "regressions": [
         "test/resource-budget.test.js",
@@ -3408,15 +3411,17 @@
         "test/procgen-phrase-cargo.test.js",
         "test/physical-domain-editor.test.js",
         "scripts/bench-phrase-cargo.mjs",
-        "test/procgen-survey-browser-assets.test.js"
+        "test/procgen-survey-browser-assets.test.js",
+        "test/causal-observer-resources.test.js"
       ],
       "commits": [
         "90ff49f579c2f2bce24d006e51dc01c5f921dcab",
-        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
+        "03e36c9d2771537e523f4ec7ba1d86d8c38837ae"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
-      "remaining": "Global shared resource reservations/retirement are still required for physical observers including cargo and swarm; bounded local byte/owner caps are not a substitute.",
+      "remaining": "Shared live/re-performance interpreter and feedback owners now reserve state/staging, with estimates requiring deferred combined-scene qualification. Upstream canonical authoring must still pre-admit observer profile growth before graph publication; continued audit of auxiliary persistent owners remains development.",
       "increments": [
         {
           "id": "bounded-physical-feedback-and-layers",
@@ -3431,10 +3436,15 @@
         {
           "id": "revision-safe-admission-and-stream-expansion",
           "summary": "Exact target-entry/revision revalidation after every eviction callback including ABA; explicit generation transfer, deterministic priority/fair eviction and category/admission diagnostics. Four source streams claim aggregate capacity before owned copies, retain reservation through late cancellation producers, separately preflight/reserve bounded classic decoder and candidate expansion, explicitly release binary readers, and retire trial references before release. Regression coverage authored but unrun. Global physical observer integrations still incomplete.",
+          "commit": "03e36c9d2771537e523f4ec7ba1d86d8c38837ae"
+        },
+        {
+          "id": "shared-physical-observer-owners",
+          "summary": "Shared live/re-performance causal interpreter state and old/new staging admission; feature high-water ownership, immutable boundary snapshot reuse, bounded trace bytes, failed-retirement blocking, constructor unwind, quiescent replay disposal and separately reserved feedback controller. Disabled swarm continuation ownership fixed. Regressions authored unrun; upstream authoring admission still incomplete.",
           "commit": null
         }
       ],
-      "remainingDevelopment": "New physical feedback, formation, motif and activity owners have local caps but still need shared process-wide reservation and retirement accounting."
+      "remainingDevelopment": "Shared live/re-performance interpreter and feedback owners now reserve state/staging, with estimates requiring deferred combined-scene qualification. Upstream canonical authoring must still pre-admit observer profile growth before graph publication; continued audit of auxiliary persistent owners remains development."
     },
     {
       "number": 1163,

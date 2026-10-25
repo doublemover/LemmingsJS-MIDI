@@ -49,6 +49,11 @@ describe('semantic swarm reduction before backend capacity', () => {
     for (let tick = 1; tick <= 2000; tick++) reducer.reduce(batch(tick, [{ ...actors[0], birthCohortId: `epoch:${tick}` }]), [intent(0, tick), intent(0, tick, 'end')]);
     expect(reducer.snapshot().groups.length).to.be.at.most(3); for (let tick = 2001; tick <= 2004; tick++) reducer.reduce(batch(tick, []), []); expect(reducer.snapshot().groups).to.have.length(0); expect(reducer.snapshot().audible).to.have.length(0);
   });
+  it('keeps disabled-mode audible ownership within the continuation limit', () => {
+    const reducer = make(null), result = reducer.reduce(batch(1), actors.slice(0, 1024).map(actor => intent(actor.actorId)));
+    expect(result.summary.fallbackReasons).to.include('disabled-owner-capacity'); expect(reducer.snapshot().audible.length).to.be.at.most(512);
+    const restored = make(null); restored.restore(reducer.snapshot()); expect(restored.snapshot()).to.deep.equal(reducer.snapshot());
+  });
   it('leaves raw facts intact and captures the same semantic decisions when the delivery backend fails', () => {
     const graph = { version: 1, revision: 1, swarm: policy('densityCloud', { groupBy: ['cohort'] }), instruments: [{ id: 'contacts', sourceKind: 'ContactResolved', pitchCents: 6000, velocity01: 0.6, route: 'local', role: 'texture' }] }, a = createCausalMusicEngine({ getGraph: () => graph }), b = createCausalMusicEngine({ getGraph: () => graph, deliver() { throw new Error('backend rejected'); } });
     const source = batch(1); source.facts = actors.map((actor, index) => ({ kind: 'ContactResolved', actorId: actor.actorId, laneId: actor.laneId, causeKind: 'wall', eventId: `e:${index}`, causalSequence: index + 1 })); const reference = source.facts, before = JSON.stringify(source);

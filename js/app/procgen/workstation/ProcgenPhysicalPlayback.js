@@ -79,7 +79,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
     onReceipt: receipt => { latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
-  const engine = createCausalMusicEngine({ getGraph, scoreTimeline, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
+  let engine;
+  try { engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
@@ -87,6 +88,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
     deliver: (intents, batch) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
       for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
+  } catch (error) { disposed = true; error.retirement = retirement.retire([
+    { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
+  ]); throw error; }
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
     if (!backend || !manager || manager.retired || !manager.visible || !permitted() || !state?.enabled || !session?.getState().enabled) { if (displayKey) stopDisplay(); return; }
@@ -144,7 +149,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     }
     synchronizeLaneMix();
     try { refreshDisplay(batch); } catch { displayErrors++; }
-    return engine.processBatch(batch);
+    try { return engine.processBatch(batch); } catch (error) { error.playbackRetirement = stop(); throw error; }
   };
   const stop = () => {
     armEnabled = false; enableLease = null;
@@ -164,6 +169,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'dispatcher', run: () => dispatcher.dispose() },
+      { name: 'causal-observer-storage', run: () => engine.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);

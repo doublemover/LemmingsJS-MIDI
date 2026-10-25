@@ -135,7 +135,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           } }
         ]) },
         { name: 'checkpoint-source', run: () => {
-          const closeSource = () => { retireCausalRead(initialSource); initialSource = null; initial = null; performance = null; };
+          const closeSource = () => { engine?.dispose(); engine = null; generated.length = 0; expectedIntents.clear(); retireCausalRead(initialSource); initialSource = null; initial = null; performance = null; };
           if (!initialProducerPending && synchronousDisposal && !processing) {
             try { closeSource(); synchronousSourceDisposal = true; return; }
             catch (error) { actualSourceDisposal = Promise.reject(error); actualSourceDisposal.catch(() => {}); throw error; }
@@ -200,7 +200,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       clock = createProcgenPhysicalScoreClock();
       if (initial.timeline) clock.restore(initial.timeline);
       performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
-      engine = createCausalMusicEngine({ getGraph: () => world.physicalAuthoring?.graph || current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
+      engine = createCausalMusicEngine({ resourceBudget, getGraph: () => world.physicalAuthoring?.graph || current.graph, scoreTimeline: initial.replay.scoreTimeline ? clock : null, traceLimit: 0,
         getLaneState: source => performance?.getLaneState(source) || { available: true },
         getPerformanceState: () => performance?.snapshot() || null, getOnsetControls: source => performance?.getControls(source), getPhysicalControlKinds: source => performance?.getPhysicalControlKinds(source) || [] });
       engine.restore(initial.engine);

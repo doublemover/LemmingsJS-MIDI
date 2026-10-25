@@ -64,7 +64,7 @@ export const createSwarmReducer = () => {
       else if (held.size >= LIMITS.sources || heldBytes + record.bytes > LIMITS.bytes / 2) { reasons.add('held-capacity'); if (temporaryBytes + record.bytes <= LIMITS.bytes / 2) { temporaryBytes += record.bytes; temporary.push({ ...record, forcedStrike: true }); } unretained++; }
       else { held.set(intent.voiceId, record); heldBytes += record.bytes; }
     }
-    if (!config && heldBytes > LIMITS.bytes / 4) reasons.add('disabled-owner-capacity');
+    if (!config && (heldBytes > LIMITS.bytes / 4 || held.size > 512)) reasons.add('disabled-owner-capacity');
     if (!config && !changed && !reasons.size && [...audible.values()].every(record => record.intent.voiceId === record.members[0])) {
       for (const id of ended.keys()) audible.delete(`individual:${id}`);
       for (const record of held.values()) if (fresh.has(record.intent.voiceId)) audible.set(`individual:${record.intent.voiceId}`, { intent: record.intent, members: [record.intent.voiceId], key: 'disabled' });

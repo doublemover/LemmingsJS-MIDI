@@ -1553,3 +1553,31 @@ by a trial is borrowed only until disposal; results must be captured beforehand.
 Physical-observer shared-budget integration remains development, not a consequence
 of these local owner repairs. The added concurrency/lying-header/ABA/decoder tests
 have not been run; no peak-memory or combined-scene qualification is claimed.
+
+### Shared physical interpreter ownership
+
+Live playback and isolated causal re-performance now pass their shared budget to
+one interpreter owner before allocating observers. Its declared profile separates
+core/trace/swarm, spatial/tonal/rhythmic/action, encounter/motif/activity and cargo
+estimates. Enabling a feature admits its high-water profile **before** changing
+observer configuration; disabling it cannot pretend still-retained continuation
+state has disappeared. Snapshot/restore stages reserve old-plus-new overlap, and
+unchanged boundary snapshots reuse their immutable projection rather than copying
+all observers for every display/save consumer. The trace also has a byte ceiling,
+with omission diagnostics, independently of its row limit.
+
+The retained snapshot is borrowed until the next engine mutation/disposal; any
+longer-lived checkpoint/archive owner must account its own retained copy. Profiles
+are explicitly estimates over local bounded state, not browser heap measurements.
+Failed staging retirement blocks further use rather than granting a new lease.
+Playback construction unwinds earlier audio owners on interpreter admission failure;
+processing faults stop audio ownership without changing authoritative physics.
+Re-performance waits for processing quiescence and world retirement before dropping
+observer storage. Feedback controllers separately admit their bounded state, plans,
+capture history and staging and expose retirement receipts. Disabled swarm reduction
+can no longer create an audible-owner list larger than its continuation schema.
+
+Broad combined-scene estimate qualification is deferred. Pre-admitting *all* observer
+profile growth as part of the upstream canonical authoring transaction, rather than
+at interpretation of the newly accepted graph, remains development work; the graph
+is not automatically rewritten or physics thinned when that admission is refused.

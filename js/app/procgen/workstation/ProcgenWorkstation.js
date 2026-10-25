@@ -881,7 +881,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       } });
     void physicalPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
-    if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
+    if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
     const markPhysicalGap = (batch, reason) => {
       if (!causalTake) return;

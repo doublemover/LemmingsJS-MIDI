@@ -1,3 +1,5 @@
+import { createOwnedResourceReservation } from '../../../resources/OwnedResourceReservation.js';
+import { createProcgenRetirementScope } from '../../ProcgenRetirement.js';
 import { plain, identity, integer, copy, freeze } from './PhysicalSchema.js';
 import { validatePhysicalFeedback, validateFeedbackCausality, planPhysicalFeedback, FEEDBACK_COMMANDS } from './PhysicalFeedbackSchema.js';
 import { prepareInterventionBatch } from '../../ProcgenInterventionCommands.js';
@@ -109,7 +111,9 @@ export function evaluatePhysicalFeedback(world, graph, batch, analysis, previous
   for (const fact of batch.facts) if (['CommandApplied', 'CommandRejected', 'CommandWaiting'].includes(fact.kind) && commandIndex.has(fact.commandId)) { const owner = commandIndex.get(fact.commandId).owner; trace(state, { tick: batch.tick, owner, commandId: fact.commandId, status: fact.status, reason: fact.reason, resultingFactIds: (fact.physicalEventIds || []).slice(0, 64) }); const rule = state.rules.find(value => value.key === commandIndex.get(fact.commandId).causality.rulePath.at(-1)); if (rule) rule.status = fact.status === 'accepted' ? 'applied' : fact.status; }
   validatePhysicalFeedbackState(state); return { state, commands, work };
 }
-export function createPhysicalFeedbackController({ world, getGraph, recordInput = () => ({ status: 'accepted' }), onStatus = () => {}, onFailure = () => {} }) {
+export function createPhysicalFeedbackController({ world, getGraph, resourceBudget = null, recordInput = () => ({ status: 'accepted' }), onStatus = () => {}, onFailure = () => {} }) {
+  const resource = createOwnedResourceReservation({ budget: resourceBudget, owner: 'physical-feedback', kind: 'feedback-state-plans-captures-and-staging', category: 'candidate', bytes: 8 * 1048576 });
+  const retirement = createProcgenRetirementScope();
   let armed = false, staged = null, disposed = false, pendingDisarm = false, fault = null, dry = null, lastPlan = null, serial = 0, captures = [], captureBytes = 0;
   const publish = (state, commands = [], cancelIds = []) => {
     let proposal = null, outcomes = [];
@@ -134,13 +138,17 @@ export function createPhysicalFeedbackController({ world, getGraph, recordInput 
       lastPlan = { work: result.work, proposals: result.commands, state: copy(result.state) };
     } catch (error) { fault = error.message; armed = false; try { disarm(); } catch { /* A refused journal keeps the already-recorded queue frozen for inspection. */ } onStatus(`Physical feedback disarmed: ${error.message}`); onFailure(error); }
   };
-  const unsubscribe = subscribeProcgenCommittedBoundary(world, flush);
+  let unsubscribe; try { unsubscribe = subscribeProcgenCommittedBoundary(world, flush); } catch (error) { try { resource.release(); } catch (releaseError) { error.retirementError = releaseError; } throw error; }
   return { observe(batch, analysis) { if (!disposed && !fault) { captures = captures.filter(value => value.generation === batch.generation); captureBytes = captures.reduce((sum, value) => sum + value.bytes, 0); for (const fact of batch.facts) if (fact.requestedCommand && ['CommandApplied', 'CommandRejected'].includes(fact.kind) && ['manual', 'live-controller'].includes(fact.origin)) { const bytes = JSON.stringify(fact).length * 2; if (bytes > 32768) continue; while (captures.length && (captures.length >= 64 || captureBytes + bytes > 131072)) captureBytes -= captures.shift().bytes; captures.push({ tick: batch.tick, generation: batch.generation, fact, bytes }); captureBytes += bytes; } staged = { batch, analysis }; } }, flush,
     arm({ mode = 'live', epoch } = {}) { if (disposed || world._stepping || world._failedTick || !['live', 'regenerate'].includes(mode) || !identity(epoch)) throw new Error('Explicit physical feedback arming needs a stable boundary and epoch.'); const graph = getGraph(); if (!graph.feedback) throw new Error('No authored physical feedback.'); const state = createPhysicalFeedbackState(epoch, world.generation, world.tickIndex); state.mode = 'live'; const result = publish(state, [], cancelOwned()); dry = null; staged = null; pendingDisarm = false; fault = null; armed = true; return { ...result, mode, plan: planPhysicalFeedback(graph.feedback) }; },
     disarm,
     muteLayer(layerId, mute = true) { const owner = `layer:${layerId}`; if (!getGraph().feedback?.layers.some(layer => layer.id === layerId)) throw new Error('Unknown intervention layer.'); const state = copy(world.physicalFeedback || createPhysicalFeedbackState('initial', world.generation, world.tickIndex)); state.lastTick = world.tickIndex; state.generation = world.generation; state.muted = [...new Set([...state.muted.filter(value => value !== owner), ...(mute ? [owner] : [])])]; return publish(state, [], mute ? cancelOwned(owner) : []); },
     capture({ commandId, layerId, revision = 1, anchor, binding, eligibilityTicks = 0 }) { const captured = captures.findLast(value => value.generation === world.generation && value.fact.commandId === commandId), fact = captured?.fact; if (!fact?.requestedCommand || !['manual', 'live-controller'].includes(fact.origin) || !FEEDBACK_COMMANDS.includes(fact.requestedCommand.kind)) throw new Error('Choose an actual captured human command receipt in this generation.'); const input = { version: 1, conductors: [], layers: [{ id: layerId, revision, enabled: true, rules: [{ id: 'captured', revision: 1, source: anchor, target: binding, command: { kind: fact.requestedCommand.kind, parameters: fact.requestedCommand.parameters, ...(fact.requestedCommand.probability ? { probability: fact.requestedCommand.probability } : {}) }, eligibilityTicks }], humanCapture: { version: 1, anchorChoice: 'explicit-user-binding', requested: fact.requestedCommand, outcome: { status: fact.status, reason: fact.reason, physicalEventIds: fact.physicalEventIds || [] }, sourceEventId: fact.eventId, sourceTick: captured.tick } }] }; return validatePhysicalFeedback(input, getGraph()).layers[0]; },
-    diagnostics: () => freeze({ armed, fault, capturableCommands: captures.map(value => ({ commandId: value.fact.commandId, kind: value.fact.requestedCommand.kind, status: value.fact.status, tick: value.tick, generation: value.generation })), mode: armed ? 'live' : 'dry-run', plan: planPhysicalFeedback(getGraph().feedback), latest: copy(lastPlan), state: copy(armed ? world.physicalFeedback : dry) }),
-    dispose() { if (disposed) return; try { disarm(); } finally { disposed = true; armed = false; staged = null; captures = []; captureBytes = 0; unsubscribe(); } }
+    diagnostics: () => disposed ? freeze({ disposed, retirement: retirement.getReceipt()?.outcome, resources: resource.receipt() }) : freeze({ resources: resource.receipt(), armed, fault, capturableCommands: captures.map(value => ({ commandId: value.fact.commandId, kind: value.fact.requestedCommand.kind, status: value.fact.status, tick: value.tick, generation: value.generation })), mode: armed ? 'live' : 'dry-run', plan: planPhysicalFeedback(getGraph().feedback), latest: copy(lastPlan), state: copy(armed ? world.physicalFeedback : dry) }),
+    dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); return retirement.retire([
+      { name: 'feedback-disarm', run: disarm },
+      { name: 'feedback-listener', run: () => { disposed = true; armed = false; staged = dry = lastPlan = null; captures = []; captureBytes = 0; unsubscribe(); } },
+      { name: 'feedback-storage', run: () => resource.release() }
+    ]); }
   };
 }
