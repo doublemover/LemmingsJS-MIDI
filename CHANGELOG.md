@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Interpret real crowd arrivals, work phases, blocker pairs and flight arcs with actor-owned sustained responses, explicit grouping ancestry and portable estimator state.
+
 - Add indexed world-space pickup geometry, actor-owned occupancy, stable birth/crew ensembles and marker-qualified route coordinates with portable causal boundary state.
 
 - Journal completed physical steps and interventions for incremental recovery, cooperatively capture quiescent checkpoint bases, and atomically commit SHA-256-verified compressed pages with bounded replay/read ownership.

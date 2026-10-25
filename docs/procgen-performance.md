@@ -164,3 +164,31 @@ causal engine checkpoints; take preflight requests physical-domain boundary data
 The implementation is bounded and source-reviewed, **not runtime-qualified**.
 `bench-physical-query-plan.mjs` implements an all-gates reference comparison and
 16/256/1024-gate candidate/tail profile; it has deliberately not been executed.
+
+### Physical rhythm responses
+
+`physical/RhythmicResponses.js` interprets observed arrivals, canonical blocker
+contacts, actual work operations and flight arcs. Arrival estimators use simulation
+ticks (fractional pickup interpolation is labeled), keep opposing streams apart,
+and retain typed route-distance unknowns rather than substituting screen distance.
+A declared density clamp suppresses arrivals without filling gaps. Local one-shot
+gates can follow measured intervals; the current four-second sink contract reports
+any duration truncation in the sink receipt instead of rewriting source timing.
+
+Work facts now distinguish numeric action frame, operation phase, actual completed
+cycle ordinal, attempted/changed cells, protected work and builder warnings.
+Action cycles are counted at real frame wrap, not inferred from SFX count. The
+three initial dig rows remain three facts; phase grouping preserves all source IDs.
+Scraped work owns one action-scoped voice and coalesces unchanged intensity.
+Blocker response state can alternate, mirror or apply a modulo motif, with separate
+walker/blocker roles rooted in one canonical contact and no physical fan-out.
+
+Flight state begins at the actual falling transition, carries through parachute
+opening (including upward travel), and ends on safe landing, interruption or
+terminal loss. It records distance proxies, not mass/energy claims. Continuous
+pitch uses bounded actor-owned updates; landing strikes are separately selectable.
+All estimator, motif and arc interpretation state travels with causal checkpoints.
+Candidate restores validate all interpretation owners before swapping live state.
+These regressions are authored but not run; acoustic, dense-scene and lifecycle
+qualification remains deferred. Ratio-fold/delayed arrival modes and the deeper
+performer editors are separate remaining implementation work, not claimed here.

@@ -523,6 +523,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       contactSpans: physical?.active?.filter(voice => voice.lifetimeScope === 'contactSpan') || [],
       ...(physical?.performanceInputs ? { 'instrument-performance': physical.performanceInputs } : {}),
       ...(physical?.physicalDomain ? { 'physical-domain': physical.physicalDomain } : {}),
+      ...(physical?.rhythmicResponses ? { 'rhythmic-responses': physical.rhythmicResponses } : {}),
       timeline: physicalScoreClock.snapshot() };
   };
   const causalTakeState = () => Object.freeze({ recording: !!causalTake && !causalTake.status().captureStopped,

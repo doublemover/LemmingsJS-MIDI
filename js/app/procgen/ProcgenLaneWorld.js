@@ -1,3 +1,4 @@
+import { observePhysicalFlightStep } from '../../actions/PhysicalFlightFacts.js';
 import { recordBirthCohortSlot, completedBirthCohorts } from './ProcgenBirthCohorts.js';
 import { recordProcgenRecoveryStep, getProcgenRecoveryJournal } from './workstation/ProcgenRecoveryJournal.js';
 import { physicalContactForMotion } from '../../actions/PhysicalMotionFacts.js';
@@ -142,6 +143,7 @@ class ProcgenLaneWorld {
     this.soundEvents.laneIndex = 0;
     Object.defineProperty(this, '_authoritativeActors', { value: new WeakSet(), writable: true, configurable: true });
     const runtime = { soundEvents: this.soundEvents, physicalFacts: {
+      tick: () => this.tickIndex,
       enabled: actor => !!this.soundEvents._tick && this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
       observing: actor => this.soundEvents.onBatch.handlers.size > 0 && this._authoritativeActors.has(actor),
       canMutate: actor => !this._authoritativeActors.has(actor) || !this._stepping || !!this.soundEvents._tick,
@@ -944,6 +946,7 @@ class ProcgenLaneWorld {
         const previousX = actor.x, previousY = actor.y, previousAction = actor.action, motionActionInstanceId = actor._physicalActionInstanceId;
         this._processingLane = actor.laneIndex; this._processingActorId = actor.id; this._physicalWorkBounds = null;
         const next = actor.process(this);
+        observePhysicalFlightStep(actor, previousX, previousY);
         this._synchronizeLane(actor);
         this.soundEvents.laneIndex = actor.laneIndex;
         if (observePhysical && (actor.x !== previousX || actor.y !== previousY) && actor._physicalMotionFactTick !== this.tickIndex) {

@@ -318,13 +318,15 @@
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
-          "commit": null
+          "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
         }
       ]
     },
@@ -334,11 +336,25 @@
       "requirementUpdatedAt": "2026-10-22T11:34:35Z",
       "requirementSha256": "2e9d55b99cf27789eba52dca0c010f090e3cdd370cbdea51efd5db056e973152",
       "initialGap": "No CrowdInterval instrument, arrival/neighbor estimator, route metric or spacing-derivative mapping exists in the actual graph validator/engine. Population spacing and simple gates are foundations, not this instrument.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/actions/PhysicalFlightFacts.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/app/procgen/workstation/physical/RhythmicResponses.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-rhythmic-responses.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-rhythm-and-flight-responses",
+          "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 991,
@@ -357,13 +373,15 @@
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
-          "commit": null
+          "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
         }
       ]
     },
@@ -373,11 +391,25 @@
       "requirementUpdatedAt": "2026-10-22T08:41:31Z",
       "requirementSha256": "fe19e18de80413050297649571c44888fc6fa48b1d571a499e6c907e4968cba1",
       "initialGap": "Canonical ContactResolved facts exist, but there is no RicochetPatch blocker-local alternating/modulo/mirrored motif state or dual-role walker/blocker response state in the causal graph/engine.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/actions/PhysicalFlightFacts.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/app/procgen/workstation/physical/RhythmicResponses.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-rhythmic-responses.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-rhythm-and-flight-responses",
+          "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 993,
@@ -621,11 +653,25 @@
       "requirementUpdatedAt": "2026-10-22T11:49:58Z",
       "requirementSha256": "47753b64350e1d2aba0a9f2ac338488d5742c628227a7e9e3f10842d3569ed95",
       "initialGap": "Authoritative TerrainWorkCommitted operation facts and operation-kind/changed-only one-shot mappings exist. No WorkCycleInstrument phaseTriggers/cycleAccent/materialResponse, per-phase grouping, scraped continuous mode or steel/zero-work articulation selection contract is implemented.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/actions/PhysicalFlightFacts.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/app/procgen/workstation/physical/RhythmicResponses.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-rhythmic-responses.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-rhythm-and-flight-responses",
+          "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1012,
@@ -707,11 +753,25 @@
       "requirementUpdatedAt": "2026-10-22T09:00:44Z",
       "requirementSha256": "9a869628081372fb042c6ba31ce0b5f933e1403f28f91c79bf3abc105a5e1a06",
       "initialGap": "No FlightArcState/ArcInstrument provenance tracker or arc/landing-specific continuous pitch mapping is present in the validated causal graph. Generic motion/action facts are only foundations.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/actions/PhysicalFlightFacts.js",
+        "js/actions/PhysicalWorkFacts.js",
+        "js/app/procgen/workstation/physical/RhythmicResponses.js",
+        "js/app/procgen/workstation/CausalMusicEngine.js"
+      ],
+      "regressions": [
+        "test/procgen-rhythmic-responses.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increments": [
+        {
+          "id": "physical-rhythm-and-flight-responses",
+          "summary": "Actual flight arc and numeric work-cycle provenance; bounded arrival, work grouping/scrape, blocker dual-role and continuous arc mappings; portable estimator state and per-sink physical-duration loss receipts. Full performer UI, metric/ratio variants and qualified scene matrix still pending.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1018,
@@ -1261,13 +1321,15 @@
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
-          "commit": null
+          "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
         }
       ]
     },
@@ -2745,13 +2807,15 @@
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
-          "commit": null
+          "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
         }
       ]
     },
@@ -2784,13 +2848,15 @@
         "test/procgen-spatial-instruments.test.js",
         "scripts/bench-physical-query-plan.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2705c467aa46b5fb99fb40d652a4638350f06ca2"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "indexed-physical-observation-domain",
           "summary": "World-space indexed pickups and occupancy; stable birth/cohort/crew provenance; bounded completed-source ensembles; marker-qualified route atlas and portable engine/take state. Remaining authoring UI, route ratio presentation, transfer voice policy and complete edge qualification stay explicit.",
-          "commit": null
+          "commit": "2705c467aa46b5fb99fb40d652a4638350f06ca2"
         }
       ]
     },

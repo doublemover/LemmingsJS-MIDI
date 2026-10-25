@@ -2,7 +2,7 @@ import { normalizeLaneHeight } from './ProcgenLaneGeometry.js';
 import { SoundEventBus } from '../../game/SoundEvents.js';
 import { EventHandler } from '../../util/EventHandler.js';
 
-const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off', 'ActorTerminated', 'ActionExited', 'ContactSpanEnded']);
+const TERMINAL_TYPES = new Set(['lemming-exit', 'lemming-splat', 'lemming-explode', 'lemming-drown', 'lemming-fire', 'lemming-fell-off', 'ActorTerminated', 'ActionExited', 'ContactSpanEnded', 'FlightArcEnded']);
 const validatePhysicalEventIdentity = value => {
   if (value?.version !== 1 || !Number.isSafeInteger(value.causalSequence) || value.causalSequence < 0 || value.causalSequence >= Number.MAX_SAFE_INTEGER ||
       !Number.isSafeInteger(value.legacySequence) || value.legacySequence < 0 || value.legacySequence >= Number.MAX_SAFE_INTEGER ||

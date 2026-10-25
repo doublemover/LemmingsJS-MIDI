@@ -94,6 +94,8 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
           frame = decision.targetFrame; repair = decision.repair || null;
         }
         let outcome;
+        const physicalDuration = Number.isFinite(intent.responseGateTicks) && Number.isFinite(intent.scoreTime?.sourceTickDurationMs) ? intent.responseGateTicks * intent.scoreTime.sourceTickDurationMs / 1000 : null;
+        const durationLoss = physicalDuration != null && physicalDuration > 4 ? Object.freeze({ kind: 'gate-duration-cap', requestedSeconds: physicalDuration, representedSeconds: 4 }) : null;
         try {
           const identity = executionFor(sink, epoch, intent.generation);
           if (!identity.execution) outcome = identity;
@@ -105,7 +107,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
             ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
             : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
-            ? { mode: 'one-shot', tailSeconds: oneShotTailSeconds, seconds: releaseSeconds }
+            ? { mode: 'one-shot', tailSeconds: physicalDuration == null ? oneShotTailSeconds : Math.min(4, Math.max(0, physicalDuration)), seconds: releaseSeconds, ...(physicalDuration != null ? { durationSource: 'physical-interval' } : {}) }
             : { seconds: releaseSeconds }, frame, identity.execution);
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
@@ -113,7 +115,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

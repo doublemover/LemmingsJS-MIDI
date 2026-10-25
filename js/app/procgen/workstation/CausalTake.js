@@ -14,8 +14,8 @@ const validateCaptureProfile = value => {
 };
 const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v3',
   factKinds: ['MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
-    'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain'] });
+    'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
+  descriptorKinds: ['movement-path', 'work-phase-v2'], stateKinds: ['voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -73,11 +73,13 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     worldId = batch.worldId; firstTick ??= batch.tick; lastTick = batch.tick; lastGeneration = batch.generation; lastSequence = sequence;
     if (batch.completeness?.status !== 'complete') addGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'incomplete-source-batch', dropped: batch.completeness?.dropped ?? null });
-    let missingMovementPath = false;
+    let missingMovementPath = false, missingWorkPhase = false;
     for (const fact of batch.facts) {
       if (fact.kind) observedFactKinds.add(fact.kind);
+      if (fact.kind === 'TerrainWorkCommitted' && fact.workVersion !== 2) missingWorkPhase = true;
       if (fact.kind === 'MotionCommitted' && fact.physicalPayload?.pathEvidence !== 'committed-coordinate-write') missingMovementPath = true;
     }
+    if (missingWorkPhase) addGap({ kind: 'work-phase-v2', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'legacy-operation-phase-not-action-frame' });
     if (missingMovementPath) addGap({ kind: 'movement-path', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'endpoint-only-evidence' });
     for (const intent of intents) intentKinds.add(intent.kind);
@@ -135,10 +137,16 @@ const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
   for (const instrument of valid.instruments) {
-    if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); add('physical-domain', instrument.id, 'state'); }
+    if (instrument.response) {
+      add('rhythmic-responses', instrument.id, 'state');
+      const sources = instrument.response.type === 'crowdInterval' ? ['MotionCommitted', 'ActorBorn'] : instrument.response.type === 'flightArc' ? ['FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded'] : instrument.response.type === 'workCycle' ? ['TerrainWorkCommitted', 'ActionCycleCompleted', 'ActionExited'] : ['ContactResolved', 'ActorTerminated'];
+      for (const source of sources) add(source, instrument.id, 'fact');
+      if (instrument.response.type === 'crowdInterval') add('physical-domain', instrument.id, 'state');
+      if (instrument.response.type === 'workCycle') add('work-phase-v2', instrument.id, 'descriptor');
+    } else if (['PickupCrossing', 'RouteLap'].includes(instrument.sourceKind)) { add('MotionCommitted', instrument.id, 'fact'); add('physical-domain', instrument.id, 'state'); }
     else add(instrument.sourceKind, instrument.id, 'fact');
     if (instrument.ensembleId) { add('physical-domain', instrument.id, 'state'); add('ActorBorn', instrument.id, 'fact'); }
-    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain) add('voices', instrument.id, 'state');
+    if (instrument.sourceKind === 'ActionEntered' || instrument.sourceKind === 'ContactSpanBegan' || instrument.sourceKind === 'PickupCrossing' || instrument.articulation?.sustain || instrument.response?.sustain || instrument.response?.mode === 'scrape') add('voices', instrument.id, 'state');
     if (instrument.articulation) {
       add('travel', instrument.id, 'state');
       if (instrument.articulation.metric === 'segment-path') add('movement-path', instrument.id, 'descriptor');
