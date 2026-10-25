@@ -226,7 +226,8 @@
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -239,7 +240,7 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
-          "commit": null
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
         }
       ]
     },
@@ -552,7 +553,8 @@
         "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
-        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1"
+        "1337b809df9ca3e46ac0f5d56387e52ae645d6f1",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increment": "typed-control-and-gesture-ownership",
@@ -561,7 +563,7 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
-          "commit": null
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
         }
       ]
     },
@@ -2001,7 +2003,8 @@
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2019,7 +2022,7 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
-          "commit": null
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
         }
       ]
     },
@@ -2309,16 +2312,25 @@
       "initialGap": "Atomic immutable completed batches, frozen snapshot and subscriber quarantine implemented. Latest overflow continuation gap remains: incomplete batch tears down and returns; later complete Motion/ContactSpanUpdated batches do not reestablish held action state or expose mandatory recover/rearm.",
       "state": "implemented-validation-deferred",
       "source": [
-        "js/app/procgen/workstation/CausalMusicEngine.js"
+        "js/app/procgen/workstation/CausalMusicEngine.js",
+        "js/app/procgen/ProcgenSoundEventBus.js"
       ],
       "regressions": [
-        "test/procgen-causal-music-engine.test.js"
+        "test/procgen-causal-music-engine.test.js",
+        "test/procgen-physical-batch.test.js"
       ],
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98"
       ],
       "validation": "deferred-by-request",
-      "increment": "causal-boundary-and-publication-integrity"
+      "increment": "causal-boundary-and-publication-integrity",
+      "increments": [
+        {
+          "id": "bounded-nested-physical-receipts",
+          "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
+          "commit": null
+        }
+      ]
     },
     {
       "number": 1115,
@@ -3005,7 +3017,8 @@
         "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3017,7 +3030,7 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
-          "commit": null
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
         }
       ]
     },
@@ -3045,7 +3058,8 @@
         "scripts/bench-physical-authoring-history.mjs"
       ],
       "commits": [
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3057,7 +3071,7 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
-          "commit": null
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
         }
       ]
     },
@@ -3148,7 +3162,8 @@
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
         "js/app/procgen/workstation/CausalReperformance.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
-        "js/app/procgen/workstation/PhysicalAuthoringHistory.js"
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/ProcgenSoundEventBus.js"
       ],
       "regressions": [
         "test/procgen-terrain-authoring.test.js",
@@ -3161,13 +3176,15 @@
         "test/physical-authoring-transaction.test.js",
         "test/physical-authoring-history.test.js",
         "test/procgen-physical-authoring-controller.test.js",
-        "scripts/bench-physical-authoring-history.mjs"
+        "scripts/bench-physical-authoring-history.mjs",
+        "test/procgen-physical-batch.test.js"
       ],
       "commits": [
         "224d91e7fde8ff16e55ef9ec92121e161ccea9fc",
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
         "6357fa75948baaf475a9da927f6a5eca4143686c",
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3194,6 +3211,11 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
+        },
+        {
+          "id": "bounded-nested-physical-receipts",
+          "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
           "commit": null
         }
       ]
@@ -3221,7 +3243,8 @@
         "js/app/procgen/workstation/ProcgenRecoveryJournal.js",
         "js/app/procgen/workstation/CausalReperformance.js",
         "js/app/procgen/workstation/PhysicalAuthoringView.js",
-        "js/app/procgen/workstation/PhysicalAuthoringHistory.js"
+        "js/app/procgen/workstation/PhysicalAuthoringHistory.js",
+        "js/app/procgen/ProcgenSoundEventBus.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
@@ -3232,12 +3255,14 @@
         "test/physical-authoring-transaction.test.js",
         "test/physical-authoring-history.test.js",
         "test/procgen-physical-authoring-controller.test.js",
-        "scripts/bench-physical-authoring-history.mjs"
+        "scripts/bench-physical-authoring-history.mjs",
+        "test/procgen-physical-batch.test.js"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
         "6357fa75948baaf475a9da927f6a5eca4143686c",
-        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e"
+        "5fe9e53cbb850e5b7fd3d3f168bc3ed763f99a4e",
+        "ca7a899ff9652ce7da596c549fdc0051118526b9"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -3259,6 +3284,11 @@
         {
           "id": "physical-authoring-surface-and-history",
           "summary": "Paused world-space brush, typed capture/placement and explicit-binding preview surface; queued one-boundary application, cooperative checkpoint-backed Undo/Redo with source/document fences, pinned accounting and cancellation acknowledgement. Full source-range/acoustic qualification and advanced fragment layer/motif composition remain deferred or implementation-pending as their owners are added.",
+          "commit": "ca7a899ff9652ce7da596c549fdc0051118526b9"
+        },
+        {
+          "id": "bounded-nested-physical-receipts",
+          "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
           "commit": null
         }
       ]
@@ -3686,14 +3716,16 @@
         "js/solver/PhysicalJunctionQualification.js",
         "js/app/procgen/workstation/PhysicalScoreFragment.js",
         "js/solver/PhysicalFragmentQualification.js",
-        "js/app/procgen/TerrainScoreLayer.js"
+        "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/ProcgenSoundEventBus.js"
       ],
       "regressions": [
         "test/procgen-physical-junctions.test.js",
         "scripts/bench-physical-junctions.mjs",
         "test/physical-score-fragment.test.js",
         "scripts/qualify-physical-fragment-transforms.mjs",
-        "scripts/bench-physical-fragments.mjs"
+        "scripts/bench-physical-fragments.mjs",
+        "test/procgen-physical-batch.test.js"
       ],
       "commits": [
         "5abfc84cddaf0b4c10e8cf3df89c3c8abf044075",
@@ -3710,6 +3742,11 @@
           "id": "portable-physical-score-fragments",
           "summary": "Bounded immutable capture, explicit dependency bindings, fresh object namespaces, canonical library/instance ancestry, typed parameters, safe transform candidates, readonly terrain/port dry runs and real-runtime qualification producers. Atomic graph/terrain instance publication and authoring Undo/UI still being implemented; all qualification deferred.",
           "commit": "6357fa75948baaf475a9da927f6a5eca4143686c"
+        },
+        {
+          "id": "bounded-nested-physical-receipts",
+          "summary": "Source review found the old depth-4/512-node copier could censor supported nested terrain receipts. Added explicit larger complex-fact envelopes plus aggregate byte admission and separate terminal credits; no runtime validation performed.",
+          "commit": null
         }
       ]
     },

@@ -10,20 +10,21 @@ const validatePhysicalEventIdentity = value => {
   return value;
 };
 const copyFact = source => {
-  const seen = new Set(), budget = { remaining: 512 };
+  const seen = new Set(), extended = ['CommandApplied', 'CommandRejected', 'TerrainWorkCommitted'].includes(source?.kind), budget = { remaining: extended ? 4096 : 512, bytes: 0, maximumBytes: extended ? 131072 : 32768 };
+  const account = bytes => { budget.bytes += bytes; if (budget.bytes > budget.maximumBytes) throw new Error('Physical fact byte budget exceeded.'); };
   const copy = (value, depth) => {
-    if (--budget.remaining < 0 || depth > 4) throw new Error('Physical fact exceeds its data budget.');
-    if (value == null || typeof value === 'boolean') return value;
+    if (--budget.remaining < 0 || depth > 8) throw new Error('Physical fact exceeds its data budget.');
+    if (value == null || typeof value === 'boolean') { account(8); return value; }
     if (typeof value === 'number') {
       if (!Number.isFinite(value)) throw new Error('Physical fact contains a nonfinite number.');
-      return value;
+      account(8); return value;
     }
     if (typeof value === 'string') {
       if (value.length > 4096) throw new Error('Physical fact contains an oversized string.');
-      return value;
+      account(16 + value.length * 2); return value;
     }
     if (typeof value !== 'object' || seen.has(value)) throw new Error('Physical fact contains unsupported data.');
-    seen.add(value);
+    account(32); seen.add(value);
     let result;
     if (Array.isArray(value)) {
       if (value.length > 128) throw new Error('Physical fact contains an oversized array.');
@@ -33,13 +34,13 @@ const copyFact = source => {
       result = {};
       for (const [key, item] of Object.entries(value)) {
         if (['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('Physical fact contains an unsafe key.');
-        if (item !== undefined) result[key] = copy(item, depth + 1);
+        if (item !== undefined) { account(key.length * 2 + 8); result[key] = copy(item, depth + 1); }
       }
     }
     seen.delete(value);
     return Object.freeze(result);
   };
-  return copy(source, 0);
+  const value = copy(source, 0); return { value, bytes: budget.bytes + 256 };
 };
 
 // Musical subscribers are outside the physics transaction. A faulty output
@@ -71,14 +72,14 @@ class ProcgenSoundEventBus extends SoundEventBus {
     this.onEvent = new IsolatedEventHandler(onError);
     this.onBatch = new IsolatedEventHandler(onError, true);
     this._tick = null; this._sealed = [];
-    this._causalSequence = 0; this._maxFacts = 4096; this._maxTerminalFacts = 256;
+    this._causalSequence = 0; this._maxFacts = 4096; this._maxTerminalFacts = 256; this._maxFactBytes = 8 * 1048576; this._maxTerminalFactBytes = 524288; this._lastFactBudget = null;
     this.identityCoverage = 'complete';
   }
   beginTick({ worldId, generation, tick, terrainRevisionBefore, sourceTimeMs = null, tickDurationMs = null, ordinal = 0 }) {
     if (this._tick) throw new Error('A physical tick is already being collected.');
     this._sealed = [];
     this._tick = { worldId, generation, tick, terrainRevisionBefore, sourceTimeMs, tickDurationMs,
-      facts: [], terminalFacts: [], dropped: 0, ordinal };
+      facts: [], terminalFacts: [], factBytes: 0, terminalBytes: 0, dropped: 0, ordinal };
   }
   emit(event) {
     if (event && event.laneIndex == null && Number.isFinite(event.y)) {
@@ -98,10 +99,10 @@ class ProcgenSoundEventBus extends SoundEventBus {
       const causalSequence = ++this._causalSequence;
       let copied;
       try { copied = copyFact(event); } catch { current.dropped++; return null; }
-      const fact = { ...copied, causalSequence,
-          ...(this._interventionCommandId && !copied.commandId ? { commandId: this._interventionCommandId } : {}) }, entry = { fact, legacy };
-      if (current.facts.length < this._maxFacts) current.facts.push(entry);
-      else if ((TERMINAL_TYPES.has(fact.kind) || TERMINAL_TYPES.has(fact.type)) && current.terminalFacts.length < this._maxTerminalFacts) current.terminalFacts.push(entry);
+      const fact = { ...copied.value, causalSequence,
+          ...(this._interventionCommandId && !copied.value.commandId ? { commandId: this._interventionCommandId } : {}) }, entry = { fact, legacy };
+      if (current.facts.length < this._maxFacts && current.factBytes + copied.bytes <= this._maxFactBytes) { current.facts.push(entry); current.factBytes += copied.bytes; }
+      else if ((TERMINAL_TYPES.has(fact.kind) || TERMINAL_TYPES.has(fact.type)) && current.terminalFacts.length < this._maxTerminalFacts && current.terminalBytes + copied.bytes <= this._maxTerminalFactBytes) { current.terminalFacts.push(entry); current.terminalBytes += copied.bytes; }
       else current.dropped++;
       return fact;
     }
@@ -130,7 +131,7 @@ class ProcgenSoundEventBus extends SoundEventBus {
       if (!qualified) fact.contactSpanId = null;
     }
     const byCommand = new Map();
-    for (const fact of identified) if (fact.commandId && !['CommandApplied', 'CommandRejected'].includes(fact.kind)) {
+    for (const fact of identified) if (fact.commandId && !['CommandApplied', 'CommandRejected', 'CommandWaiting'].includes(fact.kind)) {
       if (!byCommand.has(fact.commandId)) byCommand.set(fact.commandId, []); byCommand.get(fact.commandId).push(fact.eventId);
     }
     const sealedFacts = Object.freeze(identified.map(fact => Object.freeze(fact.kind === 'CommandApplied' || fact.kind === 'CommandRejected'
@@ -143,6 +144,7 @@ class ProcgenSoundEventBus extends SoundEventBus {
       terrainRevisionBefore: current.terrainRevisionBefore, terrainRevisionAfter, snapshotRevision: snapshot?.revision ?? null,
       facts: sealedFacts, snapshot, terminalGenerationTransition: transitionTo == null ? null : Object.freeze({ from: current.generation, to: transitionTo }),
       completeness: current.dropped ? Object.freeze({ status: 'incomplete', dropped: current.dropped }) : Object.freeze({ status: 'complete', dropped: 0 }) });
+    this._lastFactBudget = Object.freeze({ factBytes: current.factBytes, terminalBytes: current.terminalBytes, maximumFactBytes: this._maxFactBytes, maximumTerminalBytes: this._maxTerminalFactBytes, dropped: current.dropped, accounting: 'bounded-copy-estimate' });
     this._sealed.push({ batch, legacyFacts: sealedFacts.filter((_, index) => facts[index].legacy) });
     return batch;
   }
@@ -152,8 +154,9 @@ class ProcgenSoundEventBus extends SoundEventBus {
     this._seal(snapshot, terrainRevisionAfter, nextGeneration);
     this._tick = { worldId: current.worldId, generation: nextGeneration, tick: current.tick,
       terrainRevisionBefore: terrainRevisionAfter, sourceTimeMs: current.sourceTimeMs,
-      tickDurationMs: current.tickDurationMs, facts: [], terminalFacts: [], dropped: 0, ordinal: current.ordinal + 1 };
+      tickDurationMs: current.tickDurationMs, facts: [], terminalFacts: [], factBytes: 0, terminalBytes: 0, dropped: 0, ordinal: current.ordinal + 1 };
   }
+  factBudget() { return this._lastFactBudget; }
   pendingBatchIdentity() { const tick = this._tick; return tick ? `${tick.worldId}:${tick.generation}:${tick.tick}:${tick.ordinal}` : null; }
   commitTick(snapshot, terrainRevisionAfter) {
     this._seal(snapshot, terrainRevisionAfter);

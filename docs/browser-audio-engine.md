@@ -1100,3 +1100,13 @@ nonpreemptible native allocations/key enumeration; responsiveness is unqualified
 Controller, ownership and whole-world restoration regressions plus the history
 profile are written but unrun. Browser interaction, large-world admission and
 source-qualified fragment traversal remain deferred validation.
+
+Nested authoring/work receipts now have an explicit 4,096-node/128 KiB copy
+envelope with depth eight; ordinary facts retain their smaller node/byte bound.
+This repairs a source-inspected mismatch where valid terrain spans could exceed
+the older depth-four copier and silently mark an applied command's batch partial.
+The bus additionally bounds copied ordinary fact data to 8 MiB per boundary and
+reserves 512 KiB plus terminal event credits for lifecycle facts. These are copy
+accounting estimates, not measured heap peaks. Exhaustion remains explicit
+incomplete coverage; no receipt or acoustic success is fabricated. The extended
+receipt and aggregate-byte/terminal-reserve regressions are written but unrun.
