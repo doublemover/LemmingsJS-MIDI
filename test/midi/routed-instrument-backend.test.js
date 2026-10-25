@@ -7,13 +7,13 @@ import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 describe('voice-owned lane instrument replacement', () => {
   const context = {};
   const renderer = () => {
-    const voices = new Map(), calls = [], observers = new Set(); let disposed = false;
+    const voices = new Map(), calls = [], routeCalls = [], observers = new Set(); let disposed = false;
     const key = (epoch, voiceId) => JSON.stringify([epoch, voiceId]);
     const backend = createInstrumentExecutionLifecycle({ capabilities: {},
       setDisplayContext() {},
       observeDisplaySamples(listener, options) { const observer = { listener, options }; observers.add(observer); return () => observers.delete(observer); },
       begin(intent, frame, epoch) { calls.push(['begin', intent.voiceId]); voices.set(key(epoch, intent.voiceId), { voiceId: intent.voiceId, epoch }); return { status: 'accepted' }; },
-      updateLaneMix(voiceId, mix) { calls.push(['mix', voiceId, mix.gain, mix.pan]); return { status: 'accepted' }; },
+      updateLaneMix(voiceId, mix, frame, epoch, laneId) { calls.push(['mix', voiceId, mix.gain, mix.pan]); routeCalls.push({ voiceId, frame, laneId }); return { status: 'accepted', targetFrame: frame }; },
       update(voiceId) { calls.push(['update', voiceId]); return { status: 'accepted' }; },
       end(voiceId) { calls.push(['end', voiceId]); return { status: 'accepted' }; },
       renewExecutionLease: () => ({ status: 'accepted' }),
@@ -22,7 +22,7 @@ describe('voice-owned lane instrument replacement', () => {
       dispose() { return createProcgenRetirementScope().retire([{ name: 'native', run: () => { disposed = true; voices.clear(); } }]); }
     }, { getContext: () => context, getGeneration: () => 0, isSettled: epoch => ![...voices.values()].some(voice => voice.epoch === epoch),
       isVoiceSettled: (voiceId, epoch) => !voices.has(key(epoch, voiceId)), forget: () => {} }).api;
-    return { backend, calls, get disposed() { return disposed; }, emitDisplay() { for (const observer of observers) observer.listener({ ...observer.options.identity, actorId: 7 }); },
+    return { backend, calls, routeCalls, get disposed() { return disposed; }, emitDisplay() { for (const observer of observers) observer.listener({ ...observer.options.identity, actorId: 7 }); },
       finish(voiceId) { for (const [id, voice] of voices) if (voice.voiceId === voiceId) voices.delete(id); } };
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
@@ -74,6 +74,15 @@ describe('voice-owned lane instrument replacement', () => {
     expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0.25, 1]); expect(fallback.calls).to.have.length(0);
     muted = true; expect(router.synchronizeLaneMix(300).status).to.equal('accepted'); expect(child.calls.at(-1)).to.deep.equal(['mix', 'held', 0, 1]);
     expect(router.backend.begin({ ...onset('silent'), laneId: 'lane-2' }, 301, execution).reason).to.equal('lane-muted');
+    await router.dispose().completion;
+  });
+
+  it('schedules an identity transfer even between lanes with identical faders', async () => {
+    const fallback = renderer(), router = root(fallback.backend), execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'same-mix' }).execution;
+    router.backend.begin(onset('carried'), 100, execution);
+    expect(router.backend.transferVoiceLane('carried', 'lane-2', 200, execution).status).to.equal('accepted');
+    expect(fallback.routeCalls).to.deep.equal([{ voiceId: 'carried', frame: 200, laneId: 'lane-2' }]);
+    expect(router.synchronizeLaneMix(150).status).to.equal('accepted'); expect(fallback.routeCalls).to.have.length(1);
     await router.dispose().completion;
   });
 

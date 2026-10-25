@@ -2,7 +2,7 @@
 // Storage is fixed at construction; process() inspects the supplied block size.
 import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from './OwnedSourceState.js';
 import { ownedKernelStateBytes, writeOwnedSineState, restoreOwnedSineState } from './OwnedSineState.js';
-import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL } from '../OwnedSourceLayout.js';
+import { SINE_LAYOUT, LIVE_LANE_TAP_LIMIT, LIVE_LANE_TAP_PROTOCOL, LIVE_LANE_ID_LIMIT } from '../OwnedSourceLayout.js';
 const PROTOCOL = 1, WIDTH = SINE_LAYOUT.width, CAPACITY = 512, MAX_VOICES = SINE_LAYOUT.voices, RECEIPT_WIDTH = 6;
 const BEGIN = 1, UPDATE = 2, END = 3, CANCEL = 4, PANIC = 5, LEASE = 6, MIX = 7;
 const SCHEDULED = 1, APPLIED = 2, REJECTED = 3, ENDED = 4, CANCELLED = 5, FAULTED = 6;
@@ -20,15 +20,24 @@ class OwnedSineKernel {
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;
     this.mix = new Float64Array(MAX_VOICES * 6);
+    this.pendingLanes = new Float64Array(MAX_VOICES * 2); this.laneRoutes = new Float64Array(MAX_VOICES * 5);
     this.voice = new Float64Array(MAX_VOICES * 28); this.active = new Uint8Array(MAX_VOICES);
     this.receipts = new Float64Array(2048 * RECEIPT_WIDTH); this.receiptCount = 0;
     this.counters = new Uint32Array(8); this.panicPending = false;
     this.stemSums = new Float64Array(32); this.preStemSums = new Float64Array(32);
+    this.stemWeights = new Float64Array(16);
     this.lastPacket = 0; this.lastFrame = 0; this.nonfinite = 0;
     this.displayTokens = new Uint32Array(MAX_VOICES); this.displayState = new Float64Array(MAX_VOICES * DISPLAY_STATE_WIDTH);
     this.displayData = new Float64Array(DISPLAY_VOICES * DISPLAY_WIDTH); this.displayCount = 0;
     this.displayEnabled = false; this.displayReady = false; this.displayInterval = 0; this.displayNext = 0;
     this.displayRevision = 0; this.displaySequence = 0; this.displayDropped = 0;
+  }
+
+  setLaneIdentity(slot, token, laneToken) {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.maxVoices || !Number.isSafeInteger(token) || token < 1 || token > 0xffffffff ||
+        !Number.isSafeInteger(laneToken) || laneToken < 0 || laneToken > LIVE_LANE_ID_LIMIT || token < this.pendingLanes[slot * 2]) return false;
+    if (token === this.pendingLanes[slot * 2] && this.pendingLanes[slot * 2 + 1] !== laneToken) return false;
+    this.pendingLanes[slot * 2] = token; this.pendingLanes[slot * 2 + 1] = laneToken; return true;
   }
 
   configureDisplay(tokens, interval, revision) {
@@ -189,6 +198,8 @@ class OwnedSineKernel {
       voices[at + 12] = Math.round(queue[10]); voices[at + 13] = Math.round(queue[11]); voices[at + 14] = queue[12];
       voices[at + 15] = frame; voices[at + 16] = queue[16]; voices[at + 17] = Math.max(1, Math.round(queue[13]));
       const mix = slot * 6; this.mix.fill(0, mix, mix + 6); this.mix[mix] = this.mix[mix + 1] = queue[14] === 0 ? 1 : queue[14] - 1; this.mix[mix + 3] = this.mix[mix + 4] = queue[15];
+      const route = slot * 5, lane = this.pendingLanes[slot * 2] === token ? this.pendingLanes[slot * 2 + 1] : 0;
+      this.laneRoutes.fill(0, route, route + 5); this.laneRoutes[route] = this.laneRoutes[route + 1] = lane;
       voices[at + 22] = sequence; this.active[slot] = 1;
     } else if (!this.active[slot] || voices[at] !== epoch || voices[at + 2] !== token) {
       this.counters[3]++; this.receipt(REJECTED, sequence, slot, token, frame, 6); return;
@@ -205,7 +216,13 @@ class OwnedSineKernel {
       if (mask & 4) { voices[at + 11] = queue[9]; voices[at + 25] = Math.max(1, Math.round(queue[14])); }
       this.source?.applyUpdate(slot, mask, queue);
     } else if (opcode === MIX) {
-      if (queue[7] < 0 || queue[7] > 2 || queue[9] < -1 || queue[9] > 1 || queue[14] < 0 || queue[14] > this.sampleRate) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
+      const route = slot * 5;
+      if (queue[7] < 0 || queue[7] > 2 || queue[9] < -1 || queue[9] > 1 || queue[14] < 0 || queue[14] > this.sampleRate ||
+          !Number.isSafeInteger(queue[6]) || queue[6] < 0 || queue[6] > LIVE_LANE_ID_LIMIT || queue[6] && (target < frame || this.laneRoutes[route + 2] > 0 && queue[6] !== this.laneRoutes[route + 1])) { this.receipt(REJECTED, sequence, slot, token, frame, 1); return; }
+      if (queue[6] && queue[6] !== this.laneRoutes[route + 1]) {
+        this.laneRoutes[route] = this.laneRoutes[route + 1]; this.laneRoutes[route + 1] = queue[6];
+        this.laneRoutes[route + 2] = this.laneRoutes[route + 3] = Math.max(1, Math.round(queue[14])); this.laneRoutes[route + 4] = frame;
+      }
       const mix = slot * 6; this.mix[mix + 1] = queue[7]; this.mix[mix + 4] = queue[9]; this.mix[mix + 2] = this.mix[mix + 5] = Math.max(1, Math.round(queue[14]));
     } else if (opcode === END) this.release(slot, Math.max(1, queue[13]), frame, 1);
     else if (opcode === LEASE) {
@@ -226,6 +243,7 @@ class OwnedSineKernel {
       if (stems.routeMode != null && !maskedStems || !(maskedStems ? stems.routes instanceof Uint16Array : stems.routes instanceof Int8Array) || stems.routes.length < this.maxVoices || stems.routes.length > MAX_VOICES ||
           !Array.isArray(stems.channels) || !stems.channels.length || stems.channels.length > 16 ||
           stems.tokens && (!(stems.tokens instanceof Uint32Array) || stems.tokens.length !== stems.routes.length) ||
+          stems.laneTokens && (!(stems.laneTokens instanceof Uint32Array) || stems.laneTokens.length !== stems.channels.length || stems.laneTokens.some(value => value > LIVE_LANE_ID_LIMIT)) ||
           stems.preChannels && (!Array.isArray(stems.preChannels) || stems.preChannels.length !== stems.channels.length)) throw new TypeError('Invalid bounded sine stem taps.');
       for (let index = 0; index < stems.routes.length; index++) if (maskedStems ? stems.routes[index] >= 2 ** stems.channels.length : stems.routes[index] < -1 || stems.routes[index] >= stems.channels.length) throw new TypeError('Invalid stem route.');
       for (let stage = 0; stage < (stems.preChannels ? 2 : 1); stage++) {
@@ -292,13 +310,18 @@ class OwnedSineKernel {
           this.active[slot] = 0; this.source?.retire?.(slot); this.nonfinite++; this.receipt(FAULTED, voices[at + 22], slot, voices[at + 2], frame, 8); continue;
         }
         const routed = stems && (!stems.tokens || stems.tokens[slot] === voices[at + 2]), stemRoute = routed && !maskedStems ? stems.routes[slot] : -1, stemMask = routed && maskedStems ? stems.routes[slot] : 0;
-        if (stems?.preChannels) { if (stemRoute >= 0) { const stem = stemRoute * 2; this.preStemSums[stem] += voiceLeft; this.preStemSums[stem + 1] += voiceRight; }
-        else for (let mask = stemMask, index = 0; mask; mask >>>= 1, index++) if (mask & 1) { this.preStemSums[index * 2] += voiceLeft; this.preStemSums[index * 2 + 1] += voiceRight; } }
+        const route = slot * 5, fromWeight = this.laneRoutes[route + 3] ? this.laneRoutes[route + 2] / this.laneRoutes[route + 3] : 0;
+        if (stems) for (let index = 0; index < stems.channels.length; index++) {
+          const lane = stems.laneTokens?.[index] || 0, weight = !routed ? 0 : lane ?
+            (lane === this.laneRoutes[route] ? fromWeight : 0) + (lane === this.laneRoutes[route + 1] ? 1 - fromWeight : 0) : stemRoute === index || stemMask & 1 << index ? 1 : 0;
+          this.stemWeights[index] = weight;
+          if (stems.preChannels && weight) { this.preStemSums[index * 2] += voiceLeft * weight; this.preStemSums[index * 2 + 1] += voiceRight * weight; }
+        }
+        if (this.laneRoutes[route + 2] > 0) this.laneRoutes[route + 2]--;
         voiceLeft *= this.mix[mix] * (this.mix[mix + 3] > 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
         voiceRight *= this.mix[mix] * (this.mix[mix + 3] < 0 ? Math.cos(this.mix[mix + 3] * Math.PI / 2) : 1);
         sumLeft += voiceLeft; sumRight += voiceRight;
-        if (stemRoute >= 0) { const stem = stemRoute * 2; this.stemSums[stem] += voiceLeft; this.stemSums[stem + 1] += voiceRight; }
-        else for (let mask = stemMask, index = 0; mask; mask >>>= 1, index++) if (mask & 1) { this.stemSums[index * 2] += voiceLeft; this.stemSums[index * 2 + 1] += voiceRight; }
+        if (stems) for (let index = 0; index < stems.channels.length; index++) if (this.stemWeights[index]) { this.stemSums[index * 2] += voiceLeft * this.stemWeights[index]; this.stemSums[index * 2 + 1] += voiceRight * this.stemWeights[index]; }
       }
       left[offset] = !right && this.source?.stereo === true ? (sumLeft + sumRight) * 0.5 : sumLeft; if (right) right[offset] = sumRight;
       if (stems) for (let stem = 0; stem < stems.channels.length; stem++) { stems.channels[stem][0][offset] = this.stemSums[stem * 2]; stems.channels[stem][1][offset] = this.stemSums[stem * 2 + 1]; }
@@ -313,8 +336,8 @@ const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 class OwnedSineProcessor extends ProcessorBase {
   constructor(options) {
     super(); this.kernel = this.createKernel(globalThis.sampleRate, options?.processorOptions?.maxVoices || MAX_VOICES, options?.processorOptions);
-    this.laneRouteCount = 0; this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
-    this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routeMode: 'mask', routes: new Uint16Array(MAX_VOICES), tokens: new Uint32Array(MAX_VOICES),
+    this.laneRouteCount = 0; this.laneTapEnabled = new Uint8Array(LIVE_LANE_TAP_LIMIT); this.routeBarriers = new Float64Array(LIVE_LANE_TAP_LIMIT); this.routeBarrierCount = 0;
+    this.laneTaps = options?.processorOptions?.laneTapProtocol === LIVE_LANE_TAP_PROTOCOL ? { routeMode: 'mask', routes: new Uint16Array(MAX_VOICES), tokens: new Uint32Array(MAX_VOICES), laneTokens: new Uint32Array(LIVE_LANE_TAP_LIMIT),
       channels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]), preChannels: Array.from({ length: LIVE_LANE_TAP_LIMIT }, () => [null, null]) } : null;
     this.message = { type: 'receipts', protocol: PROTOCOL, count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) };
     this.displayMessage = { type: 'display-samples', protocol: PROTOCOL, displayProtocol: DISPLAY_PROTOCOL, revision: 0,
@@ -327,9 +350,14 @@ class OwnedSineProcessor extends ProcessorBase {
         this.kernel.panicPending = true; this.kernel.receipt(SCHEDULED, 0, -1, 0, this.kernel.lastFrame, 2);
       }
       else if (data?.type === 'lane-route' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.slot) && data.slot >= 0 && data.slot < this.kernel.maxVoices &&
-          Number.isSafeInteger(data.token) && data.token > 0 && data.token <= 0xffffffff && Number.isSafeInteger(data.route) && data.route >= 0 && data.route < 2 ** LIVE_LANE_TAP_LIMIT) {
-        if (this.laneTaps.routes[data.slot]) this.laneRouteCount--; if (data.route) this.laneRouteCount++;
+          Number.isSafeInteger(data.token) && data.token > 0 && data.token <= 0xffffffff && Number.isSafeInteger(data.route) && data.route >= 0 && data.route < 2 ** LIVE_LANE_TAP_LIMIT &&
+          this.kernel.setLaneIdentity(data.slot, data.token, data.laneToken)) {
         this.laneTaps.routes[data.slot] = data.route; this.laneTaps.tokens[data.slot] = data.token;
+      }
+      else if (data?.type === 'lane-tap' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isInteger(data.index) && data.index >= 0 && data.index < LIVE_LANE_TAP_LIMIT &&
+          typeof data.enabled === 'boolean' && Number.isInteger(data.laneToken) && data.laneToken >= 0 && data.laneToken <= LIVE_LANE_ID_LIMIT) {
+        this.laneRouteCount += Number(data.enabled) - this.laneTapEnabled[data.index]; this.laneTapEnabled[data.index] = Number(data.enabled);
+        this.laneTaps.laneTokens[data.index] = data.enabled ? data.laneToken : 0;
       }
       else if (data?.type === 'lane-route-barrier' && this.laneTaps && data.protocol === LIVE_LANE_TAP_PROTOCOL && Number.isSafeInteger(data.barrierId) && data.barrierId > 0 && Number.isInteger(data.index) && data.index >= 0 && data.index < LIVE_LANE_TAP_LIMIT) { if (!this.routeBarriers[data.index]) this.routeBarrierCount++; this.routeBarriers[data.index] = data.barrierId; }
       else if (data?.type === 'display-config' && data.displayProtocol === DISPLAY_PROTOCOL) this.kernel.configureDisplay(data.tokens, data.intervalFrames, data.revision);
@@ -346,7 +374,7 @@ class OwnedSineProcessor extends ProcessorBase {
       sampleRate: globalThis.sampleRate, maxVoices: this.kernel.maxVoices, capacity: CAPACITY, width: this.kernel.width });
   }
   createKernel(rate, voices) { return new OwnedSineKernel(rate, voices); }
-  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v4-source-selections' }; }
+  runtimeIdentity() { return { engineId: 'worklet-sine', engineVersion: 1, runtimeABI: 'owned-sine-f64-command-v1', buildId: 'owned-sine-v5-lane-transfer' }; }
   flushDisplay() {
     if (this.displayAwaiting || !this.kernel.displayReady) return;
     const message = this.displayMessage; message.count = this.kernel.displayCount; message.sequence = this.kernel.displaySequence;
@@ -357,7 +385,7 @@ class OwnedSineProcessor extends ProcessorBase {
     if (!this.kernel.receiptCount) return;
     if (this.laneTaps) for (let index = 0; index < this.kernel.receiptCount; index++) {
       const at = index * RECEIPT_WIDTH, code = this.kernel.receipts[at], slot = this.kernel.receipts[at + 2], token = this.kernel.receipts[at + 3];
-      if ((code === ENDED || code === FAULTED || code === CANCELLED && !this.kernel.active[slot]) && slot >= 0 && this.laneTaps.tokens[slot] === token && this.laneTaps.routes[slot]) { this.laneTaps.routes[slot] = 0; this.laneRouteCount--; }
+      if ((code === ENDED || code === FAULTED || code === CANCELLED && !this.kernel.active[slot]) && slot >= 0 && this.laneTaps.tokens[slot] === token) this.laneTaps.routes[slot] = 0;
     }
     let copied = 0;
     while (copied < this.kernel.receiptCount) {

@@ -1,7 +1,7 @@
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
 import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT } from '../OwnedSourceLayout.js';
 
-export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v2-lane-mix';
+export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v3-lane-transfer';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
@@ -107,7 +107,7 @@ const inspectSource = (kernel, profile, view) => {
 };
 const verify = (kernel, bytes, profile) => {
   const view = viewFor(kernel, bytes, profile), coreBytes = ownedKernelStateBytes(kernel);
-  if (view.getUint32(0, true) !== 0x3153444c || view.getUint32(4, true) !== 1 || view.getUint32(8, true) !== bytes.length ||
+  if (view.getUint32(0, true) !== 0x3153444c || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.length ||
       view.getUint32(12, true) !== coreBytes || view.getUint32(16, true) !== profile.kind || view.getUint32(20, true) !== kernel.width ||
       view.getUint32(24, true) !== profile.arrays.length || view.getUint32(28, true) !== profile.scalars.length || view.getUint32(252, true) !== checksum(bytes)) fail('Source state ABI, profile, size or checksum differs.');
   for (let i = 0; i < 3; i++) if (view.getUint32(32 + i * 4, true) !== (kernel.source[profile.arrays[i]]?.byteLength || 0)) fail('Source memory shape differs.');
@@ -118,7 +118,7 @@ const verify = (kernel, bytes, profile) => {
 export function writeOwnedSourceState(kernel, destination, identity) {
   const profile = profileFor(kernel), view = viewFor(kernel, destination, profile), coreBytes = ownedKernelStateBytes(kernel);
   destination.fill(0); const cut = writeOwnedKernelState(kernel, destination.subarray(HEADER, HEADER + coreBytes), identity);
-  for (const [at, value] of [[0, 0x3153444c], [4, 1], [8, destination.length], [12, coreBytes], [16, profile.kind], [20, kernel.width], [24, profile.arrays.length], [28, profile.scalars.length]]) view.setUint32(at, value, true);
+  for (const [at, value] of [[0, 0x3153444c], [4, 2], [8, destination.length], [12, coreBytes], [16, profile.kind], [20, kernel.width], [24, profile.arrays.length], [28, profile.scalars.length]]) view.setUint32(at, value, true);
   for (let i = 0; i < profile.arrays.length; i++) view.setUint32(32 + i * 4, kernel.source[profile.arrays[i]].byteLength, true);
   identities(view, kernel.source, true); let offset = HEADER + coreBytes;
   for (const key of profile.scalars) { view.setFloat64(offset, kernel.source[key], true); offset += 8; }

@@ -19,7 +19,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
   for (const event of plan.events) {
     if (event.frame >= plan.outputEnd) continue;
     const voice = event.voice, original = originals.get(event.intentId);
-    events.push({ kind: event.kind, frame: event.frame, voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, laneId: voice.laneId,
+    events.push({ kind: event.kind, frame: event.frame, voiceId: voice.begin.voiceId, executionEpoch: 'offline-voice-' + voice.order, laneId: event.laneId ?? voice.laneId,
       intent: event.kind === 'begin' ? voice.begin : null, expression: event.kind === 'update' ? original.expression || {} : null,
       releaseFrame: voice.releaseAt ?? plan.outputEnd + 1, releaseSeconds: voice.parameters.releaseSeconds });
   }
@@ -40,7 +40,7 @@ export async function prepareCausalNativeRenderInput(input, { resources, signal,
         maximumTailFrames: plan.effectPlan.maximumTailFrames, sourceBindings: plan.effectSourceBindings, controls: 'explicit-authored-defaults-not-replayed-live-gestures', scope: 'one-full-shared-owner-sum' } : null,
       definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision,
       engineRequirement: Object.fromEntries(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].map(key => [key, plan.descriptor[key]])), applicationBuildId: plan.applicationBuildId,
-      commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases,
+      commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, derivedLaneTransfers: plan.derivedLaneTransfers,
         scheduledNativeCalls: native.receipt.submitted, nativeAppliedFrames: 'not-reported-by-native-api', peakVoices: plan.peakVoices },
       realization: { scope: 'new-local-native-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
         smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldPolicy: plan.owned.requiresNativeAssets ? 'selected-region-varispeed-duration-capped-at-four-seconds' : 'per-onset-effective-native-source-parameters',

@@ -25,6 +25,32 @@ const pcm = file => {
 };
 // Authored for the final runtime pass, with source ownership tested separately.
 describe('owned-source causal revoice rendering', () => {
+  it('retains onset lanes under inventory reorder and moves donors only on an explicit carried transfer', async () => {
+    const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === 'worklet-sine').definition);
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);
+    const take = revoice(); take.intents = [intent('begin', 100, 1), intent('update', 200, 2), intent('update', 300, 3, { articulationState: { transfer: true } }), intent('end', 600, 4)];
+    take.laneRouting = { schema: 'lemmings-captured-lane-routing/v1', covered: true, initial: [{ id: 'a', sourceIndex: 0 }, { id: 'b', sourceIndex: 1 }],
+      changes: [{ beforeIntent: 1, upserts: [{ id: 'a', sourceIndex: 1 }, { id: 'b', sourceIndex: 0 }], removed: [] }] };
+    const input = { definition, descriptor, revoice: take, sampleRate: 48000, startSeconds: 0.303, endSeconds: 0.7, stemLaneIds: ['a', 'b'] };
+    const plan = await planCausalOwnedRender(input);
+    expect(plan.derivedLaneTransfers).to.equal(1); expect([...plan.voices.values()][0].laneId).to.equal('a');
+    expect(plan.events.filter(event => event.kind === 'lane').map(event => [event.frame, event.laneId])).to.deep.equal([[14400, 'b']]);
+    const rendered = await renderCausalOwnedTake(input, { yieldControl: async () => {} });
+    const restored = await renderCausalOwnedTake({ ...input, restorationMode: 'owned-state-cut' }, { yieldControl: async () => {} });
+    expect(restored.files.map(file => file.manifest.pcmHash)).to.deep.equal(rendered.files.map(file => file.manifest.pcmHash));
+    expect(rendered.manifest.commands).to.include({ capturedBegins: 1, capturedUpdates: 2, capturedEnds: 1, derivedLaneTransfers: 1 });
+    const data = rendered.files.map(file => pcm(file)).map(bytes => new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+    let lateB = false;
+    for (let frame = 0; frame < rendered.manifest.frames; frame++) for (let channel = 0; channel < 2; channel++) {
+      const at = (frame * 2 + channel) * 4, dry = data[0].getFloat32(at, true), a = data[1].getFloat32(at, true), b = data[2].getFloat32(at, true);
+      expect(a + b).to.be.closeTo(dry, 1e-7); if (frame >= 512) { expect(a).to.equal(0); if (b !== 0) lateB = true; }
+    }
+    expect(lateB).to.equal(true);
+    const overlap = structuredClone(take); overlap.intents.splice(3, 0, intent('update', 301, 5, { laneId: 1, articulationState: { transfer: true } }));
+    let error; try { await planCausalOwnedRender({ ...input, revoice: overlap }); } catch (value) { error = value; }
+    expect(error?.code).to.equal('lane-transfer-capacity');
+  });
+
   it('exports complete dry PCM history for native bodies with the same source samples as a normal crop', async () => {
     for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) for (const sampleRate of [44100, 48000, 96000]) {
       const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === engineId).definition); definition.voicePolicy.maxVoices = 2;

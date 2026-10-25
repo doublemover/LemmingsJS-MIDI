@@ -21,14 +21,18 @@ export function createVoiceLaneMix({ preview, context, owner, generation, destin
     gain.connect(pan || destination); pan?.connect(destination);
     if (laneId && preview._laneSourcesFor) {
       source = context.createGain(); source.connect(gain);
-      unregister = preview._laneSourcesFor(owner, context).registerVoice({ laneId, voiceId, sourceGeneration: generation, pre: source, post: pan || gain });
+      unregister = preview._laneSourcesFor(owner, context).registerVoice({ laneId, voiceId, sourceGeneration: generation, pre: source, post: pan || gain, start });
     }
     const gainCurve = createSmoothedAudioParameter({ param: gain.gain, initialValue: value.gain, startTime: start });
     const panCurve = pan ? createSmoothedAudioParameter({ param: pan.pan, initialValue: value.pan, startTime: start }) : null;
-    return { input: source || gain, dispose, update(next, frame) {
+    return { input: source || gain, dispose, update(next, frame, nextLaneId = laneId) {
       const now = context.currentTime, time = Math.max(start, frame / context.sampleRate, now);
       if (disposed || !next || !validVoiceLaneMix(next) || !Number.isSafeInteger(frame) || frame < 0 || !panCurve && next.pan !== 0 || !gainCurve.canInsert(now) || panCurve && !panCurve.canInsert(now)) return { status: 'rejected', reason: 'lane-mix-admission' };
-      try { if (!gainCurve.insert(next.gain, time, now) || panCurve && !panCurve.insert(next.pan, time, now)) throw new Error('Lane mix curve refused admission.'); }
+      try {
+        if (nextLaneId !== laneId && (typeof unregister?.scheduleLane !== 'function' || !unregister.scheduleLane(nextLaneId, frame))) return { status: 'rejected', reason: 'lane-source-transfer-admission' };
+        if (!gainCurve.insert(next.gain, time, now) || panCurve && !panCurve.insert(next.pan, time, now)) throw new Error('Lane mix curve refused admission.');
+        laneId = nextLaneId;
+      }
       catch { return { status: 'rejected', reason: 'lane-mix-scheduling-failed' }; }
       return { status: 'accepted', stage: 'scheduled', targetFrame: frame, appliedFrame: null };
     } };

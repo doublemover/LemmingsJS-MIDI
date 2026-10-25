@@ -299,9 +299,9 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
       smoothingFrames: Math.ceil(Math.max(smoothingSeconds, rampSeconds) * preview._context.sampleRate) });
     trace({ ...receipt, generation: voice.semanticGeneration, patchRevision: voice.patchRevision }); return receipt;
   };
-  const updateLaneMix = (voiceId, mix, frame, epoch = 'live') => {
+  const updateLaneMix = (voiceId, mix, frame, epoch = 'live', laneId = undefined) => {
     const voice = voices.get(keyFor(epoch, voiceId));
-    return voice?.laneMix?.update(mix, frame) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
+    return voice?.laneMix?.update(mix, frame, laneId) || Object.freeze({ status: 'rejected', reason: 'voice-not-active' });
   };
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));

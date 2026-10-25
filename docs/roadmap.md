@@ -3557,3 +3557,41 @@ Deduplication, stereo ownership, aggregate admission, later-bank cancellation,
 reader quiescence and tamper fixtures are written and unrun. Source-map selection,
 release-layer commands, actual sample Worklet registration and travel/render
 integration remain the next span. Runtime validation remains deferred.
+
+
+### Continuation 165 — carried donor routing at the audio frame (#1058, #1163, #1080)
+
+A carried voice now schedules its destination source lane alongside its fader
+control, even when both lanes have identical gain and pan. The original renderer,
+voice identity, articulation and selected-voice donor membership remain owned by
+the onset. Native routes use charged, bounded pairs of pre/post gain gates with
+an eight-millisecond causal fade. Late donor attachment observes the same actual
+scheduled curves. Old gates retire against AudioContext time, with at most eight
+retained lane paths and sixteen future automation points per voice/path. Routing
+failure invalidates every dependent donor graph before retaining unknown custody.
+
+Owned sources use stable lane tokens, independent of the eight reusable live tap
+slots. A scheduled MIX control applies the new identity only at its target render
+frame. Selected-voice membership stays on the control port, while lane tokens and
+actual fade state live in the fixed kernel owner. Retired/reused tap slots cannot
+redirect future transfers into unrelated donors. Tokens never recycle within the
+audio owner; metadata is charged in blocks, with a 4096-identity lifetime cap and
+an explicit refusal requiring a fresh owner at exhaustion. Runtime build identities,
+routing protocol, state ABI and declared typed storage advance together. Snapshot
+storage includes pending onset identities and in-flight fades without changing the
+existing source voice stride.
+
+Causal revoice resolves stable lanes at original onsets and explicit transfer
+intents only. Inventory reorder does not move held sources. The same owned pass
+renders dry lanes and selected-voice groups with convex transfer weights, including
+state cuts inside a fade. Native offline rendering shares the actual source-bus
+owner and native voice backend, with a separate bounded native-only tap inventory;
+master audio remains one direct source sum. Transfer commands are disclosed as
+derived realization controls and do not add musical onsets. Overlapping fades
+refuse explicitly instead of allocating a third active lane basis.
+
+Frame-boundary, identical-fader, stale-slot, selected-group, late native attachment,
+pruning, offline native no-retrigger, reorder and state-cut fixtures are written.
+They remain unrun with the rest of the frontloaded development pass. This closes
+a source-routing implementation gap; it is not an acoustic, browser, performance
+or complete backlog qualification claim. Sample-engine integration follows.

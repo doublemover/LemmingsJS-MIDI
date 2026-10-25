@@ -7,7 +7,7 @@ import { OwnedSineKernel, BEGIN, MIX, WIDTH } from '../../js/app/midi-ui/worklet
 
 const param = () => ({ calls: [], setValueAtTime(value, time) { this.calls.push(['set', value, time]); }, linearRampToValueAtTime(value, time) { this.calls.push(['ramp', value, time]); }, cancelScheduledValues(time) { this.calls.push(['cancel', time]); } });
 const node = parameter => ({ [parameter]: param(), connections: [], connect(target) { this.connections.push(target); }, disconnect() { this.connections = []; } });
-const row = (opcode, sequence, frame, slot, values = {}) => Object.assign(new Array(WIDTH).fill(0), { 0: 1, 1: frame, 2: sequence, 3: opcode, 4: slot, 5: 1, 6: 440, 7: 0.5, 8: 1, 12: 1, 13: 40, 16: 8000, 17: 1 }, values);
+const row = (opcode, sequence, frame, slot, values = {}) => Object.assign(new Array(WIDTH).fill(0), { 0: 1, 1: frame, 2: sequence, 3: opcode, 4: slot, 5: 1, 6: opcode === MIX ? 0 : 440, 7: 0.5, 8: 1, 12: 1, 13: 40, 16: 8000, 17: 1 }, values);
 
 describe('independent lane mix ownership', () => {
   it('keeps lane gain/pan separate from physical expression and retires both native nodes exactly once', async () => {

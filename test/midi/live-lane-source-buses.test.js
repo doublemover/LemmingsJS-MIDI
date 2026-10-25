@@ -20,7 +20,7 @@ describe('live lane source routing (API ownership and production kernel)', () =>
     const first = createVoiceLaneMix({ preview, context: f.context, owner: 'physical', generation: 7, destination, start: 0, laneId: 'diggers', value: { gain: 0.25, pan: 0.5 } });
     const unrelated = createVoiceLaneMix({ preview, context: f.context, owner: 'physical', generation: 7, destination, start: 0, laneId: 'choir' });
     const pre = f.pin('diggers', 'pre-fader'), post = f.pin('diggers');
-    expect(first.input.connections.has(pre.node)).to.equal(true); expect(unrelated.input.connections.has(pre.node)).to.equal(false);
+    expect([...first.input.connections].some(node => node.connections?.has(pre.node))).to.equal(true); expect([...unrelated.input.connections].some(node => node.connections?.has(pre.node))).to.equal(false);
     expect(pre.node).not.to.equal(post.node); expect(pre.node.connections.size).to.equal(0); expect(post.node.connections.size).to.equal(0);
     expect(post.faderScope).to.include('lane-gain-pan-mute-solo');
     first.dispose(); unrelated.dispose(); pre.release(); post.release(); await f.buses.dispose().completion;

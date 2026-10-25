@@ -100,6 +100,6 @@ export class OwnedPluckKernel extends OwnedSineKernel {
 
 export class OwnedPluckProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedPluckKernel(rate, Math.min(voices, PLUCK_VOICES)); }
-  runtimeIdentity() { return { engineId: 'worklet-pluck', engineVersion: 1, runtimeABI: 'owned-pluck-f64-command-v1', buildId: 'owned-pluck-v3-source-selections' }; }
+  runtimeIdentity() { return { engineId: 'worklet-pluck', engineVersion: 1, runtimeABI: 'owned-pluck-f64-command-v1', buildId: 'owned-pluck-v4-lane-transfer' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-pluck-v1', OwnedPluckProcessor);
