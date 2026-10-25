@@ -219,7 +219,9 @@
         "test/midi/ump-packet-codec.test.js",
         "test/midi/ump-stream-decoder.test.js"
       ],
-      "commits": [],
+      "commits": [
+        "72fa0e326a3ed7514120d4dbad53261f85fb7da0"
+      ],
       "validation": "deferred-by-request",
       "increment": "bounded-ump-codec-foundation-parked",
       "remaining": "PARKED INCOMPLETE: general framing and typed channel-value codecs, structural tagged Flex/Stream/data preservation and bounded split/payload collectors implemented. Complete normative reserved-field/errata review, full typed Flex/Stream semantic validation, selected native dependency wrapper, executable independent parity/fuzz harness and production endpoint integration remain development. Literal upstream-derived fixtures are authored, not executed cross-library evidence.",
@@ -227,7 +229,7 @@
         {
           "id": "bounded-ump-codec-foundation-parked",
           "summary": "All sixteen UMP framing widths; separate MIDI1-in-UMP/MIDI2 semantics, unsigned/relative typed values, source-resolution receipts, groupless utility/Stream, explicit big-endian wire conversion, bounded poisoned-on-error split streams and bounded expiring SysEx/text payload collectors. Unknown packets remain diagnostic-only. Parked at user request before native/parity/endpoint integration; regression fixtures authored unrun.",
-          "commit": null
+          "commit": "72fa0e326a3ed7514120d4dbad53261f85fb7da0"
         }
       ]
     },
@@ -1755,7 +1757,8 @@
       "commits": [
         "2705c467aa46b5fb99fb40d652a4638350f06ca2",
         "3da493ac8ebc701acfae7388fe3bea65d5b99508",
-        "149de9d92c387cfaea8b394024e3052f41d03c66"
+        "149de9d92c387cfaea8b394024e3052f41d03c66",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -1777,7 +1780,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -2508,7 +2511,8 @@
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
         "8d9fd01f4472b2997edabd1e4c207698820a61d7",
         "93a34d32b5f070926d98210783b873f54ab7fe55",
-        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2542,7 +2546,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -2683,7 +2687,8 @@
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
         "8d9fd01f4472b2997edabd1e4c207698820a61d7",
         "93a34d32b5f070926d98210783b873f54ab7fe55",
-        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2726,7 +2731,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -2853,7 +2858,8 @@
       "commits": [
         "d7a2a95289548ff7097403178a5310fc72790e98",
         "148bf84c49957839c208a2269f17dbd2d2b11453",
-        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increment": "causal-boundary-and-publication-integrity",
@@ -2871,7 +2877,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -3439,7 +3445,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -3556,7 +3562,8 @@
         "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
         "6cb45c908ccfba6b87696ce0ba738be3e631c87d",
         "0b9dcd9d956caec2bb691503f33734d7504c1371",
-        "23cf47945edc65d175e30c20cc3118e728f4a24f"
+        "23cf47945edc65d175e30c20cc3118e728f4a24f",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increment": "bounded-command-and-render-staging",
@@ -3570,7 +3577,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         },
         {
           "id": "revision-safe-admission-and-stream-expansion",
@@ -3701,13 +3708,15 @@
         "test/physical-domain-editor.test.js",
         "scripts/bench-phrase-cargo.mjs"
       ],
-      "commits": [],
+      "commits": [
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
+      ],
       "validation": "deferred-by-request",
       "increments": [
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -4066,7 +4075,8 @@
         "30977bcb7a2d14739eb8ae76489eb47dbd0daf3e",
         "a4636ff46efa676c3adb21f24b122be4c9e6bf8c",
         "8d9fd01f4472b2997edabd1e4c207698820a61d7",
-        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1"
+        "6a3cba4ee4c737c66b9ca47c8e4042fd68d531f1",
+        "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
       ],
       "validation": "deferred-by-request",
       "increments": [
@@ -4118,7 +4128,7 @@
         {
           "id": "actor-borne-phrase-cargo",
           "summary": "Typed actor-slot cargo with physical capture/transform/exchange/delivery, shared family copy and delivery fuel, rooted atomic ownership transfer, prepublication local byte caps, incomplete-history rejection, expiry/death/generation retirement, checkpoint/fragment/capture integration and scene authoring/inspection. Real-action regressions and profile written but unrun; shared global resource reservations and broader full UI remain separate development.",
-          "commit": null
+          "commit": "2f8764c4f3a4018ab8af9badd00ccee7dc9f2b8d"
         }
       ]
     },
@@ -4937,6 +4947,16 @@
     "requestedAt": "2026-10-25T06:54:42Z",
     "status": "parked-incomplete-validation-deferred",
     "lastPreviouslyPushedCommit": "8f347fd5d8d8b9cdbbb3523ec53d0dffc606d8de",
-    "handoff": "Resume from per-issue remaining fields; UMP codec foundation is the only newly parked incomplete edit. No tests, browser/PCM runtime validation, benchmarks or acoustic qualification executed during this implementation task. Draft PR is a handoff, not a full-backlog completion claim."
+    "handoff": "Resume from per-issue remaining fields; UMP codec foundation is the only newly parked incomplete edit. No tests, browser/PCM runtime validation, benchmarks or acoustic qualification executed during this implementation task. Draft PR is a handoff, not a full-backlog completion claim.",
+    "sourceHead": "72fa0e326a3ed7514120d4dbad53261f85fb7da0",
+    "inventory": {
+      "total": 248,
+      "sourceComplete": 38,
+      "partial": 119,
+      "untouched": 90,
+      "uncertain": 1,
+      "definiteDevelopmentRemaining": 209
+    },
+    "sourceCompleteAccounting": "37 completed during this branch plus preexisting #1256, whose closure remains blocked. #1038 remains scope/provenance-uncertain."
   }
 }
