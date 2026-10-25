@@ -2,6 +2,8 @@ import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 import { instrumentVariationValue } from './InstrumentIdentityVariation.js';
 
 export const SAMPLE_MAP_SCHEMA = 'lemmings-sample-instrument-map/v1';
+export const NATIVE_SAMPLE_MAP_PROFILE = 'native-forward-v1';
+export const OWNED_SAMPLE_MAP_PROFILE = 'owned-sample-v1';
 export const SAMPLE_SELECTION_ALGORITHM = 'stable-semantic-onset-fnv32-v1';
 const plain = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -10,11 +12,12 @@ const integer = (value, low, high) => Number.isSafeInteger(value) && value >= lo
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const fail = message => { throw new TypeError('Sample instrument map: ' + message); };
 const keys = (value, allowed) => { if (!plain(value) || Object.keys(value).some(key => !allowed.includes(key))) fail('unknown field or invalid record'); };
+const advancedMap = map => map.rendererProfile === OWNED_SAMPLE_MAP_PROFILE;
 const before = (a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
 export const sampleMapRenderIdentity = map => map ? { schema: map.schema, mapId: map.mapId, revision: map.revision,
   articulationIds: map.articulations.map(entry => entry.id), neutralArticulationId: map.neutralArticulationId, selectionPolicy: map.selectionPolicy,
-  releasePolicy: map.releasePolicy, zones: map.zones } : null;
+  releasePolicy: map.releasePolicy, ...(map.rendererProfile ? { rendererProfile: map.rendererProfile } : {}), zones: map.zones } : null;
 
 export function retainSampleSelectionReceipt(outcome) {
   try {
@@ -35,8 +38,11 @@ export function retainSampleSelectionReceipt(outcome) {
   } catch { return null; }
 }
 
-export function validateSampleInstrumentMap(input, sampleRefs) {
-  keys(input, ['schema', 'mapId', 'revision', 'articulations', 'neutralArticulationId', 'selectionPolicy', 'releasePolicy', 'normalizationRef', 'rightsRef', 'zones']);
+export function validateSampleInstrumentMap(input, sampleRefs, { rendererProfile = NATIVE_SAMPLE_MAP_PROFILE } = {}) {
+  keys(input, ['schema', 'mapId', 'revision', 'articulations', 'neutralArticulationId', 'selectionPolicy', 'releasePolicy', 'normalizationRef', 'rightsRef', 'zones', 'rendererProfile']);
+  const profile = input.rendererProfile ?? NATIVE_SAMPLE_MAP_PROFILE, owned = rendererProfile === OWNED_SAMPLE_MAP_PROFILE;
+  if (![NATIVE_SAMPLE_MAP_PROFILE, OWNED_SAMPLE_MAP_PROFILE].includes(rendererProfile) || ![NATIVE_SAMPLE_MAP_PROFILE, OWNED_SAMPLE_MAP_PROFILE].includes(profile) || !owned && profile !== NATIVE_SAMPLE_MAP_PROFILE) fail('renderer profile is unavailable');
+  const advanced = profile === OWNED_SAMPLE_MAP_PROFILE;
   if (input.schema !== SAMPLE_MAP_SCHEMA || !id(input.mapId) || !integer(input.revision, 1, 2147483647) ||
       !Array.isArray(input.articulations) || !input.articulations.length || input.articulations.length > 16 ||
       !Array.isArray(input.zones) || !input.zones.length || input.zones.length > 128 ||
@@ -54,7 +60,7 @@ export function validateSampleInstrumentMap(input, sampleRefs) {
   if (!articulations.has(input.neutralArticulationId)) fail('missing neutral articulation');
   const region = (value, child = false) => {
     keys(value, child ? ['assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange'] :
-      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup']);
+      ['id', 'articulationId', 'roundRobinGroup', 'alternateIndex', 'velocityMin01', 'velocityMax01', 'assetHash', 'onsetFrame', 'endFrame', 'rootCents', 'gain01', 'tuningCents', 'pitchRange', 'loop', 'releaseRegion', 'chokeGroup', ...(advanced ? ['playbackMode', 'positionPolicy'] : [])]);
     if (!assets.has(value.assetHash) || !integer(value.onsetFrame, 0, 7999999) || !integer(value.endFrame, value.onsetFrame + 1, 8000000) ||
         !finite(value.rootCents, -24000, 24000) || !finite(value.gain01, 0, 1) || !finite(value.tuningCents, -1200, 1200)) fail('invalid source frame region or authored trim');
     keys(value.pitchRange, ['minCents', 'maxCents', 'maxTransposeCents']);
@@ -62,16 +68,29 @@ export function validateSampleInstrumentMap(input, sampleRefs) {
     if (!finite(range.minCents, -24000, value.rootCents) || !finite(range.maxCents, value.rootCents, 24000) ||
         !finite(range.maxTransposeCents, 0, 4800) || Math.max(value.rootCents - range.minCents, range.maxCents - value.rootCents) > range.maxTransposeCents)
       fail('pitch range exceeds its declared varispeed transposition');
+    const playbackMode = advanced && !child ? value.playbackMode ?? 'forward' : 'forward';
+    if (!['forward', 'reverse', 'positionDriven'].includes(playbackMode)) fail('unsupported owned sample playback mode');
+    let positionPolicy = null;
+    if (!child && playbackMode === 'positionDriven') {
+      keys(value.positionPolicy, ['boundary', 'interpolation', 'slewSeconds', 'maximumReadDerivative', 'crossfadeFrames', 'gainLaw']);
+      const p = value.positionPolicy;
+      if (!['stop', 'wrap', 'reflect'].includes(p.boundary) || !['linear', 'smoothstep'].includes(p.interpolation) || !finite(p.slewSeconds, 0.005, 0.02) ||
+          !finite(p.maximumReadDerivative, 0.25, 4) || !['linear', 'equal-power'].includes(p.gainLaw) ||
+          (p.boundary === 'wrap' ? !integer(p.crossfadeFrames, 16, Math.floor((value.endFrame - value.onsetFrame) / 2)) : p.crossfadeFrames !== 0) || value.loop != null) fail('position-driven policy needs bounded cursor, seam and rest semantics');
+      positionPolicy = { ...p };
+    } else if (!child && value.positionPolicy != null) fail('position policy requires position-driven playback');
     let loop = null;
     if (!child && value.loop != null) {
-      keys(value.loop, ['mode', 'startFrame', 'endFrame', 'crossfadeFrames']);
+      keys(value.loop, ['mode', 'startFrame', 'endFrame', 'crossfadeFrames', ...(advanced ? ['gainLaw'] : [])]);
       if (!['forward', 'sustain'].includes(value.loop.mode) || !integer(value.loop.startFrame, value.onsetFrame, value.endFrame - 1) ||
-          !integer(value.loop.endFrame, value.loop.startFrame + 1, value.endFrame) || value.loop.crossfadeFrames !== 0) fail('native maps require a bounded forward loop without an unqualified seam crossfade');
-      loop = { mode: value.loop.mode, startFrame: value.loop.startFrame, endFrame: value.loop.endFrame, crossfadeFrames: 0 };
+          !integer(value.loop.endFrame, value.loop.startFrame + 1, value.endFrame) ||
+          (advanced ? value.loop.crossfadeFrames !== 0 && !integer(value.loop.crossfadeFrames, 16, Math.floor((value.loop.endFrame - value.loop.startFrame) / 2)) || !['linear', 'equal-power'].includes(value.loop.gainLaw ?? 'linear') : value.loop.crossfadeFrames !== 0)) fail('loop range, seam crossfade or gain law is unavailable in this renderer profile');
+      loop = { mode: value.loop.mode, startFrame: value.loop.startFrame, endFrame: value.loop.endFrame, crossfadeFrames: value.loop.crossfadeFrames,
+        ...(advanced ? { gainLaw: value.loop.gainLaw ?? 'linear' } : {}) };
     }
     return { assetHash: value.assetHash, onsetFrame: value.onsetFrame, endFrame: value.endFrame, rootCents: value.rootCents,
       gain01: value.gain01, tuningCents: value.tuningCents, pitchRange: { minCents: range.minCents, maxCents: range.maxCents, maxTransposeCents: range.maxTransposeCents },
-      ...(!child ? { loop, releaseRegion: value.releaseRegion == null ? null : region(value.releaseRegion, true), chokeGroup: value.chokeGroup ?? null } : {}) };
+      ...(!child ? { ...(advanced ? { playbackMode, positionPolicy } : {}), loop, releaseRegion: value.releaseRegion == null ? null : region(value.releaseRegion, true), chokeGroup: value.chokeGroup ?? null } : {}) };
   };
   const ids = new Set(), groups = new Map();
   const zones = input.zones.map(entry => {
@@ -97,8 +116,8 @@ export function validateSampleInstrumentMap(input, sampleRefs) {
         left.pitchRange.minCents !== right.pitchRange.minCents || left.pitchRange.maxCents !== right.pitchRange.maxCents) fail('ambiguous overlapping layers at the same root');
   }
   const result = { schema: SAMPLE_MAP_SCHEMA, mapId: input.mapId, revision: input.revision, articulations: gestures, neutralArticulationId: input.neutralArticulationId,
-    selectionPolicy: { ...policy }, releasePolicy: 'owned-end', normalizationRef: input.normalizationRef ?? null, rightsRef: input.rightsRef, zones };
-  canonicalDataText(result, { maxBytes: 48 * 1024, maxNodes: 6144, domain: 'Sample instrument map' }); return freezeData(result);
+    selectionPolicy: { ...policy }, releasePolicy: 'owned-end', ...(input.rendererProfile ? { rendererProfile: profile } : {}), normalizationRef: input.normalizationRef ?? null, rightsRef: input.rightsRef, zones };
+  canonicalDataText(result, { maxBytes: advanced ? 128 * 1024 : 48 * 1024, maxNodes: advanced ? 16384 : 6144, domain: 'Sample instrument map' }); return freezeData(result);
 }
 
 export function validateSampleMapAssets(map, pins) {
@@ -111,8 +130,8 @@ export function validateSampleMapAssets(map, pins) {
   return true;
 }
 
-export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevision } = {}) {
-  const map = validateSampleInstrumentMap(input, sampleRefs);
+export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevision, rendererProfile = NATIVE_SAMPLE_MAP_PROFILE } = {}) {
+  const map = validateSampleInstrumentMap(input, sampleRefs, { rendererProfile });
   if (!id(patchId) || !integer(patchRevision, 1, 2147483647)) fail('an exact patch identity is required');
   const groups = new Map(), byGesture = new Map();
   for (const zone of map.zones) {
@@ -151,10 +170,10 @@ export function createSampleMapResolver(input, sampleRefs, { patchId, patchRevis
       selected.alternates.map(zone => [zone.id, zone.assetHash])]) + 1) * 2147483648));
     const zone = selected.alternates[seed % selected.alternates.length];
     const toRegion = entry => ({ domain: 'source-frames', assetHash: entry.assetHash, onsetFrame: entry.onsetFrame, endFrame: entry.endFrame, rootCents: entry.rootCents,
-      gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: 'forward' });
+      gain01: entry.gain01, tuningCents: entry.tuningCents, pitchRange: { minCents: entry.pitchRange.minCents, maxCents: entry.pitchRange.maxCents }, playbackMode: entry.playbackMode ?? 'forward' });
     const scope = JSON.stringify([intent.worldId ?? null, intent.generation, intent.laneId ?? null, intent.sampleKitId ?? intent.mappingId ?? 'control', map.mapId, map.revision]);
     if (scope.length > 1024) fail('sample kit scope exceeds its bounded identity');
-    return freezeData({ ...toRegion(zone), loop: zone.loop, releaseRegion: zone.releaseRegion ? toRegion(zone.releaseRegion) : null,
+    return freezeData({ ...toRegion(zone), ...(advancedMap(map) ? { positionPolicy: zone.positionPolicy } : {}), loop: zone.loop, releaseRegion: zone.releaseRegion ? toRegion(zone.releaseRegion) : null,
       chokeGroup: zone.chokeGroup, chokeScope: scope, selectionSeed: seed,
       selection: { mapId: map.mapId, mapRevision: map.revision, zoneId: zone.id, articulationId: gesture, requestedArticulationId: requested, neutralFallback: fallback,
         roundRobinGroup: zone.roundRobinGroup, alternateIndex: zone.alternateIndex, alternates: selected.alternates.length, velocityMin01: zone.velocityMin01,

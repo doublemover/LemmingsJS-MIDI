@@ -30,7 +30,7 @@ const compilerArtifact = (artifact, patch, compilerRevision) => {
   let map = null;
   if (patch.archivedDefinition.sampleMap != null) {
     assertContent(sampleMetadata, path, 'sample maps require typed-recipes-v11 compilation metadata');
-    try { map = validateSampleInstrumentMap(patch.archivedDefinition.sampleMap, patch.archivedDefinition.sampleRefs); }
+    try { map = validateSampleInstrumentMap(patch.archivedDefinition.sampleMap, patch.archivedDefinition.sampleRefs, { rendererProfile: patch.archivedDefinition.sampleMap.rendererProfile }); }
     catch (error) { throw fail('invalid-content', path + '.display.sampleMap: ' + error.message, { path: path + '.display.sampleMap' }); }
     const display = artifact.display.sampleMap;
     keysOnly(display, ['articulations', 'normalizationRef'], path + '.display.sampleMap');

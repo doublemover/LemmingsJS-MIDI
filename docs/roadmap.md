@@ -3595,3 +3595,33 @@ pruning, offline native no-retrigger, reorder and state-cut fixtures are written
 They remain unrun with the rest of the frontloaded development pass. This closes
 a source-routing implementation gap; it is not an acoustic, browser, performance
 or complete backlog qualification claim. Sample-engine integration follows.
+
+
+### Continuation 166 — advanced maps through the existing sample content owner (#1130, #1133, #1224)
+
+The existing immutable sample-map schema now has an explicit owned renderer
+profile. It declares forward, reverse or position-driven source traversal, bounded
+loop crossfades and linear/equal-power seam gain laws. Position policies name
+stop/wrap/reflect, interpolation, observed derivative admission, rest/seek slew
+and wrap seams. The native-forward profile retains its previous normalized render
+identity and rejects advanced maps rather than dropping unsupported fields.
+Patch activation checks the actual engine capability; archived display metadata
+can inspect the supported owned profile without granting playback capability.
+
+Owned map preparation consumes the same deterministic semantic-onset selector
+and verified aggregate PCM metadata. Fractional original-to-decoded region and
+loop endpoints stay explicit; integer filter guards are separate. Attack and
+release assets resolve together, with pitch/rate limits checked for both before
+onset publication. Position-driven playback explicitly gives varispeed pitch to
+observed cursor derivative; note pitch selects the authored zone, and independent
+pitch offsets refuse. No release or cursor observation reselects an attack.
+
+Prepared loop metadata declares a fixed-period symmetric edge-held seam policy;
+a crossfade does not silently shorten the authored loop period. Actual sample
+rendering of this policy remains the next implementation step. Two logical voices,
+two layers, up to four read heads per voice and preallocated thirty-two-segment
+cursor pools have declared storage bounds, not a qualified real-time capacity.
+Preparation does not copy PCM or advance selection. Native compatibility, gain-law
+identity, frame conversion, selected release rates, position policy and unsupported
+read-domain fixtures are authored and unrun. The actual sample Worklet, shared
+backend/offline integration and travel mapper remain in development.

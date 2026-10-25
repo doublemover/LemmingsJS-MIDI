@@ -1,6 +1,6 @@
 import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
-import { validateSampleInstrumentMap } from './SampleInstrumentMap.js';
+import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE, NATIVE_SAMPLE_MAP_PROFILE } from './SampleInstrumentMap.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -109,7 +109,8 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
   });
   if (input.sampleMap != null && engine.capabilities.sampleMaps !== true || input.engineId === 'native-sample' && input.sampleMap == null)
     throw new Error('An authored resolved sample map is required for this engine capability.');
-  const sampleMap = input.sampleMap == null ? null : validateSampleInstrumentMap(input.sampleMap, sampleRefs);
+  const sampleMap = input.sampleMap == null ? null : validateSampleInstrumentMap(input.sampleMap, sampleRefs, {
+    rendererProfile: engine.capabilities.advancedSampleMaps === true ? OWNED_SAMPLE_MAP_PROFILE : NATIVE_SAMPLE_MAP_PROFILE });
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
