@@ -1,3 +1,4 @@
+import { sealMidiProjectSnapshot } from '../../../midi/project/MidiProjectSnapshot.js';
 import { createPhysicalDomainEditor } from './PhysicalDomainEditor.js';
 import { createPhysicalFeedbackController } from './physical/PhysicalFeedback.js';
 import { createPhysicalFeedbackView } from './PhysicalFeedbackView.js';
@@ -100,7 +101,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity });
   startupSource = null;
   Object.assign(legacy.settings, startupPlan.worldOptions);
-  let project = markCanonicalMidiProject(startupPlan.project);
+  let project = sealMidiProjectSnapshot(markCanonicalMidiProject(startupPlan.project));
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
     inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
@@ -238,7 +239,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const syncWorldSeed = () => {
     if (worldBusy) return;
     const seed = runtime()?.world?.seed;
-    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } }); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
+    if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } })); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
     if (state.presentationTransition || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
@@ -317,6 +318,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!Number.isSafeInteger(project.procgen.physicalGraph.revision + 1)) throw new Error('Physical mapping revision exhausted.');
       next = { ...next, procgen: { ...next.procgen, physicalGraph: { ...next.procgen.physicalGraph, revision: project.procgen.physicalGraph.revision + 1 } } };
     }
+    const publishedProject = sealMidiProjectSnapshot(isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next))));
     const authoringChanged = graphChanged || project.procgen.fragmentInstances !== next.procgen.fragmentInstances && !equal(project.procgen.fragmentInstances || [], next.procgen.fragmentInstances || []);
     const authoringProposal = authoringChanged ? runtime()?.world?.preparePhysicalAuthoring?.(next.procgen.physicalGraph, next.procgen.fragmentInstances || []) : null;
     authoringProposal?.admit();
@@ -341,7 +343,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       trimHistory();
     }
     lastHistoryGroup = history ? historyGroup : null;
-    project = isCanonicalMidiProject(next) ? next : markCanonicalMidiProject(createProcgenWorkstationProject(sanitizeMidiProject(next)));
+    project = publishedProject;
     projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus();
@@ -901,7 +903,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (authored.lastApplied?.transactionId === applied.transactionId) {
           const previous = project;
           if (pendingPhysicalAuthoring?.commandId === applied.commandId) { pendingPhysicalAuthoring.capsule.promote(previous); pendingPhysicalAuthoring.promoted = true; }
-          project = markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } });
+          project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1, physicalGraph: authored.graph, fragmentInstances: authored.instances, junctions: next.world.physicalJunctions.definitions } }));
           undo.push(previous); redo.length = 0; lastHistoryGroup = null; trimHistory(); projectRevision++; editRevision++; storageStatus(); view?.render(); persist();
         }
       }

@@ -3,7 +3,7 @@ import { RESOURCE_RECOVERY_CASES, summarizeResourceSamples, evaluateResourceReco
 const buildId = 'a'.repeat(64);
 const good = () => ({ applicationBuildId: buildId, cases: RESOURCE_RECOVERY_CASES.map(spec => ({ ...spec, executionIdentity: { activeExecution: 'bound', buildId }, observedLaneCount: spec.laneCount, observedDpr: spec.dpr,
   patternLength: 64, patternLanes: spec.laneCount, terrainEditCells: 8192, cctvViews: 8, refcountSharing: true, bank: { decodedEntries: 8, activePins: 8, decodedBytes: 30720000 }, playingTickDelta: 25,
-  writes: Array.from({ length: 8 }, () => ({ accepted: true, durable: true, snapshotMs: 1, inputCopyMaximumSliceMs: 2, resultCopyMaximumSliceMs: 2, encodeMs: 10, commitMs: 3 })), capture: { slices: 8, maximumSliceMs: 3.9 },
+  writes: Array.from({ length: 8 }, () => ({ accepted: true, durable: true, snapshotMs: 1, transactionMaximumSliceMs: 2, inputCopyMaximumSliceMs: 2, resultCopyMaximumSliceMs: 2, encodeMs: 10, commitMs: 3 })), capture: { slices: 8, maximumSliceMs: 3.9 },
   samples: { clickPaintMs: Array(16).fill(1), schedulingLatenessMs: Array(32).fill(1) }, pressure: { rejectedBeforeAllocation: true, activeWorldPreserved: true, activePinsPreserved: true, continuedTicks: 1 },
   candidate: { outcome: 'committed', overlapObserved: true }, budget: { limitBytes: 1000, peakAccountedBytes: 999, estimatedOverheadBytes: 100, categoryPeakCoverage: 'complete', categoryPeaks: { candidate: 500 } },
   cleanup: { outcome: 'complete' }, pausedRecovery: { accepted: true, playing: false }, browserErrors: [] })) });

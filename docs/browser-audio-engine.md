@@ -1728,3 +1728,29 @@ corrupt and duplicate-ownership streams have authored regression coverage, still
 unrun. The remaining recovery algorithm work is separate: its manifest still
 re-encodes the complete authored project instead of reusing immutable lane pages,
 and transaction scheduling needs bounded chunk publication.
+
+### Immutable authored recovery pages
+
+Recovery manifest v2 separates authored lane pages, other project component pages,
+and pattern/physical continuation from the small session envelope. Workstation
+publication verifies and seals plain-data descendants; its private verified-node
+set skips already sealed subtrees on structural edits. Only those verified nodes
+qualify for identity-based durable reuse. A shallow freeze or unchanged mutable
+object identity cannot preserve a stale encoding. Initial publication sealing is
+not claimed to be free or to meet the recovery slice budget.
+
+A one-lane edit replaces that lane's page and the manifest, rather than serializing
+all 1024 lanes again. Large authored fields have independent bounded pages; mutable
+continuation snapshots are freshly encoded. Legacy v1 manifests remain readable.
+The reader verifies unique complete reachability, component checksums and exact
+aggregate stored length before exposing a session. All decoded source leases stay
+owned until the reader releases them.
+
+IndexedDB publication and reads chain one request from the preceding success
+callback, keeping the transaction active without queuing thousands of requests in
+one synchronous loop. Both recovery slots and source-generation pins retain their
+single atomic commit. Transaction submission slice receipts join the qualification
+harness; they are measured, not assumed. Large individual encoded records still
+need physical fragmentation to bound their structured-clone cost. Regression
+fixtures cover incremental reuse, mutable callers, v1 migration, malformed
+references and every expanded write boundary; none have been executed.

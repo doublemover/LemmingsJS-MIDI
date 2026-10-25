@@ -1,3 +1,4 @@
+import { sealMidiProjectSnapshot } from '../js/midi/project/MidiProjectSnapshot.js';
 import { expect } from 'chai';
 import { createProcgenRecoveryPageStore } from '../js/app/procgen/workstation/ProcgenRecoveryPageStore.js';
 import { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } from '../js/app/procgen/workstation/ProcgenRecoveryPageCodec.js';
@@ -37,7 +38,7 @@ describe('atomic incremental recovery page publication', () => {
     let error; try { await f.store.save(session('interrupted'), { documentRevision: 1, tick: 1 }); } catch (value) { error = value; }
     expect(error).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pinsBefore); f.store.dispose();
   });
-  for (const boundary of [1, 2, 3, 4, 5, 6]) for (const failureName of ['AbortError', 'QuotaExceededError']) it(`retains complete data and source pins at write boundary ${boundary} after ${failureName}`, async () => {
+  for (const boundary of [1, 2, 3, 4, 5, 6, 7]) for (const failureName of ['AbortError', 'QuotaExceededError']) it(`retains complete data and source pins at write boundary ${boundary} after ${failureName}`, async () => {
     const f = setup(); await f.store.save(session('previous'), { documentRevision: 0, tick: 1 });
     const before = structuredClone([...f.records]), pinsBefore = structuredClone([...f.pins]); f.failAfter(boundary, failureName);
     const next = { ...session('new'), world: structuredClone(base) }; next.recoveryJournal = { ...next.recoveryJournal, pages: [structuredClone(page)] };
@@ -45,9 +46,9 @@ describe('atomic incremental recovery page publication', () => {
     expect(failure).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pinsBefore);
     const restored = await f.store.load(f.records.get('recovery:slot:1'), { owned: true }); expect(restored.session.name).to.equal('previous'); restored.release(); f.store.dispose();
   });
-  for (const offset of [1, 2, 3]) it(`never publishes a manifest after worker failure at encoded chunk ${offset}`, async () => {
+  for (const offset of [1, 2, 3, 4]) it(`never publishes a manifest after worker failure at encoded chunk ${offset}`, async () => {
     let fail = Infinity; const f = setup({ failWorkerAt: count => count === fail }); await f.store.save(session('previous'), { documentRevision: 0, tick: 1 });
-    const before = structuredClone([...f.records]); fail = 3 + offset;
+    const before = structuredClone([...f.records]); fail = f.store.stats().encodedPages + offset;
     const next = { ...session('new'), world: structuredClone(base) }; next.recoveryJournal = { ...next.recoveryJournal, pages: [structuredClone(page)] };
     let failure; try { await f.store.save(next, { documentRevision: 1, tick: 1 }); } catch (error) { failure = error; }
     expect(failure?.name).to.equal('BackgroundJobError'); expect([...f.records]).to.deep.equal(before); f.store.dispose();
@@ -67,9 +68,41 @@ describe('atomic incremental recovery page publication', () => {
   it('distinguishes durable data from unknown worker-result cleanup', async () => {
     const f = setup({ releasePhase: 'failed-or-unknown' });
     const receipt = await f.store.save(session('durable-but-cleanup-unknown'), { documentRevision: 5, tick: 1 });
-    expect(receipt.durable).to.equal(true); expect(receipt.retirement.status).to.equal('unknown'); expect(receipt.retirement.failureCount).to.equal(3);
-    expect(f.records.get('recovery:head').generation).to.equal(receipt.generation); expect(f.store.stats().retirementFailures).to.equal(3);
+    expect(receipt.durable).to.equal(true); expect(receipt.retirement.status).to.equal('unknown'); expect(receipt.retirement.failureCount).to.equal(4);
+    expect(f.records.get('recovery:head').generation).to.equal(receipt.generation); expect(f.store.stats().retirementFailures).to.equal(4);
     const source = await f.store.load(f.records.get('recovery:slot:1'), { owned: true }); expect(() => source.release()).to.throw('unresolved'); expect(() => source.release()).to.throw('unresolved'); f.store.dispose();
+  });
+  it('re-encodes only a changed sealed lane and its manifest, not every authored pattern', async () => {
+    const f = setup(), project = sealMidiProjectSnapshot({ name: 'immutable', global: { scale: [0, 2, 4] }, procgen: { revision: 0, lanes: [{ id: 'a', patterns: [{ steps: [{ enabled: true }] }] }, { id: 'b', patterns: [{ steps: [{ enabled: false }] }] }] } });
+    await f.store.save({ ...session('first'), project }, { documentRevision: 0, tick: 1 });
+    const encoded = f.store.stats().encodedPages;
+    const changed = sealMidiProjectSnapshot({ ...project, procgen: { ...project.procgen, revision: 1, lanes: [project.procgen.lanes[0], { ...project.procgen.lanes[1], patterns: [{ steps: [{ enabled: true }] }] }] } });
+    await f.store.save({ ...session('second'), project: changed }, { documentRevision: 1, tick: 1 });
+    expect(f.store.stats().encodedPages - encoded).to.equal(2);
+    const source = await f.store.load(f.records.get('recovery:slot:0'), { owned: true }); expect(source.session.project).to.deep.equal(changed); source.release(); f.store.dispose();
+  });
+  it('does not reuse a mutable lane merely because its identity or shallow freeze is unchanged', async () => {
+    const f = setup(), lane = Object.freeze({ patterns: [{ steps: [{ enabled: false }] }] }), project = { procgen: { lanes: [lane] } };
+    await f.store.save({ ...session('first'), project }, { documentRevision: 0, tick: 1 }); lane.patterns[0].steps[0].enabled = true;
+    await f.store.save({ ...session('changed'), project }, { documentRevision: 1, tick: 1 });
+    const source = await f.store.load(f.records.get('recovery:slot:0'), { owned: true }); expect(source.session.project.procgen.lanes[0].patterns[0].steps[0].enabled).to.equal(true); source.release(); f.store.dispose();
+  });
+  it('reads a legacy v1 manifest without requiring project-page migration first', async () => {
+    const f = setup(), original = session('legacy'), refs = [], put = async value => {
+      const page = await encodeProcgenRecoveryPage(value), key = 'recovery:chunk:legacy:' + refs.length;
+      const ref = { key, sha256: page.sha256, encoding: page.encoding, rawBytes: page.rawBytes, storedBytes: page.bytes.byteLength }; refs.push(ref); f.records.set(key, { id: key, kind: 'recovery-chunk', ...page }); return ref;
+    };
+    const baseRef = await put(base), pageRef = await put(page), { world: _world, recoveryJournal, ...header } = original;
+    const root = await put({ schema: 'procgen-paged-recovery/v1', session: header, base: baseRef, journal: { ...recoveryJournal, pages: [pageRef] } });
+    const source = await f.store.load({ generation: 1, checksum: root.sha256, paged: root, references: refs.map(ref => ref.key), storedBytes: refs.reduce((sum, ref) => sum + ref.storedBytes, 0) }, { owned: true });
+    expect(source.session).to.deep.equal(original); source.release(); f.store.dispose();
+  });
+  it('rejects extra unreachable pages and duplicate recorded references', async () => {
+    const f = setup(); await f.store.save(session('complete'), { documentRevision: 0, tick: 1 }); const record = f.records.get('recovery:slot:1');
+    for (const references of [[...record.references, record.references[0]], [...record.references, 'recovery:chunk:missing']]) {
+      let failure; try { await f.store.load({ ...record, references }, { owned: true }); } catch (error) { failure = error; }
+      expect(failure?.name).to.equal('RecoveryCandidateError'); expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+    } f.store.dispose();
   });
   it('rejects corrupt chunks and invalidates owned readers when storage closes', async () => {
     const f = setup(); await f.store.save(session('durable'), { documentRevision: 0, tick: 1 });
