@@ -3845,3 +3845,35 @@ original content and canonical causal-render fixtures are authored and unrun.
 Formatting/syntax/provenance are the only current checks. Spectral seams, measured
 render cost, listening direction/ambiguity and browser acceptance remain deferred.
 Primary historical foundation: [Shepard (1964), original-paper scan](https://www.brainmusic.org/MBB91%20Webpage/Pitch_I_Shepard.pdf).
+
+
+### Continuation 173 — immutable sound-seed window foundation (#1154, #1164, #1170)
+
+Owned master captures, individual causal render files and frozen seeds now share
+a bounded source-window reader. It checks the original WAV inventory and exact
+embedded manifest, copies only the selected PCM region, admits one original
+reader at a time and awaits its retirement before publishing a private window.
+Streamed captures yield between bounded chunks. Reader cancellation and unknown
+retirement retain concrete ownership and resource accounting.
+
+The shared background worker analyzes stereo min/max envelopes at bounded
+resolutions, raw/baked peak and RMS, clipping, silence and channel correlation.
+Only explicit edge fades change samples; no normalization, pitch inference or
+silence removal is implicit. Exact frame/rate and parent-manifest identities,
+printed effects and at most sixteen ancestry links are embedded in a new Float32
+WAV. Missing captured frames remain labeled missing through nested trimming; a
+fully baked seed can play without retaining its original take. Regeneration and
+playback prerequisites are separate.
+
+The latest-generation analysis owner retains the previous candidate on failure,
+serializes source replacement, fences stale worker results, and retires workers,
+input windows, artifacts and waveform reservations in dependency order. Asset,
+compile, audition and durability readiness remain independent. Each rendered
+file now exposes its actual immutable manifest for harvesting a selected stem or
+return rather than substituting the bundle manifest.
+
+Impulse, streamed sole-reader, stereo anti-phase, clipping, gap propagation,
+nested-source and resource-retirement fixtures are authored and unrun. The compact
+editor, seed recipe compiler and project application integration are the next
+dependent work. Only formatting, syntax and provenance checks accompany this
+development batch.

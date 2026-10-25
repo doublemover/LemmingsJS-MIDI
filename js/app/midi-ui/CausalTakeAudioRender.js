@@ -199,7 +199,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
           const filename = lane ? 'lane-' + index : returnNodeId ? 'effect-' + index + '-' + returnNodeId.replace(/[^A-Za-z0-9._-]/g, '_') : 'master';
           const artifact = prepareExportArtifact({ bytes: file.bytes, immutableSourceRef: [binding.sourceCanonicalHash, definitionHash, effectHash || 'dry-source', sampleRate, startSeconds, endSeconds, policy.mode, returnNodeId || (lane ? lanes[index - 1] : 'master'), file.manifest.pcmHash].join(':'),
             formatVersion: manifest.schema, mediaType: 'audio/wav', suggestedFilename: 'take-' + binding.sourceCanonicalHash.slice(0, 12) + '-' + filename + '.wav',
-            coverageLossReportRef: 'embedded-lmjs-render-manifest', maxBytes: 64 * 1048576, budgetAdapter: resourceBudget }); candidates.push({ id: String(index), label, artifact });
+            coverageLossReportRef: 'embedded-lmjs-render-manifest', maxBytes: 64 * 1048576, budgetAdapter: resourceBudget }); candidates.push({ id: String(index), label, artifact, manifest: freezeData(file.manifest) });
         }
         check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt });
       } catch (error) {
