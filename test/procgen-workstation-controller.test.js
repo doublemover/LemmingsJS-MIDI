@@ -53,6 +53,16 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('keeps sound aliases, hardware mapping and their Undo independent of world replacement', async () => {
+    const f = setup(); f.studio.bindRuntime(); const world = f.runtime.world, theme = f.studio.getProject().procgen.lanes[0].worldThemeId;
+    f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { externalProgram: 67, channel: 4, pan: 21 } });
+    for (const family of ['rock', 'snow', 'bubble', 'fire', 'dirt', 'pillar']) f.studio.dispatch({ type: 'procgen/palette', laneId: 'lane-1', family });
+    expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0); expect(f.studio.getLaneAssignments()).to.deep.equal([theme]);
+    expect(f.studio.getProject().procgen.lanes[0]).to.include({ family: 'pillar', worldThemeId: theme, externalProgram: 67, channel: 4, pan: 21 });
+    await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].family).to.equal('dirt'); expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0);
+    await f.studio.handlers.redo(); expect(f.studio.getProject().procgen.lanes[0].family).to.equal('pillar'); expect(f.restarts).to.have.length(0);
+    await f.studio.handlers.applyMatchingWorld('lane-1'); expect(f.restarts).to.have.length(1); expect(f.studio.getLaneAssignments()).to.deep.equal(['pillar']); f.studio.dispose();
+  });
   it('cancels an externally retired document source before its candidate can publish', async () => {
     const f = setup(); f.studio.bindRuntime(); const session = f.studio.capture(), previous = f.runtime, source = new AbortController();
     const release = f.holdRestart(), pending = f.studio.loadSession(session, null, { signal: source.signal });

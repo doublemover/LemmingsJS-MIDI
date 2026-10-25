@@ -311,10 +311,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
-      labeled('Collection / tileset', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => dispatch({ type: 'procgen/palette', laneId: lane.id, family }), 'Sound collection'), fields);
+      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => dispatch({ type: 'procgen/palette', laneId: lane.id, family }), 'Sound collection'), fields);
       labeled('Role', select(PROCGEN_ROLES, lane.role, role => dispatch({ type: 'procgen/palette', laneId: lane.id, role }), 'Instrument role'), fields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);
       labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => dispatch({ type: 'procgen/palette', laneId: lane.id, patch }), 'Sound patch'), fields);
+      fields.append(node('p', `World: ${lane.worldThemeId} · sound: ${lane.instrumentPatchId} · ${lane.linkedThemePresetId === lane.worldThemeId ? 'matching theme suggestion' : 'independent world'} · ${lane.soundChangePolicy === 'new-notes-only' ? 'new notes only; held voices retain their renderer' : 'held crossfade requires adapter support'}`, 'studio-hint'));
+      const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; fields.append(matchingWorld);
       if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
         const control = parameter(lane.instrumentControls?.macros?.[macro.id] ?? macro.default01, value => changeLane({ instrumentControls: { ...lane.instrumentControls,
@@ -535,6 +537,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), fields);
       labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), fields);
       labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), fields);
+      labeled('Owned external program (zero based)', input(lane.externalProgram ?? '', externalProgram => changeLane({ externalProgram }), { min: 0, max: 127, nullable: true }), fields);
+      labeled('External percussion mapping', input(lane.externalPercussion, externalPercussion => changeLane({ externalPercussion }), { type: 'checkbox' }), fields);
       for (const [key, title] of [['bankMSB', 'Bank MSB'], ['bankLSB', 'Bank LSB']]) labeled(title, input(lane[key] ?? '', value => changeLane({ [key]: value }), { min: 0, max: 127, nullable: true }), fields);
       fields.append(button('Connect MIDI', () => handlers.connect?.()),
         ...(pattern ? [button('Learn step note', () => handlers.learn?.())] : []),

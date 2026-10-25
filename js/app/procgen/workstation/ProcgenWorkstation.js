@@ -48,7 +48,7 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -77,7 +77,7 @@ function rollbackWorldProject(previous, staged, current) {
     const before = staged.procgen.lanes.find(value => value.id === lane.id), after = current.procgen.lanes.find(value => value.id === lane.id);
     if (!before || !after) return lane;
     const next = { ...lane };
-    for (const key of Object.keys(after)) if (key !== 'id' && key !== 'family' && !equal(before[key], after[key])) next[key] = after[key];
+    for (const key of Object.keys(after)) if (key !== 'id' && key !== 'worldThemeId' && !equal(before[key], after[key])) next[key] = after[key];
     return next;
   });
   return restored;
@@ -326,8 +326,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (physicalAuthoringAbort) { status('Finish the paused physical authoring transaction before editing.'); return false; }
     if (disposed) return project;
     if (pendingHistory) {
-      if (['procgen/palette', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
-          action.type === 'procgen/lane' && (action.patch?.family || action.patch?.role)) {
+      if (['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
+          action.type === 'procgen/lane' && action.patch?.worldThemeId) {
         status('Wait for Undo or Redo to finish before changing the world.'); return false;
       }
       const next = reduceMidiProject(project, action);
@@ -341,7 +341,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
       return updated;
     }
-    if (action.type === 'procgen/palette' && action.family && project.procgen.lanes.find(lane => lane.id === action.laneId)?.family !== action.family) {
+    if (action.type === 'procgen/worldTheme' && action.worldThemeId && procgenLane(project.procgen.lanes, action.laneId)?.worldThemeId !== action.worldThemeId || action.type === 'procgen/lane' && action.patch?.worldThemeId && procgenLane(project.procgen.lanes, action.laneId)?.worldThemeId !== action.patch.worldThemeId) {
       return safe(() => rebuild({ projectNext: reduceMidiProject(project, action) }))();
     }
     const reduced = reduceMidiProject(project, action);
@@ -805,7 +805,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const settingsFor = (source = project, patch = {}) => ({ ...acceptedWorldSettings, ...patch, workstation: true,
     speed: transport.getState().gameSpeed, laneCount: source.procgen.lanes.length, seed: source.procgen.seed,
-    laneAssignments: source.procgen.lanes.map(lane => lane.family) });
+    laneAssignments: source.procgen.lanes.map(lane => lane.worldThemeId) });
   const prepareSettings = () => { Object.assign(legacy.settings, settingsFor(project, pendingWorldSettings || {})); return legacy.settings; };
   const acceptWorldSettings = settings => {
     acceptedWorldSettings = { ...settings, laneAssignments: [...(settings.laneAssignments || [])] };
@@ -1178,7 +1178,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       throw error;
     } finally { pendingWorldSettings = null; worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (completed || rolledBack)) persist(); }
   }
-  const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.family !== project.procgen.lanes[index]?.family);
+  const changesWorld = next => next.procgen.seed !== project.procgen.seed || next.procgen.lanes.length !== project.procgen.lanes.length || next.procgen.lanes.some((lane, index) => lane.worldThemeId !== project.procgen.lanes[index]?.worldThemeId);
   const historyMove = async (from, to) => {
     if (!from.length || pendingHistory || worldBusy) return false;
     cancelInputEdits('history changed');
@@ -1332,6 +1332,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       masterCapture ||= createMasterCaptureView({ document, window, preview: legacy.local.audio, resourceBudget, onStatus: status });
       masterCapture.open();
     },
+    applyMatchingWorld(laneId = selected().id) { const lane = procgenLane(project.procgen.lanes, laneId); if (!lane?.linkedThemePresetId) throw new Error('This sound has no matching physical world suggestion.'); return dispatch({ type: 'procgen/worldTheme', laneId, worldThemeId: lane.linkedThemePresetId }); },
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
       soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
@@ -1340,19 +1341,23 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     async applyInstalledInstrument(candidate, { signal } = {}) {
       signal?.throwIfAborted();
-      if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
-      const laneId = selected().id, generation = documentGeneration, revision = projectRevision, playback = physicalPlayback;
+      if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || !physicalPlayback) throw new Error('Finish the current world/history/take operation before applying an instrument.');
+      const laneId = selected().id, generation = documentGeneration, playback = physicalPlayback;
+      const soundFields = lane => JSON.stringify([lane?.family, lane?.role, lane?.patch, lane?.instrumentRef?.packHash, lane?.instrumentRef?.definitionHash, lane?.instrumentControls, lane?.soundChangePolicy]);
+      const baselineSound = soundFields(selected());
+      if (!playback.instrumentTransitionCapabilities().policies.includes(selected().soundChangePolicy)) throw new Error('Held crossfade is unsupported by the current adapter. Select the named new-notes-only policy; the world will not be changed.');
       const reference = validateSoundContentReference({ ...candidate.reference, definition: candidate.definition });
-      const prepared = await playback.prepareLaneInstrument(laneId, reference, { signal });
+      const prepared = await playback.prepareLaneInstrument(laneId, reference, { signal, retainPrevious: true });
       try {
         signal?.throwIfAborted();
-        if (disposed || playback !== physicalPlayback || generation !== documentGeneration || revision !== projectRevision || selected().id !== laneId || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop)
-          throw new Error('Instrument Apply canceled because its lane or project changed.');
+        if (disposed || playback !== physicalPlayback || generation !== documentGeneration || soundFields(procgenLane(project.procgen.lanes, laneId)) !== baselineSound || selected().id !== laneId || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop)
+          throw new Error('Instrument Apply conflicts with a newer sound/control selection or document operation. Accepted unrelated lane edits were preserved.');
         prepared.commit();
-        try { dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference, instrumentControls: { macros: {} } } }); }
-        catch (error) { void playback.synchronizeLaneInstruments(project.procgen.lanes); throw error; }
+        try { const result = dispatch({ type: 'procgen/lane', laneId, patch: { instrumentRef: reference, instrumentControls: { macros: {} } } }); if (result === false) throw new Error('Instrument publication was not accepted.'); }
+        catch (error) { if (procgenLane(project.procgen.lanes, laneId)?.instrumentRef?.definitionHash === reference.definitionHash && procgenLane(project.procgen.lanes, laneId)?.instrumentRef?.packHash === reference.packHash) { prepared.accept(); status('Instrument committed; the display refresh failed: ' + error.message); return reference; } throw error; }
+        prepared.accept();
         status('Installed instrument applied to ' + selected().name + '. Held voices retain their prior renderer.'); return reference;
-      } finally { prepared.release(); }
+      } finally { const receipt = prepared.release(); if (receipt?.completion) { await receipt.completion; if (receipt.outcome !== 'complete') status('Instrument resource retirement is unresolved; further preparation is blocked.'); } }
     },
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
@@ -1670,7 +1675,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
     getRecoveryState: () => Object.freeze({ state: recoveryState, pendingRevision: editRevision, durableRevision: durableRecoveryRevision,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
-    getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.family),
+    getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,

@@ -41,11 +41,24 @@
       "requirementUpdatedAt": "2026-10-22T09:31:02Z",
       "requirementSha256": "9c5a0051eaebfe167e47b74a335e751bb5150b3859fa0606dd17d2c9fc8f261b",
       "initialGap": "Separate installed instrumentRef preparation exists, but primary Collection/tileset SOUND selection still dispatches palette family changes into a world rebuild; lane model retains coupled family and lacks the requested independent worldTheme/instrument identity and explicit Apply matching world interaction.",
-      "state": "pending-implementation",
-      "source": [],
-      "regressions": [],
+      "state": "in-progress",
+      "source": [
+        "js/app/procgen/workstation/ProcgenWorkstationProject.js",
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "js/app/procgen/workstation/ProcgenPatternEngine.js",
+        "js/app/midi-ui/LaneInstrumentPreparation.js",
+        "js/app/midi-ui/RoutedInstrumentBackend.js"
+      ],
+      "regressions": [
+        "test/midi/procgen-workstation-music.test.js",
+        "test/procgen-workstation-controller.test.js",
+        "test/midi/routed-instrument-backend.test.js"
+      ],
       "commits": [],
-      "validation": "deferred-by-request"
+      "validation": "deferred-by-request",
+      "increment": "independent-world-sound-identities-and-renderer-rollback",
+      "remaining": "Native sound collection/legacy alias resolution and hold-to-preview integration, full slow/fast/cancel/load/scene lifecycle regressions and 1000-tick actual-runtime trace harness remain. Independent world/sound/recipe/external identities, explicit world action, sound-only Undo and synchronous assignment rollback are implemented; no full completion or runtime qualification claim."
     },
     {
       "number": 971,
@@ -1460,7 +1473,7 @@
         "test/fixtures/causal-random-v1.json"
       ],
       "commits": [
-        "93a34d32b5f070926d98210783b873f54ab7fe55"
+        "2f165270a0b85d28eedee2b81761b3bc1cdbbf41"
       ],
       "validation": "deferred-by-request",
       "increments": [

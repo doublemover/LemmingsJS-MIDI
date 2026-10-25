@@ -27,6 +27,34 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('rolls back a candidate synchronously while each held voice keeps its original renderer', async () => {
+    const fallback = renderer(), old = renderer(), candidate = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'old', old.backend); const previous = router.retainAssignment('lane-1');
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'preview' }).execution;
+    router.backend.begin(onset('old-held'), 100, execution);
+    const receipt = router.assign('lane-1', 'candidate', candidate.backend); router.backend.begin(onset('preview-held'), 101, execution);
+    expect(previous.restore(receipt)).to.include({ status: 'restored', key: 'old' }); previous.release();
+    router.backend.begin(onset('restored'), 102, execution); router.backend.end('preview-held', { seconds: 0.1 }, 103, execution);
+    expect(old.calls).to.deep.equal([['begin', 'old-held'], ['begin', 'restored']]);
+    expect(candidate.calls).to.deep.equal([['begin', 'preview-held'], ['end', 'preview-held']]); expect(candidate.disposed).to.equal(false);
+    candidate.finish('preview-held'); router.collect(); expect(candidate.disposed).to.equal(true); await router.dispose().completion;
+  });
+  it('never lets a stale preview restore over a newer selection even when its renderer key is identical', async () => {
+    const fallback = renderer(), old = renderer(), next = renderer(), router = root(fallback.backend);
+    router.assign('lane-1', 'old', old.backend); const previous = router.retainAssignment('lane-1'), stale = router.assign('lane-1', 'next', next.backend);
+    const winner = router.assign('lane-1', 'next', next.backend); expect(winner.revision).to.be.greaterThan(stale.revision);
+    expect(previous.restore(stale)).to.deep.equal({ status: 'superseded', restoresNewerSelection: false }); previous.release();
+    expect(router.assignment('lane-1')).to.equal('next'); expect(old.disposed).to.equal(true); await router.dispose().completion;
+  });
+  it('restores an unassigned default or an explicit blocked requirement without inventing a fallback assignment', async () => {
+    const fallback = renderer(), next = renderer(), router = root(fallback.backend);
+    const empty = router.retainAssignment('lane-1'), first = router.assign('lane-1', 'next', next.backend);
+    expect(empty.restore(first)).to.include({ status: 'restored', key: null }); empty.release(); expect(router.assignment('lane-1')).to.equal(null);
+    router.block('lane-1', 'missing-source'); const blocked = router.retainAssignment('lane-1'), other = renderer();
+    const receipt = router.assign('lane-1', 'other', other.backend); blocked.restore(receipt); blocked.release();
+    const execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'blocked' }).execution;
+    expect(router.backend.begin(onset('silent'), 100, execution).reason).to.equal('missing-source'); expect(fallback.calls).to.have.length(0); await router.dispose().completion;
+  });
   it('requires the prepared authored body and damping macro for topology excitation', () => {
     const fallback = renderer(), child = renderer(), router = root(fallback.backend);
     router.assign('lane-1', 'body-pack', child.backend, { bodyId: 'modal:clay', macroIds: ['damping'] });

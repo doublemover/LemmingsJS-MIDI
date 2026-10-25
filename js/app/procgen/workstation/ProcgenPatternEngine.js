@@ -119,7 +119,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
       const spanValues = automation.entries.length ? automation.values(meta, automationPosition(project, laneIndex, beat + offset, source === 'game' ? current.eventMeta : null)) : null;
       for (const note of notes) {
         let spec = { note, velocity: step.velocity,
-          channel: sound.percussion ? 10 : lane.channel, program: sound.program, outputId: lane.outputId, percussion: sound.percussion,
+          channel: lane.channel, program: lane.externalProgram, outputId: lane.outputId, percussion: lane.externalPercussion,
           bankMSB: lane.bankMSB, bankLSB: lane.bankLSB,
           bankMsb: lane.bankMSB, bankLsb: lane.bankLSB,
           ensembleRole: lane.role, envelope: sound.envelope, timbre: sound.timbre, pan: lane.pan,

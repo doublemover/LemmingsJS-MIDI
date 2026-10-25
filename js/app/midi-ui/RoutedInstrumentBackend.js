@@ -14,14 +14,14 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function') throw new TypeError('Invalid routed instrument owner.');
   if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
   const defaults = { key: 'default', backend: defaultBackend, retirement: null, assignedLanes: 0, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
-    children = new Map([['default', defaults]]), assignments = new Map(), executions = new Map(), voices = new Map();
+    children = new Map([['default', defaults]]), assignments = new Map(), assignmentVersions = new Map(), executions = new Map(), voices = new Map();
   const retirement = createProcgenRetirementScope(), displayObservers = new Set();
   const metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: 'routed-instruments-' + (++nextRouter), kind: 'routed-instrument-metadata', category: 'audio', bytes: 4096 });
   const metadataBytes = ({ lanes = 0, renderers = 0, voices: extraVoices = 0, epochs = 0, displays = 0 } = {}) => 4096 +
     (assignments.size + lanes) * 512 + (children.size + renderers) * 17408 + (voices.size + extraVoices) * 512 +
     (executions.size + epochs) * (maxChildren * 256 + 1024) + (displayObservers.size + displays) * (maxChildren * 128 + 1024);
   const reserveMetadata = extra => metadata.resize(metadataBytes(extra));
-  let disposed = false, voiceCursor = voices.entries(), collected = 0, routeRevision = 0, displayContext = null;
+  let disposed = false, voiceCursor = voices.entries(), collected = 0, routeRevision = 0, assignmentSerial = 0, displayContext = null;
   const attachDisplay = (observer, child, handle) => {
     if (!observer.active || observer.children.has(child) || typeof child.backend.observeDisplaySamples !== 'function') return;
     try {
@@ -175,7 +175,7 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
         ...[...displayObservers].map((observer, index) => ({ name: 'display-' + index, run: observer.release })),
         ...[...children.values()].map(child => ({ name: child.key, run: () => retireChild(child) }))]) },
       { name: 'routing-metadata', run: async () => { await sources.completion; if (sources.outcome !== 'complete') throw new Error('Routed renderer metadata still has unresolved owners.');
-        assignments.clear(); voices.clear(); executions.clear(); displayObservers.clear(); metadata.release(); } }
+        assignments.clear(); assignmentVersions.clear(); voices.clear(); executions.clear(); displayObservers.clear(); metadata.release(); } }
     ]); }
   };
   const lifecycle = createInstrumentExecutionLifecycle(backend, { getContext, getGeneration,
@@ -199,22 +199,41 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
       if (bodyId != null && (typeof bodyId !== 'string' || bodyId.length > 128) || !Array.isArray(macroIds) || macroIds.length > 4 || macroIds.some(id => typeof id !== 'string' || id.length > 128)) throw new TypeError('Invalid prepared body identity.');
       collect(); if (!assignments.has(lane) && assignments.size >= maxLanes) throw new Error('Routed lane capacity exceeded.'); let child = children.get(key);
       if (child && (child.backend !== renderer || child.retirementScope || child.bodyId !== bodyId || JSON.stringify(child.macroIds) !== JSON.stringify(macroIds)) || !child && children.size >= maxChildren) throw new Error('Lane instrument replacement exceeds retained renderer capacity.');
+      if (!Number.isSafeInteger(assignmentSerial + 1)) throw new Error('Lane assignment identity exhausted.');
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1, renderers: child ? 0 : 1 });
       if (!child) { child = { key, backend: renderer, retirement: null, assignedLanes: 0, pins: 0, releaseSeconds, oneShotTailSeconds, bodyId, macroIds: [...macroIds] }; children.set(key, child);
         if (displayContext) { try { renderer.setDisplayContext?.(displayContext); } catch { /* Presentation cannot prevent prepared sound assignment. */ } }
       }
       const previous = assignments.get(lane);
-      if (previous !== child) { if (previous && !previous.blocked) previous.assignedLanes--; child.assignedLanes++; routeRevision++; } assignments.set(lane, child);
+      if (previous !== child) { if (previous && !previous.blocked) previous.assignedLanes--; child.assignedLanes++; routeRevision++; } assignments.set(lane, child); assignmentVersions.set(lane, ++assignmentSerial); return Object.freeze({ laneId: lane, key, revision: assignmentSerial });
     },
     find: key => children.get(key)?.retirementScope ? null : children.get(key)?.backend || null,
     retain(key) { const child = children.get(key); if (!child || child.retirementScope || disposed) return null; child.pins = (child.pins || 0) + 1; let released = false;
       return Object.freeze({ backend: child.backend, release() { if (!released) { released = true; child.pins--; collect(); } } }); },
     assignment: lane => assignments.get(lane)?.key || null,
-    unassign(lane) { const previous = assignments.get(lane); if (assignments.delete(lane)) { if (!previous.blocked) previous.assignedLanes--; routeRevision++; } collect(); },
+    retainAssignment(lane) {
+      if (!validLane(lane) || disposed) throw new Error('Lane assignment owner is unavailable.');
+      const previous = assignments.get(lane) || null; if (previous && !previous.blocked) previous.pins = (previous.pins || 0) + 1;
+      let released = false;
+      return Object.freeze({ key: previous?.key || null,
+        restore(receipt) {
+          if (released || disposed) throw new Error('Previous lane assignment lease is retired.');
+          if (receipt?.laneId !== lane || assignmentVersions.get(lane) !== receipt.revision || assignments.get(lane)?.key !== receipt.key) return Object.freeze({ status: 'superseded', restoresNewerSelection: false });
+          if (!Number.isSafeInteger(assignmentSerial + 1) || previous?.retirementScope) throw new Error('Previous lane renderer cannot be restored.');
+          const current = assignments.get(lane); if (current && !current.blocked) current.assignedLanes--;
+          if (previous) { if (!previous.blocked) previous.assignedLanes++; assignments.set(lane, previous); assignmentVersions.set(lane, ++assignmentSerial); }
+          else { assignments.delete(lane); assignmentVersions.delete(lane); assignmentSerial++; }
+          routeRevision++; collect(); return Object.freeze({ status: 'restored', key: previous?.key || null });
+        },
+        release() { if (released) return; released = true; if (previous && !previous.blocked) previous.pins--; collect(); }
+      });
+    },
+    unassign(lane) { const previous = assignments.get(lane); if (assignments.delete(lane)) { assignmentVersions.delete(lane); if (!previous.blocked) previous.assignedLanes--; routeRevision++; } collect(); },
     block(lane, reason) { if (!validLane(lane) || typeof reason !== 'string' || !reason || reason.length > 128 || disposed || !assignments.has(lane) && assignments.size >= maxLanes) throw new TypeError('Invalid lane requirement failure.');
+      if (!Number.isSafeInteger(assignmentSerial + 1)) throw new Error('Lane assignment identity exhausted.');
       reserveMetadata({ lanes: assignments.has(lane) ? 0 : 1 });
       const previous = assignments.get(lane); if (previous && !previous.blocked) previous.assignedLanes--;
-      if (!assignments.get(lane)?.blocked || assignments.get(lane).reason !== reason) routeRevision++; assignments.set(lane, { blocked: true, reason }); collect(); },
+      if (!assignments.get(lane)?.blocked || assignments.get(lane).reason !== reason) routeRevision++; assignments.set(lane, { blocked: true, reason }); assignmentVersions.set(lane, ++assignmentSerial); collect(); },
     synchronizeLaneMix, routeRevision: () => routeRevision,
     collect, dispose: lifecycle.api.dispose
   });

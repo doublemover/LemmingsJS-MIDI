@@ -69,12 +69,20 @@ const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
   const family = PROCGEN_SOUND_COLLECTIONS.some(item => item.id === overrides.family) ? overrides.family : pair[0];
   const role = PROCGEN_ROLES.includes(overrides.role) ? overrides.role : pair[1];
   const sound = resolveProcgenSound(family, role, overrides.patch);
+  const worldThemeId = overrides.worldThemeId ?? family;
+  if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === worldThemeId)) throw new Error('Unknown physical world theme.');
+  const instrumentRef = trusted && overrides.instrumentRef === trusted.instrumentRef ? trusted.instrumentRef : validateSoundContentReference(overrides.instrumentRef);
+  if (instrumentRef && overrides.instrumentPatchId != null && overrides.instrumentPatchId !== instrumentRef.patchId) throw new Error('Lane sound identity differs from its pinned renderer definition.');
+  if (overrides.soundChangePolicy != null && !['new-notes-only', 'crossfade-held'].includes(overrides.soundChangePolicy)) throw new Error('Unsupported patch transition policy.');
   const melodic = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16];
-  return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id,
-    instrumentRef: trusted && overrides.instrumentRef === trusted.instrumentRef ? trusted.instrumentRef : validateSoundContentReference(overrides.instrumentRef),
+  return { id: string(overrides.id, `lane-${index + 1}`), revision: integer(overrides.revision, 0, 0, Number.MAX_SAFE_INTEGER), name: string(overrides.name, `Lane ${index + 1}`), family, role, patch: sound.id, worldThemeId,
+    instrumentPatchId: instrumentRef?.patchId || string(overrides.instrumentPatchId, sound.id), performanceRecipeId: string(overrides.performanceRecipeId, sound.id),
+    linkedThemePresetId: overrides.linkedThemePresetId === null ? null : string(overrides.linkedThemePresetId, family), soundChangePolicy: overrides.soundChangePolicy ?? 'new-notes-only',
+    externalProgram: overrides.externalProgram === null ? null : integer(overrides.externalProgram, sound.program, 0, 127), externalPercussion: overrides.externalPercussion == null ? sound.percussion : overrides.externalPercussion === true,
+    instrumentRef,
     instrumentControls: trusted && overrides.instrumentControls === trusted.instrumentControls ? trusted.instrumentControls : validateInstrumentControls(overrides.instrumentControls),
     mode, patternPurpose: mode === 'pattern' ? string(overrides.patternPurpose, '') : null,
-    channel: role === 'drums' ? 10 : melodic.includes(overrides.channel) ? overrides.channel : melodic[index % melodic.length],
+    channel: Number.isInteger(overrides.channel) && overrides.channel >= 1 && overrides.channel <= 16 ? overrides.channel : role === 'drums' ? 10 : melodic[index % melodic.length],
     outputId: overrides.outputId == null ? null : String(overrides.outputId),
     bankMSB: overrides.bankMSB == null ? null : integer(overrides.bankMSB, 0, 0, 127),
     bankLSB: overrides.bankLSB == null ? null : integer(overrides.bankLSB, 0, 0, 127),
@@ -187,11 +195,14 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   const lane = lanes[index]; let next = lane;
   if (action.type === 'procgen/lane') {
     if (!action.patch || typeof action.patch !== 'object') return project;
-    next = createProcgenLane(index, { ...lane, ...action.patch, id: lane.id, revision: lane.revision }, lane);
+    next = createProcgenLane(index, { ...lane, ...action.patch, ...(Object.hasOwn(action.patch, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id, revision: lane.revision }, lane);
     if (action.patch.patterns === undefined) next.patterns = lane.patterns;
+  } else if (action.type === 'procgen/worldTheme') {
+    if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === action.worldThemeId)) throw new Error('An explicit known physical world theme is required.');
+    next = createProcgenLane(index, { ...lane, worldThemeId: action.worldThemeId }, lane);
   } else if (action.type === 'procgen/palette') {
     next = createProcgenLane(index, { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role,
-      patch: action.patch ?? null, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
+      patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} }, patterns: action.resetPatterns ? undefined : lane.patterns });
     if (!action.resetPatterns) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') {
     const slot = action.slot ?? lane.activeSlot, pattern = lane.patterns[slot];
@@ -233,11 +244,11 @@ const reduceCanonicalProcgenProject = (project, action) => {
 };
 const reduceProcgenWorkstationProject = (project, action = {}) => {
   const procgen = sanitizeProcgenWorkstation(project.procgen);
-  if (['procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
+  if (['procgen/worldTheme', 'procgen/removeLane', 'procgen/releaseGesture', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment'].includes(action.type)) return reduceCanonicalProcgenProject({ ...project, procgen }, action);
   let lanes = procgen.lanes;
   const target = lane => lane.id === action.laneId;
-  if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, id: lane.id } : lane);
-  else if (action.type === 'procgen/palette') lanes = lanes.map(lane => target(lane) ? { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role, patch: action.patch ?? null,
+  if (action.type === 'procgen/lane') lanes = lanes.map(lane => target(lane) ? { ...lane, ...action.patch, ...(Object.hasOwn(action.patch || {}, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id } : lane);
+  else if (action.type === 'procgen/palette') lanes = lanes.map(lane => target(lane) ? { ...lane, family: action.family ?? lane.family, role: action.role ?? lane.role, patch: action.patch ?? null, instrumentPatchId: null, performanceRecipeId: null, linkedThemePresetId: action.family ?? lane.family, instrumentRef: null, instrumentControls: { macros: {} },
     ...(action.resetPatterns ? { patterns: undefined } : {}) } : lane);
   else if (action.type === 'procgen/step' || action.type === 'procgen/pattern') lanes = lanes.map(lane => target(lane) ? { ...lane, patterns: lane.patterns.map((pattern, slot) => slot === (action.slot ?? lane.activeSlot) ?
     action.type === 'procgen/pattern' ? { ...pattern, ...action.patch } : { ...pattern, steps: pattern.steps.map((step, index) => index === action.index ? { ...step, ...action.patch } : step) } : pattern) } : lane);
