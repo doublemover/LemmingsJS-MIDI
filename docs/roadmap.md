@@ -4191,3 +4191,36 @@ implementation does not copy or claim qualification of the Faust mesh.
 
 Static API review also corrected travel-effect reservation retirement to call the
 owned reservation release method, including source end and disposal paths.
+
+
+### Continuation 181 — localized loss preparation for shared skins (#1210, #1215)
+
+The rectangular body now has four distinct touch slots in its existing typed
+control adapter. Each patch contributes a normalized parabolic-disc loss field;
+the deterministic maximum combines overlapping patches. Positive centered-velocity
+loss changes the wave field locally, rather than multiplying the output gain or
+adding excitation. The field slews over eight milliseconds. Moving/releasing a
+patch cannot restore dissipated energy. A patch too small to reach any grid site
+is declined before mutation; coarse-grid silence is not called successful damping.
+
+Touch targets are sample-frame AudioParams, with Float32 targets shared by owned
+rendering. Constant blocks avoid per-frame field rebuilding; changing targets
+rebuild the preallocated target field once per sample at most. Current/target
+fields, exact touch slots and smoothing state join the actual source cut. Cost and
+byte admissions include the additional fields and worst-case target rebuild work.
+The worklet tolerates Float32 representation of the admitted radius endpoints,
+then retains canonical endpoints rather than quarantining legal .08/.18 controls.
+
+The skin view exposes two explicitly authored manual touch slots alongside
+independent strike and pickup coordinates. Preparing another graph resets those
+manual slots to released, and inspection projects actual backend touch state.
+These controls are not relabeled as physical contact owners. Contact-span bindings,
+map/topology revisions, old-tail rebinding and lesson/world integration remain the
+next mapping/ownership work. Runtime becomes owned-dirichlet-membrane-fd5-prepared-loss-v2.
+
+Local field support, two-slot independent release, no silent-source excitation,
+monotone energy while moving/releasing a patch, exact field-state restore and
+underresolved/Float32 endpoint fixtures are authored and unrun. This adds a
+loss-only preparation mechanism; compliant contacts, rattles and mass attachments
+remain unavailable. Formatting/syntax/provenance only; all runtime qualification
+is still deferred with the rest of the development pass.

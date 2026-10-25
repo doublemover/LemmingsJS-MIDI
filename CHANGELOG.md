@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add independently releasable localized membrane loss patches, shared live/offline control targets and complete prepared-field state transfer.
+
 - Add an owned rectangular membrane with bounded discrete energy, independent stereo pickups, persistent graph tails and exact ringing-state transfer.
 
 - Scope Quarry throws to immutable causal voice selections, with acknowledged overlapping live taps and simultaneous owned-source export.

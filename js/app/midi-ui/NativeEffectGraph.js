@@ -1,4 +1,4 @@
-import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_CONTROLS } from '../../midi/content/RectangularMembraneProfile.js';
+import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_LIVE_CONTROLS, membraneControlValid, membraneInitialControl, membraneTouchSupported, membraneControlTarget } from '../../midi/content/RectangularMembraneProfile.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity } from '../../midi/content/SympatheticNetworkProfile.js';
 import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
@@ -175,7 +175,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         outputValue = convolver;
       } else if (entry.kind === 'rectangular-membrane') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-rectangular-membrane-v1', revision: RECTANGULAR_MEMBRANE_REVISION, configurationKey: rectangularMembraneIdentity(entry.membrane),
-          parameterData: Object.fromEntries(MEMBRANE_CONTROLS.map(key => [key, entry.parameters[key]])), processorOptions: { parameters: entry.parameters } });
+          parameterData: Object.fromEntries(MEMBRANE_LIVE_CONTROLS.map(key => [key, membraneInitialControl(key, entry.parameters)] )), processorOptions: { parameters: entry.parameters } });
       } else if (entry.kind === 'sympathetic-network') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-sympathetic-network-v1', revision: SYMPATHETIC_NETWORK_REVISION, configurationKey: sympatheticNetworkIdentity(entry.network),
           parameterData: { couple: entry.parameters.couple01, damp: entry.parameters.damp01 }, processorOptions: { parameters: entry.parameters } });
@@ -245,7 +245,8 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     if (entry?.kind === 'gain') {
       if (Object.keys(values).some(key => key !== 'gain01') || !Number.isFinite(next.gain01) || next.gain01 < 0 || next.gain01 > entry.parameters.gainMaximum01 || !gainControls.get(nodeId).canInsert(now)) throw failure('invalid-effect-control', 'Gain control exceeds its admitted amplitude or queue domain.');
     } else if (entry?.kind === 'rectangular-membrane') {
-      if (Object.keys(values).some(key => !MEMBRANE_CONTROLS.includes(key) || !Number.isFinite(values[key]) || values[key] < 0 || values[key] > 1)) throw failure('invalid-effect-control', 'Membrane positions and loss require normalized coordinates.');
+      if (Object.keys(values).some(key => !membraneControlValid(key, values[key]))) throw failure('invalid-effect-control', 'Membrane positions and loss require normalized coordinates.');
+      for (let index = 0; index < 4; index++) { const key = 'touch' + index, x = membraneControlTarget(key + 'X01', next[key + 'X01'] ?? 0.5), y = membraneControlTarget(key + 'Y01', next[key + 'Y01'] ?? 0.5), radius = membraneControlTarget(key + 'Radius01', next[key + 'Radius01'] ?? 0.12); if ((next[key + 'Amount01'] ?? 0) > 0 && !membraneTouchSupported(entry.parameters.gridSize, x, y, radius)) throw failure('unsupported-touch-position', 'This touch patch has no interior grid support.'); }
       for (const key of Object.keys(values)) { const adapter = parameterControls.get(nodeId)?.get(key); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Membrane control automation is full.'); changes.push([adapter, values[key]]); }
     } else if (entry?.kind === 'sympathetic-network') {
       if (Object.keys(values).some(key => !['couple01', 'damp01'].includes(key)) || !Number.isFinite(next.couple01) || next.couple01 < 0 || next.couple01 > 1 || !Number.isFinite(next.damp01) || next.damp01 < 0 || next.damp01 > 1) throw failure('invalid-effect-control', 'Shared-body macros exceed their contraction domain.');

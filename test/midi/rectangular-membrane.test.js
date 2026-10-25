@@ -53,6 +53,45 @@ describe('owned rectangular membrane', () => {
     for (let frame = 0; frame < 2500; frame++) { a.sample(frame === 0 ? 1 : 0, frame === 0 ? 1 : 0); b.sample(frame === 0 ? 1 : 0, frame === 0 ? 1 : 0); different ||= Math.abs(a.leftSample - b.leftSample) > 1e-9; }
     expect(different).to.equal(true); expect(a.planes).to.deep.equal(b.planes); expect(a.energy).to.equal(b.energy);
   });
+  it('changes localized positive loss without exciting a silent skin and releases separate slots independently', () => {
+    const kernel = kernelFor({ gridSize: 16 }), count = kernel.profile.nodeCount;
+    kernel.setControls({ touch0X01: 0.2, touch0Y01: 0.4, touch0Radius01: 0.12, touch0Amount01: 0.8 });
+    const firstField = kernel.touchField.slice(count);
+    kernel.setControls({ touch1X01: 0.8, touch1Y01: 0.6, touch1Radius01: 0.18, touch1Amount01: 1 });
+    const both = kernel.touchField.slice(count); expect(both.some((value, index) => value > firstField[index])).to.equal(true);
+    for (let i = 0; i < 2000; i++) kernel.sample(0, 0); expect(kernel.energy).to.equal(0);
+    kernel.setControls({ touch0Amount01: 0 }); const secondField = kernel.touchField.slice(count);
+    expect(kernel.touches[3]).to.equal(0); expect(kernel.touches[7]).to.equal(1);
+    expect(secondField.some(value => value > 0)).to.equal(true); expect(secondField.some((value, index) => value < both[index])).to.equal(true);
+    expect(secondField.filter(value => value > 0).length).to.be.lessThan(count / 2);
+    kernel.setControls({ touch1Amount01: 0 }); expect(kernel.touchField.slice(count).every(value => value === 0)).to.equal(true);
+    kernel.panic(); expect(kernel.touchField.every(value => value === 0)).to.equal(true);
+  });
+  it('dissipates energy during localized touch movement and never restores dissipated energy on release', () => {
+    const kernel = kernelFor({ gridSize: 16 }); kernel.sample(1, 1); let prior = kernel.energy, growth = 0;
+    for (let frame = 0; frame < 6000; frame++) {
+      if (frame === 100) kernel.setControls({ touch0X01: 0.5, touch0Y01: 0.5, touch0Radius01: 0.18, touch0Amount01: 1 });
+      if (frame === 700) kernel.setControls({ touch0X01: 0.2, touch0Y01: 0.8 });
+      if (frame === 1700) kernel.setControls({ touch0Amount01: 0 });
+      kernel.sample(0, 0); growth = Math.max(growth, kernel.energy - prior); prior = kernel.energy;
+    }
+    expect(growth).to.be.lessThan(1e-11); expect(kernel.faults).to.equal(0);
+  });
+  it('restores actual positive loss field histories and independent touch targets', () => {
+    const a = kernelFor({ gridSize: 16 }), b = kernelFor({ gridSize: 16 });
+    a.setControls({ touch2X01: 0.2, touch2Y01: 0.5, touch2Radius01: 0.18, touch2Amount01: 1 });
+    for (let i = 0; i < 119; i++) a.sample(i === 0 ? 1 : 0, i === 0 ? 1 : 0);
+    const bytes = new Uint8Array(a.snapshotBytes); a.snapshotInto(bytes); b.restoreFrom(bytes);
+    for (let i = 0; i < 1000; i++) { a.sample(0, 0); b.sample(0, 0); expect(a.energy).to.equal(b.energy); expect(a.leftSample).to.equal(b.leftSample); }
+    expect(a.touchField).to.deep.equal(b.touchField); expect(a.touches).to.deep.equal(b.touches);
+    a.touchField[a.profile.nodeCount] = 1; expect(() => a.snapshotInto(bytes)).to.throw('exact prepared touch targets');
+  });
+  it('declines an active underresolved touch before changing its old field', () => {
+    const kernel = kernelFor({ gridSize: 8 }), before = kernel.touches.slice();
+    expect(() => kernel.setControls({ touch0X01: 0.5, touch0Y01: 0.5, touch0Radius01: 0.08, touch0Amount01: 1 })).to.throw('supported grid sites');
+    expect(kernel.touches).to.deep.equal(before); expect(kernel.touchField.every(value => value === 0)).to.equal(true);
+    expect(kernel.setTouch(0, 0, 0, Math.fround(0.18), 1)).to.equal(true); kernel.refreshTouchField(); expect(kernel.touchField[kernel.profile.nodeCount]).to.be.greaterThan(0);
+  });
   it('caps excitation internally, accounts stereo cancellation, and quarantines only its own state', () => {
     const a = kernelFor(), silent = kernelFor(); let maximum = 0;
     for (let frame = 0; frame < 8000; frame++) { a.sample(32, 32); silent.sample(1, -1); maximum = Math.max(maximum, a.energy); }
