@@ -3164,3 +3164,44 @@ the deferred qualification pass. Through-zero flange uses two strictly causal po
 not graph alignment or negative physical latency; neutral bypass restores the
 immediate owner dry path. Its route/rate fixture is also deferred. Gesture replay
 and other remaining issues are not claimed complete.
+
+
+### Continuation 154 — owned spectral freeze and Glass Hold (#1134, #1071)
+
+An original prepared radix-2 transform and stereo STFT renderer now support
+512/1024/2048 windows with quarter-window hops. Periodic sqrt-Hann analysis and
+synthesis use a fixed overlap normalization; zero-padded startup is processed so
+an initial impulse is not discarded. The causal overlap-add path declares N
+frames of delay. The new preserve-dry graph policy deliberately leaves immediate
+dry attacks unaligned; it does not pretend that the spectral path has no delay.
+
+Freeze captures only a complete connected digital source window on the next
+global hop after a discrete request. Receipts distinguish warming, pending,
+ready, frozen, releasing, source unavailable and captured silence, with the actual
+analysis interval. Per-channel instantaneous frequency evolves the held phase;
+prepared pitch remap, neighboring-bin blur and high-frequency damping stay
+bounded. Captured magnitudes are attenuated using a conservative spectral L1
+peak bound, never boosted from silence. This is a bounded-history peak policy,
+not a claim that a sustained frozen output has the same total energy as its input.
+
+All transform plans, scratch, spectra, overlap and input rings are allocated at
+prepare time and included in the resource profile. Exact state transfer covers
+phase, magnitudes, normalization, source availability, hold and overlap frontiers.
+The same kernel is wired into live Worklets and complete-graph offline rendering,
+including identity/completion receipts, source retirement, bounded hold/thaw and
+Panic. A latched state has explicit ownership and a hard hold deadline.
+
+Glass Hold is reachable from Quarry Echo and can select the physical owner or
+an actual lane tap. Momentary/latch controls release on their declared gestures;
+prepared reconfiguration uses the shared graph transaction. Wet-only audition is
+explicit. Save defaults does not save captured spectra: transient material is
+marked unavailable after reload, and actual played output can use master capture.
+Requested note IDs are not inferred to be contributing PCM provenance. Portable
+frozen assets, next-eligible-causal-event gating, Dust Loop/Breath Imprint, live
+gesture replay and causal capture attribution remain pending.
+
+Complex transform roundtrip, impulse/noise-like stereo identity at all three
+rates/windows, exact mid-hold restore, capture timing, silence/missing source,
+maximum hold, dry timing and full-graph fixtures are authored and unrun. Measured
+latency/error, browser hop/worst-block cost, pitch/blur quality and listening remain
+deferred; this implementation does not close the qualification acceptance.

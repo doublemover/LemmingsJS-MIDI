@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add owned stereo spectral freeze and Glass Hold controls with explicit analysis timing, bounded transient material, phase restoration and an immediate dry path.
+
 - Add travel-driven Hollow Steps notches with normalized lattice DSP, explicit energy bounds, owned feedback and exact modulation state.
 
 - Add actor-travel comb/flange controls backed by bounded cubic delay, exact transition state and source-clock-qualified motion bindings.

@@ -1,3 +1,4 @@
+import './SpectralFreezeProcessor.js';
 import './AllpassNotchProcessor.js';
 import './SidechainProcessors.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';

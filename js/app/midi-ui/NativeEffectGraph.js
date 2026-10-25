@@ -1,3 +1,4 @@
+import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from '../../midi/content/SpectralFreezeProfile.js';
 import { ALLPASS_NOTCH_REVISION, allpassNotchIdentity } from '../../midi/content/AllpassNotchProfile.js';
 import { RING_MODULATOR_REVISION, ringModulatorIdentity } from '../../midi/content/RingModulatorProfile.js';
 import { validateEffectSourceBindings } from './EffectSourceBindings.js';
@@ -59,12 +60,12 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   if (offline) for (const entry of plan.nodes) {
     const has = port => plan.edges.some(edge => edge.to.nodeId === entry.id && (!port || edge.to.port === port) && initialPresence.get(edge.from.nodeId));
     initialPresence.set(entry.id, entry.kind === 'bus-in' || entry.kind === 'sidechain-in' ? entry.kind === 'bus-in' || offlineSourceBindings.routes.find(route => route.nodeId === entry.id).available :
-      ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder', 'ring-modulator', 'allpass-notch'].includes(entry.kind) || has(null));
+      ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder', 'ring-modulator', 'allpass-notch', 'spectral-freeze'].includes(entry.kind) || has(null));
   }
   const sourceSeed = entry => {
     if (!offline) return {};
     const has = port => plan.edges.some(edge => edge.to.nodeId === entry.id && edge.to.port === port && initialPresence.get(edge.from.nodeId));
-    return entry.kind === 'envelope-detector' ? { sourceAvailable: has('audio') } : ['multiband-vocoder', 'ring-modulator'].includes(entry.kind) ? { donorAvailable: has('donorAudio'), carrierAvailable: has('carrierAudio') } : {};
+    return ['envelope-detector', 'spectral-freeze'].includes(entry.kind) ? { sourceAvailable: has('audio') } : ['multiband-vocoder', 'ring-modulator'].includes(entry.kind) ? { donorAvailable: has('donorAudio'), carrierAvailable: has('carrierAudio') } : {};
   };
   const node = value => { nodes.push(value); return value; };
   const dispose = () => scope.retire([{ name: 'effect-native-retirement', run: async () => {
@@ -155,7 +156,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
   };
 
   try {
-    if (plan.alignmentStateBytes || plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder', 'ring-modulator', 'allpass-notch'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
+    if (plan.alignmentStateBytes || plan.nodes.some(entry => ['feedback-delay', 'nonlinear-chain', 'envelope-detector', 'envelope-mapping', 'multiband-vocoder', 'ring-modulator', 'allpass-notch', 'spectral-freeze'].includes(entry.kind))) { await loadOwnedWorkletModule(context, delayModule, resources); guard(); }
     for (const entry of plan.nodes) {
       guard(); let value, outputValue = null;
       if (entry.kind === 'convolution-native') {
@@ -169,6 +170,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
         if (entry.impulse.predelaySeconds) { const predelay = node(context.createDelay(0.1)); predelay.delayTime.setValueAtTime(entry.impulse.predelaySeconds, context.currentTime); value.connect(predelay); predelay.connect(convolver); }
         else value.connect(convolver);
         outputValue = convolver;
+      } else if (entry.kind === 'spectral-freeze') {
+        value = await prepareProcessor(entry, { processorName: 'lemmings-spectral-freeze-v1', revision: SPECTRAL_FREEZE_REVISION, configurationKey: spectralFreezeIdentity(entry.spectral),
+          parameterData: { hold: 0 }, processorOptions: { parameters: entry.parameters, sourceEpoch: generation } });
       } else if (entry.kind === 'allpass-notch') {
         value = await prepareProcessor(entry, { processorName: 'lemmings-allpass-notch-v1', revision: ALLPASS_NOTCH_REVISION, configurationKey: allpassNotchIdentity(entry.allpass),
           parameterData: { frequencyHz: entry.parameters.baseFrequencyHz, feedback: entry.parameters.feedback, wet: entry.parameters.wet01 }, processorOptions: { parameters: entry.parameters } });
@@ -231,6 +235,9 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     const entry = plan.nodes.find(entry => entry.id === nodeId), next = { ...controls.get(nodeId), ...values }, changes = [];
     if (entry?.kind === 'gain') {
       if (Object.keys(values).some(key => key !== 'gain01') || !Number.isFinite(next.gain01) || next.gain01 < 0 || next.gain01 > entry.parameters.gainMaximum01 || !gainControls.get(nodeId).canInsert(now)) throw failure('invalid-effect-control', 'Gain control exceeds its admitted amplitude or queue domain.');
+    } else if (entry?.kind === 'spectral-freeze') {
+      if (Object.keys(values).some(key => key !== 'hold01') || (values.hold01 !== 0 && values.hold01 !== 1)) throw failure('invalid-effect-control', 'Spectral capture is a discrete hold or thaw command.');
+      const adapter = parameterControls.get(nodeId)?.get('hold'); if (!adapter?.canInsert(now)) throw failure('effect-control-capacity', 'Spectral capture automation is full.'); changes.push([adapter, values.hold01]);
     } else if (entry?.kind === 'allpass-notch') {
       if (Object.keys(values).some(key => !['baseFrequencyHz', 'feedback', 'wet01'].includes(key)) || !Number.isFinite(next.baseFrequencyHz) || next.baseFrequencyHz < 160 || next.baseFrequencyHz > 1600 || !Number.isFinite(next.feedback) || Math.abs(next.feedback) > entry.parameters.feedbackMaximum || !Number.isFinite(next.wet01) || next.wet01 < 0 || next.wet01 > 1) throw failure('invalid-effect-control', 'Allpass control exceeds its frequency, feedback or mix domain.');
       for (const [key, parameter] of [['baseFrequencyHz', 'frequencyHz'], ['feedback', 'feedback'], ['wet01', 'wet']]) if (values[key] != null) {
@@ -258,11 +265,11 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     const present = new Map();
     for (const entry of plan.nodes) {
       const incoming = plan.edges.filter(edge => edge.to.nodeId === entry.id), has = port => incoming.some(edge => (!port || edge.to.port === port) && present.get(edge.from.nodeId));
-      if (entry.kind === 'envelope-detector') processors.find(processor => processor.nodeId === entry.id).node.port.postMessage({ type: 'source-status', sourceEpoch: generation, present: has('audio') });
+      if (['envelope-detector', 'spectral-freeze'].includes(entry.kind)) processors.find(processor => processor.nodeId === entry.id).node.port.postMessage({ type: 'source-status', sourceEpoch: generation, present: has('audio') });
       if (['multiband-vocoder', 'ring-modulator'].includes(entry.kind)) for (const [port, role] of [['donorAudio', 'donor'], ['carrierAudio', 'carrier']])
         processors.find(processor => processor.nodeId === entry.id).node.port.postMessage({ type: 'source-status', sourceEpoch: generation, role, present: has(port) });
       present.set(entry.id, entry.kind === 'bus-in' || entry.kind === 'sidechain-in' ? entry.kind === 'bus-in' || sidechainBindings.get(entry.id).connected :
-        ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder', 'ring-modulator', 'allpass-notch'].includes(entry.kind) || has(null));
+        ['feedback-delay', 'nonlinear-chain', 'convolution-native', 'multiband-vocoder', 'ring-modulator', 'allpass-notch', 'spectral-freeze'].includes(entry.kind) || has(null));
     }
   };
   if (!offline) refreshSourcePresence();
@@ -297,7 +304,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     getNodeOutput: id => disposed ? null : nodeOutputs.get(id) || null, getSidechainInput: id => disposed ? null : sidechainInputs.get(id) || null,
     panic() { for (const entry of processors) entry.node.port.postMessage({ type: 'panic' }); for (const entry of impulses) if (entry.convolver) entry.convolver.buffer = null; },
     diagnostics: () => Object.freeze({ hash, graphId: plan.definition.id, revision: plan.definition.revision, sampleRate: plan.sampleRate, disposed, fault: fault?.code || null,
-      runtime: { allpassRevision: processors.some(entry => entry.kind === 'allpass-notch') ? ALLPASS_NOTCH_REVISION : null, ringRevision: processors.some(entry => entry.kind === 'ring-modulator') ? RING_MODULATOR_REVISION : null, hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, vocoderRevision: processors.some(entry => entry.kind === 'multiband-vocoder') ? VOCODER_BANK_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
+      runtime: { spectralRevision: plan.processingRevisions.spectral ?? null, allpassRevision: processors.some(entry => entry.kind === 'allpass-notch') ? ALLPASS_NOTCH_REVISION : null, ringRevision: processors.some(entry => entry.kind === 'ring-modulator') ? RING_MODULATOR_REVISION : null, hostRevision: 'owned-native-effect-host-v2', alignmentRevision: plan.processingRevisions.alignment, delayRevision: processors.some(entry => entry.kind === 'feedback-delay') ? DELAY_KERNEL_REVISION : null, nonlinearRevision: processors.some(entry => entry.kind === 'nonlinear-chain') ? NONLINEAR_KERNEL_REVISION : null, detectorRevision: processors.some(entry => entry.kind === 'envelope-detector') ? ENVELOPE_DETECTOR_REVISION : null, envelopeMappingRevision: processors.some(entry => entry.kind === 'envelope-mapping') ? ENVELOPE_MAPPING_REVISION : null, vocoderRevision: processors.some(entry => entry.kind === 'multiband-vocoder') ? VOCODER_BANK_REVISION : null, convolution: impulses.length ? 'browser-native-unpinned-dsp' : null, applicationBuildId: execution.buildId || null, activeExecution: execution.activeExecution },
       initialization: { mode: offline ? 'offline-before-publication' : 'live-before-route', confirmed: offline ? initializationConfirmed : processors.every(entry => entry.ready),
         offlineEndFrame, completionConfirmed: offlineCompletionConfirmed, completionProtocol: offline ? OFFLINE_EFFECT_COMPLETION_REVISION : null },
       processors: processors.map(entry => ({ nodeId: entry.nodeId, kind: entry.kind, revision: entry.revision, stateBytes: entry.stateBytes, configurationKey: entry.configurationKey, ready: entry.ready,

@@ -1,3 +1,4 @@
+import { SpectralFreezeKernel } from './worklet/SpectralFreezeKernel.js';
 import { AllpassNotchKernel } from './worklet/AllpassNotchProcessor.js';
 import { RingModulatorKernel } from './worklet/RingModulatorKernel.js';
 import { VocoderBankKernel } from './worklet/VocoderBankKernel.js';
@@ -26,6 +27,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         transitionFrames: Math.max(2, Math.round(p.transitionSeconds * sampleRate)), maximumSlew: p.maximumSlew, feedback: p.feedback, feedbackMaximum: p.feedbackMaximum,
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
+    else if (entry.kind === 'spectral-freeze') { controls[at] = 0; kernel = new SpectralFreezeKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'allpass-notch') { controls.set([p.baseFrequencyHz, p.feedback, p.wet01, 0], at); kernel = new AllpassNotchKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'ring-modulator') kernel = new RingModulatorKernel({ sampleRate, parameters: p });
     else if (entry.kind === 'multiband-vocoder') kernel = new VocoderBankKernel({ sampleRate, parameters: p });
@@ -48,6 +50,8 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     if (entry.kind === 'gain') {
       if (keys.some(key => key !== 'gain01') || !finite(next.gain01, 0, p.gainMaximum01)) fail('invalid-effect-control', 'Effect gain exceeds its declared bound.');
       controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008));
+    } else if (entry.kind === 'spectral-freeze') {
+      if (keys.length !== 1 || keys[0] !== 'hold01' || (next.hold01 !== 0 && next.hold01 !== 1)) fail('invalid-effect-control', 'Spectral capture requires a discrete hold or thaw command.'); controls[at] = next.hold01;
     } else if (entry.kind === 'allpass-notch') {
       if (keys.some(key => !['baseFrequencyHz', 'feedback', 'wet01'].includes(key)) || next.baseFrequencyHz != null && !finite(next.baseFrequencyHz, 160, 1600) || next.feedback != null && !finite(next.feedback, -p.feedbackMaximum, p.feedbackMaximum) || next.wet01 != null && !finite(next.wet01, 0, 1)) fail('invalid-effect-control', 'Allpass control exceeds its frequency, feedback or mix domain.');
       if (next.baseFrequencyHz != null) controls[at] = next.baseFrequencyHz; if (next.feedback != null) controls[at + 1] = next.feedback; if (next.wet01 != null) controls[at + 2] = next.wet01;
@@ -96,12 +100,12 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         const g = index * 3; a *= gain[g]; b *= gain[g];
         if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
-        if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (kernel.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
       if (kernel?.faults) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
-      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' ? 1 : 0;
+      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' || entry.kind === 'spectral-freeze' ? 1 : 0;
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);
     }
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];
@@ -111,5 +115,5 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
     stateBytes: plan.stateBytes + values.byteLength + controls.byteLength + gain.byteLength + tapSamples.byteLength,
     panic,
     diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, processingCost: plan.processingCost, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
-      summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
+      spectralStates: records.filter(record => record.entry.spectral).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
 }
