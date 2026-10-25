@@ -1,3 +1,11 @@
+import { createInstalledPerformanceSceneCatalog } from '../js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js';
+import { createPerformanceSceneWorldAdapter } from '../js/app/procgen/workstation/PerformanceSceneWorldAdapter.js';
+import { verifyPerformanceSceneOrigin } from '../js/app/procgen/workstation/PerformanceSceneRecipe.js';
+import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
+import { describeNativeInstrumentEngines } from '../js/app/midi-ui/NativeInstrumentSchema.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
+import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { expect } from 'chai';
 import { hashData } from '../js/core/CanonicalData.js';
 import { validatePerformanceScene, derivePerformanceScene, performanceSceneHash, inspectPerformanceScene } from '../js/app/procgen/workstation/PerformanceScene.js';
@@ -69,5 +77,40 @@ describe('scene candidates fence live state and own late resources', () => {
     const wait = deferred(), f = await setup({ wait }); const loading = f.loader.prepare();
     await f.entered.promise;
     f.loader.select(await scene(8)); wait.resolve(); let error; try { await loading; } catch (caught) { error = caught; } expect(error).to.be.instanceOf(Error); expect(f.mutations()).to.equal(0); expect(f.loader.state().selection.id).to.include('.8.'); expect(f.retired()).to.equal(1); await f.loader.dispose();
+  });
+});
+
+
+describe('installed crossing scores and the existing world candidate adapter', () => {
+  const installed = async () => {
+    const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: h('a') }]);
+    const getCatalog = async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors });
+    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }); return { library, getCatalog };
+  };
+  it('ships exact-build four/eight-lane physical scores with distinct per-corridor gates and inspectable unavailable source mode', async () => {
+    const f = await installed(), page = f.library.registry.page(); expect(page.rows).to.have.length(2);
+    for (const row of page.rows) {
+      const value = f.library.registry.resolve(row), proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }); expect(proof.status).to.equal('ready');
+      expect(value.causalMappings.instruments.map(instrument => instrument.sourceLanes)).to.deep.equal(Array.from({ length: value.cost.lanes }, (_, index) => [index]));
+      const origin = await f.library.origin(value); await verifyPerformanceSceneOrigin(origin, { sourceHash: h('b') });
+      const project = createProcgenWorkstationProject({}, { seed: value.seed, sceneOrigin: origin }); expect(createProcgenWorkstationProject(project).procgen.sceneOrigin.sceneHash).to.equal(origin.sceneHash);
+    }
+    const unbound = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'execution-unbound' }) }); expect(unbound.available).to.equal(false); expect(unbound.registry.size()).to.equal(0);
+  });
+  it('compiles actual patches and authoring into an unadvanced real world before the publication fence', async () => {
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), budget = createResourceBudget(), masks = await loadProcgenMasks(); let world, recipe, published = false, retired = false;
+    const adapter = createPerformanceSceneWorldAdapter({ resourceBudget: budget, getCatalog: f.getCatalog, getOrigin: (scene, variants) => f.library.origin(scene, variants),
+      // This component fixture exercises real patch/world owners. Boot canvas,
+      // installed terrain loading and audible rendering remain browser work.
+      prepareWorld: async input => { recipe = input.sceneRecipe; world = new ProcgenLaneWorld({ masks, laneCount: recipe.settings.laneCount, laneHeight: recipe.settings.laneHeight, seed: recipe.settings.seed }); world.configurePhysicalAuthoring(recipe.project.procgen.physicalGraph, []);
+        return { world, isCurrent: () => !published && !retired, commit({ isCurrent }) { isCurrent(); published = true; }, retire() { retired = true; if (!published) world.dispose(); return { outcome: 'complete' }; } }; } });
+    const proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }), candidate = await adapter({ scene: value, preflight: proof, baseIdentity: 'doc:1', isCurrent: () => true });
+    expect(world.tickIndex).to.equal(0); expect(published).to.equal(false); expect(candidate.admission.sourcePools['worklet-sine']).to.equal(value.cost.maximumVoices); expect(recipe.project.procgen.sceneOrigin.sceneHash).to.equal(proof.sceneHash);
+    let fenced = false; const receipt = candidate.commit({ policy: 'stopped-replacement', isCurrent: () => { fenced = true; return true; } }); expect(fenced).to.equal(true); expect(published).to.equal(true); expect(receipt.transportPlaying).to.equal(false);
+    const retirement = candidate.retire(); await retirement.completion; expect(retirement.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0); world.dispose();
+  });
+  it('keeps source-build mismatch unavailable instead of converting the score silently', async () => {
+    const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), origin = await f.library.origin(value); let error;
+    try { await verifyPerformanceSceneOrigin(origin, { sourceHash: h('c') }); } catch (caught) { error = caught; } expect(error.code).to.equal('invalid-scene-score-recipe');
   });
 });

@@ -3408,3 +3408,46 @@ Ordinary runtime creation retains immediate activation. Real-world candidate
 fixtures cover paused activation and canceled-candidate canvas preservation;
 these join the deferred runtime batch. Long-lived staged world leases and the
 scene-specific publication adapter remain the next integration step.
+
+### Continuation 160 — real staged score worlds and initial scene browser (#1097, #1151, #1048)
+
+Boot now exposes one owned, unadvanced world candidate with a synchronous guarded
+publication method. The same path serves ordinary startup/replacement and scene
+loading. Prepared scene worlds retain their world budget until either handoff or
+confirmed retirement; cancellation cannot activate their renderer or clock.
+Sound-only lane aliases no longer choose staged terrain families: explicit world
+theme IDs select terrain. Fresh score starts ignore prior cumulative distances.
+
+The initial installed catalog contains two original Crossing Corridors scores
+(four/eight lanes), pinned to the executing immutable build, one exact original
+sine definition and the real committed crossing observation. Per-corridor gates
+use new sorted source-lane selectors; unrelated corridors no longer trigger each
+other's mappings. Held sources leaving declared lanes end explicitly. This adds
+physical music source revision 7. These are initial crossing scores, not stand-ins
+for the six larger named scene-content issues.
+
+The actual adapter compiles pinned patches against bound engine descriptors,
+admits the combined shared source pools, prepares the real world through boot,
+and configures its physical authoring before returning a candidate. The initial
+adapter handles local, asset-free original variants; sampled material, external
+routing variants and named score substitutions require their own preparation
+adapters and fail explicitly. Audio contexts remain gesture-enabled. Publication
+adopts one new document, resets its clock/history, preserves the immutable scene
+origin and leaves transport paused. Saved projects retain the complete starting
+manifest/recipe alongside their independent current world checkpoint. Reopening
+checks exact origin hashes and executing build instead of silently reinterpreting
+an old score on a new source version.
+
+A lazy Scenes drawer now uses bounded metadata pages, mechanism/density/lesson
+filters, keyboard selection, physical landmarks, requirement/source details,
+explicit Prepare/Load/Cancel and the existing saved-project entry point. Selection
+never loads a world. Source-unbound builds remain inspectably unavailable. Load
+uses the existing final unsaved-edit confirmation and rechecks document/routing
+identity afterward. Active capture/history/world operations block scene admission.
+The initial UI explicitly leaves isolated rehearsal and starting-world thumbnails
+unavailable; authored approximations, cue/stage transitions, derived-scene export,
+more score content and full first-use/browser/reopen proof paths remain pending.
+
+Installed-catalog closure, origin round-trip/build mismatch, real world/patch
+preparation, lane-isolated crossings and held-source transfer fixtures are
+written, not run. All runtime validation remains in the final combined pass.

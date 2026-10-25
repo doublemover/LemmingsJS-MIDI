@@ -53,9 +53,9 @@ class ProcgenLaneRenderer {
   activatePresentation() {
     if (this.lifecycleState === 'disposed') return false;
     if (this.presentationActive) return true;
-    this.camera.activate();
+    if (!this.camera.activate()) return false;
     for (const [event, listener] of this.pendingContextListeners) { this.canvas.addEventListener?.(event, listener); this.contextListeners.push([event, listener]); }
-    this.pendingContextListeners.length = 0; this.presentationActive = true; return true;
+    this.pendingContextListeners.length = 0; this.presentationActive = true; if (this.canvas.dataset) this.canvas.dataset.displayState = this.lifecycleState; return true;
   }
   getPresentationState() {
     const snapshot = this.presentation.getSnapshot();
@@ -69,7 +69,7 @@ class ProcgenLaneRenderer {
         this[key] = canvas.getContext('2d', { alpha: !opaque });
         if (!this[key] || this[key].isContextLost?.()) throw new Error('Canvas 2D context unavailable');
       }
-      this.actorEffects?.setVisible(!this.window.document?.hidden); this.lifecycleState = 'ready'; return true;
+      this.actorEffects?.setVisible(!this.window.document?.hidden); this._displayState('ready'); return true;
     } catch (error) { this._failDisplay(error); return false; }
   }
   _displayState(state, error = null) {

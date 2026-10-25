@@ -94,7 +94,7 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, getInstrumentCatalog }) {
+  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, prepareSceneWorld = null, getInstrumentCatalog }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
   let saved = null;
@@ -138,6 +138,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let soundLibrary = null, nativeSoundSelection = null;
   let masterCapture = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, physicalJunctionView = null, junctionRequestSerial = 0;
+  let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, sceneToolsPending = null;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -977,7 +978,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         acceptWorldSettings(legacy.settings);
         lastLegacySpeed = legacy.settings.speed;
         Object.assign(state, session.ui || {}, { hazardSpacing: acceptedWorldSettings.hazardSpacing, recording: false, thru: false, inputId: null, clockOutputId: null }); savedName = session.name;
-        transport.restore(session.transport); engine.restore(session.patterns); pendingResume = true;
+        transport.restore(session.project?.procgen?.sceneOrigin ? { ...session.transport, playing: false } : session.transport); engine.restore(session.patterns); pendingResume = true;
         if (session.camera) renderer()?.camera?.applyState?.(session.camera);
       } finally { suppressPersistence = false; }
       ports.configure({ recording: false, thru: false }); if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); } status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
@@ -1125,6 +1126,42 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return lastDelivery;
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
+  const adoptSceneRecipe = recipe => {
+    if (disposed || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording || masterCapture?.state?.().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state?.().capture?.state)) throw new Error('Finish active document, history and recording operations before applying a scene.');
+    transport.stop(); cancelInputEdits('scene applied'); soundTransactions.cancel('A prepared scene is replacing this document.');
+    documentGeneration++; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; savedName = recipe.name;
+    project = sealMidiProjectSnapshot(markCanonicalMidiProject(recipe.project)); projectRevision++; editRevision++;
+    Object.assign(legacy.settings, recipe.settings, { workstation: true }); acceptWorldSettings(legacy.settings); lastLegacySpeed = legacy.settings.speed;
+    setLegacyProject(project, { persist: false }); transport.configure({ ...recipe.transport, clockSource: 'internal', linked: true, baseBpm: recipe.transport.bpm }); engine.reset(); pendingResume = true;
+    undo.length = 0; redo.length = 0; lastHistoryGroup = null; trimHistory(); state.laneId = project.procgen.lanes[0].id; state.firstLane = 0; state.slot = state.step = 0;
+    macroGestures.reconcile(); storageStatus(); persist();
+  };
+  const sceneBaseIdentity = () => {
+    if (disposed || !runtime()?.world || worldBusy || pendingHistory || physicalAuthoringAbort || causalTake || causalTakeStart || causalTakeStop || state.recording || masterCapture?.state?.().capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(masterCapture?.state?.().capture?.state)) throw new Error('Finish active world, history and recording operations before preparing a scene.');
+    const audio = legacy.local.getState(), world = runtime().world;
+    return JSON.stringify([documentGeneration, projectRevision, editRevision, world.generation, world.sourceEditRevision ?? null, state.outputId ?? null, state.inputId ?? null, state.clockOutputId ?? null, !!state.thru, audio.enabled, audio.selectedBackend]);
+  };
+  const openPerformanceScenes = async () => {
+    if (disposed) return;
+    if (!sceneBrowser) {
+      sceneToolsPending ||= (async () => {
+        const [installed, loading, adapter, browsing, audio] = await Promise.all([
+          import('./PerformanceSceneInstalledCatalog.js'), import('./PerformanceSceneLoader.js'), import('./PerformanceSceneWorldAdapter.js'), import('./PerformanceSceneBrowser.js'), import('../../midi-ui/NativeInstrumentSchema.js')
+        ]);
+        if (disposed) return;
+        const getCatalog = getInstrumentCatalog || audio.getNativeInstrumentCatalog;
+        sceneCatalog = await installed.createInstalledPerformanceSceneCatalog({ getCatalog }); if (disposed) return;
+        sceneLoader = loading.createPerformanceSceneLoader({ getBaseIdentity: sceneBaseIdentity, resolveDependency: sceneCatalog.resolveDependency,
+          prepareCandidate: typeof prepareSceneWorld === 'function' ? adapter.createPerformanceSceneWorldAdapter({ getCatalog, getOrigin: (scene, variants) => sceneCatalog.origin(scene, variants), prepareWorld: prepareSceneWorld, resourceBudget }) : async () => { throw new Error('This host does not provide staged world publication.'); },
+          beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
+          onState: () => sceneBrowser?.refresh() });
+        sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader,
+          unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load(), onStatus: status });
+      })().catch(error => { sceneToolsPending = null; throw error; });
+      await sceneToolsPending;
+    }
+    if (!disposed) sceneBrowser?.open();
+  };
   async function loadSession(value, admittedLease = null, { signal, historyRestore = false } = {}) {
     signal?.throwIfAborted();
     if (disposed || (admittedLease && !ownsOperation(admittedLease))) return false;
@@ -1470,6 +1507,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       status('Transport stopped and output flushed.');
       return transport.getState();
     },
+    scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
     removeLane: safe(async () => { await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/removeLane', laneId: selected().id }) }); }),
@@ -1761,7 +1799,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
     getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
-    prepareSettings, bindRuntime, beforeRestart, stopCausalTake, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
+    prepareSettings, bindRuntime, beforeRestart, stopCausalTake, adoptSceneRecipe, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalAnalysis: () => physicalPlayback?.engine.physicalAnalysis() || null, getPhysicalDiagnostics: () => physicalPlayback?.engine.diagnostics() || null,
     getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
     get settings() { return legacy.settings; },
@@ -1789,6 +1827,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'macro-gestures', run: () => macroGestures.dispose() },
         { name: 'sound-transactions', run: () => soundTransactions.dispose() },
+        { name: 'scene-tools', run: async () => { await sceneToolsPending?.catch(() => {}); await sceneBrowser?.dispose(); await sceneLoader?.dispose(); } },
         { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },

@@ -209,3 +209,15 @@ body.procgen-workstation {
 .studio-lane-mix-status { grid-column:1/-1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; opacity:.85; }
 .studio-lane-header:has(.studio-lane-fader) { align-content:start; }
 @media (pointer:coarse) { .studio-lane-fader .parameter-knob-cap,.studio-lane-fader .parameter-knob-action { min-width:44px; min-height:44px; } }
+
+.studio-scene-browser[open] { display:grid; gap:10px; width:min(760px,94vw); max-height:90dvh; overflow:auto; }
+.studio-scene-browser > [role=listbox] { display:grid; gap:3px; max-height:28dvh; overflow:auto; }
+.studio-scene-browser [role=option] { text-align:left; min-height:44px; white-space:normal; }
+.studio-scene-browser [role=option][aria-selected=true] { outline:2px solid currentColor; outline-offset:-3px; }
+.studio-scene-browser > section { max-height:30dvh; overflow:auto; }
+.studio-scene-browser label { display:inline-flex; flex-wrap:wrap; gap:5px; align-items:center; margin-right:8px; }
+@media (max-width:600px) {
+  .studio-scene-browser[open] { width:94vw; }
+  .studio-scene-browser label { display:flex; margin-block:6px; }
+  .studio-scene-browser button,.studio-scene-browser select,.studio-scene-browser input { min-height:44px; }
+}

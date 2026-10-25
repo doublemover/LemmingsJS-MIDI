@@ -1,3 +1,4 @@
+import { validatePerformanceSceneOrigin } from './PerformanceSceneRecipe.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { validateFragmentLibrary, validateFragmentInstances } from './PhysicalScoreFragment.js';
 import { validateProjectJunctions } from './PhysicalJunctionProject.js';
@@ -106,7 +107,7 @@ const sanitizeProcgenWorkstation = (value = {}) => {
   const physicalGraph = value.physicalGraph == null ? createDefaultPhysicalGraph(seed) : validateCausalInstrumentGraph(value.physicalGraph);
   if (value.version === PROCGEN_PROJECT_VERSION && value.physicalGraph == null) throw new Error('A physical project requires its instrument graph.');
   const junctions = validateProjectJunctions(value.junctions), fragments = validateFragmentLibrary(value.fragments), fragmentInstances = validateFragmentInstances(value.fragmentInstances);
-  return { version: PROCGEN_PROJECT_VERSION, ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
+  return { version: PROCGEN_PROJECT_VERSION, ...(value.releaseGesture ? { releaseGesture: validateReleaseGesture(value.releaseGesture, lanes.length) } : {}), ...(junctions.length ? { junctions } : {}), ...(fragments.length ? { fragments } : {}), ...(fragmentInstances.length ? { fragmentInstances } : {}), ...(value.sceneOrigin == null ? {} : { sceneOrigin: validatePerformanceSceneOrigin(value.sceneOrigin) }), playModel: PROCGEN_PLAY_MODEL, revision: integer(value.revision, 0, 0, Number.MAX_SAFE_INTEGER), seed, physicalGraph, ...(value.effectRack == null ? {} : { effectRack: validateOwnerEffectRack(value.effectRack) }), lanes: lanes.map((lane, index) => {
     const clean = createProcgenLane(index, lane || {});
     while (ids.has(clean.id)) clean.id += '-copy';
     ids.add(clean.id); return clean;

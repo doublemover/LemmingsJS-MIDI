@@ -214,3 +214,20 @@ describe('causal musical intent engine', () => {
     expect(restored.snapshot()).to.deep.equal(saved);
   });
 });
+
+
+describe('explicit physical source lane selectors', () => {
+  it('maps only its declared corridor without cloning facts or aliasing source indices', () => {
+    const current = graph([instrument('first', 'MotionCommitted', { gateX: 10, sourceLanes: [0] }), instrument('second', 'MotionCommitted', { gateX: 10, sourceLanes: [1] })]), engine = createCausalMusicEngine({ getGraph: () => current });
+    const facts = [0, 1].map(laneId => ({ kind: 'MotionCommitted', actorId: laneId + 1, laneId, positionBefore: { x: 0, y: 0 }, positionAfter: { x: 20, y: 0 } }));
+    const intents = engine.processBatch(batch(1, facts)).filter(intent => intent.kind === 'begin');
+    expect(intents.map(intent => [intent.mappingId, intent.laneId])).to.deep.equal([['first', 0], ['second', 1]]);
+    expect(() => validateCausalInstrumentGraph(graph([instrument('bad', 'MotionCommitted', { gateX: 10, sourceLanes: [1, 1] })]))).to.throw();
+  });
+  it('ends a held source when transfer leaves its declared eligibility instead of retargeting it silently', () => {
+    const current = graph([instrument('held', 'MotionCommitted', { sourceLanes: [0], articulation: { spacingPixels: 10, sustain: true, lifetimeScope: 'actorJourney' } })]), engine = createCausalMusicEngine({ getGraph: () => current });
+    const first = engine.processBatch(batch(1, [{ kind: 'MotionCommitted', actorId: 1, laneId: 0, positionBefore: { x: 0, y: 0 }, positionAfter: { x: 6, y: 0 } }])).find(intent => intent.kind === 'begin');
+    const transfer = engine.processBatch(batch(2, [{ kind: 'ActorLaneTransferred', actorId: 1, laneId: 1 }]));
+    expect(transfer).to.have.length(1); expect(transfer[0].kind).to.equal('end'); expect(transfer[0].voiceId).to.equal(first.voiceId); expect(engine.snapshot().active).to.have.length(0);
+  });
+});

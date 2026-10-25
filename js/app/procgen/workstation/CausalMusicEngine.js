@@ -23,6 +23,13 @@ const plain = value => value && typeof value === 'object' && !Array.isArray(valu
 const nonempty = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const voiceIdentity = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 
+const sourceLaneIncluded = (instrument, lane) => {
+  if (!instrument.sourceLanes) return true;
+  let low = 0, high = instrument.sourceLanes.length;
+  while (low < high) { const middle = low + high >>> 1; if (instrument.sourceLanes[middle] < lane) low = middle + 1; else high = middle; }
+  return instrument.sourceLanes[low] === lane;
+};
+
 // A graph is content, not code. Validation happens before any live state is
 // changed, and the resulting descriptors contain only bounded primitives.
 const validateCausalInstrumentGraph = value => {
@@ -60,11 +67,12 @@ const validateCausalInstrumentGraph = value => {
     if (input.sourceKind === 'MotionCommitted' && !input.articulation && (!Number.isFinite(input.gateX) || Math.abs(input.gateX) > 1000000000 ||
         !['either', 'positive', 'negative'].includes(input.crossingDirection ?? 'either'))) throw new Error('Motion instrument needs a valid gate.');
     if (input.articulation && input.sourceKind !== 'MotionCommitted') throw new Error('Travel articulation requires committed motion.');
+    if (input.sourceLanes !== undefined && (!Array.isArray(input.sourceLanes) || !input.sourceLanes.length || input.sourceLanes.length > 1024 || input.sourceLanes.some(lane => !Number.isInteger(lane) || lane < 0 || lane >= 1024) || new Set(input.sourceLanes).size !== input.sourceLanes.length)) throw new Error('Instrument source lanes must be unique physical source indices.');
     const probability = validateCausalProbabilityPolicy(input.probability);
     if (input.sourceKind === 'TerrainWorkCommitted' && input.operationKind != null && !nonempty(input.operationKind)) throw new Error('Invalid work operation.');
     if (['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) && input.causeKind != null && !nonempty(input.causeKind)) throw new Error('Invalid contact cause.');
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
-    return Object.freeze({ id: input.id, ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
+    return Object.freeze({ id: input.id, ...(input.sourceLanes ? { sourceLanes: Object.freeze([...input.sourceLanes].sort((a, b) => a - b)) } : {}), ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.cargoRole ? { cargoRole: input.cargoRole } : {}), ...(input.cargoStationId ? { cargoStationId: input.cargoStationId } : {}), ...(input.activityWindowId ? { activityWindowId: input.activityWindowId } : {}), ...(input.motifId ? { motifId: input.motifId } : {}), ...(input.encounterId ? { encounterId: input.encounterId } : {}), ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
       ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}),
       operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
@@ -293,6 +301,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       }
       if (fact.kind === 'ActorLaneTransferred') for (const record of [...active.values()]) {
         if (record.actorId !== fact.actorId || record.laneId === fact.laneId) continue;
+        if (!sourceLaneIncluded(record.instrument, fact.laneId)) { endVoice(batch, record, fact, 'transfer-left-instrument-source-lanes', output); continue; }
         const policy = record.instrument.voiceTransfer || validateVoiceTransferPolicy(), previousLaneId = record.laneId;
         const transfer = { policy: policy.policy, previousLaneId, laneId: fact.laneId, sourceEventId: fact.eventId, previousVoiceId: record.voiceId };
         let destination; try { destination = getLaneState(fact.laneId); } catch { destination = null; }
@@ -332,6 +341,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       }
       for (const instrument of indexed.get(fact.kind) || []) {
         fact = originalFact;
+        if (!sourceLaneIncluded(instrument, fact.laneId)) continue;
         if (instrument.cargoStationId && instrument.cargoStationId !== fact.stationId || instrument.cargoRole && instrument.cargoRole !== fact.cargoRole) continue;
         if ((instrument.formationId || instrument.harmonicFields) && tones.resolve(instrument, fact.actorId, basePitchFor(instrument, fact)).status !== 'complete') continue;
         if (fact.actorId == null || !nonempty(fact.eventId) && !fact.editRetrigger) continue;

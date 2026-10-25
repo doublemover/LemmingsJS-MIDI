@@ -1,3 +1,5 @@
+import { getActiveExecutionIdentity } from '../runtime/ActiveExecutionIdentity.js';
+import { verifyPerformanceSceneOrigin } from './procgen/workstation/PerformanceSceneRecipe.js';
 import { prepareProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryCapture.js';
 import { replayProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryJournal.js';
 import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
@@ -189,6 +191,7 @@ const installProcgenBootListeners = () => {
             controller.signal.throwIfAborted();
             procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
               restart: options => init({ ...options, startupOwner: controller.signal }),
+              prepareSceneWorld: options => initWorkstation({ ...options, prepareOnly: true }),
               prepareInspectionWorld: request => import('./procgen/workstation/ProcgenInspectionWorld.js').then(module => module.prepareProcgenInspectionWorld({ ...request, rootPath: activeProcgenRuntime?.assetRootPath, resourceBudget: procgenResourceBudget })), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
             storageTransferred = true;
             procgenStudio.prepareSettings();
@@ -362,13 +365,16 @@ const buildProcgenEditorLevel = (styleName) => {
   return { level, entranceX, entranceY };
 };
 
-const initWorkstation = async ({ session, lease } = {}) => {
-  if (session) validateProcgenSession(session);
+const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecipe = null } = {}) => {
+  if (session) { validateProcgenSession(session); if (session.project?.procgen?.sceneOrigin) {
+    const source = getActiveExecutionIdentity('browser-survey-core'); if (source.activeExecution !== 'bound') throw new Error('Reopening a pinned scene requires its immutable application build.');
+    await verifyPerformanceSceneOrigin(session.project.procgen.sceneOrigin, { sourceHash: source.buildId });
+  } }
   const serial = ++workstationInitSerial, canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
-  const settings = session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
-  const view = new GameView(); let candidate = null, lanes = null, terrain = null, assets = null, committed = false, preparationError = null;
-  let fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
+  const settings = sceneRecipe ? { ...sceneRecipe.settings } : session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
+  const view = new GameView(); let candidate = null, lanes = null, terrain = null, assets = null, committed = false, staged = false, preparationError = null;
+  let stagedOwner = null, fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
     const factory = view.gameFactory;
@@ -383,7 +389,7 @@ const initWorkstation = async ({ session, lease } = {}) => {
     resources = preparedResources;
     if (!canCommit()) return false;
     terrain = await loadProcgenMixedTerrain({ configs, fileProvider, book,
-      laneAssignments: session?.project?.procgen?.lanes?.map(lane => lane.family) || procgenStudio.getLaneAssignments(),
+      laneAssignments: (sceneRecipe?.project || session?.project)?.procgen?.lanes?.map(lane => lane.worldThemeId || lane.family) || procgenStudio.getLaneAssignments(),
       requiredFamilies: session?.world?.assets?.map(asset => asset.family) ?? null,
       signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
@@ -402,40 +408,58 @@ const initWorkstation = async ({ session, lease } = {}) => {
       pinned: true, reloadable: false });
     candidate = new ProcgenLaneWorld({ laneCount: settings.laneCount, laneHeight: settings.laneHeight, seed: settings.seed, sprites, masks, terrain,
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
-      previousDistances: readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
+      previousDistances: sceneRecipe ? [] : readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
     if (session?.recoveryJournal) await replayProcgenRecoveryJournal(candidate, session.recoveryJournal, { signal: lease?.signal });
+    if (sceneRecipe) candidate.configurePhysicalAuthoring(sceneRecipe.project.procgen.physicalGraph, sceneRecipe.project.procgen.fragmentInstances || []);
     await prepareProcgenRecoveryJournal(candidate, { resourceBudget: procgenResourceBudget, signal: lease?.signal, isCurrent: () => canCommit() && !committed });
     lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true, initiallySuspended: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
+    if (prepareOnly && lanes.renderer.getDisplayState().state !== 'ready') throw new Error('The candidate display is unavailable. The live world remains active.');
     if (!canCommit()) return false;
+    const publish = ({ isCurrent = () => true } = {}) => {
+      if (!canCommit() || !isCurrent() || committed) throw new Error('The prepared world is stale or already published.');
+      procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
+        generation: serial, toOwner: 'active-world' });
+      candidateBudgetOwner = 'active-world';
+      if (activeProcgenRuntime) procgenStudio.beforeRestart();
+      disposeProcgenRuntime();
+      if (sceneRecipe) procgenStudio.adoptSceneRecipe(sceneRecipe);
+      activeProcgenRuntime = { lanes, world: candidate, assetRootPath: factory.rootPath, worldBudgetToken: candidateBudgetToken,
+        recipeSettings: Object.freeze({ seed: candidate.seed, laneCount: candidate.laneCount,
+          laneHeight: candidate.laneHeight, pack: settings.pack, decoration: settings.decoration,
+          preset: settings.preset, mode: settings.mode }),
+        view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
+      committed = true;
+      if (!lanes.activate()) throw new Error('The admitted world presentation could not activate.');
+      window.procgenSeed = candidate.seed; window.procgenSelectedTheme = 'mixed'; window.procgenDebugState = lanes.getDebugState;
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: candidate, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };
+      procgenUi.sync({ charactersReady: true }); procgenStudio.bindRuntime({ session }); resizeCanvas();
+      registerServiceWorker({ profile: 'perf' }); return activeProcgenRuntime;
+    };
+    if (prepareOnly) {
+      staged = true; const owner = createProcgenRetirementScope();
+      stagedOwner = Object.freeze({ world: candidate, settings: Object.freeze({ ...settings }), generation: serial,
+        isCurrent: () => canCommit() && !committed && !owner.getReceipt(),
+        commit(options) { if (owner.getReceipt()) throw new Error('The prepared world is retired.'); return publish(options); },
+        retire() { let stopped; return owner.retire(committed ? [] : [
+          { name: 'candidate-runtime', run: () => stopped = lanes.stop() },
+          { name: 'candidate-budget', run: async () => { await stopped.completion; if (stopped.outcome !== 'complete') throw new Error('Candidate world resources remain unresolved.'); procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner }); } }
+        ]); } });
+      return stagedOwner;
+    }
     if (activeProcgenRuntime) {
       await procgenStudio.stopCausalTake({ reason: 'world-replacement' });
       if (!canCommit()) return false;
-      procgenStudio.beforeRestart();
     }
-    disposeProcgenRuntime();
-    procgenResourceBudget.transfer({ token: candidateBudgetToken, owner: candidateBudgetOwner,
-      generation: serial, toOwner: 'active-world' });
-    candidateBudgetOwner = 'active-world';
-    activeProcgenRuntime = { lanes, world: candidate, assetRootPath: factory.rootPath, worldBudgetToken: candidateBudgetToken,
-      recipeSettings: Object.freeze({ seed: candidate.seed, laneCount: candidate.laneCount,
-        laneHeight: candidate.laneHeight, pack: settings.pack, decoration: settings.decoration,
-        preset: settings.preset, mode: settings.mode }),
-      view: lanes.view, game: lanes.game, stageAdapter: { updateStageSize: () => lanes.resize() }, controller: null, focusBlurCleanup: null };
-    committed = true;
-    if (!lanes.activate()) throw new Error('The admitted world presentation could not activate.');
-    window.procgenSeed = candidate.seed; window.procgenSelectedTheme = 'mixed'; window.procgenDebugState = lanes.getDebugState;
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('e2e')) window.__PROCGEN_LANES__ = { world: candidate, renderer: lanes.renderer, getState: lanes.getDebugState, pause: lanes.pause, resume: lanes.resume, step: lanes.step };
-    procgenUi.sync({ charactersReady: true }); procgenStudio.bindRuntime({ session }); resizeCanvas();
-    registerServiceWorker({ profile: 'perf' }); return activeProcgenRuntime;
+    return publish();
   } catch (error) { preparationError = error; throw error; }
   finally {
     const retirement = createProcgenRetirementScope().retire([
-      ...(!committed ? [
+      ...(!committed && !staged ? [
         { name: 'candidate-runtime', run: () => lanes ? lanes.stop() : candidate?.dispose() },
         { name: 'candidate-terrain', run: () => terrain?.dispose() },
         { name: 'candidate-display-assets', run: () => assets?.dispose() },
@@ -449,8 +473,10 @@ const initWorkstation = async ({ session, lease } = {}) => {
     ]);
     await retirement.completion;
     if (retirement.outcome !== 'complete') {
-      if (preparationError) preparationError.retirement = retirement;
-      else throw Object.assign(new Error('World preparation could not confirm retirement of every resource.'), { retirement });
+      const error = preparationError || Object.assign(new Error('World preparation could not confirm retirement of every resource.'), { retirement });
+      error.retirement = retirement;
+      if (stagedOwner) { const candidateRetirement = stagedOwner.retire(); await candidateRetirement.completion; error.candidateRetirement = candidateRetirement; }
+      if (!preparationError) throw error;
     }
   }
 };
