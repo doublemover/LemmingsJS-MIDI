@@ -104,6 +104,22 @@ describe('atomic incremental recovery page publication', () => {
       expect(failure?.name).to.equal('RecoveryCandidateError'); expect(f.budget.diagnostics().accountedBytes).to.equal(0);
     } f.store.dispose();
   });
+  it('keeps every fragmented binary write atomic, bounded and reachable across failure boundaries', async function() {
+    this.timeout(60000);
+    let seed = 123456; const text = Array.from({ length: 256 * 1024 }, () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return String.fromCharCode(32 + ((seed >>> 0) % 95)); }).join('');
+    const large = () => ({ ...session('fragmented'), world: structuredClone(base), project: { procgen: { lanes: [{ payload: text }] } }, recoveryJournal: { ...session('x').recoveryJournal, pages: [structuredClone(page)] } });
+    const complete = setup(); await complete.store.save(large(), { documentRevision: 0, tick: 1 });
+    const chunks = [...complete.records.values()].filter(value => value.id.startsWith('recovery:chunk:'));
+    expect(chunks.some(value => value.kind === 'recovery-chunk-part')).to.equal(true);
+    expect(complete.store.stats().maximumStoredPayloadBytes).to.be.at.most(65536);
+    const source = await complete.store.load(complete.records.get('recovery:slot:1'), { owned: true }); expect(source.session.project.procgen.lanes[0].payload).to.equal(text); source.release(); complete.store.dispose();
+    for (let boundary = 1; boundary <= chunks.length + 3; boundary++) {
+      const f = setup(); await f.store.save(session('previous'), { documentRevision: 0, tick: 1 });
+      const before = structuredClone([...f.records]), pins = structuredClone([...f.pins]); f.failAfter(boundary, 'QuotaExceededError');
+      let failure; try { await f.store.save(large(), { documentRevision: 1, tick: 1 }); } catch (error) { failure = error; }
+      expect(failure, 'fragment write ' + boundary).to.exist; expect([...f.records]).to.deep.equal(before); expect([...f.pins]).to.deep.equal(pins); expect(f.budget.diagnostics().accountedBytes).to.equal(0); f.store.dispose();
+    }
+  });
   it('rejects corrupt chunks and invalidates owned readers when storage closes', async () => {
     const f = setup(); await f.store.save(session('durable'), { documentRevision: 0, tick: 1 });
     const record = f.records.get('recovery:slot:1'), source = await f.store.load(record, { owned: true });

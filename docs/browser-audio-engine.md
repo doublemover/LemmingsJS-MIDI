@@ -1754,3 +1754,22 @@ harness; they are measured, not assumed. Large individual encoded records still
 need physical fragmentation to bound their structured-clone cost. Regression
 fixtures cover incremental reuse, mutable callers, v1 migration, malformed
 references and every expanded write boundary; none have been executed.
+
+### Physical storage fragmentation
+
+Large encoded pages now use logical metadata plus independently owned physical
+slabs of at most 64 KiB. A slab is sliced only as its transactional request is
+issued; a view into the full backing buffer would not provide the same
+structured-clone bound. The existing atomic transaction includes every part,
+manifest, head and source pin. A separate admitted staging lease covers bounded
+slab overlap and reachability metadata before they are materialized.
+
+The reader checks each part's owner, index and exact expected length, retaining
+all source leases. It sends the parts through the admitted worker transport; full
+encoded concatenation, checksum and decompression happen in the decoder, not in
+a final main-thread join. New-write payload and observed transaction-slice maxima
+are explicit harness gates. Legacy unfragmented records remain readable and their
+read payload maximum is reported separately. Missing/corrupt/reordered parts and
+termination/quota failure at every physical-write boundary have authored fixtures.
+No fixtures or browser measurements have been run. Continuation snapshot capture
+and initial project publication costs remain distinct from bounded storage I/O.

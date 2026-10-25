@@ -58,7 +58,7 @@ export async function runResourceRecoveryBrowserScenario({ laneCount, dpr, build
       const started = performance.now(), accepted = await studio.recover(), after = studio.getRecoveryState();
       report.writes.push({ accepted, elapsedMs: performance.now() - started, durable: after.lastCommit?.documentRevision === after.durableRevision && after.lastCommit?.generation === after.durableGeneration,
         state: after.state, tick: after.durableTick, revision: after.durableRevision, snapshotMs: after.snapshot.totalMs - before.snapshot.totalMs,
-        encodeMs: after.storage.encodeMs - before.storage.encodeMs, commitMs: after.storage.commitMs - before.storage.commitMs, transactionMaximumSliceMs: after.storage.transactionMaximumSliceMs,
+        encodeMs: after.storage.encodeMs - before.storage.encodeMs, commitMs: after.storage.commitMs - before.storage.commitMs, transactionMaximumSliceMs: after.storage.transactionMaximumSliceMs, maximumStoredPayloadBytes: after.storage.maximumStoredPayloadBytes,
         resultCopyMs: after.storage.resultCopyMs - before.storage.resultCopyMs, resultCopyMaximumSliceMs: after.storage.resultCopyMaximumSliceMs, resultCopyPackets: after.storage.resultCopyPackets - before.storage.resultCopyPackets,
         inputCopyMs: after.storage.inputCopyMs - before.storage.inputCopyMs, inputCopyMaximumSliceMs: after.storage.inputCopyMaximumSliceMs, inputCopyPackets: after.storage.inputCopyPackets - before.storage.inputCopyPackets,
         workerQueueWaitMs: after.storage.workerQueueWaitMs - before.storage.workerQueueWaitMs, encodedPages: after.storage.encodedPages - before.storage.encodedPages,

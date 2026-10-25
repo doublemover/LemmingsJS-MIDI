@@ -709,7 +709,8 @@
         "js/app/resources/BackgroundJobWorker.js",
         "js/app/resources/BackgroundJobKernels.js",
         "js/midi/project/MidiProjectSnapshot.js",
-        "js/app/procgen/workstation/ProcgenRecoveryProjectPages.js"
+        "js/app/procgen/workstation/ProcgenRecoveryProjectPages.js",
+        "js/app/procgen/workstation/ProcgenRecoveryChunks.js"
       ],
       "regressions": [
         "test/procgen-incremental-recovery.test.js",
@@ -727,7 +728,8 @@
         "test/ground-asset-jobs.test.js",
         "test/midi/impulse-response.test.js",
         "test/midi/project-snapshot.test.js",
-        "test/procgen-recovery-project-pages.test.js"
+        "test/procgen-recovery-project-pages.test.js",
+        "test/procgen-recovery-chunks.test.js"
       ],
       "commits": [
         "1ecb548ccc70c8a4d0ed84cab7106bd261bf9c7e",
@@ -735,11 +737,12 @@
         "e7cfdc56e464c615e85c965c0230ee1aa517e7bd",
         "6cb45c908ccfba6b87696ce0ba738be3e631c87d",
         "0b9dcd9d956caec2bb691503f33734d7504c1371",
-        "23cf47945edc65d175e30c20cc3118e728f4a24f"
+        "23cf47945edc65d175e30c20cc3118e728f4a24f",
+        "dea068f9d395a0d7aebb460a03da01f789869081"
       ],
       "validation": "deferred-by-request",
       "increment": "incremental-recovery-journal-and-pages",
-      "remaining": "Large encoded binary records still need bounded physical storage fragmentation; combined runtime slice/parity/fault qualification remains deferred. Initial authored publication sealing and large continuation capture costs must be measured, not inferred from incremental reuse.",
+      "remaining": "Recovery continuation snapshot capture still needs explicit incremental/bounded treatment of large pattern and causal-engine state at a tick boundary; initial authored publication sealing cost and all runtime slice/parity/fault qualification remain deferred. Do not claim the 4ms measured acceptance without running the authored harness.",
       "increments": [
         {
           "id": "durable-recovery-and-acknowledged-retirement",
@@ -769,6 +772,11 @@
         {
           "id": "immutable-authored-recovery-pages",
           "summary": "Workstation publication seals verified plain-data project subtrees and reuses already sealed descendants. Recovery v2 stores per-lane and per-field authored pages plus separate continuation state; unchanged sealed nodes reuse durable encodings, mutable/shallow-frozen callers never gain identity reuse. V1 remains readable. Deduplicated reachability and exact stored lengths are verified; IDB requests chain one per success callback under the existing atomic two-slot/source-pin transaction. Expanded fault/migration/immutability regressions and transaction-slice harness receipts authored unrun.",
+          "commit": "dea068f9d395a0d7aebb460a03da01f789869081"
+        },
+        {
+          "id": "bounded-physical-recovery-fragments",
+          "summary": "Large encoded pages are stored as <=64KiB independently owned physical slabs, lazily sliced one per transactional request; logical metadata, all parts, manifest and source pins share one commit. Loader validates exact part owner/index/length and passes parts to the admitted decoder for worker-side reassembly/checksum/decompression, never concatenating full encoded pages on the host. Metadata/part staging is reserved before materialization and retired with explicit acknowledgment; v1 and small records remain compatible. All physical-write fault boundaries and corrupt/missing/reordered part fixtures authored unrun.",
           "commit": null
         }
       ]

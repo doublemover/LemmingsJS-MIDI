@@ -1,12 +1,13 @@
+import { MAX_RECOVERY_REFERENCES, recoveryPartCount, recoveryReferenceKeys, storedRecoveryChunks, readRecoveryChunk } from './ProcgenRecoveryChunks.js';
 import { yieldBackgroundTask } from '../../resources/BackgroundTaskYield.js';
 import { encodeRecoveryProject, decodeRecoveryProject } from './ProcgenRecoveryProjectPages.js';
 import { GENERATION_PIN_STORE, recoveryGenerationPin, withBrowserGenerationRetentionLock } from '../../../runtime/BrowserGenerationPins.js';
 import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { validateProcgenRecoveryJournalCooperative } from './ProcgenRecoveryJournal.js';
 const chunkPrefix = 'recovery:chunk:';
-const validKeys = keys => Array.isArray(keys) && keys.length <= 12288 && keys.every(key => typeof key === 'string' && key.startsWith(chunkPrefix) && key.length < 256) && new Set(keys).size === keys.length;
-const reference = (key, page) => Object.freeze({ key, sha256: page.sha256, rawBytes: page.rawBytes, storedBytes: page.bytes.byteLength, encoding: page.encoding });
-const validReference = ref => ref && typeof ref.key === 'string' && ref.key.startsWith(chunkPrefix) && ref.key.length < 256 && /^[a-f0-9]{64}$/.test(ref.sha256 || '') && Number.isSafeInteger(ref.rawBytes) && ref.rawBytes > 0 && ref.rawBytes <= 64 * 1048576 && Number.isSafeInteger(ref.storedBytes) && ref.storedBytes > 0 && ref.storedBytes <= 64 * 1048576 && ['json-utf8-v1', 'gzip-json-v1'].includes(ref.encoding);
+const validKeys = keys => Array.isArray(keys) && keys.length <= MAX_RECOVERY_REFERENCES && keys.every(key => typeof key === 'string' && key.startsWith(chunkPrefix) && key.length < 256) && new Set(keys).size === keys.length;
+const reference = (key, page) => Object.freeze({ key, sha256: page.sha256, rawBytes: page.rawBytes, storedBytes: page.bytes.byteLength, encoding: page.encoding, ...(recoveryPartCount(page.bytes.byteLength) ? { partCount: recoveryPartCount(page.bytes.byteLength) } : {}) });
+const validReference = ref => ref && typeof ref.key === 'string' && ref.key.startsWith(chunkPrefix) && ref.key.length < 256 && /^[a-f0-9]{64}$/.test(ref.sha256 || '') && Number.isSafeInteger(ref.rawBytes) && ref.rawBytes > 0 && ref.rawBytes <= 64 * 1048576 && Number.isSafeInteger(ref.storedBytes) && ref.storedBytes > 0 && ref.storedBytes <= 64 * 1048576 && ['json-utf8-v1', 'gzip-json-v1'].includes(ref.encoding) && (ref.partCount === undefined || Number.isSafeInteger(ref.partCount) && ref.partCount > 1 && ref.partCount <= 1024 && ref.partCount === recoveryPartCount(ref.storedBytes));
 
 // Immutable base/pages are encoded once. The two manifest generations and every
 // newly referenced chunk commit in one transaction; failed writes publish no head.
@@ -17,7 +18,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
     source?.addEventListener('abort', abort, { once: true }); if (source?.aborted) abort(); controllers.add(controller);
     return { signal: controller.signal, release() { source?.removeEventListener('abort', abort); controllers.delete(controller); } };
   };
-  const stats = { resultCopyMs: 0, resultCopyMaximumSliceMs: 0, resultCopyPackets: 0, inputCopyMs: 0, inputCopyMaximumSliceMs: 0, inputCopyPackets: 0, workerQueueWaitMs: 0, workerJobs: 0, retirementFailures: 0, encodedPages: 0, reusedPages: 0, encodeMs: 0, decodeMs: 0, commitMs: 0, transactionMaximumSliceMs: 0 };
+  const stats = { resultCopyMs: 0, resultCopyMaximumSliceMs: 0, resultCopyPackets: 0, inputCopyMs: 0, inputCopyMaximumSliceMs: 0, inputCopyPackets: 0, workerQueueWaitMs: 0, workerJobs: 0, retirementFailures: 0, encodedPages: 0, reusedPages: 0, encodeMs: 0, decodeMs: 0, commitMs: 0, transactionMaximumSliceMs: 0, maximumStoredPayloadBytes: 0, maximumReadPayloadBytes: 0 };
   const compute = async (kind, input, signal, epoch, maxBytes = 64 * 1048576, peak = maxBytes * (kind === 'decode-recovery-page' ? 32 : 8) + 1048576) => { const started = performance.now(); const result = await jobs.compute({ kind, ownerId: 'recovery-pages', ownerEpoch: epoch,
     sourceRevision: `recovery-page:${++serial}`, estimatedPeakBytes: Math.min(384 * 1048576, peak),
     priority: 'recovery', budgetAdapter: resourceBudget, signal, maxBytes, prepareInput: () => input, isCurrent: () => !retired && isCurrent() }); stats.resultCopyMs += result.receipt?.outputTransport?.elapsedMs || 0; stats.resultCopyMaximumSliceMs = Math.max(stats.resultCopyMaximumSliceMs, result.receipt?.outputTransport?.maximumSliceMs || 0); stats.resultCopyPackets += result.receipt?.outputTransport?.packets || 0; stats.inputCopyMs += result.receipt?.inputTransport?.elapsedMs || 0; stats.inputCopyMaximumSliceMs = Math.max(stats.inputCopyMaximumSliceMs, result.receipt?.inputTransport?.maximumSliceMs || 0); stats.inputCopyPackets += result.receipt?.inputTransport?.packets || 0; stats.workerQueueWaitMs += result.receipt?.queueWaitMs || 0; stats.workerJobs++; stats[kind === 'decode-recovery-page' ? 'decodeMs' : 'encodeMs'] += performance.now() - started; return result; };
@@ -26,7 +27,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
     async save(session, { signal, documentRevision, tick } = {}) {
       check(signal); validateSession(session); if (writing) throw new Error('An incremental recovery write is already pending.');
       if (!Number.isSafeInteger(documentRevision) || documentRevision < 0 || !Number.isSafeInteger(tick) || tick < 0) throw new Error('Invalid incremental recovery revision.');
-      const retained = [], writes = [], published = [], removedKeys = [], referenced = new Map(), nonce = crypto.randomUUID(), lifetime = linked(signal); signal = lifetime.signal; writing = true; let durableReceipt = null, operationError = null, pageSliceStarted = performance.now();
+      const retained = [], writes = [], published = [], removedKeys = [], referenced = new Map(), transactionToken = {}, nonce = crypto.randomUUID(), lifetime = linked(signal); signal = lifetime.signal; writing = true; let durableReceipt = null, operationError = null, transactionReserved = false, pageSliceStarted = performance.now();
       const encode = async (value, kind, maxBytes, peak, reusable = true) => {
         check(signal); if (performance.now() - pageSliceStarted >= 3) { await yieldBackgroundTask({ signal }); pageSliceStarted = performance.now(); }
         const prior = reusable && cache.get(value); if (prior?.stored) { stats.reusedPages++; referenced.set(prior.ref.key, prior.ref); return prior.ref; }
@@ -43,9 +44,12 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
         const patternsPage = patterns == null ? null : await encode(patterns, 'patterns', 16 * 1048576, 129 * 1048576, false);
         const physicalPage = physicalState == null ? null : await encode(physicalState, 'physical-state', 16 * 1048576, 129 * 1048576, false);
         const manifest = { schema: 'procgen-paged-recovery/v2', session: header, project: projectPages, patterns: patternsPage, physicalState: physicalPage, base, journal: { ...journalHeader, pages } };
-        const root = await encode(manifest, 'manifest', 8 * 1048576, 65 * 1048576, false), references = [...referenced.keys()];
-        const storedBytes = [...referenced.values()].reduce((sum, ref) => sum + ref.storedBytes, 0);
-        if (references.length > 12288 || storedBytes > 128 * 1048576) throw new Error('Recovery generation exceeds its durable page bound.');
+        const root = await encode(manifest, 'manifest', 8 * 1048576, 65 * 1048576, false);
+        let referenceCount = 0, storedBytes = 0;
+        for (const ref of referenced.values()) { referenceCount += 1 + (ref.partCount || 0); storedBytes += ref.storedBytes; }
+        if (referenceCount > MAX_RECOVERY_REFERENCES || storedBytes > 128 * 1048576) throw new Error('Recovery generation exceeds its durable page bound.');
+        resourceBudget?.reserve({ token: transactionToken, owner: 'recovery-transaction', category: 'checkpoint', bytes: 131072 + MAX_RECOVERY_REFERENCES * 512, pinned: true, reloadable: false }); transactionReserved = true;
+        const references = []; for (const ref of referenced.values()) references.push(...recoveryReferenceKeys(ref));
         check(signal); const db = await open(); check(signal);
         const commitStarted = performance.now();
         const receipt = await withBrowserGenerationRetentionLock(() => new Promise((resolve, reject) => {
@@ -68,7 +72,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
                   result = { generation, checksum: root.sha256, documentRevision, tick, journalSequence: journal.sequence };
                   const operations = function* () {
                     for (const key of removedKeys) yield () => store.delete(key);
-                    for (const chunk of writes) yield () => store.put(chunk);
+                    for (const chunk of writes) for (const record of storedRecoveryChunks(chunk)) yield () => { stats.maximumStoredPayloadBytes = Math.max(stats.maximumStoredPayloadBytes, record.bytes?.byteLength || 0); return store.put(record); };
                     yield () => transaction.objectStore(GENERATION_PIN_STORE).put(recoveryGenerationPin(session, slot, generation));
                     yield () => store.put({ id: `recovery:slot:${slot}`, kind: 'recovery-generation', ...result, paged: root, references, storedBytes, name: session.name, savedAt: session.savedAt });
                     yield () => store.put({ id: 'recovery:head', kind: 'recovery-head', generation, slot, checksum: root.sha256 });
@@ -88,7 +92,8 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
         }), { signal });
         stats.commitMs += performance.now() - commitStarted; durableReceipt = { ...receipt, durable: true, canceledAfterCommit: signal.aborted }; return durableReceipt;
       } catch (error) { operationError = error; throw error; } finally { writing = false; for (const entry of published) if (!entry.stored) entriesByKey.delete(entry.ref.key); writes.length = 0; const errors = [];
-        for (const result of retained) try { retireBackgroundResult(result); } catch (error) { errors.push(error); } lifetime.release(); stats.retirementFailures += errors.length;
+        for (const result of retained) try { retireBackgroundResult(result); } catch (error) { errors.push(error); }
+        if (transactionReserved) try { requireSynchronousResourceAcknowledgement(resourceBudget?.release({ token: transactionToken, owner: 'recovery-transaction' }), 'Recovery transaction staging'); } catch (error) { errors.push(error); } lifetime.release(); stats.retirementFailures += errors.length;
         const retirement = resourceRetirementSummary(errors); if (durableReceipt) durableReceipt.retirement = retirement; else if (operationError && errors.length) operationError.resourceRetirement = retirement;
       }
     },
@@ -99,11 +104,10 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
       const lifetime = linked(signal); signal = lifetime.signal;
       const decode = async ref => {
         if (!validReference(ref)) throw Object.assign(new Error('Invalid recovery chunk reference.'), { name: 'RecoveryCandidateError' });
-        used.add(ref.key);
+        for (const key of recoveryReferenceKeys(ref)) used.add(key);
         const previous = decoded.get(ref.key); if (previous) { if (JSON.stringify(previous.ref) !== JSON.stringify(ref)) throw new Error('Conflicting recovery chunk reference.'); return previous.value; }
-        const page = encoded.get(ref.key); check(signal);
-        if (!page || page.kind !== 'recovery-chunk' || page.sha256 !== ref.sha256 || page.rawBytes !== ref.rawBytes || page.encoding !== ref.encoding || page.bytes?.byteLength !== ref.storedBytes) throw Object.assign(new Error('Recovery chunk is missing or differs.'), { name: 'RecoveryCandidateError' });
-        const result = await compute('decode-recovery-page', page, signal, record.generation, Math.min(64 * 1048576, Math.max(8192, ref.rawBytes + 4096))); retained.push(result); decodedRawBytes += ref.rawBytes; decoded.set(ref.key, { ref, value: result.value }); return result.value;
+        check(signal); const page = await readRecoveryChunk(ref, encoded, { signal, isCurrent: () => !retired && isCurrent() });
+        const result = await compute('decode-recovery-page', page, signal, record.generation, Math.min(64 * 1048576, Math.max(8192, ref.rawBytes + 4096 + (ref.partCount || 0) * 128))); retained.push(result); decodedRawBytes += ref.rawBytes; decoded.set(ref.key, { ref, value: result.value }); return result.value;
       };
       let released = false, releaseError = null;
       const release = () => { if (releaseError) throw releaseError; if (released) return; released = true; encoded = null; decoded.clear(); used.clear(); const errors = [];
@@ -122,7 +126,7 @@ export function createProcgenRecoveryPageStore({ open, jobs, resourceBudget, isC
             try { check(signal); if (index === record.references.length) return;
               const key = record.references[index++], request = store.get(key); request.onsuccess = () => {
                 if (!request.result) { failed = new Error('Missing recovery chunk.'); abort(); return; }
-                bytes += request.result.bytes?.byteLength || 0; values.set(key, request.result);
+                bytes += request.result.bytes?.byteLength || 0; stats.maximumReadPayloadBytes = Math.max(stats.maximumReadPayloadBytes, request.result.bytes?.byteLength || 0); values.set(key, request.result);
                 if (bytes > record.storedBytes) abort(); else next();
               };
             } catch (error) { failed = error; abort(); }
