@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Route observed contact intents into exact shared-body point forces and replay acknowledged strikes without duplicate dry notes.
+
 - Add frame-addressed finite spatial strikes to persistent shared membranes, with bounded exciter queues, exact DSP receipts and drive-aware body retirement.
 
 - Drive circular spectra from qualified directed-route endpoints with stable entry identity, owned rest/reversal and explicit capture precision.

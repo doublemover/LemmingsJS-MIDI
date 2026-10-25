@@ -10,7 +10,7 @@ export const membraneControlTarget = (name, value) => name.endsWith('Radius01') 
 export const membraneTouchSupported = (size, x, y, radius) => { const n = size - 1, dx = x - Math.round(x * n) / n, dy = y - Math.round(y * n) / n; return dx * dx + dy * dy < radius * radius; };
 export const membraneInitialControl = (name, parameters) => MEMBRANE_CONTROLS.includes(name) ? parameters[name] : name.endsWith('Radius01') ? 0.12 : name.endsWith('Amount01') ? 0 : 0.5;
 export function prepareRectangularMembraneProfile(raw, sampleRate = 48000) {
-  const p = cloneData(raw, { maxBytes: 8192, maxNodes: 128 }), finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
+  const p = { ...cloneData(raw, { maxBytes: 8192, maxNodes: 128 }) }, finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
   if (![44100, 48000, 96000].includes(sampleRate) || !p || Object.getPrototypeOf(p) !== Object.prototype ||
       Object.keys(p).some(key => !['gridSize', 'fundamentalHz', 'decaySeconds', 'excitationGain01', ...MEMBRANE_CONTROLS].includes(key)) ||
       ![8, 16].includes(p.gridSize) || !finite(p.fundamentalHz, 40, 1000) || !finite(p.decaySeconds, 0.05, 4) || !finite(p.excitationGain01, 0, 1) ||

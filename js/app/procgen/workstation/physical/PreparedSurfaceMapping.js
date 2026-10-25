@@ -6,7 +6,7 @@ const integer = value => Number.isSafeInteger(value) && value >= 0;
 const keys = (value, allowed) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => allowed.includes(key));
 const EMPTY = Object.freeze([]), MAX_HELD = 32, MAX_COMMANDS = 1024;
 export function validatePreparedSurfaceDefinitions(raw = []) {
-  const values = cloneData(raw, { maxBytes: 65536, maxNodes: 2048 });
+  const values = JSON.parse(canonicalDataText(raw, { maxBytes: 65536, maxNodes: 2048 }).text);
   if (!Array.isArray(values) || values.length > 4) throw new TypeError('Prepare at most four explicitly mapped surfaces.');
   const seen = new Set();
   for (const surface of values) {

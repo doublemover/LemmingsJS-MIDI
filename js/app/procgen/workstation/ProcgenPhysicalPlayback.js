@@ -1,5 +1,6 @@
 import { createPreparedSurfaceBodyOwner } from './PreparedSurfaceBodyOwner.js';
-import { validateEffectPerformance } from '../../../midi/content/EffectPerformance.js';
+import { createPreparedBodyStrikeBackend } from './PreparedBodyStrikeBackend.js';
+import { createEffectPerformanceCapture } from './EffectPerformanceCapture.js';
 import { createTravelColorationRecipe } from '../../../midi/content/TravelColorationRecipes.js';
 import { createTravelEffectMotion } from './TravelEffectMotion.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
@@ -49,7 +50,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
   let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
   let surfaceBodies = null;
-  const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectSequence = 0, effectClockAnchor = null;
+  const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
+  const effectCapture = createEffectPerformanceCapture({ owner: documentEpoch + ':effect-capture', streamId: effectStreamId, resourceBudget, getContext: () => audio?.getAudioContext?.(), getExecutionEpoch: () => executionEpoch, getAnchor: () => effectClockAnchor, isEnabled: isEffectCaptureEnabled, onReceipt });
   let latestSinkOutcome = null, lastMixPublication = null, declaredSourceLanes = null;
   let leaseUntil = null, leaseEpoch = null, leaseContext = null;
   let lastAudioEnabled = false, lastAudioContext = null;
@@ -80,24 +82,25 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     if (state.enabled) { arm(); if (!lastAudioEnabled || context !== lastAudioContext) laneInstruments?.retry(getLanes()).catch(() => {}); }
     else { clock.invalidate(); anchoredEpoch = null; anchoredBpm = null; } lastAudioEnabled = !!state.enabled; lastAudioContext = context;
   }) || null;
+  let bodyBackend = null;
+  try { bodyBackend = session?.observeBodyReceipts ? createPreparedBodyStrikeBackend({ owner: documentEpoch + ':finite-strikes', resourceBudget,
+    resolveBody: id => surfaceBodies?.resolveActiveBody(id) || null, inventory: () => session.preparedBodyInventory(), enqueue: (id, command, expected) => session.enqueueBodyStrike(id, command, expected), panicBody: (id, expected) => session.panicPreparedBody(id, expected), observe: listener => session.observeBodyReceipts(listener),
+    onReceipt: receipt => {
+      try { onReceipt(receipt); } catch {}
+      if (receipt.stage === 'body-strike-applied' && receipt.executionEpoch === executionEpoch) captureEffect('body-strike', { ownerRouteRevision: receipt.ownerRouteRevision, graphDefinitionHash: receipt.graphDefinitionHash, sampleRate: receipt.sampleRate, targetFrame: receipt.appliedFrame }, {
+        nodeId: receipt.nodeId, sourceEventIds: receipt.source.sourceEventIds, executionEpoch: receipt.executionEpoch,
+        clockAnchor: { intentId: receipt.source.intentId, sourceTargetFrame: receipt.targetFrame, executionEpoch: receipt.executionEpoch },
+        strike: { ...receipt.source, x01: receipt.command.x01, y01: receipt.command.y01, amplitude01: receipt.command.amplitude01, pulseMilliseconds: [4, 8, 12][receipt.command.pulseIndex], applicationEvidence: receipt.applicationEvidence } });
+      else if (receipt.status === 'rejected' || receipt.stage === 'body-strike-applied' || receipt.stage === 'body-strike-ended' && receipt.reasonCode !== 0 || receipt.stage === 'body-source-owner-retired') onReceipt({ status: 'rejected', stage: 'effect-performance-capture', reason: 'finite-body-source-not-completely-observed', acousticReceipt: false });
+    } }) : null; } catch (error) { try { onInstrumentState({ laneId: 'prepared-body', state: 'unavailable', code: error.code || error.message }); } catch {} }
   const dispatcher = createCausalIntentDispatcher({
-    sinks: backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : [],
+    sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend }] : [])],
     executionEpoch: () => executionEpoch,
     toTargetFrame: scoreTime => permitted() ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
-    onReceipt: receipt => { if (Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
+    onReceipt: receipt => { if (Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
-  const captureEffect = (operation, state, details = {}) => {
-    if (!state) return;
-    try {
-      if (!isEffectCaptureEnabled()) return;
-      if (effectSequence === Number.MAX_SAFE_INTEGER) throw new Error('Effect capture sequence exhausted.');
-      const packet = validateEffectPerformance({ schema: 'lemmings-effect-performance/v1', status: 'accepted', stage: 'effect-performance-captured', operation,
-        sequence: ++effectSequence, streamId: effectStreamId, ownerRouteRevision: state.ownerRouteRevision, graphDefinitionHash: state.graphDefinitionHash,
-        sampleRate: state.sampleRate, targetFrame: state.targetFrame, executionEpoch, clockAnchor: effectClockAnchor?.executionEpoch === executionEpoch ? effectClockAnchor : null,
-        sourceEventIds: [], acousticReceipt: false, ...details }); onReceipt(packet);
-    } catch (error) { try { onReceipt({ status: 'rejected', stage: 'effect-performance-capture', reason: error.message, acousticReceipt: false }); } catch {} }
-  };
+  const captureEffect = effectCapture.capture;
   const prepareEffectGraph = async (definition, options) => { if (!session?.prepareEffectGraph) throw new Error('Physical owner effects are unavailable.');
     const result = await session.prepareEffectGraph(definition, options), state = session.getEffectPerformanceState?.();
     captureEffect('graph', state, { definition: state?.definition }); return result;
@@ -153,7 +156,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
     { name: 'causal-observer-storage', run: () => engine?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
-    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
+    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
   ]); throw error; }
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
@@ -193,7 +196,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       clock.invalidate(); anchoredEpoch = null;
     }
     previousGeneration = batch.generation; previousWorldId = batch.worldId; previousTerrainRevision = batch.terrainRevisionAfter ?? batch.snapshot?.terrainRevision ?? null;
-    if (executionEpoch !== nextEpoch) { effectClockAnchor = null; if (executionEpoch !== null) surfaceBodies?.clear('physical-execution-changed'); }
+    if (executionEpoch !== nextEpoch) { effectClockAnchor = null; if (executionEpoch !== null) { effectCapture.invalidate('physical-execution-changed-before-effect-clock-anchor'); surfaceBodies?.clear('physical-execution-changed'); } }
     executionEpoch = nextEpoch;
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
@@ -218,7 +221,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     try { return engine.processBatch(batch); } catch (error) { error.playbackRetirement = stop(); throw error; }
   };
   const stop = () => {
-    captureEffect('bypass', session?.getEffectPerformanceState?.(), { mode: 'owner-stop' }); effectClockAnchor = null;
+    captureEffect('bypass', session?.getEffectPerformanceState?.(), { mode: 'owner-stop' }); effectCapture.invalidate(); effectClockAnchor = null;
     armEnabled = false; enableLease = null;
     const generation = previousGeneration, epoch = executionEpoch;
     executionSerial++; previousGeneration = null; previousWorldId = null; previousTerrainRevision = null; executionEpoch = null;
@@ -238,7 +241,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
-      { name: 'causal-observer-storage', run: () => engine.dispose() },
+      { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
@@ -252,6 +255,6 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
     diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: !!session?.getState().enabled, accepted, rejected,
-      preparedSurfaces: surfaceBodies?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
+      preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

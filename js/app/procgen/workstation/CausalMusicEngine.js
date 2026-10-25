@@ -1,4 +1,5 @@
 import { validatePreparedSurfaceDefinitions, createPreparedSurfaceMapping } from './physical/PreparedSurfaceMapping.js';
+import { validatePreparedBodyStrike } from '../../../midi/content/PreparedBodyStrike.js';
 import { captureCircularContactCoordinate } from '../../../midi/content/CircularSpectrum.js';
 import { registerPhysicalGraphAdmission } from '../PhysicalGraphAdmission.js';
 import { createCausalObserverResources } from './CausalObserverResources.js';
@@ -49,6 +50,8 @@ const validateCausalInstrumentGraph = value => {
         !Number.isFinite(input.velocity01) || input.velocity01 < 0 || input.velocity01 > 1 ||
         !nonempty(input.route) || !nonempty(input.role)) throw new Error('Invalid causal instrument.');
     ids.add(input.id);
+    const preparedBodyStrike = input.preparedBodyStrike == null ? null : validatePreparedBodyStrike(input.preparedBodyStrike);
+    if (preparedBodyStrike ? input.route !== 'prepared-body' || !['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) || !preparedSurfaces.some(surface => surface.id === preparedBodyStrike.surfaceId && surface.revision === preparedBodyStrike.surfaceRevision) || input.articulation || input.response || input.actionVoicePolicy || input.topologyRegionId || input.formationId || input.harmonicFields || input.voiceTransfer || input.sampleGesture || input.sampleKitId || swarm || feedback : input.route === 'prepared-body') throw new Error('Finite body strikes require a saved current surface, direct contact intent and fixed prepared-body tuning.');
     if (input.topologyRegionId && (!topologyRegions.some(r => r.id === input.topologyRegionId) || !['TerrainWorkCommitted', 'ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) || input.harmonicFields || input.formationId || input.response || input.articulation)) throw new Error('Unsupported topology instrument composition.');
     if (input.activityWindowId && !activityDefinitions.some(value => value.id === input.activityWindowId)) throw new Error('Unresolved instrument activity window.');
     if (input.cargoRole != null && (input.sourceKind !== 'CargoDelivery' || !nonempty(input.cargoRole) || input.cargoRole.length > 64)) throw new Error('Invalid cargo role mapping.');
@@ -78,7 +81,7 @@ const validateCausalInstrumentGraph = value => {
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
     return Object.freeze({ id: input.id, ...(input.sourceLanes ? { sourceLanes: Object.freeze([...input.sourceLanes].sort((a, b) => a - b)) } : {}), ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.cargoRole ? { cargoRole: input.cargoRole } : {}), ...(input.cargoStationId ? { cargoStationId: input.cargoStationId } : {}), ...(input.activityWindowId ? { activityWindowId: input.activityWindowId } : {}), ...(input.motifId ? { motifId: input.motifId } : {}), ...(input.encounterId ? { encounterId: input.encounterId } : {}), ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
-      ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}),
+      ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
       operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
       articulation: input.articulation ? validateArticulationField(input.articulation) : null,
@@ -131,7 +134,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const timeFor = (batch, fact) => fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
   const basePitchFor = (instrument, fact) => fact?.topologyBinding?.status === 'complete' ? fact.topologyBinding.pitchCents : (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents + ((fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchOffsetCents) ? fact.pitchOffsetCents : 0);
   const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null) => {
-    const contactCoordinate = kind === 'begin' ? captureCircularContactCoordinate(batch, fact, instrument.id, graph?.revision ?? 0) : null;
+    const qualifiedBodyContact = !instrument.preparedBodyStrike || fact?.kind !== 'ContactSpanBegan' || fact.physicalPayload?.evidence === 'completed-support-cell' && fact.causeKind === 'support';
+    const contactCoordinate = kind === 'begin' && qualifiedBodyContact ? captureCircularContactCoordinate(batch, fact, instrument.id, graph?.revision ?? 0) : null;
     if (contactCoordinate) articulationState = { ...articulationState, contactCoordinate };
     const baseCents = basePitchFor(instrument, fact);
     const tonal = kind === 'begin' && (instrument.formationId || instrument.harmonicFields) ? tones.resolve(instrument, fact?.actorId, baseCents) : null;
@@ -155,6 +159,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       pitch: Object.freeze(pitch), ...(tonal?.state ? { tonalState: tonal.state } : {}),
       ...(fact?.tonalSourceBatchId ? { tonalSourceBatchId: fact.tonalSourceBatchId } : {}), ...(fact?.mappingEdit ? { mappingEdit: Object.freeze(fact.mappingEdit) } : {}), velocity01: Number.isFinite(fact?.velocity01) ? fact.velocity01 : Math.min(1, instrument.velocity01 * (Number.isFinite(fact?.velocityScale) ? fact.velocityScale : 1)),
       expression: Object.freeze({ ...expression, ...(Number.isFinite(expression.pitchOffsetCents) && tonalOffset ? { pitchOffsetCents: expression.pitchOffsetCents + tonalOffset } : {}) }), role: instrument.role, route: instrument.route, terminationReason: reason,
+      ...(instrument.preparedBodyStrike ? { preparedBodyStrike: instrument.preparedBodyStrike, graphRevision: graph.revision } : {}),
       ...(fact?.sampleGesture != null ? { sampleGesture: fact.sampleGesture } : instrument.sampleGesture != null ? { sampleGesture: instrument.sampleGesture } : {}), ...(instrument.sampleKitId != null ? { sampleKitId: instrument.sampleKitId } : {}),
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
       ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),

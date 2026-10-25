@@ -51,7 +51,7 @@ export function createMembraneStrikeTransport({ profile, node, context, nodeId, 
       for (let at = 0; at < values.length; at += 4) {
         const kind = values[at], token = values[at + 1], frame = values[at + 2], code = values[at + 3], record = pending.get(token);
         if (kind === 1) { record.applied = true; applied++; } else { pending.delete(token); if (kind === 2) rejected++; else ended++; }
-        report({ status: kind === 2 ? 'rejected' : 'accepted', stage: kind === 1 ? 'body-strike-applied' : kind === 2 ? 'body-strike-rejected' : 'body-strike-ended', token, targetFrame: record.command.frame, observedFrame: frame, appliedFrame: kind === 1 ? frame : null, reasonCode: code, acousticReceipt: kind === 1 });
+        report({ status: kind === 2 ? 'rejected' : 'accepted', stage: kind === 1 ? 'body-strike-applied' : kind === 2 ? 'body-strike-rejected' : 'body-strike-ended', token, targetFrame: record.command.frame, observedFrame: frame, appliedFrame: kind === 1 ? frame : null, reasonCode: code, acousticReceipt: false, applicationEvidence: kind === 1 ? 'processor-frame-acknowledged' : null });
         if (offline && (kind === 2 || code === 3)) unknown('Offline body strike did not finish its exact finite support.');
       }
     } catch (error) { unknown(error.message); }

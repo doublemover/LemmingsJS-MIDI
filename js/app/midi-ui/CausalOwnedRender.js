@@ -105,7 +105,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   if (effectReplay && (effectReplay.hash !== effectReplayHash || effectReplay.graphHash !== await effectGraphHash(effectPlan))) throw failure('effect-replay-preflight-identity', 'The captured effect command plan differs from the requested source and graph.');
   if (endFrame <= firstFrame) throw failure('empty-range', 'The selected range contains no output frames.');
   const resolveSourceLane = createCausalRenderLaneResolver(revoice);
-  const sourceIds = new Set(), voices = new Map(), events = [], lanes = new Set(); let lastSourceMs = -Infinity, ordinal = 0, capturedBegins = 0, capturedUpdates = 0, capturedEnds = 0, derivedLaneTransfers = 0;
+  const sourceIds = new Set(), voices = new Map(), events = [], lanes = new Set(), bodyVoices = new Map(), bodySourceIds = new Set(effectReplay?.bodySourceIntentIds || []); let lastSourceMs = -Infinity, ordinal = 0, capturedBegins = 0, capturedUpdates = 0, capturedEnds = 0, derivedLaneTransfers = 0;
   for (const intent of revoice.intents) {
     if (intent?.version !== 1 || !['begin', 'update', 'end'].includes(intent.kind) || !text(intent.intentId) || !text(intent.voiceId) ||
         !natural(intent.generation) || !Array.isArray(intent.sourceEventIds) || intent.sourceEventIds.length > 8192 || intent.sourceEventIds.some(id => !text(id)) ||
@@ -116,6 +116,12 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     const frame = timing.frameFor(intent), order = ++ordinal;
     if (frame >= endFrame) continue;
     const key = identity(intent), expression = expressionFor(intent.expression || {}); let voice = voices.get(key);
+    if (effectReplay && intent.route === 'prepared-body') {
+      const body = bodyVoices.get(key);
+      if (intent.kind === 'begin') { if (body || !bodySourceIds.has(intent.intentId)) throw failure('body-source-history-unavailable', 'Captured body rendering requires the acknowledged finite strike for every original body source.'); bodyVoices.set(key, { ended: false }); lanes.add(resolveSourceLane(intent, ordinal - 1)); capturedBegins++; }
+      else { if (!body || body.ended) throw failure('missing-body-source-history', 'A body source update or end lacks its original semantic onset.'); if (intent.kind === 'end') { body.ended = true; capturedEnds++; } else { if (Object.keys(expression).length) throw failure('body-source-expression-unavailable', 'Finite fixed-body sources have no continuous note-expression realization.'); capturedUpdates++; } }
+      continue;
+    }
     if (intent.kind === 'begin') {
       if (voice || !finite(intent.velocity01, 0, 1) || intent.laneId != null && !(natural(intent.laneId) || text(intent.laneId, 128)))
         throw failure('invalid-voice-history', 'Captured voice onsets are repeated or malformed.', { intentId: intent.intentId });
@@ -258,7 +264,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
     }
   }
   if (tail.mode !== 'exact-crop') for (const voice of voices.values()) naturalEnd = Math.max(naturalEnd, voice.end);
-  if (effectPlan && tail.mode !== 'exact-crop') naturalEnd += effectPlan.maximumTailFrames;
+  if (effectPlan && tail.mode !== 'exact-crop') naturalEnd = Math.max(naturalEnd, effectReplay?.lastBodyDriveFrame || 0) + effectPlan.maximumTailFrames;
   const outputEnd = tail.mode === 'exact-crop' ? endFrame : Math.min(Math.ceil(naturalEnd), endFrame + Math.round((tail.maxSeconds ?? 4) * sampleRate));
   const outputFrames = outputEnd - firstFrame, fileCount = stemLaneIds.length + effectReturnNodeIds.length + 1, pcmBytes = outputFrames * 8 * fileCount;
   if (!natural(pcmBytes) || pcmBytes + 262208 * fileCount > MAX_OUTPUT_BYTES) throw failure('render-capacity', 'This render/stem/return set exceeds 64 MiB; choose a shorter range or fewer taps.');
@@ -390,7 +396,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     definitionHash: plan.definitionHash, patchId: plan.patch.id, patchRevision: plan.patch.revision, engineRequirement: { engineId: plan.descriptor.engineId,
       engineVersion: plan.descriptor.engineVersion, artifactHash: plan.descriptor.artifactHash, parameterSchemaHash: plan.descriptor.parameterSchemaHash }, applicationBuildId: plan.applicationBuildId,
     panic: panicApplied ? { frame: panicFrame, source: 'shared-owned-kernel-panic-opcode', futureFixtureEvents: 'explicitly-suppressed-after-panic', releaseSlewMaximumFrames: 128 } : null,
-    commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, derivedReleases: plan.derivedReleases, derivedLaneTransfers: plan.derivedLaneTransfers, submitted: sequence, applied, peakVoices: plan.peakVoices },
+    commands: { capturedBegins: plan.capturedBegins, capturedUpdates: plan.capturedUpdates, capturedEnds: plan.capturedEnds, acknowledgedFiniteBodyBegins: plan.effectReplay?.bodySourceIntentIds?.length || 0, bodySourcePolicy: plan.effectReplay?.bodySourceIntentIds?.length ? 'one-original-source-per-finite-body-force;no-extra-dry-note' : 'explicit-new-target-revoice', derivedReleases: plan.derivedReleases, derivedLaneTransfers: plan.derivedLaneTransfers, submitted: sequence, applied, peakVoices: plan.peakVoices },
     realization: { scope: plan.owned.id === 'worklet-sine' ? 'new-local-sine-realization-of-immutable-intents' : 'new-local-owned-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',

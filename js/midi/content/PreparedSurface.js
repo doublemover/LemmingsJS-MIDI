@@ -20,7 +20,7 @@ export async function preparedBodyIdentity(raw) {
   if (!record(p, ['documentEpoch', 'executionEpoch', 'worldId', 'generation', 'surfaceId', 'surfaceRevision', 'surfaceMap', 'owner', 'ownerGeneration', 'ownerRouteRevision', 'graphDefinitionHash', 'nodeId', 'processorRevision']) ||
       !text(p.documentEpoch) || !text(p.executionEpoch) || !text(p.worldId) || !integer(p.generation) || !text(p.surfaceId, 128) || !integer(p.surfaceRevision) || !text(p.owner) || !integer(p.ownerGeneration) ||
       !integer(p.ownerRouteRevision) || p.ownerRouteRevision < 1 || !/^[a-f0-9]{64}$/.test(p.graphDefinitionHash) || !text(p.nodeId, 128) || !text(p.processorRevision)) throw new TypeError('Prepared body identity is missing an exact execution or graph revision.');
-  p.surfaceMap = validatePreparedSurfaceMap(p.surfaceMap);
+  validatePreparedSurfaceMap(p.surfaceMap);
   return freezeData({ ...p, bodyInstanceId: await hashData(p), heldContactPolicy: 'keep-old-tail', stateTransferPolicy: 'exact-same-body-cut-or-canonical-preroll;no-topology-array-copy' });
 }
 export function validateMappedBodyPreparation(raw) {

@@ -4368,3 +4368,50 @@ are performed during this development pass.
 This is the DSP/transport primitive. Physical mapping to finite source intents,
 captured body-strike replay and the multi-actor proof scene remain dependent work;
 API queue submission alone is never reported as applied acoustic evidence.
+
+
+### Continuation 185 — observed finite body sources and captured replay (#1210, #1215, #1233)
+
+A validated prepared-body instrument maps a direct ContactSpanBegan or
+ContactResolved semantic source to a saved surface ID/revision, one prepared
+4/8/12 ms pulse and normalized amplitude. Completed support evidence and matching
+terrain/map revisions are required. Resolved-contact terrain revision is retained
+only when the complete batch has identical before/after revisions. Unsupported
+travel, tonal, feedback and swarm compositions decline rather than silently
+retuning a shared body or changing source cardinality. Fixed prepared-body tuning
+is explicit; source note pitch does not retune the common field.
+
+The normal causal dispatcher now has an owned prepared-body sink. It resolves the
+actual current body, admits finite intervals against four simultaneous exciters,
+retains original intent/voice/onset/contact/map/body ancestry and awaits exact DSP
+application/end or actual body retirement. One source end releases only its
+semantic gate; it cannot erase another actor's shared energy. Stop and execution
+replacement clear the owned bodies through their existing host. Metadata and
+retirement uncertainty remain bounded/accounted. Two intentionally mapped intents
+from one contact stay two sources; mesh sites and finite DSP children add no
+semantic begins.
+
+Applied finite commands join the existing effect-performance capture with exact
+source-intent audio-frame anchors and processor acknowledgment evidence, without
+claiming acoustic output. Captured replay checks unique source ancestry, mapped
+revision, amplitude, pulse and exact node, then drives the common owned body at
+the projected source frame. Original body-force sources receive no additional dry
+oscillator. Explicit new-target source-only revoice remains a distinct operation.
+Tail planning includes the final finite support; incomplete histories, overlapping
+fifth exciters and malformed acknowledgment evidence decline.
+
+Effect capture now retains at most sixteen pre-anchor graph/control packets in a
+separate reservation until the first actual source clock arrives. A changed
+context/execution, overflow or retirement without an anchor marks a coverage gap.
+Normalization uses mutable local copies only where needed and preserves immutable
+input content: membrane Float32 controls, prepared surface sorting and identity
+validation no longer try to mutate frozen canonical copies.
+
+The physical graph editor stages observed strike mappings; the existing skin view
+explains fixed tuning and shows actual queued/active finite exciters. Runtime
+physicalMusic becomes 12 and capture profile physical-basic-v18. Authored fixtures
+cover mapping cardinality, stale maps, source/end ownership, capacity, acknowledged
+replay without duplicate notes, source-state cuts and pre-anchor capture ownership.
+All runtime fixtures remain unrun under the requested frontloaded development
+policy. Native browser equivalence, listening, device qualification, compliant
+collision/rattle models and the Three Hands proof scene remain pending.

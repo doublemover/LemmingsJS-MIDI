@@ -49,7 +49,7 @@ export function captureCircularContactCoordinate(batch, fact, mappingId, graphRe
   return freezeData({ schema: 'lemmings-canonical-contact-coordinate/v1', worldId: batch.worldId, generation: batch.generation, actorId: fact.actorId, mappingId, graphRevision,
     contactInstanceId, sourceEventId: fact.eventId, sourceSequence: fact.causalSequence, observedTick: batch.tick, coordinate: { x: point.x, y: point.y },
     coordinateMeaning: support ? 'observed-completed-support-cell-anchor' : 'actor-position-at-resolved-contact', precision: 'completed-contact-coordinate',
-    surfaceRevision: Number.isSafeInteger(fact.surfaceRevision) && fact.surfaceRevision >= 0 ? fact.surfaceRevision : null });
+    surfaceRevision: Number.isSafeInteger(fact.surfaceRevision) && fact.surfaceRevision >= 0 ? fact.surfaceRevision : resolved && Number.isSafeInteger(batch.terrainRevisionBefore) && batch.terrainRevisionBefore >= 0 && batch.terrainRevisionBefore === batch.terrainRevisionAfter ? batch.terrainRevisionBefore : null });
 }
 
 function planCircularContact(parameters, intent, targetFrame, sampleRate) {

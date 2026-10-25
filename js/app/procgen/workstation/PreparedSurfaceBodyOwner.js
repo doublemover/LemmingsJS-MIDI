@@ -107,6 +107,7 @@ export function createPreparedSurfaceBodyOwner({ documentEpoch, inventory, apply
     report({ status: 'accepted', stage: 'prepared-body-bindings-cleared', reason, audioState: 'owned-body-panic-submitted-not-applied-acknowledgment' });
   };
   return Object.freeze({ bind, consume, prune, clear,
+    resolveActiveBody(surfaceId) { prune(); const body = bodies.get(active.get(surfaceId)); if (disposed || blocked || !body?.active || body.quarantined) return null; const target = inventory().find(target => targetKey(target) === targetKey(body.identity)); return target ? Object.freeze({ ...body.identity, pulses: target.pulses, sampleRate: target.sampleRate }) : null; },
     state: () => Object.freeze({ disposed, blocked: blocked?.message || null, documentEpoch, executionEpoch: execution, bodies: [...bodies.values()].map(body => ({ ...body.identity, active: body.active, quarantined: body.quarantined })), bindings: [...bindings.values()].map(binding => ({ ...binding })),
       limits: { retainedBodies: 8, bindings: 32, touchSlotsPerBody: 4, pickupOwnersPerSide: 1, recentCommandAndClosureEntries: 256 }, preparationPolicy: 'separate-contact-owner-per-slot;keep-old-tail;no-implicit-rebind', restoration: 'canonical-command-preroll;no-foreign-body-identity-restore' }),
     dispose() { if (disposed) return false; clear('document-owner-retired'); storage.release(); disposed = true; return true; } });

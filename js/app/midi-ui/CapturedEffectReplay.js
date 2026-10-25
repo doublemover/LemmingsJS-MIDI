@@ -22,7 +22,7 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
   const plan = prepareEffectGraphRevision(publication.definition, { sampleRate });
   if (plan.impulseCount) fail('effect-command-native-body-unavailable', 'Captured command revoice does not yet schedule native convolution graphs. Use explicit static body rendering or master capture.');
   if (initial.origin < 0) fail('effect-clock-origin-unavailable', 'The effect analysis grid precedes the captured audio context.');
-  const events = []; let previous = 0;
+  const events = [], bodySourceIntentIds = [], bodySources = new Set(); let previous = 0, lastBodyDriveFrame = 0;
   for (const { packet, projected } of projectedPackets) {
     if (packet.streamId !== publication.streamId || packet.ownerRouteRevision !== publication.ownerRouteRevision || packet.graphDefinitionHash !== publication.graphDefinitionHash || packet.sequence <= previous) fail('effect-history-order', 'Captured effects mix routes, streams or nonmonotonic command identities.'); previous = packet.sequence;
     if (packet.operation === 'body-panic') fail('effect-body-lifecycle-replay-unavailable', 'A body-only Panic was submitted through the message port; its applied audio frame is unavailable in this captured-command profile.');
@@ -31,24 +31,36 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
       if (projected.frame < 0 || projected.frame < initial.frame) fail('effect-control-before-publication', 'A captured parameter precedes its prepared graph.');
       if (plan.nodes.some(node => node.spectral) && Math.abs(projected.origin - initial.origin) > 1) fail('effect-analysis-grid-rebased', 'Spectral capture crosses an audio-clock rebase; its original analysis grid is unavailable in this render profile.');
       events.push({ frame: projected.frame, nodeId: packet.nodeId, values: packet.values, sequence: packet.sequence, sourceEventIds: packet.sourceEventIds });
+    } else if (packet.operation === 'body-strike') {
+      const strike = packet.strike, intent = intents.get(strike.intentId), node = plan.nodes.find(node => node.id === packet.nodeId), pulseIndex = node?.membrane?.pulses.findIndex(pulse => pulse.milliseconds === strike.pulseMilliseconds);
+      if (!intent || intent.kind !== 'begin' || intent.route !== 'prepared-body' || intent.voiceId !== strike.voiceId || intent.onsetId !== strike.onsetId || intent.worldId !== strike.worldId || intent.generation !== strike.generation || intent.actorId !== strike.actorId || intent.articulationState?.contactCoordinate?.contactInstanceId !== strike.contactInstanceId || intent.preparedBodyStrike?.surfaceId !== strike.surfaceId || intent.preparedBodyStrike?.surfaceRevision !== strike.surfaceRevision || intent.preparedBodyStrike?.pulseMilliseconds !== strike.pulseMilliseconds || Math.abs(intent.velocity01 * intent.preparedBodyStrike.amplitudeScale01 - strike.amplitude01) > 1e-12 || JSON.stringify(intent.sourceEventIds) !== JSON.stringify(strike.sourceEventIds) || !node?.membrane || pulseIndex < 0 || bodySources.has(strike.intentId) || projected.frame < 0 || projected.frame < initial.frame || projected.frame !== timing.frameFor(intent)) fail('effect-body-source-identity', 'An acknowledged body strike differs from its unique original semantic source or exact prepared node.');
+      const pulse = node.membrane.pulses[pulseIndex]; bodySources.add(strike.intentId); bodySourceIntentIds.push(strike.intentId); lastBodyDriveFrame = Math.max(lastBodyDriveFrame, projected.frame + pulse.frames);
+      events.push({ kind: 'body-strike', frame: projected.frame, nodeId: packet.nodeId, sequence: packet.sequence, sourceEventIds: packet.sourceEventIds, strike,
+        command: { frame: projected.frame, token: bodySourceIntentIds.length, x01: strike.x01, y01: strike.y01, amplitude01: strike.amplitude01, pulseIndex }, endFrame: projected.frame + pulse.frames });
     }
   }
   events.sort((a, b) => a.frame - b.frame || a.sequence - b.sequence);
-  const body = { schema: 'lemmings-captured-effect-replay/v1', definition: plan.definition, events, graphStartFrame: initial.frame, frameOrigin: initial.origin,
+  const supports = new Map();
+  for (const event of events) if (event.kind === 'body-strike') {
+    const held = (supports.get(event.nodeId) || []).filter(end => end > event.frame);
+    if (held.length >= 4) fail('effect-body-exciter-capacity', 'Captured finite sources exceed four simultaneous exciters on this body.');
+    held.push(event.endFrame); supports.set(event.nodeId, held);
+  }
+  const body = { schema: 'lemmings-captured-effect-replay/v1', definition: plan.definition, events, bodySourceIntentIds, lastBodyDriveFrame, graphStartFrame: initial.frame, frameOrigin: initial.origin,
     sampleRate, graphHash: await effectGraphHash(plan), capturedGraphHash: publication.graphDefinitionHash, sourceCanonicalHash: source.sourceCanonicalHash,
     transitionFrames: Math.max(1, Math.round(sampleRate * 0.02)), operation: 'captured-API-command-revoice',
     initialMemory: 'cleared-new-realization;not-an-exact-live-DSP-state-reconstruction',
-    evidence: 'native-API-submission-not-processor-or-acoustic-acknowledgment',
+    evidence: 'controls:native-API-submission-not-processor-acknowledgment;finite-strikes:processor-frame-acknowledged;no-acoustic-output-claim',
     spectralCapture: 'replayed-analysis-requests;original-window-readiness-and-capture-receipts-not-reconstructed',
     timing: 'captured-source-intent-frame-plus-original-audio-frame-delta;nearest-output-frame', policy: 'one-graph;owned-processors;forward-preroll;no-in-range-lifecycle-transition' };
   return freezeData({ ...body, hash: await hashData(body, { maxBytes: 4 * 1048576, maxNodes: 131072 }) });
 }
 export function createCapturedEffectReplayDriver(replay, graph) {
   if (!replay || replay.schema !== 'lemmings-captured-effect-replay/v1' || graph.hash !== replay.graphHash) fail('effect-replay-identity', 'Effect command replay needs its exact admitted graph.');
-  for (const event of replay.events) graph.validateUpdate(event.nodeId, event.values);
+  for (const event of replay.events) if (event.kind !== 'body-strike') graph.validateUpdate(event.nodeId, event.values);
   let cursor = 0, leftSample = 0, rightSample = 0;
   return Object.freeze({ sample(left, right, frame, sidechainSamples = null, presence = null) {
-    while (cursor < replay.events.length && replay.events[cursor].frame <= frame) { const event = replay.events[cursor++]; graph.update(event.nodeId, event.values); }
+    while (cursor < replay.events.length && replay.events[cursor].frame <= frame) { const event = replay.events[cursor++]; if (event.kind === 'body-strike') { if (event.frame !== frame) fail('effect-body-late-replay', 'A finite source missed its exact replay frame.'); graph.enqueueBodyStrike(event.nodeId, event.command); } else graph.update(event.nodeId, event.values); }
     const gate = Math.max(0, Math.min(1, (frame - replay.graphStartFrame) / replay.transitionFrames));
     if (sidechainSamples) for (let index = 0; index < sidechainSamples.length; index++) sidechainSamples[index] *= gate;
     graph.sample(left * gate, right * gate, sidechainSamples, presence);
