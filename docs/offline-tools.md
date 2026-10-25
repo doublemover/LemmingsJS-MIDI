@@ -190,4 +190,7 @@ convergence, acoustic material accuracy, level-matched listening and runtime cos
 Those remain required acceptance work; the build labels its output experimental.
 A refined bar source is available for a later mesh comparison. The plate and
 pebble do not yet provide a bounded refinement family. Pocket Foundry's physical
-zone scene and in-app foundry controls remain dependent work.
+zone scene remains dependent work. The Sound panel now offers an in-app Shape
+foundry using the actual bound worker, ordinary verified content installation,
+selected-site prelisten and canonical lane Apply. Those browser paths are
+implemented but not yet runtime-qualified.

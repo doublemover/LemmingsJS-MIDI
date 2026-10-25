@@ -2,6 +2,7 @@ import { fitSoundSeedModes } from './SeedModalFit.js';
 import { solveShapeBody } from './ShapeBodySolver.js';
 import { renderShapeBodyCalibration } from './ShapeBodyCalibration.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
+import { createShapeBodyRecipe } from '../../midi/content/ShapeBodyRecipe.js';
 import { decomposeSoundSeed } from './SeedDecomposition.js';
 import { analyzeSoundSeedWindow } from './SoundSeedWindowAnalysis.js';
 import { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } from '../procgen/workstation/ProcgenRecoveryPageCodec.js';
@@ -22,7 +23,7 @@ import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 
 export const BACKGROUND_JOB_PROTOCOL = 3;
-export const BACKGROUND_JOB_KINDS = Object.freeze(['solve-shape-body', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'encode-recovery-page', 'decode-recovery-page', 'asset-hash', 'asset-decode']);
+export const BACKGROUND_JOB_KINDS = Object.freeze(['build-shape-body-content', 'solve-shape-body', 'render-shape-body-calibration', 'fit-sound-seed-modes', 'decompose-sound-seed', 'analyze-sound-seed-window', 'analyze-native-impulse', 'encode-native-render', 'decode-wave-source', 'generate-procedural-sound', 'inspect-wave-asset', 'prepare-owned-source-bank', 'parse-json', 'verify-causal-source', 'snapshot-canonical-data', 'inspect-causal-archive-entry', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-json', 'encode-canonical-json', 'compile-sound-content', 'recovery-checksum', 'encode-recovery-page', 'decode-recovery-page', 'asset-hash', 'asset-decode']);
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
 const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
@@ -128,6 +129,20 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'build-shape-body-content') {
+    const execution = getActiveExecutionIdentity('browser-background-jobs');
+    if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: 16384 }), options = { signal, current, estimatedPeakBytes, yieldControl, onProgress };
+    const asset = await solveShapeBody({ source: input.source, solverBuildHash: execution.buildId }, options), calibration = await renderShapeBodyCalibration({ asset, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds }, options); guard(signal, current);
+    const recipe = await createShapeBodyRecipe({ asset, calibration }), catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+    if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity.buildId !== execution.buildId) throw problem('engine-identity-unbound', 'The foundry compiler differs from its executing worker.');
+    const compiled = await compileSoundContent(recipe.source, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
+    const value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, overview: { id: asset.id, assetHash: asset.assetHash, meshHash: asset.meshHash, sourceHash: asset.sourceHash, solver: asset.solver, validation: asset.validation, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds,
+      sites: asset.source.excitationSites, tier: { modeIndices: calibration.files[0].manifest.modeIndices, retainedSalience01: calibration.files[0].manifest.tier.retainedSalience01 } } };
+    const retainedBytes = recipe.contents.reduce((sum, file) => sum + file.bytes.byteLength * 3 + 65536, 8 * 1048576);
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Foundry generated material exceeds its complete result reservation.');
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
+  }
   if (['solve-shape-body', 'render-shape-body-calibration'].includes(kind)) {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || kind === 'solve-shape-body' && input?.solverBuildHash !== execution.buildId) throw problem('engine-identity-unbound', 'Foundry jobs require their actual immutable worker build; a requested solver hash cannot attest execution.');

@@ -7,6 +7,9 @@ import { createShapeBodyRecipe } from '../../js/midi/content/ShapeBodyRecipe.js'
 import { hashData } from '../../js/core/CanonicalData.js';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
+import { createShapeFoundryOwner } from '../../js/app/midi-ui/ShapeFoundryOwner.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { canonicalDataText } from '../../js/core/CanonicalData.js';
 
 const copy = value => JSON.parse(JSON.stringify(value)), options = { yieldControl: async () => {} }, input = source => ({ source, solverBuildHash: 'a'.repeat(64) });
 describe('original offline tetrahedral shape foundry', function() {
@@ -54,5 +57,23 @@ describe('original offline tetrahedral shape foundry', function() {
     expect(content.prepared.pack.patches).to.have.length(1); expect(recipe.receipt.runtime).to.include('existing-owned-sampler'); expect(content.prepared.pack.files).to.have.length(6);
     expect(content.prepared.pack.patches[0].definition.sampleMap.zones.every(zone => zone.pitchTracking === 'fixed')).to.equal(true);
     expect(calibration.files.every(file => file.manifest.gain.applied === calibration.files[0].manifest.gain.applied)).to.equal(true);
+  });
+  it('retains the previous staged body after stale preparation and requires independent audition/install before Apply', async () => {
+    const asset = await solveShapeBody(input(createOriginalShapeBodySource()), options), calibration = await renderShapeBodyCalibration({ asset, modeCount: 8, sampleRate: 48000, seconds: 0.2 }, options), recipe = await createShapeBodyRecipe({ asset, calibration }), [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sample', engineVersion: 1, artifactHash: 'b'.repeat(64) }]);
+    const compiled = await compileSoundContent(recipe.source, { targets: [{ descriptor }] }), budget = createResourceBudget(); let applied = 0, releases = 0;
+    const jobs = { async compute(request) {
+      const source = await request.prepareInput(); let value;
+      if (request.kind === 'build-shape-body-content') value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, overview: { assetHash: asset.assetHash } };
+      else if (request.kind === 'parse-json') value = JSON.parse(source);
+      else if (request.kind === 'encode-canonical-json') value = canonicalDataText(source).text;
+      else if (request.kind === 'asset-hash') { value = [...new Uint8Array(await crypto.subtle.digest('SHA-256', source))].map(value => value.toString(16).padStart(2, '0')).join(''); expect(value).to.equal(request.expectedInputHash); }
+      else throw new Error('Unexpected foundry fixture job ' + request.kind);
+      let released = false; return { value, receipt: { method: 'dedicated-worker', executionIdentity: { activeExecution: 'bound', buildId: 'a'.repeat(64) } }, release() { released = true; releases++; }, retirementState: () => ({ phase: released ? 'released' : 'retained' }) };
+    } };
+    const owner = createShapeFoundryOwner({ audio: { createSession() {}, getAudioContext() {} }, resourceBudget: budget, jobs, getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: 'a'.repeat(64) }, descriptors: [descriptor] }), onApply: () => { applied++; } });
+    await owner.prepare({ seconds: 0.2 }); expect(owner.state()).to.include({ compiledReady: true, auditionReady: false, durable: false }); const identity = owner.state().patchIdentity;
+    let caught; try { await owner.prepare({ seconds: 0.2 }, { isCurrent: () => false }); } catch (error) { caught = error; } expect(caught.message).to.include('draft changed'); expect(owner.state().patchIdentity).to.equal(identity);
+    try { await owner.apply(); } catch (error) { caught = error; } expect(caught.message).to.include('Commit this staged pack'); expect(applied).to.equal(0); expect(releases).to.be.greaterThan(0);
+    const receipt = owner.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 });

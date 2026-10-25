@@ -4455,3 +4455,36 @@ Mesh-refinement qualification (a refined bar is authored), level-matched listeni
 render/runtime device measurements, in-app foundry controls and Pocket Foundry's
 actual physical-zone proof scene remain pending. Output labels distinguish
 algebraic convergence from geometric/acoustic/perceptual qualification.
+
+
+### Continuation 187 — foundry preparation, prelisten and canonical application (#1217)
+
+A compact foundry dialog now prepares an original solid through one fixed,
+128-MiB shared worker operation: geometry validation, eigensolve, all-site
+calibration and normal sound compilation. Actual immutable worker build identity
+must match the requested solver build. Worker-owned generated buffers use the
+existing bounded page transfer path. The main thread constructs original source
+data without performing the geometry solve or overlap analysis there.
+
+The generated pack then goes through the existing verified archive reader,
+sound-content registry and isolated installation owner. Compilation, selected-site
+prelisten and durable installation are separate readiness states. Apply uses the
+canonical lane sound transaction/Undo boundary. Explicit shape, tier, rate and
+sample duration plus document/project/lane fences prevent a stale candidate from
+applying to a changed target. Retained previous material survives failed or
+canceled preparation. Active producer or material retirement uncertainty keeps its
+concrete reservation and blocks new preparation.
+
+Site auditions use the ordinary sampler articulation and declared finite sample
+hold. No physical collision or route is invented for the preview. Close, Escape,
+output Stop/Panic and page suspension cancel pending preparation and stop the
+foreground cue. Existing stage-command protection also covers the new authoring
+action. Readiness and actual solver/source/mode receipts remain visible without
+claiming acoustic material or mesh-resolution accuracy.
+
+An additional authored ownership fixture stages a real generated body through API
+doubles, rejects stale preparation while retaining the previous pack, requires
+independent audition/install before Apply and checks final reservation retirement.
+All runtime/UI fixtures and actual worker/browser preparation remain unrun. The
+Pocket Foundry physical-zone scene, mesh-refinement qualification and listening/
+device measurements remain pending; this UI does not promote those absent gates.

@@ -12,7 +12,7 @@ function solidGrid(nx, ny, nz, transform, omit = () => false) {
   }
   return { units: 'authored-model-unit', scaleMeters: 0.6, vertices, tetrahedra };
 }
-export function createOriginalShapeBodySource(id = 'pocket-bar', { refined = false } = {}) {
+export function createOriginalShapeBodySource(id = 'pocket-bar', { refined = false, validate = true } = {}) {
   let mesh, sites, pickups, young;
   if (id === 'pocket-bar') {
     const nx = refined ? 7 : 4, ny = refined ? 3 : 2, nz = refined ? 3 : 2;
@@ -24,7 +24,7 @@ export function createOriginalShapeBodySource(id = 'pocket-bar', { refined = fal
     if (refined) throw new TypeError('The pebble has no qualified refinement mesh in the bounded source profile.');
     mesh = solidGrid(3, 3, 2, (x, y, z) => { const a = x - 0.5, b = y - 0.5, c = z - 0.5; return [a * (0.9 + 0.12 * b + 0.06 * c), b * (0.7 - 0.08 * a), c * (0.6 + 0.1 * a + 0.08 * b)]; }); sites = [0, 5, 8]; pickups = [9, 17]; young = 1.8e8;
   } else throw new TypeError('Unknown original shape mesh.');
-  return validateShapeBodySource({ schema: 'lemmings-shape-body-source/v1', id, revision: refined ? 2 : 1, mesh,
+  return (validate ? validateShapeBodySource : freezeData)({ schema: 'lemmings-shape-body-source/v1', id, revision: refined ? 2 : 1, mesh,
     material: { model: 'isotropic-small-strain-elasticity', youngModulusPa: young, densityKgPerM3: 1800, poissonRatio: 0.27, rayleighAlphaPerSecond: 10, rayleighBetaSeconds: 1e-8, interpretation: 'authored-musical-assumptions;not-terrain-material-measurements' },
     boundary: { kind: 'free-solid', fixedVertices: [] }, excitationSites: sites.map((vertex, index) => ({ id: ['end', 'shoulder', 'corner'][index], vertex, direction: [0, 0, 1] })),
     pickupSites: pickups.map((vertex, index) => ({ id: index ? 'right' : 'left', vertex, direction: [0, 0, 1] })), sourceTerrain: null, rights: { creator: 'Original Lemmings shape foundry', licenseId: 'NOASSERTION', source: 'original-authored-geometry' } });

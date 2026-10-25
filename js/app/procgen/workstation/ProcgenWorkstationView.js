@@ -358,6 +358,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           variationSeed: ((lane.instrumentControls?.variationSeed ?? variation.seed) + 1) | 0 } }), 'Change only the saved musical seed for future onsets'));
       }
       fields.append(button('Sound library…', () => handlers.openSoundLibrary?.(), 'Import, audition, install and explicitly apply a saved instrument'));
+      fields.append(button('Shape foundry…', () => handlers.openShapeFoundry?.(), 'Prepare an original solid body, prelisten a selected strike site and apply its ordinary saved instrument'));
       labeled('Mode', select([['physical', 'Physical causes'], ['pattern', 'Complementary pattern']], lane.mode, mode =>
         changeLane(mode === 'pattern' ? { mode, patternPurpose: 'Clocked support for physical events' } :
           { mode, patternPurpose: null, patterns: [] }), 'Lane playback mode'), fields);
