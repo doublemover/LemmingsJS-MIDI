@@ -1,7 +1,7 @@
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
 import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
-import { releaseLanePhases } from './ReleaseGesture.js';
+import { releaseLanePhases, validateReleaseGesture } from './ReleaseGesture.js';
 import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
 import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
 import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
@@ -67,8 +67,10 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Terrain is queried in one shared coordinate system. No world-sized bitmap,
 // per-lane Game, or rendering dependency is needed by the real action systems.
 class ProcgenLaneWorld {
-  constructor({ laneCount = 1, laneHeight = 96, seed = 1, worldId = null, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null, workstation = false, hazardSpacing = 160 } = {}) {
+  constructor({ laneCount = 1, laneHeight = 96, seed = 1, worldId = null, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, initialReleaseGesture = null, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null, workstation = false, hazardSpacing = 160 } = {}) {
     this.laneCount = normalizeLaneCount(laneCount);
+    if (initialReleaseGesture !== null && !cohorts) throw new Error('An authored initial release policy requires cohort admission.');
+    const initialRelease = initialReleaseGesture === null ? null : validateReleaseGesture(initialReleaseGesture, this.laneCount);
     this.laneHeight = normalizeLaneHeight(laneHeight);
     this.seed = normalizeSeed(seed);
     this.worldId = worldId || `procgen:${this.seed}`;
@@ -108,7 +110,7 @@ class ProcgenLaneWorld {
     this._laneEditIndex = new Int32Array(this.laneCount); this._laneEditIndex.fill(-1);
     this._laneChunkIndex = new Int32Array(this.laneCount); this._laneChunkIndex.fill(-1);
     this.cohorts = cohorts;
-    this.spawnSpreadTicks = normalizePopulationPolicy({ spawnSpreadTicks: spawnSpreadTicks ?? populationPolicy.spawnSpreadTicks }).spawnSpreadTicks;
+    this.spawnSpreadTicks = initialRelease?.spreadTicks ?? normalizePopulationPolicy({ spawnSpreadTicks: spawnSpreadTicks ?? populationPolicy.spawnSpreadTicks }).spawnSpreadTicks;
     this.maxActors = Math.max(this.laneCount, maxActors);
     this.admissionPaused = false; this._manualNukeLanes = new Uint8Array(this.laneCount);
     this.nextActorId = 0;
@@ -117,6 +119,7 @@ class ProcgenLaneWorld {
     this.spawnedTotal = 0; this.activeCount = 0;
     this.population = new ProcgenPopulationPolicy(this.laneCount, stallPolicy.releaseIntervalTicks ?? DEFAULT_STALL_POLICY.releaseIntervalTicks, populationPolicy, Object.hasOwn(stallPolicy, 'releaseIntervalTicks'));
     this.population.settings.spawnSpreadTicks = this.spawnSpreadTicks;
+    if (initialRelease) this.population.initializeReleaseGesture(initialRelease);
     this._completedPhysicalBatchId = null;
     this.terrainActivityTicks = new Float64Array(this.laneCount); this.terrainActivityTicks.fill(-Infinity);
     this.pendingTerrainWork = new Uint32Array(this.laneCount);

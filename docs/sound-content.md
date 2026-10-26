@@ -773,3 +773,15 @@ The library displays these claims and limits. A selected export retains a group
 only when every alternative it advertises is included; it never leaves dangling
 available profiles. Measured admission transitions and matched-take/listening
 qualification remain separate required work.
+
+
+The scene catalog includes three small practice scores when the bound pluck
+renderer is installed: One Foot, One Sound; Space Becomes Rhythm; and Quiet
+Control. A world-space pickup observes actual motion. The first two pin finite
+birth attempts, with explicit tick phases for the two-entrant score; the quiet
+control pins paused admission and no actors. Their initial release policy is
+installed before the first cohort and retained in the same checkpoint used for
+private rehearsal. No note timer or invented manual intervention creates sound.
+Fresh Load restores the authored attempt. Use Physical authoring to move the
+pickup and Release gestures to perform another finite phrase. These are practice
+scores with factual captions, not completed lessons or verified hearing outcomes.

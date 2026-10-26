@@ -1,3 +1,5 @@
+import { restoreProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
+import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMusicEngine.js';
 import { createPerformanceStageSession } from '../js/app/procgen/workstation/PerformanceStageSession.js';
 import { createInstalledPerformanceSceneCatalog } from '../js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js';
 import { createPerformanceSceneWorldAdapter } from '../js/app/procgen/workstation/PerformanceSceneWorldAdapter.js';
@@ -112,6 +114,28 @@ describe('installed crossing scores and the existing world candidate adapter', (
     expect(() => candidate.commit({ policy: 'stopped-replacement', isCurrent: () => true })).to.throw('readers'); source.release(); expect(() => source.checkpoint).to.throw('retired');
     let fenced = false; const receipt = candidate.commit({ policy: 'stopped-replacement', isCurrent: () => { fenced = true; return true; } }); expect(fenced).to.equal(true); expect(published).to.equal(true); expect(receipt.transportPlaying).to.equal(false);
     const retirement = candidate.retire(); await retirement.completion; expect(retirement.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0); world.dispose();
+  });
+  it('pins finite practice releases before the first cohort and rehearses an actor-free control without phantom attacks', async () => {
+    const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') }))), getCatalog = async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors });
+    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }), masks = await loadProcgenMasks(); expect(library.registry.page().rows).to.have.length(5);
+    for (const row of library.registry.page().rows.filter(row => row.id.startsWith('practice.'))) {
+      const value = library.registry.resolve(row), origin = await library.origin(value), budget = createResourceBudget(); let original;
+      const adapter = createPerformanceSceneWorldAdapter({ resourceBudget: budget, getCatalog, getOrigin: (scene, variants) => library.origin(scene, variants), prepareWorld: async ({ sceneRecipe }) => {
+        original = new ProcgenLaneWorld({ masks, cohorts: true, laneCount: sceneRecipe.settings.laneCount, laneHeight: sceneRecipe.settings.laneHeight, seed: sceneRecipe.settings.seed, initialReleaseGesture: sceneRecipe.initialReleaseGesture, assists: false, stallPolicy: { secondsWithoutProgress: 1000 } });
+        original.baseGroundAt = (_x, y) => y % original.laneHeight >= original.laneHeight - 16 ? 1 : 0; original.configurePhysicalAuthoring(sceneRecipe.project.procgen.physicalGraph, []);
+        return { world: original, isCurrent: () => true, commit() {}, retire() { original.dispose(); return { outcome: 'complete' }; } };
+      } });
+      const preflight = await checkPerformanceSceneRequirements(value, { resolveDependency: library.resolveDependency }), prepared = await adapter({ scene: value, preflight, baseIdentity: 'practice-doc', isCurrent: () => true });
+      expect(preflight.status).to.equal('ready'); expect(original.activeCount).to.equal(0); expect(original.population.releaseGesture).to.deep.equal(origin.recipe.initialReleaseGesture);
+      const loan = await prepared.borrowRehearsalCheckpoint(), clone = new ProcgenLaneWorld({ masks, cohorts: true, laneCount: value.cost.lanes, laneHeight: 96, seed: value.seed, assists: false, stallPolicy: { secondsWithoutProgress: 1000 } });
+      clone.baseGroundAt = (_x, y) => y % clone.laneHeight >= clone.laneHeight - 16 ? 1 : 0; restoreProcgenCheckpoint(clone, loan.checkpoint); loan.release();
+      const facts = [], intents = [], engine = createCausalMusicEngine({ getGraph: () => value.causalMappings }); clone.soundEvents.onBatch.on(batch => { facts.push(...batch.facts); intents.push(...engine.processBatch(batch)); });
+      for (let tick = 0; tick < 140; tick++) clone.step();
+      const births = facts.filter(fact => fact.kind === 'ActorBorn'), begins = intents.filter(intent => intent.kind === 'begin');
+      if (origin.recipe.initialReleaseGesture.paused) { expect(births).to.have.length(0); expect(begins).to.have.length(0); expect(clone.activeCount).to.equal(0); }
+      else { expect(births).to.have.length(value.cost.lanes); expect(begins.length).to.be.greaterThan(0); expect(births.map(fact => fact.spawnTick)).to.deep.equal(value.cost.lanes === 1 ? [1] : [1, 13]); }
+      expect(original.tickIndex).to.equal(0); expect(original.activeCount).to.equal(0); clone.dispose(); const retired = prepared.retire(); await retired.completion; expect(retired.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    }
   });
   it('keeps source-build mismatch unavailable instead of converting the score silently', async () => {
     const f = await installed(), value = f.library.registry.resolve(f.library.registry.page().rows[0]), origin = await f.library.origin(value); let error;

@@ -1,3 +1,4 @@
+import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { hashData, freezeData } from '../../../core/CanonicalData.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
 import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
@@ -6,8 +7,8 @@ import { validatePerformanceScene, performanceSceneHash, sceneDependencyKey } fr
 import { createPerformanceSceneRegistry } from './PerformanceSceneRegistry.js';
 import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 
-// Small original crossing scores exercise the real world and gate mapper. More
-// elaborate named scenes require their own authored geometry and qualifications.
+// These bounded crossing/practice scores use actual actor and cohort owners.
+// Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
   const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map();
@@ -34,6 +35,38 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       requirements: { required: [{ kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Committed actor crossing facts' }], optional: [], substitutableWithNamedApproximation: [] }, credits: [{ name: 'LemmingsJS-MIDI', role: 'Original crossing score and tone', source: null }],
       cost: { lanes: laneCount, maximumVoices: laneCount * 8, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: laneCount === 4 ? 'sparse' : 'medium', lessonLevel: 1 });
     await registry.register(scene); signal?.throwIfAborted();
+  }
+  const pluck = catalog.descriptors.find(value => value.engineId === 'worklet-pluck');
+  if (pluck && pluck.maximumVoices >= 8) {
+    put('engine', pluck.engineId, pluck.engineVersion, pluck.artifactHash); put('parameter-schema', pluck.engineId, pluck.engineVersion, pluck.parameterSchemaHash);
+    const pickupHash = await hashData({ buildId: sourceHash, observation: 'PickupCrossing', source: 'MotionCommitted', physicalBatch: 1 }); put('physical-observation', 'PickupCrossing', 1, pickupHash);
+    const pluckDefinition = { ...definition, id: 'scene.practice-pluck', name: 'Practice pickup pluck', engineId: 'worklet-pluck', parameters: { attackSeconds: 0.002, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.08, gain01: 0.4, pan01: 0,
+      stringT60Seconds: 0.4, bodyMix01: 0.15, bodyT60Seconds: 0.2, pluckPosition01: 0.3, excitationBrightness01: 0.5, damping01: 0.15 }, voicePolicy: { maxVoices: 4, steal: 'reject' } };
+    const pluckDefinitionHash = await hashData(pluckDefinition), pluckPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: pluckDefinitionHash }); put('patch', pluckDefinition.id, 1, pluckDefinitionHash, 'embedded');
+    const pluckReference = { schema: 'lemmings-sound-reference/v1', packHash: pluckPackHash, patchId: pluckDefinition.id, revision: 1, definitionHash: pluckDefinitionHash, definition: pluckDefinition, assetHashes: [], engineRequirement: { engineId: pluck.engineId, engineVersion: pluck.engineVersion, artifactHash: pluck.artifactHash, parameterSchemaHash: pluck.parameterSchemaHash } };
+    for (const practice of [
+      { id: 'one-foot-one-sound', title: 'One Foot, One Sound', lanes: 1, spread: 0, paused: false, description: 'One finite entrant approaches a visible world-space pickup. Load a fresh attempt, move the pickup through Physical authoring while paused, then predict the crossing before Play. An actual crossing owns the pluck; the display and transport create no attacks.' },
+      { id: 'space-becomes-rhythm', title: 'Space Becomes Rhythm', lanes: 2, spread: 12, paused: false, description: 'Two finite entrants share one world-space pickup with explicit birth phases. Their actual paths determine the arrival interval. Use Release gestures to perform a new finite phrase with changed entry spacing; no note schedule moves the actors.' },
+      { id: 'quiet-control', title: 'Quiet Control · no entrants', lanes: 1, spread: 0, paused: true, description: 'Birth admission starts paused and the world contains no actors. Running transport produces no physical crossing or pluck. This is the zero-note control for the practice scores; explicitly perform a release gesture to introduce a real cause.' }
+    ]) {
+      const laneCount = practice.lanes, initialReleaseGesture = validateReleaseGesture({ version: 1, id: 'practice.' + practice.id, revision: 1, nominalGapTicks: 54, spreadTicks: practice.spread, lanePhase: Array.from({ length: laneCount }, (_, laneId) => ({ laneId, offsetTicks: laneId * practice.spread })),
+        grouping: 'free', clockMode: 'locked', finiteBurstCount: laneCount, phaseStepTicks: 0, liveChangeBoundary: 'next-cohort', paused: practice.paused, seed: 28001 }, laneCount);
+      const recipe = validatePerformanceSceneRecipe({ schema: 'lemmings-physical-score-recipe/v1', id: 'score.practice.' + practice.id, revision: 1, sourceHash, seedPolicy: 'scene-seed', initialReleaseGesture,
+        settings: { laneCount, laneHeight: 96, pack: 1, speed: 3, hazardSpacing: 1024, decoration: 'none', workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy({ scoutsEvery: 0, spawnSpreadTicks: practice.spread }) }, terrainFamilies: Array(laneCount).fill('crystal') });
+      const recipeHash = await hashData(recipe); recipes.set(recipeHash, recipe); put('score-recipe', recipe.id, 1, recipeHash, 'embedded');
+      const pickupId = 'practice-pickup', causalMappings = { version: 1, revision: 1,
+        pickups: [{ id: pickupId, revision: 1, worldAnchor: 'world', geometry: { kind: 'segment', points: [{ x: 96, y: 0 }, { x: 96, y: laneCount * 96 }] }, laneScope: Array.from({ length: laneCount }, (_, laneId) => laneId), trigger: 'cross', directionPolicy: 'either', hysteresis: 0, pitchMap: { mode: 'fixed', baseCents: 6000 } }],
+        instruments: Array.from({ length: laneCount }, (_, laneId) => ({ id: 'practice-pluck-' + laneId, pickupId, sourceLanes: [laneId], sourceKind: 'PickupCrossing', pitchCents: 6000, velocity01: 0.55, role: 'harp', route: 'local' })) };
+      const scene = validatePerformanceScene({ schema: 'lemmings-performance-scene/v1', id: 'practice.' + practice.id, version: 1, title: practice.title, description: practice.description,
+        sourceVersion: { id: 'procgen-workstation-source', revision: 2, hash: sourceHash }, worldRecipeRef: { id: recipe.id, revision: 1, hash: recipeHash }, seed: 28001,
+        physicalControls: [], causalMappings, patchRefs: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, reference: pluckReference })),
+        mix: Array.from({ length: laneCount }, (_, index) => ({ laneId: 'practice-lane-' + index, gain: 0.5, pan: laneCount === 1 ? 0 : index ? 48 : -48, mute: false, solo: false })),
+        initialTransport: { playing: false, bpm: 120, gameSpeed: 3, speedMode: 'bpm' }, tutorialRef: null,
+        expectedLandmarks: [{ id: 'pickup-crossing', observationKind: 'PickupCrossing', sourceObjectId: pickupId, consequence: practice.paused ? 'Without an entrant, no crossing or new attack exists.' : 'Each actual pickup crossing begins one owned pluck. Source end and the bounded decay retain their existing ownership.', help: 'Load starts paused. Enable local audio explicitly. Predict the next crossing; use Physical authoring to move the pickup or Release gestures to introduce new finite entrants. Rejected physical requests are not corrected automatically.' }],
+        requirements: { required: [{ kind: 'physical-observation', id: 'PickupCrossing', revision: 1, hash: pickupHash, description: 'Swept world-space pickup observations derived from complete actual motion' }, { kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Complete committed actor motion' }], optional: [], substitutableWithNamedApproximation: [] },
+        credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite-cohort practice score and pluck', source: null }], cost: { lanes: laneCount, maximumVoices: laneCount * 4, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: 'sparse', lessonLevel: practice.paused ? 0 : 1 });
+      await registry.register(scene); signal?.throwIfAborted();
+    }
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },

@@ -408,7 +408,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
       pinned: true, reloadable: false });
     candidate = new ProcgenLaneWorld({ laneCount: settings.laneCount, laneHeight: settings.laneHeight, seed: settings.seed, sprites, masks, terrain,
       speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
-      previousDistances: sceneRecipe ? [] : readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, particleTable: new ParticleTable(palette) });
+      previousDistances: sceneRecipe ? [] : readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, initialReleaseGesture: sceneRecipe?.initialReleaseGesture ?? null, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
     if (session?.recoveryJournal) await replayProcgenRecoveryJournal(candidate, session.recoveryJournal, { signal: lease?.signal });
     if (sceneRecipe) candidate.configurePhysicalAuthoring(sceneRecipe.project.procgen.physicalGraph, sceneRecipe.project.procgen.fragmentInstances || []);

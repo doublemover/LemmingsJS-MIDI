@@ -24,6 +24,17 @@ describe('physical release gesture ownership', () => {
     p.phaseAt(32, 100000); expect(p.cohortSpreadTicks).to.equal(3); expect(p.intervalTicks).to.equal(31); expect(p.releaseGestureCommandId).to.equal('request');
     p.setReleaseGesture(gesture({ revision: 2, clockMode: 'adaptive' })); p.phaseAt(p.nextCohortTick, 100000); expect(p.intervalTicks).to.be.greaterThan(17);
   });
+  it('installs a finite initial score before the first real cohort without fabricating a manual command', () => {
+    for (const paused of [false, true]) {
+      const initial = gesture({ id: 'initial-score', finiteBurstCount: 2, spreadTicks: 12, lanePhase: [{ laneId: 0, offsetTicks: 0 }, { laneId: 1, offsetTicks: 12 }], grouping: 'free', paused });
+      const w = world({ laneCount: 2, initialReleaseGesture: initial }), facts = []; w.soundEvents.onBatch.on(batch => facts.push(...batch.facts));
+      expect(w.tickIndex).to.equal(0); expect(w.activeCount).to.equal(0); expect(w.population.pendingReleaseGesture).to.equal(null); expect(w.population.releaseGesture).to.deep.equal(initial);
+      advance(w, 120); const births = facts.filter(fact => fact.kind === 'ActorBorn'); expect(births).to.have.length(paused ? 0 : 2);
+      if (!paused) { expect(births.map(fact => fact.spawnTick)).to.deep.equal([1, 13]); expect(births.every(fact => !fact.releaseGesture.sourceCommandId)).to.equal(true); expect(w.population.gestureRun.remaining).to.equal(0); }
+      expect(facts.some(fact => fact.kind === 'ReleaseGestureRequested')).to.equal(false); expect(() => w.population.initializeReleaseGesture(initial)).to.throw('before any cohort');
+      w.dispose();
+    }
+  });
   it('counts five attempted slots once; capacity misses never become backlog or phantom births', () => {
     for (const cap of [8, 128]) {
       const w = world({ maxActors: cap }), facts = []; w.soundEvents.onBatch.on(batch => facts.push(...batch.facts)); w.prepareIntervention(command(w)).commit(); advance(w, 60);

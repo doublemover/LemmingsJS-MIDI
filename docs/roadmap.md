@@ -4847,3 +4847,36 @@ They remain unrun. Only format, syntax/provenance and limited critical typecheck
 checks are used. Device/rate-scoped measured profiles, source admission/history
 integration, pressure boundaries, same-take comparison and listening qualification
 remain pending before automatic profile transitions or comprehensive acceptance.
+
+
+### Continuation 197 — finite practice scores and an actual zero-note control (#1097, #1110, #1151)
+
+The installed score catalog now adds One Foot, One Sound, Space Becomes Rhythm
+and Quiet Control when the exact bound owned pluck renderer is available. They
+use a visible world-anchored swept pickup and explicit local patch references.
+The first score admits one finite entrant; the second admits two attempts with
+explicit lane phases at ticks 1 and 13. Actual paths still determine crossing
+intervals. Quiet Control starts with paused birth admission and no actors; running
+transport/display cannot produce physical crossings or new attacks. Missing pluck
+support leaves these scores unavailable and preserves the existing crossing
+scores rather than silently changing instruments.
+
+Physical score recipes can pin an initial normalized release gesture. The world
+constructor validates and installs it before any cohort exists, without a forged
+manual command or a default extra cohort. Later live changes retain the existing
+next-cohort intervention path. Finite attempts, capacity misses, generation
+invalidation, birth facts and checkpoint continuation keep existing population
+owners. Boot installs the same policy before its initial recovery anchor. The
+scene adapter checks the exact unspent gesture and empty initial world before
+rehearsal or publication; the saved project carries the same authored defaults.
+Fresh Load resets an attempt; pickup edits and new performed release gestures
+use existing physical authoring. Output and transport remain explicit.
+
+Fixtures cover initial finite/paused releases, exact actual birth ticks, absence
+of fabricated requested-command facts, rejection of late initialization, complete
+scene preflight, a separate restored checkpoint, genuine crossing intents, no
+actor/no-attack control and unchanged original tick-zero state. They are authored
+but unrun. Only format, syntax/provenance and limited critical typecheck checks
+are used. Installed-terrain/browser audition, the full teach-and-assess owner,
+progress persistence, reset/back/skip/reopen journeys, the remaining work/path/
+harmony lessons and larger authored physical scenes remain pending.

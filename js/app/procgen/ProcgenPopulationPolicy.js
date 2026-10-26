@@ -87,6 +87,15 @@ class ProcgenPopulationPolicy {
     this._cohortStarted = true;
     return tick - this.cohortStartTick;
   }
+  initializeReleaseGesture(value) {
+    if (this._lastTick !== this.generationStartTick || this._cohortStarted || this.releaseGesture || this.pendingReleaseGesture) throw new Error('Initial release policy must be installed before any cohort or gesture exists.');
+    const gesture = validateReleaseGesture(value, this.laneCount);
+    this.releaseGesture = this.cohortReleaseGesture = gesture; this.baseInterval = this.intervalTicks = gesture.nominalGapTicks; this.adaptive = gesture.clockMode === 'adaptive';
+    this.gestureRun = { remaining: gesture.finiteBurstCount, admitted: 0, missed: 0, cohortOrdinal: 0, status: gesture.paused ? 'paused' : 'active' };
+    this.cohortStartTick = this.generationStartTick + 1; this.cohortSpreadTicks = gesture.spreadTicks; this.cohortBeatTicks = this.cohortDeferredTicks = 0; this.cohortIntervalTicks = 1;
+    this._cohortMinimumTick = this.cohortStartTick; this._previousCohortStartTick = this.generationStartTick; this._scheduleNextCohort();
+    return { status: 'initialized', effectiveBoundary: this.cohortStartTick, source: 'authored-initial-world;not-a-live-intervention' };
+  }
   setReleaseGesture(value, commandId = null) {
     const gesture = validateReleaseGesture(value, this.laneCount), latest = this.pendingReleaseGesture || this.releaseGesture;
     if (latest?.id === gesture.id && gesture.revision <= latest.revision) { if (JSON.stringify(latest) === JSON.stringify(gesture)) return { status: 'unchanged', effectiveBoundary: this.nextCohortTick }; throw new Error('A changed release gesture requires a newer revision.'); }
