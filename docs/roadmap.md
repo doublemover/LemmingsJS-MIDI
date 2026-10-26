@@ -6300,3 +6300,15 @@ export-budget acknowledgments still prevent a false complete receipt.
   static provenance pass (10 components / 335 files). No browser, runtime, audio,
   listening or full-suite validation ran; direct grouped macro performance and
   the larger scene acceptance/demonstration backlog remain open.
+
+### Continuation 248 — point-loss decay units (#1215, #1217)
+
+- Renamed the new signed point operator's typed time to
+  `velocityProjectionT60Seconds`. Its exact loss substep damps a unit-reference
+  velocity projection; subsequent oscillation and other loss operators determine
+  the complete ringing amplitude decay. It must not inherit the diagonal mask's
+  `extraAmplitudeT60Seconds` claim. The inspectable equation and decay meaning now
+  state that distinction; the prepared coefficient and audio algorithm are unchanged.
+- Updated foundry generation and authored analytic fixtures. Formatting, three-file
+  syntax/import checks, critical types and static provenance pass (10 components /
+  335 files). Runtime, numerical, browser and listening validation remain deferred.

@@ -3,7 +3,7 @@ import { prepareSympatheticNetworkProfile, NETWORK_POINT_LOSS_OPERATOR } from '.
 import { SympatheticNetworkKernel } from '../../js/app/midi-ui/worklet/SympatheticNetworkKernel.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
-const point = (id = 'touch-a', weights = [0.6, -0.8]) => ({ id, operator: NETWORK_POINT_LOSS_OPERATOR, extraAmplitudeT60Seconds: 0.06, weights });
+const point = (id = 'touch-a', weights = [0.6, -0.8]) => ({ id, operator: NETWORK_POINT_LOSS_OPERATOR, velocityProjectionT60Seconds: 0.06, weights });
 const parameters = (lossMasks = [point()]) => ({ bodies: [{ id: 'body', excitation01: 1, pickup01: 1, modes: [0, 1].map(() => ({ frequencyHz: 440, decaySeconds: 0.4, gain01: 1 })) }], edges: [], couple01: 0, damp01: 0, lossMasks });
 const energy = values => values.reduce((sum, value) => sum + value * value, 0);
 
@@ -40,7 +40,7 @@ describe('signed site point-loss flow (DSP execution and qualification deferred)
     const wrong = copy(p); wrong.lossMasks[0].weights[1] *= -1; expect(() => new SympatheticNetworkKernel({ parameters: wrong }).restoreFrom(bytes)).to.throw();
   });
   it('refuses nonpositive/oversized/mismatched site operators while retaining the legacy diagonal contract', () => {
-    for (const changed of [{ weights: [0, 0] }, { weights: [1, 1] }, { weights: [0.5] }, { weights: [NaN, 0.5] }, { extraAmplitudeT60Seconds: 0 }, { operator: 'unqualified-negative-damper' }]) expect(() => prepareSympatheticNetworkProfile(parameters([{ ...point(), ...changed }]))).to.throw();
+    for (const changed of [{ weights: [0, 0] }, { weights: [1, 1] }, { weights: [0.5] }, { weights: [NaN, 0.5] }, { velocityProjectionT60Seconds: 0 }, { operator: 'unqualified-negative-damper' }]) expect(() => prepareSympatheticNetworkProfile(parameters([{ ...point(), ...changed }]))).to.throw();
     expect(() => prepareSympatheticNetworkProfile(parameters([{ id: 'legacy', extraAmplitudeT60Seconds: 0.1, weights: [-0.2, 0.5] }]))).to.throw('nonnegative'); const legacy = prepareSympatheticNetworkProfile(parameters([{ id: 'legacy', extraAmplitudeT60Seconds: 0.1, weights: [0.2, 0.5] }])); expect(legacy.lossMasks[0]).not.to.have.property('operator'); expect(legacy.preparation.overlap).to.equal('maximum-additional-pole-depth-per-mode');
   });
 });
