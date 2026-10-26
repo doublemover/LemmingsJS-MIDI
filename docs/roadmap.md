@@ -6281,3 +6281,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   immutability and wrong-hash cases. Formatting, five-file syntax/import checks,
   critical types and static provenance pass (10 components / 335 files). Runtime,
   browser and full-suite validation remain deferred.
+
+### Continuation 247 — active score physical controls (#1098, #1101, #1102, #1151)
+
+- Added a compact panel for the currently loaded scene. Authored nominal entry
+  spacing and entry spread submit the existing next-cohort release command while
+  preserving the finite actor promise, pause state and other release fields.
+  Safe-route selectors use exact current junction configuration IDs and the
+  existing wait-for-safe-boundary command. Requested/pending values and realized
+  policy/geometry are displayed separately; queuing never becomes a success cue.
+- Whole-world and junction-definition changes fence stale controls. Deep sound,
+  terrain, field, echo and named-scene controls open their existing editors.
+  Lane macros stay in their established gesture/Undo owner; stage mode keeps its
+  existing edit restrictions. Display/listener ownership retires with the panel.
+- Added unrun UI fixtures for release field independence, retained finite cohort,
+  pending versus realized routes, stale generations/definitions, editor delegation
+  and disposal. Formatting, three-file syntax/import checks, critical types and
+  static provenance pass (10 components / 335 files). No browser, runtime, audio,
+  listening or full-suite validation ran; direct grouped macro performance and
+  the larger scene acceptance/demonstration backlog remain open.

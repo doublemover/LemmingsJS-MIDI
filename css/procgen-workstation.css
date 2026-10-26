@@ -228,7 +228,15 @@ body.procgen-workstation {
 .studio-scene-cue[hidden] { display:none; }
 .studio-scene-cue > span { max-width:24ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .studio-scene-cue > output { flex:1 1 22ch; font-size:11px; }
-@media (max-width:600px) { .procgen-studio[data-stage-mode=true] { grid-template-columns:112px minmax(0,1fr); } .studio-scene-cue button { min-height:44px; } }
+.studio-scene-controls { display:grid; gap:5px; padding:6px 8px; border:1px solid #a8bac6; border-radius:6px; background:#e8eef1; }
+.studio-scene-controls[hidden] { display:none; }
+.studio-scene-controls > p, .studio-scene-controls > output { margin:0; font-size:.8rem; }
+.studio-scene-control { display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
+.studio-scene-control > span { flex:1 1 18rem; }
+.studio-scene-control > output { flex:1 1 20rem; font-size:.8rem; overflow-wrap:anywhere; }
+.studio-scene-control > input { width:6rem; }
+.studio-scene-control > button, .studio-scene-control > select { min-height:32px; }
+@media (max-width:600px) { .procgen-studio[data-stage-mode=true] { grid-template-columns:112px minmax(0,1fr); } .studio-scene-cue button, .studio-scene-control button, .studio-scene-control select, .studio-scene-control input { min-height:44px; } }
 
 .procgen-presentation-root[data-stage-mode=true] [hidden] { display:none !important; }
 

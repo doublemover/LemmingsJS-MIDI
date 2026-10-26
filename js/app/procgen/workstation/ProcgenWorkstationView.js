@@ -10,6 +10,7 @@ import { createProcgenFullscreenSession } from './ProcgenFullscreenSession.js';
 import { quarterMeterPosition } from '../../../midi/project/MidiMusicalPosition.js';
 import { createInstrumentDisplayScheduler } from '../../resources/InstrumentDisplayScheduler.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { createPerformanceSceneControlView } from './PerformanceSceneControlView.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
@@ -879,7 +880,23 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const sceneCue = (value, current, active = stageActive) => {
     currentCue.textContent = 'CURRENT · ' + (current?.title || 'Physical world'); nextCue.textContent = 'NEXT · ' + (value?.selection?.title || 'No candidate');
     cueGo.disabled = !active || value?.canApply !== true; cueState.textContent = value?.prepared && !value.canApply ? 'Base changed · prepare again' : value?.phase === 'ready' ? 'Prepared stopped replacement · starts paused' : value?.phase || 'No prepared scene';
+    sceneControls.refresh();
   };
+  const sceneControls = createPerformanceSceneControlView({ document, parent: presentationRoot, displayScheduler,
+    getScene: () => getProject().procgen.sceneOrigin?.manifest || null, getWorld: () => getRuntime()?.world || null,
+    performReleaseGesture: gesture => handlers.performReleaseGesture(gesture), requestJunction: (...args) => handlers.requestJunction(...args), onStatus: text => { status.textContent = text; },
+    openControl: (control, scene) => {
+      if (control.target.startsWith('effect-macro:THROW;') || control.target.startsWith('quarry-echo:')) return handlers.openQuarryEcho?.();
+      if (control.target.startsWith('scene-browser:')) return handlers.scenes?.();
+      if (control.target.startsWith('release-gesture:')) return handlers.openReleaseGestures?.();
+      if (control.target.startsWith('physical-authoring:terrain-edit')) return handlers.openPhysicalAuthoring?.();
+      if (control.target.startsWith('patch-macro:')) {
+        if (stageActive) { status.textContent = 'Exit stage to open the lane macro editor.'; return; }
+        const macroId = control.target.split(';')[0].slice('patch-macro:'.length), lane = getProject().procgen.lanes.find(lane => scene.patchRefs.some(patch => patch.laneId === lane.id) && lane.instrumentRef?.definition.macros?.some(macro => macro.id === macroId));
+        if (!lane) throw new Error('This score macro is unavailable in the current lane instruments.'); state.laneId = lane.id; state.tab = 'Lane'; render(); return;
+      }
+      return handlers.openPhysicalScene?.();
+    } });
   return { render, patchStep, patchProject, layout, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
@@ -942,6 +959,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
         { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
+        { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),
         { name: 'canvas', run: () => { if (canvasParent) canvasParent.insertBefore(canvas, canvasSibling?.parentNode === canvasParent ? canvasSibling : null); } },
