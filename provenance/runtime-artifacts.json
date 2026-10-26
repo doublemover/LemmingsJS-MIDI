@@ -265,6 +265,7 @@
         "js/app/resources/OwnedResourceReservation.js",
         "js/app/resources/OwnedSourceBankComputation.js",
         "js/app/resources/OwnedSourceBankData.js",
+        "js/app/resources/OwnedStretchCore.js",
         "js/app/resources/ResonatorMorphReference.js",
         "js/app/resources/ResourceBudget.js",
         "js/app/resources/ResourceRetirement.js",
@@ -272,6 +273,7 @@
         "js/app/resources/SeedComponentComposition.js",
         "js/app/resources/SeedDecomposition.js",
         "js/app/resources/SeedModalFit.js",
+        "js/app/resources/SeedWarpBake.js",
         "js/app/resources/ShapeBodyCalibration.js",
         "js/app/resources/ShapeBodyEdgeField.js",
         "js/app/resources/ShapeBodyRefinement.js",
@@ -279,6 +281,7 @@
         "js/app/resources/SharedContentJobs.js",
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
+        "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/core/BoundedMinimumAssignment.js",
         "js/core/CanonicalData.js",
@@ -292,6 +295,7 @@
         "js/level/GroundReader.js",
         "js/level/ObjectImageInfo.js",
         "js/midi/content/AllpassNotchProfile.js",
+        "js/midi/content/BufferedWarpPlan.js",
         "js/midi/content/CircularSpectrum.js",
         "js/midi/content/DubQuarryRack.js",
         "js/midi/content/EffectGraphRevision.js",
@@ -312,6 +316,7 @@
         "js/midi/content/NonlinearFilterTables.js",
         "js/midi/content/OriginalShapeMeshes.js",
         "js/midi/content/OwnedPcmFormat.js",
+        "js/midi/content/OwnedStretchCoreIdentity.js",
         "js/midi/content/PairedModalBodyProfile.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
@@ -364,8 +369,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 253,
-      "sha256": "d082f480524d1692b4a3f6079484e27ccfea1ab14b91df0a1e391b2e8a70c854"
+      "fileCount": 258,
+      "sha256": "73a7ccf00327d4a8516e11d4e182c79a81e0deda933fd78c69022acacd65be4a"
     },
     {
       "id": "lemmings-timing-worker-source",

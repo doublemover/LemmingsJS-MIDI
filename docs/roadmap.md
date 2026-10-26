@@ -5840,3 +5840,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   worker baking, command application and performance/quality acceptance remain
   separate required adapter work. Static checks alone do not make this a ready
   instrument or close #1186.
+
+
+### Continuation 230 — prepared-rate source ownership and finite warp worker bake
+
+- Added #1186 private prepared-rate PCM through the existing owned bandlimited
+  reader. Source storage is copied, never detached or used as scratch. Conversion
+  zero-pads outside the selected region, retains original coordinates and plane
+  hashes, stages downsampling inside the reader's derivative domain, and records
+  exact ceil/crop behavior. Invalid/too-short resolution, nonfinite/oversized
+  input, stale source and cancellation fail before publication.
+- Added the worker-only finite sound-seed warp bake using the exact pinned core,
+  complete 128 MiB admission, concrete configuration/latency, bounded chunks,
+  independent pitch/traversal and immutable output hashes. Original source rate
+  converts before submission to the core. Named read-ahead, discarded preroll,
+  global rounded input frontier, finite body duration and separately counted
+  core flush tail remain explicit; no audio outside the source region is read.
+- Bakes preserve original parent sample rate, region, ancestry and printed-effect
+  meaning. They create new material without moving the world, source event or
+  physical onset. No normalization/clipping, hidden loop, detector substitution
+  or parent backing layer repairs an unavailable conversion/core. Core references
+  retire before the surrounding worker producer's ordinary acknowledgment.
+- Authored unrun private-copy/lifetime, four real conversion paths, stereo
+  anti-phase, high-rate staging, region/read bounds, cancellation and exact-core/
+  workspace refusal fixtures. Added an explicit 27-point real offline bake probe
+  with coarse sine-pitch/stereo and source/body/tail receipts. Neither this probe
+  nor the core smoke probe has run; they cannot publish a quality tier.
+- UI source-bank acquisition/bake delivery, complete lineage rebuild, live
+  WarpVoice/automation/preroll/loop integration, actual onset/impulse/spectral
+  acceptance and device/listening qualification remain development work. The
+  finite bake is an experimental worker capability, not a ready live backend.

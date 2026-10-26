@@ -1165,3 +1165,22 @@ locally retained upstream file. The separately authored
 reserved for the deferred validation pass. Even a passing finite/stereo smoke
 probe does not publish a quality tier. Playback, prepared-rate PCM ownership,
 onset/seek/tail mapping and complete browser/offline qualification remain pending.
+
+
+The finite warp worker now copies the selected source into private stereo PCM
+and converts its actual rate before core processing. It uses the existing owned
+bandlimited reader with zero padding outside the region; high-rate sources use
+bounded staged downsampling. Conversion records original/prepared frame counts,
+source coordinates, plane hashes and boundary policy. Parent cache buffers stay
+attached and unchanged.
+
+The experimental finite bake records discarded preparation output, explicit
+latency compensation, bounded input-frontier rounding, independent traversal and
+pitch, and the actual body length plus a separately declared core flush tail.
+Original sample rate/region ancestry remains intact in the resulting immutable
+seed. No physical onset or world time is moved, and no limiter or normalization
+is applied. `npm run qualify:seed-warp -- --name=rook` is the separately authored,
+unrun real offline bake matrix for the later validation pass. It is a coarse
+pitch/stereo smoke gate; source-onset, alias, browser cost and listening evidence
+still require their dedicated acceptance. Live warp voices, automation, loops
+and seed-lab delivery remain pending.

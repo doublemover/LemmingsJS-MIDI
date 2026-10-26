@@ -1,3 +1,4 @@
+import { bakeSeedWarp } from './SeedWarpBake.js';
 import { bakeFiniteFmExcitation } from './FiniteFmExcitation.js';
 import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
 import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
@@ -204,6 +205,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const bytes = (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + metadata.bytes.length + (input?.componentInputs || []).reduce((sum, value) => sum + (value?.pcm?.byteLength || 0) + (value?.originBytes?.byteLength || 0), 0);
     if (bytes > maxBytes) throw problem('input-capacity', 'The component windows exceed their admitted composition workspace.');
     const result = await composeSeedComponents(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress }); return { ...result, inputBytes: bytes };
+  }
+  if (kind === 'warp-sound-seed') {
+    const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, wasmBytes: null }, { maxBytes: 65536, maxNodes: 8192 }), inputBytes = metadata.bytes.length + (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + (input?.wasmBytes?.byteLength || 0);
+    if (inputBytes > maxBytes || estimatedPeakBytes < 128 * 1048576) throw problem('input-capacity', 'A finite seed warp needs its complete source/core and 128 MiB workspace.');
+    const value = await bakeSeedWarp(input, { estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
+    return { value, inputBytes, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + value.waveform.minMax.byteLength + canonicalDataText({ manifest: value.manifest, recipe: value.recipe }, { maxBytes: 524288, maxNodes: 65536 }).bytes.length * 32 + 131072 };
   }
   if (['analyze-sound-seed-window', 'decompose-sound-seed', 'fit-sound-seed-modes'].includes(kind)) {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null }, { maxBytes: 65536, maxNodes: 8192 });
