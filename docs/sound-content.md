@@ -865,3 +865,13 @@ snapshot support retains independently owned modal, spatial, gate and queue stat
 PCM equivalence, browser device cost, stability/tone/alias review, Bow Orchard and
 matched-level listening remain unqualified. The grouped numerical runner is
 `scripts/qualify-friction-source.mjs --name=rook`, authored but not yet executed.
+
+
+**Bow Orchard** is installed when the pinned friction engine is available. Its
+finite two-actor score uses one long authored route per material, a solid steel
+stop for physical reversal, and manual-only assistance. Hairline and Glass Drag
+retain separate source bodies and signed motion ancestry. The PRESS macro affects
+new actor bodies; existing channel pressure expression ramps a moving held body.
+The scene exposes this distinction and starts paused through the existing staged
+loader. Missing friction capability leaves the scene unavailable. Its authored
+physics/voice fixtures, actual playback and listening remain unrun.

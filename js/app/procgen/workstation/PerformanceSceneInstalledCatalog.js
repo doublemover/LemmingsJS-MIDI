@@ -1,3 +1,4 @@
+import { createFrictionPerformanceScore } from './FrictionPerformanceScore.js';
 import { createAdditionalPracticeScores } from './PerformancePracticeScores.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { hashData, freezeData } from '../../../core/CanonicalData.js';
@@ -76,6 +77,15 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       await registry.register(item.scene); signal?.throwIfAborted();
     }
+  }
+  const friction = catalog.descriptors.find(value => value.engineId === 'worklet-friction');
+  if (friction?.capabilities.sealedFrictionModel && friction.capabilities.canonicalFrictionTravel && friction.maximumVoices >= 2) {
+    const item = await createFrictionPerformanceScore({ sourceHash, descriptor: friction }); signal?.throwIfAborted();
+    recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+    put('engine', friction.engineId, friction.engineVersion, friction.artifactHash); put('parameter-schema', friction.engineId, friction.engineVersion, friction.parameterSchemaHash);
+    for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+    for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+    await registry.register(item.scene); signal?.throwIfAborted();
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },

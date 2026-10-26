@@ -5265,3 +5265,21 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
 - Static-only checks are performed before this commit. No numerical runner,
   runtime test, build, browser/audio/listening or CI qualification has run here;
   the consolidated validation and repair pass remains deferred as requested.
+
+
+### Continuation 209 — authored Bow Orchard physical score
+
+- Installed Bow Orchard only with the exact sealed friction/canonical travel
+  capability. Its worker-compiled 1024-pixel route and far steel stops are shared
+  by collision/pixels/surface; two finite staggered entrants drive Hairline and
+  Glass Drag with signed held journey motion. The score binds world/engine/schema,
+  embedded patches, observation and recipe hashes through existing scene owners.
+- Added explicit manual assistance policy, paused loading, no PCM/backing pattern,
+  one onset PRESS macro per patch and the separate held channel-pressure contract.
+  No missing source is replaced by an oscillator; authored slot/cost bounds remain
+  unmeasured. The informational scene control names its onset boundary honestly.
+- Authored unrun origin/dependency closure, unavailable-source, committed
+  movement/rest/reversal/one-gate and actual compiled-terrain physics fixtures.
+  Stability, sound/continuity, browser, device and listening acceptance remain
+  pending; the scene is an authored score, not an acoustic qualification result.
+  Runtime validation continues to wait for the remaining implementation pass.
