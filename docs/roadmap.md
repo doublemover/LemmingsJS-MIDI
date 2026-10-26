@@ -6078,3 +6078,29 @@ export-budget acknowledgments still prevent a false complete receipt.
   native rehearsal adapter, subject to the deferred runtime/browser pass.
   Composite layers, remaining scene variations and other roadmap development
   remain open; all acceptance and CI claims are still pending.
+
+
+### Continuation 238 — complete fixed-bank ownership for source children
+
+- Prepared the #1178 live-layer dependency boundary: a source can declare one
+  primary and one distinct auxiliary fixed bank. Dependencies resolve against
+  existing exact bank identities before any producer starts; there is no new
+  table generator or unverified coefficient substitution.
+- Live worklet preparation now owns a complete sequentially prepared bank set
+  through its existing initialization acknowledgment. Primary-only engines keep
+  their processor payload shape. Source profiles can declare an auxiliary bank
+  from their effective parameters, and the offline control factory resolves
+  the same dependency list through the existing worker table computation.
+- Every bank reader retires independently. Later preparation failure or a
+  canceled but still-running producer retains storage until settlement; partial
+  upstream/reader retirement keeps metadata charged and cannot be retried as
+  successful release. Individual bank preparation now returns a concrete partial
+  retirement receipt for an unresolved producer/release, preserving the cause
+  without mutating a possibly frozen cancellation error. Pure dependency resolution stays separate from host job
+  preparation, avoiding a worker-to-host job-service import cycle.
+- Authored unrun dependency, complete-set, cancellation, partial preparation,
+  independent release and unknown-upstream fixtures with explicit mechanical
+  table doubles. No materialization, kernel execution or numerical table claim.
+- This is the live composite-source preparation foundation; no current content
+  enables auxiliary banks yet. Layer DSP, complete state/command handling,
+  recipes and UI remain required development. Runtime/CI validation is deferred.

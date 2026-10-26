@@ -24,7 +24,7 @@ const acceptsSpectrum = parameters => {
 };
 const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
-  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, travelReceiptKey = 'circularTravel', travelDomain = 'circular', travelPolicy = null, restoration = 'exactSnapshot', acceptsExpression = () => true }) => {
+  storageBytes = () => 0, auxiliaryBankIds = null, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, travelReceiptKey = 'circularTravel', travelDomain = 'circular', travelPolicy = null, restoration = 'exactSnapshot', acceptsExpression = () => true }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
   const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
@@ -40,7 +40,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
           !Number.isSafeInteger(pcm.sampleRate) || !finite(pcm.sampleRate, 8000, 192000) || !Number.isSafeInteger(pcm.bytes) || pcm.bytes !== pcm.frames * pcm.channels * 4 || pcm.bytes > 16 * 1048576 : pcm != null)
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
       return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
-    }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId,
+    }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId, auxiliaryBankIds,
     controlReferenceRender, travelPlanner, travelReceiptKey, travelDomain, travelPolicy, restoration, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
       if (!acceptsExpression(expression, voice)) return null;

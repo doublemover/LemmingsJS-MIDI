@@ -1,13 +1,15 @@
+import { ownedSourceBankIds } from '../midi-ui/OwnedSourceBankDependencies.js';
 import { computeOwnedSourceBank } from './OwnedSourceBankComputation.js';
 
 export async function createOwnedControlKernel(profile, rate, voices, options = {}) {
   if (!profile.controlReferenceRender) throw new TypeError('This source has no fixed offline control adapter.');
-  const bank = profile.bankId ? options.sourceBank || await computeOwnedSourceBank(profile.bankId, options) : null;
+  const ids = ownedSourceBankIds(profile, options.patch?.parameters), bank = ids.length ? options.sourceBank || await computeOwnedSourceBank(ids[0], options) : null, auxiliary = {};
+  for (const id of ids.slice(1)) { auxiliary[id] = options.auxiliarySourceBanks?.[id] || await computeOwnedSourceBank(id, options); options.signal?.throwIfAborted(); }
   options.signal?.throwIfAborted();
   if (profile.id === 'worklet-wind') { const { OwnedWindKernel } = await import('../midi-ui/worklet/OwnedWindProcessor.js'); return new OwnedWindKernel(rate, voices); }
   if (profile.id === 'worklet-friction') { const { OwnedFrictionKernel } = await import('../midi-ui/worklet/OwnedFrictionProcessor.js'); return new OwnedFrictionKernel(rate, voices); }
   if (profile.id === 'worklet-texture') { const { OwnedTextureKernel } = await import('../midi-ui/worklet/OwnedTextureProcessor.js'); return new OwnedTextureKernel(rate, voices); }
-  if (profile.id === 'worklet-sample') { const { OwnedSampleKernel } = await import('../midi-ui/worklet/OwnedSampleProcessor.js'); return new OwnedSampleKernel(rate, options.pcm, options.patch, voices, bank); }
+  if (profile.id === 'worklet-sample') { const { OwnedSampleKernel } = await import('../midi-ui/worklet/OwnedSampleProcessor.js'); return new OwnedSampleKernel(rate, options.pcm, options.patch, voices, bank, auxiliary); }
   if (profile.id === 'worklet-sine') { const { OwnedSineKernel } = await import('../midi-ui/worklet/OwnedSineProcessor.js'); return new OwnedSineKernel(rate, voices); }
   if (profile.id === 'worklet-pluck') { const { OwnedPluckKernel } = await import('../midi-ui/worklet/OwnedPluckProcessor.js'); return new OwnedPluckKernel(rate, voices); }
   if (profile.id === 'worklet-choir') { const { OwnedChoirKernel } = await import('../midi-ui/worklet/OwnedChoirProcessor.js'); return new OwnedChoirKernel(rate, voices, bank); }

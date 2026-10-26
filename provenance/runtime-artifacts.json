@@ -134,6 +134,7 @@
         "js/app/midi-ui/OwnedSamplePlan.js",
         "js/app/midi-ui/OwnedSineOfflineRender.js",
         "js/app/midi-ui/OwnedSourceBank.js",
+        "js/app/midi-ui/OwnedSourceBankDependencies.js",
         "js/app/midi-ui/OwnedSourceBankIdentities.js",
         "js/app/midi-ui/OwnedSourceControlRender.js",
         "js/app/midi-ui/OwnedSourceLayout.js",
@@ -372,8 +373,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 261,
-      "sha256": "0ba10049f74e806c139735bbac13d6d51add8c07f859b2a3dbbc6b6b6711aa74"
+      "fileCount": 262,
+      "sha256": "a6fd9bdbf304edd9e79520dbf2b2158e2827f8f44a7e02536dcb0c0ac2958144"
     },
     {
       "id": "lemmings-timing-worker-source",

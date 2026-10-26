@@ -1,3 +1,4 @@
+import { prepareOwnedSourceBanks } from './OwnedSourceBanks.js';
 import { retainOwnedSampleDiagnostics } from './OwnedSampleDiagnostics.js';
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment, SAMPLE_CURSOR_DISCONTINUITIES } from '../../midi/content/SampleCursorProfile.js';
@@ -324,7 +325,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const abortPreparation = error => { assetController.abort(error); interrupt(error); };
     cancelInitialization = () => abortPreparation(new Error('preparation-cancelled')); pendingInitializations.add(cancelInitialization);
     try {
-      if (!ready && source.bankId) fixedBank = await prepareSourceBank(source.bankId, { resources: preview._audioResources, owner, generation, signal: assetController.signal, isCurrent: current });
+      if (!ready && source.bankId) fixedBank = await prepareOwnedSourceBanks(source, next.parameters, { prepareBank: prepareSourceBank, resources: preview._audioResources, owner, generation, signal: assetController.signal, isCurrent: current });
       if (!ready && source.requiresPCM) {
         bank = await (source.requiresPCMSet ? prepareOwnedPcmSet : prepareOwnedPcmBank)(source.requiresPCMSet ? assets : assets[0], { resources: preview._audioResources, owner: owner ?? 'unscoped-source', generation,
           signal: assetController.signal, isCurrent: current });
@@ -341,7 +342,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         const channel = preview._channel(0, owner), destination = channel.sourceInput || channel.gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1, outputChannelCount: new Array(laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1).fill(2),
-          processorOptions: { maxVoices: MAX_VOICES, ...(source.requiresPCMSet ? { samplePatch: next.samplePatch } : {}), ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+          processorOptions: { maxVoices: MAX_VOICES, ...(source.requiresPCMSet ? { samplePatch: next.samplePatch } : {}), ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload, ...(fixedBank.identities.length > 1 ? { auxiliarySourceBanks: fixedBank.auxiliary } : {}) } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
         nodeContexts.set(candidate, candidateContext); if (source.requiresPCMSet) retirementAware.add(candidate);
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
