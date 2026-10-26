@@ -72,7 +72,7 @@ export async function prepareOwnedPcmCue(preview, owner, { bytes, manifest, sign
           const fade = Math.min(0.008, (end - start) / 2); gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(1, start + fade); gain.gain.setValueAtTime(1, end - fade); gain.gain.linearRampToValueAtTime(0, end);
           voice = { id: ++preview._voiceSequence, owner, workloadClass: 'cue', number: 0, note: 0, start, end, releaseAt: end, release: 0, attack: 0, decay: 0, sustain: 1, renderCost: 1,
             startMs: preview._nowMs() + (start - context.currentTime) * 1000, resourceLease: nativeVoice, nativeContext: context, nativeNodesOwnedByBackend: true,
-            captureMeta: { source: manifest.schema === 'lemmings-resonator-morph-control-render/v1' ? 'resonator-morph-control-reference' : 'rendered-scene-rehearsal', owner, physicalTakeEvidence: false }, onDestroy: dispose };
+            captureMeta: { source: manifest.schema === 'lemmings-resonator-morph-control-render/v1' ? 'resonator-morph-control-reference' : manifest.schema === 'lemmings-causal-audio-render/v1' ? 'rendered-causal-take-readout' : 'rendered-scene-rehearsal', owner, physicalTakeEvidence: false }, onDestroy: dispose };
           preview._voices.add(voice); source.onended = () => preview._destroyVoice(voice, 'rendered-cue-ended'); source.start(start); started = true;
           preview._setStatus(preview._status, preview._message); return Object.freeze({ status: 'accepted', targetTime: start, endTime: end, acousticReceipt: false });
         } catch (error) {

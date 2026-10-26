@@ -6211,3 +6211,21 @@ export-budget acknowledgments still prevent a false complete receipt.
 - These are explicit dry studies, not acceptance of the full scene issues.
   Sample-kit, speech, shared-body, captured grain/freeze, sealed-wind, physical
   geometry qualification, private demo takes and listening variants remain open.
+
+### Continuation 243 — same-take graft readout PRELISTEN (#1216, #1233, #1208)
+
+- Prepared original/exciter/body/full graft files now play from frame zero through
+  the existing foreground PRELISTEN lease and PCM cue session. Other prepared
+  causal WAVs use the same bounded owner. Authored gain remains fixed; only the
+  monitor level and existing eight-millisecond edge fades affect playback.
+- File loans, read/hash overlap, source selection, route revision and audio clock
+  remain bound through preparation and playback. Stop, discard, close, suspension
+  and foreground handoff retire the same producer. Unknown retirement keeps its
+  file loan and resource charge. Render source disposal waits for cue retirement.
+- The dialog exposes selected-file play/stop and the shared route monitor, with
+  a sixteen-second total cue limit including tails. A playback admission receipt
+  is explicitly not listening qualification or a recording of the original live
+  PCM. Added six synthetic transaction/lifetime fixtures, all unrun.
+- Formatting, five-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). No runtime, browser, audio/listening or full
+  suite checks ran. Instrument Nursery and broader anatomy acceptance remain open.
