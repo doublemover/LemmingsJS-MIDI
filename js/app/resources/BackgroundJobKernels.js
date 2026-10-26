@@ -1,3 +1,4 @@
+import { compileSceneTerrainLayout } from '../procgen/SceneTerrainLayout.js';
 import { createShapeBodyEdgeField } from './ShapeBodyEdgeField.js';
 import { composeSeedComponents } from './SeedComponentComposition.js';
 import { fitSoundSeedModes } from './SeedModalFit.js';
@@ -170,6 +171,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
     return { value, inputBytes, nodes: metadata.nodes + input.planes.length, retainedBytes: 65536 };
+  }
+  if (kind === 'compile-scene-terrain') {
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 131072), maxNodes: Math.min(maxNodes, 16384), domain: 'Authored scene terrain' });
+    const value = await compileSceneTerrainLayout(input, { signal, current, crypto, estimatedPeakBytes, yieldControl, onProgress }); guard(signal, current);
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes + metadata.bytes.length + 65536 };
   }
   if (kind === 'compose-sound-seed-components') {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, componentInputs: input?.componentInputs?.map(value => ({ ...value, pcm: null, originBytes: null })) }, { maxBytes: 65536, maxNodes: 8192 });

@@ -1,3 +1,4 @@
+import { compileSceneTerrainLayout, verifyCompiledSceneTerrain } from '../js/app/procgen/SceneTerrainLayout.js';
 import { expect } from 'chai';
 import { createBackgroundJobWorkerEndpoint } from '../js/app/resources/BackgroundJobWorkerEndpoint.js';
 import { BACKGROUND_JOB_PROTOCOL } from '../js/app/resources/BackgroundJobKernels.js';
@@ -8,6 +9,21 @@ import { yieldBackgroundTask } from '../js/app/resources/BackgroundTaskYield.js'
 const envelope = { protocol: BACKGROUND_JOB_PROTOCOL, jobId: 'background-1', ownerEpoch: 1, sourceRevision: 'source:1' };
 const limits = { maxBytes: 1048576, maxNodes: 100000, estimatedPeakBytes: 16 * 1048576 };
 describe('background snapshot stream owner lifecycle', () => {
+  it('transfers one original scene-terrain storage buffer through the result owner', async () => {
+    const raw = { schema: 'lemmings-scene-terrain/v1', id: 'score.transfer', revision: 1, width: 128, laneHeight: 96, lanes: [{ laneId: 0, regions: [{ kind: 'solid', x1: 0, x2: 128, y1: 88, y2: 96, color: 0xff526f74 }] }] }, compiled = await compileSceneTerrainLayout(raw), originalBuffer = compiled.storage.buffer;
+    let receiver, result, transferred = 0;
+    const endpoint = createBackgroundJobWorkerEndpoint({ kernel: async () => ({ value: compiled, inputBytes: 512, nodes: 32, retainedBytes: compiled.bytes + 65536 }), close() {}, postMessage: (value, transfers = []) => {
+      if (transfers.includes(originalBuffer)) transferred++;
+      const delivered = structuredClone(value, { transfer: transfers });
+      if (delivered.type === 'output-start') receiver = createBackgroundSnapshotReceiver({ ...limits, allowOwnedBinary: true });
+      if (delivered.type === 'output-page') receiver.push(delivered.packet);
+      if (delivered.type === 'computed') result = receiver.finish(delivered.sequence);
+      if (delivered.type === 'output-start' || delivered.type === 'output-page') queueMicrotask(() => { void endpoint.receive({ ...envelope, type: 'output-ack', sequence: delivered.sequence }); });
+    } });
+    await endpoint.receive({ ...envelope, type: 'input-start', sequence: 0, kind: 'compile-scene-terrain', limits }); let sequence = 0;
+    for await (const packet of encodeBackgroundSnapshotPages(raw, { ...limits, yieldTask: async () => {} })) { sequence = packet.sequence; await endpoint.receive({ ...envelope, type: 'input-page', packet }); }
+    await endpoint.receive({ ...envelope, type: 'input-end', sequence }); expect(transferred).to.equal(1); expect(originalBuffer.byteLength).to.equal(0); expect((await verifyCompiledSceneTerrain(result)).chunks[0].topProfile[0]).to.equal(88);
+  });
   it('runs exactly once after a complete stream and rejects stale packet identities', async () => {
     const messages = []; let runs = 0, closes = 0, output = null, result = null;
     const endpoint = createBackgroundJobWorkerEndpoint({ postMessage: value => {

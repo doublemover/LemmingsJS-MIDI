@@ -5051,3 +5051,34 @@ are unrun. Only formatting, syntax/provenance and limited critical type checks
 are performed. Profile and manifest text explicitly retain pending PCM/browser
 qualification; this implementation does not promote a measured device tier or
 cross-browser/listening guarantee.
+
+
+### Continuation 203 — bounded authored scene terrain compilation (#1097, #1110, #1099)
+
+A versioned initial-source geometry format now describes 1–8 ordered physical
+lanes, at most eight 128-pixel chunks per lane, 64–128-pixel lane height and at
+most 64 ordered half-open solid/air/steel rectangles per lane. Explicit opaque
+packed colors share exact cells with collision and steel; top profiles come
+from those same final cells. Initial empty air and ordered clears remain actual
+voids, not decorative images over another collision source. This is original
+source geometry, not a fake applied intervention or simulated player gesture.
+
+The compiler is registered in the existing worker-only shared admission path.
+It checks complete raster/collision/hash peak capacity before allocation, reports
+bounded chunk units and supports cancellation/current-source fences. All planes
+for all chunks occupy one exact-size transferable buffer. The endpoint transfers
+that allocation once; clients create immutable view descriptors over its
+independently owned result rather than cloning hundreds of planes. Canonical
+layout SHA-256, storage SHA-256, explicit native byte order and exact storage
+shape are verified before adoption. Larger hidden backing buffers and foreign
+byte-order buffers are rejected. There is no heavy main-thread fallback.
+
+Fixtures cover final solid/steel/raster agreement, ordered air cuts and seams,
+source immutability/reproducibility, real geometry hash changes, malformed and
+oversized sources, peak denial, chunk-boundary cancellation, corrupt/foreign
+identity/byte-order/backing storage and a one-buffer endpoint ownership transfer.
+They are authored but unrun. Only formatting, syntax/provenance and limited
+critical type checks are used. The next dependency is the actual staged terrain
+provider, checkpoint source-profile compatibility and authored lesson/world
+layouts; this compiler alone does not yet replace installed world geometry or
+qualify the remaining scene/lesson journeys.

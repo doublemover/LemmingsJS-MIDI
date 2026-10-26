@@ -180,6 +180,7 @@
         "js/app/procgen/ProcgenAuthoredAssemblies.js",
         "js/app/procgen/ProcgenRetirement.js",
         "js/app/procgen/ProcgenTerrainDescriptors.js",
+        "js/app/procgen/SceneTerrainLayout.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
         "js/app/procgen/workstation/CausalJournalCanonical.js",
@@ -295,8 +296,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 184,
-      "sha256": "804375574ff172dccabfaaefbc868d46655cca79d09189944a43384ada448814"
+      "fileCount": 185,
+      "sha256": "44491bf1472aa403523784d5fffc137f07fae3ea312034910316e684e3f257f7"
     },
     {
       "id": "lemmings-timing-worker-source",

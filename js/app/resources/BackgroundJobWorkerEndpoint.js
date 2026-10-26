@@ -35,7 +35,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       let input = receiver.finish(request.sequence); receiver = null; phase = 'computing';
       const result = await kernel(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });
       input = null; if (phase !== 'computing') return;
-      const transfers = ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
+      const transfers = source.kind === 'compile-scene-terrain' && result.value?.storage instanceof Uint8Array ? [result.value.storage.buffer] : ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
         ['encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
           source.kind === 'render-scene-rehearsal' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
             ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
