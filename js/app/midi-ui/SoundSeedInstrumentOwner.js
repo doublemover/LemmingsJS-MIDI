@@ -1,3 +1,4 @@
+import { createSealedBodyGraftRecipe } from '../../midi/content/SealedBodyGraftRecipe.js';
 import { createTextureBodyGraftRecipe } from '../../midi/content/TextureBodyGraftRecipe.js';
 import { inspectOwnedSoundSeedHeader, inspectOwnedSoundSeedOrigin } from './OwnedSoundSeedSource.js';
 import { createSoundSeedRecipe } from '../../midi/content/SoundSeedRecipe.js';
@@ -41,7 +42,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
   const prepare = (candidate, { transform, pitch, modalFit = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
-    const motionTarget = ['motion-body-graft', 'texture-body-graft'].includes(transform) ? targetIdentity() : null;
+    const motionTarget = ['motion-body-graft', 'texture-body-graft', 'sealed-friction-body-graft'].includes(transform) ? targetIdentity() : null;
     if (motionTarget === 'null') throw fail('A motion body requires an explicit document and lane target identity.');
     const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady) throw fail('The seed draft changed while preparing its instrument.'); if (motionTarget && targetIdentity() !== motionTarget) throw fail('The motion mapping document or lane target changed while preparing its instrument.'); };
     let loan = null, job = null, workspace = null, next = null, prepared = null;
@@ -52,7 +53,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       const sourceHeader = inspectOwnedSoundSeedHeader(new Uint8Array(await loan.blob.slice(0, 56).arrayBuffer()), artifactMetadata.byteLength); check();
       if (sourceHeader.frames !== candidate.manifest.frames || sourceHeader.sampleRate !== candidate.manifest.sampleRate) throw fail('Frozen seed frame inventory differs from its recipe.');
       inspectOwnedSoundSeedOrigin(new Uint8Array(await loan.blob.slice(sourceHeader.metadataOffset).arrayBuffer()), candidate.manifest); check();
-      const recipe = await (transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch, modalFit, graftBody, textureKind, traversalBinding }); check();
+      const recipe = await (['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch, modalFit, graftBody, textureKind, traversalBinding }); check();
       const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
       job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
         inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,

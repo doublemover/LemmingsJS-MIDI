@@ -1,3 +1,4 @@
+import { SEALED_BODY_STATE, SEALED_BODY_PARAMETERS, validateOwnedSealedBody } from './OwnedSealedBody.js';
 import { validateOwnedWindState } from './OwnedWindState.js';
 import { WIND_MODEL_LIMITS } from '../../../midi/content/WindModel.js';
 import { validateOwnedFrictionState } from './OwnedFrictionState.js';
@@ -11,8 +12,8 @@ import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LA
 export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v3-lane-transfer';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
-  56: { id: 'worklet-wind', kind: 8, layout: WIND_LAYOUT, arrays: ['state', 'modes'], scalars: ['leftSample', 'rightSample'] },
-  48: { id: 'worklet-friction', kind: 7, layout: FRICTION_LAYOUT, arrays: ['state', 'modes'], scalars: ['leftSample', 'rightSample'] },
+  [WIND_LAYOUT.width]: { id: 'worklet-wind', kind: 8, layout: WIND_LAYOUT, arrays: ['state', 'modes', 'graftState', 'graftParameters'], scalars: ['leftSample', 'rightSample'] },
+  [FRICTION_LAYOUT.width]: { id: 'worklet-friction', kind: 7, layout: FRICTION_LAYOUT, arrays: ['state', 'modes', 'graftState', 'graftParameters'], scalars: ['leftSample', 'rightSample'] },
   80: { id: 'worklet-texture', kind: 6, layout: TEXTURE_LAYOUT, arrays: ['state', 'modes', 'pulses', 'observation', 'admission'], scalars: ['leftSample', 'rightSample'] },
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
   26: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
@@ -36,7 +37,7 @@ const profileFor = kernel => {
   if (!profile || !source || source.rate !== kernel.sampleRate || source.voices !== kernel.maxVoices ||
       !integer(source.voices, 1, profile.layout.voices)) fail('Unknown source or incompatible owned voice profile.');
   const t = TEXTURE_EXCITER_LIMITS;
-  const expected = profile.kind === 8 ? [source.voices * WIND_MODEL_LIMITS.state, source.voices * WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth] : profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
+  const expected = profile.kind === 8 ? [source.voices * WIND_MODEL_LIMITS.state, source.voices * WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
     profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
       profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
         profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorScalars] :
@@ -90,11 +91,11 @@ const inspectSource = (kernel, profile, view) => {
   const core = HEADER, width = kernel.width, voiceOffset = core + 128 + 512 * width * 8, activeOffset = voiceOffset + 64 * 28 * 8;
   if (profile.kind === 8) {
     validateOwnedWindState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
-    return data;
+    validateOwnedSealedBody({ source, arrays: data.arrays, active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) }); return data;
   }
   if (profile.kind === 7) {
     validateOwnedFrictionState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
-    return data;
+    validateOwnedSealedBody({ source, arrays: data.arrays, active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) }); return data;
   }
   if (profile.kind === 6) {
     validateOwnedTextureState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
@@ -169,7 +170,7 @@ const verify = (kernel, bytes, profile) => {
       view.getUint32(24, true) !== profile.arrays.length || view.getUint32(28, true) !== profile.scalars.length || view.getUint32(252, true) !== checksum(bytes)) fail('Source state ABI, profile, size or checksum differs.');
   for (let i = 0; i < (profile.kind === 6 ? 5 : 3); i++) if (view.getUint32(32 + i * 4, true) !== (kernel.source[profile.arrays[i]]?.byteLength || 0)) fail('Source memory shape differs.');
   if (profile.kind === 5 && view.getUint32(44, true) !== kernel.source.configuration.length) fail('Sample state configuration size differs.');
-  for (let i = 44; i < 252; i++) if (!(i >= 64 && i < 128) && !(profile.kind === 5 && i < 48) && !(profile.kind === 6 && i < 52) && bytes[i]) fail('Source state reserved header is noncanonical.');
+  for (let i = 44; i < 252; i++) if (!(i >= 64 && i < 128) && !([5, 7, 8].includes(profile.kind) && i < 48) && !(profile.kind === 6 && i < 52) && bytes[i]) fail('Source state reserved header is noncanonical.');
   if (profile.kind === 5) { const configuration = kernel.source.configuration, offset = bytes.length - configuration.length; for (let i = 0; i < configuration.length; i++) if (bytes[offset + i] !== configuration[i]) fail('Sample state belongs to a different exact prepared map.'); }
   identities(view, kernel.source, false); return { view, data: inspectSource(kernel, profile, view), coreBytes };
 };

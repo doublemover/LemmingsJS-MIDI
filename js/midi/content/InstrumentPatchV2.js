@@ -1,3 +1,4 @@
+import { validSealedBodyParameters } from './SealedBodyProfile.js';
 import { prepareWindModel, WIND_MODEL_KINDS } from './WindModel.js';
 import { prepareFrictionModel, FRICTION_MODEL_KINDS } from './FrictionModel.js';
 import { validTextureBodyCommand, textureBodyCommandFields } from './TextureBodyProfile.js';
@@ -105,6 +106,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     visiting.delete(source); visited.add(source);
   };
   for (const source of dependencies.keys()) visit(source);
+  if (['worklet-wind', 'worklet-friction'].includes(input.engineId) && !validSealedBodyParameters(input.parameters)) throw new TypeError('A sealed outer body needs bounded modes and its complete four-second parent tail.');
   if (input.engineId === 'worklet-wind') prepareWindModel({ kind: WIND_MODEL_KINDS[input.parameters.windKind ?? 0], air01: input.parameters.airPressure01 ?? 0.35, bite01: input.parameters.bite01 ?? 0.5, lengthRatio: input.parameters.acousticLengthRatio ?? 1, leak01: input.parameters.breathLeak01 ?? 0.25, bell01: input.parameters.bellOpening01 ?? 0.35 });
   if (input.engineId === 'worklet-friction') prepareFrictionModel({ kind: FRICTION_MODEL_KINDS[input.parameters.frictionKind ?? 0], dragSlope: input.parameters.frictionDragSlope ?? 0.5, pressure01: input.parameters.frictionPressure01 ?? 0.4, contactPosition01: input.parameters.frictionContact01 ?? 0.18, bodyMix01: input.parameters.frictionBodyMix01 ?? 0.12 });
   if (input.engineId === 'worklet-texture' && !validTextureBodyCommand(textureBodyCommandFields(input.parameters), 20, 48000)) throw new TypeError('Invalid texture body calibration or signed observation.');

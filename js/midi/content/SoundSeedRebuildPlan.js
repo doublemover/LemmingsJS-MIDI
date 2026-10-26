@@ -1,3 +1,4 @@
+import { validateSealedFrictionBodyTravelBinding } from './SealedBodyGraftRecipe.js';
 import { validateTextureBodyTravelBinding } from './TextureBodyGraftRecipe.js';
 import { validateSampleTraversalBinding } from './SampleTraversal.js';
 import { canonicalDataText, freezeData, hashData } from '../../core/CanonicalData.js';
@@ -11,7 +12,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
   const metadata = seed?.metadata?.(), original = seed?.manifest, next = replacement?.manifest, replacementMetadata = replacement?.artifact?.metadata?.();
   if (!metadata?.assetReady || original?.schema !== 'lemmings-sound-seed/v1' || !hash(metadata.assetHash) || !Array.isArray(original.ancestry) || !original.ancestry.length || original.ancestry.length > 16 ||
       !['original', 'transient-like', 'sustained-like', 'residual', 'neutral-recombined', 'component-composition', 'modal-reconstruction', 'modal-residual'].includes(selectedMaterial) ||
-      !['hammer-seed', 'ice-dust', 'route-relic', 'modal-body', 'feedforward-graft', 'motion-body-graft', 'texture-body-graft'].includes(transform)) fail('Select one frozen seed and its exact supported derived closure.');
+      !['hammer-seed', 'ice-dust', 'route-relic', 'modal-body', 'feedforward-graft', 'motion-body-graft', 'texture-body-graft', 'sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform)) fail('Select one frozen seed and its exact supported derived closure.');
   const parent = original.ancestry.at(-1), blockers = [];
   if (!replacementMetadata?.retained || next?.schema !== 'lemmings-causal-audio-render/v1') blockers.push({ node: 'source', state: 'missing-prerequisite', reason: 'A retained causal revoice file is required; captured master PCM is not an exact intent-render source.' });
   if (parent.originKind !== 'OFFLINE REVOICE' || !parent.takeId || !integer(parent.takeRevision, 1) || !hash(parent.sourceCanonicalHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The frozen origin does not bind an exact original take/revision and covered semantic hash. Keep recorded material, or explicitly harvest a new source.' });
@@ -23,7 +24,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
     if (!hash(next.definitionHash) || !hash(next.engineRequirement?.artifactHash) || !hash(next.engineRequirement?.parameterSchemaHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The replacement lacks its exact resolved patch/engine receipt.' });
   }
   if (original.coverage?.status !== 'known-material' || original.coverage.gaps?.length) blockers.push({ node: 'region', state: 'missing-prerequisite', reason: 'The original seed has missing or unknown coverage; frozen playback and regeneration are separate facts.' });
-  const modalNeeded = selectedMaterial.startsWith('modal-') || transform === 'modal-body' || ['feedforward-graft', 'motion-body-graft', 'texture-body-graft'].includes(transform) && graftBody === 'fitted';
+  const modalNeeded = selectedMaterial.startsWith('modal-') || transform === 'modal-body' || ['feedforward-graft', 'motion-body-graft', 'texture-body-graft', 'sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) && graftBody === 'fitted';
   const componentKinds = ['transient-like', 'sustained-like', 'residual', 'neutral-recombined'];
   const compositionHash = composition?.components?.find(entry => entry.kind === 'component-composition')?.assetHash;
   let modalParentMaterial = 'original';
@@ -66,7 +67,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
     sourceTake: { takeId: parent.takeId ?? null, revision: parent.takeRevision ?? null, canonicalHash: parent.sourceCanonicalHash ?? null }, oldPatchReceipt: parent.sourcePatchReceipt ?? null,
     newPatchReceipt: next ? { definitionHash: next.definitionHash ?? null, engineRequirement: next.engineRequirement ?? null } : null,
     sourceProfile: 'new-render-all-covered-intents;not-original-live-admission-PCM', sourceTap: parent.sourceTap, sampleRate: parent.parentSampleRate, channelLayout: 'stereo',
-    parentRegionFrames: [parent.firstFrame, parent.endFrame], expectedRegionFrames: frames, fades: original.fades, componentOptions, compositionOptions: composition?.recipe.options ?? null, compositionInputs: composition ? { originalAssetHash: composition.parentAssetHash, componentAssetHashes: composition.recipe.componentAssetHashes, decompositionRecipeHash: composition.recipe.decompositionRecipeHash } : null, modalOptions, modalParentMaterial, selectedMaterial, transform, graftBody, ...(transform === 'texture-body-graft' ? { textureKind } : {}), traversalBinding: transform === 'texture-body-graft' ? validateTextureBodyTravelBinding(traversalBinding) : transform === 'motion-body-graft' ? validateSampleTraversalBinding(traversalBinding) : null, pitch,
+    parentRegionFrames: [parent.firstFrame, parent.endFrame], expectedRegionFrames: frames, fades: original.fades, componentOptions, compositionOptions: composition?.recipe.options ?? null, compositionInputs: composition ? { originalAssetHash: composition.parentAssetHash, componentAssetHashes: composition.recipe.componentAssetHashes, decompositionRecipeHash: composition.recipe.decompositionRecipeHash } : null, modalOptions, modalParentMaterial, selectedMaterial, transform, graftBody, ...(transform === 'texture-body-graft' ? { textureKind } : {}), traversalBinding: transform === 'sealed-friction-body-graft' ? validateSealedFrictionBodyTravelBinding(traversalBinding) : transform === 'texture-body-graft' ? validateTextureBodyTravelBinding(traversalBinding) : transform === 'motion-body-graft' ? validateSampleTraversalBinding(traversalBinding) : null, pitch,
     nodes: nodes.map(node => ({ ...node, state: blockers.find(blocker => blocker.node === node.id)?.state ?? (blockers.length ? 'blocked-by-prerequisite' : 'rebuildable') })), blockers,
     frozenOriginal: { playable: true, sourceAssetAvailable: !!seed.artifact.metadata().retained, projectReferences: 'preserved', deletion: 'never-part-of-rebuild' },
     determinism: 'unqualified-numerical-build;recipe-and-resolved-patch-inputs-hashed;no-cross-build-byte-equivalence-claim', maxNodes: 128, maxDepth: 16, boundedFrames: frames * nodes.length,

@@ -165,6 +165,7 @@
         "js/app/midi-ui/worklet/OwnedSampleProcessor.js",
         "js/app/midi-ui/worklet/OwnedSampleReader.js",
         "js/app/midi-ui/worklet/OwnedSampleSource.js",
+        "js/app/midi-ui/worklet/OwnedSealedBody.js",
         "js/app/midi-ui/worklet/OwnedSineProcessor.js",
         "js/app/midi-ui/worklet/OwnedSineState.js",
         "js/app/midi-ui/worklet/OwnedSourceState.js",
@@ -329,6 +330,7 @@
         "js/midi/content/SampleInstrumentMap.js",
         "js/midi/content/SampleReadProfile.js",
         "js/midi/content/SampleTraversal.js",
+        "js/midi/content/SealedBodyProfile.js",
         "js/midi/content/ShapeBodyAsset.js",
         "js/midi/content/ShapeBodyRecipe.js",
         "js/midi/content/SoundContentCompiler.js",
@@ -356,8 +358,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 245,
-      "sha256": "8b824202d75caabdcbed42280ae412b797ede273e82c2a01f974aa219f467229"
+      "fileCount": 247,
+      "sha256": "6b147cd2cd9fc8d861f687b6d6f5e74137013a80a63ead0d644489030f65624d"
     },
     {
       "id": "lemmings-timing-worker-source",

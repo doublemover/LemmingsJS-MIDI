@@ -1016,3 +1016,26 @@ recipe, graph/profile and control-schedule hashes remain in the retained WAV
 manifest. This is a new isolated source prefix, not a reproduction of a prior
 physical take or evidence about acoustic output. Other shared-body mechanisms
 need their own complete rehearsal adapters.
+
+
+The seed laboratory also compiles **Intact Air Pipe → external body** and
+**Intact Hairline → external body** recipes. Choose an original tin, dry wood,
+light glass shell or reviewed fitted body and declare a supported root. Hairline
+requires the exact selected committed local signed-axis journey. The seed is
+retained as body-analysis/regeneration ancestry; its frozen audio is not played.
+
+The wind/bow interaction model stays sealed. Its stereo output is divided by 32
+before the existing DC-blocked contracting linear body; the original dry path
+keeps its own gain. EXCITE scales this outer input, BODY sets its longest T60,
+DAMP multiplies T60 by (1 − 0.9 × DAMP), and MIX blends original dry and body
+observation. These are onset-only body controls. Parent pressure/expression and
+physical motion continue through their existing paths. Source end closes outer
+input and leaves a positive body tail inside an explicit four-second envelope.
+This is an outer audio filter, not a transplanted nonlinear interaction port.
+
+Both components have preallocated private actor state and count toward storage,
+render cost and transition overlap. The revised wind/friction command ABIs and
+exact cut validation include the outer coefficients, controls and parent lifetime.
+The ordinary compile/audition/durable-apply and selected ancestry rebuild paths
+retain old instruments on failed preparation. Current fixtures are authored but
+unrun; numerical, spectral, cost, device and listening qualification remains open.

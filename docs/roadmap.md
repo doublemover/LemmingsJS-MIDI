@@ -5578,3 +5578,37 @@ export-budget acknowledgments still prevent a false complete receipt.
   cancellation and stale-owner fixtures. This is new isolated rehearsal PCM, not
   historical performance, browser/device or acoustic evidence. All runtime and
   listening checks remain deferred for the combined qualification pass.
+
+
+### Continuation 221 — intact wind/friction output into private modal bodies
+
+- Added the third typed graft family for #1216: intact sealed wind or friction
+  stereo output feeds an independently owned 1–8-mode linear outer filter. The
+  parent feedback model, force calibration, pressure, motion and register policy
+  remain untouched. Internal interaction/detector ports and arbitrary feedback
+  interconnection are rejected. This family reuses the existing contracting
+  sample-body kernel rather than introducing another resonator implementation.
+- Added preallocated per-voice body coefficients/state/control scratch. Parent
+  audio is explicitly divided by 32 before DC-blocked contracting injection;
+  original dry gain is independent. Source end closes outer input while its
+  positive body tail remains inside the explicit four-second parent envelope.
+  EXCITE/BODY/DAMP/MIX affect only the next prepared outer body. No additional
+  source onset or actor owner exists, and two same-pitch actors retain independent
+  parent and outer-body state. Storage/cost count both components and overlap.
+- Integrated engine parameter schemas, compiler component roles, source admission,
+  live/owned adapters and complete private cuts. Wind/friction command ABIs are
+  explicitly revised; old incompatible cuts are not reinterpreted. Outer state,
+  frozen controls, poles, observations, unused storage, parent onset/pitch/release
+  and canonical retirement are validated before any restore mutation.
+- Connected ordinary compiled Glass breath/Bowed shell recipe variants, original
+  tin/wood/light-glass or reviewed fitted bodies, seed-panel anatomy, existing
+  audition/durable apply and selected lineage rebuild. Friction requires its exact
+  committed local signed-axis journey; the frozen seed stays body ancestry and
+  is not secretly played. Body edits prepare new voices while old actors retain
+  their complete instrument. There is one honest unqualified realization tier.
+- Authored unrun source-invariance/two-actor/three-rate exact-cut, independent
+  storage, queued release, Panic, forged outer pole/unused field, ordinary compiler,
+  fit ancestry, input/tail-domain and interaction-port fixtures. Static checks only;
+  actual PCM, spectra, decay, device cost and matched-level listening remain
+  deferred. Additional strike/FM grafts, comparison stems and Instrument Nursery
+  still need their complete end-to-end content/workflow and qualification.

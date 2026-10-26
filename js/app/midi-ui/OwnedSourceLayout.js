@@ -1,3 +1,4 @@
+import { SEALED_BODY_STATE, SEALED_BODY_PARAMETERS, SEALED_BODY_PACKET } from '../../midi/content/SealedBodyProfile.js';
 import { WIND_MODEL_LIMITS } from '../../midi/content/WindModel.js';
 import { FRICTION_MODEL_LIMITS } from '../../midi/content/FrictionModel.js';
 import { TEXTURE_EXCITER_LIMITS } from '../../midi/content/TextureExciter.js';
@@ -5,8 +6,8 @@ import { SAMPLE_READ_TABLE_SAMPLES } from '../../midi/content/SampleReadProfile.
 export const LIVE_LANE_TAP_LIMIT = 8;
 export const LIVE_LANE_TAP_PROTOCOL = 3;
 export const LIVE_LANE_ID_LIMIT = 4096;
-export const WIND_LAYOUT = Object.freeze({ width: 56, voices: WIND_MODEL_LIMITS.voices });
-export const FRICTION_LAYOUT = Object.freeze({ width: 48, voices: FRICTION_MODEL_LIMITS.voices });
+export const WIND_LAYOUT = Object.freeze({ width: 82, voices: WIND_MODEL_LIMITS.voices });
+export const FRICTION_LAYOUT = Object.freeze({ width: 84, voices: FRICTION_MODEL_LIMITS.voices });
 export const TEXTURE_LAYOUT = Object.freeze({ width: 80, voices: TEXTURE_EXCITER_LIMITS.voices });
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
@@ -49,10 +50,10 @@ export function textureSourceBytes(rate, voices = TEXTURE_LAYOUT.voices) {
 
 export function frictionSourceBytes(rate, voices = FRICTION_LAYOUT.voices) {
   check(rate, voices, FRICTION_LAYOUT.voices, 96000); if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid friction source rate.');
-  return voices * (FRICTION_MODEL_LIMITS.state + FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth) * 8;
+  return voices * (FRICTION_MODEL_LIMITS.state + FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth + SEALED_BODY_STATE + SEALED_BODY_PARAMETERS + SEALED_BODY_PACKET) * 8;
 }
 
 export function windSourceBytes(rate, voices = WIND_LAYOUT.voices) {
   check(rate, voices, WIND_LAYOUT.voices, 96000); if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Unsupported wind source rate.');
-  return voices * (WIND_MODEL_LIMITS.state + WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth) * 8;
+  return voices * (WIND_MODEL_LIMITS.state + WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth + SEALED_BODY_STATE + SEALED_BODY_PARAMETERS + SEALED_BODY_PACKET) * 8;
 }

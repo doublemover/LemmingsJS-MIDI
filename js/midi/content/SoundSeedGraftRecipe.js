@@ -4,6 +4,7 @@ import { validateSampleTraversalBinding } from './SampleTraversal.js';
 import { canonicalDataText, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 
 export const SOUND_SEED_GRAFT_BODIES = freezeData({
+  glass: { name: 'Original light glass shell', revision: 'original-light-glass-shell-v1', ratios: [1, 2.32, 4.25, 6.63, 9.38, 12.22], t60: [1.8, 1.3, 0.9, 0.6, 0.4, 0.25], gains: [1, 0.5, 0.35, 0.24, 0.17, 0.12] },
   tin: { name: 'Original tin modal body', revision: 'original-tin-body-v1', ratios: [1, 1.43, 2.17, 2.91, 4.07, 5.33], t60: [0.8, 0.65, 0.5, 0.4, 0.3, 0.2], gains: [1, 0.7, 0.5, 0.35, 0.25, 0.18] },
   wood: { name: 'Original dry wood modal body', revision: 'original-dry-wood-body-v1', ratios: [1, 2.76, 5.4, 8.93], t60: [0.25, 0.17, 0.1, 0.06], gains: [1, 0.6, 0.35, 0.2] }
 });
