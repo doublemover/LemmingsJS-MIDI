@@ -1,3 +1,4 @@
+import { createShapeBodyEdgeField } from './ShapeBodyEdgeField.js';
 import { composeSeedComponents } from './SeedComponentComposition.js';
 import { fitSoundSeedModes } from './SeedModalFit.js';
 import { solveShapeBody } from './ShapeBodySolver.js';
@@ -145,12 +146,13 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: 16384 }), options = { signal, current, estimatedPeakBytes, yieldControl, onProgress };
     const asset = await solveShapeBody({ source: input.source, solverBuildHash: execution.buildId }, options), calibration = await renderShapeBodyCalibration({ asset, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds }, options); guard(signal, current);
-    const recipe = await createShapeBodyRecipe({ asset, calibration }), catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+    const sharedBody = await createShapeBodyEdgeField(asset, { ...options, sampleRate: input.sampleRate }); guard(signal, current);
+    const recipe = await createShapeBodyRecipe({ asset, calibration, edgeField: sharedBody }), catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity.buildId !== execution.buildId) throw problem('engine-identity-unbound', 'The foundry compiler differs from its executing worker.');
     const compiled = await compileSoundContent(recipe.source, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
-    const value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, overview: { id: asset.id, assetHash: asset.assetHash, meshHash: asset.meshHash, sourceHash: asset.sourceHash, solver: asset.solver, validation: asset.validation, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds,
+    const value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, sharedBody, overview: { id: asset.id, assetHash: asset.assetHash, meshHash: asset.meshHash, sourceHash: asset.sourceHash, solver: asset.solver, validation: asset.validation, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds,
       sites: asset.source.excitationSites, tier: { modeIndices: calibration.files[0].manifest.modeIndices, retainedSalience01: calibration.files[0].manifest.tier.retainedSalience01 } } };
-    const retainedBytes = recipe.contents.reduce((sum, file) => sum + file.bytes.byteLength * 3 + 65536, 8 * 1048576);
+    const retainedBytes = recipe.contents.reduce((sum, file) => sum + file.bytes.byteLength * 3 + 65536, 8 * 1048576) + canonicalDataText(sharedBody, { maxBytes: 524288, maxNodes: 32768 }).bytes.length * 8;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Foundry generated material exceeds its complete result reservation.');
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
   }

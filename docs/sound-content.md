@@ -728,3 +728,24 @@ end; their terminal state and possible crop are reported. This creates one
 playable asset, not three live layer voices or a qualified source separation.
 Selected revoice rebuilds preserve the exact composition dependency closure and
 reprint a new branch before refitting or compiling its descendants.
+
+
+The original bar foundry can offer a separate eight-mode shared edge body to the
+Shared bodies surface. Its signed observation weights come from actual solved
+nodal displacements along four connected Tet4 edges, projected onto the declared
+z direction. Normalized x follows that edge; y is intentionally invariant. The
+left and right pickups observe one retained ringing body and do not inject input,
+retune it or change loss. All pickup locations share one maximum-L2 reference.
+Signed strike-site vectors likewise share one reference across end, shoulder and
+corner rather than automatically matching every site's level.
+
+The field producer reassembles and rechecks the complete elastic eigensystem,
+then retains source/body/mesh/build hashes, selected modes, actual vertex positions,
+direction, normalization references and interpolation policy. The content pack
+stores the generated field receipt beside the original solved asset. The shared
+route still uses the bounded complex-mode audio network, whose excitation is not
+a force-calibrated second-order elastic response. Three positive mode masks use
+squared site projections as an explicitly diagonal loss approximation; they do
+not claim full point-damping coupling. Other shapes, refinements and unsupported
+frequency/decay tiers decline this path rather than substituting nearest nodes.
+The ordinary frozen strike instrument remains available independently.

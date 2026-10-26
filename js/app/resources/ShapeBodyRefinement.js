@@ -11,7 +11,7 @@ const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const same = (a, b) => canonicalDataText(a).text === canonicalDataText(b).text;
 
-async function recheckElasticModes(asset, check, yieldControl) {
+export async function recheckElasticModes(asset, check, yieldControl) {
   check(); const system = assembleShapeBodySystem(asset.source), n = system.dimension, norm = Math.sqrt(system.matrix.reduce((sum, value) => sum + value * value, 0));
   const vectors = asset.modes.map(mode => Float64Array.from(system.free, index => mode.displacementPerRootKg[index] * Math.sqrt(system.mass[index]))); let largestRelativeResidual = 0, largestOrthogonalityError = 0;
   for (let index = 0; index < vectors.length; index++) {

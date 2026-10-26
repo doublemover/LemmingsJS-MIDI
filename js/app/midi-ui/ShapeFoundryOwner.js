@@ -16,9 +16,9 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
   const reader = createSoundContentReader({ resourceBudget, jobs, maxPending: 2, stageLifetimeMs: 3600000 }), registry = createSoundContentRegistry({ indexedDB, keyRange, resourceBudget }), installation = createSoundContentInstallation({ audio, registry, getCatalog }), retirement = createProcgenRetirementScope(), unknown = new Set();
   let active = null, current = null, ordinal = 0, disposed = false, phase = 'idle', error = null, progress = null;
   const state = () => Object.freeze({ disposed, active: !!active, phase, error, progress, unknownRetirement: unknown.size, overview: current?.overview || null, contract: current?.contract || null, config: current?.config || null,
-    compiledReady: !!current?.stage.metadata().retained, auditionReady: !!current && !!installation.getAudition(current.stage, current.identity), durable: current?.installed === true, patchIdentity: current?.identity || null, refinement: current?.refinement || null });
+    compiledReady: !!current?.stage.metadata().retained, auditionReady: !!current && !!installation.getAudition(current.stage, current.identity), durable: current?.installed === true, patchIdentity: current?.identity || null, refinement: current?.refinement || null, sharedBody: current?.sharedBody ? { state: current.sharedBody.state, reason: current.sharedBody.reason ?? null, fieldHash: current.sharedBody.fieldHash ?? null, sites: current.sharedBody.maps?.map(model => model.siteId) ?? [] } : null });
   const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
-  const discard = value => { if (!value) return; value.stage.discard(); const metadata = value.stage.metadata(); if (metadata.retirement !== 'released' || metadata.activeLeases) { unknown.add(value); throw fail('The previous foundry pack retains unresolved readers.'); } try { value.refinementStorage?.release(); } catch (caught) { unknown.add(value); throw caught; } };
+  const discard = value => { if (!value) return; value.stage.discard(); const metadata = value.stage.metadata(); if (metadata.retirement !== 'released' || metadata.activeLeases) { unknown.add(value); throw fail('The previous foundry pack retains unresolved readers.'); } try { try { value.refinementStorage?.release(); } finally { value.sharedStorage?.release(); } } catch (caught) { unknown.add(value); throw caught; } };
   const run = (nextPhase, work) => {
     if (disposed || active || unknown.size) return Promise.reject(fail('Finish or cancel the current foundry operation before starting another.'));
     const operation = { controller: new AbortController(), ordinal: ++ordinal, promise: null }; active = operation; phase = nextPhase; error = null; progress = null; report();
@@ -26,10 +26,10 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
     operation.promise = Promise.resolve().then(() => work(operation, check)).catch(caught => { error = caught.message; phase = unknown.size ? 'ownership-unknown' : current ? 'previous-prepared-body-retained' : 'idle'; throw caught; }).finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
   const prepare = ({ shapeId = 'pocket-bar', modeCount = 8, sampleRate = 48000, seconds = 2 } = {}, { isCurrent = () => true } = {}) => run('preparing-original-solid', async (operation, checkOwner) => {
-    let job = null, workspace = null, next = null;
+    let job = null, workspace = null, next = null, sharedStorage = null;
     const releaseProducer = () => { if (!job) return; try { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('The foundry producer has unresolved retirement.'); }
-    catch (caught) { unknown.add({ caught, job, workspace, stage: next }); job = workspace = next = null; throw caught; } job = null; };
-    const releaseWorkspace = () => { if (!workspace) return; try { workspace.release(); } catch (caught) { unknown.add({ caught, workspace, stage: next }); workspace = next = null; throw caught; } workspace = null; };
+    catch (caught) { unknown.add({ caught, job, workspace, sharedStorage, stage: next }); job = workspace = next = sharedStorage = null; throw caught; } job = null; };
+    const releaseWorkspace = () => { if (!workspace) return; try { workspace.release(); } catch (caught) { unknown.add({ caught, workspace, sharedStorage, stage: next }); workspace = next = sharedStorage = null; throw caught; } workspace = null; };
     const check = () => { checkOwner(); if (!isCurrent()) throw fail('The selected document, lane or shape draft changed.'); };
     try {
       check(); if (![8, 16, 32].includes(modeCount) || ![44100, 48000, 96000].includes(sampleRate) || !Number.isFinite(seconds) || seconds < 0.2 || seconds > 4) throw fail('Choose a supported explicit tier, sample rate and finite duration.');
@@ -47,14 +47,15 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
       const prefix = new Uint8Array(12); prefix.set(new TextEncoder().encode(SOUND_ARCHIVE_MAGIC)); new DataView(prefix.buffer).setUint32(8, header.byteLength, false); phase = 'verifying-generated-material'; report();
       next = await reader.stageArchive(new Blob([prefix, header, ...payloads.map(entry => entry.blob)]), { engineDescriptors: catalog.descriptors, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check();
       if (next.metadata().patches.length !== 1) throw fail('The foundry did not prepare one complete ordinary instrument.');
-      const record = { stage: next, identity: next.metadata().patches[0], overview: freezeData(result.overview), contract: freezeData(result.receipt), config: Object.freeze({ shapeId, modeCount, sampleRate, seconds }), installed: false };
-      releaseProducer(); releaseWorkspace(); check(); discard(current); current = record; next = null; phase = 'compiled-body-ready'; return state();
+      if (result.sharedBody) sharedStorage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'shape-foundry-edge', generation: operation.ordinal, kind: 'solved-edge-field-and-graph-candidates', category: 'candidate', bytes: Math.max(4096, canonicalDataText(result.sharedBody, { maxBytes: 524288, maxNodes: 32768 }).bytes.length * 8) });
+      const record = { sharedBody: result.sharedBody ? freezeData(result.sharedBody) : null, sharedStorage, stage: next, identity: next.metadata().patches[0], overview: freezeData(result.overview), contract: freezeData(result.receipt), config: Object.freeze({ shapeId, modeCount, sampleRate, seconds }), installed: false };
+      releaseProducer(); releaseWorkspace(); check(); discard(current); current = record; next = sharedStorage = null; phase = 'compiled-body-ready'; return state();
     } catch (caught) {
       if (caught.backgroundRetirementCompletion) caught.backgroundRetirement = await caught.backgroundRetirementCompletion;
-      if (caught.backgroundRetirement && !['released', 'canceled'].includes(caught.backgroundRetirement.phase)) { unknown.add({ caught, job, workspace, stage: next }); job = workspace = next = null; }
+      if (caught.backgroundRetirement && !['released', 'canceled'].includes(caught.backgroundRetirement.phase)) { unknown.add({ caught, job, workspace, sharedStorage, stage: next }); job = workspace = next = sharedStorage = null; }
       throw caught;
     } finally {
-      releaseProducer(); try { if (next) discard({ stage: next }); } finally { releaseWorkspace(); }
+      releaseProducer(); try { if (next) discard({ stage: next, sharedStorage }); else sharedStorage?.release(); } finally { releaseWorkspace(); }
     }
   });
   const compareRefinement = ({ isCurrent = () => true } = {}) => run('comparing-original-mesh-refinement', async (operation, checkOwner) => {
@@ -85,7 +86,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
   const install = () => run('saving-immutable-body', async (operation, check) => { if (!current) throw fail('Prepare and audition a body first.'); const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation }); check(); current.installed = true; phase = 'durable-body'; return receipt; });
   const apply = ({ isCurrent = () => true } = {}) => run('applying-body-to-selected-lane', async (operation, check) => { if (!current || !isCurrent()) throw fail('The prepared body or selected lane changed.'); const candidate = installation.applyCandidate(current.stage, current.identity); await onApply(candidate, { signal: operation.controller.signal }); check(); phase = 'applied'; return state(); });
   const stop = () => { active?.controller.abort(fail('Foundry operation canceled.')); installation.stop(); };
-  return Object.freeze({ prepare, compareRefinement, audition, install, apply, stop, state,
+  return Object.freeze({ prepare, compareRefinement, sharedMap: siteId => current?.sharedBody?.maps?.find(model => model.siteId === siteId) || null, audition, install, apply, stop, state,
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; stop(); const pending = Promise.resolve(active?.promise).catch(() => {}), installationFinished = pending.then(async () => { const receipt = installation.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Foundry audition retirement is unresolved.'); });
       return retirement.retire([{ name: 'foundry-operation', run: () => pending }, { name: 'foundry-audition', run: () => installationFinished }, { name: 'foundry-material-stage', run: async () => { await installationFinished; if (unknown.size) throw fail('Generated foundry material retains unresolved ownership.'); discard(current); current = null; reader.dispose(); registry.close(); } }]); }
   });

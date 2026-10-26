@@ -214,6 +214,7 @@
         "js/app/resources/SeedDecomposition.js",
         "js/app/resources/SeedModalFit.js",
         "js/app/resources/ShapeBodyCalibration.js",
+        "js/app/resources/ShapeBodyEdgeField.js",
         "js/app/resources/ShapeBodyRefinement.js",
         "js/app/resources/ShapeBodySolver.js",
         "js/app/resources/SharedContentJobs.js",
@@ -287,8 +288,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 176,
-      "sha256": "d310b8709bdcddcb7d7945c2fd91d6a69f521a3890d4d8d7d50a95e650a601fa"
+      "fileCount": 177,
+      "sha256": "69100eeef3b6950463f34eefeed1a4ad56c938054aa1ecb760689dd72da7a9f8"
     },
     {
       "id": "lemmings-timing-worker-source",

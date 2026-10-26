@@ -4769,3 +4769,45 @@ critical typecheck checks are used in this development pass. Live Hammer/Cloud,
 Bowed Scrap and Hollow Tool layer templates, independent warp qualification,
 matched-level/listening/browser/device evidence and the complete combined runtime
 validation pass remain pending.
+
+
+### Continuation 195 — solved bar-edge pickups and common-reference excitation (#1215, #1217)
+
+The original pocket bar now produces an optional shared eight-mode edge field in
+the existing admitted foundry worker. It verifies the immutable asset, reassembles
+the elastic system and recomputes all retained eigenpair residuals and mass
+orthogonality. Four actual connected top-edge vertices supply signed z-displacement
+observations. Piecewise-linear edge interpolation uses the existing bounded
+bilinear kernel with duplicated y rows: x is edge position, y is explicitly
+invariant. A single maximum-L2 pickup reference preserves relative site response.
+The field receipt stores actual meter positions, direction, full source/mesh/body/
+solver identities, selected modes, normalizations and algebraic evidence, and is
+included as a generated-data parent in the normal content pack.
+
+The shared modal network adds an explicit signed excitation vector and common
+reference norm. This preserves sign and differences between the three solved
+strike sites instead of independently renormalizing each site's response. Its
+contractive bound, no per-sample allocation, old-tail ownership, state cuts and
+ordinary effect graph owners remain intact. Configuration identity advances to
+v4 and includes the complete new input policy. This is normalized complex-mode
+audio excitation, not a force-calibrated second-order elastic response. Three
+nonnegative squared-site mode masks are labeled positive diagonal approximations,
+not full rank-one point-damping operators. Unsupported shapes/refinements or exact
+tiers decline without hidden frequency, decay or mode substitutions.
+
+The foundry offers its selected strike to Shared bodies. The UI owns a charged
+independent candidate copy, then prepares the actual selected source bus through
+the existing graph owner. Its two pickup positions read the same ringing state;
+manual loss, observed-contact ownership, Save defaults, Panic and replacement
+use existing owners. The foundry pack and shared route remain distinct explicit
+actions. Field/candidate storage follows complete or unknown retirement rather
+than being released with a still-held reference.
+
+Actual-node projection, common-reference/sign preservation, silent observation,
+independent pickup movement with identical modal state, state-cut continuation,
+forged-vector rejection, cancellation and normal content-closure fixtures are
+authored but unrun. Only format, syntax/provenance and limited critical typecheck
+checks are used. Full two-dimensional solved surface fields, physical force/point
+loss calibration, refined families, Three Hands and Pocket Foundry performance
+lessons, mesh/listening/device qualification and combined runtime validation remain
+pending.

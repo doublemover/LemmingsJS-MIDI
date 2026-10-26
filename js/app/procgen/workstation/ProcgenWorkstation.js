@@ -1428,11 +1428,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
       rectangularMembraneView.open();
     },
-    openSympatheticMap() {
+    openSympatheticMap(foundryModel = null) {
       if (disposed || !physicalPlayback) { status('Shared audio bodies are unavailable.'); return; }
-      sympatheticMapView ||= createSympatheticMapView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+      sympatheticMapView ||= createSympatheticMapView({ document, resourceBudget, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
         saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      sympatheticMapView.open();
+      sympatheticMapView.open(foundryModel);
     },
     openSpectralFreeze() {
       if (disposed || !physicalPlayback) { status('Physical spectral freeze is unavailable.'); return; }
@@ -1480,7 +1480,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     openShapeFoundry() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Shape foundry resource ownership is unavailable.'); return; }
       shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
-        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); shapeFoundry.open();
+        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onStatus: status }); shapeFoundry.open();
     },
     applyInstalledInstrument(candidate, { signal, hold = false } = {}) { return soundTransactions.select(candidate, { signal, hold, laneId: selected().id }); },
     selectNativeSound(laneId, patchId) {

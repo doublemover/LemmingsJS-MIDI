@@ -1,10 +1,10 @@
 import { cloneData, freezeData, canonicalDataText, encodeUtf8 } from '../../core/CanonicalData.js';
 
-export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-prepared-pickups-v3';
+export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-signed-reference-input-v4';
 export const NETWORK_LOSS_CONTROLS = Object.freeze(Array.from({ length: 4 }, (_, index) => 'modeLoss' + index + 'Amount01'));
 export const NETWORK_PICKUP_CONTROLS = Object.freeze(['pickupLeftX01', 'pickupLeftY01', 'pickupRightX01', 'pickupRightY01']);
 export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
-  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks', 'pickupGrid'];
+  const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks', 'pickupGrid', 'excitationWeights', 'excitationReferenceNorm'];
   const id = value => typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9._:-]{0,95}$/.test(value), finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
   const keys = (value, names) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => names.includes(key));
   if (![44100, 48000, 96000].includes(sampleRate) || !keys(p, allowed) || !Array.isArray(p.bodies) || p.bodies.length < 1 || p.bodies.length > 64 || !Array.isArray(p.edges) || p.edges.length > 512 || !finite(p.couple01, 0, 1) || !finite(p.damp01, 0, 1)) throw new TypeError('Invalid bounded sympathetic network.');
@@ -22,15 +22,24 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     ids.set(body.id, { first, count: body.modes.length });
   }
   if (modes.length > 512 || excitationNorm === 0 || pickupNorm === 0) throw new RangeError('A shared body requires bounded audible excitation and pickup routes.');
+  if (p.excitationWeights != null) {
+    if (!Array.isArray(p.excitationWeights) || p.excitationWeights.length !== modes.length || p.excitationWeights.some(value => !finite(value, -1, 1)) || !finite(p.excitationReferenceNorm, 1e-12, Math.sqrt(512))) throw new TypeError('A signed excitation field needs one bounded weight per mode and an explicit common reference norm.');
+    excitationNorm = 0;
+    for (let index = 0; index < modes.length; index++) { const value = p.excitationWeights[index]; modes[index].excitation = value; excitationNorm += value * value; }
+    if (excitationNorm === 0 || Math.sqrt(excitationNorm) > p.excitationReferenceNorm * (1 + 1e-12)) throw new RangeError('The selected signed excitation exceeds its common reference or has no response.');
+  } else if (p.excitationReferenceNorm != null) throw new TypeError('An excitation reference requires the explicit signed vector.');
   let pickupGrid = null;
   if (p.pickupGrid != null) {
     const grid = p.pickupGrid, point = value => keys(value, ['x01', 'y01']) && finite(value.x01, 0, 1) && finite(value.y01, 0, 1);
-    if (!keys(grid, ['id', 'width', 'height', 'weights', 'leftPosition', 'rightPosition']) || !id(grid.id) || !Number.isInteger(grid.width) || grid.width < 2 || grid.width > 4 || !Number.isInteger(grid.height) || grid.height < 2 || grid.height > 4 ||
+    if (!keys(grid, ['id', 'width', 'height', 'weights', 'leftPosition', 'rightPosition', 'fieldRevision', 'sourceAssetHash', 'sourceFieldHash']) || !id(grid.id) || !Number.isInteger(grid.width) || grid.width < 2 || grid.width > 4 || !Number.isInteger(grid.height) || grid.height < 2 || grid.height > 4 ||
         !point(grid.leftPosition) || !point(grid.rightPosition) || !Array.isArray(grid.weights) || grid.weights.length !== grid.width * grid.height * modes.length || grid.weights.some(value => !finite(value, -1, 1))) throw new TypeError('Pickup observation needs a bounded authored grid of signed mode weights and two normalized positions.');
+    if (grid.fieldRevision != null || grid.sourceAssetHash != null || grid.sourceFieldHash != null) {
+      if (grid.fieldRevision !== 'solved-tet4-edge-v1' || !/^[a-f0-9]{64}$/.test(grid.sourceAssetHash) || !/^[a-f0-9]{64}$/.test(grid.sourceFieldHash)) throw new TypeError('A solved pickup field requires its exact source asset and generated field hashes.');
+    }
     let maximumSquaredNorm = 0;
     for (let at = 0; at < grid.weights.length; at += modes.length) { let sum = 0; for (let mode = 0; mode < modes.length; mode++) sum += grid.weights[at + mode] ** 2; maximumSquaredNorm = Math.max(maximumSquaredNorm, sum); }
     if (maximumSquaredNorm === 0 || maximumSquaredNorm > 1) throw new RangeError('Each authored pickup vector must retain its declared relative gain within the unit L2 observation bound.');
-    pickupGrid = { ...grid, maximumSquaredNorm, interpolation: 'bilinear-convex-signed-mode-weights', units: 'normalized-authored-observation-field;not-a-solved-geometric-mode-shape' };
+    pickupGrid = { ...grid, maximumSquaredNorm, interpolation: 'bilinear-convex-signed-mode-weights', units: grid.fieldRevision ? 'normalized-projection-of-solved-nodal-displacements;referenced-field-receipt;not-acoustic-calibration' : 'normalized-authored-observation-field;not-a-solved-geometric-mode-shape' };
   }
   if (p.lossMasks != null && (!Array.isArray(p.lossMasks) || p.lossMasks.length > 4 || new Set(p.lossMasks.map(mask => mask?.id)).size !== p.lossMasks.length)) throw new TypeError('Prepare at most four unique authored mode-loss masks.');
   const lossMasks = (p.lossMasks || []).map(mask => {
@@ -44,18 +53,18 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     const angle = edge.amount * 300 / sampleRate;
     return { from, to, cosineDelta: Math.cos(angle) - 1, sine: Math.sin(angle), amount: edge.amount };
   }).sort((a, b) => a.from - b.from || a.to - b.to);
-  const inputScale = (1 - maximumRadius) / Math.sqrt(excitationNorm), outputScale = 1 / Math.sqrt(pickupNorm);
+  const inputScale = (1 - maximumRadius) / (p.excitationReferenceNorm ?? Math.sqrt(excitationNorm)), outputScale = 1 / Math.sqrt(pickupNorm);
   for (const mode of modes) { mode.excitation *= inputScale; mode.pickup *= outputScale; }
   const profile = { revision: SYMPATHETIC_NETWORK_REVISION, sampleRate, parameters: p, modes, edges, lossMasks, pickupGrid, maximumRadius, inputScale, outputScale,
     stateBytes: (10 * modes.length + 2 * edges.length + 16 + (lossMasks.length + Number(lossMasks.length > 0)) * modes.length + (pickupGrid ? pickupGrid.weights.length + 2 * modes.length : 0)) * 8 + edges.length * 8, bodyCount: p.bodies.length, modeCount: modes.length, maximumDegree: 4,
     processingLatencyFrames: 0, maximumTailFrames: Math.ceil(longest * 2 * sampleRate), maximumLinearGain: 1, maximumOutputAmplitude: 32.000001,
     gainBoundDomain: 'bounded-input-history-to-complex-state-L2-to-pickup-peak;not-one-sample-energy',
     stability: 'damped-unitary-mode-rotations;canonical-sequential-contractive-I-to-Givens-edge-interpolants',
-    excitationPolicy: 'L2-normalized-input-vector-scaled-by-one-minus-maximum-prepared-radius',
+    excitationPolicy: p.excitationWeights ? 'signed-input-vector-divided-by-common-reference;scaled-by-one-minus-maximum-prepared-radius' : 'L2-normalized-input-vector-scaled-by-one-minus-maximum-prepared-radius',
     couplingPolicy: 'same-frame-canonical-sequential-scattering;no-graph-cycle-or-physical-feedback',
     tuningPolicy: 'prepared-revision-only;old-network-keeps-admitted-tail', tailPolicy: 'hard-two-T60-ceiling-at-longest-prepared-damping',
     preparation: { kind: 'authored-selected-mode-positive-loss;not-spatial-mode-shapes', overlap: 'maximum-additional-pole-depth-per-mode', slots: lossMasks.length, slewSeconds: 0.008, release: 'future-decay-returns;dissipated-energy-not-restored' },
-    pickupPreparation: { kind: pickupGrid ? 'two-independent-authored-observation-positions' : 'fixed-normalized-pickup-vector', energyPolicy: 'read-existing-modal-state;no-excitation-or-damping-change', slewSeconds: 0.008, maximumL2Norm: 1, release: 'hold-last-observation-position' },
+    pickupPreparation: { kind: pickupGrid ? pickupGrid.fieldRevision ? 'two-independent-solved-edge-observation-positions' : 'two-independent-authored-observation-positions' : 'fixed-normalized-pickup-vector', energyPolicy: 'read-existing-modal-state;no-excitation-or-damping-change', slewSeconds: 0.008, maximumL2Norm: 1, release: 'hold-last-observation-position' },
     cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length, pickupWeightProductsPerFrame: pickupGrid ? modes.length * 8 : 0 },
     qualification: 'implementation-awaiting-decay-mode-cost-and-listening-qualification' };
   profile.configurationBytes = encodeUtf8(sympatheticNetworkIdentity(profile)).length; profile.stateBytes += profile.configurationBytes;

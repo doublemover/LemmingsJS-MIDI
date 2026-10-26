@@ -1,7 +1,7 @@
 import { verifyShapeBodyAsset, selectShapeBodyTier, shapeBodyFailure } from './ShapeBodyAsset.js';
-import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
+import { canonicalDataText, freezeData, hashData } from '../../core/CanonicalData.js';
 
-export async function createShapeBodyRecipe({ asset: raw, calibration } = {}) {
+export async function createShapeBodyRecipe({ asset: raw, calibration, edgeField = null } = {}) {
   const asset = await verifyShapeBodyAsset(raw), tier = selectShapeBodyTier(asset, calibration), sites = asset.source.excitationSites;
   if (calibration?.schema !== 'lemmings-shape-body-calibration-set/v1' || calibration.assetHash !== asset.assetHash || !Number.isSafeInteger(calibration.frames) || calibration.frames < 1 || calibration.frames > calibration.sampleRate * 4 || !Array.isArray(calibration.files) || calibration.files.length !== sites.length) shapeBodyFailure('A playable recipe requires the complete current all-site calibration set.');
   const prefix = 'shape.' + asset.id + '.m' + tier.modeCount + '.' + asset.assetHash.slice(0, 16), rights = kind => ({ kind, creator: asset.source.rights.creator, sourceUrl: 'urn:lemmings:shape-body:' + asset.assetHash, licenseId: 'NOASSERTION', licenseUrl: null,
@@ -17,6 +17,10 @@ export async function createShapeBodyRecipe({ asset: raw, calibration } = {}) {
     contents.push({ path: 'samples/' + file.siteId + '.wav', sha256: hash, bytes: file.bytes, parents: [asset.assetHash] });
   }
   const samples = contents.slice(3), quantity = (value, unit) => ({ value, unit }), component = (id, values) => ({ id, role: id, parameters: Object.fromEntries(Object.entries(values).map(([key, [value, unit]]) => [key, quantity(value, unit)])) });
+  if (edgeField?.state === 'prepared') {
+    if (edgeField.receipt?.sourceAssetHash !== asset.assetHash || !/^[a-f0-9]{64}$/.test(edgeField.fieldHash) || await hashData(edgeField.receipt, { maxBytes: 262144, maxNodes: 16384 }) !== edgeField.fieldHash) shapeBodyFailure('The generated edge field differs from this exact solved body.');
+    contents.push({ path: 'shape/edge-field.json', sha256: edgeField.fieldHash, bytes: canonicalDataText(edgeField.receipt, { maxBytes: 262144, maxNodes: 16384 }).bytes, parents: [asset.assetHash, asset.meshHash] });
+  }
   const source = { schema: 'lemmings-sound-recipes/v1', pack: { id: prefix, version: '1.0.0', name: asset.id + ' · ' + tier.modeCount + ' signed modes', author: asset.source.rights.creator,
     sourceUrl: 'urn:lemmings:shape-body:' + asset.assetHash, licenseId: 'NOASSERTION', licenseUrl: null, attribution: 'Original geometry foundry. Algebraic convergence is recorded; mesh resolution, listening and device qualification remain pending.', modifications: [], redistributionPolicy: 'unknown', licenses: [] },
   files: contents.map(file => ({ path: file.path, sha256: file.sha256, bytes: file.bytes.byteLength, kind: file.path.endsWith('.wav') ? 'sample' : 'generated-data', mediaType: file.path.endsWith('.wav') ? 'audio/wav' : 'application/json', parents: file.parents, rights: rights(file.path.endsWith('.wav') ? 'sample-recording' : 'derived-data') })),
@@ -27,5 +31,5 @@ export async function createShapeBodyRecipe({ asset: raw, calibration } = {}) {
       selectionPolicy: { algorithmVersion: 'stable-semantic-onset-fnv32-v1', seed: 0, advanceOn: 'semantic-onset', unknownArticulation: 'neutral', rootSelection: 'nearest-lower-tie' }, releasePolicy: 'owned-end', normalizationRef: null, rightsRef: 'original-shape-and-solver-receipts',
       zones: samples.map((file, index) => ({ id: sites[index].id, articulationId: sites[index].id, roundRobinGroup: sites[index].id, alternateIndex: 0, velocityMin01: 0, velocityMax01: 1, assetHash: file.sha256, onsetFrame: 0, endFrame: calibration.frames, rootCents: 6900, gain01: 1, tuningCents: 0, pitchTracking: 'fixed', pitchRange: { minCents: 0, maxCents: 12700, maxTransposeCents: 0 }, playbackMode: 'forward', loop: null, releaseRegion: null, chokeGroup: null })) } }] };
   return { source: freezeData(source), contents, receipt: freezeData({ schema: 'lemmings-shape-body-recipe/v1', assetHash: asset.assetHash, modeCount: tier.modeCount, sampleRate: tier.sampleRate, sites: sites.map(site => site.id),
-    sourceCardinality: 'one-admitted-intent-selects-one-original-site-sample;no-added-onsets', pitchPolicy: 'fixed-calibrated-body;no-inferred-root', runtime: 'existing-owned-sampler;no-native-solver-required', qualification: tier.qualification }) };
+    sourceCardinality: 'one-admitted-intent-selects-one-original-site-sample;no-added-onsets', pitchPolicy: 'fixed-calibrated-body;no-inferred-root', runtime: 'existing-owned-sampler;no-native-solver-required', sharedEdgeFieldHash: edgeField?.state === 'prepared' ? edgeField.fieldHash : null, qualification: tier.qualification }) };
 }
