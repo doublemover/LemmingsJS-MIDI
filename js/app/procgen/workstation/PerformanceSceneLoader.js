@@ -1,3 +1,4 @@
+import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 import { validatePerformanceScene } from './PerformanceScene.js';
 import { checkPerformanceSceneRequirements } from './PerformanceSceneRequirements.js';
@@ -16,7 +17,7 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
   const state = () => { let canApply = false; try { canApply = !!prepared && !pending && !disposed && !fault && selected?.serial === prepared.operation.serial && getBaseIdentity() === prepared.baseIdentity; } catch {} return freezeData({ schema: 'lemmings-performance-scene-loader/v1', phase, disposed, selection: selected ? { id: selected.scene.id, version: selected.scene.version, title: selected.scene.title, variants: selected.variants } : null,
     current, canApply, previewAvailable: preparePreview !== null, pending: !!pending, prepared: prepared ? { preflight: prepared.preflight, baseIdentity: prepared.baseIdentity, policy: 'stopped-replacement', changedScope: ['world', 'sound', 'physical-mappings', 'transport-paused'] } : null,
     preview: preview ? { state: preview.ready ? 'isolated-local' : 'preparing', sceneHash: preview.sceneHash, playing: preview.ready ? preview.owner?.state?.().playing ?? true : false,
-      sourceHash: preview.owner?.manifest?.sourceHash || null, ticks: preview.owner?.manifest?.ticks || null, cueIncludedInMasterCapture: preview.owner?.monitorRoute?.cueIncludedInMasterCapture ?? null } : null, error: lastError, retirementUnknown: !!fault }); };
+      authoredStations: preview.authoredStations, stations: preview.owner?.manifest?.privateStations || null, sourceHash: preview.owner?.manifest?.sourceHash || null, ticks: preview.owner?.manifest?.ticks || null, cueIncludedInMasterCapture: preview.owner?.monitorRoute?.cueIncludedInMasterCapture ?? null } : null, error: lastError, retirementUnknown: !!fault }); };
   const report = () => { try { onState(state()); } catch { /* Observers cannot own a candidate. */ } };
   const baseIdentity = () => { const value = getBaseIdentity(); if (typeof value !== 'string' || !value || value.length > 4096) throw failure('scene-base-unavailable', 'The active document and routing identity is unavailable.'); return value; };
   const check = operation => { operation.controller.signal.throwIfAborted(); if (disposed || fault || selected?.serial !== operation.serial || baseIdentity() !== operation.baseIdentity) throw failure('stale-scene-operation', 'The selected scene, live document or output routing changed. Prepare again.'); };
@@ -71,13 +72,15 @@ export function createPerformanceSceneLoader({ getBaseIdentity, resolveDependenc
   const stopPreview = async () => {
     const old = preview; preview = null; if (!old) return; old.controller.abort(new Error('Scene preview ended.')); await old.promise?.catch(() => {}); await retire(old.owner); report();
   };
-  const rehearse = async () => {
+  const rehearse = async ({ authoredStations = false } = {}) => {
+    if (typeof authoredStations !== 'boolean') throw failure('scene-preview-policy-unavailable', 'Choose an explicit private station rehearsal policy.');
     if (!preparePreview) throw failure('scene-preview-unavailable', 'An isolated local scene audition owner is unavailable.');
     const source = prepared; if (!source || pending || preview) throw failure('scene-not-ready', 'Prepare the exact selected scene before rehearsal.'); check(source.operation);
-    const operation = { controller: new AbortController(), owner: null, promise: null, sceneHash: source.preflight.sceneHash, ready: false }; preview = operation; report();
+    if (authoredStations && !inspectSceneStationRehearsal(source.operation.scene).available) throw failure('scene-preview-policy-unavailable', 'This score has no supported one-shot work stations.');
+    const operation = { controller: new AbortController(), owner: null, promise: null, sceneHash: source.preflight.sceneHash, authoredStations, ready: false }; preview = operation; report();
     operation.promise = (async () => {
       let candidate;
-      try { candidate = await preparePreview({ candidate: source.candidate, scene: source.operation.scene, preflight: source.preflight, signal: operation.controller.signal, isCurrent: () => preview === operation && prepared === source && !disposed && !operation.controller.signal.aborted && baseIdentity() === source.baseIdentity });
+      try { candidate = await preparePreview({ candidate: source.candidate, authoredStations, scene: source.operation.scene, preflight: source.preflight, signal: operation.controller.signal, isCurrent: () => preview === operation && prepared === source && !disposed && !operation.controller.signal.aborted && baseIdentity() === source.baseIdentity });
         check(source.operation); operation.controller.signal.throwIfAborted();
         if (preview !== operation || prepared !== source || candidate?.routing !== 'isolated-local' || candidate?.externalOutput !== false || typeof candidate?.retire !== 'function') throw failure('scene-preview-unbound', 'Preview requires an independent local owner and explicit external-output isolation.');
         operation.owner = candidate; candidate = null; operation.ready = true;

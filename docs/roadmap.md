@@ -6047,3 +6047,34 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Static checks only. Explicit private Workshop station arming, composite layer
   families, live warp and the other roadmap work remain development; combined
   runtime/numerical/browser validation and CI qualification remain deferred.
+
+
+### Continuation 237 — explicitly armed private Workshop stations
+
+- Added a separate scene-browser action to rehearse authored work stations only
+  in the cold private world. Ordinary rehearsal stays unarmed; CURRENT, NEXT and
+  live feedback state remain unchanged. The initial profile permits at most
+  eight one-shot, actual-pickup, source-actor skill assignments, without layer
+  loops, substituted actors or unbounded retries.
+- Reused the existing physical feedback/intervention owner. Private requests,
+  queue admission, actual applied/rejected facts and pending commands at the
+  prefix boundary are independently retained. A crossing/request adds no
+  musical onset; successful real work operations still own the attacks. Prefix
+  cleanup cancels remaining private commands without advancing the world.
+- The source and render bind an exact station ledger and report requested,
+  applied, rejected and pending counts. Malformed, duplicate or inconsistent
+  ledgers fail before a cue is published. The scene browser shows those actual
+  prefix counts; it does not present a requested skill as completed work.
+- Private listener detachment, station controller, interpretation, clone and
+  checkpoint-reader retirement now retain explicit dependencies. Independent
+  cleanup is attempted even when a sibling fails; a still-used world is not
+  released under an unacknowledged listener/controller. Retired ledger storage
+  cannot be visited again, while an already captured source remains immutable.
+- Authored unrun real-world station/work, finite outcome, canceled pending
+  assignment, unsupported/cold-world policy and explicit-loader-policy fixtures.
+  Their eventual runtime results are separate from native synthesis, audio,
+  physical-take history and listening acceptance. No runtime suite has run.
+- The Workshop can now request its authored private work phrase through the
+  native rehearsal adapter, subject to the deferred runtime/browser pass.
+  Composite layers, remaining scene variations and other roadmap development
+  remain open; all acceptance and CI claims are still pending.

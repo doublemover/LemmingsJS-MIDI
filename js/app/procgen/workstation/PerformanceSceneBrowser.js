@@ -1,3 +1,4 @@
+import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onStatus = () => {} } = {}) {
@@ -56,6 +57,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   const prepare = button(actions, 'Prepare fresh', run(async () => { if (!selectedManifest) return; loader.select(selectedManifest); const result = await loader.prepare(); say(result.status === 'ready' ? 'Candidate ready. Inspect the changed scope, then use Load fresh.' : 'Required source or capabilities are unavailable. The live world remains active.'); }));
   const load = button(actions, 'Load fresh · stopped replacement', run(async () => { const result = await loader.apply(); say(result.status === 'committed' ? 'Scene loaded paused. Enable local audio explicitly, then perform a real physical intervention.' : 'Scene replacement canceled.'); }));
   const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'Enable browser audio and select a Prelisten route first. This creates a new private physical phrase, not a recording of CURRENT.';
+  const stationRehearsal = button(actions, 'Rehearse with private work stations', run(() => loader.rehearse({ authoredStations: true }))); stationRehearsal.hidden = true; stationRehearsal.title = 'Explicitly arms one-shot skill stations only in the private rehearsal copy. CURRENT and NEXT feedback state is unchanged.';
   const learn = typeof onLesson === 'function' ? button(actions, 'Learn this physical cause', run(async () => { const scene = selectedManifest; if (!scene || !canTeachScene(scene)) return; await loader.cancel(); if (selectedManifest !== scene) return; if (dialog.open) dialog.close(); await onLesson(scene); })) : null;
   const stopRehearsal = button(actions, 'Stop rehearsal', () => { void loader.stopPreview().catch(error => say(error.message)); });
   button(actions, 'Cancel preparation', () => { void loader.cancel().catch(error => say(error.message)); });
@@ -68,11 +70,12 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
     if (learn) learn.disabled = busy || !selectedManifest || !canTeachScene(selectedManifest);
     prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready' || !state.canApply;
-    rehearse.disabled = busy || !state.previewAvailable || !state.canApply || !!state.preview; stopRehearsal.disabled = !state.preview;
+    rehearse.disabled = busy || !state.previewAvailable || !state.canApply || !!state.preview; stationRehearsal.hidden = !inspectSceneStationRehearsal(selectedManifest).available; stationRehearsal.disabled = rehearse.disabled || stationRehearsal.hidden; stopRehearsal.disabled = !state.preview;
     if (state.error) status.textContent = state.error.message;
     else if (state.pending || ['world-source', 'world-assets', 'world-geometry', 'sound-assets', 'sound-compile', 'resource-admission'].includes(state.phase)) status.textContent = 'Preparing: ' + state.phase + '. Live world retained.';
     else if (state.preview) status.textContent = state.preview.state === 'preparing' ? 'Rehearsal: capturing a bounded checkpoint, simulating a private world and rendering its observed intents. CURRENT and NEXT stay unchanged.' : (state.preview.playing ? 'Playing private rehearsal' : 'Rehearsal ended') + ' · ' + state.preview.ticks + ' observed ticks · ' + (state.preview.cueIncludedInMasterCapture ? 'live output; included in master capture.' : 'separate-device cue; excluded from master capture.') + ' Stop rehearsal releases its prepared preview.';
     else if (state.prepared) status.textContent = 'Ready: replaces world, sound and physical mappings; transport will be paused. Local audio and recording are not enabled by the scene.';
+    if (state.preview?.stations) status.textContent += ' Private stations: ' + state.preview.stations.requested + ' requested, ' + state.preview.stations.applied + ' applied, ' + state.preview.stations.rejected + ' rejected and ' + state.preview.stations.pendingAtPrefixEnd + ' pending at the prefix boundary. Live feedback state is unchanged.';
     const proof = state.prepared?.preflight;
     if (proof?.missingOptional.length) status.textContent += ' Optional unavailable: ' + proof.missingOptional.map(entry => entry.dependency.description).join(', ');
   }

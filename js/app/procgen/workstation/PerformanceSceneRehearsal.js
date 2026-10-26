@@ -1,3 +1,6 @@
+import { sceneStationRehearsalReceipt } from './SceneStationPolicy.js';
+import { requireSynchronousResourceAcknowledgement } from '../../resources/ResourceRetirement.js';
+import { createSceneStationRehearsal } from './SceneStationRehearsal.js';
 import { prepareSceneNativeRehearsal } from './SceneNativeRehearsal.js';
 import { prepareSceneEffectRack } from './SceneEffectRack.js';
 import { effectGraphHash } from '../../../midi/content/EffectGraphRevision.js';
@@ -14,12 +17,13 @@ const retire = async (owner, method) => { if (!owner) return; const receipt = aw
 
 export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld, jobs, resourceBudget } = {}) {
   if (!audio?.acquireAudition || !audio?.createSession || typeof prepareInspectionWorld !== 'function' || !jobs?.compute || !resourceBudget) throw new TypeError('Scene rehearsal requires independent inspection, worker, cue and resource owners.');
-  return async ({ candidate, scene, preflight, signal, isCurrent }) => {
+  return async ({ candidate, scene, preflight, signal, isCurrent, authoredStations = false }) => {
+    if (typeof authoredStations !== 'boolean') throw failure('scene-station-policy-unavailable', 'Choose an explicit private station policy.');
     if (!candidate?.borrowRehearsalCheckpoint || scene.cost.lanes > 8 || (scene.cost.sharedBodies !== 0 && (!candidate.rehearsalRecipe?.initialMorphMechanism || scene.cost.sharedBodies !== sceneMorphMechanismCost(candidate.rehearsalRecipe.initialMorphMechanism).bodyCount)) || scene.patchRefs.some(row => row.reference.assetHashes.length) || scene.causalMappings.instruments.some(value => value.route !== 'local')) throw failure('scene-rehearsal-profile-unavailable', 'Rehearsal supports up to eight local assetless lanes and the exact authored paired or two-endpoint body route profile.');
     const bodyCost = scene.cost.sharedBodies ? sceneMorphMechanismCost(candidate.rehearsalRecipe.initialMorphMechanism) : null;
     const context = audio.getAudioContext(), monitor = audio.getMonitorRouteState();
     if (!audio.getState().enabled || context?.state !== 'running' || !['rehearsal', 'separate-device'].includes(monitor.mode) || !['ready', 'playing-route'].includes(monitor.state)) throw failure('scene-rehearsal-cue-unavailable', 'Enable browser audio and choose an explicit Prelisten route before preparing a rehearsal.');
-    const controller = new AbortController(), scope = createProcgenRetirementScope(); let loan = null, clone = null, engine = null, listener = null, job = null, cue = null, session = null, audition = null, workspace = null, workerFault = null, ready = false, fenceTimer = null, nativeSources = null, nativeInputHanded = false, upstreamRetirement = null;
+    const controller = new AbortController(), scope = createProcgenRetirementScope(); let loan = null, clone = null, engine = null, listener = null, job = null, cue = null, session = null, audition = null, workspace = null, workerFault = null, ready = false, fenceTimer = null, nativeSources = null, nativeInputHanded = false, upstreamRetirement = null, stationController = null, worldCleanup = null;
     const abort = () => controller.abort(signal.reason); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
     const check = () => { controller.signal.throwIfAborted(); if (!isCurrent() || audio.getAudioContext() !== context || context.state !== 'running' || audio.getMonitorRouteState().revision !== monitor.revision || audition && !audition.isCurrent()) throw failure('stale-scene-rehearsal', 'The scene, private monitor route or audio clock changed.'); };
     const releaseJob = async () => {
@@ -27,10 +31,16 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
       if (!['released', 'canceled'].includes(state.phase)) throw failure('scene-rehearsal-worker-unknown', 'The rehearsal worker still owns its admitted result.'); job = null;
     };
     const cleanupWorld = async () => {
-      if (listener && clone) { clone.world.soundEvents.onBatch.off(listener); listener = null; }
-      if (engine) { engine.dispose(); engine = null; }
-      if (clone) { await retire(clone, 'dispose'); clone = null; }
-      if (loan) { loan.release(); loan = null; }
+      if (!worldCleanup) {
+        const ownedListener = listener, ownedClone = clone, ownedEngine = engine, ownedStations = stationController, ownedLoan = loan;
+        const detached = Promise.resolve().then(() => { if (ownedListener && ownedClone) ownedClone.world.soundEvents.onBatch.off(ownedListener); listener = null; });
+        const stationStopped = detached.then(async () => { if (ownedStations) { const receipt = ownedStations.retire(); await receipt.completion; if (receipt.outcome !== 'complete') throw failure('scene-station-retirement-unknown', 'The private work stations retain unresolved ownership.'); } stationController = null; });
+        const engineStopped = detached.then(() => { ownedEngine?.dispose(); engine = null; });
+        worldCleanup = createProcgenRetirementScope().retire([{ name: 'private-world-listener', run: () => detached }, { name: 'private-station-controller', run: () => stationStopped }, { name: 'private-interpretation', run: () => engineStopped },
+          { name: 'private-world', run: async () => { await Promise.all([stationStopped, engineStopped]); if (ownedClone) await retire(ownedClone, 'dispose'); clone = null; } },
+          { name: 'private-checkpoint-reader', run: () => { if (ownedLoan) requireSynchronousResourceAcknowledgement(ownedLoan.release(), 'Private checkpoint reader release'); loan = null; } }]);
+      }
+      await worldCleanup.completion; if (worldCleanup.outcome !== 'complete') throw failure('scene-private-world-retirement-unknown', 'Private source owners retain unresolved ownership.');
     };
     const close = () => {
       if (scope.getReceipt()) return scope.getReceipt(); ready = false; clearInterval(fenceTimer); fenceTimer = null; controller.abort(failure('scene-rehearsal-stopped', 'The rehearsal stopped.'));
@@ -51,20 +61,21 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
       loan = await candidate.borrowRehearsalCheckpoint({ signal: controller.signal, isCurrent }); check();
       clone = await prepareInspectionWorld({ checkpoint: loan.checkpoint, signal: controller.signal }); check();
       if (!clone?.world || clone.world.tickIndex !== 0) throw failure('scene-rehearsal-world-unavailable', 'Rehearsal requires an independently owned unadvanced inspection world.');
-      restoreProcgenCheckpoint(clone.world, loan.checkpoint); check(); loan.release(); loan = null;
+      restoreProcgenCheckpoint(clone.world, loan.checkpoint); check(); requireSynchronousResourceAcknowledgement(loan.release(), 'Private checkpoint reader release'); loan = null;
       const world = clone.world, origin = world.simulationTimeMs, intents = []; let callbackError = null, batches = 0, last = null, admittedBytes = 0;
       engine = createCausalMusicEngine({ world, resourceBudget, getGraph: () => scene.causalMappings, traceLimit: 0, maxVoices: scene.cost.maximumVoices, maxBeginsPerBatch: Math.min(512, scene.cost.maximumVoices) });
+      if (authoredStations) stationController = await createSceneStationRehearsal({ scene, sceneHash: preflight.sceneHash, world, resourceBudget }); check();
       listener = batch => { try { check(); if (++batches > 512 || batch.completeness.status !== 'complete' || batch.completeness.dropped || batch.worldId !== world.worldId || batch.generation !== world.generation) throw failure('scene-rehearsal-source-incomplete', 'The private source could not retain complete bounded physical facts.');
         const values = engine.processBatch(batch); if (intents.length + values.length > 8192) throw failure('scene-rehearsal-source-capacity', 'The rehearsal exceeds its bounded intent history.');
         admittedBytes += canonicalDataText(values, { maxBytes: 1048576, maxNodes: 65536 }).bytes.length; if (admittedBytes > 4 * 1048576) throw failure('scene-rehearsal-source-capacity', 'The rehearsal exceeds its admitted source representation.');
-        intents.push(...values); last = batch;
+        intents.push(...values); last = batch; stationController?.observe(batch, engine.physicalAnalysis());
       } catch (error) { callbackError ||= error; } };
       world.soundEvents.onBatch.on(listener);
       for (let tick = 0; tick < 512 && world.simulationTimeMs - origin < 6000; tick++) { check(); const before = batches; world.step(); if (callbackError) throw callbackError;
         if (batches !== before + 1 || !last || world._failedTick) throw failure('scene-rehearsal-source-incomplete', 'Every rehearsal tick must produce one complete observed batch.'); if (tick % 4 === 3) await yieldTask(); }
       check(); const health = engine.diagnostics(); if (!last || health.recoveryRequired || health.deliveryErrors || health.rejectedBegins) throw failure('scene-rehearsal-source-incomplete', 'The private interpretation did not cover every source onset.');
       const source = freezeData({ schema: 'lemmings-scene-rehearsal-source/v1', sceneHash: preflight.sceneHash, initialTick: 0, ticks: batches, sourceTimeMs: origin,
-        durationSeconds: (last.sourceTimeMs + last.tickDurationMs - origin) / 1000, worldId: world.worldId, generation: world.generation, seed: world.seed, intents });
+        durationSeconds: (last.sourceTimeMs + last.tickDurationMs - origin) / 1000, worldId: world.worldId, generation: world.generation, seed: world.seed, intents, ...(stationController ? { stations: stationController.metadata() } : {}) });
       const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }); check(); await cleanupWorld(); check();
       const rack = candidate.rehearsalRecipe?.initialEffectRack, effectPlan = rack ? prepareSceneEffectRack(rack, context.sampleRate) : null;
       nativeSources = await prepareSceneNativeRehearsal({ scene, source, sourceHash, sampleRate: context.sampleRate, resourceBudget, jobs, signal: controller.signal, isCurrent }); check();
@@ -76,6 +87,7 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
       const result = job.value;
       if (!(result?.bytes instanceof Uint8Array) || result.bytes.byteLength > 16 * 1048576 || result.manifest?.sourceHash !== sourceHash || result.manifest.sceneHash !== preflight.sceneHash || result.manifest.applicationBuildId !== scene.sourceVersion.hash || result.manifest.currentWorldAdvanced !== false || result.manifest.nextWorldAdvanced !== false || result.manifest.externalOutput !== false || scene.cost.sharedBodies && (result.manifest.recipeHash !== scene.worldRecipeRef.hash || result.manifest.body?.mapHash !== candidate.rehearsalRecipe.initialMorphMechanism.map.hash || result.manifest.body?.semanticOnsetsAdded !== 0 || result.manifest.body?.faults !== 0 || result.manifest.body?.bodyCount !== scene.cost.sharedBodies || result.manifest.body?.strategy !== bodyCost.strategy || result.manifest.body?.modeCount !== bodyCost.modeCount)) throw failure('scene-rehearsal-render-unbound', 'The worker rehearsal differs from its admitted scene and physical source.');
       if (effectPlan && (result.manifest.recipeHash !== scene.worldRecipeRef.hash || result.manifest.effects?.definitionHash !== await hashData(effectPlan.rack.graph, { maxBytes: 65536, maxNodes: 8192 }) || result.manifest.effects.graphHash !== await effectGraphHash(effectPlan.plan) || result.manifest.effects.semanticOnsetsAdded !== 0 || result.manifest.effects.controls !== 'authored-static-defaults;no-replayed-throw-gestures' || result.manifest.effects.tailFrames !== effectPlan.previewTailFrames || result.manifest.effects.declaredMaximumTailFrames !== effectPlan.plan.maximumTailFrames || result.manifest.effects.tailTruncatedByPreviewBound !== (effectPlan.previewTailFrames < effectPlan.plan.maximumTailFrames))) throw failure('scene-rack-rehearsal-unbound', 'The private rack render differs from its authored graph, processing identity or explicitly bounded preview tail.');
+      if (canonicalDataText(result.manifest.privateStations ?? null).text !== canonicalDataText(sceneStationRehearsalReceipt(source.stations)).text) throw failure('scene-station-rehearsal-unbound', 'The private station source/result counts differ from their explicit rehearsal ledger.');
       const manifest = freezeData(result.manifest); cue = await session.preparePcmCue({ bytes: result.bytes, manifest, signal: controller.signal, isCurrent: () => { try { check(); return true; } catch { return false; } } }); check(); await releaseJob(); check();
       audition.markReady(); const playback = cue.play(); check(); audition.markPlaying(); ready = true;
       cue.completion.then(() => close()); fenceTimer = setInterval(() => { try { check(); } catch (error) { controller.abort(error); } }, 50);
