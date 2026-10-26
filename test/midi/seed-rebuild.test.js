@@ -8,7 +8,7 @@ import { prepareExportArtifact } from '../../js/app/export/ExportArtifact.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { compileSoundContent } from '../../js/midi/content/SoundContentCompiler.js';
-import { canonicalDataText } from '../../js/core/CanonicalData.js';
+import { canonicalDataText, hashData } from '../../js/core/CanonicalData.js';
 
 const hash = 'a'.repeat(64), receipt = letter => ({ definitionHash: letter.repeat(64), engineRequirement: { engineId: 'worklet-sine', engineVersion: 1, artifactHash: letter.repeat(64), parameterSchemaHash: 'd'.repeat(64) } });
 const artifact = (budget, manifest, amplitude) => {
@@ -47,6 +47,22 @@ describe('explicit frozen-material branch rebuilds (runtime acceptance deferred)
     expect((await planSoundSeedRebuild({ ...f, seed: { ...f.seed, manifest: legacy } })).blockers.some(blocker => blocker.state === 'unknown')).to.equal(true);
     const missing = await planSoundSeedRebuild({ ...f, selectedMaterial: 'sustained-like' }); expect(missing.blockers.some(blocker => blocker.node === 'components')).to.equal(true);
     await f.dispose();
+  });
+  it('plans a three-parent composition and fitted graft in dependency order without rewriting the frozen original', async () => {
+    const f = await make(), originalHash = f.seed.metadata().assetHash;
+    const components = { parentAssetHash: originalHash, recipe: { algorithmRevision: 'linked-stereo-median-masks-v1', fftSize: 512, medianWidths: { temporalFrames: 3, frequencyBins: 3 }, maskMargins: { sustained: 2, transient: 2 } },
+      components: ['transient-like', 'sustained-like', 'residual'].map((kind, index) => ({ kind, assetHash: String(index + 1).repeat(64) })) };
+    const componentAssetHashes = Object.fromEntries(components.components.map(entry => [entry.kind, entry.assetHash]));
+    const composition = { parentAssetHash: originalHash, components: [{ kind: 'component-composition', assetHash: 'f'.repeat(64) }], recipe: { algorithmRevision: 'aligned-printed-component-branches-v1', decompositionRevision: components.recipe.algorithmRevision,
+      decompositionRecipeHash: await hashData(components.recipe), componentAssetHashes, options: { residualGain: 0.25, transientDrive: 2 } } };
+    const modal = { parentAssetHash: 'f'.repeat(64), recipe: { algorithmRevision: 'coarse-local-stereo-decay-fit-v1', observationFrames: 512, fftSize: 1024, maxModes: 4, frequencyRange: [80, 6000], amplitudeT60Range: [0.02, 2], manualModes: [] } };
+    const plan = await planSoundSeedRebuild({ ...f, components, composition, modal, selectedMaterial: 'component-composition', transform: 'feedforward-graft', graftBody: 'fitted', pitch: { mode: 'pitched', rootCents: 6000 } });
+    expect(plan.state).to.equal('rebuildable'); expect(plan.nodes.map(node => node.id)).to.deep.equal(['source', 'region', 'components', 'composition', 'modal', 'patch']);
+    expect(plan.nodes.at(-1).parents).to.deep.equal(['composition', 'modal']); expect(plan.modalParentMaterial).to.equal('component-composition');
+    expect(plan.compositionOptions).to.deep.equal(composition.recipe.options); expect(plan.compositionInputs.componentAssetHashes).to.deep.equal(componentAssetHashes);
+    const wrong = structuredClone(composition); wrong.recipe.componentAssetHashes.residual = 'e'.repeat(64);
+    const blocked = await planSoundSeedRebuild({ ...f, components, composition: wrong, selectedMaterial: 'component-composition' }); expect(blocked.state).to.equal('unavailable'); expect(blocked.blockers.some(entry => entry.node === 'composition')).to.equal(true);
+    expect(f.seed.metadata().assetHash).to.equal(originalHash); await f.dispose();
   });
   it('prepares a new isolated branch, retains the old seed and fences stale target or plan publication', async () => {
     const f = await make(), plan = await planSoundSeedRebuild(f), descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sample', engineVersion: 1, artifactHash: 'e'.repeat(64) }]);

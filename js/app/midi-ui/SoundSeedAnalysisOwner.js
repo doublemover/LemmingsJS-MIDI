@@ -26,9 +26,9 @@ export function createSoundSeedAnalysisOwner({ resourceBudget, jobs = background
     return record.scope.retire([{ name: 'frozen-seed-artifact', run: () => artifactFinished },
       { name: 'seed-waveform-and-metadata', run: async () => { await artifactFinished; record.workspace.release(); record.waveform = null; } }]);
   };
-  const releaseInput = async operation => {
+  const releaseInput = operation => {
     if (!operation.window) return;
-    const receipt = operation.window.release(); await receipt.completion;
+    const receipt = operation.window.release();
     if (!complete(receipt)) throw Object.assign(fail('The immutable source window has unresolved retirement.'), { retirement: receipt });
     operation.window = null;
   };

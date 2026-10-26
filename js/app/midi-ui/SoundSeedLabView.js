@@ -11,11 +11,11 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 export function createSoundSeedLabView({ document, window, audio, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
-  let analysis, instrument, derived, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
+  let analysis, instrument, derived, composition, compositionDraft = -1, compositionRevision = 0, preparedCompositionRevision = -1, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
   const node = (tag, text) => { const element = document.createElement(tag); if (text != null) element.textContent = text; return element; };
   const listen = (element, event, handler) => { element.addEventListener(event, handler); listeners.push(() => element.removeEventListener(event, handler)); };
   const root = node('section'); root.className = 'studio-seed-lab'; root.hidden = true; root.setAttribute('aria-label', 'Sound seed laboratory');
-  const title = node('h2', 'Sound seed'), sourceText = node('p'), scope = node('p', 'Local retained browser audio only. The isolated cue bus is excluded from master capture. This action uses no microphone, system capture or upload.');
+  const title = node('h2', 'Sound seed'), sourceText = node('p'), scope = node('p', 'Local retained browser audio only. Separate-device cue is excluded from master capture; live-output rehearsal is included. This action uses no microphone, system capture or upload.');
   const ruler = node('output'), canvas = node('canvas'); canvas.width = 960; canvas.height = 160; canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', 'Actual stereo min/max waveform; exact trim frames are in the controls below');
   const plot = node('div'); plot.className = 'studio-seed-plot'; plot.append(ruler, canvas);
   const fields = node('div'); fields.className = 'studio-seed-fields';
@@ -41,6 +41,14 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   status.setAttribute('role', 'status'); readiness.setAttribute('aria-label', 'Independent seed readiness');
   const advanced = node('details'), advancedTitle = node('summary', 'COMPONENTS · estimates with aligned original phase'), componentInfo = node('output'), componentStrips = node('div');
   advanced.className = 'studio-seed-components'; advanced.append(advancedTitle, node('p', 'Transient-like, sustained-like and residual estimates share one stereo mask. Neutral reconstruction error measures PCM summation, not perceptual isolation. Selecting a strip uses its material for a separate recipe.'), componentInfo, componentStrips);
+  const compositionInfo = node('output'), compositionFields = node('div'); compositionFields.className = 'studio-seed-fields';
+  const compositionInputs = {};
+  for (const [key, label, value, minimum, maximum, step] of [
+    ['transientGain', 'Transient gain · 0 mutes', 1, 0, 2, 0.05], ['sustainedGain', 'Sustained gain · 0 mutes', 1, 0, 2, 0.05], ['residualGain', 'Residual gain · 0 mutes', 1, 0, 2, 0.05],
+    ['outputGain', 'Printed output gain', 1, 0, 1, 0.05], ['transientDrive', 'Transient drive · 1 bypasses', 1, 1, 4, 0.1], ['sustainedLowpassHz', 'Sustained lowpass Hz · 0 bypasses', 0, 0, 12000, 1], ['residualHighpassHz', 'Residual highpass Hz · 0 bypasses', 0, 0, 6000, 1]
+  ]) { const input = numeric(label, value, minimum, maximum); input.step = String(step); compositionInputs[key] = input; compositionFields.append(input.parentNode); }
+  const compositionSolo = select('Printed branch solo', [['all', 'All branches'], ['transient-like', 'Transient only'], ['sustained-like', 'Sustained only'], ['residual', 'Residual only']]); compositionFields.append(compositionSolo.parentNode);
+  advanced.append(node('p', 'Print explicit branch gains, solo, transient drive and sustained/residual filters into one new asset. Neutral summation error stays separate from creative differences. Filters start at zero and are cropped at the exact frozen end; no implicit tail padding, normalization or limiter.'), compositionFields, compositionInfo);
   const bodyPage = node('details'), bodyTitle = node('summary', 'BODY FIT · editable damped-sinusoid approximation'), bodyInfo = node('output'), bodyModes = node('div'), bodySpectrum = node('canvas'); bodySpectrum.width = 960; bodySpectrum.height = 120; bodySpectrum.setAttribute('role', 'img'); bodySpectrum.setAttribute('aria-label', 'Actual linked stereo source spectrum with estimated mode marks');
   const observation = numeric('Body observation · original frames', 4096, 512, 65536), padding = select('Body FFT size', [['512', '512'], ['1024', '1024'], ['2048', '2048'], ['4096', '4096'], ['8192', '8192'], ['16384', '16384'], ['32768', '32768'], ['65536', '65536']]); padding.value = '8192';
   bodyPage.className = 'studio-seed-body'; bodyModes.className = 'studio-seed-mode-list';
@@ -58,22 +66,24 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     active = Promise.resolve(work).catch(error => say(error.message)).finally(() => { active = null; refresh(); }); refresh();
   };
   const button = (text, action) => { const element = node('button', text); element.type = 'button'; listen(element, 'click', action); actions.append(element); return element; };
-  const chosenCandidate = () => modalSelection ? modal.component(modalSelection) : derivedSelection ? derived.component(derivedSelection) : analysis.candidate();
+  const derivedCandidate = selection => selection === 'component-composition' ? composition.component(selection) : selection ? derived.component(selection) : analysis.candidate();
+  const compositionCurrent = () => compositionDraft === draft && preparedCompositionRevision === compositionRevision;
+  const chosenCandidate = () => modalSelection ? modal.component(modalSelection) : derivedCandidate(derivedSelection);
   const invalidateModal = () => { modalRevision++; compiledDraft = -1; rebuildPlan = null; rebuild.stop(); modal.cancel(); instrument.stop(); refresh(); };
-  const invalidateTrim = () => { rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); derivedSelection = null; derivedDraft = -1; derived.cancel(); draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
+  const invalidateTrim = () => { rebuildPlan = null; rebuild.stop(); modalSelection = null; modalDraft = -1; modal.cancel(); derivedSelection = null; derivedDraft = -1; derived.cancel(); composition.cancel(); compositionDraft = -1; draft++; compiledDraft = -1; analysis.cancel(); instrument.stop(); drawn = null; refresh(); };
   const invalidateRecipe = () => { rebuildPlan = null; rebuild.stop(); recipeDraft++; compiledDraft = -1; instrument.stop(); refresh(); };
   const refreshTravelButton = button('Refresh committed travel mappings', () => { refreshTravelChoices(); invalidateRecipe(); });
   listen(transform, 'change', refreshTravelChoices);
   const nudge = (input, amount) => () => { input.value = String(Math.max(Number(input.min), Math.min(Number(input.max), Number(input.value) + amount))); trimIn.value = first.value; trimOut.value = end.value; invalidateTrim(); };
   button('In −1 frame', nudge(first, -1)); button('In +1 frame', nudge(first, 1)); button('Out −1 frame', nudge(end, -1)); button('Out +1 frame', nudge(end, 1));
   const prepare = button('Freeze selected region', run(async () => {
-    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1;
+    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1;
     const result = await analysis.prepare({ firstFrame: Number(first.value), endFrame: Number(end.value), fades: { inFrames: Number(fadeIn.value), outFrames: Number(fadeOut.value), law: law.value }, isCurrent: () => revision === draft });
     editableModes = []; selectedModes.clear(); renderModes(); modalDrawn = null; bodySpectrum.getContext('2d')?.clearRect(0, 0, 960, 120);
     candidateDraft = revision; viewFirst.value = '0'; drawn = null; renderAncestry(result); say('Region frozen in memory. Inspect the original frame range, then compile its recipe.');
   }));
   const compile = button('Compile seed instrument', run(async () => {
-    if (candidateDraft !== draft || modalSelection && (modalDraft !== draft || preparedModalRevision !== modalRevision)) throw new Error('Freeze or refit the edited material before compiling.');
+    if (candidateDraft !== draft || derivedSelection === 'component-composition' && !compositionCurrent() || modalSelection && (modalDraft !== draft || preparedModalRevision !== modalRevision)) throw new Error('Freeze or refit the edited material before compiling.');
     const revision = draft, recipeRevision = recipeDraft, fitRevision = modalRevision;
     await instrument.prepare(chosenCandidate(), { modalFit: (transform.value === 'modal-body' || ['feedforward-graft', 'motion-body-graft'].includes(transform.value) && graftBody.value === 'fitted') && modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, transform: transform.value, graftBody: graftBody.value, traversalBinding: currentTraversalBinding(), pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' },
       isCurrent: () => revision === draft && recipeRevision === recipeDraft && fitRevision === modalRevision });
@@ -88,15 +98,27 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
       if (suggested.outLocalFrame != null) end.value = String(wave.firstParentFrame + suggested.outLocalFrame);
     }); trimIn.value = first.value; trimOut.value = end.value; invalidateTrim();
   });
-  button('Stop / cancel', () => { analysis.cancel(); instrument.stop(); });
+  button('Stop / cancel', () => { analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); });
   const download = button('Export frozen WAV', () => { const candidate = chosenCandidate(); if (!candidate?.metadata().assetReady) return;
     const receipt = deliverArtifactToAnchor(candidate.artifact, { document, windowRef: window }); say(receipt.state === 'delivery-requested' ? 'WAV download requested. Browser completion is unacknowledged; the in-memory seed remains available.' : 'WAV delivery ' + receipt.state + '.'); });
   const decompose = button('Analyze seed components', run(async () => {
     if (candidateDraft !== draft) throw new Error('Freeze the current range before component analysis.');
-    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; derivedSelection = null;
+    const revision = draft; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; derivedSelection = null;
     await derived.prepare(analysis.candidate(), { isCurrent: () => revision === draft }); derivedDraft = revision; derivedDrawn = null; compiledDraft = -1;
     say('Components prepared in memory. Their source phase, frame alignment and measured neutral reconstruction receipt are retained.');
   }));
+  const printComposition = button('Prepare printed component composition', run(async () => {
+    if (candidateDraft !== draft || derivedDraft !== draft) throw new Error('Analyze all three components of the current frozen range first.');
+    const revision = draft, edit = compositionRevision; await instrument.clear(); await modal.clear(); modalSelection = null; modalDraft = -1;
+    await composition.prepare(analysis.candidate(), { options: { ...Object.fromEntries(Object.entries(compositionInputs).map(([key, input]) => [key, Number(input.value)])), solo: compositionSolo.value },
+      componentCandidates: ['transient-like', 'sustained-like', 'residual'].map(kind => derived.component(kind)), isCurrent: () => revision === draft && edit === compositionRevision });
+    compositionDraft = revision; preparedCompositionRevision = edit; compiledDraft = -1; drawn = null;
+    say('Composition printed into a separate immutable asset. Select it explicitly before compiling, fitting or saving.');
+  }));
+  const useComposition = button('Use printed composition material', () => { if (active || !compositionCurrent() || !composition.component('component-composition')?.metadata().assetReady) return; modalSelection = null; derivedSelection = 'component-composition'; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
+  for (const input of [...Object.values(compositionInputs), compositionSolo]) listen(input, 'change', () => {
+    compositionRevision++; composition.cancel(); if (modalParentSelection === 'component-composition') invalidateModal(); invalidateRecipe();
+  });
   const compare = button('Compare selected dry material · up to 8s', run(() => instrument.audition({ comparison: true })));
   const recombined = button('Use neutral recombined material', () => { if (active || derivedDraft !== draft || !derived.component('neutral-recombined')?.metadata().assetReady) return; modalSelection = null; derivedSelection = 'neutral-recombined'; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
   const original = button('Use original frozen seed', () => { if (active) return; modalSelection = null; derivedSelection = null; invalidateRecipe(); const candidate = chosenCandidate(); if (candidate) renderAncestry(candidate); drawn = null; });
@@ -107,8 +129,8 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     strip.append(label, stripCanvas); componentStrips.append(strip);
   }
   const performFit = manual => run(async () => {
-    const selection = manual ? modalParentSelection : derivedSelection, candidate = selection ? derived.component(selection) : analysis.candidate();
-    if (!candidate?.metadata().assetReady || candidateDraft !== draft) throw new Error('Freeze the current source range before fitting.');
+    const selection = manual ? modalParentSelection : derivedSelection, candidate = derivedCandidate(selection);
+    if (!candidate?.metadata().assetReady || candidateDraft !== draft || selection === 'component-composition' && !compositionCurrent()) throw new Error('Freeze the current source range before fitting.');
     const revision = draft, fitRevision = modalRevision; await instrument.clear();
     const options = { observationFrames: Number(observation.value), fftSize: Number(padding.value), ...(manual ? { manualModes: editableModes.map(({ id, frequencyHz, t60Seconds, pinned }) => ({ id, frequencyHz, t60Seconds, pinned })) } : { pinnedModes: (modal.state().analysis?.parentAssetHash === candidate.metadata().assetHash ? editableModes : []).filter(mode => mode.pinned).map(({ id, frequencyHz, t60Seconds, pinned }) => ({ id, frequencyHz, t60Seconds, pinned })) }) };
     await modal.prepare(candidate, { options, isCurrent: () => revision === draft && fitRevision === modalRevision });
@@ -141,13 +163,13 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     }
   }
   const nested = button('Use frozen seed as next source', run(async () => { const candidate = chosenCandidate(); if (!candidate?.metadata().assetReady || derivedSelection || modalSelection) return;
-    await instrument.clear(); await modal.clear(); modalDraft = -1; await derived.clear(); derivedDraft = -1; await analysis.selectSource({ artifact: candidate.artifact, manifest: candidate.manifest }); resetRange(); say('Frozen material selected as the next immutable parent. Its original ancestry and gap evidence remain attached.'); }));
+    await instrument.clear(); await modal.clear(); modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedDraft = -1; await analysis.selectSource({ artifact: candidate.artifact, manifest: candidate.manifest }); resetRange(); say('Frozen material selected as the next immutable parent. Its original ancestry and gap evidence remain attached.'); }));
   button('Keep recorded material', () => { offeredSerial++; offeredSource = null; rebuildPlan = null; rebuild.stop(); say('Original frozen material kept. Revoicing has not changed its PCM or any project reference.'); refresh(); });
   const harvestNew = button('Harvest offered file independently', run(async () => { if (!offeredSource) return; const source = offeredSource; offeredSource = null; offeredSerial++; await loadSource(source); }));
   const planBranch = button('Plan selected derived rebuild', run(async () => {
     if (!offeredSource || !analysis.candidate()?.metadata().assetReady) throw new Error('Offer a completed revoice file while retaining the original frozen seed.');
     const selectedSerial = offeredSerial;
-    const plan = await planSoundSeedRebuild({ seed: analysis.candidate(), replacement: offeredSource, components: derivedDraft === draft ? derived.state().analysis : null,
+    const plan = await planSoundSeedRebuild({ seed: analysis.candidate(), replacement: offeredSource, components: derivedDraft === draft ? derived.state().analysis : null, composition: compositionCurrent() ? composition.state().analysis : null,
       modal: modalDraft === draft && preparedModalRevision === modalRevision ? modal.state().analysis : null, selectedMaterial: modalSelection || derivedSelection || 'original',
       transform: transform.value, graftBody: graftBody.value, traversalBinding: currentTraversalBinding(), pitch: pitch.value === 'pitched' ? { mode: 'pitched', rootCents: Number(rootPitch.value) } : { mode: 'unpitched' } });
     if (selectedSerial !== offeredSerial) return; rebuildPlan = plan; refresh();
@@ -158,7 +180,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   }));
   const auditionBranch = button('Audition derived branch', run(() => rebuild.audition())), saveBranch = button('Save derived branch locally', run(() => rebuild.install())), applyBranch = button('Apply derived branch to selected lane', run(() => rebuild.apply()));
   const discardBranch = button('Discard candidate branch', run(() => rebuild.clear()));
-  const close = () => { sourceSelection++; analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
+  const close = () => { sourceSelection++; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); root.hidden = true; };
   button('Close seed dock', close);
   function resetRange() {
     const source = analysis.state().source; first.value = '0'; end.value = String(Math.min(source.sourceFrames, Math.floor(source.sampleRate * 1.5), Math.floor(15 * 1048576 / 8)));
@@ -193,15 +215,18 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
     });
   }
   function paint() {
-    if (disposed || !analysis || !instrument || !derived || !modal || !rebuild) return; const a = analysis.state(), i = instrument.state(), d = derived.state(), m = modal.state(), branch = rebuild.state(), candidate = chosenCandidate(), meta = candidate?.metadata(), validAsset = !!meta?.assetReady && candidateDraft === draft && (!modalSelection || modalDraft === draft && preparedModalRevision === modalRevision), validPatch = validAsset && compiledDraft === recipeDraft && i.compiledPatchReady;
+    if (disposed || !analysis || !instrument || !derived || !composition || !modal || !rebuild) return; const a = analysis.state(), i = instrument.state(), d = derived.state(), c = composition.state(), m = modal.state(), branch = rebuild.state(), candidate = chosenCandidate(), meta = candidate?.metadata(), validAsset = !!meta?.assetReady && candidateDraft === draft && (derivedSelection !== 'component-composition' || compositionCurrent()) && (!modalSelection || modalDraft === draft && preparedModalRevision === modalRevision), validPatch = validAsset && compiledDraft === recipeDraft && i.compiledPatchReady;
     sourceText.textContent = a.source ? a.source.originKind + ' · ' + a.source.sourceTap + ' · ' + a.source.sourceFrames.toLocaleString() + ' original frames at ' + a.source.sampleRate + ' Hz · ' + a.source.immutableSourceRef : 'No retained source selected.';
     readiness.textContent = 'ASSET ' + (validAsset ? 'ready in memory' : meta?.assetReady ? 'stale draft' : 'not frozen') + ' · PATCH ' + (validPatch ? 'compiled' : 'not prepared for draft') + ' · AUDITION ' + (validPatch && i.audibleAuditionReady ? 'completed' : 'not completed') + ' · STORAGE ' + (validPatch && i.durable ? 'committed locally' : 'not durable') + (i.targetCurrent === false ? ' · MOTION TARGET changed; prepare for this document and lane again' : '');
     if (a.active || i.active) status.textContent = a.active ? a.phase + (a.progress ? ' · ' + a.progress.completedUnits + '/' + a.progress.totalUnits : '') : i.phase;
     warnings.textContent = [a.error, i.error, ...(validPatch ? i.recipe.warnings : []), meta ? 'Coverage: ' + meta.coverage.status + ' · peak ' + meta.statistics.peak.toFixed(5) + ' · clipped samples ' + meta.statistics.clippedSamples + ' · stereo correlation ' + (meta.statistics.stereoCorrelation == null ? 'undefined for silent channel' : meta.statistics.stereoCorrelation.toFixed(4)) : '',
       pitch.value === 'unpitched' && ['modal-body', 'feedforward-graft', 'motion-body-graft'].includes(transform.value) ? transform.value === 'motion-body-graft' ? 'Declare body tuning independently; source speed follows observed travel.' : 'Declare a body reference pitch; the finite graft exciter remains fixed-rate.' : pitch.value === 'unpitched' && transform.value === 'ice-dust' ? 'Ice dust requires a declared root for the current granular renderer. Choose a sampler recipe for Unpitched material.' : ''].filter(Boolean).join(' ');
-    const busy = !!active || branch.active || branch.unknownRetirement || m.active || m.unknownRetirement || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
+    const busy = !!active || branch.active || branch.unknownRetirement || m.active || m.unknownRetirement || c.active || c.unknownRetirement || d.active || d.unknownRetirement || a.active || a.selectingSource || i.active || a.unknownRetirement || i.unknownRetirement;
     prepare.disabled = busy || !a.source; compile.disabled = busy || !validAsset; audition.disabled = busy || !validPatch; save.disabled = busy || !validPatch || !i.audibleAuditionReady;
     apply.disabled = busy || !validPatch || !i.audibleAuditionReady || !i.durable || i.targetCurrent === false; download.disabled = !meta?.assetReady; nested.disabled = busy || !validAsset || !!derivedSelection || !!modalSelection; decompose.disabled = busy || !validAsset; recombined.disabled = busy || derivedDraft !== draft || !d.analysis; compare.disabled = busy || !validPatch || transform.value === 'modal-body'; useCrossings.disabled = busy || !validAsset || !!derivedSelection; original.disabled = busy || !derivedSelection; rootPitch.disabled = pitch.value !== 'pitched';
+    printComposition.disabled = busy || derivedDraft !== draft || !d.analysis; useComposition.disabled = busy || !compositionCurrent() || !c.analysis;
+    for (const input of [...Object.values(compositionInputs), compositionSolo]) input.disabled = busy;
+    compositionInfo.textContent = c.active ? c.phase : c.error || (c.analysis ? (compositionCurrent() ? '' : 'STALE EDIT · ') + c.analysis.recipe.mode + ' · neutral max error ' + c.analysis.reconstruction.maximumAbsoluteError.toExponential(3) + ' · printed creative RMS difference ' + c.analysis.recipe.creativeDifference.rmsDifference.toExponential(3) + ' · one asset; no new semantic onsets' : 'No printed composition prepared. Gain/filter edits require explicit Prepare.');
     fit.disabled = busy || !validAsset; refit.disabled = busy || modalDraft !== draft || !editableModes.length; mergeModes.disabled = busy || selectedModes.size < 2;
     harvestNew.disabled = busy || !offeredSource; planBranch.disabled = busy || !offeredSource || !analysis.candidate()?.metadata().assetReady;
     buildBranch.disabled = busy || rebuildPlan?.state !== 'rebuildable' || !offeredSource; auditionBranch.disabled = busy || !branch.summary; saveBranch.disabled = busy || !branch.instrument?.audibleAuditionReady;
@@ -240,31 +265,33 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   for (const input of [observation, padding]) listen(input, 'change', invalidateModal);
   for (const input of [transform, pitch, rootPitch, graftBody, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, rebuildPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
   derived = createSoundSeedDerivedOwner({ resourceBudget, jobs, onState: refresh });
+  composition = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'composition', onState: refresh });
   modal = createSoundSeedDerivedOwner({ resourceBudget, jobs, kind: 'body-fit', onState: refresh });
   instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, getTargetIdentity, onApply, onState: refresh,
     onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   rebuild = createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, onApply, onState: refresh,
     getTargetIdentity: () => ({ target: getTargetIdentity(), draft, recipeDraft, modalRevision, offeredSerial }), onReveal: () => { if (!disposed) { root.hidden = false; refresh(); } } });
   async function loadSource(source) {
-    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop();
-    await instrument.clear(); await rebuild.clear(); rebuildPlan = null; await modal.clear(); modalSelection = null; modalDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
+    if (disposed) return; const selection = ++sourceSelection; root.hidden = false; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop();
+    await instrument.clear(); await rebuild.clear(); rebuildPlan = null; await modal.clear(); modalSelection = null; modalDraft = -1; await composition.clear(); compositionDraft = -1; await derived.clear(); derivedSelection = null; derivedDraft = -1; if (selection !== sourceSelection || disposed) return;
     await analysis.selectSource(source); if (selection !== sourceSelection || disposed) return; resetRange(); root.scrollIntoView?.({ block: 'nearest' }); first.focus(); say('Choose an exact parent-frame range. The original source is retained by its capture or render owner.');
   }
   return Object.freeze({ async open(source) {
     if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
-  }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
-  suspend() { analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); },
+  }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
+  suspend() { analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); },
   dispose() {
-    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); modal.cancel(); rebuild.stop(); instrument.stop();
-    const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(async () => { const receipt = instrument.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed audition still owns material.'); });
-    return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-rebuild', run: async () => { await instrumentFinished; return rebuild.dispose(); } }, { name: 'seed-modal', run: async () => { await instrumentFinished; const receipt = rebuild.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Derived branch still owns seed material.'); return modal.dispose(); } }, { name: 'seed-derived', run: async () => { await instrumentFinished; const receipt = modal.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Modal analysis still owns derived material.'); return derived.dispose(); } }, { name: 'seed-analysis', run: async () => { await instrumentFinished; const modalReceipt = modal.dispose(); await modalReceipt.completion; if (modalReceipt.outcome !== 'complete') throw new Error('Modal analysis still owns seed material.'); const receipt = derived.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Derived analysis still owns seed material.'); return analysis.dispose(); } },
+    if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop();
+    const retire = async owner => { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed material retains unresolved producers or readers.'); };
+    const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(() => retire(instrument)), rebuildFinished = instrumentFinished.then(() => retire(rebuild)), modalFinished = rebuildFinished.then(() => retire(modal)), compositionFinished = modalFinished.then(() => retire(composition)), derivedFinished = compositionFinished.then(() => retire(derived)), analysisFinished = derivedFinished.then(() => retire(analysis));
+    return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-rebuild', run: () => rebuildFinished }, { name: 'seed-modal', run: () => modalFinished }, { name: 'seed-composition', run: () => compositionFinished }, { name: 'seed-derived', run: () => derivedFinished }, { name: 'seed-analysis', run: () => analysisFinished },
       { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
       ...[...listeners.splice(0), ...modeListeners.splice(0)].map((remove, index) => ({ name: 'seed-listener-' + index, run: remove })), { name: 'seed-dock', run: () => root.remove() }]);
   } });

@@ -4727,3 +4727,45 @@ unrun. Only formatting, syntax/provenance and limited critical typecheck checks
 are used in this development pass. Procedural sand/cloth-to-body variants, sealed
 bow/reed outer-body templates, the complete Nursery scene, matched-level spectra,
 listening and device qualification remain pending.
+
+
+### Continuation 194 — explicit component printing and selected rebuilds (#1170, #1178, #1236)
+
+The seed lab now prints creative recombinations of the existing immutable linked
+stereo transient/sustained/residual outputs. Explicit branch gain/mute/solo,
+transient drive, sustained one-pole lowpass, residual one-pole highpass and output
+gain are prepared through a worker-only admitted job. Input checks bind all three
+component hashes to one decomposition recipe, original source, rate, generation,
+zero delay and exact frame crop. The original frozen PCM remains selectable.
+No analysis rerun is required to change only composition controls.
+
+The printed recipe preserves all parent references, processing equations, source
+rate, filter terminal state and explicit end crop, normalization policy and
+original printed-effect annotation. Actual neutral reconstruction and creative
+output difference are reported independently. The new asset is labeled printed
+processing with no new semantic onsets; it is not presented as live independent
+layers, perceptually isolated sources or an acoustic receipt. The owner joins all
+four source-window/producer retirements, preserves previous output on failure and
+retains unresolved ownership instead of releasing accounting early. Worker output
+transport can transfer the actual seed component and waveform buffers. Seed-window
+release now acknowledges synchronously as required by the shared worker service;
+returning an async callback previously made otherwise completed preparation retain
+an unknown admission lease. The new ownership fixture uses the real paged service
+and endpoint with an explicit test-only build identity, rather than bypassing that
+release contract in a direct kernel stub.
+
+Selection, fitting, compilation, audition, save and Apply use existing owners.
+Edited controls invalidate prepared descendants; Stop, Escape, suspension and
+ordered disposal cancel/join the new work. Rebuild plans add the exact selected
+composition closure before any fitted body or patch; fitted grafts explicitly
+depend on both material and body nodes. New branches preserve original artifacts
+and other project references. Cue copy now distinguishes separate-device cue
+(excluded from capture) from live-output rehearsal (included).
+
+Neutral PCM equivalence, creative branch equations, filter/mute, mixed-parent and
+crop rejection, cancellation, four-reader retirement and composed rebuild-plan
+fixtures are authored but unrun. Only formatting, syntax, provenance and limited
+critical typecheck checks are used in this development pass. Live Hammer/Cloud,
+Bowed Scrap and Hollow Tool layer templates, independent warp qualification,
+matched-level/listening/browser/device evidence and the complete combined runtime
+validation pass remain pending.

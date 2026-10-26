@@ -1,3 +1,4 @@
+import { composeSeedComponents } from './SeedComponentComposition.js';
 import { fitSoundSeedModes } from './SeedModalFit.js';
 import { solveShapeBody } from './ShapeBodySolver.js';
 import { solveOriginalShapeRefinement } from './ShapeBodyRefinement.js';
@@ -167,6 +168,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
     return { value, inputBytes, nodes: metadata.nodes + input.planes.length, retainedBytes: 65536 };
+  }
+  if (kind === 'compose-sound-seed-components') {
+    const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, componentInputs: input?.componentInputs?.map(value => ({ ...value, pcm: null, originBytes: null })) }, { maxBytes: 65536, maxNodes: 8192 });
+    const bytes = (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + metadata.bytes.length + (input?.componentInputs || []).reduce((sum, value) => sum + (value?.pcm?.byteLength || 0) + (value?.originBytes?.byteLength || 0), 0);
+    if (bytes > maxBytes) throw problem('input-capacity', 'The component windows exceed their admitted composition workspace.');
+    const result = await composeSeedComponents(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress }); return { ...result, inputBytes: bytes };
   }
   if (['analyze-sound-seed-window', 'decompose-sound-seed', 'fit-sound-seed-modes'].includes(kind)) {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null }, { maxBytes: 65536, maxNodes: 8192 });

@@ -9,8 +9,8 @@ const fail = message => Object.assign(new Error(message), { name: 'SeedDerivedEr
 let ordinal = 0;
 
 export function createSoundSeedDerivedOwner({ resourceBudget, jobs = backgroundJobService, kind = 'components', onState = () => {} } = {}) {
-  if (!['components', 'body-fit'].includes(kind)) throw new TypeError('Choose an owned seed analysis kind.');
-  const expectedKinds = kind === 'components' ? ['transient-like', 'sustained-like', 'residual', 'neutral-recombined'] : ['modal-reconstruction', 'modal-residual'];
+  if (!['components', 'body-fit', 'composition'].includes(kind)) throw new TypeError('Choose an owned seed analysis kind.');
+  const expectedKinds = kind === 'composition' ? ['component-composition'] : kind === 'components' ? ['transient-like', 'sustained-like', 'residual', 'neutral-recombined'] : ['modal-reconstruction', 'modal-residual'];
   const ownerId = 'seed-derived-' + (++ordinal), retirement = createProcgenRetirementScope(), unknown = new Set();
   let current = null, active = null, sequence = 0, disposed = false, error = null, phase = 'no-derived-analysis', progress = null;
   const state = () => Object.freeze({ disposed, active: !!active, phase, progress, error, unknownRetirement: unknown.size, analysis: current?.summary || null });
@@ -23,29 +23,41 @@ export function createSoundSeedDerivedOwner({ resourceBudget, jobs = backgroundJ
       entry.workspace.release(); entry.waveform = null;
     } })));
   };
-  const prepare = (candidate, { options = {}, isCurrent = () => true } = {}) => {
+  const prepare = (candidate, { options = {}, componentCandidates = [], isCurrent = () => true } = {}) => {
     if (disposed || active || unknown.size || !candidate?.metadata().assetReady || typeof isCurrent !== 'function' || current?.entries.some(entry => entry.artifact === candidate?.artifact)) return Promise.reject(fail('Select one ready frozen seed and finish its current analysis.'));
-    const generation = ++sequence, operation = { controller: new AbortController(), source: null, window: null, job: null, handed: false, producer: null, next: { scope: createProcgenRetirementScope(), entries: [], summary: null }, promise: null };
+    const parents = kind === 'composition' ? [candidate, ...componentCandidates] : [candidate];
+    if (kind === 'composition' && (componentCandidates.length !== 3 || parents.some(parent => !parent?.metadata?.().assetReady))) return Promise.reject(fail('Composition needs the original and its three ready decomposition components.'));
+    const generation = ++sequence, operation = { controller: new AbortController(), sources: [], windows: [], job: null, handed: false, producer: null, next: { scope: createProcgenRetirementScope(), entries: [], summary: null }, promise: null };
     const savedOptions = freezeData(JSON.parse(canonicalDataText(options, { maxBytes: 4096, maxNodes: 128 }).text));
-    const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || !isCurrent() || !candidate.metadata().assetReady) throw fail('The parent seed or derived draft generation changed.'); };
-    const releaseWindow = async () => { if (!operation.window) return; const receipt = operation.window.release(); await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Derived input window retirement is unresolved.'); operation.window = null; };
+    const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || !isCurrent() || parents.some(parent => !parent.metadata().assetReady)) throw fail('The parent seed or derived draft generation changed.'); };
+    const releaseWindow = () => {
+      const receipts = operation.windows.map(window => window.release());
+      if (receipts.some(receipt => receipt.outcome !== 'complete')) throw fail('Derived input window retirement is unresolved.'); operation.windows.length = 0; return true;
+    };
     active = operation; error = progress = null; phase = 'reading-frozen-seed'; report();
     operation.promise = (async () => {
       let caught = null;
       try {
-        check(); operation.source = createOwnedSoundSeedSource({ artifact: candidate.artifact, manifest: candidate.manifest, resourceBudget });
-        const metadata = operation.source.metadata(), pcmBytes = metadata.sourceFrames * 8;
-        if (pcmBytes > 4 * 1048576 || metadata.sourceFrames > metadata.sampleRate * 8) throw fail('Select at most eight seconds and 4 MiB of frozen stereo material for advanced analysis.');
-        operation.window = await operation.source.readWindow({ firstFrame: 0, endFrame: metadata.sourceFrames, signal: operation.controller.signal, isCurrent }); check();
-        const inputBytes = pcmBytes + operation.window.value.originBytes.length + canonicalDataText({ ...operation.window.value, pcm: null, originBytes: null, options: savedOptions, generation }).bytes.length;
+        check();
+        for (const parent of parents) {
+          const source = createOwnedSoundSeedSource({ artifact: parent.artifact, manifest: parent.manifest, resourceBudget }); operation.sources.push(source);
+          const metadata = source.metadata();
+          if (metadata.sourceFrames * 8 > 4 * 1048576 || metadata.sourceFrames > metadata.sampleRate * 8) throw fail('Select at most eight seconds and 4 MiB of frozen stereo material for advanced analysis.');
+          operation.windows.push(await source.readWindow({ firstFrame: 0, endFrame: metadata.sourceFrames, signal: operation.controller.signal, isCurrent })); check();
+        }
+        const metadata = operation.sources[0].metadata(), pcmBytes = metadata.sourceFrames * 8;
+        const inputs = operation.windows.map(window => ({ ...window.value, generation })), [originalInput, ...componentInputs] = inputs;
+        const metadataBytes = canonicalDataText({ ...originalInput, pcm: null, originBytes: null, options: savedOptions,
+          ...(kind === 'composition' ? { componentInputs: componentInputs.map(value => ({ ...value, pcm: null, originBytes: null })) } : {}) }, { maxBytes: 65536, maxNodes: 8192 }).bytes.length;
+        const inputBytes = inputs.reduce((sum, value) => sum + value.pcm.length + value.originBytes.length, metadataBytes);
         const size = savedOptions.fftSize ?? 2048, cells = (Math.ceil(metadata.sourceFrames / (size / 4)) + 1) * (size / 2 + 1);
-        phase = 'queued-component-analysis'; report();
-        operation.job = await jobs.compute({ kind: kind === 'body-fit' ? 'fit-sound-seed-modes' : 'decompose-sound-seed', ownerId, ownerEpoch: generation, sourceRevision: candidate.metadata().assetHash,
-          inputBytes, maxBytes: inputBytes, estimatedPeakBytes: kind === 'body-fit' ? 64 * 1048576 + pcmBytes * 16 : Math.ceil(32 * 1048576 + pcmBytes * 16 + cells * 12), priority: 'background', budgetAdapter: resourceBudget,
+        phase = kind === 'composition' ? 'queued-component-composition' : 'queued-component-analysis'; report();
+        operation.job = await jobs.compute({ kind: kind === 'composition' ? 'compose-sound-seed-components' : kind === 'body-fit' ? 'fit-sound-seed-modes' : 'decompose-sound-seed', ownerId, ownerEpoch: generation, sourceRevision: candidate.metadata().assetHash,
+          inputBytes, maxBytes: inputBytes, estimatedPeakBytes: kind === 'composition' ? 64 * 1048576 + pcmBytes * 32 : kind === 'body-fit' ? 64 * 1048576 + pcmBytes * 16 : Math.ceil(32 * 1048576 + pcmBytes * 16 + cells * 12), priority: 'background', budgetAdapter: resourceBudget,
           signal: operation.controller.signal, isCurrent: () => !disposed && isCurrent(), onProgress: value => { progress = value; phase = value.phase; report(); },
-          prepareInput: () => { operation.handed = true; return { ...operation.window.value, generation, options: savedOptions }; }, releasePreparedInput: releaseWindow }); check();
+          prepareInput: () => { operation.handed = true; return { ...originalInput, options: savedOptions, ...(kind === 'composition' ? { componentInputs } : {}) }; }, releasePreparedInput: releaseWindow }); check();
         const result = operation.job.value, artifacts = [...(result?.components || []), ...(kind === 'components' && result?.recombined ? [result.recombined] : [])];
-        if (operation.job.receipt.method !== 'dedicated-worker' || operation.job.receipt.executionIdentity?.activeExecution !== 'bound' || result?.schema !== (kind === 'body-fit' ? 'lemmings-seed-modal-fit/v1' : 'lemmings-seed-decomposition/v1') ||
+        if (operation.job.receipt.method !== 'dedicated-worker' || operation.job.receipt.executionIdentity?.activeExecution !== 'bound' || result?.schema !== (kind === 'composition' ? 'lemmings-seed-component-composition/v1' : kind === 'body-fit' ? 'lemmings-seed-modal-fit/v1' : 'lemmings-seed-decomposition/v1') ||
             result.generation !== generation || result.recipe.parentAssetHash !== candidate.metadata().assetHash || !Array.isArray(result.components) || artifacts.length !== expectedKinds.length ||
             artifacts.some((entry, index) => entry.kind !== expectedKinds[index] || !(entry.bytes instanceof Uint8Array) || !/^[a-f0-9]{64}$/.test(entry.assetHash) ||
               entry.manifest?.frames !== metadata.sourceFrames || entry.manifest.sampleRate !== metadata.sampleRate || !(entry.waveform?.minMax instanceof Float32Array) || entry.waveform.minMax.length !== entry.waveform.bins * 4 || entry.waveform.bins > 1024)) throw fail('The derived artifacts differ from their admitted parent, frame inventory or worker.');
@@ -76,10 +88,10 @@ export function createSoundSeedDerivedOwner({ resourceBudget, jobs = backgroundJ
       });
       const inputFinished = workerFinished.then(releaseWindow);
       const cleanup = createProcgenRetirementScope().retire([{ name: 'derived-worker', run: () => workerFinished }, { name: 'derived-input', run: () => inputFinished },
-        { name: 'derived-source', run: async () => { await inputFinished; const receipt = operation.source?.dispose(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') throw fail('Derived source reader retirement is unresolved.'); } operation.source = null; } }]); await cleanup.completion;
+        { name: 'derived-source', run: async () => { await inputFinished; const receipts = operation.sources.map(source => source.dispose()); await Promise.all(receipts.map(receipt => receipt.completion)); if (receipts.some(receipt => receipt.outcome !== 'complete')) throw fail('Derived source reader retirement is unresolved.'); operation.sources.length = 0; } }]); await cleanup.completion;
       if (cleanup.outcome !== 'complete') { unknown.add({ operation, cleanup }); caught ||= fail('Derived analysis retains unresolved ownership.'); }
       if (!caught) { try { check(); const prior = discard(current); if (prior) { await prior.completion; if (prior.outcome !== 'complete') { unknown.add({ current, prior }); throw fail('Previous components retain unresolved readers.'); } } check();
-        current = operation.next; phase = kind === 'body-fit' ? 'modal-estimate-ready' : 'components-ready'; progress = null; report(); return current.summary;
+        current = operation.next; phase = kind === 'composition' ? 'component-composition-ready' : kind === 'body-fit' ? 'modal-estimate-ready' : 'components-ready'; progress = null; report(); return current.summary;
       } catch (failure) { caught = failure; } }
       const discarded = discard(operation.next); await discarded.completion; if (discarded.outcome !== 'complete') unknown.add({ record: operation.next, discarded });
       error = String(caught.message).slice(0, 512); phase = unknown.size ? 'ownership-unknown' : current ? 'previous-components-retained' : 'no-derived-analysis'; report(); throw caught;

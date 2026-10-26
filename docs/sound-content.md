@@ -708,3 +708,23 @@ reports exact aggregate decoded bytes for this admission. The output context
 allows up to 120 s of captured history plus 30 s of explicitly bounded effect
 tail, subject to the existing memory/work limits. These are implementation
 bounds, not measured device/browser throughput or listening qualification.
+
+
+Seed components can be recombined into an explicitly printed new asset in the
+seed lab. Transient, sustained and residual branches use the exact same frozen
+frame ruler. Each branch has gain/mute and solo; transient drive, sustained
+lowpass and residual highpass have explicit bypass settings. Preparing a new mix
+reuses the three immutable decomposition outputs. The actual original remains
+selectable, and selecting the printed composition is a separate action before
+fitting, compiling, auditioning, saving or applying.
+
+The composition recipe pins all three component hashes, original source, analysis
+revision, gains, filters and source rate. It retains original printed effects and
+annotates new processing separately. Neutral reconstruction error measures the
+unprocessed sum even for a creative mix; the creative difference is a separate
+measurement. No normalization, limiter, automatic latency correction or tail
+extension is applied. Filters start at zero and terminate at the exact selected
+end; their terminal state and possible crop are reported. This creates one
+playable asset, not three live layer voices or a qualified source separation.
+Selected revoice rebuilds preserve the exact composition dependency closure and
+reprint a new branch before refitting or compiling its descendants.

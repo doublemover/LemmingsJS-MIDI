@@ -5,9 +5,9 @@ import { createBackgroundJobWorkerEndpoint } from '../../js/app/resources/Backgr
 // Exercise the production paged transport and kernels with explicit ownership.
 // This supplies browser Worker semantics to headless orchestration fixtures.
 class BackgroundWorker {
-  constructor() {
+  constructor(endpointOptions = {}) {
     this.terminated = false;
-    this.endpoint = createBackgroundJobWorkerEndpoint({ close() {}, postMessage: (message, transfer = []) => {
+    this.endpoint = createBackgroundJobWorkerEndpoint({ ...endpointOptions, close() {}, postMessage: (message, transfer = []) => {
       const data = structuredClone(message, { transfer });
       queueMicrotask(() => { if (!this.terminated) this.onmessage?.({ data }); });
     } });
@@ -19,7 +19,7 @@ class BackgroundWorker {
   terminate() { this.terminated = true; }
 }
 
-export function createTestBackgroundJobs() {
-  const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: BackgroundWorker });
+export function createTestBackgroundJobs(endpointOptions = {}) {
+  const admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: class extends BackgroundWorker { constructor() { super(endpointOptions); } } });
   return { ...jobs, dispose() { jobs.dispose(); admission.dispose(); } };
 }

@@ -22,9 +22,10 @@ export function inspectSeedDerivedInput(input, allowed = []) {
   return { origin, source, frames, sampleRate, generation, firstFrame, endFrame, sample };
 }
 
-export async function encodeSeedDerivedAudio(pcm, source, transform, { check = () => {}, yieldControl = async () => {} } = {}) {
+export async function encodeSeedDerivedAudio(pcm, source, transform, { check = () => {}, yieldControl = async () => {}, bakedEffects = null } = {}) {
   const { frames, sampleRate, origin } = source;
   if (!(pcm instanceof Uint8Array) || pcm.length !== frames * 8) seedDerivedFailure('Derived component frame inventory changed.');
+  if (bakedEffects !== null && (typeof bakedEffects !== 'string' || !bakedEffects.length || bakedEffects.length > 512)) seedDerivedFailure('Printed processing needs an explicit bounded effect annotation.');
   const view = new DataView(pcm.buffer, pcm.byteOffset, pcm.byteLength), blockFrames = 2 ** Math.max(0, Math.ceil(Math.log2(frames / 1024))), bins = Math.ceil(frames / blockFrames), minMax = new Float32Array(bins * 4);
   for (let bin = 0; bin < bins; bin++) { minMax[bin * 4] = minMax[bin * 4 + 2] = Infinity; minMax[bin * 4 + 1] = minMax[bin * 4 + 3] = -Infinity; }
   let peak = 0, squares = 0, clipping = 0, ll = 0, rr = 0, lr = 0;
@@ -47,7 +48,7 @@ export async function encodeSeedDerivedAudio(pcm, source, transform, { check = (
   const statistics = { rawPeak: peak, peak, rawRms: Math.sqrt(squares / (frames * 2)), rms: Math.sqrt(squares / (frames * 2)), rawClippedSamples: clipping, clippedSamples: clipping,
     stereoCorrelation: ll && rr ? Math.max(-1, Math.min(1, lr / Math.sqrt(ll * rr))) : null, silence: peak < 1e-8 };
   const manifest = freezeData({ schema: 'lemmings-sound-seed/v1', revision: transform.algorithmRevision, frames, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', tap: 'derived-frozen-seed-component',
-    rawPcmHash: pcmHash, pcmHash, bakedEffects: origin.bakedEffects, normalization: 'none', dither: 'none-float-output', fades: { inFrames: 0, outFrames: 0, law: 'linear' },
+    rawPcmHash: pcmHash, pcmHash, bakedEffects: bakedEffects ?? origin.bakedEffects, normalization: 'none', dither: 'none-float-output', fades: { inFrames: 0, outFrames: 0, law: 'linear' },
     coverage: { ...origin.coverage, gaps: [], frameDomain: 'seed-local-output-frames' }, ancestry, statistics, derivedTransform: transform,
     bakedCausePolicy: origin.bakedCausePolicy, physicalTakeEvidence: false, acousticReceipt: false, qualification: 'derived-analysis-material;not-perceptual-isolation-or-physical-material-identification' });
   const bytes = encodeOwnedAudioWav(pcm, frames, sampleRate, manifest, { maxMetadataBytes: 262144, maxMetadataNodes: 32768 }), assetHash = await seedDigest(bytes); check();
