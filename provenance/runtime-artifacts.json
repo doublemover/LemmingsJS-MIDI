@@ -287,6 +287,7 @@
         "js/app/resources/SharedContentJobs.js",
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
+        "js/app/resources/StretchCoreImageAbi.js",
         "js/app/resources/WarpSourcePcm.js",
         "js/app/resources/WaveSourceDecode.js",
         "js/core/BoundedMinimumAssignment.js",
@@ -377,8 +378,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 266,
-      "sha256": "651ee7fe5f85a081d87c306241c91685ab96cf86e00e767aa9d26c13007c9e65"
+      "fileCount": 267,
+      "sha256": "08e6b3b944cad5eba378505211ffc5284a8fad71f9dd1a694f797a96c3245a7b"
     },
     {
       "id": "lemmings-timing-worker-source",

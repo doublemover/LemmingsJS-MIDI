@@ -6359,3 +6359,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   test ran. Prepared heap capture/restoration and live WarpVoice remain pending.
 - Also made replaced scene-macro lanes with no local instrument return the
   actionable replacement error before dereferencing their missing reference.
+
+### Continuation 251 — worker-owned initial stretch image capture (#1186, #1234)
+
+- Added opt-in capture after the existing pinned core's worker configuration and
+  nine-point capacity priming. Both stack checks require the exported quiescent
+  frontier. The private copied whole heap, export-only module bytes, exact I/O
+  pointer/extent, RNG frontier and complete configuration have independent hashes.
+  This is an initial empty-source image, not an arbitrary held-state snapshot.
+- Capture requires at least 192 MiB and increases its admitted peak with the heap
+  limit to cover capture/hash/transfer overlap. The ordinary non-image path keeps
+  its configuration contract. Later core operations do not mutate the retained
+  initial copy; reference disposal is distinct from producer retirement.
+- Added one worker-only job to the existing background service, actual build
+  fencing, explicit retained-byte inventory and owned module/heap buffer transfer.
+  It creates no worker pool. The existing worker acknowledgment remains the
+  producer frontier; copying bytes cannot establish that retirement.
+- Authored unrun workspace, build, image/hash/coordinate, independent-copy,
+  original-path and source-disposal fixtures. Formatting, five-file syntax/import
+  checks, critical types and static provenance pass (267 worker modules;
+  10 components / 336 source files). No WASM compilation/execution, runtime,
+  browser, audio/listening or full-suite test ran. Verified image transport,
+  restoration, live source ownership and cost qualification remain pending.

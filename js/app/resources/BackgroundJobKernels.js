@@ -1,3 +1,5 @@
+import { prepareOwnedStretchCore } from './OwnedStretchCore.js';
+import { OWNED_STRETCH_CORE } from '../../midi/content/OwnedStretchCoreIdentity.js';
 import { bakeSeedWarp } from './SeedWarpBake.js';
 import { bakeFiniteFmExcitation } from './FiniteFmExcitation.js';
 import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
@@ -139,6 +141,18 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'prepare-stretch-core-image') {
+    const execution = getActiveExecutionIdentity('browser-background-jobs');
+    if (execution.activeExecution !== 'bound' || input?.applicationBuildId !== execution.buildId || !input || Object.keys(input).some(key => !['wasmBytes', 'applicationBuildId', 'sampleRate', 'blockFrames', 'intervalFrames', 'randomSeed', 'maximumHeapBytes'].includes(key)) || !(input.wasmBytes instanceof Uint8Array) || input.wasmBytes.byteLength !== OWNED_STRETCH_CORE.wasmBytes || maxBytes < OWNED_STRETCH_CORE.wasmBytes + 4096 || estimatedPeakBytes < 192 * 1048576) throw problem('invalid-stretch-image-contract', 'Initial stretch images require their actual worker build, pinned bytes and complete preparation/transfer workspace.');
+    let core;
+    try {
+      onProgress({ phase: 'preparing-empty-stretch-image' });
+      core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: input.sampleRate, blockFrames: input.blockFrames, intervalFrames: input.intervalFrames, randomSeed: input.randomSeed, maximumHeapBytes: input.maximumHeapBytes, captureInitialImage: true, estimatedPeakBytes, signal, current, yieldControl }); guard(signal, current);
+      const image = core.getInitialImage(), metadataBytes = canonicalDataText(image.metadata, { maxBytes: 65536, maxNodes: 4096 }).bytes.length;
+      const value = Object.freeze({ ...image, applicationBuildId: execution.buildId });
+      return { value, inputBytes: input.wasmBytes.byteLength + 4096, nodes: 16, retainedBytes: image.heapBytes.byteLength + image.moduleBytes.byteLength + metadataBytes * 8 + 65536 };
+    } finally { core?.dispose(); }
+  }
   if (kind === 'qualify-original-shape-refinement') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || input?.comparisonBuildHash !== execution.buildId || Object.keys(input).some(key => !['shapeId', 'profileId', 'comparisonBuildHash', 'expectedCoarseAssetHash'].includes(key)) || estimatedPeakBytes < 128 * 1048576) throw problem('engine-identity-unbound', 'Refinement comparison requires its actual bound worker and two complete admitted solves.');
