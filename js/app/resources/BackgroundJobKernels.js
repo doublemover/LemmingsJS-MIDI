@@ -1,3 +1,4 @@
+import { analyzeResonatorMorph } from '../../midi/content/ResonatorMorph.js';
 import { compileSceneTerrainLayout } from '../procgen/SceneTerrainLayout.js';
 import { createShapeBodyEdgeField } from './ShapeBodyEdgeField.js';
 import { composeSeedComponents } from './SeedComponentComposition.js';
@@ -171,6 +172,13 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
     return { value, inputBytes, nodes: metadata.nodes + input.planes.length, retainedBytes: 65536 };
+  }
+  if (kind === 'analyze-resonator-morph') {
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Resonator correspondence source' });
+    if (estimatedPeakBytes < metadata.bytes.length * 32 + 262144) throw problem('workspace-capacity', 'The modal correspondence workspace is not admitted.');
+    const value = await analyzeResonatorMorph(input, { signal, current, yieldControl, onProgress }); guard(signal, current);
+    const encoded = canonicalDataText(value, { maxBytes: 262144, maxNodes: 32768 });
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: encoded.bytes.length * 32 + 131072 };
   }
   if (kind === 'compile-scene-terrain') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 131072), maxNodes: Math.min(maxNodes, 16384), domain: 'Authored scene terrain' });

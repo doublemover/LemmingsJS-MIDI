@@ -1,0 +1,244 @@
+{
+  "schema": "lemmings-resonator-morph-proof-source/v1",
+  "sources": [
+    {
+      "schema": "lemmings-original-synthetic-body/v1",
+      "id": "proof.dry",
+      "modes": [
+        {
+          "id": "dry.mode.1",
+          "frequencyHz": 220,
+          "t60Seconds": 0.18,
+          "excitation": 0.25,
+          "pickupLeft": 0.25,
+          "pickupRight": 0.25
+        },
+        {
+          "id": "dry.mode.2",
+          "frequencyHz": 594,
+          "t60Seconds": 0.14,
+          "excitation": 0.25,
+          "pickupLeft": -0.25,
+          "pickupRight": -0.25
+        },
+        {
+          "id": "dry.mode.3",
+          "frequencyHz": 1122,
+          "t60Seconds": 0.1,
+          "excitation": 0.25,
+          "pickupLeft": 0.25,
+          "pickupRight": -0.25
+        },
+        {
+          "id": "dry.mode.4",
+          "frequencyHz": 1804,
+          "t60Seconds": 0.08,
+          "excitation": 0.25,
+          "pickupLeft": -0.25,
+          "pickupRight": 0.25
+        }
+      ],
+      "qualification": "unqualified-original-authored-parameters"
+    },
+    {
+      "schema": "lemmings-original-synthetic-body/v1",
+      "id": "proof.bright",
+      "modes": [
+        {
+          "id": "bright.mode.1",
+          "frequencyHz": 220,
+          "t60Seconds": 2.8,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": 0.16666666666666666
+        },
+        {
+          "id": "bright.mode.2",
+          "frequencyHz": 510.4,
+          "t60Seconds": 2,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.3",
+          "frequencyHz": 935,
+          "t60Seconds": 1.4,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.4",
+          "frequencyHz": 1458.6,
+          "t60Seconds": 0.9,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": 0.16666666666666666
+        },
+        {
+          "id": "bright.mode.5",
+          "frequencyHz": 2063.6,
+          "t60Seconds": 0.6,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.6",
+          "frequencyHz": 2688.4,
+          "t60Seconds": 0.4,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        }
+      ],
+      "qualification": "unqualified-original-authored-parameters"
+    }
+  ],
+  "input": {
+    "a": {
+      "schema": "lemmings-resonator-morph-endpoint/v1",
+      "id": "proof.dry",
+      "revision": 1,
+      "sourceAssetHash": "1449ef58b5f57450e806bc1ce499893c38014e255eea93ca51cc916e30ffbd26",
+      "modelKind": "synthetic-modal",
+      "sites": {
+        "excitation": "strike.common",
+        "pickupLeft": "pickup.left",
+        "pickupRight": "pickup.right"
+      },
+      "modes": [
+        {
+          "id": "dry.mode.1",
+          "frequencyHz": 220,
+          "t60Seconds": 0.18,
+          "excitation": 0.25,
+          "pickupLeft": 0.25,
+          "pickupRight": 0.25
+        },
+        {
+          "id": "dry.mode.2",
+          "frequencyHz": 594,
+          "t60Seconds": 0.14,
+          "excitation": 0.25,
+          "pickupLeft": -0.25,
+          "pickupRight": -0.25
+        },
+        {
+          "id": "dry.mode.3",
+          "frequencyHz": 1122,
+          "t60Seconds": 0.1,
+          "excitation": 0.25,
+          "pickupLeft": 0.25,
+          "pickupRight": -0.25
+        },
+        {
+          "id": "dry.mode.4",
+          "frequencyHz": 1804,
+          "t60Seconds": 0.08,
+          "excitation": 0.25,
+          "pickupLeft": -0.25,
+          "pickupRight": 0.25
+        }
+      ],
+      "amplitudeConvention": "fixed-signed-L1-per-site;no-per-endpoint-renormalization"
+    },
+    "b": {
+      "schema": "lemmings-resonator-morph-endpoint/v1",
+      "id": "proof.bright",
+      "revision": 1,
+      "sourceAssetHash": "60966a3f7f8804f7ba0edc97a4c48e57621e0ac54ddc78b020e9e33d9fd72476",
+      "modelKind": "synthetic-modal",
+      "sites": {
+        "excitation": "strike.common",
+        "pickupLeft": "pickup.left",
+        "pickupRight": "pickup.right"
+      },
+      "modes": [
+        {
+          "id": "bright.mode.1",
+          "frequencyHz": 220,
+          "t60Seconds": 2.8,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": 0.16666666666666666
+        },
+        {
+          "id": "bright.mode.2",
+          "frequencyHz": 510.4,
+          "t60Seconds": 2,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.3",
+          "frequencyHz": 935,
+          "t60Seconds": 1.4,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.4",
+          "frequencyHz": 1458.6,
+          "t60Seconds": 0.9,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": 0.16666666666666666
+        },
+        {
+          "id": "bright.mode.5",
+          "frequencyHz": 2063.6,
+          "t60Seconds": 0.6,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": 0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        },
+        {
+          "id": "bright.mode.6",
+          "frequencyHz": 2688.4,
+          "t60Seconds": 0.4,
+          "excitation": 0.16666666666666666,
+          "pickupLeft": -0.16666666666666666,
+          "pickupRight": -0.16666666666666666
+        }
+      ],
+      "amplitudeConvention": "fixed-signed-L1-per-site;no-per-endpoint-renormalization"
+    },
+    "anchors": [
+      {
+        "aId": "dry.mode.1",
+        "bId": "bright.mode.1"
+      },
+      {
+        "aId": "dry.mode.2",
+        "bId": "bright.mode.2"
+      },
+      {
+        "aId": "dry.mode.3",
+        "bId": "bright.mode.3"
+      },
+      {
+        "aId": "dry.mode.4",
+        "bId": "bright.mode.4"
+      }
+    ],
+    "siteCorrespondence": {
+      "excitation": {
+        "a": "strike.common",
+        "b": "strike.common"
+      },
+      "pickupLeft": {
+        "a": "pickup.left",
+        "b": "pickup.left"
+      },
+      "pickupRight": {
+        "a": "pickup.right",
+        "b": "pickup.right"
+      }
+    }
+  },
+  "meaning": "Authored four-to-six synthetic body inputs and explicit pair anchors. Not a published qualified map or continuous renderer."
+}

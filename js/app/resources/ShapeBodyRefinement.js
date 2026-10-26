@@ -1,3 +1,4 @@
+import { assignBoundedMinimumCosts } from '../../core/BoundedMinimumAssignment.js';
 import { verifyShapeBodyAsset, tetrahedronDeterminant, shapeBodyFailure } from '../../midi/content/ShapeBodyAsset.js';
 import { canonicalDataText, hashData, freezeData } from '../../core/CanonicalData.js';
 import { createOriginalShapeBodySource } from '../../midi/content/OriginalShapeMeshes.js';
@@ -36,22 +37,7 @@ export function massWeightedModeCorrelation(a, b, mass) {
   if (!(aa > 0) || !(bb > 0) || !Number.isFinite(value) || value < 0 || value > 1 + 1e-10) shapeBodyFailure('Mode correlation has a degenerate or nonfinite norm.'); return Math.min(1, value);
 }
 
-export function assignMinimumModalCosts(costs, rows, columns) {
-  if (!(costs instanceof Float64Array) || !Number.isInteger(rows) || rows < 1 || rows > 32 || !Number.isInteger(columns) || columns < rows || columns > 186 || costs.length !== rows * columns || costs.some(value => !Number.isFinite(value) || value < 0 || value > 2)) shapeBodyFailure('Mode assignment exceeds its bounded finite cost matrix.');
-  const u = new Float64Array(rows + 1), v = new Float64Array(columns + 1), p = new Uint16Array(columns + 1), way = new Uint16Array(columns + 1), minimum = new Float64Array(columns + 1), used = new Uint8Array(columns + 1);
-  for (let row = 1; row <= rows; row++) {
-    p[0] = row; minimum.fill(Infinity); used.fill(0); let column = 0;
-    do {
-      used[column] = 1; const active = p[column]; let delta = Infinity, next = 0;
-      for (let candidate = 1; candidate <= columns; candidate++) if (!used[candidate]) { const cost = costs[(active - 1) * columns + candidate - 1] - u[active] - v[candidate]; if (cost < minimum[candidate]) { minimum[candidate] = cost; way[candidate] = column; } if (minimum[candidate] < delta) { delta = minimum[candidate]; next = candidate; } }
-      if (!Number.isFinite(delta) || !next) shapeBodyFailure('The modal assignment has no finite augmenting path.');
-      for (let candidate = 0; candidate <= columns; candidate++) if (used[candidate]) { u[p[candidate]] += delta; v[candidate] -= delta; } else minimum[candidate] -= delta;
-      column = next;
-    } while (p[column]);
-    do { const previous = way[column]; p[column] = p[previous]; column = previous; } while (column);
-  }
-  const result = new Uint16Array(rows); for (let column = 1; column <= columns; column++) if (p[column]) result[p[column] - 1] = column - 1; return result;
-}
+export function assignMinimumModalCosts(costs, rows, columns) { return assignBoundedMinimumCosts(costs, rows, columns, shapeBodyFailure); }
 
 export async function compareShapeBodyRefinement(input, { signal, current = () => true, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), estimatedPeakBytes = 32 * 1048576 } = {}) {
   const check = () => { signal?.throwIfAborted(); if (!current()) shapeBodyFailure('The refinement comparison owner changed.'); };

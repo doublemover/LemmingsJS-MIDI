@@ -233,6 +233,7 @@
         "js/app/resources/SoundSeedDerivedAudio.js",
         "js/app/resources/SoundSeedWindowAnalysis.js",
         "js/app/resources/WaveSourceDecode.js",
+        "js/core/BoundedMinimumAssignment.js",
         "js/core/CanonicalData.js",
         "js/core/dependencies.js",
         "js/data/BinaryReader.js",
@@ -276,6 +277,7 @@
         "js/midi/content/ProceduralTactileIdentities.js",
         "js/midi/content/ProceduralTactileSources.js",
         "js/midi/content/RectangularMembraneProfile.js",
+        "js/midi/content/ResonatorMorph.js",
         "js/midi/content/RingModulatorProfile.js",
         "js/midi/content/SampleBodyProfile.js",
         "js/midi/content/SampleCursorProfile.js",
@@ -308,8 +310,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 197,
-      "sha256": "d5ad795d14f0a4feaac794b1327f82aa5d0a833f397edc7ba26950800f29209c"
+      "fileCount": 199,
+      "sha256": "cb00f215899082697e9b0f1bfd0895654a6993031000ec0f9172585f9dd38d91"
     },
     {
       "id": "lemmings-timing-worker-source",

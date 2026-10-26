@@ -913,3 +913,28 @@ gestures to change entry spacing. Acoustic LENGTH remains a separate sound macro
 The scene starts paused and keeps manual assistance. Missing engine capability
 leaves it unavailable; the physics, pressure, checkpoints, actual device playback
 and listening fixtures are authored but unrun.
+
+
+Resonator correspondence authoring is available through the bounded
+`analyze-resonator-morph` background kernel and `ResonatorMorph.js` asset APIs.
+Named endpoint modes retain exact source/body hashes, positive frequencies and
+amplitude T60, signed site weights and a fixed common L1 reference. Candidate
+matching combines log-frequency/decay distance with only explicitly corresponding
+excitation/pickup signatures. A bounded global assignment admits unmatched modes,
+shows alternatives and flags close/degenerate or incomplete signatures. It never
+pairs changing sorted indexes during a morph. Publish requires explicit resolved
+pairs and site review; missing signatures cannot become a playable coupling.
+
+The original four-to-six-mode proof source is
+`content/morphs/dry-bright-proof.json`. A resolved map can preview positive log
+frequency/T60 and raised-cosine signed-weight interpolation, including explicit
+unmatched observation/excitation fades. Applying the same weight window to all
+slots preserves the common L1 bound without per-endpoint renormalization. Exact
+endpoints and stable slot IDs are retained. This is synthetic parameter authoring,
+not a mechanical energy projection or a claim of perceptual intermediacy.
+Next-onset, prepared dual-body blend and paired held policies are different map
+capabilities. A blend cannot be evaluated as an intermediate body. Continuous
+renderer, seed/foundry UI integration, real state/tail/admission/restore, Metamorphic
+Bridge and listening qualification remain pending; the new fixtures are unrun.
+Background reading: [Caetano and Rodet, DAFx 2010](https://dafx.de/paper-archive/2010/DAFx10/CaetanoRodet_DAFx10_P100.pdf).
+This application's matching method is original and does not implement that paper.

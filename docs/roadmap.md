@@ -5388,3 +5388,32 @@ neutral/Panic cancel them; tail retains those inside its declared deadline.
 Commands actually submitted after detach still fail. The prepared replay records
 canceled/retained sequence IDs and never mutates the captured history. These
 additional scheduling fixtures are authored but unrun.
+
+
+### Continuation 214 — named resonator correspondence assets and candidates
+
+- Added bounded named endpoint and resolved morph-map contracts with exact source/
+  endpoint/map hashes, explicit signed site correspondence, unmatched modes,
+  reviewed pair identities, parameter curves and distinct transition policies.
+  Distributed membrane state is not accepted as a replaceable mode-table body.
+- Added worker-only candidate analysis using log frequency/decay and available
+  declared signature similarity, deterministic global assignment with unmatched
+  alternatives, explicit anchors and close/degenerate/incomplete confidence flags.
+  Extracted the existing bounded assignment primitive for reuse while preserving
+  the shape-refinement wrapper and its failure contract. No solver RNG or
+  per-frame frequency sorting supplies a mapping identity.
+- Resolved preparation rejects stale hashes, changed topology/maps, duplicate pairs
+  and missing playable coupling. Parameter previews use positive log frequency/
+  amplitude-T60, one raised-cosine common signed reference and explicit unmatched
+  contribution windows, preserving exact endpoints and bounded L1 without hidden
+  renormalization. A dual-body blend cannot masquerade as an intermediate body;
+  held renderer/perceptual qualification is explicitly false.
+- Added original four-to-six synthetic proof inputs and explicit four pairs/two
+  emerging modes. Authored unrun exact-source/endpoint, 101-point rate/band/L1,
+  close crossing/ambiguity, missing-signature, stale/corrupt mapping, blend,
+  assignment and worker/cancellation fixtures. These do not establish numerical,
+  acoustic, held-state, admission/tail/restore or perceptual qualification.
+- Seed/foundry authoring UI, actual fixed/held/dual-state renderer integration,
+  Metamorphic Bridge and listening remain development/acceptance work for #1225.
+  Static-only checks precede this commit; runtime/build/browser/CI validation
+  remains deferred until the remaining development pass is complete.
