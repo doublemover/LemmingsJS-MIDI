@@ -5417,3 +5417,31 @@ additional scheduling fixtures are authored but unrun.
   Metamorphic Bridge and listening remain development/acceptance work for #1225.
   Static-only checks precede this commit; runtime/build/browser/CI validation
   remains deferred until the remaining development pass is complete.
+
+
+### Continuation 215 — owned correspondence review and map export workflow
+
+- Added a bounded endpoint/candidate/resolved-map owner over shared worker
+  admission. Exact source revisions, explicit pair/site review and prepared
+  parameter state remain separate; source/draft edits invalidate the map, failed
+  preparation keeps the last reviewed map, and old completion cannot publish.
+- Added source/proof import, fixed signed weight/site inspection, pair selectors,
+  ambiguity/alternative and unmatched display, explicit review checkboxes and a
+  next-onset parameter-preview slider in the existing seed laboratory. This starts
+  no audio and exposes no unsupported continuous-playback control. Endpoint edits
+  redraw by source revision, including same-ID coefficient changes.
+- Added independently staged JSON export through the existing export owner.
+  Bounded pending operations, overlap reservations, producer acknowledgment,
+  cancellation and ordered disposal keep unknown resources charged and settle
+  accepted operations. No new document/asset store or automatic live lane edit.
+- Authored unrun real worker/export, last-good map, stale completion, unknown
+  retirement, source-hash import and accessible proof→review→preview fixtures.
+  Compatible fitted/foundry observation adapters, actual fixed/held/dual-state
+  rendering, scene motion, state/tail/admission/restore and listening remain
+  development/acceptance work for #1225. Static-only checks precede the commit;
+  runtime/build/browser/CI qualification remains deferred as requested.
+
+A map export is an independently copied immutable payload. Its known active
+reader can outlive map-view metadata retirement under the existing export lease;
+that copy remains charged until its reader/digest retires. Unknown producer or
+export-budget acknowledgments still prevent a false complete receipt.

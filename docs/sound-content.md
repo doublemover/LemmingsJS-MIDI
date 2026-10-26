@@ -938,3 +938,25 @@ renderer, seed/foundry UI integration, real state/tail/admission/restore, Metamo
 Bridge and listening qualification remain pending; the new fixtures are unrun.
 Background reading: [Caetano and Rodet, DAFx 2010](https://dafx.de/paper-archive/2010/DAFx10/CaetanoRodet_DAFx10_P100.pdf).
 This application's matching method is original and does not implement that paper.
+
+
+The seed laboratory's **MORPH MAP** panel now imports bounded named endpoint JSON,
+loads the original four/six-mode proof, performs worker analysis, displays paired
+and unmatched IDs with ambiguity/alternatives, and requires explicit pair/site
+review before preparing a next-onset map. Signed endpoint weights and exact source
+hashes stay visible for review. The MORPH slider previews parameters; it does not
+start audio or claim a held renderer. Changing an endpoint or reviewed draft
+invalidates its map, while failed preparation retains the previous reviewed map.
+The existing export owner delivers independently staged map JSON with a distinct
+browser-request receipt. Canceled/stale completion cannot publish, and unresolved
+producer/delivery retirement remains charged rather than claiming release.
+
+Directly deriving compatible excitation/pickup observations from fitted/shape
+bodies, applying maps to actual fixed/held/dual-state sound owners, real scene
+motion, state/tail/admission/restore and listening qualification remain pending.
+The new owner/resource/UI fixtures are authored but unrun.
+
+A map export is an independently copied immutable payload. Its known active
+reader can outlive map-view metadata retirement under the existing export lease;
+that copy remains charged until its reader/digest retires. Unknown producer or
+export-budget acknowledgments still prevent a false complete receipt.

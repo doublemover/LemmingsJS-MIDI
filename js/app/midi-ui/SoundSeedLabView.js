@@ -1,3 +1,4 @@
+import { createResonatorMorphView } from './ResonatorMorphView.js';
 import { createTextureBodyTravelBinding } from '../../midi/content/TextureBodyGraftRecipe.js';
 import { createMotionBodyTraversalBinding } from '../../midi/content/InstrumentGraft.js';
 import { planSoundSeedRebuild } from '../../midi/content/SoundSeedRebuildPlan.js';
@@ -268,8 +269,9 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   for (const input of [observation, padding]) listen(input, 'change', invalidateModal);
   for (const input of [transform, pitch, rootPitch, graftBody, textureKind, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
-  root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, rebuildPage, actions);
+  listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
+  const morphPane = createResonatorMorphView({ document, window, resourceBudget, jobs });
+  root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, morphPane.element, rebuildPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });
   analysis = createSoundSeedAnalysisOwner({ resourceBudget, jobs, onState: refresh });
@@ -288,14 +290,14 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   return Object.freeze({ async open(source) {
     if (disposed) return; refreshTravelChoices(); if (analysis.candidate()?.metadata().assetReady) { offeredSource = source; offeredSerial++; rebuild.stop(); rebuildPlan = null; root.hidden = false; rebuildPage.open = true; refresh(); say('New source offered. The current frozen material is unchanged.'); return; }
     await active?.catch(() => {}); await loadSource(source);
-  }, state: () => Object.freeze({ analysis: analysis.state(), derived: derived.state(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
-  suspend() { analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); },
+  }, state: () => Object.freeze({ morph: morphPane.state(), analysis: analysis.state(), derived: derived.state(), composition: composition.state(), modal: modal.state(), rebuild: rebuild.state(), rebuildPlan, offeredSource: !!offeredSource, derivedSelection, modalSelection, instrument: instrument.state(), draft, candidateDraft, recipeDraft, compiledDraft, visible: !root.hidden }),
+  suspend() { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); },
   dispose() {
     if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; sourceSelection++; analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop();
     const retire = async owner => { const receipt = owner.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Seed material retains unresolved producers or readers.'); };
     const stopped = Promise.resolve(active).catch(() => {}), instrumentFinished = stopped.then(() => retire(instrument)), rebuildFinished = instrumentFinished.then(() => retire(rebuild)), modalFinished = rebuildFinished.then(() => retire(modal)), compositionFinished = modalFinished.then(() => retire(composition)), derivedFinished = compositionFinished.then(() => retire(derived)), analysisFinished = derivedFinished.then(() => retire(analysis));
     return retirement.retire([{ name: 'seed-instrument', run: () => instrumentFinished }, { name: 'seed-rebuild', run: () => rebuildFinished }, { name: 'seed-modal', run: () => modalFinished }, { name: 'seed-composition', run: () => compositionFinished }, { name: 'seed-derived', run: () => derivedFinished }, { name: 'seed-analysis', run: () => analysisFinished },
-      { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
+      { name: 'seed-morph-review', run: async () => { const receipt = morphPane.dispose(); await receipt.completion; if (receipt.outcome !== 'complete') throw new Error('Morph review retains unresolved producers or readers.'); } }, { name: 'seed-display', run: () => surface.dispose() }, { name: 'seed-scheduler', run: () => { if (!displayScheduler) return scheduler.dispose(); } },
       ...[...listeners.splice(0), ...modeListeners.splice(0)].map((remove, index) => ({ name: 'seed-listener-' + index, run: remove })), { name: 'seed-dock', run: () => root.remove() }]);
   } });
 }
