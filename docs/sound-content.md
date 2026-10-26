@@ -1118,3 +1118,14 @@ identical score geometry and release timing. Gate movement uses explicit physica
 authoring; a gate moved over a stationary actor does not retroactively attack.
 These dry scores have no sympathetic or room layer and still await runtime,
 external-output tuning, device and listening qualification.
+
+
+Metamorphic Bridge now has an explicitly named **Prepared endpoint blend** score.
+Its actor, finite entry, route, friction source and signed-distance control match
+the paired score. The blend owns the complete four-mode and six-mode endpoint
+states, drives both with the same input and changes only convex readout weights.
+Scene cost and private rehearsal count **two bodies / ten modes** and retain both
+positive-loss tails. The original paired score owns one six-slot synthetic body.
+The v1 scene mechanism stays paired-only; selecting the blend requires the v2
+mechanism and its complete preparation. Neither strategy silently replaces the
+other. Runtime, cost and matched-level continuity/listening evidence is pending.

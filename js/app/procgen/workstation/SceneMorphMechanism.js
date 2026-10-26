@@ -7,8 +7,13 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 const fail = message => Object.assign(new Error(message), { code: 'scene-morph-unavailable' });
 export function validateSceneMorphMechanism(raw) {
   const value = cloneData(raw, { maxBytes: 49152, maxNodes: 6000 });
-  if (!value || Object.keys(value).some(key => !['schema', 'instrumentId', 'map', 'a', 'b', 'travelPixels', 'wet01'].includes(key)) || value.schema !== 'lemmings-scene-morph-route/v1' || typeof value.instrumentId !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.instrumentId) || !Number.isFinite(value.travelPixels) || value.travelPixels < 128 || value.travelPixels > 1024 || !Number.isFinite(value.wet01) || value.wet01 < 0 || value.wet01 > 0.35) throw fail('The initial morph route needs exact bounded sources, instrument and real travel domain.');
-  const inspected = inspectResonatorMorphMap(value.map, value.a, value.b); if (inspected.map.transitionPolicy !== 'paired-synthetic-held' || inspected.slots.length > 8) throw fail('The initial shared body needs reviewed held pairing within eight modes.'); return freezeData(value);
+  if (!value || Object.keys(value).some(key => !['schema', 'instrumentId', 'map', 'a', 'b', 'travelPixels', 'wet01'].includes(key)) || !['lemmings-scene-morph-route/v1', 'lemmings-scene-morph-route/v2'].includes(value.schema) || typeof value.instrumentId !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.instrumentId) || !Number.isFinite(value.travelPixels) || value.travelPixels < 128 || value.travelPixels > 1024 || !Number.isFinite(value.wet01) || value.wet01 < 0 || value.wet01 > 0.35) throw fail('The initial morph route needs exact bounded sources, instrument and real travel domain.');
+  const inspected = inspectResonatorMorphMap(value.map, value.a, value.b), blend = inspected.map.transitionPolicy === 'prepared-dual-body-blend';
+  if (blend ? value.schema !== 'lemmings-scene-morph-route/v2' || inspected.a.modes.length > 8 || inspected.b.modes.length > 8 : inspected.map.transitionPolicy !== 'paired-synthetic-held' || inspected.slots.length > 8) throw fail('Use reviewed held pairing within eight modes, or an explicit v2 prepared blend with at most eight modes in each of its two bodies.'); return freezeData(value);
+}
+export function sceneMorphMechanismCost(raw) {
+  const value = validateSceneMorphMechanism(raw), blend = value.map.transitionPolicy === 'prepared-dual-body-blend';
+  return Object.freeze({ bodyCount: blend ? 2 : 1, strategy: blend ? 'prepared-endpoint-audio-blend' : 'paired-synthetic-modes', modeCount: blend ? value.a.modes.length + value.b.modes.length : inspectResonatorMorphMap(value.map, value.a, value.b).slots.length });
 }
 export async function verifySceneMorphMechanism(value, instruments) {
   const mechanism = validateSceneMorphMechanism(value), matches = instruments.filter(instrument => instrument.id === mechanism.instrumentId), instrument = matches[0];
@@ -17,10 +22,10 @@ export async function verifySceneMorphMechanism(value, instruments) {
 }
 let ordinal = 0;
 export function createSceneMorphMechanism({ mechanism: raw, prepareGraph, travelEffects, getContext, getOwnerState, resourceBudget, onState = () => {} } = {}) {
-  const mechanism = validateSceneMorphMechanism(raw), id = 'scene-morph-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-source', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 8192 }), scope = createProcgenRetirementScope();
+  const mechanism = validateSceneMorphMechanism(raw), cost = sceneMorphMechanismCost(mechanism), id = 'scene-morph-' + (++ordinal), metadata = createOwnedResourceReservation({ budget: resourceBudget, owner: id, kind: 'scene-morph-source', category: 'audio', bytes: canonicalDataText(mechanism).bytes.length * 8 + 8192 }), scope = createProcgenRetirementScope();
   let disposed = false, pending = null, expected = null, model = null, context = null, used = false, unknown = false, error = null;
   const active = () => { try { const state = getOwnerState(); return !!expected && state?.revision === expected.ownerRouteRevision && state.activeGraph?.hash === expected.graphDefinitionHash && ['active', 'mute'].includes(state.mode); } catch { return false; } };
-  const state = () => Object.freeze({ prepared: !!expected && context === getContext(), preparing: !!pending, bound: used, active: active(), error, unknownRetirement: unknown, instrumentId: mechanism.instrumentId, mapHash: mechanism.map.hash });
+  const state = () => Object.freeze({ prepared: !!expected && context === getContext(), preparing: !!pending, bound: used, active: active(), error, unknownRetirement: unknown, instrumentId: mechanism.instrumentId, mapHash: mechanism.map.hash, ...cost });
   const report = () => { if (!disposed) try { onState(state()); } catch {} };
   return Object.freeze({ state, isPrepared: () => !!expected && context === getContext(),
     async ensure() {

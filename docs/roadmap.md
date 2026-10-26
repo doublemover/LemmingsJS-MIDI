@@ -5749,3 +5749,29 @@ export-budget acknowledgments still prevent a false complete receipt.
   Runtime, backend pitch error, five-minute cost and human legibility/listening
   qualification remain deferred. Trellis, Pocket Cathedral, spectrum/period and
   Metamorphic Rail orchestrations remain separate work; no issue is closed.
+
+
+### Continuation 227 — explicit scene blend ownership and full private rehearsal
+
+- Added the explicit v2 scene morph mechanism for #1225's prepared two-endpoint
+  blend. The v1 mechanism remains paired-only. Each endpoint is bounded to eight
+  modes; admission/state report two bodies and the sum of their actual modes.
+  Paired mechanisms retain their eight-slot bound. Source/site/map verification
+  and the exact sustained signed-X journey remain mandatory before publication.
+- Extended world preparation, private rehearsal admission, actual owned-graph
+  rendering and cue receipts to count both endpoint states and tails. Workers
+  cannot publish a one-body cost receipt for a two-body strategy. Receipts bind
+  map/profile/graph/recipe, strategy, actual mode count and physical control
+  schedule; host cue admission checks the same cost/strategy. Unknown and stale
+  ownership retains the existing cancellation/retirement path.
+- Installed Metamorphic Bridge · Prepared endpoint blend alongside the explicit
+  paired score. It shares identical finite cohort, terrain, friction patch,
+  journey mapping and signed-distance control law. Both endpoints receive the
+  same source audio; only convex readout weights change. Both tails persist on
+  reversal and source end. This is not a mechanical intermediate material or
+  a silent replacement for correspondence morphing.
+- Authored unrun v1/blend refusal, complete installed-origin/dependency closure,
+  identical source/world, counted canonical graph/single binding and three-rate
+  actual private-source/full-tail blend fixtures. Undercounted scene rendering
+  is refused. Numerical/device cost, PCM continuity, paired-versus-blend listening
+  and browser workflow qualification remain deferred with the combined pass.
