@@ -140,6 +140,7 @@
         "js/app/midi-ui/OwnedSourceLayout.js",
         "js/app/midi-ui/OwnedSourceProfiles.js",
         "js/app/midi-ui/OwnedSourceSeed.js",
+        "js/app/midi-ui/SeedLayerPlan.js",
         "js/app/midi-ui/WaveSourceProfile.js",
         "js/app/midi-ui/worklet/AllpassNotchProcessor.js",
         "js/app/midi-ui/worklet/BoundedDelayProcessor.js",
@@ -167,6 +168,7 @@
         "js/app/midi-ui/worklet/OwnedSampleReader.js",
         "js/app/midi-ui/worklet/OwnedSampleSource.js",
         "js/app/midi-ui/worklet/OwnedSealedBody.js",
+        "js/app/midi-ui/worklet/OwnedSeedLayerProcessor.js",
         "js/app/midi-ui/worklet/OwnedSineProcessor.js",
         "js/app/midi-ui/worklet/OwnedSineState.js",
         "js/app/midi-ui/worklet/OwnedSourceState.js",
@@ -346,6 +348,7 @@
         "js/midi/content/SampleReadProfile.js",
         "js/midi/content/SampleTraversal.js",
         "js/midi/content/SealedBodyProfile.js",
+        "js/midi/content/SeedLayerProfile.js",
         "js/midi/content/ShapeBodyAsset.js",
         "js/midi/content/ShapeBodyRecipe.js",
         "js/midi/content/SoundContentCompiler.js",
@@ -373,8 +376,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 262,
-      "sha256": "a6fd9bdbf304edd9e79520dbf2b2158e2827f8f44a7e02536dcb0c0ac2958144"
+      "fileCount": 265,
+      "sha256": "fa23aada5984abfd688f2251987ba1a83ad7e62e3b83d035463fd24b3532e8ea"
     },
     {
       "id": "lemmings-timing-worker-source",

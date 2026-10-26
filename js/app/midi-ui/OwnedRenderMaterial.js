@@ -4,8 +4,8 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
 export async function prepareOwnedRenderMaterial({ provider, resources, definition, reference = null, stage = null, patchIdentity = null, engineDescriptors,
   owner, generation = 0, signal, isCurrent = () => true } = {}) {
-  if (!['worklet-granular', 'worklet-sample'].includes(definition?.engineId)) return null;
-  const set = definition.engineId === 'worklet-sample';
+  if (!['worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(definition?.engineId)) return null;
+  const set = ['worklet-sample', 'worklet-seed-layers'].includes(definition.engineId);
   if (!provider?.acquire || !resources?.reserve || !Array.isArray(definition.sampleRefs) || definition.sampleRefs.length < 1 || definition.sampleRefs.length > (set ? 32 : 1) || !stage && !reference) throw new Error('Owned rendering needs complete pinned local source material.');
   let material = null, bank = null, copy = null, failure = null;
   const scope = createProcgenRetirementScope();

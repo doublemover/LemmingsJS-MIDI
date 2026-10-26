@@ -9,6 +9,7 @@ export async function createOwnedControlKernel(profile, rate, voices, options = 
   if (profile.id === 'worklet-wind') { const { OwnedWindKernel } = await import('../midi-ui/worklet/OwnedWindProcessor.js'); return new OwnedWindKernel(rate, voices); }
   if (profile.id === 'worklet-friction') { const { OwnedFrictionKernel } = await import('../midi-ui/worklet/OwnedFrictionProcessor.js'); return new OwnedFrictionKernel(rate, voices); }
   if (profile.id === 'worklet-texture') { const { OwnedTextureKernel } = await import('../midi-ui/worklet/OwnedTextureProcessor.js'); return new OwnedTextureKernel(rate, voices); }
+  if (profile.id === 'worklet-seed-layers') { const { OwnedSeedLayerKernel } = await import('../midi-ui/worklet/OwnedSeedLayerProcessor.js'); return new OwnedSeedLayerKernel(rate, options.pcm, options.patch, voices, bank, auxiliary); }
   if (profile.id === 'worklet-sample') { const { OwnedSampleKernel } = await import('../midi-ui/worklet/OwnedSampleProcessor.js'); return new OwnedSampleKernel(rate, options.pcm, options.patch, voices, bank, auxiliary); }
   if (profile.id === 'worklet-sine') { const { OwnedSineKernel } = await import('../midi-ui/worklet/OwnedSineProcessor.js'); return new OwnedSineKernel(rate, voices); }
   if (profile.id === 'worklet-pluck') { const { OwnedPluckKernel } = await import('../midi-ui/worklet/OwnedPluckProcessor.js'); return new OwnedPluckKernel(rate, voices); }

@@ -5,6 +5,11 @@ export function resolveOwnedArticulationPolicy(patch) {
   if (![releaseSeconds, attack, decay].every(value => Number.isFinite(value) && value >= 0 && value <= 4)) throw new RangeError('Patch articulation exceeds the owned local profile.');
   let holdSeconds = attack + decay;
   if (patch.engineId === 'worklet-texture') holdSeconds = Math.max(holdSeconds, (parameters.textureBodySeconds ?? 0.05) * 1.5, 0.08);
+  if (patch.engineId === 'worklet-seed-layers') {
+    const material = patch.seedLayers?.components?.[0];
+    if (!material || !Number.isSafeInteger(material.sourceFrames) || !Number.isSafeInteger(material.sourceRate) || material.sourceFrames < 2 || material.sourceRate < 8000) throw new RangeError('Layered articulation requires the complete original component clock.');
+    holdSeconds = Math.max(holdSeconds, material.sourceFrames / material.sourceRate);
+  }
   if (patch.engineId === 'worklet-granular') {
     const milliseconds = parameters.grainMilliseconds ?? 70;
     if (!Number.isFinite(milliseconds) || milliseconds < 20 || milliseconds > 140) throw new RangeError('Invalid grain duration profile.');

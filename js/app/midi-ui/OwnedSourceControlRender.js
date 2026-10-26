@@ -5,9 +5,10 @@ import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
 import { createOwnedControlKernel } from '../resources/OwnedControlKernel.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
-import { SOUND_CONTENT_CONTROL_FIXTURE, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
+import { SOUND_CONTENT_CONTROL_FIXTURE, seedLayerControlFixture, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
+import { prepareSeedLayerPlan } from './SeedLayerPlan.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
 import { encodeOwnedAudioWav } from './OwnedAudioWav.js';
@@ -31,10 +32,11 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   canonicalDataText(source, { maxBytes: 65536, maxNodes: 4096 }); signal?.throwIfAborted();
   const sourcePCM = owned.requiresPCM ? await (owned.requiresPCMSet ? verifyOwnedPcmSetPayload : verifyOwnedPcmPayload)(pcm, owned.requiresPCMSet ? patch.sampleRefs : patch.sampleRefs[0], { signal, yieldControl }) : null, pcmDescriptor = sourcePCM?.descriptor || null;
   if (!owned.requiresPCM && pcm != null) throw new Error('This control source does not consume PCM.');
-  if (sampleGesture !== null && !owned.requiresPCMSet) throw new TypeError('This source does not expose authored sample gestures.');
-  const samplePlan = owned.requiresPCMSet ? prepareOwnedSamplePlan(patch, pcmDescriptor, sampleRate) : null;
+  if (sampleGesture !== null && owned.id !== 'worklet-sample') throw new TypeError('This source does not expose authored sample gestures.');
+  const seedLayerPlan = owned.id === 'worklet-seed-layers' ? prepareSeedLayerPlan(patch, pcmDescriptor, sampleRate) : null;
+  const samplePlan = owned.id === 'worklet-sample' ? prepareOwnedSamplePlan(patch, pcmDescriptor, sampleRate) : null;
   const sampleControls = samplePlan ? createOwnedSampleControlFixture(samplePlan, sampleGesture ?? samplePlan.map.neutralArticulationId) : null;
-  const fixture = sampleControls?.fixture || (owned.id === 'worklet-wind' ? WIND_CONTROL_FIXTURE : owned.id === 'worklet-friction' ? FRICTION_CONTROL_FIXTURE : owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
+  const fixture = sampleControls?.fixture || (owned.id === 'worklet-seed-layers' ? seedLayerControlFixture(patch) : owned.id === 'worklet-wind' ? WIND_CONTROL_FIXTURE : owned.id === 'worklet-friction' ? FRICTION_CONTROL_FIXTURE : owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
   const identity = { onsetId: 'control-fixture', voiceId: 'control-fixture', actorId: null, generation: 1 };
   const performance = owned.extended ? compileInstrumentPerformance(patch, owned.parameters).resolve({}, 0, identity) : null;
   const values = performance?.values || Object.fromEntries(Object.entries(owned.fields).map(([id, spec]) => [id, patch.parameters[id] ?? spec[2]]));
@@ -100,7 +102,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   const manifest = { schema: 'lemmings-rendered-audition/v1', source, engineRequirement: { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion,
     artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash }, applicationBuildId,
   fixture, fixtureHash, physicalTakeEvidence: false, sampleRate, channels: 2, sampleFormat: 'ieee-float32-le', frames,
-  pcmHash, renderTap: owned.id === 'worklet-sine' ? 'sine-kernel-stereo-before-shared-owner-master-and-limiter' : owned.id + '-kernel-stereo-before-shared-owner-master-and-limiter', renderScope: 'fixed-controls-from-silence', sourceBank: pcmDescriptor, fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null, sourceTypedBytes: owned.sourceBytes({ sampleRate, pcm: pcmDescriptor, voices: patch.voicePolicy.maxVoices }), sampleSelection: selected, sampleMap: samplePlan ? { revision: samplePlan.map.revision, planRevision: samplePlan.revision, physicalSourcePool: owned.voices, logicalVoiceLimit: patch.voicePolicy.maxVoices } : null, sourcePerformance: { seed, values, controls: performance?.controls || null, variation: performance?.variation || null, bindingOutcomes: performance?.bindingOutcomes || [], physicalSources: 'none-in-authored-control-fixture' }, normalization: 'none', quality: owned.requiresPCMSet ? 'source-rate-pcm-prepared-windowed-sinc-128taps-fractional-region-periods' : owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'native-kernel-rate-no-resampling',
+  pcmHash, renderTap: owned.id === 'worklet-sine' ? 'sine-kernel-stereo-before-shared-owner-master-and-limiter' : owned.id + '-kernel-stereo-before-shared-owner-master-and-limiter', renderScope: 'fixed-controls-from-silence', sourceBank: pcmDescriptor, fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null, sourceTypedBytes: owned.sourceBytes({ sampleRate, pcm: pcmDescriptor, voices: patch.voicePolicy.maxVoices }), sampleSelection: selected, sampleMap: samplePlan ? { revision: samplePlan.map.revision, planRevision: samplePlan.revision, physicalSourcePool: owned.voices, logicalVoiceLimit: patch.voicePolicy.maxVoices } : null, sourcePerformance: { seed, values, controls: performance?.controls || null, variation: performance?.variation || null, bindingOutcomes: performance?.bindingOutcomes || [], physicalSources: 'none-in-authored-control-fixture' }, normalization: 'none', seedLayers: seedLayerPlan ? { profile: seedLayerPlan.profile, footprint: seedLayerPlan.footprint, sourceBanks: seedLayerPlan.sourceBanks, timing: seedLayerPlan.timing } : null, quality: seedLayerPlan ? 'creative-three-child-revoice-not-neutral-or-qualified-warp' : owned.requiresPCMSet ? 'source-rate-pcm-prepared-windowed-sinc-128taps-fractional-region-periods' : owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'native-kernel-rate-no-resampling',
   tail: { releaseFrames, childFrames, admittedFrames: tailFrames, extraFrames: 128, state: 'all-voices-ended' }, statistics: { peak, rms: Math.sqrt(squares / (frames * 2)), overFullScaleSamples: overFullScale },
   qualification: 'rendered-controls-not-physical-take-or-listening-qualified', rights: 'reference-render-grants-no-new-redistribution-rights', acousticReceipt: false };
   return { bytes: encodeOwnedAudioWav(outputPcm, frames, sampleRate, manifest), manifest };

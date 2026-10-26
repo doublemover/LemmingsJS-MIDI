@@ -1,3 +1,5 @@
+import { createSoundSeedLayerRecipe } from '../../midi/content/SoundSeedLayerRecipe.js';
+import { SEED_LAYER_ROLES } from '../../midi/content/SeedLayerProfile.js';
 import { createFiniteFmBodyGraftRecipe } from '../../midi/content/FiniteFmBodyGraftRecipe.js';
 import { createSealedBodyGraftRecipe } from '../../midi/content/SealedBodyGraftRecipe.js';
 import { createTextureBodyGraftRecipe } from '../../midi/content/TextureBodyGraftRecipe.js';
@@ -42,19 +44,34 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     operation.promise = Promise.resolve().then(() => work(operation, check)).catch(failure => { error = String(failure.message).slice(0, 512); phase = unknown.size ? 'ownership-unknown' : current ? 'previous-patch-retained' : 'no-patch'; throw failure; })
       .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
-  const prepare = (candidate, { transform, pitch, modalFit = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
+  const prepare = (candidate, { transform, pitch, modalFit = null, decomposition = null, layerComponents = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
+    const layered = ['hammer-cloud', 'hollow-tool'].includes(transform);
+    if (layered && (!Array.isArray(layerComponents) || layerComponents.length !== 3 || layerComponents.some(entry => !entry?.metadata?.().assetReady))) throw fail('Prepare the complete current decomposition before compiling a layered seed.');
     const motionTarget = ['motion-body-graft', 'texture-body-graft', 'sealed-friction-body-graft'].includes(transform) ? targetIdentity() : null;
     if (motionTarget === 'null') throw fail('A motion body requires an explicit document and lane target identity.');
-    const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady) throw fail('The seed draft changed while preparing its instrument.'); if (motionTarget && targetIdentity() !== motionTarget) throw fail('The motion mapping document or lane target changed while preparing its instrument.'); };
+    const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady || layered && layerComponents.some(entry => !entry.metadata().assetReady)) throw fail('The seed draft changed while preparing its instrument.'); if (motionTarget && targetIdentity() !== motionTarget) throw fail('The motion mapping document or lane target changed while preparing its instrument.'); };
     let loan = null, job = null, workspace = null, next = null, prepared = null;
+    const extraLoans = [], extraRetirement = createProcgenRetirementScope();
+    const releaseExtraLoans = () => extraRetirement.retire(extraLoans.map((entry, index) => ({ name: 'seed-layer-input-' + index, run: () => {
+      const result = entry.release(); if (result === false || result?.then) throw fail('Layer input retirement requires a synchronous acknowledgement.');
+    } })));
     try {
       check(); const metadata = candidate.metadata(), artifactMetadata = candidate.artifact.metadata();
-      workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'sound-seed-instrument', generation: operation.ordinal, category: 'candidate', kind: 'seed-private-pack', bytes: artifactMetadata.byteLength + 8 * 1048576 });
+      workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'sound-seed-instrument', generation: operation.ordinal, category: 'candidate', kind: 'seed-private-pack', bytes: artifactMetadata.byteLength + (layered ? layerComponents.reduce((sum, entry) => sum + entry.artifact.metadata().byteLength, 0) : 0) + 8 * 1048576 });
       loan = candidate.artifact.borrow(); if (!(loan.blob instanceof Blob)) throw fail('Frozen seed material must be an independently owned immutable Blob.');
       const sourceHeader = inspectOwnedSoundSeedHeader(new Uint8Array(await loan.blob.slice(0, 56).arrayBuffer()), artifactMetadata.byteLength); check();
       if (sourceHeader.frames !== candidate.manifest.frames || sourceHeader.sampleRate !== candidate.manifest.sampleRate) throw fail('Frozen seed frame inventory differs from its recipe.');
       inspectOwnedSoundSeedOrigin(new Uint8Array(await loan.blob.slice(sourceHeader.metadataOffset).arrayBuffer()), candidate.manifest); check();
       let material = { manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, blob: loan.blob };
+      const layerMaterials = [];
+      if (layered) for (let index = 0; index < SEED_LAYER_ROLES.length; index++) {
+        const child = layerComponents[index], childMetadata = child.metadata(), childArtifact = child.artifact.metadata(), borrowed = child.artifact.borrow(); extraLoans.push(borrowed);
+        if (!(borrowed.blob instanceof Blob) || borrowed.blob.size !== childArtifact.byteLength) throw fail('A complete immutable layer Blob is required.');
+        const header = inspectOwnedSoundSeedHeader(new Uint8Array(await borrowed.blob.slice(0, 56).arrayBuffer()), childArtifact.byteLength); check();
+        if (header.frames !== child.manifest.frames || header.sampleRate !== child.manifest.sampleRate) throw fail('Layer PCM differs from its exact source coordinates.');
+        inspectOwnedSoundSeedOrigin(new Uint8Array(await borrowed.blob.slice(header.metadataOffset).arrayBuffer()), child.manifest); check();
+        layerMaterials.push({ manifest: child.manifest, assetHash: childMetadata.assetHash, byteLength: childArtifact.byteLength, blob: borrowed.blob });
+      }
       if (transform === 'finite-fm-body-graft') {
         const input = { parentManifest: candidate.manifest, parentAssetHash: metadata.assetHash, sampleRate: 48000 }, inputBytes = canonicalDataText(input, { maxBytes: 262144, maxNodes: 32768 }).bytes.length;
         job = await jobs.compute({ kind: 'bake-finite-fm-exciter', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: metadata.assetHash + ':finite-fm-v1', inputBytes, maxBytes: 262144, estimatedPeakBytes: 32 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent(), prepareInput: () => input }); check();
@@ -64,7 +81,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
         material = { manifest: result.manifest, assetHash: result.assetHash, byteLength: result.bytes.length, blob: new Blob([result.bytes], { type: 'audio/wav' }) };
         job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('Finite FM worker retirement remains unresolved.'); job = null; check();
       }
-      const recipe = await (transform === 'finite-fm-body-graft' ? createFiniteFmBodyGraftRecipe : ['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: material.manifest, assetHash: material.assetHash, byteLength: material.byteLength, transform, pitch, modalFit, graftBody, textureKind, traversalBinding }); check();
+      const recipe = await (layered ? createSoundSeedLayerRecipe : transform === 'finite-fm-body-graft' ? createFiniteFmBodyGraftRecipe : ['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: material.manifest, assetHash: material.assetHash, byteLength: material.byteLength, transform, pitch, modalFit, decomposition, layerMaterials, graftBody, textureKind, traversalBinding }); check();
       const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
       job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
         inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,
@@ -72,7 +89,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       if (job.receipt.method !== 'dedicated-worker' || job.receipt.executionIdentity?.activeExecution !== 'bound') throw fail('Seed compilation needs its bound application worker.');
       const catalog = await getCatalog(); check();
       prepared = job.value;
-      const payloads = [{ sha256: material.assetHash, bytes: material.byteLength, blob: material.blob },
+      const payloads = [...(layered ? layerMaterials.map(entry => ({ sha256: entry.assetHash, bytes: entry.byteLength, blob: entry.blob })) : [{ sha256: material.assetHash, bytes: material.byteLength, blob: material.blob }]),
         { sha256: recipe.contractHash, bytes: new TextEncoder().encode(recipe.contractText).length, blob: new Blob([recipe.contractText], { type: 'application/json' }) }].sort((a, b) => a.sha256 < b.sha256 ? -1 : 1);
       const header = canonicalDataText({ format: SOUND_ARCHIVE_FORMAT, mode: 'portable', contentHash: prepared.contentHash, pack: prepared.pack,
         payloads: payloads.map(({ sha256, bytes }) => ({ sha256, bytes })), rightsReview: [], qualification: 'private-local-material;redistribution-not-asserted' }, { maxBytes: 4 * 1048576 }).bytes;
@@ -84,12 +101,16 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       const record = { stage: next, identity: identities[0], contract: recipe.contract, assetHash: metadata.assetHash, targetIdentity: motionTarget, installed: false };
       // Publish after producer/input retirement, preserving the old patch on failure.
       job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) { unknown.add({ job, loan, workspace, stage: next }); job = loan = workspace = next = null; throw fail('Seed compiler retirement is unresolved.'); } job = null; prepared = null;
+      const childReceipt = releaseExtraLoans(); await childReceipt.completion;
+      if (childReceipt.outcome !== 'complete') { unknown.add({ childReceipt, extraLoans, loan, workspace, stage: next }); loan = workspace = next = null; throw fail('Layer input retirement remains unresolved.'); }
       loan.release(); loan = null; workspace.release(); workspace = null; check(); discard(current); current = record; next = null; phase = 'compiled-patch-ready'; return state();
     } catch (failure) {
       if (failure.backgroundRetirementCompletion) failure.backgroundRetirement = await failure.backgroundRetirementCompletion;
       if (failure.backgroundRetirement && !['released', 'canceled'].includes(failure.backgroundRetirement.phase)) { unknown.add({ failure, job, loan, workspace, stage: next }); job = loan = workspace = next = null; }
       throw failure;
     } finally {
+      const childReceipt = releaseExtraLoans(); await childReceipt.completion;
+      if (childReceipt.outcome !== 'complete') { unknown.add({ childReceipt, extraLoans, loan, workspace, stage: next }); loan = workspace = next = null; }
       if (job) { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) { unknown.add({ job, loan, workspace, stage: next }); loan = workspace = next = null; } }
       if (next) discard({ stage: next }); loan?.release(); workspace?.release();
     }

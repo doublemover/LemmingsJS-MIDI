@@ -30,7 +30,7 @@ export async function encodeNativeOfflineRender({ mode, manifest, planes, firstF
   }
   const nativeEffects = !!effectPlan && (!!effectPlan.impulseCount || !!manifest.nativeScheduling?.effectGraph);
   if (nativeEffects) validateNativeEffectRenderReceipt(effectPlan, manifest.nativeScheduling, requested.hash, returns);
-  if (['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(manifest?.engineRequirement?.engineId)) {
+  if (['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(manifest?.engineRequirement?.engineId)) {
     if (!nativeEffects) throw failure('Owned-source native encoding requires its exact convolution execution.');
     validateOwnedConvolutionSourceReceipt(manifest);
   }

@@ -8,10 +8,10 @@ import { planTextureTravel } from '../../midi/content/TextureTravel.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel, validateCircularCoordinateControl } from '../../midi/content/CircularSpectrum.js';
 import { prepareSampleBodyProfile, acceptsSampleBodyOnset } from '../../midi/content/SampleBodyProfile.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
-import { WIND_LAYOUT, windSourceBytes, FRICTION_LAYOUT, frictionSourceBytes, TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
+import { WIND_LAYOUT, windSourceBytes, FRICTION_LAYOUT, frictionSourceBytes, TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, SEED_LAYER_LAYOUT, seedLayerSourceBytes, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
 import { NATIVE_WIND_FIELDS, NATIVE_WIND_PARAMETERS, NATIVE_FRICTION_FIELDS, NATIVE_FRICTION_PARAMETERS, NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
-  NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS } from './NativeInstrumentSchema.js';
+  NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS, NATIVE_SEED_LAYER_FIELDS, NATIVE_SEED_LAYER_PARAMETERS } from './NativeInstrumentSchema.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const spectrumPartials = Object.freeze(Array.from({ length: 16 }, (_, index) => Object.freeze(['Ratio', 'Gain', 'T60Scale'].map(suffix => 'partial' + index + suffix))));
@@ -78,6 +78,14 @@ const profiles = Object.freeze({
     acceptsParameters: p => { try { if (!validTextureBodyCommand(textureBodyCommandFields(p), 20, 48000)) return false; prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[p.textureKind], roughnessPerPixel: p.roughnessPerPixel, dragSlope: p.dragSlope, shade01: p.shade01, bodySeconds: p.textureBodySeconds }); return true; } catch { return false; } },
     beginFields: (p, seed, pcm, selected, travel) => ({ ...textureBodyCommandFields(p), 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
       ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),
+  'worklet-seed-layers': createProfile({ id: 'worklet-seed-layers', controlReferenceRender: true, width: SEED_LAYER_LAYOUT.width, voices: SEED_LAYER_LAYOUT.voices, fields: NATIVE_SEED_LAYER_FIELDS, parameters: NATIVE_SEED_LAYER_PARAMETERS,
+    buildId: 'owned-seed-layers-v1', abi: 'owned-seed-layers-f64-command-v1', workletUrl: new URL('./worklet/OwnedSeedLayerProcessor.js', import.meta.url).href,
+    rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', auxiliaryBankIds: () => ['grain-window-v1'], storageBytes: seedLayerSourceBytes, heapEstimate: 2 * 1048576,
+    seedDomain: 'decomposed-seed-grain-choices-v1', cost: () => 96, minHz: 20, maxHz: 2000, bendCents: 0, minimumControlSeconds: 0.008,
+    acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsOnset: (p, frequency, pcm) => validOwnedPcmSetDescriptor(pcm) && pcm.banks.length === 3 && finite(frequency / p.rootHz * p.pitchRatio, 0.25, 4),
+    expressions: [['position01', 8, 19], ['densityHz', 16, 20], ['grainMilliseconds', 32, 21], ['spread01', 64, 23], ['freezePosition', 128, 26], ['activity01', 256, 28], ['tone01', 512, 32]],
+    beginFields: (p, seed, pcm) => ({ 18: seed, 19: p.position01, 20: p.densityHz, 21: p.grainMilliseconds, 22: p.pitchRatio, 23: p.spread01, 24: 0, 25: pcm.banks[0].sourceFrames, 26: p.freezePosition, 27: 0, 28: p.activity01, 29: 0, 30: p.reverse, 31: p.rootHz, 32: p.tone01, 34: p.transientGain01, 35: p.sustainedGain01, 36: p.residualGain01, 37: p.residualT60Seconds }) }),
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
     buildId: 'owned-sample-v6-motion-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,

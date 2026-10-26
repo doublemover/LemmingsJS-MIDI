@@ -6104,3 +6104,38 @@ export-budget acknowledgments still prevent a false complete receipt.
 - This is the live composite-source preparation foundation; no current content
   enables auxiliary banks yet. Layer DSP, complete state/command handling,
   recipes and UI remain required development. Runtime/CI validation is deferred.
+
+
+### Continuation 239 — one owned source for aligned seed children (#1178)
+
+- Added the explicit `worklet-seed-layers` engine, two physical source slots and
+  a separate 56-field command/state profile. One semantic onset owns an
+  original-rate transient, an independently pitched bounded grain cloud and an
+  original-rate residual with positive amplitude loss. The complete three-bank
+  PCM inventory is prepared once; the frozen parent is ancestry, never another
+  backing layer. Source gains conservatively count the worst permitted grain
+  overlap and both filtered readers; declared per-source cost sums the existing
+  primitive units (96 at the maximum modal tier), not a measured CPU promise.
+- Hollow Tool replaces only the sustained path with its exact fitted positive
+  loss modal body, using the existing contracting feedforward owner. Separate
+  child clocks, birth closure, forced retirement, envelopes and declared tails
+  remain under the root gate. Configuration pins both fixed banks, complete PCM,
+  analysis/reconstruction and modal-fit receipts. Exact state transfer includes
+  the cloud/grains, residual loss, envelope and modal tail without changing the
+  existing sampler ABI. No render-loop arrays or scratch graphs are allocated.
+- Connected saved patch validation/compiler identities, live/offline material,
+  control fixtures, causal rendering and the seed lab. Hammer/Cloud and Hollow
+  Tool have explicit compile choices; Hollow Tool requires a fit of the exact
+  sustained component. Three independently borrowed immutable artifacts must
+  retire before replacement; missing, canceled or stale preparation preserves
+  the previous patch. Existing sampler maps retain their separate selection and
+  release-child behavior. The private fixture has one authored onset and no
+  unsupported live pitch changes or physical-performance claim.
+- Authored unrun complete-inventory, ancestry, recipe, three-rate state transfer,
+  child shutdown, natural EOF, forced queued-control cancellation and changed
+  configuration fixtures. Static syntax/import, critical type and provenance
+  checks pass. No runtime/audio/browser/benchmark tests were run.
+- Bowed Scrap remains explicitly unavailable until actual contact-begin and
+  contact-scoped motion admission are connected; its typed ancestry alone is
+  not playable content. Broad acceptance/CI and the remaining backlog remain
+  deferred to the consolidated validation phase after development.

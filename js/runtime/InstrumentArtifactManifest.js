@@ -11,6 +11,7 @@ export const INSTRUMENT_ARTIFACT_ROOTS = Object.freeze({
   'worklet-pluck': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-spectrum': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-granular': 'js/app/midi-ui/workletInstrumentBackend.js',
+  'worklet-seed-layers': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-sample': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-texture': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-sine': 'js/app/midi-ui/workletInstrumentBackend.js'

@@ -147,9 +147,9 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
         const prepared = source.prepared, patch = prepared.patches.find(entry => reference ? entry.definitionHash === reference.definitionHash && entry.identity === reference.patchId + '@' + reference.revision : entry.identity === patchIdentity);
         if (!patch || patch.state !== 'definition-admitted' || reference && prepared.contentHash !== reference.packHash) throw failure('content-mismatch', 'Pinned sound material definition is unavailable.');
         const refs = patch.definition.sampleRefs;
-        if (refs.length > (['native-sample', 'worklet-sample'].includes(patch.definition.engineId) ? 32 : 1) || patch.dependencies.some(hash => !refs.some(ref => ref.sha256 === hash))) throw failure('material-adapter-unavailable', 'This material needs a supported source-only adapter within its declared asset limit.');
-        const sourcePcm = ['worklet-granular', 'worklet-sample'].includes(patch.definition.engineId); let sourcePcmBytes = 0;
-        if (patch.definition.engineId === 'worklet-sample' && decodeProfile != null && decodeProfile !== 'source-pcm') throw failure('material-adapter-unavailable', 'Owned sample maps require their canonical source-PCM decoder profile.');
+        if (refs.length > (['native-sample', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) ? 32 : 1) || patch.dependencies.some(hash => !refs.some(ref => ref.sha256 === hash))) throw failure('material-adapter-unavailable', 'This material needs a supported source-only adapter within its declared asset limit.');
+        const sourcePcm = ['worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId); let sourcePcmBytes = 0;
+        if (['worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) && decodeProfile != null && decodeProfile !== 'source-pcm') throw failure('material-adapter-unavailable', 'Owned sample maps require their canonical source-PCM decoder profile.');
         for (const ref of new Map(refs.map(ref => [ref.sha256, ref])).values()) {
           const file = prepared.pack.files.find(entry => entry.sha256 === ref.sha256);
           if (!file || file.bytes !== ref.bytes || file.kind !== 'sample') throw failure('asset-missing', 'The exact WAV source inventory is unavailable.');

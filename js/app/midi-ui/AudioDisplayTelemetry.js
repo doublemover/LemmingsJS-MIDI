@@ -10,7 +10,7 @@ const validIdentity = value => value && text(value.worldId) && natural(value.gen
 // The host allocates bounded presentation objects only for active observers.
 // Musical receipts and commands never wait for this latest-wins mailbox.
 export function createAudioDisplayTelemetry({ owner, engineId = 'worklet-sine', getContext, getContextEpoch, getVoices, getRouteState = null, send, resources } = {}) {
-  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(engineId)) throw new TypeError('Unknown audio display source.');
+  if (!['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(engineId)) throw new TypeError('Unknown audio display source.');
   const sinePhase = engineId === 'worklet-sine';
   const observers = new Set(), routes = new Map(), latest = new Map();
   let contextStamp = null, resourceLease = null, tokens = null, sentTokens = null, sentInterval = 0, revision = 0, selected = 0, eligible = 0, stopped = false;

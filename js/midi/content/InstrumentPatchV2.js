@@ -7,6 +7,7 @@ import { resolveCircularSpectrum, circularSpectrumParameters, validateCircularCo
 import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
 import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE, NATIVE_SAMPLE_MAP_PROFILE } from './SampleInstrumentMap.js';
+import { validateSeedLayerProfile } from './SeedLayerProfile.js';
 import { canonicalDataText, cloneData } from '../../core/CanonicalData.js';
 
 const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
@@ -126,6 +127,9 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     throw new Error('An authored resolved sample map is required for this engine capability.');
   const sampleMap = input.sampleMap == null ? null : validateSampleInstrumentMap(input.sampleMap, sampleRefs, {
     rendererProfile: engine.capabilities.advancedSampleMaps === true ? OWNED_SAMPLE_MAP_PROFILE : NATIVE_SAMPLE_MAP_PROFILE });
+  if (input.seedLayers != null && input.engineId !== 'worklet-seed-layers' || input.engineId === 'worklet-seed-layers' && input.seedLayers == null) throw new Error('Decomposed seed layers require their explicit owned composite engine.');
+  const seedLayers = input.seedLayers == null ? null : validateSeedLayerProfile(input.seedLayers, sampleRefs);
+  if (seedLayers?.family === 'bowed-scrap') throw new Error('Bowed Scrap contact-begin admission is not available in this engine revision.');
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');
@@ -145,7 +149,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     !integer(Number(key), 0, 127) || !integer(value, 0, 127)))) throw new Error('Invalid MIDI fallback.');
   return freeze({ schemaVersion: 2, id: input.id, revision: input.revision, name: input.name, author: input.author,
     tags: input.tags, engineId: input.engineId, engineVersion: input.engineVersion, parameters,
-    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
+    modulations, sampleRefs, ...(sampleMap ? { sampleMap } : {}), ...(seedLayers ? { seedLayers } : {}), voicePolicy: { maxVoices: input.voicePolicy.maxVoices, steal: input.voicePolicy.steal },
     mix: { gain01: input.mix.gain01, pan01: input.mix.pan01 }, macros, causalBindings, ...(variation ? { variation } : {}),
     midiFallback: midiFallback && { bankMSB: midiFallback.bankMSB, bankLSB: midiFallback.bankLSB,
       program: midiFallback.program, percussionMap: midiFallback.percussionMap || {} } });

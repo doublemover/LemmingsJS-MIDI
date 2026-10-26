@@ -4,6 +4,8 @@ import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/cont
 import { acceptsSampleCursorSegment, SAMPLE_CURSOR_DISCONTINUITIES } from '../../midi/content/SampleCursorProfile.js';
 import { prepareOwnedPcmSet } from './OwnedPcmSet.js';
 import { retireOwnedProcessorState } from './OwnedProcessorRetirement.js';
+import { prepareSeedLayerPlan } from './SeedLayerPlan.js';
+import { validateSeedLayerProfile } from '../../midi/content/SeedLayerProfile.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { validateSampleInstrumentMap, OWNED_SAMPLE_MAP_PROFILE } from '../../midi/content/SampleInstrumentMap.js';
 import { sourceVoiceMatches } from '../../midi/content/EffectVoiceSelection.js';
@@ -38,10 +40,11 @@ const kernelReasons = Object.freeze({ 1: 'invalid-command', 2: 'kernel-queue-ful
 export function createWorkletInstrumentBackend(preview, owner = null, { leadSeconds = 0.25, smoothingSeconds = 0.008,
   traceLimit = 128, createWorkletNode = null, initializationTimeoutMs = 5000, engineId = 'worklet-sine', prepareSourceBank = prepareOwnedSourceBank } = {}) {
   const source = getOwnedSourceProfile(engineId), WIDTH = source.width, MAX_VOICES = source.voices, fields = source.fields, isExtended = source.extended;
+  const isSampler = engineId === 'worklet-sample', isLayered = engineId === 'worklet-seed-layers';
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
   const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, feedforwardSampleBody: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, canonicalTravelSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), sealedWindModel: engineId === 'worklet-wind', pressureDrivenWind: engineId === 'worklet-wind', experimentalRegisterPolicy: engineId === 'worklet-wind', sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', livePitchUpdates: !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: isSampler, feedforwardSampleBody: isSampler, positionDrivenSamples: isSampler, canonicalTravelSamples: isSampler, releaseVelocity: isSampler, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), sealedWindModel: engineId === 'worklet-wind', pressureDrivenWind: engineId === 'worklet-wind', experimentalRegisterPolicy: engineId === 'worklet-wind', sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', decomposedSeedLayers: isLayered, livePitchUpdates: !['worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
@@ -264,7 +267,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         inFlight.delete(serial);
         if (code === REJECTED && original?.opcode === MIX && original.data[6]) markFault('source-lane-transfer-rejected');
         if (code === REJECTED && voice?.circularTravel && original?.opcode === UPDATE && original.data[15] & 64) markFault('circular-travel-control-rejected');
-        if (code === REJECTED && source.requiresPCMSet && original?.opcode === UPDATE && original.data[15] & 8) markFault('source-position-control-rejected');
+        if (code === REJECTED && isSampler && original?.opcode === UPDATE && original.data[15] & 8) markFault('source-position-control-rejected');
       }
       record({ status: code === REJECTED ? 'rejected' : code === FAULTED ? 'faulted' : code === CANCELLED ? 'cancelled' : 'accepted',
         stage: code === APPLIED ? 'render-kernel-applied' : code === ENDED ? 'render-kernel-ended' : 'render-kernel-outcome',
@@ -293,9 +296,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     let performance = null;
     if (isExtended) { try { performance = compileInstrumentPerformance(input, performanceParameters); } catch { return null; } }
     let samplePatch = null;
-    if (source.requiresPCMSet) { try { samplePatch = Object.freeze({ id: input.id, revision: input.revision, parameters: Object.freeze({ ...parameters }),
+    if (source.requiresPCMSet) { try { samplePatch = Object.freeze({ id: input.id, revision: input.revision, engineId, engineVersion: 1, parameters: Object.freeze({ ...parameters }),
       voicePolicy: Object.freeze({ maxVoices: input.voicePolicy.maxVoices }), sampleRefs: Object.freeze(input.sampleRefs.map(ref => Object.freeze({ ...ref }))),
-      sampleMap: validateSampleInstrumentMap(input.sampleMap, input.sampleRefs, { rendererProfile: OWNED_SAMPLE_MAP_PROFILE }) }); } catch { return null; } }
+      ...(isLayered ? { seedLayers: validateSeedLayerProfile(input.seedLayers, input.sampleRefs) } : { sampleMap: validateSampleInstrumentMap(input.sampleMap, input.sampleRefs, { rendererProfile: OWNED_SAMPLE_MAP_PROFILE }) }) }); } catch { return null; } }
     return Object.freeze({ samplePatch, id: input.id, revision: input.revision, parameters: Object.freeze(parameters), performance,
       maxVoices: input.voicePolicy.maxVoices, gain01: input.mix.gain01, pan01: input.mix.pan01, sampleRef: source.requiresPCM ? Object.freeze({ ...input.sampleRefs[0] }) : null });
   };
@@ -331,7 +334,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
           signal: assetController.signal, isCurrent: current });
         inputCopy = await bank.copyForProcessor({ signal: assetController.signal, isCurrent: current }); candidatePcm = bank.descriptor;
       }
-      if (source.requiresPCMSet) { candidatePlan = prepareOwnedSamplePlan(next.samplePatch, candidatePcm, candidateContext.sampleRate); if (ready && candidatePlan.identity !== samplePlan?.identity) return reject('source-requires-new-renderer'); }
+      if (source.requiresPCMSet) { candidatePlan = (isLayered ? prepareSeedLayerPlan : prepareOwnedSamplePlan)(next.samplePatch, candidatePcm, candidateContext.sampleRate); if (ready && candidatePlan.identity !== samplePlan?.identity) return reject('source-requires-new-renderer'); }
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
@@ -353,7 +356,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
                 data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || laneTapsEnabled && (data.laneTapProtocol !== LIVE_LANE_TAP_PROTOCOL || data.maxLaneTaps !== LIVE_LANE_TAP_LIMIT) || data.maxVoices !== MAX_VOICES ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
                 source.requiresPCMSet && (data.samplePlanIdentity !== candidatePlan.identity || data.retirementProtocol !== 1) || data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
-                source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
+                isLayered && data.auxiliarySourceBankHashes?.['grain-window-v1'] !== getOwnedSourceBankIdentity('grain-window-v1').hash || source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
             resolve();
           };
         }), interrupted]);
@@ -481,11 +484,11 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         Object.keys(expression).some(id => !['pressure01', 'pan01', 'pitchOffsetCents'].includes(id))) return reject('unsupported-expression', intent.voiceId);
     const frequency = (intent.pitch.referenceHz ?? 440) * 2 ** ((intent.pitch.cents - 6900 + offset) / 1200);
     if (!finite(frequency, source.minHz, Math.min(source.maxHz ?? Infinity, context.sampleRate / 2 - 1)) || Math.abs(offset) > source.bendCents) return reject('pitch-out-of-range', intent.voiceId);
-    if (!source.acceptsOnset(parameters, frequency, pcmDescriptor, context.sampleRate)) return reject('source-region-or-pitch-out-of-range', intent.voiceId);
+    if (!source.acceptsOnset(parameters, frequency, pcmDescriptor, context.sampleRate) || isLayered && !samplePlan.acceptsOnset(frequency)) return reject('source-region-or-pitch-out-of-range', intent.voiceId);
     let circularTravel = null;
     if (source.travelPlanner) { try { circularTravel = source.travelPlanner(parameters, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, intent.voiceId); } }
     let sampleSelection = null;
-    if (source.requiresPCMSet) { try { sampleSelection = samplePlan.select(intent); } catch (error) { return reject(error.message || 'sample-selection-unavailable', intent.voiceId); } }
+    if (isSampler) { try { sampleSelection = samplePlan.select(intent); } catch (error) { return reject(error.message || 'sample-selection-unavailable', intent.voiceId); } }
     let traversal = null;
     if (sampleSelection) { const entry = samplePlan.entries[sampleSelection.zoneIndex];
       if (entry.attack.traversal && intent.samplePositionMode !== 'authored-control-fixture') {
@@ -524,7 +527,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence } : null, traversalIdentity: traversal?.ownerIdentity ?? null, sampleSelection, samplePitch: sampleSelection ? Object.freeze({ ...intent.pitch }) : null, positionFrontier: null, positionCommands: source.requiresPCMSet ? new Set() : null, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence } : null, traversalIdentity: traversal?.ownerIdentity ?? null, sampleSelection, samplePitch: sampleSelection ? Object.freeze({ ...intent.pitch }) : null, positionFrontier: null, positionCommands: isSampler ? new Set() : null, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease, initialLeaseEndFrame: endFrame, requestedLeaseEndFrame: endFrame, effectiveLeaseEndFrame: null,
       pendingLeases: new Map(), leaseFailure: null,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
@@ -580,9 +583,9 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (Number.isFinite(nextChoke) && forceSampleEnd(voice, nextChoke, nextChoke === targetFrame).status !== 'accepted') {
       markFault('sample-choke-control-failed'); return reject('sample-choke-control-failed', intent.voiceId);
     }
-    if (circularTravel) return Object.freeze({ ...result, [source.travelReceiptKey]: circularTravel.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }) });
+    if (circularTravel) return Object.freeze({ ...result, [source.travelReceiptKey]: circularTravel.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }) });
     if (sampleSelection) return Object.freeze({ ...result, region: sampleSelection.region, rateRatio: sampleSelection.rateRatio, readDerivative: sampleSelection.readDerivative, sourceRenderer: 'owned-sample', ...(traversal ? { sampleTraversal: traversal.receipt } : {}), sourceBank: pcmDescriptor, articulation: sampleSelection.articulation });
-    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) }) : result;
+    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -595,7 +598,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (expression.pitchOffsetCents != null) {
       const frequency = voice.baseFrequency * 2 ** (expression.pitchOffsetCents / 1200);
       if (!finite(expression.pitchOffsetCents, -source.bendCents, source.bendCents) || !finite(frequency, 0.1, context.sampleRate / 2 - 1)) return reject('invalid-expression', voiceId);
-      if (source.requiresPCMSet) { const entry = samplePlan.entries[voice.sampleSelection.zoneIndex]; if (entry.attack.mode === 'positionDriven' && expression.pitchOffsetCents !== 0 || !samplePlan.rateFor(entry.attack, voice.samplePitch, expression.pitchOffsetCents) || entry.release && !samplePlan.rateFor(entry.release, voice.samplePitch, expression.pitchOffsetCents)) return reject('sample-pitch-out-of-range', voiceId); }
+      if (isSampler) { const entry = samplePlan.entries[voice.sampleSelection.zoneIndex]; if (entry.attack.mode === 'positionDriven' && expression.pitchOffsetCents !== 0 || !samplePlan.rateFor(entry.attack, voice.samplePitch, expression.pitchOffsetCents) || entry.release && !samplePlan.rateFor(entry.release, voice.samplePitch, expression.pitchOffsetCents)) return reject('sample-pitch-out-of-range', voiceId); }
       mask |= 1; values[6] = frequency;
     }
     if (expression.pressure01 != null) { if (!finite(expression.pressure01, 0, 1)) return reject('invalid-expression', voiceId); mask |= 2; values[8] = expression.pressure01; }
@@ -605,7 +608,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const queueSamplePosition = (voiceId, segment, targetFrame, executionEpoch = 'live', canonicalTravel = false) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
-    if (!source.requiresPCMSet || !ready || !voice?.positionFrontier || !preview._ownerReady(owner) || !segment || Object.getPrototypeOf(segment) !== Object.prototype ||
+    if (!isSampler || !ready || !voice?.positionFrontier || !preview._ownerReady(owner) || !segment || Object.getPrototypeOf(segment) !== Object.prototype ||
         Object.keys(segment).some(key => !['firstOutputFrame', 'endOutputFrame', 'firstSourceFrame', 'endSourceFrame', 'sequence', 'discontinuity'].includes(key)) ||
         !Number.isSafeInteger(targetFrame) || targetFrame < now || targetFrame !== segment.firstOutputFrame || targetFrame >= voice.releaseAt * context.sampleRate) return reject('sample-position-admission', voiceId);
     if (voice.traversalIdentity && !canonicalTravel) return reject('sample-travel-binding-requires-canonical-observation', voiceId);
@@ -622,7 +625,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const updateSamplePosition = (...args) => queueSamplePosition(...args);
   const updateSampleTravel = (voiceId, intent, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
-    if (!source.requiresPCMSet || !voice?.sampleSelection || !samplePlan.entries[voice.sampleSelection.zoneIndex].attack.traversal) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-sample-travel-binding' });
+    if (!isSampler || !voice?.sampleSelection || !samplePlan.entries[voice.sampleSelection.zoneIndex].attack.traversal) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-sample-travel-binding' });
     let planned; try { planned = planSampleTraversal(samplePlan.entries[voice.sampleSelection.zoneIndex].attack, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, voiceId); }
     if (planned.ownerIdentity !== voice.traversalIdentity || intent.voiceId !== voiceId || intent.generation !== voice.semanticGeneration) return reject('sample-travel-owner-or-discontinuity-changed', voiceId);
     const outcome = queueSamplePosition(voiceId, planned.segment, planned.segment.firstOutputFrame, executionEpoch, true);
@@ -678,7 +681,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const end = (voiceId, release, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
     if (!voice || !ready) return reject('voice-not-active', voiceId);
-    if (!Number.isSafeInteger(targetFrame) || targetFrame < 0 || !finite(release?.seconds ?? voice.release, 0, 4) || release?.velocity01 != null && (!source.requiresPCMSet || !finite(release.velocity01, 0, 1)) || release?.force != null && typeof release.force !== 'boolean') return reject('invalid-release', voiceId);
+    if (!Number.isSafeInteger(targetFrame) || targetFrame < 0 || !finite(release?.seconds ?? voice.release, 0, 4) || release?.velocity01 != null && (!isSampler || !finite(release.velocity01, 0, 1)) || release?.force != null && typeof release.force !== 'boolean') return reject('invalid-release', voiceId);
     let frame = Math.max(now, targetFrame);
     if (release?.mode === 'one-shot') {
       if (!finite(release.tailSeconds, 0, 4)) return reject('invalid-release', voiceId);
@@ -691,7 +694,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (voice.traversalIdentity && release?.force !== true) frame = Math.max(frame, voice.positionFrontier.lastEndFrame);
     frame = Math.min(frame, deadline - 1);
     const releaseFrames = Math.min(requestedReleaseFrames, Math.max(1, deadline - frame));
-    const layerTailFrames = source.requiresPCMSet && !release?.force && voice.sampleSelection.region.releaseRegion && release?.velocity01 !== 0 ? Math.min(Math.max(releaseFrames, Math.ceil(context.sampleRate * 4)), Math.max(1, deadline - frame)) : releaseFrames;
+    const layerTailFrames = isSampler && !release?.force && voice.sampleSelection.region.releaseRegion && release?.velocity01 !== 0 ? Math.min(Math.max(releaseFrames, Math.ceil(context.sampleRate * 4)), Math.max(1, deadline - frame)) : releaseFrames;
     const result = command(END, frame, voice, { 13: releaseFrames, ...(source.requiresPCMSet ? { 16: frame + layerTailFrames, 7: release?.velocity01 ?? 1, 8: 1, 20: release?.force ? 1 : 0 } : {}) });
     if (result.status === 'accepted') { voice.released = true; voice.releaseAt = Math.min(voice.releaseAt, frame / context.sampleRate); voice.end = (frame + layerTailFrames) / context.sampleRate; }
     return Object.freeze({ ...result, releasePolicy: 'bounded-by-admitted-interval', requestedTargetFrame: targetFrame, effectiveTargetFrame: frame,
@@ -742,7 +745,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (error) pending.reject(error); else { lastSourceInspection = value; pending.resolve(value); }
   };
   const inspectSourceState = () => {
-    if (!source.requiresPCMSet || !ready || disposed || !node || sourceInspectionSerial === Number.MAX_SAFE_INTEGER) return Promise.reject(new Error('Prepared sample source diagnostics are unavailable.'));
+    if (!isSampler || !ready || disposed || !node || sourceInspectionSerial === Number.MAX_SAFE_INTEGER) return Promise.reject(new Error('Prepared sample source diagnostics are unavailable.'));
     if (sourceInspection) return sourceInspection.promise;
     let resolve, reject; const promise = new Promise((accept, deny) => { resolve = accept; reject = deny; });
     const pending = sourceInspection = { requestId: ++sourceInspectionSerial, producer: node, promise, resolve, reject, timer: null };

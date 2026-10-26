@@ -15,6 +15,7 @@ export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, ban
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 36, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
 export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 2, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
+export const SEED_LAYER_LAYOUT = Object.freeze({ width: 56, voices: 2, state: 144 });
 export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
 export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
 export const GRANULAR_SOURCE_HEAP_ESTIMATE = 65536;
@@ -41,6 +42,12 @@ export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);
   if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid owned sample source rate.');
   return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
+}
+
+export function seedLayerSourceBytes(rate, voices = SEED_LAYER_LAYOUT.voices) {
+  check(rate, voices, SEED_LAYER_LAYOUT.voices, 96000);
+  if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Unsupported layered seed source rate.');
+  return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + granularSourceBytes(rate, voices) + voices * SEED_LAYER_LAYOUT.state * 8 + 40 * 8;
 }
 
 export function textureSourceBytes(rate, voices = TEXTURE_LAYOUT.voices) {

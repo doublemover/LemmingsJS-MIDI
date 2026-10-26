@@ -41,6 +41,8 @@ export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
 const nativeComponents = descriptor => {
   const roles = descriptor.engineId === 'worklet-wind' ? { exciter: ['windKind', 'airPressure01', 'bite01', 'breathLeak01'], resonator: ['acousticLengthRatio', 'bellOpening01', ...descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft'))], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-friction' ? { exciter: ['frictionKind', 'frictionDragSlope', 'frictionPressure01', 'frictionScope', 'frictionAxis', 'frictionRequireSegments'], resonator: ['frictionContact01', 'frictionBodyMix01', ...descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft'))], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-texture' ? { exciter: ['textureKind', 'roughnessPerPixel', 'dragSlope', 'shade01', 'textureScope', 'textureAxis', 'textureRequireSegments'], resonator: ['textureBodySeconds', ...descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft'))], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-sample' ? {
     exciter: ['sampleLowpassHz', 'sampleVelocityTone01', 'graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'], resonator: descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft') && !['graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'].includes(id)), envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
+  } : descriptor.engineId === 'worklet-seed-layers' ? {
+    exciter: ['pitchRatio', 'rootHz', 'reverse', 'transientGain01', 'residualGain01', 'residualT60Seconds'], resonator: ['sustainedGain01', 'position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-granular' ? {
     exciter: ['pitchRatio', 'regionStart01', 'regionEnd01', 'motionRequired', 'reverse', 'rootHz'],
     resonator: ['position01', 'densityHz', 'grainMilliseconds', 'spread01', 'activity01', 'tone01', 'freezePosition'],
@@ -62,7 +64,7 @@ const nativeComponents = descriptor => {
     modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01', 'secondaryMix01']
   } : { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
-  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(descriptor.engineId)) return null;
+  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(descriptor.engineId)) return null;
   return Object.entries(roles).map(([role, parameters]) => ({ id: role, role, parameters: parameters.filter(name => descriptor.parameters.some(spec => spec.id === name)) }));
 };
 
@@ -161,14 +163,14 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
     try { definition = validateInstrumentPatchV2({ schemaVersion: 2, id: recipe.id, revision: recipe.revision, name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, parameters, modulations, causalBindings,
       ...(recipe.variation ? { variation: recipe.variation } : {}),
-      ...(recipe.sampleMap ? { sampleMap: recipe.sampleMap } : {}),
+      ...(recipe.sampleMap ? { sampleMap: recipe.sampleMap } : {}), ...(recipe.seedLayers ? { seedLayers: recipe.seedLayers } : {}),
       macros: effectiveMacros,
       sampleRefs: recipe.sampleRefs || [], voicePolicy: recipe.voicePolicy, mix: recipe.mix, midiFallback: recipe.midiFallback }, descriptor); }
     catch (error) { fail(path + '.definition', error.message); }
     requireValue(!nativeComponents(descriptor) || definition.voicePolicy.maxVoices <= 64, path + '.voicePolicy', 'native renderer supports at most 64 owned voices');
     const engineRequirement = { engineId: descriptor.engineId, engineVersion: descriptor.engineVersion, artifactHash: descriptor.artifactHash, parameterSchemaHash: descriptor.parameterSchemaHash };
     const dependencies = recipe.dependencies || []; requireValue(Array.isArray(dependencies) && dependencies.length <= 512, path + '.dependencies', 'invalid asset dependency closure');
-    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings: definition.causalBindings, sampleRefs: definition.sampleRefs, sampleMap: sampleMapRenderIdentity(definition.sampleMap), dependencies: [...dependencies].sort(),
+    const effective = { engineRequirement, parameters: definition.parameters, modulations, causalBindings: definition.causalBindings, sampleRefs: definition.sampleRefs, sampleMap: sampleMapRenderIdentity(definition.sampleMap), ...(definition.seedLayers ? { seedLayers: definition.seedLayers } : {}), dependencies: [...dependencies].sort(),
       macros: definition.macros.map(({ name, perceptualDirection, ...macro }) => macro), variation: definition.variation || null, voicePolicy: definition.voicePolicy, mix: definition.mix };
     const reachable = new Set(dependencies), fileMap = new Map(source.files.map(file => [file.sha256, file]));
     for (const dependency of reachable) { requireValue(reachable.size <= 512, path + '.dependencies', 'asset ancestry exceeds its bounds');
