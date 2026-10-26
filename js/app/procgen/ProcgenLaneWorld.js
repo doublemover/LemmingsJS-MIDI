@@ -1,3 +1,4 @@
+import { validateActorBirthAbilities } from './ActorBirthAbilities.js';
 import { causalRandomDecision } from './workstation/CausalRandom.js';
 import { isNotifyingProcgenBoundary, publishProcgenCommittedBoundary } from './ProcgenCommittedBoundary.js';
 import { createPhysicalFeedbackState } from './workstation/physical/PhysicalFeedback.js';
@@ -67,8 +68,8 @@ const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n =
 // Terrain is queried in one shared coordinate system. No world-sized bitmap,
 // per-lane Game, or rendering dependency is needed by the real action systems.
 class ProcgenLaneWorld {
-  constructor({ laneCount = 1, laneHeight = 96, seed = 1, worldId = null, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, initialReleaseGesture = null, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null, workstation = false, hazardSpacing = 160 } = {}) {
-    this.laneCount = normalizeLaneCount(laneCount);
+  constructor({ laneCount = 1, laneHeight = 96, seed = 1, worldId = null, sprites = null, masks, assists = true, speed = 3, cohorts = false, spawnSpreadTicks = null, maxActors = 16384, stallPolicy = {}, populationPolicy = {}, initialReleaseGesture = null, actorBirthAbilities = null, previousDistances = [], workerLimits = {}, policyConfig = {}, particleTable = null, terrain = null, workstation = false, hazardSpacing = 160 } = {}) {
+    this.laneCount = normalizeLaneCount(laneCount); this.actorBirthAbilities = validateActorBirthAbilities(actorBirthAbilities, this.laneCount);
     if (initialReleaseGesture !== null && !cohorts) throw new Error('An authored initial release policy requires cohort admission.');
     const initialRelease = initialReleaseGesture === null ? null : validateReleaseGesture(initialReleaseGesture, this.laneCount);
     this.laneHeight = normalizeLaneHeight(laneHeight);
@@ -206,12 +207,13 @@ class ProcgenLaneWorld {
     const release = this.population.cohortReleaseGesture; actor.releaseGesture = release ? Object.freeze({ id: release.id, revision: release.revision, requestedTick: this.population.cohortStartTick + this._spawnPhaseForLane(lane), realizedTick: this.tickIndex, cohortOrdinal: this.population.gestureRun.cohortOrdinal, clockMode: release.clockMode, sourceCommandId: this.population.releaseGestureCommandId }) : null; if (actor.releaseGesture?.sourceCommandId) actor._physicalInterventionId = actor.releaseGesture.sourceCommandId;
     actor.proceduralSeed = deriveSeed(this.laneSeeds[lane], `procgen:actor:${actor.spawnOrdinal}`);
     actor.scoutDecision = this.population.scoutDecision(this.laneSeeds[lane], actor.spawnOrdinal); actor.scoutAbilities = actor.scoutDecision.abilities; actor.scout = !!actor.scoutAbilities;
+    const birthAbilities = this.actorBirthAbilities?.[lane]; if (birthAbilities) { actor.canClimb = birthAbilities.climb; actor.hasParachute = birthAbilities.parachute; }
     actor.spawnPhaseTicks = this._spawnPhaseForLane(lane);
     actor.lastProgressTick = this.tickIndex;
     actor.furthestX = actor.x;
     actor.assists = 0;
     actor.failureReason = null;
-    const birth = { kind: 'ActorBorn', actorId: actor.id, laneId: lane, scoutDecision: actor.scoutDecision, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } };
+    const birth = { kind: 'ActorBorn', ...(birthAbilities ? { birthAbilities: { schema: 'lemmings-actor-birth-abilities/v1', ...birthAbilities } } : {}), actorId: actor.id, laneId: lane, scoutDecision: actor.scoutDecision, birthCohortId: actor.birthCohortId, spawnTick: actor.spawnTick, spawnOrdinal: actor.spawnOrdinal, ...(actor.releaseGesture ? { releaseGesture: actor.releaseGesture, parentCauseIds: actor.releaseGesture.sourceCommandId ? [actor.releaseGesture.sourceCommandId] : [] } : {}), positionAfter: { x: actor.x, y: actor.y } };
     if (!actor._queuePhysicalTransition(birth)) actor._physicalPendingTransitions = [birth];
     actor.setAction(this.actions[State.FALLING]);
     this.actors.push(actor); this.activeCount++;

@@ -1,3 +1,4 @@
+import { validateActorBirthAbilities, sameActorBirthAbilities } from '../ActorBirthAbilities.js';
 import { validateCausalProbabilityPolicy } from './CausalProbabilityPolicy.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 import { validatePopulationReleaseState } from '../ReleaseGesture.js';
@@ -139,7 +140,8 @@ const checkpointEnvelope = (world, graph) => {
   return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-2',
     componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS, ...(world.terrain?.sceneTerrainLayout ? { terrainAssignments: 2 } : {}) }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
     seed: world.seed, assets: assetIdentity(world), graph,
-    physicsAlgorithms: { stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1, causalRandom: 'fnv1a32-avalanche-v1', populationRandom: 1, terrainChallenge: 3 },
+    ...(world.actorBirthAbilities ? { actorBirthAbilities: world.actorBirthAbilities } : {}),
+    physicsAlgorithms: { ...(world.actorBirthAbilities ? { actorBirthAbilities: 1 } : {}), stallCascade: world.stall.settings.cascadeDecisionVersion ?? 1, causalRandom: 'fnv1a32-avalanche-v1', populationRandom: 1, terrainChallenge: 3 },
     terrainAssignments: world.terrain?.exportAssignments?.() || null,
     terrainSettings: (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain ? { workstation: terrain.workstation, hazardSpacing: terrain.hazardSpacing, laneHeight: terrain.height, sharedSpanBudget: terrain.sharedSpanBudget } : null),
     growth: world.terrainGrowth?.exportState?.() || null, scenery: world.scenery?.snapshot?.() || null,
@@ -243,6 +245,7 @@ function restoreProcgenCheckpoint(world, saved) {
   if (world._stepping || world.soundEvents._tick) throw new Error('Cannot restore a checkpoint inside a physical tick.');
   if (![1, VERSION].includes(saved?.version) || saved.generator !== 'procgen-workstation-2' || saved.laneCount !== world.laneCount || saved.laneHeight !== world.laneHeight || saved.seed !== world.seed) throw new Error('Incompatible world checkpoint.');
   validateCheckpointCodecs(saved);
+  if (saved.actorBirthAbilities != null && saved.physicsAlgorithms?.actorBirthAbilities !== 1 || saved.actorBirthAbilities == null && saved.physicsAlgorithms?.actorBirthAbilities != null || !sameActorBirthAbilities(saved.actorBirthAbilities, world.actorBirthAbilities, world.laneCount)) throw new Error('The checkpoint requires its original authored actor birth ability policy.');
   const scoredSource = saved.componentCodecs?.terrainAssignments === 2;
   if (scoredSource !== !!saved.terrainAssignments?.sceneTerrain || scoredSource !== !!world.terrain?.sceneTerrainLayout || scoredSource && (typeof world.terrain.validateScoredAssignments !== 'function' || !Array.isArray(saved.terrainSettings) || saved.growth != null)) throw new Error('The checkpoint requires its original authored terrain source profile.');
   if (JSON.stringify(saved.assets) !== JSON.stringify(assetIdentity(world))) throw new Error('Checkpoint terrain assets do not match the installed collection.');
@@ -302,6 +305,8 @@ function restoreProcgenCheckpoint(world, saved) {
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   const preparedWorld = prepared.find(item => item.entry.name === 'world'); preparedWorld.props.physicalCrewEvidence = validatePhysicalCrewEvidence(preparedWorld.props.physicalCrewEvidence, preparedWorld.props.generation);
+  if (!sameActorBirthAbilities(preparedWorld.props.actorBirthAbilities, saved.actorBirthAbilities, world.laneCount)) throw new Error('Checkpoint actor birth source differs from its graph state.');
+  preparedWorld.props.actorBirthAbilities = validateActorBirthAbilities(saved.actorBirthAbilities, world.laneCount);
   for (const command of preparedWorld.props.interventionState?.pending || []) if (command.probability && JSON.stringify(validateCausalProbabilityPolicy(command.probability)) !== JSON.stringify(command.probability)) throw new Error('Invalid checkpoint physical probability policy.');
   if (preparedWorld.props.physicalFeedback != null) preparedWorld.props.physicalFeedback = validatePhysicalFeedbackState(preparedWorld.props.physicalFeedback);
   if (scoredSource) world.terrain.validateScoredAssignments(saved.terrainAssignments, preparedWorld.props.laneSeeds, saved.terrainSettings);

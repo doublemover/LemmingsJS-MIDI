@@ -1,3 +1,4 @@
+import { validateActorBirthAbilities } from '../ActorBirthAbilities.js';
 import { validateProjectJunctions } from './PhysicalJunctionProject.js';
 import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
 import { normalizeLaneHeight } from '../ProcgenLaneGeometry.js';
@@ -15,9 +16,10 @@ const fail = () => { throw Object.assign(new Error('The pinned physical score re
 const same = (a, b) => canonicalDataText(a).text === canonicalDataText(b).text;
 export function validatePerformanceSceneRecipe(raw) {
   const value = cloneData(raw, { maxBytes: 131072, maxNodes: 8192 }), s = value?.settings;
-  if (!keys(value, ['schema', 'id', 'revision', 'sourceHash', 'settings', 'terrainFamilies', 'seedPolicy', 'initialReleaseGesture', 'initialTerrainLayout', 'assistPolicy', 'initialJunctions']) || value.schema !== 'lemmings-physical-score-recipe/v1' || typeof value.id !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.id) || !integer(value.revision, 1, 2147483647) || !hash(value.sourceHash) || value.seedPolicy !== 'scene-seed' ||
+  if (!keys(value, ['schema', 'id', 'revision', 'sourceHash', 'settings', 'terrainFamilies', 'seedPolicy', 'initialReleaseGesture', 'initialTerrainLayout', 'assistPolicy', 'initialJunctions', 'actorBirthAbilities']) || value.schema !== 'lemmings-physical-score-recipe/v1' || typeof value.id !== 'string' || !/^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value.id) || !integer(value.revision, 1, 2147483647) || !hash(value.sourceHash) || value.seedPolicy !== 'scene-seed' ||
       !keys(s, ['laneCount', 'laneHeight', 'pack', 'speed', 'hazardSpacing', 'decoration', 'workerLimits', 'populationPolicy']) || !integer(s.laneCount, 1, 32) || !integer(s.laneHeight, 64, 512) || !integer(s.pack, 1, 3) || !Number.isFinite(s.speed) || s.speed < 0.1 || s.speed > 12 || !Number.isFinite(s.hazardSpacing) || s.hazardSpacing < 80 || s.hazardSpacing > 1024 || s.decoration !== 'none' ||
       !plain(s.workerLimits) || !same(s.workerLimits, normalizeWorkerLimits(s.workerLimits)) || !plain(s.populationPolicy) || !same(s.populationPolicy, normalizePopulationPolicy(s.populationPolicy)) || !Array.isArray(value.terrainFamilies) || value.terrainFamilies.length !== s.laneCount || value.terrainFamilies.some(family => !['rock', 'holiday-snow', 'brick', 'snow', 'bubble', 'dirt', 'fire', 'squasher', 'pillar', 'crystal'].includes(family))) fail();
+  if (value.actorBirthAbilities !== undefined && !same(value.actorBirthAbilities, validateActorBirthAbilities(value.actorBirthAbilities, s.laneCount))) fail();
   if (value.assistPolicy !== undefined && !['manual-only', 'standard'].includes(value.assistPolicy)) fail();
   if (value.initialJunctions !== undefined && !same(value.initialJunctions, validateProjectJunctions(value.initialJunctions))) fail();
   if (value.initialTerrainLayout !== undefined) { const layout = validateSceneTerrainLayout(value.initialTerrainLayout); if (layout.lanes.length !== s.laneCount || layout.laneHeight !== s.laneHeight || normalizeLaneHeight(layout.laneHeight) !== layout.laneHeight || !same(layout, value.initialTerrainLayout)) fail(); }

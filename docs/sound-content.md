@@ -896,3 +896,20 @@ pitch and bite map and sixty-second sustains are authored in
 `scripts/qualify-wind-source.mjs --name=rook`; they and the integration fixtures
 are unrun. Stability/dropout/register regions, alias/pitch, device cost, physical
 Breathing Stairwell playback and levelmatched listening remain pending.
+
+
+**Breathing Stairwell** is installed only with the exact sealed wind/pressure
+capability. Its two finite climber/floater entrants own their declared abilities
+before first birth and in checkpoints. A worker-compiled 80-pixel rise leads to a
+high shelf and a long physical descent to the landing. Actual climbing, hoisting,
+falling and floating action entry plus motion starts a held wind source; observed
+world height calibrates pressure as `clamp(1 - Y/256, 0, 1)` across its two 128-pixel
+lanes. Fall-to-float carries the original voice. Walking at the landing has no
+wind mapping and ends replenished breath through the existing action owner; the
+declared release may ring. There is no stored melody or accompaniment.
+
+Use existing physical terrain editing to alter the rise/shelf, or finite Release
+gestures to change entry spacing. Acoustic LENGTH remains a separate sound macro.
+The scene starts paused and keeps manual assistance. Missing engine capability
+leaves it unavailable; the physics, pressure, checkpoints, actual device playback
+and listening fixtures are authored but unrun.

@@ -65,7 +65,7 @@ export async function prepareProcgenInspectionWorld({ checkpoint, rootPath, reso
     const palette = displayAssets.assets?.gadgetImages?.find(image => image?.palette)?.palette || displayAssets.groundPieces[0].image.palette;
     const [sprites, masks] = await settleAll([resources.getLemmingsSprite(palette), resources.getMasks()]); check();
     world = new ProcgenLaneWorld({ laneCount: checkpoint.laneCount, laneHeight: checkpoint.laneHeight, seed: checkpoint.seed, sprites, masks, terrain,
-      cohorts: true, workstation: true, maxActors: maximumActors, hazardSpacing: checkpoint.terrainSettings?.[0]?.hazardSpacing, speed: checkpoint.clock.speedFactor, particleTable: new ParticleTable(palette) });
+      cohorts: true, workstation: true, actorBirthAbilities: checkpoint.actorBirthAbilities ?? null, maxActors: maximumActors, hazardSpacing: checkpoint.terrainSettings?.[0]?.hazardSpacing, speed: checkpoint.clock.speedFactor, particleTable: new ParticleTable(palette) });
     if (sourceLayout) terrain.validateScoredAssignments(checkpoint.terrainAssignments, null, checkpoint.terrainSettings);
     world.gameResources = resources; check();
     return Object.freeze({ world, dispose });

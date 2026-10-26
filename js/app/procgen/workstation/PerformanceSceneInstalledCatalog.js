@@ -1,3 +1,4 @@
+import { createWindPerformanceScore } from './WindPerformanceScore.js';
 import { createFrictionPerformanceScore } from './FrictionPerformanceScore.js';
 import { createAdditionalPracticeScores } from './PerformancePracticeScores.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
@@ -83,6 +84,15 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     const item = await createFrictionPerformanceScore({ sourceHash, descriptor: friction }); signal?.throwIfAborted();
     recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
     put('engine', friction.engineId, friction.engineVersion, friction.artifactHash); put('parameter-schema', friction.engineId, friction.engineVersion, friction.parameterSchemaHash);
+    for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+    for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+    await registry.register(item.scene); signal?.throwIfAborted();
+  }
+  const wind = catalog.descriptors.find(value => value.engineId === 'worklet-wind');
+  if (wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) {
+    const item = await createWindPerformanceScore({ sourceHash, descriptor: wind }); signal?.throwIfAborted();
+    recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+    put('engine', wind.engineId, wind.engineVersion, wind.artifactHash); put('parameter-schema', wind.engineId, wind.engineVersion, wind.parameterSchemaHash);
     for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
     for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
     await registry.register(item.scene); signal?.throwIfAborted();

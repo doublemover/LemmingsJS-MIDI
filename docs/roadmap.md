@@ -5337,3 +5337,28 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   listening remain pending for #1137. Static-only checks precede the commit;
   runtime/build/browser/audio/CI qualification continues to wait for the combined
   validation pass after remaining development, as requested.
+
+
+### Continuation 212 — authored Breathing Stairwell and pre-birth abilities
+
+- Added bounded lane-indexed authored actor birth capabilities as a source policy,
+  installed before any actor/action and emitted in ActorBorn ancestry. Scene
+  recipes, stage preflight, Boot/session/independent inspection and checkpoint
+  validation retain the exact policy. A mismatched source or forged graph/header
+  policy rejects before world mutation; ordinary worlds keep no authored policy.
+  This does not introduce a timed intervention program or automatic skill repair.
+- Installed Breathing Stairwell only with its pinned sealed wind/held-pressure
+  engine. Two finite climber/floater entrants use a worker-compiled 80-pixel rise,
+  high shelf and descent/landing. Real action entry plus committed motion admits
+  the held voice, observed world height shapes pressure, fall-to-float is legato,
+  and walking/landing removes replenished breath through action exit ownership.
+- Bound original Hollow Reed/Air Pipe patches, acoustic controls, manual assistance,
+  source/recipe/observation closure and paused staged publication. Existing physical
+  terrain/release editing changes actual route height/entry spacing; acoustic
+  LENGTH remains separate. Static poll, transport or UI movement creates no onset.
+- Authored unrun source/origin/preflight, motion-admission/height/legato/landing,
+  lane-policy bounds, pre-first-birth checkpoint/resume/foreign-policy rejection
+  and actual compiled-source climbing/floating/causal-expression fixtures. They
+  provide no observed playability, PCM, device or user-listening result yet. The
+  wind pressure/pitch stability map, sustained/tail/alias/cost acceptance and all
+  other remaining backlog development continue before consolidated validation.
