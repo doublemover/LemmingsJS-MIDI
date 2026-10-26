@@ -1,0 +1,92 @@
+import { RESONATOR_MORPH_KERNEL_REVISION, prepareResonatorMorphKernelProfile } from './worklet/ResonatorMorphKernel.js';
+import { inspectOwnedCueWave } from './OwnedPcmCue.js';
+import { canonicalDataText, cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
+import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
+import { backgroundJobService } from '../resources/BackgroundJobService.js';
+import { sharedContentJobsFor } from '../resources/SharedContentJobs.js';
+import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
+import { retireBackgroundResult } from '../resources/ResourceRetirement.js';
+import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { prepareExportArtifact } from '../export/ExportArtifact.js';
+
+let ordinal = 0;
+const programs = new Set(['endpoint-a-v1', 'endpoint-b-v1', 'held-out-and-back-v1']);
+const fail = message => Object.assign(new Error(message), { name: 'MorphReferenceError', code: 'morph-reference-unavailable' });
+export function createResonatorMorphReferenceOwner({ getSource, audio = null, resourceBudget, jobs = backgroundJobService, getExecutionIdentity = getActiveExecutionIdentity, onState = () => {} } = {}) {
+  if (typeof getSource !== 'function') throw new TypeError('Morph references need the current reviewed source owner.');
+  const ownerId = 'morph-reference-' + (++ordinal), shared = sharedContentJobsFor(jobs), cache = new Map(), pending = new Set(), unknown = new Set(), exports = new Set(), retirement = createProcgenRetirementScope(); let disposed = false, active = null, playback = null, serial = 0, useSerial = 0, phase = 'no-reference', error = null, playSerial = 0, progress = null;
+  const execution = () => { const value = getExecutionIdentity('browser-background-jobs'); if (value?.activeExecution !== 'bound' || !/^[a-f0-9]{64}$/.test(value.buildId || '')) throw fail('Build the immutable application before preparing a bound reference.'); return value; };
+  const source = () => { const value = getSource(); if (!value?.map || !value.a || !value.b || !Number.isSafeInteger(value.revision)) throw fail('Prepare a reviewed map first.'); return value; };
+  const sourceCurrent = (selected, buildId) => { try { const value = source(); return !disposed && value.revision === selected.revision && value.map.hash === selected.map.hash && execution().buildId === buildId; } catch { return false; } };
+  const state = () => { let current = null, buildId = null; try { current = source(); buildId = execution().buildId; } catch {} return Object.freeze({ disposed, active: !!active, playing: !!playback?.ready && !playback.scope.getReceipt(), phase, progress, error, unknownRetirement: unknown.size, cacheCount: cache.size, references: [...cache.values()].filter(record => record.mapHash === current?.map.hash && record.buildId === buildId && !record.retired && !record.retirementError && !record.loan.signal?.aborted && record.loan.retirementState().phase === 'computed').map(record => Object.freeze({ program: record.program, sampleRate: record.sampleRate, manifest: record.manifest })) }); };
+  const report = () => { if (!disposed) try { onState(state()); } catch {} };
+  const reserve = (kind, bytes) => createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, generation: serial, kind, category: 'candidate', bytes });
+  const releaseCache = record => { try { retireBackgroundResult(record.loan); record.workspace.release(); record.retired = true; record.controller.abort(); cache.delete(record.key); } catch (caught) { record.retirementError = caught; unknown.add(record); throw caught; } };
+  const closePlayback = current => {
+    if (!current) return createProcgenRetirementScope().retire(); if (current.scope.getReceipt()) return current.scope.getReceipt(); current.stopping = true; phase = 'retiring-prelisten'; clearInterval(current.fence); current.controller.abort(fail('Prelisten reference stopped.'));
+    const producers = createProcgenRetirementScope().retire([{ name: 'morph-owned-cue', run: async () => { await current.preparation; return current.cue?.dispose(); } }, { name: 'morph-cue-session', run: async () => { await current.preparation; return current.session?.dispose(); } }, { name: 'morph-cue-source', run: async () => { await current.preparation; if (current.loan) { retireBackgroundResult(current.loan); current.loan = null; } } }]);
+    const receipt = current.scope.retire([{ name: 'morph-reference-producers', run: () => producers }, { name: 'morph-reference-playback-overlap', run: async () => { await producers.completion; if (producers.outcome !== 'complete') throw fail('Prelisten producer retirement remains unknown.'); current.workspace.release(); } }]);
+    receipt.completion.then(result => { current.audition?.close(result); if (result.outcome !== 'complete') { unknown.add(current); phase = 'retirement-unknown'; } if (playback === current) playback = null; report(); }); return receipt;
+  };
+  const stop = () => { playSerial++; for (const operation of pending) if (operation.type === 'play') operation.controller.abort(fail('Prelisten reference stopped.')); return closePlayback(playback); };
+  const find = (program, sampleRate) => { const selected = source(), build = execution(); return [...cache.values()].find(record => record.mapHash === selected.map.hash && record.buildId === build.buildId && record.program === program && record.sampleRate === sampleRate && !record.retired && !record.retirementError && !record.loan.signal?.aborted && record.loan.retirementState().phase === 'computed'); };
+  return Object.freeze({ state, stop,
+    prepare(program = 'endpoint-a-v1', sampleRate = 48000) {
+      if (disposed || unknown.size || active || pending.size >= 2 || !programs.has(program) || ![44100, 48000, 96000].includes(sampleRate)) return Promise.reject(fail('Settle current reference preparation and choose a supported program/rate.'));
+      const operation = { serial: ++serial, controller: new AbortController(), workspace: reserve('reference-source-hash-and-transfer-overlap', 8 * 1048576), loan: null, settlement: null, resolve: null }; operation.settlement = new Promise(resolve => { operation.resolve = resolve; }); pending.add(operation); active = operation; phase = 'preparing-control-reference'; progress = null; error = null; report();
+      return (async () => {
+        let record = null, candidateWorkspace = null, cached = false;
+        try {
+          const selected = cloneData(source(), { maxBytes: 262144, maxNodes: 32768 }), buildId = execution().buildId, check = () => { operation.controller.signal.throwIfAborted(); if (!sourceCurrent(selected, buildId) || active !== operation) throw fail('The reviewed map or executing source changed.'); };
+          const expectedProfile = await prepareResonatorMorphKernelProfile(selected.map, selected.a, selected.b, sampleRate); check(); if (program === 'held-out-and-back-v1' && selected.map.transitionPolicy !== 'paired-synthetic-held') throw fail('Review an experimental paired-held map before rendering moving body controls.');
+          for (const old of [...cache.values()]) if (old.loan.signal?.aborted || old.loan.retirementState().phase !== 'computed') releaseCache(old);
+          const existing = find(program, sampleRate); if (existing) { existing.used = ++useSerial; phase = 'control-reference-ready'; return existing.manifest; }
+          const input = freezeData({ map: selected.map, a: selected.a, b: selected.b, sampleRate, program, applicationBuildId: buildId }), inputBytes = canonicalDataText(input).bytes.length, key = await hashData({ input, buildId, rendererRevision: RESONATOR_MORPH_KERNEL_REVISION }); check();
+          const spec = { kind: 'render-resonator-morph-reference', sourceRevision: key, contentHash: key, decoderVersion: RESONATOR_MORPH_KERNEL_REVISION, inputBytes, maxBytes: 262144, estimatedPeakBytes: 64 * 1048576, deadlineMs: 180000, budgetAdapter: resourceBudget, prepareInput: () => input };
+          operation.loan = await shared.acquire({ ...spec, signal: operation.controller.signal, onProgress: value => { if (!disposed && active === operation) { progress = freezeData(value); report(); } }, isCurrent: () => record && cached ? !disposed && !record.retired && execution().buildId === buildId : sourceCurrent(selected, buildId) && active === operation }); check();
+          const result = operation.loan.value, receipt = operation.loan.receipt;
+          if (!result || !(result.bytes instanceof Uint8Array) || !(result.bytes.buffer instanceof ArrayBuffer) || !receipt || receipt.method !== 'dedicated-worker' || receipt.kind !== spec.kind || receipt.sourceRevision !== RESONATOR_MORPH_KERNEL_REVISION + ':' + key || receipt.executionIdentity?.activeExecution !== 'bound' || receipt.executionIdentity.buildId !== buildId || result.manifest?.schema !== 'lemmings-resonator-morph-control-render/v1' || result.manifest.frames !== sampleRate * 6 || result.manifest.profileHash !== expectedProfile.identity || result.manifest.body?.profileHash !== expectedProfile.identity || result.manifest.body.mapHash !== selected.map.hash || result.manifest.body.frame !== sampleRate * 6 - 1 || result.manifest.body.modes !== expectedProfile.slots.length || result.manifest.body.faults !== 0 || result.manifest.mapHash !== selected.map.hash || result.manifest.applicationBuildId !== buildId || result.manifest.rendererRevision !== RESONATOR_MORPH_KERNEL_REVISION || result.manifest.sampleRate !== sampleRate || result.manifest.program !== program || result.manifest.physicalTakeEvidence !== false || result.manifest.acousticQualification !== false) throw fail('The reference differs from its reviewed map, worker or renderer identity.');
+          const layout = inspectOwnedCueWave(result.bytes, result.manifest), digest = [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', result.bytes.subarray(layout.offset, layout.offset + layout.bytes)))].map(value => value.toString(16).padStart(2, '0')).join(''); check(); if (digest !== result.manifest.pcmHash) throw fail('The worker reference PCM hash changed.');
+          const manifest = cloneData(result.manifest, { maxBytes: 65536, maxNodes: 8192 }); candidateWorkspace = reserve('cached-reference-retirement-and-metadata-overlap', Math.max(4096, result.bytes.byteLength + inputBytes * 16 + canonicalDataText(manifest).bytes.length * 12 + 16384));
+          if (cache.size >= 3) releaseCache([...cache.values()].sort((a, b) => a.used - b.used)[0]); check();
+          record = { key, mapHash: selected.map.hash, buildId, program, sampleRate, spec, manifest, controller: operation.controller, loan: operation.loan, workspace: candidateWorkspace, used: ++useSerial, retired: false }; cached = true; cache.set(key, record); candidateWorkspace = null; operation.loan = null; phase = 'control-reference-ready'; report(); return manifest;
+        } catch (caught) { if (!disposed && active === operation) { error = caught.message; phase = operation.controller.signal.aborted ? 'canceled' : 'failed'; } throw caught; }
+        finally {
+          try { if (operation.loan) retireBackgroundResult(operation.loan); candidateWorkspace?.release(); operation.workspace.release(); }
+          catch (caught) { unknown.add(operation); operation.retirementError = caught; phase = 'retirement-unknown'; error = caught.message; }
+          finally { pending.delete(operation); if (active === operation) active = null; operation.resolve(); report(); }
+          if (operation.retirementError) throw operation.retirementError;
+        }
+      })();
+    },
+    async play(program = 'endpoint-a-v1', sampleRate = 48000) {
+      if (disposed || unknown.size || active || pending.size >= 2 || !audio?.acquireAudition || !audio?.createSession) throw fail('Prepare the current reference and use an available isolated Prelisten owner.'); const record = find(program, sampleRate); if (!record) throw fail('Render this control reference before Prelisten.');
+      const selected = source(), context = audio.getAudioContext(), monitor = audio.getMonitorRouteState(); if (!audio.getState().enabled || context?.state !== 'running' || !['rehearsal', 'separate-device'].includes(monitor.mode) || !['ready', 'playing-route'].includes(monitor.state)) throw fail('Enable browser audio and choose an explicit Prelisten route first.');
+      const workspace = reserve('reference-cue-preparation-overlap', 8 * 1048576), previous = stop(), request = ++playSerial, current = { type: 'play', controller: new AbortController(), scope: createProcgenRetirementScope(), workspace, cue: null, session: null, audition: null, loan: null, fence: null, ready: false, attached: false, stopping: false, preparation: null, preparationDone: null, settlement: null, resolve: null };
+      current.preparation = new Promise(resolve => { current.preparationDone = resolve; }); current.settlement = new Promise(resolve => { current.resolve = resolve; }); pending.add(current); phase = 'preparing-prelisten'; error = null; report();
+      const check = () => { current.controller.signal.throwIfAborted(); if (request !== playSerial || !sourceCurrent(selected, record.buildId) || current.attached && playback !== current || audio.getAudioContext() !== context || context.state !== 'running' || audio.getMonitorRouteState().revision !== monitor.revision || current.audition && !current.audition.isCurrent()) throw fail('The reviewed map, Prelisten request, route or audio clock changed.'); };
+      current.controller.signal.addEventListener('abort', () => { if (current.ready && !current.stopping) closePlayback(current); }, { once: true });
+      try {
+        await previous.completion; check(); if (previous.outcome !== 'complete' || record.retired || find(program, sampleRate) !== record) throw fail('The preceding cue or prepared reference changed before playback.'); playback = current; current.attached = true;
+        current.audition = await audio.acquireAudition({ source: { name: 'Resonator morph · ' + program, kind: 'resonator-morph-control-reference', revision: record.key, sourceRef: record.key }, routeRevision: monitor.revision, signal: current.controller.signal, onStop: reason => current.controller.abort(fail(String(reason))) }); check();
+        current.session = audio.createSession(ownerId, { workloadClass: 'cue' }); if (!current.session || !await current.session.enable()) throw fail('The isolated cue route or playback quota is unavailable.'); check();
+        current.loan = await shared.acquire({ ...record.spec, signal: current.controller.signal, isCurrent: () => { try { check(); return true; } catch { return false; } } }); check(); const value = current.loan.value;
+        current.cue = await current.session.preparePcmCue({ bytes: value.bytes, manifest: record.manifest, signal: current.controller.signal, isCurrent: () => { try { check(); return true; } catch { return false; } } }); check(); retireBackgroundResult(current.loan); current.loan = null; check();
+        current.audition.markReady(); const receipt = current.cue.play(); check(); if (receipt?.status !== 'accepted') throw fail('The isolated PCM cue declined playback.'); current.ready = true; current.audition.markPlaying(); current.preparationDone(); current.cue.completion.then(() => { if (playback === current) closePlayback(current); }); current.fence = setInterval(() => { try { check(); } catch (caught) { current.controller.abort(caught); } }, 50); phase = 'prelisten-control-reference'; report(); return Object.freeze({ manifest: record.manifest, playback: receipt, sourceSampleRate: sampleRate, contextSampleRate: context.sampleRate, acousticReceipt: false, physicalTakeEvidence: false });
+      } catch (caught) { error = caught.message; phase = current.controller.signal.aborted ? 'stopped' : 'failed'; current.preparationDone(); const receipt = closePlayback(current); await receipt.completion; if (receipt.outcome !== 'complete') caught.retirement = receipt; throw caught; }
+      finally { current.preparationDone(); pending.delete(current); current.resolve(); report(); }
+    },
+    prepareExport(program = 'endpoint-a-v1', sampleRate = 48000) {
+      if (disposed || unknown.size || active) throw fail('Settle current reference preparation before export.'); const record = find(program, sampleRate); if (!record) throw fail('Render this reference before exporting.');
+      for (const artifact of exports) if (!artifact.metadata().activeLeases) { artifact.discard(); if (['released', 'unbudgeted'].includes(artifact.metadata().budgetState)) exports.delete(artifact); } if (exports.size >= 8) throw fail('Earlier reference exports retain the bounded reader slots.');
+      const artifact = prepareExportArtifact({ bytes: record.loan.value.bytes, immutableSourceRef: 'sha256:' + record.key, formatVersion: 'lemmings-resonator-morph-control-render/v1', mediaType: 'audio/wav', suggestedFilename: 'morph-' + program + '-' + record.mapHash.slice(0, 12) + '.wav', budgetAdapter: resourceBudget }); exports.add(artifact); return artifact;
+    },
+    cancelPreparation() { active?.controller.abort(fail('Reference render canceled.')); },
+    invalidate() { active?.controller.abort(fail('The reviewed map draft changed.')); stop(); },
+    suspend() { active?.controller.abort(fail('Reference preparation suspended.')); return stop(); },
+    dispose() {
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; active?.controller.abort(fail('Reference owner closed.')); const cue = stop(), settled = Promise.all([...pending].map(value => value.settlement));
+      return retirement.retire([{ name: 'reference-preparation-and-cue', run: async () => { await settled; await cue.completion; if (cue.outcome !== 'complete' || unknown.size) throw fail('A reference producer retains unresolved ownership.'); } }, { name: 'reference-cache', run: async () => { await settled; await cue.completion; if (cue.outcome !== 'complete' || unknown.size) throw fail('Cached source leases remain pinned behind unknown producer retirement.'); for (const record of [...cache.values()]) releaseCache(record); } }, { name: 'reference-export-copies', run: async () => { for (const artifact of exports) { artifact.discard(); await artifact.digest(); if (artifact.metadata().budgetState === 'failed-or-unknown') throw fail('An independent reference export has unknown budget retirement.'); } exports.clear(); } }]);
+    }
+  });
+}

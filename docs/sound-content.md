@@ -933,8 +933,8 @@ slots preserves the common L1 bound without per-endpoint renormalization. Exact
 endpoints and stable slot IDs are retained. This is synthetic parameter authoring,
 not a mechanical energy projection or a claim of perceptual intermediacy.
 Next-onset, prepared dual-body blend and paired held policies are different map
-capabilities. A blend cannot be evaluated as an intermediate body. Continuous
-renderer, seed/foundry UI integration, real state/tail/admission/restore, Metamorphic
+capabilities. A blend cannot be evaluated as an intermediate body. Live continuous graph/route application, compatible seed/foundry endpoint
+adapters, real state/tail/admission/restore, Metamorphic
 Bridge and listening qualification remain pending; the new fixtures are unrun.
 Background reading: [Caetano and Rodet, DAFx 2010](https://dafx.de/paper-archive/2010/DAFx10/CaetanoRodet_DAFx10_P100.pdf).
 This application's matching method is original and does not implement that paper.
@@ -952,7 +952,7 @@ browser-request receipt. Canceled/stale completion cannot publish, and unresolve
 producer/delivery retirement remains charged rather than claiming release.
 
 Directly deriving compatible excitation/pickup observations from fitted/shape
-bodies, applying maps to actual fixed/held/dual-state sound owners, real scene
+bodies, applying maps to live fixed/held/dual-state graph owners, real scene
 motion, state/tail/admission/restore and listening qualification remain pending.
 The new owner/resource/UI fixtures are authored but unrun.
 
@@ -960,3 +960,20 @@ A map export is an independently copied immutable payload. Its known active
 reader can outlive map-view metadata retirement under the existing export lease;
 that copy remains charged until its reader/digest retires. Unknown producer or
 export-budget acknowledgments still prevent a false complete receipt.
+
+
+The MORPH MAP panel separates **Render body control reference**, **Play reference
+on Prelisten** and **Download reference WAV**. Endpoint A/B use the same finite
+forces. The moving out-and-back program requires an explicitly reviewed
+experimental paired-held map; next-onset maps are not silently upgraded. A
+three-entry immutable cache keys complete map/endpoint, renderer, program, rate
+and executing-build inputs. Only the existing isolated cue route plays the
+prepared WAV; a draft/route/clock change stops it and cannot cause a late attack.
+Stopping during cue preparation keeps its source/storage until preparation
+settles. Export owns a copied payload and a separate browser-request receipt.
+
+These are authored control references, not physical takes, a live morph rack,
+levelmatched listening results or device qualification. Actual route/graph
+integration and Metamorphic Bridge remain pending. Controlled cache/publication/
+cue/export fixtures use explicitly labeled contract envelopes, separate from the
+unrun real DSP/kernel/reference fixtures and later browser/listening acceptance.

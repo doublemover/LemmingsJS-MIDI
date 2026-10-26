@@ -5472,3 +5472,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   reference-workflow integration, Metamorphic Bridge, full PCM/alias/decay/device
   measurements and levelmatched listening remain pending for #1225. Static-only
   checks precede the commit; consolidated runtime validation remains deferred.
+
+
+### Continuation 217 — cached control references and isolated Prelisten workflow
+
+- Connected reviewed maps to bounded shared worker reference preparation with
+  complete renderer/map/endpoint/program/rate/build identity, exact frame/profile
+  admission, PCM hash verification and a three-entry immutable LRU cache. The
+  current reviewed source remains distinct from cached frozen data. No stale
+  completion publishes and no cache hit starts playback implicitly.
+- Added separate render, existing isolated Prelisten, stop/cancel and WAV export
+  controls. The moving program requires an explicitly reviewed paired-held policy;
+  ordinary onset maps remain onset-only. Private cue preparation retains its
+  source lease/storage through cancellation settlement, fences route/clock/source
+  changes and serializes replacement so an old pending cue cannot attack later.
+- Source/payload/metadata overlap remains charged until acknowledged retirement.
+  Shared consumers, decoded cue ownership, old frozen-cache reuse, independent
+  export copies and unknown retirement have separate lifetimes. This introduces
+  no MIDI owner, world advancement or free-running note accompaniment.
+- Added fit-panel wrapping/scroll behavior for long mode IDs and reference controls.
+  Authored unrun controlled lease/cache/identity/stale/replacement/stop/export
+  fixtures using explicitly labeled zero-PCM contract envelopes. They do not claim
+  actual rendered-body, browser, device or listening evidence; the separate real
+  kernel/reference fixtures also remain unrun.
+- Actual live graph/route application, Metamorphic Bridge, full PCM/alias/decay,
+  moving-control worklet cost and matched-level listening remain pending for
+  #1225. Static-only checks precede this commit; the combined runtime/CI validation
+  pass still waits for the remaining development implementation, as requested.

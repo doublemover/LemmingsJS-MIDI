@@ -270,7 +270,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   for (const input of [transform, pitch, rootPitch, graftBody, textureKind, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
-  const morphPane = createResonatorMorphView({ document, window, resourceBudget, jobs });
+  const morphPane = createResonatorMorphView({ document, window, audio, resourceBudget, jobs });
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, morphPane.element, rebuildPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });

@@ -276,3 +276,13 @@ body.procgen-workstation {
 .studio-physical-lesson textarea { max-width: 100%; min-height: 4rem; }
 .studio-physical-lesson > div { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .studio-physical-lesson button { min-height: 2.75rem; }
+
+
+.studio-resonator-morph .studio-morph-pair-table { max-width: 100%; max-height: 22rem; overflow: auto; }
+.studio-resonator-morph table { width: 100%; border-collapse: collapse; }
+.studio-resonator-morph th, .studio-resonator-morph td { padding: .35rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.studio-resonator-morph td { max-width: 18rem; }
+.studio-resonator-morph td select { max-width: 100%; }
+.studio-resonator-morph pre { max-height: 16rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.studio-morph-reference-controls { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; }
+.studio-morph-reference-controls p, .studio-morph-reference-controls output { flex-basis: 100%; }
