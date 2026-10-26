@@ -1,0 +1,12 @@
+import { cloneData, freezeData } from '../../core/CanonicalData.js';
+import { SPECTRAL_FREEZE_REVISION, spectralFreezeIdentity } from './SpectralFreezeProfile.js';
+
+export const SPECTRAL_CAPTURE_POLICY = 'processor-window-acknowledgments-v1';
+export function validateSpectralCaptureReceipt(raw, profile = null) {
+  const value = cloneData(raw, { maxBytes: 4096, maxNodes: 256 }), integer = number => Number.isSafeInteger(number) && number >= 0;
+  const keys = ['schema', 'revision', 'configurationKey', 'sampleRate', 'fftSize', 'hopFrames', 'serial', 'requestFrame', 'startFrame', 'endFrame', 'processedThroughFrame', 'sourceWindowFrames', 'captureEnergy', 'capturedSilence', 'capturePeaks', 'captureScales', 'acousticReceipt'];
+  if (!value || Object.keys(value).some(key => !keys.includes(key)) || value.schema !== 'lemmings-spectral-capture/v1' || value.revision !== SPECTRAL_FREEZE_REVISION || typeof value.configurationKey !== 'string' || !value.configurationKey || value.configurationKey.length > 2048 || ![44100, 48000, 96000].includes(value.sampleRate) || ![512, 1024, 2048].includes(value.fftSize) || value.hopFrames !== value.fftSize / 4 || !integer(value.serial) || value.serial < 1 || ![value.requestFrame, value.startFrame, value.endFrame, value.processedThroughFrame].every(integer) || value.requestFrame >= value.endFrame || value.startFrame !== value.endFrame - value.fftSize || value.endFrame % value.hopFrames !== 0 || value.processedThroughFrame < value.endFrame || value.sourceWindowFrames !== value.fftSize || !Number.isFinite(value.captureEnergy) || value.captureEnergy < 0 || value.captureEnergy > value.fftSize * 2048 || value.capturedSilence !== (value.captureEnergy === 0) || value.acousticReceipt !== false) throw new TypeError('Invalid processor spectral capture window.');
+  for (const [key, maximum] of [['capturePeaks', 32], ['captureScales', 1]]) if (!Array.isArray(value[key]) || value[key].length !== 2 || value[key].some(number => !Number.isFinite(number) || number < 0 || number > maximum)) throw new TypeError('Invalid spectral capture normalization evidence.');
+  if (profile && (value.revision !== profile.revision || value.configurationKey !== spectralFreezeIdentity(profile) || value.sampleRate !== profile.sampleRate || value.fftSize !== profile.parameters.fftSize || value.hopFrames !== profile.hopFrames)) throw new Error('Spectral capture belongs to another prepared source profile.');
+  return freezeData(value);
+}

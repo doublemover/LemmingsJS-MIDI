@@ -1801,3 +1801,34 @@ consumer. This adds a concrete producer integration beyond terrain decoding,
 without describing procedural assets as field recordings. The cross-provider
 cancellation fixture is authored and unrun; import/export and native PCM sharing
 still require their own source/result ownership integration.
+
+
+Spectral freeze window evidence is now a separate processor acknowledgment in
+captured effect history. Revision `owned-radix2-stft-freeze-v2-window-evidence`
+retains the actual observed hold-request frame, exclusive capture end, complete
+N-frame input window, serial, profile/grid identity and attenuation metadata.
+The native graph, owner route and session preserve that packet under the existing
+source-intent audio-clock anchor. It is digital processing evidence; it neither
+identifies all contributing actors nor proves acoustic output. Metadata credits
+bound the worklet to four outstanding acknowledgments; overload quarantines that
+owned graph rather than growing a message queue. The admitted profile includes
+a conservative 128 KiB transport/metadata allowance. Device cost is unmeasured.
+
+Newly published graphs identify this evidence policy. Captured revoice validates
+serial coverage, discrete held intervals, source rate, exact analysis-grid origin
+and full window coverage before rendering. Same-frame control replacement uses
+the final value. An acknowledged capture is staged on its exact original window;
+the new owned graph must confirm that complete window at its end. A lost capture,
+missing earlier input, changed rate/grid, foreign clock owner or unavailable new
+source fails explicitly. A request canceled before the next possible analysis hop
+creates no invented capture. Original request metadata remains distinct from the
+new realization's late staged request, which preserves the window frontier.
+
+The revoice analyzes newly rendered material from cleared memory. It does not
+restore the original live spectrum, input PCM, processor transport queue or entire
+host state. Original silence/peak/normalization remain source evidence; new input
+may produce a different spectrum. Older command-only histories retain their
+explicitly limited request-replay description. General multi-graph/lifecycle
+reconstruction and arbitrary live DSP restoration remain open. New numerical,
+state-cut, credit, history and grouped window-replay fixtures are authored but
+unrun; browser/PCM/listening/cost qualification is still pending.

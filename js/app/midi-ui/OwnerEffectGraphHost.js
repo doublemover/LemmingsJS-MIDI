@@ -6,9 +6,9 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 const summary = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome } : null;
 
 export function createOwnerEffectGraphHost({ context, input, dry, destination, resources, owner, generation = 0, isCurrent = () => true,
-  onChange = () => {}, onBodyReceipt = () => {}, resolveSidechainSource = null, getMaterialProvider = null, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
+  onChange = () => {}, onBodyReceipt = () => {}, onEffectReceipt = () => {}, resolveSidechainSource = null, getMaterialProvider = null, prepareGraph = prepareNativeEffectGraph, transitionSeconds = 0.02 } = {}) {
   if (!context?.createGain || !input?.connect || !dry?.gain || !destination || !resources?.reserve || typeof isCurrent !== 'function' ||
-      typeof onChange !== 'function' || typeof onBodyReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' || typeof prepareGraph !== 'function' || !Number.isFinite(transitionSeconds) || transitionSeconds < 0.005 || transitionSeconds > 0.2)
+      typeof onChange !== 'function' || typeof onBodyReceipt !== 'function' || typeof onEffectReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' || typeof prepareGraph !== 'function' || !Number.isFinite(transitionSeconds) || transitionSeconds < 0.005 || transitionSeconds > 0.2)
     throw new TypeError('An owner effect host needs the existing source, dry route, destination and shared resource owner.');
   const metadata = resources.reserve({ kind: 'effect-host-metadata', owner, generation, bytes: 8192, consumerOwned: true });
   const dryAutomation = createSmoothedAudioParameter({ param: dry.gain, initialValue: 1, startTime: context.currentTime, smoothingSeconds: transitionSeconds, maxEvents: 32 });
@@ -57,6 +57,7 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
           return { node: input, context, owner, generation, sourceBusId: 'owner', tap: 'post-fader', layout: 'audioStereo', stage: 'upstream-owner-effects',
             isActive: () => !disposed && context.state !== 'closed' && isCurrent(), release() {} };
         }, context, resources, owner, generation, getMaterialProvider, signal: controller.signal, isCurrent: () => !disposed && isCurrent() && (published || requestCurrent() && request === serial),
+        onEffectReceipt: receipt => { const member = current; if (!disposed && member?.graph === ownedGraph) { try { onEffectReceipt(Object.freeze({ ...receipt, owner, ownerGeneration: generation, ownerRouteRevision: member.routeRevision })); } catch {} } },
         onBodyReceipt: receipt => { const member = [...arms].find(candidate => candidate.graph === ownedGraph); if (member) { try { onBodyReceipt(Object.freeze({ ...receipt, owner, ownerGeneration: generation, ownerRouteRevision: member.routeRevision })); } catch {} } },
         onFault: caught => {
           error = caught.message;

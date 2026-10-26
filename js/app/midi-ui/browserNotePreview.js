@@ -230,7 +230,7 @@ class BrowserNotePreview {
     }
     if (this._sessions.size >= MAX_AUDIO_SESSIONS) throw new RangeError('Local audio supports at most four owner sessions.');
     const id = label + '#' + (++this._sessionSequence);
-    const session = { id, name: label, workloadClass, enabled: false, starting: false, disposed: false, generation: 0, pending: new Set(), listeners: new Set(), bodyListeners: new Set(), onPlayback };
+    const session = { id, name: label, workloadClass, enabled: false, starting: false, disposed: false, generation: 0, pending: new Set(), listeners: new Set(), bodyListeners: new Set(), effectListeners: new Set(), onPlayback };
     const retirement = createProcgenRetirementScope();
     if (typeof onStateChange === 'function') session.listeners.add(onStateChange);
     const getState = () => {
@@ -342,6 +342,7 @@ class BrowserNotePreview {
             return { node: request.tap === 'pre-fader' ? channel.sourceInput : channel.effectInput, context, owner: id, generation, sourceBusId: 'owner', tap: request.tap,
               layout: 'audioStereo', stage: 'upstream-owner-effects', isActive: () => !session.disposed && generation === session.generation && context === this._context && context.state !== 'closed', release() {} };
           },
+          onEffectReceipt: receipt => { for (const listener of session.effectListeners) { try { listener(receipt); } catch {} } },
           onBodyReceipt: receipt => { for (const listener of session.bodyListeners) { try { listener(receipt); } catch {} } }, onChange: () => session.report() });
         return channel.effects.prepare(definition, { ...options, isCurrent: () => generation === session.generation && !session.disposed && (!options.isCurrent || options.isCurrent()) });
       },
@@ -350,6 +351,7 @@ class BrowserNotePreview {
         const host = this._channels.get(id + ':0')?.effects; if (!host) throw new Error('Prepare an owner effect rack first.'); return host.update(nodeId, values, frame, expected);
       },
       preparedBodyInventory: () => this._channels.get(id + ':0')?.effects?.preparedBodyInventory() || [],
+      observeEffectReceipts: listener => { if (session.disposed || typeof listener !== 'function' || session.effectListeners.size >= 8) throw new Error('The effect receipt observer is unavailable.'); session.effectListeners.add(listener); return () => session.effectListeners.delete(listener); },
       observeBodyReceipts: listener => { if (session.disposed || typeof listener !== 'function' || session.bodyListeners.size >= 8) throw new Error('The body receipt observer is unavailable.'); session.bodyListeners.add(listener); return () => session.bodyListeners.delete(listener); },
       enqueueBodyStrike: (nodeId, command, expected) => {
         if (session.disposed || !this._ownerReady(id)) throw new Error('The prepared body owner is not active.');
@@ -385,7 +387,7 @@ class BrowserNotePreview {
           { name: 'capture-registration', run: () => this._captureReleases.delete(id) },
           ...channels.map(([key, channel]) => ({ name: `channel-${channel.number}`, run: () => this._retireChannel(key, channel) })),
           { name: 'resource-reservations', run: () => this._audioResources.retireOwner(id) },
-          { name: 'session-state', run: () => { session.report(); session.listeners.clear(); session.bodyListeners.clear(); this._sessions.delete(id); } }
+          { name: 'session-state', run: () => { session.report(); session.listeners.clear(); session.bodyListeners.clear(); session.effectListeners.clear(); this._sessions.delete(id); } }
         ]);
         return receipt.completion;
       }

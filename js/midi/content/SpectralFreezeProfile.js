@@ -1,6 +1,6 @@
 import { freezeData, canonicalDataText } from '../../core/CanonicalData.js';
 
-export const SPECTRAL_FREEZE_REVISION = 'owned-radix2-stft-freeze-v1';
+export const SPECTRAL_FREEZE_REVISION = 'owned-radix2-stft-freeze-v2-window-evidence';
 export function prepareSpectralFreezeProfile(raw = {}, sampleRate = 48000) {
   if (![44100, 48000, 96000].includes(sampleRate) || !raw || Object.getPrototypeOf(raw) !== Object.prototype ||
       Object.keys(raw).some(key => !['fftSize', 'thawSeconds', 'maximumHoldSeconds', 'pitchRatio', 'blur01', 'dampingHz'].includes(key))) throw new TypeError('Invalid spectral freeze profile.');
@@ -10,7 +10,7 @@ export function prepareSpectralFreezeProfile(raw = {}, sampleRate = 48000) {
       p.blur01 < 0 || p.blur01 > 1 || p.dampingHz < 1000 || p.dampingHz > sampleRate * 0.45) throw new RangeError('Spectral window, hold, resynthesis or damping exceeds its prepared domain.');
   const n = p.fftSize, bins = n / 2 + 1;
   return freezeData({ revision: SPECTRAL_FREEZE_REVISION, sampleRate, parameters: p, hopFrames: n / 4, bins,
-    stateBytes: (8 * n + 10 * bins + 4) * 8 + n * 4, processingLatencyFrames: n,
+    stateBytes: (8 * n + 10 * bins + 4) * 8 + n * 4 + 131072, captureTransportBytes: 131072, maximumUnacknowledgedCaptures: 4, processingLatencyFrames: n,
     maximumTailFrames: Math.ceil((p.maximumHoldSeconds + p.thawSeconds) * sampleRate) + n * 2,
     maximumLinearGain: 2, maximumOutputAmplitude: 64, gainBoundDomain: 'bounded-history-input-peak;not-a-frozen-output-energy-bound',
     windowId: 'periodic-sqrt-hann', overlapNormalization: 0.5,

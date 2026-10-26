@@ -1,3 +1,4 @@
+import { validateSpectralCaptureReceipt } from '../../midi/content/SpectralCaptureReceipt.js';
 import { RectangularMembraneKernel } from './worklet/RectangularMembraneKernel.js';
 import { SympatheticNetworkKernel } from './worklet/SympatheticNetworkKernel.js';
 import { NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
@@ -131,6 +132,12 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       const record = records[indices.get(nodeId)];
       if (muted || !record?.entry.membrane || !record.kernel.enqueueStrike(command)) fail('body-strike-admission', 'The exact owned body declined its finite strike queue or payload.');
       return Object.freeze({ status: 'accepted', stage: 'owned-body-strike-queued', nodeId, token: command.token, targetFrame: command.frame, graphDefinitionHash: hash, appliedFrame: null, acousticReceipt: false });
+    },
+    validateSpectralCapture(nodeId, capture) { const record = records[indices.get(nodeId)]; if (!record?.entry.spectral) fail('effect-spectral-window-node', 'The captured window requires its exact spectral node.'); validateSpectralCaptureReceipt(capture, record.entry.spectral); return true; },
+    assertSpectralCapture(nodeId, capture) {
+      const record = records[indices.get(nodeId)], kernel = record?.entry.spectral && record.kernel;
+      if (!kernel || kernel.faults || kernel.captureSerial !== capture.serial || kernel.captureStartFrame !== capture.startFrame || kernel.captureEndFrame !== capture.endFrame) quarantine('effect-spectral-window-unavailable', 'The new realization could not analyze the complete original window at its exact acknowledged frontier.');
+      return true;
     },
     assertHealthy() {
       if (records.some(record => record.kernel?.faults || record.entry.membrane && record.kernel.strikes.frontier[6])) fail('effect-render-incomplete', 'An owned effect branch faulted or rejected an admitted finite strike.'); return true;

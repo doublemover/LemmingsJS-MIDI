@@ -112,6 +112,7 @@
       "files": [
         "js/app/midi-ui/AudioAssetRef.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
+        "js/app/midi-ui/CapturedSpectralReplay.js",
         "js/app/midi-ui/CausalEffectSelection.js",
         "js/app/midi-ui/CausalOwnedRender.js",
         "js/app/midi-ui/CausalRenderTiming.js",
@@ -279,6 +280,7 @@
         "js/midi/content/SoundContentPack.js",
         "js/midi/content/SoundContentReference.js",
         "js/midi/content/SoundRealizationProfiles.js",
+        "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
@@ -296,8 +298,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 185,
-      "sha256": "34e33340d1fa154ae51a8462499766ab737920741ccc6bced4076fd2d6e2c9de"
+      "fileCount": 187,
+      "sha256": "94502478d744fd17394724c200c179032c5fa2eab32bb286809e82ba95a747fc"
     },
     {
       "id": "lemmings-timing-worker-source",

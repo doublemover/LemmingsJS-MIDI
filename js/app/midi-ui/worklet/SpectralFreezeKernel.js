@@ -11,16 +11,18 @@ export class SpectralFreezeKernel {
     this.input = new Float64Array(2 * n); this.overlap = new Float64Array(2 * n); this.real = new Float64Array(n); this.imaginary = new Float64Array(n); this.window = new Float64Array(n);
     this.previousPhase = new Float64Array(2 * b); this.magnitude = new Float64Array(2 * b); this.phase = new Float64Array(2 * b); this.advance = new Float64Array(2 * b); this.analysis = new Float64Array(2 * b); this.capturePeaks = new Float64Array(2); this.captureScales = new Float64Array(2); this.captureScales.fill(1);
     for (let index = 0; index < n; index++) this.window[index] = Math.sqrt(0.5 - 0.5 * Math.cos(TAU * index / n));
-    this.frame = startFrame; this.availableFrames = 0; this.captureRequestFrame = this.captureStartFrame = this.captureEndFrame = -1; this.captureSerial = this.faults = 0;
+    this.frame = startFrame; this.availableFrames = 0; this.capturedRequestFrame = this.captureRequestFrame = this.captureStartFrame = this.captureEndFrame = -1; this.captureSerial = this.faults = 0;
     this.mix = this.leftSample = this.rightSample = this.captureEnergy = 0; this.holdRequested = this.holding = this.muted = this.capturedSilence = false; this.sourceAvailable = sourceAvailable;
     this.stateTransfer = createOwnedEffectState({ kernel: this, identity: this.identity,
       arrays: [this.input, this.overlap, this.previousPhase, this.magnitude, this.phase, this.advance, this.analysis, this.capturePeaks, this.captureScales],
-      scalars: [...['frame', 'availableFrames', 'captureRequestFrame', 'captureStartFrame', 'captureEndFrame', 'captureSerial', 'faults', 'mix', 'leftSample', 'rightSample', 'captureEnergy'].map(name => ({ name, type: 'number' })),
+      scalars: [...['frame', 'availableFrames', 'captureRequestFrame', 'capturedRequestFrame', 'captureStartFrame', 'captureEndFrame', 'captureSerial', 'faults', 'mix', 'leftSample', 'rightSample', 'captureEnergy'].map(name => ({ name, type: 'number' })),
         ...['holdRequested', 'holding', 'muted', 'capturedSilence', 'sourceAvailable'].map(name => ({ name, type: 'boolean' }))], validate: data => {
         const frame = data.named('frame'), end = data.named('captureEndFrame'), request = data.named('captureRequestFrame');
         for (const key of ['frame', 'availableFrames', 'captureSerial', 'faults']) if (!Number.isSafeInteger(data.named(key)) || data.named(key) < 0) throw new Error('Invalid spectral frontier.');
         if (data.named('availableFrames') > n || data.named('mix') < 0 || data.named('mix') > 1 || data.named('captureEnergy') < 0 || data.named('captureEnergy') > 2048 * 1024 * 2) throw new Error('Invalid spectral energy or availability.');
         if (!Number.isSafeInteger(request) || request < -1 || request > frame || !Number.isSafeInteger(end) || end < -1 || end > frame || end !== -1 && (end % this.profile.hopFrames !== 0 || data.named('captureStartFrame') !== end - n) || end === -1 && data.named('captureStartFrame') !== -1) throw new Error('Invalid spectral capture interval.');
+        const capturedRequest = data.named('capturedRequestFrame');
+        if (!Number.isSafeInteger(capturedRequest) || capturedRequest < -1 || (data.named('captureSerial') === 0 ? capturedRequest !== -1 : capturedRequest < 0 || capturedRequest >= end)) throw new Error('Invalid acknowledged spectral request frontier.');
         if (data.named('holding') && (end < 0 || !data.named('holdRequested')) || data.named('captureSerial') === 0 && end !== -1) throw new Error('Unowned spectral hold.');
         for (let index = 0; index < 2 * n; index++) if (Math.abs(data.planes[0].read(index)) > 32 || Math.abs(data.planes[1].read(index)) > 128) throw new Error('Spectral PCM history exceeds its bound.');
         for (let index = 0; index < 2 * b; index++) if (Math.abs(data.planes[2].read(index)) > Math.PI + 1e-12 || data.planes[3].read(index) < 0 || data.planes[3].read(index) > n * 32 ||
@@ -30,7 +32,7 @@ export class SpectralFreezeKernel {
       } });
   }
   panic() { this.input.fill(0); this.overlap.fill(0); this.previousPhase.fill(0); this.magnitude.fill(0); this.phase.fill(0); this.advance.fill(0); this.analysis.fill(0);
-    this.capturePeaks.fill(0); this.captureScales.fill(1); this.real.fill(0); this.imaginary.fill(0); this.leftSample = this.rightSample = this.mix = 0; this.captureRequestFrame = -1; this.holding = this.holdRequested = false; this.muted = true; }
+    this.real.fill(0); this.imaginary.fill(0); this.leftSample = this.rightSample = this.mix = 0; this.captureRequestFrame = -1; this.holding = this.holdRequested = false; this.muted = true; }
   sample(left, right, hold = 0, sourceAvailable = this.sourceAvailable) {
     this.leftSample = this.rightSample = 0; if (this.muted) { this.frame++; return; }
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32 || (hold !== 0 && hold !== 1) || typeof sourceAvailable !== 'boolean') { this.faults++; this.panic(); this.frame++; return; }
@@ -51,7 +53,8 @@ export class SpectralFreezeKernel {
     const n = this.parameters.fftSize, bins = this.profile.bins, hop = this.profile.hopFrames, first = this.frame % n;
     const capture = this.captureRequestFrame >= 0 && this.availableFrames === n && this.frame > this.captureRequestFrame;
     if (this.holding && this.frame - this.captureEndFrame >= Math.ceil(this.parameters.maximumHoldSeconds * this.profile.sampleRate)) this.holding = false;
-    if (capture) { this.captureRequestFrame = -1; this.captureStartFrame = this.frame - n; this.captureEndFrame = this.frame; this.captureSerial++; this.captureEnergy = 0; this.capturePeaks.fill(0); this.holding = true; }
+    if (capture && !Number.isSafeInteger(this.captureSerial + 1)) { this.faults++; this.panic(); return; }
+    if (capture) { this.capturedRequestFrame = this.captureRequestFrame; this.captureRequestFrame = -1; this.captureStartFrame = this.frame - n; this.captureEndFrame = this.frame; this.captureSerial++; this.captureEnergy = 0; this.capturePeaks.fill(0); this.holding = true; }
     const target = this.holding ? 1 : 0, step = hop / (this.parameters.thawSeconds * this.profile.sampleRate); this.mix += Math.max(-step, Math.min(step, target - this.mix));
     for (let channel = 0; channel < 2; channel++) {
       const base = channel * bins;
@@ -91,10 +94,15 @@ export class SpectralFreezeKernel {
     }
     if (capture) this.capturedSilence = this.captureEnergy === 0;
   }
+  captureReceipt() {
+    if (!this.captureSerial) return null;
+    return Object.freeze({ schema: 'lemmings-spectral-capture/v1', revision: this.profile.revision, configurationKey: this.identity, sampleRate: this.profile.sampleRate, fftSize: this.parameters.fftSize, hopFrames: this.profile.hopFrames,
+      serial: this.captureSerial, requestFrame: this.capturedRequestFrame, startFrame: this.captureStartFrame, endFrame: this.captureEndFrame, processedThroughFrame: this.frame, sourceWindowFrames: this.parameters.fftSize, captureEnergy: this.captureEnergy, capturedSilence: this.capturedSilence, capturePeaks: Object.freeze(Array.from(this.capturePeaks)), captureScales: Object.freeze(Array.from(this.captureScales)), acousticReceipt: false });
+  }
   snapshotInto(bytes) { return this.stateTransfer.write(bytes); }
   restoreFrom(bytes) { return this.stateTransfer.restore(bytes); }
   get snapshotBytes() { return this.stateTransfer.byteLength; }
-  diagnostics() { return { revision: this.profile.revision, frame: this.frame, captureSerial: this.captureSerial, captureRequestFrame: this.captureRequestFrame,
+  diagnostics() { return { revision: this.profile.revision, frame: this.frame, captureSerial: this.captureSerial, capturedRequestFrame: this.capturedRequestFrame, captureRequestFrame: this.captureRequestFrame,
     captureStartFrame: this.captureStartFrame, captureEndFrame: this.captureEndFrame, capturedSilence: this.capturedSilence, sourceAvailable: this.sourceAvailable,
     state: this.muted ? 'quarantined' : this.holding ? 'frozen' : this.mix > 0 ? 'releasing' : !this.sourceAvailable ? 'source-unavailable' : this.captureRequestFrame >= 0 ? 'capture-pending' : this.availableFrames < this.parameters.fftSize ? 'warming' : 'ready',
     captureNormalization: this.profile.captureNormalization, capturePeaks: Array.from(this.capturePeaks), captureScales: Array.from(this.captureScales), mix: this.mix, faults: this.faults, latencyFrames: this.profile.processingLatencyFrames, phaseMode: this.profile.phaseMode, portableMaterial: false }; }

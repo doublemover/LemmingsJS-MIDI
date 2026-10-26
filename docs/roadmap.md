@@ -5174,3 +5174,37 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   Builder-Miner Workshop, Glass Orbit and other large named scenes, advanced
   learning journeys and their acceptance remain open. Five implemented lesson
   observers do not establish completed issue #1110 acceptance.
+
+
+### Continuation 206 — retain and reconstruct acknowledged spectral windows
+
+- Added typed processor capture metadata with actual observed request frame,
+  exclusive N-frame interval, profile/grid/rate identity, monotonic capture serial
+  and original energy/attenuation evidence. The kernel cut retains its new
+  request frontier under the bumped spectral algorithm identity. No captured PCM
+  or native node is serialized.
+- Routed dedicated acknowledgments through the native graph, current owner arm,
+  bounded session observers and existing effect-performance capture/journal.
+  The worklet admits four outstanding metadata receipts and requires matching
+  source-epoch credits; exhaustion quarantines that graph. A conservative 128 KiB
+  transport estimate is charged in the prepared source profile. Diagnostics remain
+  separate from this acknowledgement; no per-frame capture serialization occurs.
+- Published spectral graphs mark the new evidence policy. Revoice validates
+  complete serial/request-window coverage, same-frame replacement, one clock
+  owner, original sample rate and exact analysis grid. It stages capture at the
+  original window frontier and checks the new owned graph actually captured the
+  complete interval. Missing prehistory/acknowledgments, late render traversal,
+  unavailable input and changed rate/grid fail rather than fabricating readiness.
+  An early explicitly canceled request creates no capture. Interval matching is
+  linear after chronological sorting, with no audio-thread history search.
+- The original metadata and new realization remain distinct: this re-analyzes
+  rendered input from cleared memory, not original spectral/PCM/host restoration.
+  Earlier command-only histories retain their limited disclosure. General
+  multi-graph/lifecycle replay, native convolution command replay, arbitrary live
+  audio cuts, content/play-scene work and their acceptance remain pending.
+- Authored the 44.1/48/96 kHz × 512/1024/2048 grouped window/reference fixtures,
+  exact final-frame boundary, invalid/missing/foreign/uncovered/rate cases, early
+  thaw, unavailable/late source, state-cut metadata, capture-owner clock and
+  four-credit worklet containment cases. No runtime/numerical/browser/audio test
+  has been executed in this frontloaded pass. Static checks precede the commit;
+  consolidated validation and real listening/cost results remain pending.

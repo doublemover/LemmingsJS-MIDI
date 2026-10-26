@@ -1,3 +1,4 @@
+import { validateSpectralCaptureReceipt } from '../../midi/content/SpectralCaptureReceipt.js';
 import { RECTANGULAR_MEMBRANE_REVISION, rectangularMembraneIdentity, MEMBRANE_LIVE_CONTROLS, membraneControlValid, membraneInitialControl, membraneTouchSupported, membraneControlTarget } from '../../midi/content/RectangularMembraneProfile.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { SYMPATHETIC_NETWORK_REVISION, sympatheticNetworkIdentity, NETWORK_LOSS_CONTROLS, NETWORK_PICKUP_CONTROLS } from '../../midi/content/SympatheticNetworkProfile.js';
@@ -28,11 +29,11 @@ const failure = (code, message) => Object.assign(new Error(message), { name: 'Ef
 // A prepared graph has no connection to a live destination. The owner decides
 // when inputs/outputs become audible and owns all transition/tail overlap.
 export async function prepareNativeEffectGraph(definition, { context, resources, owner, generation = 0, signal, isCurrent = () => true,
-  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, onBodyReceipt = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
+  getMaterialProvider = null, resolveSidechainSource = null, jobs, createWorkletNode = (ctx, name, options) => new globalThis.AudioWorkletNode(ctx, name, options), onFault = () => {}, onBodyReceipt = () => {}, onEffectReceipt = () => {}, initializationTimeoutMs = 5000, offlineEndFrame = null, offlineReturnNodeIds = [], offlineSourceBindings = null, retireOfflineContext = null } = {}) {
   let fault = null;
   const guard = () => { signal?.throwIfAborted(); if (fault) throw fault; if (!isCurrent() || context?.state === 'closed') throw failure('stale-effect-graph', 'The effect graph request no longer belongs to this context.'); };
   guard();
-  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || typeof onBodyReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
+  if (!context?.createGain || !resources?.reserve || typeof createWorkletNode !== 'function' || typeof onFault !== 'function' || typeof onBodyReceipt !== 'function' || typeof onEffectReceipt !== 'function' || resolveSidechainSource !== null && typeof resolveSidechainSource !== 'function' ||
       !Number.isSafeInteger(initializationTimeoutMs) || initializationTimeoutMs < 1 || initializationTimeoutMs > 30000) throw new TypeError('Effect graphs need an owned native context and resource budget.');
   const offline = offlineEndFrame !== null;
   if (offline && (!Number.isSafeInteger(offlineEndFrame) || offlineEndFrame < 1 || offlineEndFrame > context.sampleRate * 150 || context.state !== 'suspended' ||
@@ -124,7 +125,7 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
       if (!completeSettled) { completeSettled = true; rejectComplete(failure('effect-retired-before-complete', 'Effect completion retired before publication.')); }
     };
     const processor = { node: value, nodeId: entry.id, kind: entry.kind, profile: entry.nonlinear || null, vocoderProfile: entry.vocoder || null, revision, configurationKey, stateBytes: entry.stateBytes,
-      ready: false, completion: null, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
+      ready: false, completion: null, spectralSerial: 0, offlineActive: entry.offlineActive ?? audible.has(entry.id), cleanup, health: null,
       awaitReady: () => { if (!readySettled && readyTimer === null) readyTimer = setTimeout(() => failReady(failure('effect-initialization-timeout', 'Effect initialization did not acknowledge its source profile.')), initializationTimeoutMs); return ready; },
       awaitComplete: () => { if (!completeSettled && completeTimer === null) completeTimer = setTimeout(() => failComplete(failure('effect-completion-timeout', 'Offline effect omitted its terminal frame and fault receipt.')), initializationTimeoutMs); return terminal; },
       waitDisposed: () => Promise.race([retired, new Promise((_, reject) => { retireTimer = setTimeout(() => reject(failure('effect-retirement-timeout', 'The effect processor did not acknowledge retirement.')), initializationTimeoutMs); })])
@@ -135,6 +136,18 @@ export async function prepareNativeEffectGraph(definition, { context, resources,
     value.port.onmessage = event => {
       const data = event.data;
       if (processor.strikes?.consume(data)) return;
+      if (data?.type === 'spectral-capture') {
+        if (!entry.spectral || data.sourceEpoch !== generation || !processor.ready) return;
+        try {
+          const capture = validateSpectralCaptureReceipt(data.capture, entry.spectral);
+          if (capture.serial <= processor.spectralSerial) { value.port.postMessage({ type: 'spectral-capture-consumed', sourceEpoch: generation, serial: capture.serial }); return; }
+          if (capture.serial !== processor.spectralSerial + 1) throw failure('effect-spectral-capture-gap', 'The spectral processor omitted an acknowledged window.');
+          processor.spectralSerial = capture.serial; processor.health = Object.freeze({ ...processor.health, lastCapture: capture });
+          value.port.postMessage({ type: 'spectral-capture-consumed', sourceEpoch: generation, serial: capture.serial });
+          onEffectReceipt(Object.freeze({ status: 'accepted', stage: 'spectral-capture-applied', nodeId: entry.id, graphDefinitionHash: hash, sampleRate: context.sampleRate, targetFrame: capture.endFrame, spectralCapture: capture, acousticReceipt: false }));
+        } catch (error) { fault ||= error; try { onFault(fault); } catch {} }
+        return;
+      }
       if (data?.type === 'disposed') { resolveDisposed(); return; }
       if (data?.type === 'ready') {
         if (data.revision !== revision || data.sampleRate !== context.sampleRate || data.stateBytes !== entry.stateBytes || configurationKey != null && data.configurationKey !== configurationKey || realizationKey !== null && data.realizationKey !== realizationKey) failReady(failure('effect-abi-mismatch', 'The effect runtime differs from its admitted graph.'));

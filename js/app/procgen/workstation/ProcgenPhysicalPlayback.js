@@ -1,3 +1,4 @@
+import { SPECTRAL_CAPTURE_POLICY } from '../../../midi/content/SpectralCaptureReceipt.js';
 import { createPreparedSurfaceBodyOwner } from './PreparedSurfaceBodyOwner.js';
 import { createPreparedBodyStrikeBackend } from './PreparedBodyStrikeBackend.js';
 import { createEffectPerformanceCapture } from './EffectPerformanceCapture.js';
@@ -101,9 +102,13 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     onReceipt: receipt => { if (Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
   });
   const captureEffect = effectCapture.capture;
+  let unsubscribeEffectReceipts = null;
+  const observeEffectReceipt = receipt => {
+    if (!disposed && receipt.status === 'accepted' && receipt.stage === 'spectral-capture-applied') captureEffect('spectral-capture', receipt, { nodeId: receipt.nodeId, spectralCapture: receipt.spectralCapture });
+  };
   const prepareEffectGraph = async (definition, options) => { if (!session?.prepareEffectGraph) throw new Error('Physical owner effects are unavailable.');
     const result = await session.prepareEffectGraph(definition, options), state = session.getEffectPerformanceState?.();
-    captureEffect('graph', state, { definition: state?.definition }); return result;
+    captureEffect('graph', state, { definition: state?.definition, ...(unsubscribeEffectReceipts && state?.definition?.nodes.some(node => node.kind === 'spectral-freeze') ? { spectralCapturePolicy: SPECTRAL_CAPTURE_POLICY } : {}) }); return result;
   };
   const updateEffectGraph = (nodeId, values, frame, expected, cause = null) => {
     if (!session?.updateEffectGraph) throw new Error('Physical effect controls are unavailable.');
@@ -143,7 +148,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     } catch (error) { try { setEffectBypass('tail', expected); } catch {} throw error; }
   };
   let engine;
-  try { engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
+  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
@@ -156,7 +161,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
     { name: 'causal-observer-storage', run: () => engine?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
-    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
+    { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
   ]); throw error; }
   const refreshDisplay = batch => {
     const manager = renderer?.actorEffects, state = audio?.getState?.(), owner = session?.getState?.().ownerId;
@@ -241,7 +246,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     return retirement.retire([
       { name: 'audio-state-subscription', run: () => unsubscribe?.() },
       { name: 'playback-stop', run: stop }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
-      { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
+      { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
       { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
     ]);
