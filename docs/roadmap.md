@@ -6335,3 +6335,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   Formatting, ten-file syntax/import checks, critical types and static provenance
   pass (10 components / 335 files). Runtime, browser, audio/listening and full-suite
   validation remain deferred; demonstration and broader scene acceptance are open.
+
+### Continuation 250 — pinned stretch heap-image ABI boundary (#1186)
+
+- Added a bounded WASM section/instruction walker for the prospective prepared
+  state transport. It fails closed on shared/unknown storage, unsupported
+  reference state, automatic start, extra globals, internal memory growth and
+  table mutation. It decodes immediates rather than treating their bytes as
+  instructions. This is structural inspection, not module execution or DSP proof.
+- Static inspection of the exact 64,494-byte pinned core finds 59 defined
+  functions, one mutable i32 stack global initially 72,800, one fixed five-entry
+  function table, no start function and no internal memory-growth/table-writing
+  instructions. External host growth remains separately guarded by the adapter.
+- Added an export-only derivation exposing that stack global for a future
+  quiescent runtime guard. Every non-export section and DSP instruction remains
+  byte-identical. The 64,518-byte derivation is pinned to SHA-256
+  `e5c48b760aac995264c12b32fc941e5ccc91eb5dc2c05cec6403ec0b5e05875f`.
+  Original cache material is unchanged; no binary was committed.
+- Added authored unrun malformed/immediate/state/export/stale-owner fixtures.
+  Formatting, five-file syntax/import checks, critical types, static provenance
+  (10 components / 335 files) and the explicit binary derivation/hash inspection
+  pass. No WASM compilation/instantiation, DSP, browser, listening or full-suite
+  test ran. Prepared heap capture/restoration and live WarpVoice remain pending.
+- Also made replaced scene-macro lanes with no local instrument return the
+  actionable replacement error before dereferencing their missing reference.

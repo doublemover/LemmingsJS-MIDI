@@ -35,7 +35,7 @@ describe('atomic authored scene macro actions (fixtures unrun)', () => {
   it('rejects omitted/duplicate targets, source replacement, nonmacro controls and undeclared action fields', () => {
     const action = copy(request(project)), omitted = { ...action, targets: action.targets.slice(1) }, duplicate = { ...action, targets: [action.targets[0], action.targets[0]] };
     expect(() => applySceneMacroAction(project, omitted)).to.throw('target'); expect(() => applySceneMacroAction(project, duplicate)).to.throw('target'); expect(isSceneMacroAction({ ...action, patch: { worldThemeId: 'dirt' } })).to.equal(false);
-    const replaced = copy(project); replaced.procgen.lanes[1].instrumentRef.definitionHash = h('d'); expect(() => request(replaced)).to.throw('replaced'); expect(() => prepareSceneMacroAction(project, { ...action, controlId: 'spacing' })).to.throw('normalized macro'); expect(() => prepareSceneMacroAction(project, { ...action, sceneHash: h('e') })).to.throw('scene revision');
+    const replaced = copy(project); replaced.procgen.lanes[1].instrumentRef.definitionHash = h('d'); expect(() => request(replaced)).to.throw('replaced'); replaced.procgen.lanes[1].instrumentRef = null; expect(() => request(replaced)).to.throw('replaced'); expect(() => prepareSceneMacroAction(project, { ...action, controlId: 'spacing' })).to.throw('normalized macro'); expect(() => prepareSceneMacroAction(project, { ...action, sceneHash: h('e') })).to.throw('scene revision');
     for (const value01 of [-0.1, 1.1, NaN, Infinity]) expect(() => request(project, value01)).to.throw('normalized');
   });
   it('admits only the typed macro transaction during Stage and preserves its restrictions on other edits', () => {

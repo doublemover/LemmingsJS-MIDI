@@ -14,7 +14,7 @@ export function readSceneMacroControl(project, controlId) {
   for (const patch of scene.patchRefs) {
     const authored = patch.reference.definition.macros?.find(macro => macro.id === macroId); if (!authored) continue;
     const lane = procgenLane(project.procgen.lanes, patch.laneId), reference = lane?.instrumentRef, macro = reference?.definition.macros?.find(item => item.id === macroId);
-    if (!lane || reference.packHash !== patch.reference.packHash || reference.definitionHash !== patch.reference.definitionHash || !macro || macro.mode !== 'onset-only') fail('An authored macro lane was replaced or no longer supports this control. Use its individual lane editor.');
+    if (!lane || !reference || reference.packHash !== patch.reference.packHash || reference.definitionHash !== patch.reference.definitionHash || !macro || macro.mode !== 'onset-only') fail('An authored macro lane was replaced or no longer supports this control. Use its individual lane editor.');
     const baseline01 = lane.instrumentControls?.macros?.[macroId] ?? macro.default01;
     if (!Number.isFinite(baseline01) || baseline01 < 0 || baseline01 > 1) fail('A lane macro baseline is invalid.');
     targets.push({ laneId: lane.id, packHash: reference.packHash, definitionHash: reference.definitionHash, baseline01 });
