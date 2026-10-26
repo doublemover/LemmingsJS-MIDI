@@ -5982,3 +5982,34 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Static checks only; real same-take numerical/tail comparisons, isolated audible
   comparison, Instrument Nursery and device/listening qualification remain in
   the deferred combined acceptance pass and remaining development backlog.
+
+
+### Continuation 235 — authored scene racks and three finite Dub Quarry routes
+
+- Added #1102 tight-tunnel, open-courtyard and long-gallery pluck/echo studies.
+  Three finite actors own bass, a longer physical reply and wood-color arrivals.
+  Route widths, reply-end pickups, steel reversals and a safely admitted
+  direct/stepped junction determine actual arrivals. No bass loop, automatic
+  replacement crew or note-only route substitution is present.
+- Scene recipes can carry exact saved effect defaults into the existing project
+  owner. A source-bound renderer requirement is mandatory and shared-morph/rack
+  combinations require a separately composed profile. The initial profile is
+  complete owned gain/delay routing with bounded state/latency/tail, without
+  native convolution, capture readiness or unsupported source dependencies.
+- Dub Quarry's saved send starts at zero. The performer explicitly loads saved
+  defaults and prepares Quarry Echo, then uses its existing momentary THROW,
+  focus/cancel handling, voice selection, bypass and Panic. Loading a scene
+  neither activates audio nor turns saved settings into a performed gesture.
+- Private rehearsal renders the actual source prefix through the exact static
+  rack and records definition/processing hashes. Its four-second tail preview
+  reports the graph's full declared maximum and whether the preview truncates
+  that bound. It never calls this a complete tail or replayed live throw.
+  The host validates exact recipe, graph identity, source and tail inventory.
+- Authored unrun finite route/arrival, silent empty-world, exact project-default
+  staging, source-linked real-DSP rehearsal, missing/stale rack, unsupported
+  topology and source-closure fixtures. Extended long-route fixture horizons to
+  include the required return crossings at the engine's actual walking step.
+- Static checks only. Geometry, live echo gestures, stopped-source tail corner
+  metrics, audio/physical cause displays, measured cost and listening remain
+  unqualified. Cargo Journey echo, tape/duck variants, room zones and the shared
+  gallery body remain separate development; the complete issue remains open.

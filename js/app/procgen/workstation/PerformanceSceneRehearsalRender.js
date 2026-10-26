@@ -1,3 +1,4 @@
+import { prepareSceneEffectRack, SCENE_EFFECT_RACK_REQUIREMENT } from './SceneEffectRack.js';
 import { prepareEffectGraphRevision } from '../../../midi/content/EffectGraphRevision.js';
 import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { travelColorationValue } from '../../../midi/content/TravelColorationRecipes.js';
@@ -24,15 +25,20 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
       !Array.isArray(source.intents) || source.intents.length > 8192 || !Number.isSafeInteger(source.ticks) || source.ticks < 1 || source.ticks > 512 || !Number.isFinite(source.durationSeconds) || source.durationSeconds <= 0 || source.durationSeconds > 6.1 ||
       source.intents.some(intent => !Number.isSafeInteger(intent.laneId) || intent.laneId < 0 || intent.laneId >= scene.cost.lanes || intent.route !== 'local') ||
       !Number.isSafeInteger(maxWorkingBytes) || maxWorkingBytes < 64 * 1048576) throw failure('This rehearsal needs an exact installed scene, a bounded complete private source and at most eight assetless lanes.');
-  let bodyModel = null, bodyPlan = null, recipeHash = null, bodyRecipe = null;
+  let bodyModel = null, bodyPlan = null, recipeHash = null, bodyRecipe = null, effects = null;
   if (scene.cost.sharedBodies) {
     if (maxWorkingBytes < 96 * 1048576) throw failure('The complete shared-body rehearsal needs at least 96 MiB of admitted workspace.');
     const recipe = bodyRecipe = validatePerformanceSceneRecipe(input.recipe); recipeHash = await hashData(recipe, { maxBytes: 131072, maxNodes: 8192 });
     if (recipeHash !== scene.worldRecipeRef.hash || recipe.id !== scene.worldRecipeRef.id || recipe.sourceHash !== buildId || recipe.settings.laneCount !== scene.cost.lanes || !recipe.initialMorphMechanism) throw failure('The shared rehearsal body needs the exact authored recipe and executing source.');
     const mechanism = await verifySceneMorphMechanism(recipe.initialMorphMechanism, scene.causalMappings.instruments); check(); if (sceneMorphMechanismCost(mechanism).bodyCount !== scene.cost.sharedBodies) throw failure('The shared body count differs from the exact prepared strategy.'); bodyModel = await createResonatorMorphGraph(mechanism, rate); bodyPlan = prepareEffectGraphRevision(bodyModel.graph, { sampleRate: rate }); check();
-  } else if (input.recipe != null) throw failure('An independent-lane rehearsal cannot silently accept an extra sound mechanism.');
+  } else if (input.recipe != null) {
+    const recipe = validatePerformanceSceneRecipe(input.recipe); recipeHash = await hashData(recipe, { maxBytes: 131072, maxNodes: 8192 });
+    if (recipeHash !== scene.worldRecipeRef.hash || recipe.id !== scene.worldRecipeRef.id || recipe.sourceHash !== buildId || recipe.settings.laneCount !== scene.cost.lanes || !recipe.initialEffectRack) throw failure('The rehearsal rack needs its exact authored recipe and executing source.');
+    effects = prepareSceneEffectRack(recipe.initialEffectRack, rate); check();
+  }
+  if (!!effects !== scene.requirements?.required?.some(entry => entry.kind === 'renderer' && entry.id === SCENE_EFFECT_RACK_REQUIREMENT)) throw failure('The declared scene rack cannot be omitted or inserted as an unlisted mechanism.');
   const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }), mix = createLaneMixState(); check(); mix.synchronize(scene.mix.map(row => ({ ...row, id: row.laneId })));
-  const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || 0), left = new Float64Array(frames), right = new Float64Array(frames), lanes = []; let outputFrames = 0;
+  const frames = Math.ceil((source.durationSeconds + 0.5) * rate) + (bodyPlan?.maximumTailFrames || effects?.previewTailFrames || 0), left = new Float64Array(frames), right = new Float64Array(frames), lanes = []; let outputFrames = 0;
   for (let index = 0; index < scene.patchRefs.length; index++) {
     check(); const row = scene.patchRefs[index], reference = validateSoundContentReference(row.reference), descriptor = descriptors.find(value => value.engineId === reference.engineRequirement.engineId), state = mix.mix(row.laneId);
     if (!descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => descriptor[key] === reference.engineRequirement[key]) || reference.assetHashes.length || await hashData(reference.definition) !== reference.definitionHash) throw failure('The rehearsal patch differs from its exact assetless executing definition.');
@@ -84,13 +90,25 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
       finalMorph01: health.morph01, sourceFrames, tailFrames: bodyPlan.maximumTailFrames, tailPolicy: 'declared-maximum-body-tail-after-last-source-output;hard-owned-deadline', semanticOnsetsAdded: 0, faults: health.faults, energy: health.energy, inputWork: health.inputWork, positiveLoss: health.positiveLoss, physicalTakeEvidence: false, acousticReceipt: false };
     graph.panic(); check();
   }
+  let effectReceipt = null;
+  if (effects) {
+    const graph = await createOwnedEffectGraphKernel({ definition: effects.rack.graph, sampleRate: rate }), sourceFrames = outputFrames; outputFrames += effects.previewTailFrames;
+    if (outputFrames > frames) throw failure('The scene rack exceeded its admitted source and tail window.');
+    for (let first = 0; first < outputFrames; first += 4096) {
+      check(); const end = Math.min(outputFrames, first + 4096);
+      for (let frame = first; frame < end; frame++) { graph.sample(frame < sourceFrames ? Math.fround(left[frame]) : 0, frame < sourceFrames ? Math.fround(right[frame]) : 0); left[frame] = graph.leftSample; right[frame] = graph.rightSample; }
+      await yieldControl();
+    }
+    effectReceipt = { definitionHash: await hashData(effects.rack.graph, { maxBytes: 65536, maxNodes: 8192 }), graphHash: graph.hash, sourceFrames, tailFrames: effects.previewTailFrames, declaredMaximumTailFrames: effects.plan.maximumTailFrames, tailTruncatedByPreviewBound: effects.previewTailFrames < effects.plan.maximumTailFrames, tailPolicy: 'four-second-preview-bound-after-source-output;full-rack-tail-remains-explicit', controls: 'authored-static-defaults;no-replayed-throw-gestures', semanticOnsetsAdded: 0, acousticReceipt: false };
+    graph.panic(); check();
+  }
   const pcm = new Uint8Array(outputFrames * 8), view = new DataView(pcm.buffer); let peak = 0, squares = 0;
   for (let first = 0; first < outputFrames; first += 16384) { check(); const end = Math.min(outputFrames, first + 16384);
     for (let frame = first; frame < end; frame++) { const l = Math.fround(left[frame]), r = Math.fround(right[frame]); if (!Number.isFinite(l) || !Number.isFinite(r)) throw failure('Scene mix produced non-finite PCM.');
       view.setFloat32(frame * 8, l, true); view.setFloat32(frame * 8 + 4, r, true); peak = Math.max(peak, Math.abs(l), Math.abs(r)); squares += l * l + r * r; } await yieldControl(); }
   const manifest = freezeData({ schema: 'lemmings-scene-rehearsal-render/v1', sceneHash: input.sceneHash, sourceHash, applicationBuildId: buildId, initialTick: 0, ticks: source.ticks, sourceDurationSeconds: source.durationSeconds,
-    sampleRate: rate, frames: outputFrames, channels: 2, sampleFormat: 'ieee-float32-le', pcmHash: await digest(pcm), lanes, ...(bodyReceipt ? { recipeHash, body: bodyReceipt } : {}), statistics: { peak, rms: Math.sqrt(squares / (outputFrames * 2)) },
-    scope: bodyReceipt ? (bodyReceipt.bodyCount === 2 ? 'new-private-world-source;authored-static-lane-mix;two-independent-endpoint-bodies;actual-journey-readout-MORPH;both-declared-body-tails' : 'new-private-world-source;authored-static-lane-mix;one-reviewed-shared-body;actual-journey-MORPH;declared-source-and-body-tail') : 'new-private-world-source-render;authored-static-lane-gain-and-stereo-pan;half-second-boundary-release', currentWorldAdvanced: false, nextWorldAdvanced: false, externalOutput: false,
+    sampleRate: rate, frames: outputFrames, channels: 2, sampleFormat: 'ieee-float32-le', pcmHash: await digest(pcm), lanes, ...(bodyReceipt ? { recipeHash, body: bodyReceipt } : {}), ...(effectReceipt ? { recipeHash, effects: effectReceipt } : {}), statistics: { peak, rms: Math.sqrt(squares / (outputFrames * 2)) },
+    scope: effectReceipt ? 'new-private-world-source;authored-static-lane-mix-and-saved-delay-rack;declared-stopped-source-tail;no-replayed-live-gestures' : bodyReceipt ? (bodyReceipt.bodyCount === 2 ? 'new-private-world-source;authored-static-lane-mix;two-independent-endpoint-bodies;actual-journey-readout-MORPH;both-declared-body-tails' : 'new-private-world-source;authored-static-lane-mix;one-reviewed-shared-body;actual-journey-MORPH;declared-source-and-body-tail') : 'new-private-world-source-render;authored-static-lane-gain-and-stereo-pan;half-second-boundary-release', currentWorldAdvanced: false, nextWorldAdvanced: false, externalOutput: false,
     historicalPerformanceEvidence: false, acousticReceipt: false, renderQualification: 'not-independently-qualified' }); check();
   canonicalDataText(manifest, { maxBytes: 262144 }); return { bytes: encodeCausalRenderWave(pcm, outputFrames, rate, manifest), manifest };
 }

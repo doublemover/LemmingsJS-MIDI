@@ -1,3 +1,4 @@
+import { createDubQuarryScores } from './DubQuarryScore.js';
 import { createGlassOrbitScores } from './GlassOrbitScore.js';
 import { createBuilderMinerScores } from './BuilderMinerScore.js';
 import { createMetamorphicBridgeScore } from './MetamorphicBridgeScore.js';
@@ -79,6 +80,14 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const item of await createAdditionalPracticeScores({ sourceHash, reference: lessonReference })) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      await registry.register(item.scene); signal?.throwIfAborted();
+    }
+  }
+  if (pluck?.maximumVoices >= 12) {
+    for (const item of await createDubQuarryScores({ sourceHash, descriptor: pluck, signal })) {
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
       await registry.register(item.scene); signal?.throwIfAborted();
     }
   }

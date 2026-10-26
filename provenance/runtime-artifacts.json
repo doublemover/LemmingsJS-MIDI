@@ -223,6 +223,7 @@
         "js/app/procgen/workstation/ProcgenRecoveryChecksum.js",
         "js/app/procgen/workstation/ProcgenRecoveryChunks.js",
         "js/app/procgen/workstation/ProcgenRecoveryPageCodec.js",
+        "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SimScoreTimeline.js",
         "js/app/procgen/workstation/TravelAccumulator.js",
@@ -369,8 +370,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 258,
-      "sha256": "1aabaa53133981baf53326d2672624e34b560871fcf45fa07a09bb6510c588b0"
+      "fileCount": 259,
+      "sha256": "a970fb10035743f1541c6e171340ae94f4428ea2c64f2d8a696361a20e03dd8e"
     },
     {
       "id": "lemmings-timing-worker-source",

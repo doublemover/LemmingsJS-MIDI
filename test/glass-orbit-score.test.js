@@ -42,7 +42,7 @@ describe('Glass Orbit finite spatial-harp scores (qualification deferred)', func
     const world = new ProcgenLaneWorld({ masks, terrain, laneCount: item.scene.cost.lanes, laneHeight: 96, seed: item.scene.seed, maxActors: 16, cohorts: true, workstation: true, assists: false, hazardSpacing: 1024, initialReleaseGesture: { ...item.recipe.initialReleaseGesture, paused }, stallPolicy: { secondsWithoutProgress: 1000 } }), engine = createCausalMusicEngine({ getGraph: () => item.scene.causalMappings }), motion = [], begins = [], born = [];
     world.configurePhysicalAuthoring(item.scene.causalMappings, []); configurePhysicalJunctions(world, item.recipe.initialJunctions, 1);
     world.soundEvents.onBatch.on(batch => { for (const fact of batch.facts) { if (fact.kind === 'ActorBorn') born.push(fact.actorId); if (fact.kind === 'MotionCommitted') motion.push([batch.tick, fact.actorId, fact.laneId, fact.positionBefore.x, fact.positionBefore.y, fact.positionAfter.x, fact.positionAfter.y]); } for (const intent of engine.processBatch(batch)) if (intent.kind === 'begin') begins.push({ tick: batch.tick, intent }); });
-    try { for (let tick = 0; tick < 1200; tick++) world.step(); return { motion, begins, born }; }
+    try { for (let tick = 0; tick < 2000; tick++) world.step(); return { motion, begins, born }; }
     finally { world.dispose(); engine.dispose(); await terrain.dispose().completion; jobs.dispose(); expect(budget.diagnostics().accountedBytes).to.equal(0); }
   };
   it('authors the real-world same-trace tuning, reverse-crossing and empty-world fixture', async () => {
