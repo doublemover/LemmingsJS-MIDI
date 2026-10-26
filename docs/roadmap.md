@@ -5236,3 +5236,32 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   energy/relative-velocity background; the source defines its own original scalar
   model. No numerical probe, runtime, listening, stability map or device cost
   measurement has run. Long sustain and full engine/content acceptance remain open.
+
+
+### Continuation 208 — owned friction travel, content and exact kernel cuts
+
+- Integrated the original sealed model as `worklet-friction`: typed conditional
+  pressure/contact controls, onset-only body tuning, bounded two-slot owned source,
+  static source-cost policy, existing gate/lease/release, cancellation and panic.
+  Canonical completed signed-axis microsegments retain actor/scope/event ancestry;
+  rest supplies no bow work, reversal reuses the parent source, and unsupported
+  live pitch bends fail. No public graph feedback or additional MIDI owner opens.
+- Added exact kernel state transport with independent storage and pre-mutation
+  validation of positive modal coefficients, source/core identities, reserved
+  fields, motion frontier, pressure, solver/cumulative energy and readout state.
+  Future commands and parent release remain owned by the existing core. Arbitrary
+  live host restoration and PCM-equivalent continuation remain unqualified.
+- Added three ordinary original recipes, DRAG/PRESS/EDGE/BODY macros, realization
+  interfaces, library preparation, explicit 78-pixel/650-ms control audition and
+  owned offline/physical-take revoice receipts. Control movement is not a physical
+  take and slot/cost limits are not measured device capacity or qualified tiers.
+- Authored grouped rate/family integration, queued/active/reverse/rest/end/retired
+  cuts, forged valid-checksum state, two same-pitch opposing sources, canonical
+  ancestry, control renders and one-gate physical revoice fixtures. Added an
+  unrun sixty-second speed/pressure/rest/reversal runner with numerical, DC,
+  autocorrelation and process-cost observations; it makes no automatic acoustic
+  qualification claim. Runtime tests, browser/device, full stability region,
+  alias/tone/listening and the Bow Orchard proof scene remain pending for #1136.
+- Static-only checks are performed before this commit. No numerical runner,
+  runtime test, build, browser/audio/listening or CI qualification has run here;
+  the consolidated validation and repair pass remains deferred as requested.

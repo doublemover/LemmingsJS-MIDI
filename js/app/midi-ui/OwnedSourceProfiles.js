@@ -1,12 +1,14 @@
+import { prepareFrictionModel, FRICTION_MODEL_KINDS } from '../../midi/content/FrictionModel.js';
+import { planFrictionTravel } from '../../midi/content/FrictionTravel.js';
 import { validTextureBodyCommand, textureBodyCommandFields } from '../../midi/content/TextureBodyProfile.js';
 import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from '../../midi/content/TextureExciter.js';
 import { planTextureTravel } from '../../midi/content/TextureTravel.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel, validateCircularCoordinateControl } from '../../midi/content/CircularSpectrum.js';
 import { prepareSampleBodyProfile, acceptsSampleBodyOnset } from '../../midi/content/SampleBodyProfile.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
-import { TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
+import { FRICTION_LAYOUT, frictionSourceBytes, TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
-import { NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
+import { NATIVE_FRICTION_FIELDS, NATIVE_FRICTION_PARAMETERS, NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
   NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS } from './NativeInstrumentSchema.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
@@ -20,7 +22,7 @@ const acceptsSpectrum = parameters => {
 };
 const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
-  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, travelReceiptKey = 'circularTravel', restoration = 'exactSnapshot', acceptsExpression = () => true }) => {
+  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, travelReceiptKey = 'circularTravel', travelDomain = 'circular', travelPolicy = null, restoration = 'exactSnapshot', acceptsExpression = () => true }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
   const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
@@ -37,7 +39,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
       return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
     }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId,
-    controlReferenceRender, travelPlanner, travelReceiptKey, restoration, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
+    controlReferenceRender, travelPlanner, travelReceiptKey, travelDomain, travelPolicy, restoration, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
       if (!acceptsExpression(expression, voice)) return null;
       let mask = 0;
@@ -56,11 +58,15 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
+  'worklet-friction': createProfile({ id: 'worklet-friction', controlReferenceRender: true, width: FRICTION_LAYOUT.width, voices: FRICTION_LAYOUT.voices, fields: NATIVE_FRICTION_FIELDS, parameters: NATIVE_FRICTION_PARAMETERS, buildId: 'owned-friction-v1-sealed-modal', abi: 'owned-friction-f64-command-v1', workletUrl: new URL('./worklet/OwnedFrictionProcessor.js', import.meta.url).href,
+    rateLimit: true, seedDomain: 'sealed-friction-v1', minHz: 110, maxHz: 660, bendCents: 0, storageBytes: frictionSourceBytes, heapEstimate: 65536, cost: p => 16 + (p.frictionKind === 1 ? 6 : 12), travelPlanner: planFrictionTravel, travelReceiptKey: 'frictionTravel', travelDomain: 'friction', travelPolicy: 'canonical-signed-axis-sealed-friction;observed-spans;zero-bow-work-at-rest;onset-tuned-body', restoration: 'exactSnapshot', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsParameters: p => { try { if (!Number.isInteger(p.frictionKind) || !FRICTION_MODEL_KINDS[p.frictionKind]) return false; prepareFrictionModel({ kind: FRICTION_MODEL_KINDS[p.frictionKind], dragSlope: p.frictionDragSlope, pressure01: p.frictionPressure01, contactPosition01: p.frictionContact01, bodyMix01: p.frictionBodyMix01 }); return true; } catch { return false; } },
+    beginFields: (p, seed, pcm, selected, travel) => ({ 18: seed, 19: p.frictionKind, 20: p.frictionDragSlope, 21: p.frictionPressure01, 22: p.frictionContact01, 23: p.frictionBodyMix01, ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),
   'worklet-texture': createProfile({ id: 'worklet-texture', controlReferenceRender: true, width: TEXTURE_LAYOUT.width, voices: TEXTURE_LAYOUT.voices, fields: NATIVE_TEXTURE_FIELDS, parameters: NATIVE_TEXTURE_PARAMETERS,
     buildId: 'owned-texture-v3-state-cut', abi: 'owned-texture-f64-command-v2', workletUrl: new URL('./worklet/OwnedTextureProcessor.js', import.meta.url).href,
     rateLimit: true, seedDomain: 'spatial-texture-v1', minHz: 20, maxHz: 2000, bendCents: 0, storageBytes: textureSourceBytes, heapEstimate: 65536, cost: p => 32 + (p.graftModeCount || 5),
     acceptsOnset: (p, frequency, pcm, rate) => validTextureBodyCommand(textureBodyCommandFields(p), frequency, rate),
-    travelPlanner: planTextureTravel, travelReceiptKey: 'textureTravel', restoration: 'exactSnapshot', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    travelPlanner: planTextureTravel, travelReceiptKey: 'textureTravel', travelDomain: 'texture', travelPolicy: 'canonical-signed-axis-spatial-texture;completed-observed-spans;rest-closes-excitation;no-pitch-cycle', restoration: 'exactSnapshot', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
     acceptsParameters: p => { try { if (!validTextureBodyCommand(textureBodyCommandFields(p), 20, 48000)) return false; prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[p.textureKind], roughnessPerPixel: p.roughnessPerPixel, dragSlope: p.dragSlope, shade01: p.shade01, bodySeconds: p.textureBodySeconds }); return true; } catch { return false; } },
     beginFields: (p, seed, pcm, selected, travel) => ({ ...textureBodyCommandFields(p), 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
       ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),

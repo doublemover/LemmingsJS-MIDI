@@ -1,8 +1,10 @@
+import { FRICTION_MODEL_LIMITS } from '../../midi/content/FrictionModel.js';
 import { TEXTURE_EXCITER_LIMITS } from '../../midi/content/TextureExciter.js';
 import { SAMPLE_READ_TABLE_SAMPLES } from '../../midi/content/SampleReadProfile.js';
 export const LIVE_LANE_TAP_LIMIT = 8;
 export const LIVE_LANE_TAP_PROTOCOL = 3;
 export const LIVE_LANE_ID_LIMIT = 4096;
+export const FRICTION_LAYOUT = Object.freeze({ width: 48, voices: FRICTION_MODEL_LIMITS.voices });
 export const TEXTURE_LAYOUT = Object.freeze({ width: 80, voices: TEXTURE_EXCITER_LIMITS.voices });
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
@@ -41,4 +43,9 @@ export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
 export function textureSourceBytes(rate, voices = TEXTURE_LAYOUT.voices) {
   check(rate, voices, TEXTURE_LAYOUT.voices, 96000); if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid texture source rate.');
   const p = TEXTURE_EXCITER_LIMITS; return (voices * (p.state + p.modes * p.modeWidth + p.modes + p.pulses * p.pulseWidth) + 2) * 8;
+}
+
+export function frictionSourceBytes(rate, voices = FRICTION_LAYOUT.voices) {
+  check(rate, voices, FRICTION_LAYOUT.voices, 96000); if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid friction source rate.');
+  return voices * (FRICTION_MODEL_LIMITS.state + FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth) * 8;
 }

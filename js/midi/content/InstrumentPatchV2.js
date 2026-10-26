@@ -1,3 +1,4 @@
+import { prepareFrictionModel, FRICTION_MODEL_KINDS } from './FrictionModel.js';
 import { validTextureBodyCommand, textureBodyCommandFields } from './TextureBodyProfile.js';
 import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from './TextureExciter.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, validateCircularCoordinateControl } from './CircularSpectrum.js';
@@ -103,6 +104,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     visiting.delete(source); visited.add(source);
   };
   for (const source of dependencies.keys()) visit(source);
+  if (input.engineId === 'worklet-friction') prepareFrictionModel({ kind: FRICTION_MODEL_KINDS[input.parameters.frictionKind ?? 0], dragSlope: input.parameters.frictionDragSlope ?? 0.5, pressure01: input.parameters.frictionPressure01 ?? 0.4, contactPosition01: input.parameters.frictionContact01 ?? 0.18, bodyMix01: input.parameters.frictionBodyMix01 ?? 0.12 });
   if (input.engineId === 'worklet-texture' && !validTextureBodyCommand(textureBodyCommandFields(input.parameters), 20, 48000)) throw new TypeError('Invalid texture body calibration or signed observation.');
   if (input.engineId === 'worklet-texture') prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[input.parameters.textureKind ?? 0], roughnessPerPixel: input.parameters.roughnessPerPixel ?? 0.4, dragSlope: input.parameters.dragSlope ?? 0.5, shade01: input.parameters.shade01 ?? 0.5, bodySeconds: input.parameters.textureBodySeconds ?? 0.05 });
   if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode === 2) {

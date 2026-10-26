@@ -4,6 +4,7 @@ export async function createOwnedControlKernel(profile, rate, voices, options = 
   if (!profile.controlReferenceRender) throw new TypeError('This source has no fixed offline control adapter.');
   const bank = profile.bankId ? options.sourceBank || await computeOwnedSourceBank(profile.bankId, options) : null;
   options.signal?.throwIfAborted();
+  if (profile.id === 'worklet-friction') { const { OwnedFrictionKernel } = await import('../midi-ui/worklet/OwnedFrictionProcessor.js'); return new OwnedFrictionKernel(rate, voices); }
   if (profile.id === 'worklet-texture') { const { OwnedTextureKernel } = await import('../midi-ui/worklet/OwnedTextureProcessor.js'); return new OwnedTextureKernel(rate, voices); }
   if (profile.id === 'worklet-sample') { const { OwnedSampleKernel } = await import('../midi-ui/worklet/OwnedSampleProcessor.js'); return new OwnedSampleKernel(rate, options.pcm, options.patch, voices, bank); }
   if (profile.id === 'worklet-sine') { const { OwnedSineKernel } = await import('../midi-ui/worklet/OwnedSineProcessor.js'); return new OwnedSineKernel(rate, voices); }

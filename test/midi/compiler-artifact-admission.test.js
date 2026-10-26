@@ -7,7 +7,7 @@ import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInst
 describe('compiler/pack artifact admission closure (#1131, deferred)', () => {
   let native, sample, descriptors;
   before(async () => {
-    const ids = ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-texture'];
+    const ids = ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-texture', 'worklet-friction'];
     descriptors = await describeNativeInstrumentEngines(ids.map(engineId => ({ engineId, engineVersion: 1, artifactHash: 'a'.repeat(64) })));
     const targets = descriptors.map(descriptor => ({ descriptor }));
     native = await compileSoundContent(JSON.parse(await fs.readFile(new URL('../../content/sounds/native.json', import.meta.url), 'utf8')), { targets });

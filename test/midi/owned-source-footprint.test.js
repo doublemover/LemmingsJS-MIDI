@@ -11,7 +11,7 @@ const typedBytes = (value, objects = new Set(), buffers = new Set()) => {
 };
 describe('named owned source footprint interface (#1258, deferred)', () => {
   it('keeps absent/undefined/null non-PCM separate from strict voice capacity and retained storage', async () => {
-    for (const sampleRate of [44100, 48000, 96000]) for (const id of OWNED_SOURCE_IDS.filter(id => id !== 'worklet-granular')) {
+    for (const sampleRate of [44100, 48000, 96000]) for (const id of OWNED_SOURCE_IDS.filter(id => !getOwnedSourceProfile(id).requiresPCM)) {
       const profile = getOwnedSourceProfile(id), maximum = profile.sourceBytes({ sampleRate });
       expect(profile.sourceBytes({ sampleRate, pcm: undefined })).to.equal(maximum); expect(profile.sourceBytes({ sampleRate, pcm: null })).to.equal(maximum);
       for (const voices of [1, profile.voices]) {

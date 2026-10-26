@@ -5,6 +5,7 @@ export const INSTRUMENT_ARTIFACT_ROOTS = Object.freeze({
   'native-fm': 'js/app/midi-ui/nativeOscillatorBackend.js',
   'native-modal': 'js/app/midi-ui/nativeOscillatorBackend.js',
   'native-sample': 'js/app/midi-ui/sampleInstrumentBackend.js',
+  'worklet-friction': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-choir': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-pluck': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-spectrum': 'js/app/midi-ui/workletInstrumentBackend.js',
@@ -15,7 +16,7 @@ export const INSTRUMENT_ARTIFACT_ROOTS = Object.freeze({
 });
 
 export async function computeInstrumentArtifacts(files, profiles) {
-  if (!Array.isArray(files) || !Array.isArray(profiles) || profiles.length > 11) throw new Error('Unsupported instrument artifact inventory.');
+  if (!Array.isArray(files) || !Array.isArray(profiles) || profiles.length > Object.keys(INSTRUMENT_ARTIFACT_ROOTS).length) throw new Error('Unsupported instrument artifact inventory.');
   const inventory = new Map(files.map(file => [file.path, file])), artifacts = [], seen = new Set(); let previous = '';
   for (const profile of profiles) {
     if (!profile || !Object.hasOwn(INSTRUMENT_ARTIFACT_ROOTS, profile.engineId) || seen.has(profile.engineId) || profile.engineId <= previous ||

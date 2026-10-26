@@ -39,7 +39,7 @@ export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
 }
 
 const nativeComponents = descriptor => {
-  const roles = descriptor.engineId === 'worklet-texture' ? { exciter: ['textureKind', 'roughnessPerPixel', 'dragSlope', 'shade01', 'textureScope', 'textureAxis', 'textureRequireSegments'], resonator: ['textureBodySeconds', ...descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft'))], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-sample' ? {
+  const roles = descriptor.engineId === 'worklet-friction' ? { exciter: ['frictionKind', 'frictionDragSlope', 'frictionPressure01', 'frictionScope', 'frictionAxis', 'frictionRequireSegments'], resonator: ['frictionContact01', 'frictionBodyMix01'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-texture' ? { exciter: ['textureKind', 'roughnessPerPixel', 'dragSlope', 'shade01', 'textureScope', 'textureAxis', 'textureRequireSegments'], resonator: ['textureBodySeconds', ...descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft'))], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] } : descriptor.engineId === 'worklet-sample' ? {
     exciter: ['sampleLowpassHz', 'sampleVelocityTone01', 'graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'], resonator: descriptor.parameters.map(spec => spec.id).filter(id => id.startsWith('graft') && !['graftExcitationMode', 'graftEnergyBudget', 'graftSupportSeconds', 'graftExcite01'].includes(id)), envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01']
   } : descriptor.engineId === 'worklet-granular' ? {
     exciter: ['pitchRatio', 'regionStart01', 'regionEnd01', 'motionRequired', 'reverse', 'rootHz'],
@@ -62,7 +62,7 @@ const nativeComponents = descriptor => {
     modulation: ['indexStart', 'indexEnd', 'indexSeconds', 'secondaryIndexStart', 'secondaryIndexEnd'],
     envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01', 'secondaryMix01']
   } : { exciter: ['waveform'], envelope: ['attackSeconds', 'decaySeconds', 'sustain01', 'releaseSeconds'], output: ['gain01', 'pan01'] };
-  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture'].includes(descriptor.engineId)) return null;
+  if (!['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture', 'worklet-friction'].includes(descriptor.engineId)) return null;
   return Object.entries(roles).map(([role, parameters]) => ({ id: role, role, parameters: parameters.filter(name => descriptor.parameters.some(spec => spec.id === name)) }));
 };
 

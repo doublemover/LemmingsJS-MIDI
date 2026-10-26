@@ -1,10 +1,9 @@
-import { FRICTION_MODEL_LIMITS as L, FRICTION_PRESSURE_DOMAINS, FRICTION_GLASS_RATIOS, FRICTION_GLASS_T60, FRICTION_BODY_HZ, FRICTION_MODEL_REVISION } from '../../../midi/content/FrictionModel.js';
+import { FRICTION_MODEL_LIMITS as L, FRICTION_PRESSURE_DOMAINS, FRICTION_GLASS_RATIOS, FRICTION_GLASS_T60, FRICTION_BODY_HZ, FRICTION_MODEL_REVISION, frictionForceCurve, frictionSpatialRoughness } from '../../../midi/content/FrictionModel.js';
 
 export const FRICTION_STATE = Object.freeze({ active: 0, kind: 1, seed: 2, drag: 3, pressure: 4, edge: 5, body: 6, ended: 7, position: 8, from: 9, to: 10, first: 11, end: 12, lastFrame: 13, onset: 14, pressureRamp: 15, force: 16, energy: 17, inputWork: 18, frictionLoss: 19, linearLoss: 20, peak: 21, maximumBalanceDefect: 22, rootResidual: 23, modeCount: 24, rootHz: 25, hpLeftInput: 26, hpLeftOutput: 27, hpRightInput: 28, hpRightOutput: 29, iterations: 30, releaseFrame: 31, signProjections: 32, controlPressure: 33, faults: 34, speed: 35, bowVelocity: 36, forceCap: 37, admittance: 38, slopeProduct: 39, left: 40, right: 41, contactVelocity: 42, relativeVelocity: 43, pressureStep: 44, highpass: 45 });
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
-const spatial = (seed, cell) => { let value = (seed ^ Math.imul(cell | 0, 0x9e3779b1)) >>> 0; value = Math.imul(value ^ value >>> 16, 0x7feb352d); value = Math.imul(value ^ value >>> 15, 0x846ca68b); return ((value ^ value >>> 16) >>> 0) / 4294967296; };
-const friction = (relative, cap) => cap * Math.tanh(relative / L.frictionSmoothingVelocity) * (L.staticToDynamicRatio + (1 - L.staticToDynamicRatio) * Math.exp(-Math.abs(relative) / L.stribeckVelocity));
+
 
 export class FrictionModalKernel {
   constructor(sampleRate, { state = new Float64Array(L.state), modes = new Float64Array(L.modes * L.modeWidth) } = {}) {
@@ -50,14 +49,13 @@ export class FrictionModalKernel {
     const moving = !s[7] && frame >= s[11] && frame < s[12] && s[10] !== s[9], previous = s[8], position = moving ? s[9] + (s[10] - s[9]) * (frame - s[11] + 1) / (s[12] - s[11]) : previous, velocity = moving ? (position - previous) * this.rate : 0;
     s[8] = position; s[35] = Math.abs(velocity); s[36] = L.maximumVelocity * Math.tanh(velocity * s[3] / 64);
     const pressureTarget = moving ? s[33] : 0; s[15] += Math.max(-s[44], Math.min(s[44], pressureTarget - s[15]));
-    let roughness = 1;
-    if (s[1] === 2) { const coordinate = position / 4, cell = Math.floor(coordinate), fraction = coordinate - cell; roughness = 0.8 + 0.4 * (spatial(s[2], cell) * (1 - fraction) + spatial(s[2], cell + 1) * fraction); }
+    const roughness = s[1] === 2 ? frictionSpatialRoughness(s[2], position) : 1;
     const cap = L.forceScale * s[4] * s[15] * roughness; s[37] = cap; let freeContact = 0;
     for (let mode = 0; mode < s[24]; mode++) { const at = mode * L.modeWidth; m[at + 8] = (m[at + 1] - h * 0.5 * m[at + 2] * m[at]) / m[at + 4]; freeContact += m[at + 5] * m[at + 8]; }
     let force = 0;
     if (cap > 0) {
       let low = -cap, high = cap;
-      for (let iteration = 0; iteration < L.iterations; iteration++) { const candidate = (low + high) * 0.5, relative = s[36] - freeContact - s[38] * candidate; if (candidate - friction(relative, cap) < 0) low = candidate; else high = candidate; }
+      for (let iteration = 0; iteration < L.iterations; iteration++) { const candidate = (low + high) * 0.5, relative = s[36] - freeContact - s[38] * candidate; if (candidate - frictionForceCurve(relative, cap) < 0) low = candidate; else high = candidate; }
       force = (low + high) * 0.5; const relative = s[36] - freeContact - s[38] * force;
       if (force * relative < 0) { force = 0; s[32]++; } s[30] += L.iterations;
     }
@@ -71,7 +69,7 @@ export class FrictionModalKernel {
     }
     const defect = energy - s[17] + linearLoss + frictionLoss - inputWork, tolerance = 128 * Number.EPSILON * (1 + energy + s[17] + Math.abs(inputWork));
     if (!Number.isFinite(energy) || !Number.isFinite(left) || !Number.isFinite(right) || !Number.isFinite(defect) || energy > L.maximumEnergy || defect > tolerance || frictionLoss < -tolerance) { this.quarantine(); return; }
-    s[16] = force; s[17] = energy; s[18] += inputWork; s[19] += frictionLoss; s[20] += linearLoss; s[22] = Math.max(s[22], Math.max(0, defect)); s[23] = Math.abs(force - friction(relative, cap)); s[42] = contact; s[43] = relative;
+    s[16] = force; s[17] = energy; s[18] += inputWork; s[19] += frictionLoss; s[20] += linearLoss; s[22] = Math.max(s[22], Math.max(0, defect)); s[23] = Math.abs(force - frictionForceCurve(relative, cap)); s[42] = contact; s[43] = relative;
     const outputLeft = left - s[26] + s[45] * s[27], outputRight = right - s[28] + s[45] * s[29]; s[26] = left; s[28] = right; s[27] = Math.abs(outputLeft) < 1e-24 ? 0 : outputLeft; s[29] = Math.abs(outputRight) < 1e-24 ? 0 : outputRight;
     if (!Number.isFinite(outputLeft) || !Number.isFinite(outputRight) || Math.max(Math.abs(outputLeft), Math.abs(outputRight)) > 32) { this.quarantine(); return; }
     s[40] = this.leftSample = s[27]; s[41] = this.rightSample = s[29]; s[21] = Math.max(s[21], Math.abs(outputLeft), Math.abs(outputRight));

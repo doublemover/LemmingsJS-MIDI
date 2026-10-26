@@ -1857,7 +1857,22 @@ Rosin's positive roughness field is attached to four-pixel spatial cells; its
 Background references: [Russo, Ducceschi and Bilbao on modal bowed-string energy
 balance](https://mdphys.org/PDF/dafx_2022.pdf) and the [Faust physical-model
 inventory](https://faustlibraries.grame.fr/libs/physmodels/). The new source code
-specifies its own bounded scalar solver, parameters and observations. Owned voice,
-canonical travel, content and restoration integration are the next development
-batch. Numerical stability sweeps, long sustain, spectral/alias/tone, CPU cost and
-matched-level listening are unrun; this foundation is not yet a selectable engine.
+specifies its own bounded scalar solver, parameters and observations. The
+`worklet-friction` engine integrates the existing two-slot owned voice/gate,
+canonical signed-axis motion, typed patch/content, control-render and physical-take
+revoice paths. Exact kernel cuts retain modal/contact/filter state, source token,
+epoch/generation, motion frontier and queued core commands; restore independently
+validates coefficients, positive losses and accumulated energy before mutation.
+This API does not certify an arbitrary live host checkpoint.
+
+The library stages three ordinary recipes with DRAG, PRESS, EDGE and BODY controls
+for new voices. Real playback requires committed microsegment coordinates and
+explicit actor, journey/contact/action scope and source-event ancestry. The
+78-pixel/650-ms control audition is labeled as authored control movement, not a
+physical take. Pitch selects the body at onset; live pitch bend is rejected.
+Source iteration/mode/slot policies are bounded but unmeasured capacity, not
+automatic qualified quality tiers. `scripts/qualify-friction-source.mjs` authors
+the grouped sixty-second speed/pressure/rest/reversal and numerical/cost evidence
+run at all three rates. It and the new integration/state-cut fixtures are unrun.
+Stability-region, spectral/alias/tone, physical Bow Orchard playback, device cost
+and matched-level listening qualification remain pending.

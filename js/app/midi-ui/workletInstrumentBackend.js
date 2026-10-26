@@ -40,7 +40,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
   const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, feedforwardSampleBody: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, canonicalTravelSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && engineId !== 'worklet-texture', proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: source.requiresPCMSet, feedforwardSampleBody: source.requiresPCMSet, positionDrivenSamples: source.requiresPCMSet, canonicalTravelSamples: source.requiresPCMSet, releaseVelocity: source.requiresPCMSet, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction'].includes(engineId), sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', livePitchUpdates: !['worklet-texture', 'worklet-friction'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
@@ -501,7 +501,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
-    if (circularTravel && circularTravel.endFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject((engineId === 'worklet-texture' ? 'texture' : 'circular') + '-travel-lease-expired', intent.voiceId);
+    if (circularTravel && circularTravel.endFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject(source.travelDomain + '-travel-lease-expired', intent.voiceId);
     if (traversal && traversal.segment.endOutputFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject('sample-travel-lease-expired', intent.voiceId);
     const chokeOverrides = sampleSelection ? new Map() : null, chokeVictims = sampleSelection ? [] : null; let nextChoke = Infinity;
     if (sampleSelection?.region.chokeGroup) for (const member of voices.values()) {
@@ -632,7 +632,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!voice?.circularTravel) return updateSampleTravel(voiceId, intent, targetFrame, executionEpoch);
     let planned; try { planned = source.travelPlanner(voice.sourceValues, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, voiceId); }
     const frontier = voice.circularTravel;
-    if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7 || planned.endFrame >= Math.round(voice.releaseAt * context.sampleRate) || intent.voiceId !== voiceId) return reject((engineId === 'worklet-texture' ? 'texture' : 'circular') + '-travel-owner-or-continuity', voiceId);
+    if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7 || planned.endFrame >= Math.round(voice.releaseAt * context.sampleRate) || intent.voiceId !== voiceId) return reject(source.travelDomain + '-travel-owner-or-continuity', voiceId);
     const outcome = command(UPDATE, planned.firstFrame, voice, { 15: 64, 25: planned.from, 26: planned.to, 27: planned.endFrame - planned.firstFrame });
     if (outcome.status === 'accepted') { frontier.lastEndFrame = planned.endFrame; frontier.lastPhase = planned.to; frontier.lastSequence = planned.sequence; }
     return Object.freeze({ ...outcome, ...(outcome.status === 'accepted' ? { [source.travelReceiptKey]: planned.receipt } : {}) });

@@ -842,3 +842,26 @@ linear release envelope is independent of intrinsic T60 and is a declared owner
 cutoff. A stopped spatial source cannot replenish the body through dry filter
 or burst tails. This original relative audio template is pending runtime,
 spectral, device and matched-level listening qualification.
+
+
+The **Prepare bowed / friction bodies** library action stages Hairline, Glass Drag
+and Rosin Grain from `content/sounds/friction-bodies.json`. These original recipes
+use a sealed nonlinear modal force port inside `worklet-friction`; they introduce
+no public feedback graph, PCM loop or MIDI allocator. DRAG calibrates observed
+signed world-pixel speed, PRESS scales normalized contact pressure, EDGE chooses
+the onset contact position, and BODY sets the signed body observation/injection
+balance. They are onset controls; channel expression pressure can ramp the held
+source through its existing gate. Pitch selects 110–660 Hz virtual body tuning at
+onset, independent of route length. Live pitch bending is unavailable.
+
+The source consumes exact completed microsegment motion for one actor and declared
+journey/contact/action scope. A stationary actor supplies zero bow work; its
+positive-loss body may ring. Reversal stays in the same owned source. The visible
+control audition uses 78 pixels of authored travel over 650 ms followed by rest,
+and is not physical evidence. Two source slots and a fixed sixteen-iteration
+scalar solve are provisional policies within the shared resource budget. Invalid
+motion, missing ancestry and unsupported controls fail admission. Exact kernel
+snapshot support retains independently owned modal, spatial, gate and queue state;
+PCM equivalence, browser device cost, stability/tone/alias review, Bow Orchard and
+matched-level listening remain unqualified. The grouped numerical runner is
+`scripts/qualify-friction-source.mjs --name=rook`, authored but not yet executed.

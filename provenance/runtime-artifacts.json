@@ -145,6 +145,7 @@
         "js/app/midi-ui/worklet/EnvelopeFollowerKernel.js",
         "js/app/midi-ui/worklet/EnvelopeMappingKernel.js",
         "js/app/midi-ui/worklet/FixedFractionalDelayProcessor.js",
+        "js/app/midi-ui/worklet/FrictionModalKernel.js",
         "js/app/midi-ui/worklet/GrainWindow.js",
         "js/app/midi-ui/worklet/MembraneStrikeQueue.js",
         "js/app/midi-ui/worklet/NonlinearChainKernel.js",
@@ -153,6 +154,8 @@
         "js/app/midi-ui/worklet/OwnedChoirProcessor.js",
         "js/app/midi-ui/worklet/OwnedCircularPartials.js",
         "js/app/midi-ui/worklet/OwnedEffectState.js",
+        "js/app/midi-ui/worklet/OwnedFrictionProcessor.js",
+        "js/app/midi-ui/worklet/OwnedFrictionState.js",
         "js/app/midi-ui/worklet/OwnedGranularProcessor.js",
         "js/app/midi-ui/worklet/OwnedPluckProcessor.js",
         "js/app/midi-ui/worklet/OwnedRadix2FFT.js",
@@ -246,6 +249,8 @@
         "js/midi/content/EffectVoiceSelection.js",
         "js/midi/content/EnvelopeDetectorProfile.js",
         "js/midi/content/EnvelopeMappingProfile.js",
+        "js/midi/content/FrictionModel.js",
+        "js/midi/content/FrictionTravel.js",
         "js/midi/content/ImpulseResponseDescriptor.js",
         "js/midi/content/InstrumentIdentityVariation.js",
         "js/midi/content/InstrumentPatchV2.js",
@@ -298,8 +303,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 187,
-      "sha256": "94502478d744fd17394724c200c179032c5fa2eab32bb286809e82ba95a747fc"
+      "fileCount": 192,
+      "sha256": "c0e5402d8c104071469915934e10b3f64ed63c469fc2fdb23d1f54a3e9a8e07f"
     },
     {
       "id": "lemmings-timing-worker-source",

@@ -5,7 +5,7 @@ import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
 import { createOwnedControlKernel } from '../resources/OwnedControlKernel.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
-import { SOUND_CONTENT_CONTROL_FIXTURE, TEXTURE_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
+import { SOUND_CONTENT_CONTROL_FIXTURE, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
@@ -34,7 +34,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   if (sampleGesture !== null && !owned.requiresPCMSet) throw new TypeError('This source does not expose authored sample gestures.');
   const samplePlan = owned.requiresPCMSet ? prepareOwnedSamplePlan(patch, pcmDescriptor, sampleRate) : null;
   const sampleControls = samplePlan ? createOwnedSampleControlFixture(samplePlan, sampleGesture ?? samplePlan.map.neutralArticulationId) : null;
-  const fixture = sampleControls?.fixture || (owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
+  const fixture = sampleControls?.fixture || (owned.id === 'worklet-friction' ? FRICTION_CONTROL_FIXTURE : owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
   const identity = { onsetId: 'control-fixture', voiceId: 'control-fixture', actorId: null, generation: 1 };
   const performance = owned.extended ? compileInstrumentPerformance(patch, owned.parameters).resolve({}, 0, identity) : null;
   const values = performance?.values || Object.fromEntries(Object.entries(owned.fields).map(([id, spec]) => [id, patch.parameters[id] ?? spec[2]]));
@@ -54,7 +54,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
     packet[offset + 3] = event.kind === 'begin' ? BEGIN : ['update', 'position'].includes(event.kind) ? UPDATE : END; packet[offset + 4] = 0; packet[offset + 5] = 1; packet[offset + 17] = 1;
     if (event.kind === 'begin') {
       if (!owned.acceptsOnset(values, frequency(event.pitchCents), pcmDescriptor, sampleRate)) throw new Error('Offline source onset is out of range.');
-      for (const [field, value] of Object.entries(owned.beginFields(values, seed, pcmDescriptor, selected, owned.id === 'worklet-texture' ? owned.travelPlanner(values, { controlFixture: true }, packet[offset + 1], sampleRate) : null))) packet[offset + Number(field)] = value;
+      for (const [field, value] of Object.entries(owned.beginFields(values, seed, pcmDescriptor, selected, ['worklet-texture', 'worklet-friction'].includes(owned.id) ? owned.travelPlanner(values, { controlFixture: true }, packet[offset + 1], sampleRate) : null))) packet[offset + Number(field)] = value;
       packet[offset + 6] = frequency(event.pitchCents); packet[offset + 7] = event.velocity01 * values.gain01 * patch.mix.gain01;
       packet[offset + 8] = expression.pressure01; packet[offset + 9] = Math.max(-1, Math.min(1, expression.pan01 + patch.mix.pan01));
       packet[offset + 10] = Math.round(values.attackSeconds * sampleRate); packet[offset + 11] = Math.round(values.decaySeconds * sampleRate);
