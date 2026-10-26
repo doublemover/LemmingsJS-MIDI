@@ -1,3 +1,4 @@
+import { OWNED_STRETCH_CORE } from '../js/midi/content/OwnedStretchCoreIdentity.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -14,6 +15,12 @@ const bootstrapPage = (buildId, route) => `<!doctype html><html lang="en"><meta 
 export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory = null, fsImpl = fs } = {}) {
   const root = path.resolve(rootDir), output = path.resolve(outputDir || path.join(root, 'dist', 'browser'));
   if (!inside(path.join(root, 'dist'), output) || output === path.join(root, 'dist')) throw new Error('Browser build output must be inside this workspace dist directory.');
+  const preparedCode = new Map(), coreCachePath = path.join(root, OWNED_STRETCH_CORE.cachePath), coreRuntimePath = OWNED_STRETCH_CORE.runtimePath;
+  try {
+    const stat = await fsImpl.lstat(coreCachePath);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== OWNED_STRETCH_CORE.wasmBytes || !inside(path.join(await fsImpl.realpath(root), 'dist'), await fsImpl.realpath(coreCachePath))) throw new Error('The prepared core cache is not an exact bounded workspace artifact.');
+    const bytes = await fsImpl.readFile(coreCachePath); if (sha256(bytes) !== OWNED_STRETCH_CORE.wasmSha256) throw new Error('The prepared core cache differs from the pinned byte identity.'); preparedCode.set(coreRuntimePath, bytes);
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const closure = await collectBrowserRuntimeClosure({ rootDir: root, inventory, fsImpl });
   verifyRuntimeProvenance({ rootDir: root, sourceInventory: closure.files });
   const identitySource = await fsImpl.readFile(path.join(root, IDENTITY_PATH), 'utf8');
@@ -22,7 +29,8 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   const recipeFiles = ['scripts/BrowserRuntimeBuild.js', 'scripts/BrowserRuntimeClosure.js', 'scripts/RuntimeSourceClosure.js', 'scripts/RuntimeProvenance.js', 'scripts/InstrumentArtifactClosure.js'];
   const recipe = [];
   for (const file of recipeFiles) recipe.push({ path: file, sha256: sha256(await fsImpl.readFile(path.join(root, file))) });
-  const normalized = closure.files;
+  const normalized = [...closure.files, ...[...preparedCode].map(([name, bytes]) => ({ path: name, bytes: bytes.byteLength, sha256: sha256(bytes) }))].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  if (new Set(normalized.map(file => file.path)).size !== normalized.length) throw new Error('A generated code artifact conflicts with a tracked runtime source.');
   const { profiles: instrumentArtifactProfiles } = await collectInstrumentArtifactProfiles({ rootDir: root, inventory: normalized, fsImpl });
   const identity = await computeBrowserBuildIdentity(normalized, recipe, instrumentArtifactProfiles), { buildId } = identity;
   const generatedIdentity = renderBrowserBuildIdentity(identitySource, identity);
@@ -42,7 +50,7 @@ export async function buildBrowserRuntime({ rootDir, outputDir = null, inventory
   try {
     const files = [];
     for (const file of normalized) {
-      const source = await fsImpl.readFile(path.join(root, file.path));
+      const source = preparedCode.get(file.path) ?? await fsImpl.readFile(path.join(root, file.path));
       if (source.byteLength !== file.bytes || sha256(source) !== file.sha256) throw new Error(`Browser build input changed during staging: ${file.path}`);
       const bytes = file.path === IDENTITY_PATH ? Buffer.from(generatedIdentity) : source, destination = path.join(stage, file.path);
       if (!inside(stage, destination)) throw new Error('Browser build file escapes its generation.');

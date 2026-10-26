@@ -5870,3 +5870,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   WarpVoice/automation/preroll/loop integration, actual onset/impulse/spectral
   acceptance and device/listening qualification remain development work. The
   finite bake is an experimental worker capability, not a ready live backend.
+
+
+### Continuation 231 — immutable browser core packaging and independent readers
+
+- Connected #1186's exact prepared core bytes to immutable browser staging.
+  The CLI first performs bounded static materialization; the builder verifies
+  its workspace cache and adds the actual bytes/hash to the generation's code
+  inventory. The lower-level builder remains network-free and can produce an
+  explicitly core-absent generation. Foreign caches, symlinks/escapes, path
+  conflicts and changed bytes fail before generation publication.
+- Added the owned generation-local core material reader, without runtime
+  third-party fetch or executable Blob/eval. It verifies length/digest, charges
+  fetch/copy workspace before reading and retains it through stream cancellation
+  acknowledgment. A missing asset, generation change or mismatched byte leaves
+  the prior cache intact. Unknown retirement remains charged and blocks new
+  producers. Canceled waiters do not cancel a separate consumer's cache fetch;
+  eight bounded waiter slots prevent abandoned Promise accumulation.
+- Material is an immutable independently reserved Blob. Existing borrowed
+  readers may outlive cache authority with their own charged artifact lease;
+  clearing the view/cache does not claim their consuming jobs retired. Actual
+  prepared reader copies belong to the worker admission that requests them.
+- Authored unrun cache/unbuilt generation, route/hash, oversized/canceling and
+  unknown stream, bounded canceled-waiter, foreign-cache build refusal and
+  independent real-byte reader lifetime fixtures. The explicit core probe now
+  includes the latter lifetime check; it has not run. Static checks only.
+- Seed-lab bake delivery and live streaming automation are still development
+  work. No browser build, WASM compilation/execution, numerical probe, runtime
+  suite or CI qualification has run during this implementation-first stretch.

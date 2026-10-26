@@ -1,3 +1,4 @@
+import { OWNED_STRETCH_CORE } from '../js/midi/content/OwnedStretchCoreIdentity.js';
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -32,6 +33,11 @@ describe('immutable browser generation staging', () => {
     await fs.rm(root, { recursive: true, force: true });
   });
   const build = () => buildBrowserRuntime({ rootDir: root, inventory: ['classic/MAIN.DAT'] });
+  it('refuses a foreign prepared core before staging or replacing a browser generation', async () => {
+    const target = path.join(root, OWNED_STRETCH_CORE.cachePath); await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, new Uint8Array(OWNED_STRETCH_CORE.wasmBytes));
+    let error; try { await build(); } catch (caught) { error = caught; } expect(error?.message).to.include('pinned byte identity'); expect((await fs.readFile(target)).byteLength).to.equal(OWNED_STRETCH_CORE.wasmBytes);
+    expect(await fs.stat(path.join(root, 'dist', 'browser')).then(() => true, () => false)).to.equal(false);
+  });
   it('reproduces one immutable namespace and records actual generated carrier bytes separately from its normalized source', async () => {
     const first = await build(), repeat = await build();
     expect(repeat.buildId).to.equal(first.buildId); expect(first.path).to.equal(path.join(root, 'dist', 'browser', first.buildId));

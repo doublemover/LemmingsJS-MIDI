@@ -1184,3 +1184,18 @@ unrun real offline bake matrix for the later validation pass. It is a coarse
 pitch/stereo smoke gate; source-onset, alias, browser cost and listening evidence
 still require their dedicated acceptance. Live warp voices, automation, loops
 and seed-lab delivery remain pending.
+
+
+The browser build CLI now materializes the exact core before staging. Verified
+compiled bytes are included in the immutable generation's code inventory at its
+local asset path. The runtime reader uses that generation path and its pinned
+length/digest; it does not load a third-party wrapper or fetch executable code
+from an upstream host. The lower-level build API can still create a core-absent
+generation, in which the tool reports the asset unavailable.
+
+The material reader charges fetch/copy workspace until stream retirement is
+acknowledged and keeps unknown cleanup charged. Its eight waiter slots are
+bounded even when consumers cancel repeatedly. Existing immutable Blob readers
+can outlive the cache owner with their own reservation; their worker consumer
+must still retire its own source lease. A material/build check is independent
+from actual warp rendering, onset mapping, device cost or listening qualification.

@@ -1,3 +1,7 @@
+import { createOwnedStretchMaterial } from '../js/app/midi-ui/OwnedStretchMaterial.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createOwnedResourceReservation } from '../js/app/resources/OwnedResourceReservation.js';
+import { OWNED_STRETCH_CORE } from '../js/midi/content/OwnedStretchCoreIdentity.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,6 +12,11 @@ import { materializePinnedStretchCore } from './materialize-stretch-core.mjs';
 // belongs to the deferred combined qualification pass. Finite stereo output and
 // heap observations alone never publish a spectral/perceptual/device quality tier.
 export async function qualifyStretchCore({ wasmBytes, onProgress = () => {} } = {}) {
+  const budget = createResourceBudget(), material = createOwnedStretchMaterial({ resourceBudget: budget, getBuild: () => ({ buildId: 'b'.repeat(64) }), getRoot: () => new URL('https://fixture.invalid/immutable/'), fetchImpl: async () => new Response(new Blob([wasmBytes]), { headers: { 'content-length': String(OWNED_STRETCH_CORE.wasmBytes) } }) });
+  const copyWorkspace = createOwnedResourceReservation({ budget, owner: 'stretch-core-material-probe', kind: 'independent-reader-copy', bytes: 1048576 }), copyOnlyBytes = budget.diagnostics().accountedBytes; let first, second;
+  try { first = await material.borrow(); second = await material.borrow(); const retirement = material.dispose(); await retirement.completion; if (retirement.outcome !== 'complete' || budget.diagnostics().accountedBytes <= copyOnlyBytes) throw new Error('The independent core readers lost their charged lifetime.'); const bytes = new Uint8Array(await first.blob.arrayBuffer()); if (bytes.length !== OWNED_STRETCH_CORE.wasmBytes) throw new Error('The independent copied core reader changed.'); }
+  finally { first?.release(); second?.release(); await material.dispose().completion; copyWorkspace.release(); }
+  if (budget.diagnostics().accountedBytes !== 0) throw new Error('Core material readers retained known released storage.');
   const rows = [];
   for (const sampleRate of [44100, 48000, 96000]) for (const rateRatio of [0.75, 1, 1.5]) for (const pitchRatio of [0.5, 1, 2]) {
     const started = performance.now(), core = await prepareOwnedStretchCore(wasmBytes, { sampleRate, estimatedPeakBytes: 64 * 1048576 }), preparedMs = performance.now() - started;

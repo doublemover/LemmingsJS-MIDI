@@ -13,7 +13,7 @@ export function extractPinnedStretchCore(source) {
   if (bytes.byteLength !== OWNED_STRETCH_CORE.wasmBytes || sha256(bytes) !== OWNED_STRETCH_CORE.wasmSha256 || !bytes.subarray(0, 8).equals(Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]))) throw new Error('The embedded WASM differs from the pinned compiled artifact.');
   return bytes;
 }
-export async function materializePinnedStretchCore({ rootDir, output = 'dist/assets/signalsmith-stretch-core.wasm', sourceFile = null, fetchImpl = globalThis.fetch } = {}) {
+export async function materializePinnedStretchCore({ rootDir, output = OWNED_STRETCH_CORE.cachePath, sourceFile = null, fetchImpl = globalThis.fetch } = {}) {
   const root = await fs.realpath(path.resolve(rootDir)), dist = path.join(root, 'dist'), target = path.resolve(root, output), relative = path.relative(dist, target);
   if (!relative || relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative) || path.extname(target) !== '.wasm') throw new Error('The immutable core artifact must be materialized inside this workspace dist directory.');
   const verifyExisting = async () => { try { const stat = await fs.lstat(target); if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== OWNED_STRETCH_CORE.wasmBytes) throw new Error('An existing output differs from the pinned core; it was preserved.'); const bytes = await fs.readFile(target); if (sha256(bytes) !== OWNED_STRETCH_CORE.wasmSha256) throw new Error('An existing output differs from the pinned core; it was preserved.'); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } };
