@@ -42,7 +42,7 @@ export async function encodeSeedDerivedAudio(pcm, source, transform, { check = (
   }
   check(); const pcmHash = await seedDigest(pcm), parentManifestHash = await hashData(origin, { maxBytes: 262144, maxNodes: 32768 }); check();
   const ancestry = [...origin.ancestry, { originKind: 'FROZEN SEED', immutableSourceRef: source.source.immutableSourceRef, completeParentArtifactHash: source.source.immutableSourceRef,
-    parentManifestHash, parentFrameDomain: 'artifact-local-output-frames-at-original-artifact-rate', parentSampleRate: sampleRate, firstFrame: source.firstFrame, endFrame: source.endFrame,
+    parentManifestHash, parentFrameDomain: source.parentFrameDomain ?? 'artifact-local-output-frames-at-original-artifact-rate', parentSampleRate: source.parentSampleRate ?? sampleRate, firstFrame: source.firstFrame, endFrame: source.endFrame,
     parentTimelineOriginFrame: 0, sourceTap: origin.tap, takeId: null, takeRevision: null, sourceCanonicalHash: null, bakedEffects: origin.bakedEffects,
     regeneration: 'requires-separately-retained-original-source;not-required-to-play-frozen-PCM' }];
   const statistics = { rawPeak: peak, peak, rawRms: Math.sqrt(squares / (frames * 2)), rms: Math.sqrt(squares / (frames * 2)), rawClippedSamples: clipping, clippedSamples: clipping,

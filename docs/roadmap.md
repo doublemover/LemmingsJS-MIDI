@@ -5693,3 +5693,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   foundry-reader lifetime fixtures. Static checks only; numerical, browser, device
   and matched-level perceptual qualification remain deferred. Source parent
   availability and regeneration are separate from a frozen endpoint's playback.
+
+
+### Continuation 225 — finite FM body graft and explicit audition readouts
+
+- Added the worker-only original 12 ms softened FM exciter for #1216. Its fixed
+  material rate, integrated frequency modulation, Hann support, weighted DC
+  removal and fixed peak cap are explicit. Prepared immutable bytes and generator
+  ancestry are hashed; no cross-build trigonometric byte identity, spectral or
+  perceptual qualification is asserted. No audio-thread oscillator or allocation
+  is added: the existing owned sampler feeds the existing private body kernel.
+- Connected the ordinary compiled seed-lab template and explicit lineage rebuild.
+  Felt lightning selects the original dry wood body; other original or reviewed
+  fitted bodies remain explicit choices. Body root and positive modal T60 are
+  independent from the fixed-rate short exciter. The captured parent is retained
+  as body/regeneration ancestry and its PCM is not secretly replayed. The worker
+  prepares material before compilation; cancellation, failed preparation and
+  unresolved producer retirement preserve/charge the previous instrument.
+- Added explicit exciter-only and body-only private control auditions across
+  finite, observed texture and sealed-source grafts. They change only dry/body
+  readout at the original gain, retain the same authored control gesture and body
+  excitation/tail, and record the exact temporary definition hash. A comparison
+  cannot stand in for auditioning the full immutable patch before installation.
+  These references are not physical-take stems or matched-level listening proof.
+- Authored unrun three-rate finite support/DC/stereo/peak/ancestry, ordinary
+  compiler/macro/body loss, source mutation, stale/canceled worker, private pack,
+  failed-preparation/last-good and exact readout invariance fixtures. Static
+  checks only. Actual take-aligned four-way comparisons and Instrument Nursery
+  still need end-to-end scene content and runtime/listening qualification.

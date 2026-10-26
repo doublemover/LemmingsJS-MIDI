@@ -1085,3 +1085,20 @@ parent hashes. Parent availability/regeneration remains separate from playback
 of the frozen numeric model. Imports, source readers, worker results and exports
 have bounded independent lifetimes. These new adapter/workflow fixtures are
 unrun; browser, cost, PCM and perceptual continuity still await qualification.
+
+
+The seed lab also offers **Finite FM → body**. Choose the original wood body for
+Felt lightning: an original 12 ms softened FM strike, prepared at 48 kHz in the
+bounded worker, drives the existing owned sample/body engine. Body pitch and
+amplitude T60 remain independent. The selected frozen seed contributes body
+analysis and ancestry; its audio is not used as a backing layer. Other original
+or explicitly reviewed fitted bodies can be chosen. The generator records actual
+prepared bytes, the finite support, fixed peak and DC-removal policy. Its quality
+and device cost remain unqualified.
+
+The graft comparison selector auditions the full patch, its exciter readout, or
+its body readout through the same authored control fixture at the original gain.
+Body-only still receives normal excitation and keeps its tail. These private
+references do not imply measured level matching or an actual physical take.
+Comparison receipts name the temporary definition and cannot authorize installing
+a full patch that has not itself completed its normal audition.

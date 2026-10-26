@@ -1,3 +1,4 @@
+import { createFiniteFmBodyGraftRecipe } from '../../midi/content/FiniteFmBodyGraftRecipe.js';
 import { createSealedBodyGraftRecipe } from '../../midi/content/SealedBodyGraftRecipe.js';
 import { createTextureBodyGraftRecipe } from '../../midi/content/TextureBodyGraftRecipe.js';
 import { inspectOwnedSoundSeedHeader, inspectOwnedSoundSeedOrigin } from './OwnedSoundSeedSource.js';
@@ -53,7 +54,17 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       const sourceHeader = inspectOwnedSoundSeedHeader(new Uint8Array(await loan.blob.slice(0, 56).arrayBuffer()), artifactMetadata.byteLength); check();
       if (sourceHeader.frames !== candidate.manifest.frames || sourceHeader.sampleRate !== candidate.manifest.sampleRate) throw fail('Frozen seed frame inventory differs from its recipe.');
       inspectOwnedSoundSeedOrigin(new Uint8Array(await loan.blob.slice(sourceHeader.metadataOffset).arrayBuffer()), candidate.manifest); check();
-      const recipe = await (['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, transform, pitch, modalFit, graftBody, textureKind, traversalBinding }); check();
+      let material = { manifest: candidate.manifest, assetHash: metadata.assetHash, byteLength: artifactMetadata.byteLength, blob: loan.blob };
+      if (transform === 'finite-fm-body-graft') {
+        const input = { parentManifest: candidate.manifest, parentAssetHash: metadata.assetHash, sampleRate: 48000 }, inputBytes = canonicalDataText(input, { maxBytes: 262144, maxNodes: 32768 }).bytes.length;
+        job = await jobs.compute({ kind: 'bake-finite-fm-exciter', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: metadata.assetHash + ':finite-fm-v1', inputBytes, maxBytes: 262144, estimatedPeakBytes: 32 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent(), prepareInput: () => input }); check();
+        if (job.receipt.method !== 'dedicated-worker' || job.receipt.executionIdentity?.activeExecution !== 'bound' || job.receipt.kind !== 'bake-finite-fm-exciter') throw fail('Finite FM material needs its bound application worker.');
+        const result = job.value;
+        if (!(result.bytes instanceof Uint8Array) || result.bytes.length > 524288 || !/^[a-f0-9]{64}$/.test(result.assetHash || '') || result.manifest?.derivedTransform?.parentAssetHash !== metadata.assetHash) throw fail('Finite FM material did not retain the selected body ancestry.');
+        material = { manifest: result.manifest, assetHash: result.assetHash, byteLength: result.bytes.length, blob: new Blob([result.bytes], { type: 'audio/wav' }) };
+        job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('Finite FM worker retirement remains unresolved.'); job = null; check();
+      }
+      const recipe = await (transform === 'finite-fm-body-graft' ? createFiniteFmBodyGraftRecipe : ['sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform) ? createSealedBodyGraftRecipe : transform === 'texture-body-graft' ? createTextureBodyGraftRecipe : ['feedforward-graft', 'motion-body-graft'].includes(transform) ? createSoundSeedGraftRecipe : transform === 'modal-body' ? createSoundSeedModalRecipe : createSoundSeedRecipe)({ manifest: material.manifest, assetHash: material.assetHash, byteLength: material.byteLength, transform, pitch, modalFit, graftBody, textureKind, traversalBinding }); check();
       const inputBytes = canonicalDataText(recipe.source, { maxBytes: 1048576, maxNodes: 32768 }).bytes.length;
       job = await jobs.compute({ kind: 'compile-sound-content', ownerId: 'sound-seed-instrument', ownerEpoch: operation.ordinal, sourceRevision: recipe.contractHash,
         inputBytes, maxBytes: 4 * 1048576, estimatedPeakBytes: 64 * 1048576, budgetAdapter: resourceBudget, signal: operation.controller.signal,
@@ -61,7 +72,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       if (job.receipt.method !== 'dedicated-worker' || job.receipt.executionIdentity?.activeExecution !== 'bound') throw fail('Seed compilation needs its bound application worker.');
       const catalog = await getCatalog(); check();
       prepared = job.value;
-      const payloads = [{ sha256: metadata.assetHash, bytes: artifactMetadata.byteLength, blob: loan.blob },
+      const payloads = [{ sha256: material.assetHash, bytes: material.byteLength, blob: material.blob },
         { sha256: recipe.contractHash, bytes: new TextEncoder().encode(recipe.contractText).length, blob: new Blob([recipe.contractText], { type: 'application/json' }) }].sort((a, b) => a.sha256 < b.sha256 ? -1 : 1);
       const header = canonicalDataText({ format: SOUND_ARCHIVE_FORMAT, mode: 'portable', contentHash: prepared.contentHash, pack: prepared.pack,
         payloads: payloads.map(({ sha256, bytes }) => ({ sha256, bytes })), rightsReview: [], qualification: 'private-local-material;redistribution-not-asserted' }, { maxBytes: 4 * 1048576 }).bytes;
@@ -83,14 +94,14 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       if (next) discard({ stage: next }); loan?.release(); workspace?.release();
     }
   });
-  const audition = ({ repeatCount = 1, comparison = false } = {}) => run('auditioning', async (operation, check) => {
-    if (typeof comparison !== 'boolean') throw fail('Declare an instrument audition or a dry source comparison.');
+  const audition = ({ repeatCount = 1, comparison = false, graftComparison = null } = {}) => run('auditioning', async (operation, check) => {
+    if (typeof comparison !== 'boolean' || graftComparison !== null && !['exciter-only', 'body-only'].includes(graftComparison) || comparison && graftComparison) throw fail('Declare an instrument audition or a dry source comparison.');
     if (!Number.isInteger(repeatCount) || repeatCount < 1 || repeatCount > 3) throw fail('Choose one audition or an explicit bounded three-pass loop.');
     if (!current?.stage.metadata().retained) throw fail('Compile the current seed before auditioning.');
     let receipt;
     for (let pass = 0; pass < repeatCount; pass++) {
       check(); receipt = await installation.audition(current.stage, current.identity, { signal: operation.controller.signal,
-        ...(comparison ? { sourceMode: 'original' } : ['hammer-seed', 'route-relic', 'feedforward-graft', 'motion-body-graft'].includes(current.contract.transform) ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
+        graftComparison, ...(comparison ? { sourceMode: 'original' } : ['hammer-seed', 'route-relic', 'finite-fm-body-graft', 'feedforward-graft', 'motion-body-graft'].includes(current.contract.transform) ? { sampleHoldSeconds: Math.max(0.2, Math.min(8, current.contract.frames / current.contract.sampleRate + 0.02)) } : {}) }); check();
     }
     phase = 'audition-complete'; return receipt;
   });

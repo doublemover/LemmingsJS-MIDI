@@ -1,3 +1,4 @@
+import { prepareGraftComparison } from '../../midi/content/GraftComparison.js';
 import { TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
@@ -35,7 +36,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
   let active = null, disposed = false, ordinal = 0;
   const retirement = createProcgenRetirementScope();
   const stageReceipts = new WeakMap(), installed = new WeakMap(), unknown = new Set();
-  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null, sampleGesture = null, sampleHoldSeconds = 0.2 } = {}) => {
+  const audition = (stage, patchIdentity, { signal: externalSignal, sourceMode = null, graftComparison = null, sampleGesture = null, sampleHoldSeconds = 0.2 } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || active || unknown.size) return Promise.reject(failure('audition-busy', 'Sound audition is unavailable or has unresolved retirement.'));
     let lease;
@@ -56,6 +57,9 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
     }
     const plan = planSoundContentSelection(lease.prepared, [patchIdentity], { availableHashes: lease.metadata.assetHashes });
     if (plan.missingReferences.length || plan.missingAssetBytes.length && !audio.getSoundMaterialProvider) { lease.release(); return Promise.reject(failure('audition-requirements-unmet', 'Sound material required for this audition is missing.')); }
+    if (graftComparison !== null && (sourceMode !== null || !['exciter-only', 'body-only'].includes(graftComparison) || !['worklet-sample', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(patch.definition.engineId) || !patch.definition.parameters.graftModeCount)) {
+      lease.release(); return Promise.reject(failure('graft-comparison-unavailable', 'Select an explicit dry or body readout of a prepared private linear-body graft.'));
+    }
     const operation = { controller: new AbortController(), lease, session: null, backend: null, material: null, execution: null, context: null, retirement: null, stopReceipt: null };
     active = operation; const number = ++ordinal, signal = operation.controller.signal;
     const stop = () => operation.stopReceipt ||= createProcgenRetirementScope().retire([
@@ -91,7 +95,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           operation.material = await audio.getSoundMaterialProvider().acquire({ stage, patchIdentity, engineDescriptors: catalog.descriptors,
             owner: 'sound-audition', generation: number, decodeProfile: sourceMode ? 'native-context' : null, signal, isCurrent: () => !disposed && active === operation }); check();
         }
-        let resolution;
+        let resolution, graftReadout = null;
         if (sourceMode) {
           const sampleEngine = catalog.descriptors.find(entry => entry.engineId === 'native-sample' && entry.engineVersion === 1);
           if (!sampleEngine || !operation.session.createSampleInstrumentBackend) throw failure('source-comparison-unavailable', 'The original-source playback renderer is unavailable.');
@@ -101,7 +105,9 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
           const region = comparison.region;
           operation.backend = await operation.session.createSampleInstrumentBackend({ gateMode: 'owned', resolveRegion: () => region }); check();
         } else {
-          const definitions = createInstrumentPatchRegistry(); definitions.register(patch.definition, descriptor);
+          const definitions = createInstrumentPatchRegistry();
+          graftReadout = graftComparison ? await prepareGraftComparison(patch.definition, graftComparison) : null; check();
+          definitions.register(graftReadout?.definition ?? patch.definition, descriptor);
           resolution = definitions.resolve(patch.definition.id, patch.definition.revision, { engineDescriptors: [descriptor], assetHashes: operation.material?.availableHashes || lease.metadata.assetHashes });
           if (patch.definition.engineId === 'native-sample') {
             if (!operation.session.createSampleInstrumentBackend) throw failure('sample-adapter-unavailable', 'This audio session cannot prepare mapped samples.');
@@ -168,7 +174,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         }
         check(); const fixtureHash = await hashData(auditionFixture); check();
         receipt = freezeData({ schema: sourceMode ? 'lemmings-isolated-source-comparison/v1' : 'lemmings-isolated-sound-audition/v1', contentHash: lease.metadata.contentHash, patchIdentity,
-          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: auditionFixture.id, ...(comparison ? { sourceComparison: comparison.source, sourceMode, comparisonEngineRequirement } : {}),
+          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, fixtureHash, fixtureId: auditionFixture.id, ...(graftReadout ? { graftComparison: graftReadout.comparison } : {}), ...(comparison ? { sourceComparison: comparison.source, sourceMode, comparisonEngineRequirement } : {}),
           sampleRate: rate, targetFrame: base, endFrame, sourceEndedFrame, commandsAccepted: outcomes.length, source: auditionFixture.source,
           commandsApplied: requiresApplication ? applications.size : null, applications: [...applications.values()],
           sourceSelections: outcomes.filter(outcome => outcome.region?.selection).map(outcome => ({ targetFrame: outcome.targetFrame, assetHash: outcome.assetHash ?? outcome.region.assetHash,
@@ -196,7 +202,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         operation.auditionLease?.close(finalReceipt); if (active === operation) active = null;
       }
       if (error) throw error;
-      if (sourceMode) return receipt;
+      if (sourceMode || graftComparison) return receipt;
       const owned = Object.freeze({ contentHash: receipt.contentHash, patchIdentity, definitionHash: receipt.definitionHash, engineRequirement: receipt.engineRequirement });
       completedAuditions.set(receipt, owned); let entries = stageReceipts.get(stage); if (!entries) { entries = new Map(); stageReceipts.set(stage, entries); } entries.set(patchIdentity, receipt);
       return receipt;

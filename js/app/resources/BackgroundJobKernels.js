@@ -1,3 +1,4 @@
+import { bakeFiniteFmExcitation } from './FiniteFmExcitation.js';
 import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
 import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
 import { analyzeResonatorMorph } from '../../midi/content/ResonatorMorph.js';
@@ -209,6 +210,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const bytes = (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + metadata.bytes.length;
     if (bytes > maxBytes) throw problem('input-capacity', 'The selected seed window exceeds its admitted source workspace.');
     return (kind === 'fit-sound-seed-modes' ? fitSoundSeedModes : kind === 'decompose-sound-seed' ? decomposeSoundSeed : analyzeSoundSeedWindow)(input, { signal, current, estimatedPeakBytes, yieldControl, onProgress });
+  }
+  if (kind === 'bake-finite-fm-exciter') {
+    const metadata = canonicalDataText(input, { maxBytes: 262144, maxNodes: 32768 });
+    if (metadata.bytes.length > maxBytes) throw problem('input-capacity', 'Finite FM ancestry exceeds its admitted input.');
+    const value = await bakeFiniteFmExcitation(input, { signal, current, yieldControl, estimatedPeakBytes }); guard(signal, current);
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + value.waveform.minMax.byteLength + canonicalDataText(value.manifest, { maxBytes: 262144, maxNodes: 32768 }).bytes.length * 16 + 131072 };
   }
   if (kind === 'decode-wave-source') return decodeWaveSource(input, { signal, current, maxBytes, estimatedPeakBytes, crypto, yieldControl });
   if (kind === 'generate-procedural-sound') {
