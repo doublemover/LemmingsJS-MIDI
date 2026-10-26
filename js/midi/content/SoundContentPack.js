@@ -1,3 +1,4 @@
+import { compileSoundRealizationGroups } from './SoundRealizationProfiles.js';
 import { canonicalDataText, cloneData, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 import { validateSampleInstrumentMap } from './SampleInstrumentMap.js';
@@ -24,7 +25,7 @@ const conversionRecord = (value, path) => {
 };
 const compilerArtifact = (artifact, patch, compilerRevision) => {
   const path = 'compilation.artifacts.' + artifact.id;
-  const sampleMetadata = ['typed-recipes-v11', 'typed-recipes-v12'].includes(compilerRevision);
+  const sampleMetadata = ['typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13'].includes(compilerRevision);
   keysOnly(artifact.display, ['name', 'author', 'tags', ...(sampleMetadata ? ['sampleMap'] : [])], path + '.display');
   assertContent(text(artifact.display.name, 160) && text(artifact.display.author, 160) && Array.isArray(artifact.display.tags) && artifact.display.tags.length <= 16 && artifact.display.tags.every(id), path, 'invalid compiler display metadata');
   let map = null;
@@ -166,8 +167,8 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     assertContent(id(pack.origin.id) && text(pack.origin.version, 64) && hash(pack.origin.contentHash), 'origin', 'invalid immutable source reference');
   }
   if (pack.compilation != null) {
-    const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts'], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11', 'typed-recipes-v12'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts', ...(compilation.compilerRevision === 'typed-recipes-v13' ? ['realizationGroups'] : [])], 'compilation');
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');
@@ -179,6 +180,14 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
         Array.isArray(artifact.modulationBounds) && artifact.modulationBounds.length <= 64, 'compilation.artifacts', 'invalid compiler explanation bounds');
       compilerArtifact(artifact, patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision), compilation.compilerRevision);
     }
+    if (compilation.compilerRevision === 'typed-recipes-v13') {
+      assertContent(Array.isArray(compilation.realizationGroups) && compilation.realizationGroups.length <= 32, 'compilation.realizationGroups', 'invalid bounded realization inventory');
+      let rebuilt;
+      try { rebuilt = await compileSoundRealizationGroups(compilation.realizationGroups.map(group => group.authored), patches.map(patch => ({ definition: patch.archivedDefinition, dependencies: patch.dependencies, engineRequirement: patch.engineRequirement, artifact: compilation.artifacts.find(artifact => artifact.id === patch.archivedDefinition.id) }))); }
+      catch (error) { throw fail('invalid-content', 'compilation.realizationGroups: ' + error.message); }
+      assertContent(canonicalDataText(rebuilt).text === canonicalDataText(compilation.realizationGroups).text, 'compilation.realizationGroups', 'realizations differ from their actual archived patches or import claims runtime qualification');
+    }
+
   }
   const normalized = { ...pack, files: pack.files.map(file => ({ ...file, parents: [...file.parents].sort() })).sort((a, b) => before(a.path, b.path)),
     licenses: [...pack.licenses].sort((a, b) => before(a.sha256, b.sha256)),

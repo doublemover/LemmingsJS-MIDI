@@ -749,3 +749,27 @@ squared site projections as an explicitly diagonal loss approximation; they do
 not claim full point-damping coupling. Other shapes, refinements and unsupported
 frequency/decay tiers decline this path rather than substituting nearest nodes.
 The ordinary frozen strike instrument remains available independently.
+
+
+Recipe sources may declare bounded `realizationGroups`, compiled as
+`typed-recipes-v13`; existing sources retain v12 metadata. Each alternative names
+an actual concrete recipe, algorithm revision, preserved invariant claims,
+explicit changed audible properties, named fallback and allowed transition.
+The compiler binds actual definition/render/effective-input hashes, exact renderer
+and parameter schema, dimensions and declared structural cost. Alternatives must
+have the same macro input units, pitch-expression, causal-binding and sample
+articulation/frame/traversal interface. Smaller dimensions do not prove audible
+equivalence. Next-onset replacement must account for old tail and new source;
+unqualified mid-voice crossfades are rejected.
+
+The original FM, struck-modal, granular-biome and circular-travel recipes publish
+honest single-profile limits. Generated shape instruments and seed grafts do the
+same. No lower-cost or perceptually equivalent realization is invented. Imported
+profile metadata cannot grant device, numerical, listening or automatic-admission
+qualification; pack admission reconstructs the profile records against archived
+actual patches. Requested, prepared and effective admitted profiles are separate
+fields. Choosing an alternative remains an explicit ordinary patch preparation.
+The library displays these claims and limits. A selected export retains a group
+only when every alternative it advertises is included; it never leaves dangling
+available profiles. Measured admission transitions and matched-take/listening
+qualification remain separate required work.

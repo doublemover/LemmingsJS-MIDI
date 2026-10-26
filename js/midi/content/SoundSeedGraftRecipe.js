@@ -52,6 +52,10 @@ export async function createSoundSeedGraftRecipe({ manifest, assetHash, byteLeng
   for (const id of exciterParameters) if (parameters[id]) exciter.parameters[id] = parameters[id];
   recipe.macros = [macro('excite', 'EXCITE', 'graftExcite01', 0, 1, 'normalized', 0.8), macro('body', 'BODY', 'graftT60Seconds', Math.max(0.02, longest * 0.4), longest, 's', 1),
     macro('damp', 'DAMP', 'graftDamping01', 0, 0.8, 'normalized', 0), macro('mix', 'MIX', 'graftMix01', 0, 1, 'normalized', 0.7)];
+  const invariantIds = ['one-source-private-body', 'exact-source-and-body-pins', motion ? 'observed-motion-gates-excitation' : 'finite-calibrated-excitation', 'independent-positive-decay-tail'];
+  source.realizationGroups = [{ schema: 'lemmings-authored-sound-realizations/v1', id: id + '.realization', defaultProfileId: 'prepared', requiredInvariants: invariantIds,
+    profiles: [{ id: 'prepared', recipeId: id, algorithmRevision: motion ? MOTION_GRAFT_REVISION : FEEDFORWARD_GRAFT_REVISION, preservedInvariants: invariantIds, changedAudibleProperties: [], fallbackProfileId: null }], transitions: [],
+    singleProfileLimit: 'This exact exciter/body pair has one prepared realization. Both components and old tails must be admitted; a cheaper or smooth dual-body alternative has no qualified transition.' }];
   source.files[1].sha256 = contractHash; source.files[1].bytes = encoded.bytes.length;
   return freezeData({ source, contract, contractHash, contractText: encoded.text, templateRevision: motion ? MOTION_GRAFT_REVISION : FEEDFORWARD_GRAFT_REVISION });
 }

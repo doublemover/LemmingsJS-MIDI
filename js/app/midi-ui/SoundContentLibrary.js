@@ -302,7 +302,10 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         modelInfo.textContent = 'Patch model: ' + (parameters.sourceMode ? parameters.partialCount + ' authored additive partials' : '16 phase-aligned spectral frames') +
           ' · FLOW ' + parameters.scan01 + ' · BODY ' + parameters.body01 + ' · EDGE ' + parameters.edge01 +
           '. Live profile: eight slots, 20–2000 Hz onset, ±200 cent bends, 44.1/48/96 kHz; shared source quotas also apply. Completed world height offsets FLOW over the declared 0–512 pixel domain. Dry source only: shared SPACE sends, resonance/drive, PWM and exact restore are unavailable. Fixed control WAVs and causal revoice use this same kernel. Spectral/alias/listening qualification is pending.';
-      } } finally { lease.release(); } }
+      }
+      const realization = lease.prepared.pack.compilation?.realizationGroups?.find(group => group.profiles.some(profile => profile.patchIdentity === selection)), profile = realization?.profiles.find(profile => profile.patchIdentity === selection);
+      if (realization && profile) modelInfo.textContent += ' Authored realization ' + profile.id + ' · ' + realization.profiles.length + ' explicit profile(s). ' + (realization.singleProfileLimit || profile.changedAudibleProperties.join(' ')) + ' Preserved invariant claims: ' + profile.preservedInvariants.join(', ') + '. Device cost, listening and numerical equivalence are unqualified; automatic quality substitution is unavailable.';
+    } finally { lease.release(); } }
     for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     if (gestureSource !== sampleMapSource) {
       gestureSource = sampleMapSource; gesture.replaceChildren();

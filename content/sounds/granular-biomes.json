@@ -1360,5 +1360,111 @@
         "eventTargets": []
       }
     }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rain-glass",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rain-glass",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.gravel-choir",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.gravel-choir",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.water-lens",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.water-lens",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.biome.rust-breath",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "single-source-cloud-ownership",
+        "declared-source-rate-and-root",
+        "semantic-end-and-child-retirement"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "biome.rust-breath",
+          "algorithmRevision": "owned-granular-authored-v1",
+          "preservedInvariants": [
+            "single-source-cloud-ownership",
+            "declared-source-rate-and-root",
+            "semantic-end-and-child-retirement"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored grain profile is available. Density, grain duration and motion policy are musical choices; no cheaper equivalent has been qualified."
+    }
   ]
 }

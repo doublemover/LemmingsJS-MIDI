@@ -782,5 +782,137 @@
         }
       ]
     }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.endless-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.endless-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.counter-walk",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.counter-walk",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.action-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.action-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.stepping-stones",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.stepping-stones",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.circular.route-stair",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "declared-physical-coordinate",
+        "octave-phase-wrap",
+        "one-source-owned-end"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "circular.route-stair",
+          "algorithmRevision": "owned-circular-spectrum-authored-v1",
+          "preservedInvariants": [
+            "declared-physical-coordinate",
+            "octave-phase-wrap",
+            "one-source-owned-end"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored circular-spectrum profile is available. Fewer partials are not a qualified circular illusion; an ordinary pitched fallback must be a separately named instrument."
+    }
   ]
 }

@@ -4811,3 +4811,39 @@ checks are used. Full two-dimensional solved surface fields, physical force/poin
 loss calibration, refined families, Three Hands and Pocket Foundry performance
 lessons, mesh/listening/device qualification and combined runtime validation remain
 pending.
+
+
+### Continuation 196 — authored realization profiles with explicit unknown evidence (#1239, #1131)
+
+Canonical recipe sources can declare bounded realization groups. Profiles bind
+actual compiled patches, immutable renderer/schema receipts, definition/render and
+normalized effective-input hashes, dimensions and structural cost. They name
+required/preserved invariant claims, changed audible properties and fallback
+transitions rather than a universal quality number. Alternatives must share the
+actual macro-unit, pitch-expression, causal-binding and source articulation/frame/
+traversal interface. Cycles, missing recipes, incomplete invariants, unexplained
+sound differences and unowned mid-voice/cost-free transitions are rejected. A
+next-onset transition explicitly retains and charges the previous source tail.
+
+The optional metadata uses typed-recipes-v13; sources without profile groups
+retain v12 output. Pack admission independently rederives profile records from
+archived actual patches, rejecting changed hashes/dimensions or imported runtime
+qualification claims. Every imported profile remains authored/unqualified for
+numerics, listening, device cost and automatic admission. Requested, prepared and
+effective admitted identities are separate. Explicit alternative selection asks
+the existing patch owner to prepare/apply; metadata never downgrades an active
+voice or changes physical timing. Partial exports retain only complete groups so
+missing alternatives cannot be advertised as available.
+
+Initial FM, struck-modal, granular-biome and circular-travel content now states
+honest single-profile limits, as do generated shape instruments and finite/motion
+seed grafts. No cheaper operator, arbitrary first-N mode set, altered spatial
+pulse density, per-actor replacement of shared state or reduced circular illusion
+is represented as qualified equivalence. The sound library shows selected profile
+claims, limits and missing evidence. Fixtures cover actual compiled alternatives,
+legacy output, different effective sound, structural mismatch, fallback cycles,
+transition/overlap rejection, import tampering and selected export retirement.
+They remain unrun. Only format, syntax/provenance and limited critical typecheck
+checks are used. Device/rate-scoped measured profiles, source admission/history
+integration, pressure boundaries, same-take comparison and listening qualification
+remain pending before automatic profile transitions or comprehensive acceptance.

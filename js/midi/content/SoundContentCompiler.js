@@ -1,4 +1,5 @@
-import { cloneData, freezeData, hashData } from '../../core/CanonicalData.js';
+import { compileSoundRealizationGroups } from './SoundRealizationProfiles.js';
+import { cloneData, freezeData, hashData, canonicalDataText } from '../../core/CanonicalData.js';
 import { prepareSoundContentPack, planSoundContentSelection, SOUND_CONTENT_SCHEMA } from './SoundContentPack.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 import { validateInstrumentMacros } from './InstrumentPerformance.js';
@@ -6,6 +7,7 @@ import { sampleMapRenderIdentity } from './SampleInstrumentMap.js';
 
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
 export const SOUND_COMPILER_REVISION = 'typed-recipes-v12';
+export const SOUND_REALIZATION_COMPILER_REVISION = 'typed-recipes-v13';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel', 'octaves', 'cycles', 'count']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -183,21 +185,27 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
     patches.push({ definition, engineRequirement, dependencies, rights: recipe.rights });
   }
   requireValue(patches.length > 0, 'recipes', 'no concrete instrument recipes');
+  let realizationGroups = null;
+  if (Object.hasOwn(source, 'realizationGroups')) { try { realizationGroups = await compileSoundRealizationGroups(source.realizationGroups, patches.map(entry => ({ ...entry, artifact: artifacts.find(artifact => artifact.id === entry.definition.id) }))); } catch (error) { fail('realizationGroups', error.message); } }
+  const compilerRevision = realizationGroups === null ? SOUND_COMPILER_REVISION : SOUND_REALIZATION_COMPILER_REVISION;
   const normalized = { ...source, recipes: [...source.recipes].sort((left, right) => before(left.id, right.id)), files: [...source.files].sort((left, right) => before(left.path, right.path)) };
   const sourceHash = await hashData(normalized, limits);
   const prepared = await prepareSoundContentPack({ ...source.pack, schema: SOUND_CONTENT_SCHEMA, files: source.files, patches,
-    compilation: { compilerRevision: SOUND_COMPILER_REVISION, sourceHash, schemaRevision: SOUND_RECIPE_SCHEMA, artifacts } }, { engineDescriptors: [...targetMap.values()].map(target => target.descriptor), signal });
+    compilation: { compilerRevision, sourceHash, schemaRevision: SOUND_RECIPE_SCHEMA, artifacts, ...(realizationGroups === null ? {} : { realizationGroups }) } }, { engineDescriptors: [...targetMap.values()].map(target => target.descriptor), signal });
   const plan = planSoundContentSelection(prepared, prepared.patches.map(patch => patch.identity));
   requireValue(!plan.missingReferences.length, 'recipes.dependencies', 'required immutable assets or ancestors are missing from the content inventory');
-  return freezeData({ schema: 'lemmings-compiled-sound/v1', compilerRevision: SOUND_COMPILER_REVISION, sourceHash, prepared, artifacts,
+  return freezeData({ schema: 'lemmings-compiled-sound/v1', compilerRevision, sourceHash, prepared, artifacts, ...(realizationGroups === null ? {} : { realizationGroups }),
     qualification: 'compiled-data-not-render-qualified' });
 }
 
 export function reviewSoundContentChanges(previous, next) {
   const left = new Map((previous?.artifacts || []).map(artifact => [artifact.id, artifact])), right = new Map(next.artifacts.map(artifact => [artifact.id, artifact]));
+  const realizationContracts = output => new Map((output?.realizationGroups || output?.prepared?.pack.compilation?.realizationGroups || []).flatMap(group => group.profiles.map(profile => [profile.patchIdentity, group])));
+  const priorRealizations = realizationContracts(previous), nextRealizations = realizationContracts(next);
   return freezeData([...new Set([...left.keys(), ...right.keys()])].sort().map(id => {
     const before = left.get(id), after = right.get(id);
     return { id, state: !before ? 'added' : !after ? 'removed' : before.renderKey !== after.renderKey ? 'effective-render-change' : 'render-equivalent',
+      realizationChanged: !!before && !!after && canonicalDataText(priorRealizations.get(id + '@' + before.revision) ?? null).text !== canonicalDataText(nextRealizations.get(id + '@' + after.revision) ?? null).text,
       rightsChanged: !!before && !!after && before.rightsHash !== after.rightsHash,
       metadataChanged: !!before && !!after && JSON.stringify(before.display) !== JSON.stringify(after.display),
       engineChanged: !!before && !!after && JSON.stringify(before.engineRequirement) !== JSON.stringify(after.engineRequirement),

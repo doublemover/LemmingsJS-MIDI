@@ -1451,5 +1451,137 @@
         }
       ]
     }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.timber",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.timber",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.slate",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.slate",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.glass",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.glass",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.sheet-metal",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.sheet-metal",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.material.unclassified",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-inharmonic-modes",
+        "strike-site-blend-and-positive-decay"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "material.unclassified",
+          "algorithmRevision": "native-modal-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-inharmonic-modes",
+            "strike-site-blend-and-positive-decay"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored mode set is available. No reduced mode tier has reviewed salience, strike-site, level or listening evidence."
+    }
   ]
 }

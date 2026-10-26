@@ -99,7 +99,7 @@ export function createSoundContentArchiver({ resourceBudget, jobs = backgroundJo
         attribution: source.attribution, modifications: source.modifications, redistributionPolicy: source.redistributionPolicy,
         origin: source.origin || { id: source.id, version: source.version, contentHash: prepared.contentHash },
         ...(source.compilation ? { compilation: { compilerRevision: source.compilation.compilerRevision, sourceHash: source.compilation.sourceHash,
-          schemaRevision: source.compilation.schemaRevision, artifacts: source.compilation.artifacts.filter(artifact => selection.includes(artifact.id + '@' + artifact.revision)) } } : {}),
+          schemaRevision: source.compilation.schemaRevision, ...(source.compilation.realizationGroups ? { realizationGroups: source.compilation.realizationGroups.filter(group => group.profiles.every(profile => selection.includes(profile.patchIdentity))) } : {}), artifacts: source.compilation.artifacts.filter(artifact => selection.includes(artifact.id + '@' + artifact.revision)) } } : {}),
         files: plan.files, patches: source.patches.filter(entry => selection.includes(entry.definition.id + '@' + entry.definition.revision)),
         licenses: source.licenses.filter(license => licenses.has(license.sha256)) };
       const selected = await own(() => prepareSoundContentPack(pack, { signal })); check();

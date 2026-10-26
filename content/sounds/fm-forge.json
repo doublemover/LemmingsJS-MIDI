@@ -850,5 +850,111 @@
         }
       ]
     }
+  ],
+  "realizationGroups": [
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.glass-rivet",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.glass-rivet",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.copper-tine",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.copper-tine",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.alarm-bloom",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.alarm-bloom",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    },
+    {
+      "schema": "lemmings-authored-sound-realizations/v1",
+      "id": "realization.forge.rubber-bolt",
+      "defaultProfileId": "authored",
+      "requiredInvariants": [
+        "semantic-onset-and-end",
+        "authored-operator-and-pitch-interface",
+        "owned-release-tail"
+      ],
+      "profiles": [
+        {
+          "id": "authored",
+          "recipeId": "forge.rubber-bolt",
+          "algorithmRevision": "native-fm-authored-v1",
+          "preservedInvariants": [
+            "semantic-onset-and-end",
+            "authored-operator-and-pitch-interface",
+            "owned-release-tail"
+          ],
+          "changedAudibleProperties": [],
+          "fallbackProfileId": null
+        }
+      ],
+      "transitions": [],
+      "singleProfileLimit": "Only this authored operator topology is available. A cheaper operator or envelope realization has no measured or listening qualification."
+    }
   ]
 }
