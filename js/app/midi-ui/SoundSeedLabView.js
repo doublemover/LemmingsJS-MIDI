@@ -10,7 +10,7 @@ import { createInstrumentDisplayScheduler } from '../resources/InstrumentDisplay
 import { deliverArtifactToAnchor } from '../export/ExportArtifact.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createSoundSeedLabView({ document, window, audio, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], onStatus = () => {} } = {}) {
+export function createSoundSeedLabView({ document, window, audio, getPlayback = () => null, resourceBudget, jobs, displayScheduler, onApply, getTargetIdentity = () => null, getTravelMappings = () => [], onStatus = () => {} } = {}) {
   const listeners = [], modeListeners = [], retirement = createProcgenRetirementScope();
   const scheduler = displayScheduler || createInstrumentDisplayScheduler({ document, window, resourceBudget });
   let analysis, instrument, derived, composition, compositionDraft = -1, compositionRevision = 0, preparedCompositionRevision = -1, modal, rebuild, surface, offeredSource = null, offeredSerial = 0, rebuildPlan = null, branchDrawn = null, modalSelection = null, modalRevision = 0, preparedModalRevision = -1, modalDraft = -1, modalDrawn = null, modalParentSelection = null, editableModes = [], selectedModes = new Set(), derivedSelection = null, derivedDraft = -1, derivedDrawn = null, disposed = false, active = null, draft = 0, candidateDraft = -1, recipeDraft = 0, compiledDraft = -1, drawn = null, sourceSelection = 0;
@@ -270,7 +270,7 @@ export function createSoundSeedLabView({ document, window, audio, resourceBudget
   for (const input of [transform, pitch, rootPitch, graftBody, textureKind, travelMapping, travelScale]) listen(input, 'change', invalidateRecipe);
   for (const input of [zoom, viewFirst]) listen(input, 'change', refresh);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && !root.hidden) { morphPane.suspend(); analysis.cancel(); derived.cancel(); composition.cancel(); modal.cancel(); rebuild.stop(); instrument.stop(); } });
-  const morphPane = createResonatorMorphView({ document, window, audio, resourceBudget, jobs });
+  const morphPane = createResonatorMorphView({ document, window, audio, getPlayback, resourceBudget, jobs });
   root.append(title, sourceText, scope, plot, crossing, fields, readiness, status, warnings, anatomy, cause, advanced, bodyPage, morphPane.element, rebuildPage, actions);
   const stage = document.getElementById('procgenStudio'); if (stage) stage.after(root); else (document.getElementById('procgenPresentationRoot') || document.body).append(root);
   surface = scheduler.register({ id: 'sound-seed-lab', element: root, intervalMs: 100, write: paint, onError: message => say(String(message)) });

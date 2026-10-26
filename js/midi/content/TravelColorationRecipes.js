@@ -33,6 +33,8 @@ export function createTravelColorationRecipe({ recipe = 'rail-comb', travelPixel
 export function travelColorationValue(control, signedDistancePixels) {
   if (!control || !Number.isFinite(signedDistancePixels) || !Number.isFinite(control.travelPixels) || control.travelPixels <= 0 ||
       !Number.isFinite(control.minimum) || !Number.isFinite(control.maximum) || control.minimum > control.maximum) throw new TypeError('A travel control requires a qualified signed-distance coordinate.');
+  if (control.curve != null && !['clamped-signed-distance', 'smoothstep-triangle'].includes(control.curve)) throw new TypeError('Unknown travel control curve.');
+  if (control.curve === 'clamped-signed-distance') { if (!Number.isFinite(control.startPixels)) throw new TypeError('A clamped route needs its explicit origin.'); const position = Math.max(0, Math.min(1, (signedDistancePixels - control.startPixels) / control.travelPixels)), smooth = position * position * (3 - 2 * position); return control.minimum + (control.maximum - control.minimum) * smooth; }
   const phase = ((signedDistancePixels % control.travelPixels) + control.travelPixels) % control.travelPixels / control.travelPixels;
   const triangle = phase < 0.5 ? phase * 2 : 2 - phase * 2, smooth = triangle * triangle * (3 - 2 * triangle);
   return control.minimum + (control.maximum - control.minimum) * smooth;

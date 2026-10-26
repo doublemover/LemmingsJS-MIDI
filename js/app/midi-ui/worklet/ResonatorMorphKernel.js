@@ -1,26 +1,21 @@
+import { RESONATOR_MORPH_KERNEL_REVISION, resonatorMorphKernelProfileData, isResonatorMorphProfileData } from '../../../midi/content/PairedModalBodyProfile.js';
+export { RESONATOR_MORPH_KERNEL_REVISION };
 import { prepareResonatorMorphMap } from '../../../midi/content/ResonatorMorph.js';
 import { freezeData, hashData } from '../../../core/CanonicalData.js';
 
-export const RESONATOR_MORPH_KERNEL_REVISION = 'paired-unit-complex-positive-loss-modal-body-v1';
-const profiles = new WeakSet(), HEADER = 128, GLOBAL = 16, WIDTH = 7, MAX_MODES = 8, MAX_ENERGY = 1048576, FORCE_SCALE = 1280;
+const profiles = new WeakSet(), HEADER = 128, GLOBAL = 16, WIDTH = 7, MAX_ENERGY = 1048576, FORCE_SCALE = 1280;
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 const fail = message => { throw Object.assign(new Error('Paired modal body: ' + message), { code: 'invalid-paired-modal-body' }); };
 const same = (a, b) => Math.abs(a - b) <= 1e-11 * Math.max(1, Math.abs(b));
 const crc = bytes => { let value = 0xffffffff; for (let at = 0; at < bytes.length; at++) { value ^= at >= 28 && at < 32 ? 0 : bytes[at]; for (let bit = 0; bit < 8; bit++) value = value >>> 1 ^ (value & 1 ? 0xedb88320 : 0); } return (value ^ 0xffffffff) >>> 0; };
+export function admitResonatorMorphKernelProfile(body, identity) {
+  if (!isResonatorMorphProfileData(body) || !/^[a-f0-9]{64}$/.test(identity || '')) fail('Rebuild the bounded profile data in this execution before admission.');
+  const profile = freezeData({ ...body, identity }); profiles.add(profile); return profile;
+}
 export async function prepareResonatorMorphKernelProfile(map, a, b, sampleRate = 48000) {
-  if (![44100, 48000, 96000].includes(sampleRate)) fail('Unsupported output rate.');
-  const prepared = await prepareResonatorMorphMap(map, a, b);
-  const resolvedMap = prepared.map;
-  if (resolvedMap.transitionPolicy === 'prepared-dual-body-blend' || prepared.slots.length > MAX_MODES) fail('This paired renderer admits at most eight named slots; a dual-body blend needs its own overlap owner.');
-  const slots = prepared.slots.map(slot => {
-    const from = slot.a || slot.b, to = slot.b || slot.a;
-    if (Math.max(from.frequencyHz, to.frequencyHz) >= sampleRate * 0.4) fail('An endpoint mode exceeds the output guard band.');
-    return { id: slot.id, sourceAId: slot.a?.id ?? null, sourceBId: slot.b?.id ?? null, hasA: !!slot.a, hasB: !!slot.b, frequencyA: from.frequencyHz, frequencyB: to.frequencyHz, logFrequencyA: Math.log(from.frequencyHz), logFrequencyDelta: Math.log(to.frequencyHz) - Math.log(from.frequencyHz), t60A: from.t60Seconds, t60B: to.t60Seconds, logT60A: Math.log(from.t60Seconds), logT60Delta: Math.log(to.t60Seconds) - Math.log(from.t60Seconds), excitationA: slot.a?.excitation ?? 0, excitationB: slot.b?.excitation ?? 0, leftA: slot.a?.pickupLeft ?? 0, leftB: slot.b?.pickupLeft ?? 0, rightA: slot.a?.pickupRight ?? 0, rightB: slot.b?.pickupRight ?? 0 };
-  });
-  const body = { schema: 'lemmings-paired-modal-body-profile/v1', revision: RESONATOR_MORPH_KERNEL_REVISION, mapHash: resolvedMap.hash, endpointAHash: resolvedMap.endpointAHash, endpointBHash: resolvedMap.endpointBHash, transitionPolicy: resolvedMap.transitionPolicy, sampleRate, slots, forceScale: FORCE_SCALE, readoutScale: 0.05, maximumEnergy: MAX_ENERGY,
-    statePolicy: 'retained-unit-complex-synthetic-coordinates;frequency-changes-rotate-without-reseeding-or-mechanical-energy-projection', unmatchedPolicy: 'prepared-private-mode-state;independent-excitation-and-observation-windows;no-semantic-onset', costPolicy: 'at-most-eight-modes;coefficient-cache-at-unchanged-morph;moving-control-cost-unmeasured', qualification: 'runtime-PCM-stability-alias-device-and-listening-pending' };
-  const profile = freezeData({ ...body, identity: await hashData(body) }); profiles.add(profile); return profile;
+  const prepared = await prepareResonatorMorphMap(map, a, b), body = resonatorMorphKernelProfileData(prepared, sampleRate);
+  return admitResonatorMorphKernelProfile(body, await hashData(body));
 }
 export class ResonatorMorphKernel {
   constructor(profile) {

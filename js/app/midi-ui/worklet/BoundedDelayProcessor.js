@@ -1,3 +1,4 @@
+import './PairedModalBodyProcessor.js';
 import './RectangularMembraneProcessor.js';
 import './SympatheticNetworkProcessor.js';
 import './SpectralFreezeProcessor.js';

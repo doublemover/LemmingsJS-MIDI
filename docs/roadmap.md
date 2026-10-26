@@ -5499,3 +5499,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   moving-control worklet cost and matched-level listening remain pending for
   #1225. Static-only checks precede this commit; the combined runtime/CI validation
   pass still waits for the remaining development implementation, as requested.
+
+
+### Continuation 218 — canonical paired-body graph and observed route MORPH
+
+- Added an immutable paired-modal-body graph profile using exact reviewed endpoint,
+  mapping and derived-profile hashes. The publishing native/owned host verifies
+  all hashes before creating a producer; synchronous worklet admission rebuilds
+  bounded coefficients from the full source descriptors. At most two eight-mode
+  bodies are admitted per graph, with explicit coefficient/state/metadata storage,
+  absolute output containment, positive loss and conservative tail deadlines.
+- Integrated the native worklet, deterministic owned graph, processor readiness
+  and offline completion inventories, retained body inspection, body-only Panic
+  and normalized MORPH automation. Shared canonical owner audio excites one body;
+  no note owner, source onset, actor timing or distributed membrane state changes.
+- Connected the review panel to fenced canonical publication, manual MORPH,
+  observed sustained signed-distance travel, cancellation, retained tails and
+  Panic. Real travel uses a bounded clamped smoothstep route coordinate; existing
+  periodic travel coloration retains its prior curve. Source edits invalidate
+  pending publication and manual receipt authority while the old frozen body
+  remains intact. Closing the panel leaves the canonical graph with its owner.
+- Authored unrun supported-rate graph/profile/primitive parity, no-input-work,
+  signed cancellation, invalid endpoint/profile/policy, body containment, real
+  intent ancestry, endpoint clamping and controlled live-publication/cancel/stale
+  owner fixtures. Applied processor lifecycle replay remains explicitly refused
+  without actual timing evidence. Static checks only; no runtime validation ran.
+- Metamorphic Bridge scene staging, prepared blend, fitted/foundry signature
+  adapters, moving-control cost, PCM/spectral/decay/device measurements and matched
+  listening remain pending for #1225 and the combined qualification pass.

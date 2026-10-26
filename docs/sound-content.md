@@ -977,3 +977,22 @@ levelmatched listening results or device qualification. Actual route/graph
 integration and Metamorphic Bridge remain pending. Controlled cache/publication/
 cue/export fixtures use explicitly labeled contract envelopes, separate from the
 unrun real DSP/kernel/reference fixtures and later browser/listening acceptance.
+
+
+The reviewed paired-held map can also prepare one `paired-modal-body` in the
+existing canonical owner graph. The authoring panel offers manual MORPH or one
+selected sustained voice's actual committed signed travel. The route clamps at
+its declared endpoints and retraces on signed reversal; rest adds no new control
+motion. Source audio is the same upstream owner sum, normalized against the
+existing absolute-32 bus profile, with a fixed quarter body readout. This is
+synthetic retained modal state, not a mechanical object or new musical onset.
+
+Full endpoint, map and derived profile hashes are verified before publication.
+A source edit cancels pending preparation and prevents manual use of a stale
+receipt; the existing frozen graph remains owned until a new graph publishes or
+explicit tail/Panic retirement. Closing the panel does not dispose the canonical
+audio owner. Native readiness, bounded automation, body containment and owned
+revoice share the profile. Graph restoration currently uses deterministic preroll;
+the private body cut does not certify a live host cut. Metamorphic Bridge,
+prepared dual-body blending, physical/perceptual continuity, moving-control cost
+and device/listening qualification still require their separate work and evidence.

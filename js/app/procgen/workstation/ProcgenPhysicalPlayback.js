@@ -1,3 +1,4 @@
+import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { SPECTRAL_CAPTURE_POLICY } from '../../../midi/content/SpectralCaptureReceipt.js';
 import { createPreparedSurfaceBodyOwner } from './PreparedSurfaceBodyOwner.js';
 import { createPreparedBodyStrikeBackend } from './PreparedBodyStrikeBackend.js';
@@ -147,6 +148,15 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       travelEffects.bind({ voiceId, generation, instrumentId: source.instrumentId, control: model.control, expected }); return Object.freeze({ model, state });
     } catch (error) { try { setEffectBypass('tail', expected); } catch {} throw error; }
   };
+  const prepareMorphEffect = async ({ voiceId = null, generation = null, ...parameters }, options = {}) => {
+    const context = audio.getAudioContext?.();
+    if (disposed || !session?.prepareEffectGraph || context?.state !== 'running') throw new Error('Enable the canonical physical audio owner before preparing a live morph body.');
+    const check = () => { options.signal?.throwIfAborted(); if (disposed || audio.getAudioContext() !== context || context.state !== 'running' || options.isCurrent && !options.isCurrent()) throw new Error('The physical owner, clock or reviewed morph source changed.'); if (voiceId !== null && !travelEffectSources().some(voice => voice.voiceId === voiceId && voice.generation === generation)) throw new Error('The selected observed travel voice ended before morph publication.'); };
+    check(); const model = await createResonatorMorphGraph(parameters, context.sampleRate); check();
+    const state = await prepareEffectGraph(model.graph, { ...options, isCurrent: () => { try { check(); return true; } catch { return false; } } }), expected = { graphDefinitionHash: state.activeGraph.hash, ownerRouteRevision: state.revision };
+    try { check(); if (voiceId !== null) { const source = travelEffectSources().find(voice => voice.voiceId === voiceId && voice.generation === generation); travelEffects.bind({ voiceId, generation, instrumentId: source.instrumentId, control: model.control, expected }); } else travelEffects.clear('manual-morph-prepared'); return Object.freeze({ model, state }); }
+    catch (error) { try { setEffectBypass('tail', expected); } catch {} throw error; }
+  };
   let engine;
   try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
@@ -253,7 +263,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   };
   return { engine, processBatch, stop, dispose,
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
-    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
+    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
     bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),

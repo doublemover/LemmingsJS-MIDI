@@ -1476,7 +1476,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     harvestSoundSeed(source) {
       if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound-seed ownership is unavailable.');
-      soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+      soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
         displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
         getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && value.sourceKind === 'MotionCommitted' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'; }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status });
       return soundSeedLab.open(source);

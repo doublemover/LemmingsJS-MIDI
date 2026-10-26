@@ -7,7 +7,8 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
 const keys = (value, allowed) => value && Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).every(key => allowed.includes(key));
 const fail = message => { throw Object.assign(new Error('Resonator morph: ' + message), { code: 'invalid-resonator-morph' }); };
-const preparedMorphs = new WeakSet();
+const preparedMorphs = new WeakSet(), inspectedMorphs = new WeakSet();
+export const isInspectedResonatorMorph = value => inspectedMorphs.has(value);
 const roles = ['excitation', 'pickupLeft', 'pickupRight'];
 const before = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 export function validateResonatorMorphEndpoint(raw) {
@@ -59,23 +60,32 @@ export async function analyzeResonatorMorph(input, { signal, current = () => tru
     method: 'bounded-global-cost=log-frequency+log-decay+declared-signed-site-signatures;dummy-unmatched-cost-0.9', qualified: false, publication: 'explicit-resolved-pair-review-required;not-a-perceptual-or-mechanical-identity-claim' };
   check(); return freezeData(result);
 }
-export async function createResonatorMorphMap({ a: rawA, b: rawB, pairs, siteCorrespondence, reviewed, transitionPolicy = 'next-onset-only', id: mapId = 'authored.resonator-morph', revision = 1 } = {}) {
-  const a = validateResonatorMorphEndpoint(rawA), b = validateResonatorMorphEndpoint(rawB); validatePairs(pairs, a, b); const sites = validateSites(cloneData(siteCorrespondence, { maxBytes: 4096, maxNodes: 128 }), a, b, true);
-  if (reviewed !== true || !id(mapId) || !Number.isSafeInteger(revision) || revision < 1 || !['next-onset-only', 'prepared-dual-body-blend', 'paired-synthetic-held'].includes(transitionPolicy)) fail('Review the actual resolved pairs and choose an explicit transition capability before publication.');
-  const used = validatePairs(pairs, a, b), body = { schema: 'lemmings-resonator-morph-map/v1', id: mapId, revision, algorithmRevision: RESONATOR_MORPH_REVISION, endpointAHash: await hashData(a), endpointBHash: await hashData(b), sourceAHash: a.sourceAssetHash, sourceBHash: b.sourceAssetHash,
+const mapBody = ({ a, b, pairs, siteCorrespondence, reviewed, transitionPolicy = 'next-onset-only', id: mapId = 'authored.resonator-morph', revision = 1, endpointAHash, endpointBHash }) => {
+  const used = validatePairs(pairs, a, b), sites = validateSites(cloneData(siteCorrespondence, { maxBytes: 4096, maxNodes: 128 }), a, b, true);
+  if (reviewed !== true || !id(mapId) || !Number.isSafeInteger(revision) || revision < 1 || !['next-onset-only', 'prepared-dual-body-blend', 'paired-synthetic-held'].includes(transitionPolicy) || !hash(endpointAHash) || !hash(endpointBHash)) fail('Review the actual resolved pairs and choose an explicit transition capability before publication.');
+  return { schema: 'lemmings-resonator-morph-map/v1', id: mapId, revision, algorithmRevision: RESONATOR_MORPH_REVISION, endpointAHash, endpointBHash, sourceAHash: a.sourceAssetHash, sourceBHash: b.sourceAssetHash,
     pairs: pairs.map(pair => ({ aId: pair.aId, bId: pair.bId })), unmatchedAIds: a.modes.filter(mode => !used.usedA.has(mode.id)).map(mode => mode.id), unmatchedBIds: b.modes.filter(mode => !used.usedB.has(mode.id)).map(mode => mode.id), siteCorrespondence: sites,
     parameterCurves: { frequency: 'positive-log', amplitudeT60: 'positive-log', signedWeights: 'raised-cosine-fixed-common-reference', unmatched: 'sine-squared-observation-and-excitation-contribution' }, transitionPolicy, review: 'explicit-resolved-mapping', qualification: 'pending;no-continuous-renderer-or-perceptual-qualification-receipt' };
+};
+export async function createResonatorMorphMap({ a: rawA, b: rawB, ...options } = {}) {
+  const a = validateResonatorMorphEndpoint(rawA), b = validateResonatorMorphEndpoint(rawB), body = mapBody({ ...options, a, b, endpointAHash: await hashData(a), endpointBHash: await hashData(b) });
   return freezeData({ ...body, hash: await hashData(body) });
 }
-export async function prepareResonatorMorphMap(raw, rawA, rawB) {
+// Synchronous Worklet admission checks structure; its publishing host must also
+// call prepareResonatorMorphMap to verify the source and mapping SHA identities.
+export function inspectResonatorMorphMap(raw, rawA, rawB) {
   const map = cloneData(raw, { maxBytes: 65536, maxNodes: 8192 }), a = validateResonatorMorphEndpoint(rawA), b = validateResonatorMorphEndpoint(rawB);
   if (!map || map.schema !== 'lemmings-resonator-morph-map/v1' || !hash(map.hash)) fail('Choose a complete resolved map.');
-  const { hash: expectedHash, ...body } = map; if (await hashData(body) !== expectedHash || await hashData(a) !== map.endpointAHash || await hashData(b) !== map.endpointBHash) fail('Endpoint or mapping hash changed; prepare a new revision.');
-  const rebuilt = await createResonatorMorphMap({ a, b, pairs: map.pairs, siteCorrespondence: map.siteCorrespondence, reviewed: true, transitionPolicy: map.transitionPolicy, id: map.id, revision: map.revision });
+  const rebuilt = { ...mapBody({ a, b, pairs: map.pairs, siteCorrespondence: map.siteCorrespondence, reviewed: true, transitionPolicy: map.transitionPolicy, id: map.id, revision: map.revision, endpointAHash: map.endpointAHash, endpointBHash: map.endpointBHash }), hash: map.hash };
   if (canonicalDataText(rebuilt).text !== canonicalDataText(map).text) fail('Map curves, unmatched modes, review or source identity differs.');
   if (a.modes.some(mode => roles.some(role => mode[role] === null)) || b.modes.some(mode => roles.some(role => mode[role] === null))) fail('Missing excitation/pickup signatures cannot be invented for a playable body.');
   const byA = new Map(a.modes.map(mode => [mode.id, mode])), byB = new Map(b.modes.map(mode => [mode.id, mode])), slots = [...map.pairs.map(pair => ({ id: 'pair:' + pair.aId + ':' + pair.bId, a: byA.get(pair.aId), b: byB.get(pair.bId) })), ...map.unmatchedAIds.map(id => ({ id: 'death:' + id, a: byA.get(id), b: null })), ...map.unmatchedBIds.map(id => ({ id: 'birth:' + id, a: null, b: byB.get(id) }))];
-  const prepared = freezeData({ schema: 'lemmings-prepared-resonator-morph/v1', map, a, b, slots, maximumModes: slots.length, continuousRendererQualified: false, meaning: map.transitionPolicy === 'prepared-dual-body-blend' ? 'two-independent-admitted-body-states;not-a-mode-morph' : 'synthetic-parameter-interpolation;not-mechanical-energy-or-perceptual-equivalence' }); preparedMorphs.add(prepared); return prepared;
+  const inspected = freezeData({ schema: 'lemmings-prepared-resonator-morph/v1', map, a, b, slots, maximumModes: slots.length, continuousRendererQualified: false, meaning: map.transitionPolicy === 'prepared-dual-body-blend' ? 'two-independent-admitted-body-states;not-a-mode-morph' : 'synthetic-parameter-interpolation;not-mechanical-energy-or-perceptual-equivalence' }); inspectedMorphs.add(inspected); return inspected;
+}
+export async function prepareResonatorMorphMap(raw, rawA, rawB) {
+  const prepared = inspectResonatorMorphMap(raw, rawA, rawB), { map, a, b } = prepared, { hash: expectedHash, ...body } = map;
+  if (await hashData(body) !== expectedHash || await hashData(a) !== map.endpointAHash || await hashData(b) !== map.endpointBHash) fail('Endpoint or mapping hash changed; prepare a new revision.');
+  preparedMorphs.add(prepared); return prepared;
 }
 export function evaluateResonatorMorph(prepared, u, sampleRate = 48000) {
   if (!preparedMorphs.has(prepared) || prepared?.schema !== 'lemmings-prepared-resonator-morph/v1' || !finite(u, 0, 1) || ![44100, 48000, 96000].includes(sampleRate) || prepared.map.transitionPolicy === 'prepared-dual-body-blend') fail('Choose prepared paired parameters at a supported rate; a blend cannot be reported as an intermediate body.');
