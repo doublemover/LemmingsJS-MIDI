@@ -5527,3 +5527,29 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Metamorphic Bridge scene staging, prepared blend, fitted/foundry signature
   adapters, moving-control cost, PCM/spectral/decay/device measurements and matched
   listening remain pending for #1225 and the combined qualification pass.
+
+
+### Continuation 219 — finite Metamorphic Bridge and initial score-body owner
+
+- Installed the original one-entrant Metamorphic Bridge score behind the pinned
+  friction capability. Its authored floor and far steel stop provide real signed
+  travel and reversal. One sustained actor journey excites one reviewed shared
+  dry/bright body; a clamped 512-pixel coordinate retraces without added attacks.
+- Added exact original endpoint generation matching the existing proof asset and
+  explicit stable-ID anchors. Scene recipes carry a bounded initial mechanism;
+  preflight verifies endpoint/map hashes, the actual sustained local mapping and
+  the one-body cost before world publication. Scene origin/recovery already bind
+  the complete immutable recipe and therefore retain these authored sources.
+- Explicit audio arming prepares the body through the existing canonical graph
+  owner. Local source frame admission stays unavailable until this preparation
+  succeeds; a missed source is not replayed or repaired. The route binds only the
+  first accepted matching begin, preserves its event ancestry and freezes after
+  source end. A performer replacement is not silently overwritten. Stop cancels
+  pending work; temporary source/profile storage remains charged until settlement.
+- Added unrun exact proof/catalog/dependency/origin, no-output-before-audio-enable,
+  coalesced body preparation, accepted/rejected begin, foreign graph, cancellation,
+  resource retirement and actual finite-world reversal/one-journey fixtures.
+- Static checks only. The private scene rehearsal adapter still explicitly refuses
+  shared-body scenes until it can reproduce their complete control path. Bridge
+  browser/PCM/route measurements, moving-control cost and matched-level listening
+  remain pending; this experimental authored score is not acoustic qualification.

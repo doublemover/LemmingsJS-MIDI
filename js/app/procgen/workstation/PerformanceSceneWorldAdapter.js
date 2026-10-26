@@ -1,3 +1,4 @@
+import { verifySceneMorphMechanism } from './SceneMorphMechanism.js';
 import { sameActorBirthAbilities } from '../ActorBirthAbilities.js';
 import { createMidiProject } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
@@ -30,6 +31,7 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       if (scene.causalMappings.instruments.some(instrument => instrument.route !== 'local' || instrument.sourceLanes?.some(lane => lane >= scene.cost.lanes))) throw failure('scene-routing-unavailable', 'This scene profile requires explicit local mappings into its declared physical lanes.');
       const source = origin.recipe, assets = preflight.dependencies.filter(entry => entry.status === 'available' && entry.dependency.kind === 'asset').map(entry => entry.dependency.hash), pools = new Map();
       onPhase('sound-compile');
+      if (source.initialMorphMechanism) { if (scene.cost.sharedBodies !== 1) throw failure('scene-body-cost-unbound', 'The score must count its one shared paired body.'); await verifySceneMorphMechanism(source.initialMorphMechanism, scene.causalMappings.instruments); check(); }
       for (const patch of scene.patchRefs) {
         if (patch.reference.assetHashes.length) throw failure('scene-asset-adapter-unavailable', 'Sample-based scene loading needs an asset-pin preparation adapter; metadata availability alone is insufficient.');
         const resolved = await resolveSoundContentReference(patch.reference, { engineDescriptors: catalog.descriptors, availableHashes: assets, signal }); check();

@@ -993,6 +993,22 @@ receipt; the existing frozen graph remains owned until a new graph publishes or
 explicit tail/Panic retirement. Closing the panel does not dispose the canonical
 audio owner. Native readiness, bounded automation, body containment and owned
 revoice share the profile. Graph restoration currently uses deterministic preroll;
-the private body cut does not certify a live host cut. Metamorphic Bridge,
-prepared dual-body blending, physical/perceptual continuity, moving-control cost
+the private body cut does not certify a live host cut. Prepared dual-body blending, physical/perceptual continuity, moving-control cost
 and device/listening qualification still require their separate work and evidence.
+
+
+Metamorphic Bridge is an experimental installed finite score when the sealed
+friction source is available. It starts paused with one entrant and a visible
+far stop. Enable local audio while paused and wait for `scoreMorph.prepared`
+before Play. The scene body prepares on the canonical owner; a source beginning
+before readiness is reported unavailable and is not retriggered automatically.
+The first admitted matching journey binds 512 actual signed pixels to MORPH.
+The real stop reverses that coordinate through the same body. New actor timing,
+extra attacks and simulated wall-clock motion are not introduced.
+
+The initial mechanism is part of the exact scene recipe/origin. Preparation
+checks the reviewed source hashes and mapping, counts one shared body and retains
+all temporary storage until cancellation settles. An explicit performer graph
+replacement stays in place. This score still needs browser, route, cost, PCM and
+matched-level listening evidence; its private Prelisten rehearsal remains
+explicitly unavailable until the shared-body control path is supported there.

@@ -1,3 +1,4 @@
+import { createMetamorphicBridgeScore } from './MetamorphicBridgeScore.js';
 import { createWindPerformanceScore } from './WindPerformanceScore.js';
 import { createFrictionPerformanceScore } from './FrictionPerformanceScore.js';
 import { createAdditionalPracticeScores } from './PerformancePracticeScores.js';
@@ -87,6 +88,10 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
     for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
     await registry.register(item.scene); signal?.throwIfAborted();
+    const bridge = await createMetamorphicBridgeScore({ sourceHash, descriptor: friction }); signal?.throwIfAborted(); recipes.set(bridge.recipeHash, bridge.recipe); put('score-recipe', bridge.recipe.id, 1, bridge.recipeHash, 'embedded');
+    for (const dependency of bridge.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+    for (const patch of bridge.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+    await registry.register(bridge.scene); signal?.throwIfAborted();
   }
   const wind = catalog.descriptors.find(value => value.engineId === 'worklet-wind');
   if (wind?.capabilities.sealedWindModel && wind.capabilities.pressureDrivenWind && wind.maximumVoices >= 2) {
