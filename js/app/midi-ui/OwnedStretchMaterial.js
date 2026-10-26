@@ -35,7 +35,7 @@ export function createOwnedStretchMaterial({ resourceBudget, fetchImpl = globalT
         operation.timer = setTimeout(() => { error = 'The core fetch exceeded its preparation deadline.'; operation.controller.abort(fail(error)); report(); }, 30000);
         const url = new URL(selected.buildId + '/' + OWNED_STRETCH_CORE.runtimePath, selected.root), response = await fetchImpl(url.href, { credentials: 'same-origin', redirect: 'error', signal: operation.controller.signal });
         operation.reader = response.body?.getReader?.() || null; check();
-        if (!response.ok || !operation.reader) throw fail('The exact core is absent from this application generation. Prepare the runtime assets before building.');
+        if (!response.ok || !operation.reader) throw fail('The time-warp processing source is unavailable in this application build.');
         const declared = response.headers?.get?.('content-length'); if (declared != null && (!/^\d+$/.test(declared) || Number(declared) !== OWNED_STRETCH_CORE.wasmBytes)) throw fail('The core response differs from its pinned byte length.');
         const bytes = new Uint8Array(OWNED_STRETCH_CORE.wasmBytes); let offset = 0;
         while (true) { const result = await operation.reader.read(); check(); if (result.done) { operation.readerDone = true; break; } const chunk = result.value;

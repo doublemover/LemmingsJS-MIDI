@@ -5898,3 +5898,29 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Seed-lab bake delivery and live streaming automation are still development
   work. No browser build, WASM compilation/execution, numerical probe, runtime
   suite or CI qualification has run during this implementation-first stretch.
+
+
+### Continuation 232 — explicit finite warp material and ordered rebuilds
+
+- Connected the exact owned application core reader to the seed lab's admitted
+  worker bake. Traversal, pitch and output rate are separate explicit controls;
+  preparing material does not select it, compile an instrument or enable audio.
+  Selecting the result declares fixed-rate source playback. Changed controls,
+  source/region edits and stale parent components fence publication and use.
+- The host verifies actual result bytes, WAV coordinates, embedded annotation,
+  recipe/core identities, frame inventory and waveform bounds before retaining
+  a new immutable candidate. Source windows, transferred core copies, worker
+  results and host digest/copy overlap have distinct counted ownership. Failure,
+  cancellation or unknown retirement retains the prior published material.
+- Extended selected-branch rebuild order through original, components/printed
+  composition, finite warp, optional modal fit and instrument compilation. Plans
+  preserve exact parent/core/configuration hashes and reject missing inputs,
+  modal-to-warp cycles and oversized fitted warp parents before work begins.
+  Rebuild execution verifies the prepared core/configuration before proceeding.
+- Authored synthetic-DSP workflow fixtures for output-rate/ancestry, independent
+  reader retirement, delayed stale results, explicit fixed-rate UI selection and
+  preserved prior candidates, plus ordered/cyclic/missing rebuild cases. These
+  fixtures are unrun and make no numerical core or audible-quality claim.
+- Static checks only. Live WarpVoice streaming/automation, onset/spectral/tail
+  acceptance, browser/device cost, matched-level listening and the combined
+  runtime/CI pass remain pending; finite material is not a qualified live tier.

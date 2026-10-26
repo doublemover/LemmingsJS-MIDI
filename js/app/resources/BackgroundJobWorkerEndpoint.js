@@ -40,7 +40,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
           source.kind === 'render-scene-rehearsal' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
             ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
               source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
-      if (['decompose-sound-seed', 'fit-sound-seed-modes', 'compose-sound-seed-components'].includes(source.kind)) {
+      if (['decompose-sound-seed', 'fit-sound-seed-modes', 'compose-sound-seed-components', 'warp-sound-seed'].includes(source.kind)) {
         for (const entry of [...(result.value?.components || []), ...(result.value?.recombined ? [result.value.recombined] : [])]) {
           if (entry?.bytes instanceof Uint8Array && entry?.waveform?.minMax instanceof Float32Array) transfers.push(entry.bytes.buffer, entry.waveform.minMax.buffer);
         }

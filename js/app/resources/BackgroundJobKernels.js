@@ -209,8 +209,9 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'warp-sound-seed') {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, wasmBytes: null }, { maxBytes: 65536, maxNodes: 8192 }), inputBytes = metadata.bytes.length + (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + (input?.wasmBytes?.byteLength || 0);
     if (inputBytes > maxBytes || estimatedPeakBytes < 128 * 1048576) throw problem('input-capacity', 'A finite seed warp needs its complete source/core and 128 MiB workspace.');
-    const value = await bakeSeedWarp(input, { estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
-    return { value, inputBytes, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + value.waveform.minMax.byteLength + canonicalDataText({ manifest: value.manifest, recipe: value.recipe }, { maxBytes: 524288, maxNodes: 65536 }).bytes.length * 32 + 131072 };
+    const baked = await bakeSeedWarp(input, { estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
+    const value = { schema: 'lemmings-seed-warp-result/v1', generation: input.generation, recipe: baked.recipe, recipeHash: baked.recipeHash, components: [{ kind: 'warped-seed', bytes: baked.bytes, assetHash: baked.assetHash, manifest: baked.manifest, waveform: baked.waveform }] };
+    return { value, inputBytes, nodes: metadata.nodes, retainedBytes: baked.bytes.byteLength + baked.waveform.minMax.byteLength + canonicalDataText({ manifest: baked.manifest, recipe: baked.recipe }, { maxBytes: 524288, maxNodes: 65536 }).bytes.length * 32 + 131072 };
   }
   if (['analyze-sound-seed-window', 'decompose-sound-seed', 'fit-sound-seed-modes'].includes(kind)) {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null }, { maxBytes: 65536, maxNodes: 8192 });
