@@ -5775,3 +5775,38 @@ export-budget acknowledgments still prevent a false complete receipt.
   actual private-source/full-tail blend fixtures. Undercounted scene rendering
   is refused. Numerical/device cost, PCM continuity, paired-versus-blend listening
   and browser workflow qualification remain deferred with the combined pass.
+
+
+### Continuation 228 — owned buffered-warp coordinates and committed automation
+
+- Added the bounded source/algorithm plan for #1186: immutable original asset,
+  original source rate and exclusive frame region, declared material root,
+  prepared/output rate, independent traversal and pitch ratios, fixed formant
+  policy, reset/preroll seeks/loops, exact artifact/configuration identities and
+  separately reported input latency, output latency and preparation lead. The
+  starting matrix is deliberately 0.75/1/1.5 traversal and -12/0/+12 semitones;
+  unqualified reverse/freeze/formant capabilities are rejected. Plan validation
+  is not artifact, DSP, device or listening evidence.
+- Added an ephemeral owned renderer queue derived from existing canonical
+  commands, rather than another journal. It retains the inactive prefix, sorts
+  target frames, replaces only the same frame, reconstructs implicit source
+  positions after insertion, preserves explicit seeks and rejects stale command
+  sequence/source epochs. Source seconds convert with sourceRate/outputRate;
+  pitch ratio never accidentally changes duration or source cursor speed.
+- Monotonic prepared prefixes remain frozen through their exact acknowledgment.
+  Future edits stay available; committed/pending history cannot be rewritten.
+  Known-unpublished rejection permits retry, while unknown publication keeps the
+  prefix locked. Local invalidation does not assert backend retirement. Stop
+  before output, finite exclusive ends and loop-edge history resets remain
+  explicit. Late preparation never silently moves the physical onset.
+- Re-read the pinned official Signalsmith wrapper's scheduling path. Its mutable
+  schedule remains unsuitable for direct unsorted forwarding; no wrapper/vendor
+  file was copied or patched. The actual bounded core adapter, prepared-rate PCM
+  ownership, worker baking, live processor integration and numerical/perceptual
+  qualification remain development work. This source/mapping/queue foundation
+  does not expose a pretend ready stretch backend.
+- Authored unrun exact source-rate conversion, target insertion/replacement,
+  pending/future commit races, stale sequence/epoch, cancellation, stop-before-
+  output, unknown publication, finite end, explicit seek/loop and preparation-
+  deadline fixtures. Only formatting/syntax/type/provenance checks are intended
+  before the deferred combined runtime pass.

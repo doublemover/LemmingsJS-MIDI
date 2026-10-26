@@ -1129,3 +1129,20 @@ positive-loss tails. The original paired score owns one six-slot synthetic body.
 The v1 scene mechanism stays paired-only; selecting the blend requires the v2
 mechanism and its complete preparation. Neither strategy silently replaces the
 other. Runtime, cost and matched-level continuity/listening evidence is pending.
+
+
+The buffered pitch/time-warp foundation uses original asset frame coordinates,
+explicit source/prepared/output rates, a fixed physical onset and independent
+traversal/pitch ratios. Its canonical renderer queue sorts target frames and
+publishes only monotonic frozen prefixes; it does not forward unordered updates
+to a mutable vendor scheduler. A pending or unknown publication cannot be erased
+by clearing local UI state. Latency reports and preparation deadlines are distinct
+from output-device delay; a missed lead never retimes the actor's attack.
+
+This foundation is not an available or qualified stretch renderer. The pinned
+[Signalsmith wrapper scheduling source](https://github.com/Signalsmith-Audio/signalsmith-stretch/blob/a670068d9aeb64913331d5cc29337b19a457a7df/web/web-wrapper.js)
+was inspected; it is not copied as a drop-in backend. Core processing, owned PCM
+rate conversion, baking and live/offline qualification still need implementation.
+The initial coordinate contract deliberately accepts only rates 0.75/1/1.5 and
+pitch ratios 0.5/1/2, with explicit formants-shift-with-pitch semantics. A valid
+plan never certifies the backend's artifact or quality claims.
