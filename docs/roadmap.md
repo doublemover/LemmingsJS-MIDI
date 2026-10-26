@@ -4880,3 +4880,47 @@ but unrun. Only format, syntax/provenance and limited critical typecheck checks
 are used. Installed-terrain/browser audition, the full teach-and-assess owner,
 progress persistence, reset/back/skip/reopen journeys, the remaining work/path/
 harmony lessons and larger authored physical scenes remain pending.
+
+
+### Continuation 198 — owned motion-gated procedural material textures (#1179, #1216)
+
+A separate owned texture source now implements sand/cloth/crackle/foam without
+sample loops or a time-driven birth oscillator. Complete canonical signed-axis
+travel uses the existing bounded coordinate validator and output-frame frontier;
+its 128-pixel internal coordinate scale is not a pitch cycle. Scope, actor/world/
+generation/mapping, source IDs, precision and coverage stay bound. At rest no new
+noise field samples or pulse births are admitted. Reversal revisits actual spatial
+cells in the same source. Tiny filter/modal states are flushed at a declared
+floor; no per-sample object, timer or buffer allocation is introduced.
+
+The actor-seeded spatial hash supplies jittered bipolar pulses or linearly
+interpolated cloth noise. Thirty-two child slots per actor and a shared 32-birth
+budget per absolute 128-frame bucket cap work independently of callback size.
+Crackle has 1–4 source-owned offspring, 2–12 ms spacing and no births outside the
+admitted span. Motion/end cancels children not yet started, including exact-boundary
+starts; finite active Hann bursts may finish. Explicit speed/density and offspring
+energy references, positive spectral filters and contractive modal injection bound
+the signal. Foam uses two Q0.9 bands around 700/1600 Hz with correlated input gain;
+its BODY meaning is distinct from sand/cloth/crackle amplitude-T60 control.
+
+The normal owned backend, quota/admission, output routes, generation/epoch/token
+commands, Stop/Panic, retirement, display health and causal rendering own this
+source. The source footprint includes every pulse/mode/state array; eight actor
+slots remain an implementation capacity, not a measured device tier. Eleven
+immutable engine artifact profiles now include its actual transitive code. The
+compiler and library expose four original ordinary saved recipes with explicit
+onset-only GRAIN/DRAG/SHADE/BODY mappings and honest single-profile limits. A fixed
+audition/render uses the same kernel with an eight-pixel/40ms authored control
+program followed by rest, explicitly not physical evidence. Real use requires a
+compatible held canonical travel mapping; no independent note-pitch bend is offered.
+
+The profile explicitly supports semanticResume and rejects exact audio-state
+transfer before mutation. Original filter, burst and modal history are not claimed
+to survive that resume. Authored fixtures cover stationary silence, source cardinality,
+render-block invariance, rest/reverse, independent seeds, absolute bucket/slot
+caps, exact-boundary cancellation, canonical ownership rejection, compiled recipes
+and the common live/offline control program. They are unrun. Only format, syntax/
+provenance and limited critical typecheck checks are used. Physical-scene/browser
+integration, measured pulse/spectral/alias/cost evidence, matched-level listening,
+Material Ribbon, fitted external-body variants, exact texture state transfer and
+sealed bow/reed families remain pending before comprehensive acceptance.

@@ -13,3 +13,7 @@ export function sampleMapControlFixture(map, gesture = map?.neutralArticulationI
   return freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: 'pressure-pan-pitch-sample-gesture-v1', durationScale: 0.2, events: SOUND_CONTENT_CONTROL_FIXTURE.events.map(event =>
     ({ ...event, seconds: event.seconds * 0.2, ...(event.kind === 'begin' ? { sampleGesture: gesture } : {}) })) });
 }
+
+export const TEXTURE_CONTROL_FIXTURE = freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: 'spatial-texture-eight-pixel-control-v1',
+  motionProgram: 'eight-pixels-in-forty-ms;then-rest-and-tail;authored-not-physical-take', events: SOUND_CONTENT_CONTROL_FIXTURE.events.map(event => ({ ...event,
+    ...(event.expression ? { expression: Object.fromEntries(Object.entries(event.expression).filter(([key]) => key !== 'pitchOffsetCents')) } : {}) })) });

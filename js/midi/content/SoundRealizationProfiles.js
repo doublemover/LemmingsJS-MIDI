@@ -18,6 +18,7 @@ export function soundRealizationSemanticInterface(patch) {
     sampleArticulations: patch.sampleMap?.articulations.map(entry => entry.id).sort() ?? [],
     sourcePolicies: patch.sampleMap ? [...new Set(patch.sampleMap.zones.map(zone => canonicalDataText({ articulationId: zone.articulationId, pitchTracking: zone.pitchTracking ?? 'varispeed', playbackMode: zone.playbackMode ?? 'forward',
       pitchRange: zone.pitchRange, positionPolicy: zone.positionPolicy ?? null, rootCents: zone.rootCents, tuningCents: zone.tuningCents, onsetFrame: zone.onsetFrame, endFrame: zone.endFrame, loop: zone.loop, releaseRegion: zone.releaseRegion }).text))].sort() : [],
+    ...(patch.engineId === 'worklet-texture' ? { proceduralTravel: { scope: patch.parameters.textureScope, axis: patch.parameters.textureAxis, requiredSegments: patch.parameters.textureRequireSegments, pitchPolicy: 'unpitched-source;note-selects-owner-only' } } : {}),
     sourceTiming: 'physical-semantic-source-unchanged;profile-prepares-only-sound', proofScope: 'structural-input-and-articulation-compatibility;not-perceptual-equivalence' });
 }
 

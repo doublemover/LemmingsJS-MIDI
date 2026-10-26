@@ -785,3 +785,41 @@ private rehearsal. No note timer or invented manual intervention creates sound.
 Fresh Load restores the authored attempt. Use Physical authoring to move the
 pickup and Release gestures to perform another finite phrase. These are practice
 scores with factual captions, not completed lessons or verified hearing outcomes.
+
+
+Procedural material textures use a separate owned source with no PCM assets or
+sample loops. Sand, cloth, crackle and foam consume canonical completed signed-axis
+travel for the declared journey/contact/action scope. Actor-seeded integer spatial
+hashes determine jittered pulse sites or colored noise knots. Audio time alone
+cannot advance the spatial field. Rest prevents new births; active 1–5 ms Hann
+bursts finish, queued bursts that have not started are canceled, and positive
+filter/modal state may decay. Reversal revisits actual spatial cells within the
+same parent voice. Internal bursts are DSP children and add no semantic onsets.
+
+The source reserves eight actor slots, 32 pulse slots per actor and 32 admitted
+births per absolute 128-output-frame bucket shared by the source pool. Render
+block partition does not reset the budget. Cluster offspring are capped at four
+with 2–12 ms internal spacing inside admitted motion coverage. Pulse energy uses
+a declared density/speed reference and offspring square-root factor; bounds are
+implementation policies, not measured loudness equivalence. Cloth uses linear
+spatial noise with 320 times GRAIN knots/world-pixel, not a pulse rhythm. A 120 Hz
+highpass and positive spatially varied nominal 2.5–6 kHz lowpass color the input.
+Foam uses two fixed Q0.9 bands at 700/1600 Hz and BODY gain-correlation seconds;
+other materials use explicit positive modal amplitude T60. No force calibration
+or measured material identity is asserted.
+
+GRAIN, DRAG, SHADE and BODY are explicit onset-only macros. The library can stage,
+audition, save and apply these ordinary compiled recipes through existing owners.
+Its control audition/render moves eight authored pixels in 40 ms, then rests;
+this is visibly separate from a physical take. Real playback requires the exact
+canonical motion scope, axis, source identity and frame coverage. Missing facts,
+discontinuities, excessive speed and unsupported tuning fail instead of starting
+a backing sound. The initial profile supports 44.1/48/96 kHz, at most 512 observed
+world pixels/second and signed coordinates within eight million pixels.
+
+Restoration is **semanticResume**: the new source can be revoiced from semantic
+causes but its old filters, burst queue and modal history are not an exact audio
+snapshot. Exact transfer requests are rejected before mutation. Pulse statistics,
+block/reversal/stop/Panic fixtures, spectral/alias assessment, device cost and
+matched-level listening remain separate qualification work. Material Ribbon,
+fitted-body texture grafts and sealed bow/reed outer bodies remain pending.

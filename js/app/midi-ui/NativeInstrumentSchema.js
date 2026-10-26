@@ -21,6 +21,9 @@ const schemas = freezeData({
       parameter('mode' + index + 'T60Scale', 0.01, 1, 1, 'ratio'), parameter('mode' + index + 'GainA', 0, 1, index < 4 ? 1 / (index + 1) : 0, 'amplitude-linear'),
       parameter('mode' + index + 'GainB', 0, 1, index < 4 ? 1 / (index + 1) : 0, 'amplitude-linear')]).flat()]
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.002, 0, 1, 0.4)),
+  'worklet-texture': [parameter('textureKind', 0, 3, 0, 'enum', true), parameter('roughnessPerPixel', 0.2, 0.8, 0.4, 'inverse-world-pixel'), parameter('dragSlope', 0, 1, 0.5, 'normalized'), parameter('shade01', 0, 1, 0.5, 'normalized'), parameter('textureBodySeconds', 0.02, 0.25, 0.05, 's'),
+    parameter('textureScope', 0, 2, 0, 'enum', true), parameter('textureAxis', 0, 1, 0, 'enum', true), parameter('textureRequireSegments', 0, 1, 0, 'enum', true)]
+    .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.005, 0, 1, 0.6).map(spec => spec.id === 'releaseSeconds' ? Object.freeze({ ...spec, default: 0.4 }) : spec)),
   'worklet-sine': envelope(0.008, 0.05, 0.7, 0.5),
   'worklet-pluck': [parameter('pluckPosition01', 0.05, 0.45, 0.28, 'normalized'), parameter('stringT60Seconds', 0.1, 4, 0.9, 's'),
     parameter('excitationBrightness01', 0, 1, 0.5, 'normalized'), parameter('bodyMix01', 0, 0.3, 0, 'ratio'), parameter('bodyT60Seconds', 0.05, 2, 0.3, 's')]
@@ -49,6 +52,8 @@ const schemas = freezeData({
     ...Array.from({ length: 8 }, (_, index) => [parameter('graftMode' + index + 'Ratio', 0.125, 16, index + 1, 'ratio'), parameter('graftMode' + index + 'T60Scale', 0.01, 1, 1, 'ratio'), parameter('graftMode' + index + 'PickupA', -1, 1, 0.125, 'dimensionless'), parameter('graftMode' + index + 'PickupB', -1, 1, 0.125, 'dimensionless')]).flat(), parameter('sampleLowpassHz', 80, 20000, 20000, 'Hz'), parameter('sampleVelocityTone01', 0, 1, 0, 'normalized')]
     .map(spec => Object.freeze({ ...spec, liveSafe: false })).concat(envelope(0.005, 0, 1, 0.7))
 });
+export const NATIVE_TEXTURE_FIELDS = freezeData(Object.fromEntries(schemas['worklet-texture'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
+export const NATIVE_TEXTURE_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-texture'].map(spec => [spec.id, spec])));
 export const NATIVE_OSCILLATOR_PARAMETERS = freezeData(Object.fromEntries(schemas['native-oscillator'].map(spec =>
   [spec.id, { ...spec, integer: spec.discrete }])));
 export const NATIVE_WORKLET_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sine'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
@@ -65,22 +70,23 @@ export const NATIVE_MODAL_PARAMETERS = freezeData(Object.fromEntries(schemas['na
 export const NATIVE_OWNED_SAMPLE_PARAMETERS = freezeData(Object.fromEntries(schemas['worklet-sample'].map(spec => [spec.id, spec])));
 export const NATIVE_OWNED_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['worklet-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
 export const NATIVE_SAMPLE_FIELDS = freezeData(Object.fromEntries(schemas['native-sample'].map(spec => [spec.id, [spec.min, spec.max, spec.default]])));
-const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-granular', 'worklet-sample'].includes(id), sampleMaps: ['native-sample', 'worklet-sample'].includes(id), feedforwardSampleBody: id === 'worklet-sample', feedforwardMotionBody: id === 'worklet-sample', advancedSampleMaps: id === 'worklet-sample', reverseSamples: id === 'worklet-sample', positionDrivenSamples: id === 'worklet-sample', canonicalTravelSamples: id === 'worklet-sample', independentSamePitch: true, perVoicePitch: true,
+const capabilities = id => Object.freeze({ samples: ['native-sample', 'worklet-granular', 'worklet-sample'].includes(id), sampleMaps: ['native-sample', 'worklet-sample'].includes(id), feedforwardSampleBody: id === 'worklet-sample', feedforwardMotionBody: id === 'worklet-sample', advancedSampleMaps: id === 'worklet-sample', reverseSamples: id === 'worklet-sample', positionDrivenSamples: id === 'worklet-sample', canonicalTravelSamples: id === 'worklet-sample', independentSamePitch: true, perVoicePitch: id !== 'worklet-texture',
   perVoicePressure: true, perVoicePan: true, perVoiceTimbre: ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id), perVoiceDamping: id === 'worklet-pluck', ownedGates: true, releaseVelocity: ['native-sample', 'worklet-sample'].includes(id),
-  forwardLoops: ['native-sample', 'worklet-sample'].includes(id), displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), offlineRender: ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id),
-  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id), continuousMacroPerformance: false,
+  forwardLoops: ['native-sample', 'worklet-sample'].includes(id), displayTelemetry: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture'].includes(id), renderAcknowledgment: ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture'].includes(id), offlineRender: ['native-oscillator', 'native-fm', 'native-modal', 'native-sample', 'worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture'].includes(id),
+  ...(id === 'worklet-texture' ? { proceduralTextures: true, canonicalTextureTravel: true, semanticResumeOnly: true } : {}),
+  modulationGraph: false, macroPerformance: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample', 'worklet-texture'].includes(id), continuousMacroPerformance: false,
   identityVariation: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   continuousPhysicalBindings: ['worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(id),
   causalBindings: ['native-oscillator', 'native-fm', 'native-modal', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-sample'].includes(id) });
 let catalogPromise = null;
 
 export async function describeNativeInstrumentEngines(artifacts) {
-  if (!Array.isArray(artifacts) || artifacts.length > 10) throw new TypeError('Invalid native engine artifact inventory.');
+  if (!Array.isArray(artifacts) || artifacts.length > 11) throw new TypeError('Invalid native engine artifact inventory.');
   const descriptors = [];
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = engineId === 'worklet-sample' ? 2 : ['worklet-choir', 'worklet-spectrum', 'worklet-granular'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
+    const maximumVoices = engineId === 'worklet-sample' ? 2 : ['worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-texture'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }

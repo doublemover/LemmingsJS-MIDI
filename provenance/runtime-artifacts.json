@@ -164,10 +164,12 @@
         "js/app/midi-ui/worklet/OwnedSineState.js",
         "js/app/midi-ui/worklet/OwnedSourceState.js",
         "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
+        "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
         "js/app/midi-ui/worklet/RectangularMembraneKernel.js",
         "js/app/midi-ui/worklet/RectangularMembraneProcessor.js",
         "js/app/midi-ui/worklet/RingModulatorKernel.js",
         "js/app/midi-ui/worklet/SidechainProcessors.js",
+        "js/app/midi-ui/worklet/SpatialTextureKernel.js",
         "js/app/midi-ui/worklet/SpectralFreezeKernel.js",
         "js/app/midi-ui/worklet/SpectralFreezeProcessor.js",
         "js/app/midi-ui/worklet/SpectrumSourceTables.js",
@@ -277,6 +279,8 @@
         "js/midi/content/SoundRealizationProfiles.js",
         "js/midi/content/SpectralFreezeProfile.js",
         "js/midi/content/SympatheticNetworkProfile.js",
+        "js/midi/content/TextureExciter.js",
+        "js/midi/content/TextureTravel.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/render/BaseImageInfo.js",
         "js/render/ColorPalette.js",
@@ -289,8 +293,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 178,
-      "sha256": "a60d71c410822acfaf0cc5b61912ce8f36c9500d0042f5570681171f95dedc3e"
+      "fileCount": 182,
+      "sha256": "f63af15e731e3f3504fb612f900ec1360cfda4782fdc15585bbe2f90c34300bf"
     },
     {
       "id": "lemmings-timing-worker-source",

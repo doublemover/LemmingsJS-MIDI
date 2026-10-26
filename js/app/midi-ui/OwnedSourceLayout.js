@@ -1,7 +1,9 @@
+import { TEXTURE_EXCITER_LIMITS } from '../../midi/content/TextureExciter.js';
 import { SAMPLE_READ_TABLE_SAMPLES } from '../../midi/content/SampleReadProfile.js';
 export const LIVE_LANE_TAP_LIMIT = 8;
 export const LIVE_LANE_TAP_PROTOCOL = 3;
 export const LIVE_LANE_ID_LIMIT = 4096;
+export const TEXTURE_LAYOUT = Object.freeze({ width: 48, voices: TEXTURE_EXCITER_LIMITS.voices });
 export const SINE_LAYOUT = Object.freeze({ width: 18, voices: 64 });
 export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, delayFloorHz: 32, delayMargin: 4 });
 export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
@@ -34,4 +36,9 @@ export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);
   if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid owned sample source rate.');
   return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
+}
+
+export function textureSourceBytes(rate, voices = TEXTURE_LAYOUT.voices) {
+  check(rate, voices, TEXTURE_LAYOUT.voices, 96000); if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid texture source rate.');
+  const p = TEXTURE_EXCITER_LIMITS; return (voices * (p.state + p.modes * p.modeWidth + p.pulses * p.pulseWidth) + 2) * 8;
 }

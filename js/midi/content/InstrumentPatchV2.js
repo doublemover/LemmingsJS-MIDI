@@ -1,3 +1,4 @@
+import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from './TextureExciter.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, validateCircularCoordinateControl } from './CircularSpectrum.js';
 import { validateInstrumentMacros, validateInstrumentBindings } from './InstrumentPerformance.js';
 import { validateInstrumentVariation } from './InstrumentIdentityVariation.js';
@@ -101,6 +102,7 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     visiting.delete(source); visited.add(source);
   };
   for (const source of dependencies.keys()) visit(source);
+  if (input.engineId === 'worklet-texture') prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[input.parameters.textureKind ?? 0], roughnessPerPixel: input.parameters.roughnessPerPixel ?? 0.4, dragSlope: input.parameters.dragSlope ?? 0.5, shade01: input.parameters.shade01 ?? 0.5, bodySeconds: input.parameters.textureBodySeconds ?? 0.05 });
   if (input.engineId === 'worklet-spectrum' && input.parameters.sourceMode === 2) {
     const resolved = Object.fromEntries(engine.parameters.map(spec => [spec.id, input.parameters[spec.id] ?? spec.default]));
     resolveCircularSpectrum(circularSpectrumParameters(resolved), 48000); validateCircularCoordinateControl(resolved);

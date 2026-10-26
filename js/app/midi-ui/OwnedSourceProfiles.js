@@ -1,9 +1,11 @@
+import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from '../../midi/content/TextureExciter.js';
+import { planTextureTravel } from '../../midi/content/TextureTravel.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel, validateCircularCoordinateControl } from '../../midi/content/CircularSpectrum.js';
 import { prepareSampleBodyProfile, acceptsSampleBodyOnset } from '../../midi/content/SampleBodyProfile.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
-import { SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
+import { TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
-import { NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
+import { NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
   NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS } from './NativeInstrumentSchema.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
@@ -17,7 +19,7 @@ const acceptsSpectrum = parameters => {
 };
 const createProfile = ({ id, width, voices, fields, parameters = null, buildId, abi, workletUrl, rateLimit = false,
   seedDomain = null, minHz = 0.1, maxHz = null, bendCents = 24000, minimumControlSeconds = 0, heapEstimate = 0,
-  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, acceptsExpression = () => true }) => {
+  storageBytes = () => 0, cost = () => 1, acceptsParameters = () => true, acceptsOnset = () => true, beginFields = () => ({}), expressions = [], damping = false, requiresPCM = false, requiresPCMSet = false, bankId = null, controlReferenceRender = false, travelPlanner = null, travelReceiptKey = 'circularTravel', restoration = 'exactSnapshot', acceptsExpression = () => true }) => {
   const slots = Object.freeze(expressions.map(entry => Object.freeze([...entry]))), liveIds = Object.freeze([...slots.map(([name]) => name), ...(damping ? ['damping01'] : [])]);
   const runtime = Object.freeze({ engineId: id, engineVersion: 1, buildId, runtimeABI: abi, workletUrl,
     sharedMemory: false, transport: 'batched-transferable-message-port', minimumControlSeconds,
@@ -34,7 +36,7 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
       return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
     }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId,
-    controlReferenceRender, travelPlanner, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
+    controlReferenceRender, travelPlanner, travelReceiptKey, restoration, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
       if (!acceptsExpression(expression, voice)) return null;
       let mask = 0;
@@ -53,6 +55,13 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
+  'worklet-texture': createProfile({ id: 'worklet-texture', controlReferenceRender: true, width: TEXTURE_LAYOUT.width, voices: TEXTURE_LAYOUT.voices, fields: NATIVE_TEXTURE_FIELDS, parameters: NATIVE_TEXTURE_PARAMETERS,
+    buildId: 'owned-texture-v1-spatial-gating', abi: 'owned-texture-f64-command-v1', workletUrl: new URL('./worklet/OwnedTextureProcessor.js', import.meta.url).href,
+    rateLimit: true, seedDomain: 'spatial-texture-v1', minHz: 20, maxHz: 2000, bendCents: 0, storageBytes: textureSourceBytes, heapEstimate: 65536, cost: () => 5 + 32,
+    travelPlanner: planTextureTravel, travelReceiptKey: 'textureTravel', restoration: 'semanticResume', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsParameters: p => { try { prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[p.textureKind], roughnessPerPixel: p.roughnessPerPixel, dragSlope: p.dragSlope, shade01: p.shade01, bodySeconds: p.textureBodySeconds }); return true; } catch { return false; } },
+    beginFields: (p, seed, pcm, selected, travel) => ({ 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
+      ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
     buildId: 'owned-sample-v6-motion-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
