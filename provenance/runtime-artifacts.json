@@ -175,6 +175,7 @@
         "js/app/midi-ui/worklet/OwnedWindState.js",
         "js/app/midi-ui/worklet/RectangularMembraneKernel.js",
         "js/app/midi-ui/worklet/RectangularMembraneProcessor.js",
+        "js/app/midi-ui/worklet/ResonatorMorphKernel.js",
         "js/app/midi-ui/worklet/RingModulatorKernel.js",
         "js/app/midi-ui/worklet/SidechainProcessors.js",
         "js/app/midi-ui/worklet/SpatialTextureKernel.js",
@@ -219,6 +220,7 @@
         "js/app/resources/OwnedPcmVerification.js",
         "js/app/resources/OwnedSourceBankComputation.js",
         "js/app/resources/OwnedSourceBankData.js",
+        "js/app/resources/ResonatorMorphReference.js",
         "js/app/resources/ResourceBudget.js",
         "js/app/resources/ResourceRetirement.js",
         "js/app/resources/SampleReadBankComputation.js",
@@ -310,8 +312,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 199,
-      "sha256": "cb00f215899082697e9b0f1bfd0895654a6993031000ec0f9172585f9dd38d91"
+      "fileCount": 201,
+      "sha256": "99393268724a569cbccb3b6d80061914f7445ba09c7e5e32c6b600c223b2c1bd"
     },
     {
       "id": "lemmings-timing-worker-source",

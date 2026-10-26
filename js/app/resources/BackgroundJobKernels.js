@@ -1,3 +1,4 @@
+import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
 import { analyzeResonatorMorph } from '../../midi/content/ResonatorMorph.js';
 import { compileSceneTerrainLayout } from '../procgen/SceneTerrainLayout.js';
 import { createShapeBodyEdgeField } from './ShapeBodyEdgeField.js';
@@ -172,6 +173,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
     return { value, inputBytes, nodes: metadata.nodes + input.planes.length, retainedBytes: 65536 };
+  }
+  if (kind === 'render-resonator-morph-reference') {
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Paired modal body reference' });
+    const value = await renderResonatorMorphReference(input, { signal, current, yieldControl, onProgress, estimatedPeakBytes }); guard(signal, current);
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: value.bytes.byteLength + canonicalDataText(value.manifest).bytes.length * 32 + 131072 };
   }
   if (kind === 'analyze-resonator-morph') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Resonator correspondence source' });

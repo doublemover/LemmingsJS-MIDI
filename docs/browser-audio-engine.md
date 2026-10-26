@@ -1943,3 +1943,30 @@ neutral/Panic cancel them; tail retains those inside its declared deadline.
 Commands actually submitted after detach still fail. The prepared replay records
 canceled/retained sequence IDs and never mutates the captured history. These
 additional scheduling fixtures are authored but unrun.
+
+
+The paired resonator primitive retains one private complex state per reviewed
+named slot, with at most eight slots in its initial profile. Frequency and
+amplitude T60 follow exact positive log curves; signed injection/observations use
+the common raised-cosine reference. Changing frequency rotates retained synthetic
+coordinates and positive damping contracts them. It is not a mechanical
+coordinate projection. Unmatched modes retain prepared private state behind their
+explicit injection/observation windows. MORPH alone injects no body work or
+semantic onset. Coefficients cache when MORPH is unchanged; moving-control device
+cost is unmeasured. Normalized finite force uses an authored scale, not Newtons.
+
+The discrete norm balance separates impulse work and positive modal loss, with
+finite/energy/output containment. Exact private-kernel cuts bind endpoint/map,
+algorithm and rate identity and validate CRC, poles, signed weights, energy,
+current control versus prior readout frontier, and DC state before mutation.
+Next-onset maps cannot change a ringing body; a reviewed paired-held policy is
+required explicitly. Dual-body blends and more than eight slots need their own
+admitted renderer. This kernel cut is not an arbitrary host restore guarantee.
+
+The worker-only `render-resonator-morph-reference` produces a six-second stereo
+Float32 WAV and PCM-hash manifest for explicit endpoint or out-and-back control
+programs. Two finite four-ms Hann forces are labeled control excitation, separate
+from any physical take or semantic intent replay. Existing PCM cue inspection
+can verify its layout. New rate/energy/reversal/cut/forged-state/Panic/control WAV
+fixtures are authored but unrun. Actual graph/route integration, moving-control
+worklet cost, PCM cuts, alias/decay and levelmatched listening remain pending.

@@ -5445,3 +5445,30 @@ A map export is an independently copied immutable payload. Its known active
 reader can outlive map-view metadata retirement under the existing export lease;
 that copy remains charged until its reader/digest retires. Unknown producer or
 export-budget acknowledgments still prevent a false complete receipt.
+
+
+### Continuation 216 — private paired-body state and control-reference rendering
+
+- Added an original retained unit-complex modal body for up to eight explicitly
+  reviewed named slots. Positive log frequency/amplitude-T60 and fixed common
+  signed coupling retain source identity through crossings, reversals and
+  unmatched windows. Morph changes rotate synthetic state without reseeding;
+  they supply no body input work or semantic onset. This is not mechanical
+  projection, perceptual equivalence or a device capacity claim.
+- Added bounded finite-force work/positive-loss accounting and containment, cached
+  unchanged coefficients, explicit body Panic and independent exact kernel cuts.
+  Restore validates profile/map/rate/CRC, signed poles/coupling, work/energy,
+  pending control versus previous readout and filter state before mutation.
+- Preserved distinct transition authority: next-onset maps cannot perform held
+  updates, while paired-held references require a newly reviewed held policy.
+  Blend and larger topology have no silent substitution in this renderer.
+- Added the worker-only bounded six-second endpoint/out-and-back Float32 WAV
+  reference path with explicit finite Hann excitation, PCM identity, private-state
+  receipts and no physical-take/acoustic qualification claim. It introduces no
+  MIDI owner or free-running note pattern and has not been invoked in this pass.
+- Authored unrun supported-rate norm/loss, rapid reversal, rest/no hidden work,
+  exact/pending cuts, forged state, profile policy, Panic/isolation, complete
+  control WAV and canceled/stale/workspace fixtures. Actual live graph/route and
+  reference-workflow integration, Metamorphic Bridge, full PCM/alias/decay/device
+  measurements and levelmatched listening remain pending for #1225. Static-only
+  checks precede the commit; consolidated runtime validation remains deferred.
