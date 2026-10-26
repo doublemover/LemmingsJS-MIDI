@@ -1,3 +1,4 @@
+import { performanceSceneHash } from './PerformanceScene.js';
 import { createPerformanceStageSession } from './PerformanceStageSession.js';
 import { createRectangularMembraneView } from '../../midi-ui/RectangularMembraneView.js';
 import { createSympatheticMapView } from '../../midi-ui/SympatheticMapView.js';
@@ -143,7 +144,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let masterCapture = null, soundSeedLab = null, shapeFoundry = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, rectangularMembraneView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let stageSession = null;
-  let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, sceneToolsPending = null;
+  let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, physicalLessonView = null, sceneToolsPending = null;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -890,10 +891,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
+    const physicalDocumentEpoch = documentGeneration;
     physicalPlayback = createProcgenPhysicalPlayback({ documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: receipt => {
+        physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
         if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
         if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
         else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
@@ -941,6 +944,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
             status(`Causal take became partial: ${receipt.reason}. Stop and inspect it.`); causalTakeErrorReported = true;
           }
         }
+        if (physicalLessonView?.isObserving()) physicalLessonView.observe({ batch, intents: intents || [], receipts: physicalReceiptBuffer || [], context: { documentEpoch: physicalDocumentEpoch, activeActors: next.world.activeCount, graph: next.world.physicalAuthoring?.graph || project.procgen.physicalGraph, releaseGesture: next.world.population?.releaseGesture, soundIdentity: effectiveSoundLanes(playbackProject().procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') } });
         physicalFeedback?.observe(batch, physicalPlayback?.engine.physicalAnalysis());
       }
       catch (error) {
@@ -1153,8 +1157,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed) return;
     if (!sceneBrowser) {
       sceneToolsPending ||= (async () => {
-        const [installed, loading, adapter, browsing, audio, rehearsal] = await Promise.all([
-          import('./PerformanceSceneInstalledCatalog.js'), import('./PerformanceSceneLoader.js'), import('./PerformanceSceneWorldAdapter.js'), import('./PerformanceSceneBrowser.js'), import('../../midi-ui/NativeInstrumentSchema.js'), import('./PerformanceSceneRehearsal.js')
+        const [installed, loading, adapter, browsing, audio, rehearsal, lessons, lessonView] = await Promise.all([
+          import('./PerformanceSceneInstalledCatalog.js'), import('./PerformanceSceneLoader.js'), import('./PerformanceSceneWorldAdapter.js'), import('./PerformanceSceneBrowser.js'), import('../../midi-ui/NativeInstrumentSchema.js'), import('./PerformanceSceneRehearsal.js'), import('./PhysicalLessonCatalog.js'), import('./PhysicalLessonView.js')
         ]);
         if (disposed) return;
         const getCatalog = getInstrumentCatalog || audio.getNativeInstrumentCatalog;
@@ -1164,7 +1168,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
           beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
           onState: refreshSceneCue });
+        const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return;
+        if (definitions.length) physicalLessonView = lessonView.createPhysicalLessonView({ document, window, definitions, cancelLoad: () => sceneLoader.cancel(), onStatus: status,
+          loadScene: async (reference, { signal }) => {
+            if (stageSession?.active()) throw new Error('Exit Stage before loading a lesson world.');
+            signal.throwIfAborted(); const row = sceneCatalog.registry.page({ limit: 64 }).rows.find(value => value.id === reference.id && value.version === reference.version && value.hash === reference.hash);
+            if (!row) throw new Error('The exact lesson scene version is unavailable.'); const scene = sceneCatalog.registry.resolve(row);
+            if (await performanceSceneHash(scene) !== reference.hash) throw new Error('The lesson source changed.'); signal.throwIfAborted(); sceneLoader.select(scene);
+            const prepared = await sceneLoader.prepare(); signal.throwIfAborted(); if (prepared.status !== 'ready') throw new Error('Lesson setup requirements are unavailable; the current world remains active.');
+            const applied = await sceneLoader.apply(); signal.throwIfAborted(); if (applied.status !== 'committed') throw new Error('Lesson setup was canceled.');
+            const world = runtime().world; return { sceneHash: reference.hash, worldId: world.worldId, generation: world.generation, documentEpoch: documentGeneration, graph: world.physicalAuthoring.graph, releaseGesture: world.population.releaseGesture, soundIdentity: effectiveSoundLanes(project.procgen.lanes).map(lane => lane.instrumentRef?.definitionHash || lane.instrumentPatchId).join('|') };
+          } });
         sceneBrowser = browsing.createPerformanceSceneBrowser({ document, window, registry: sceneCatalog.registry, loader: sceneLoader,
+          canTeachScene: scene => definitions.some(value => value.setupScene.id === scene.id && value.setupScene.version === scene.version), onLesson: scene => physicalLessonView?.open(scene.id),
           keepPreparedOnClose: () => stageSession?.active(), unavailableReason: sceneCatalog.reason, getLiveScene: () => project.procgen.sceneOrigin?.manifest || null, onSavedTakes: () => handlers.load(), onStatus: status });
       })().catch(error => { sceneToolsPending = null; throw error; });
       await sceneToolsPending;
@@ -1872,7 +1888,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'macro-gestures', run: () => macroGestures.dispose() },
         { name: 'sound-transactions', run: () => soundTransactions.dispose() },
         { name: 'stage-session', run: () => stageSession?.dispose() },
-        { name: 'scene-tools', run: async () => { await sceneToolsPending?.catch(() => {}); await sceneBrowser?.dispose(); await sceneLoader?.dispose(); } },
+        { name: 'scene-tools', run: async () => { await sceneToolsPending?.catch(() => {}); const lessons = physicalLessonView?.dispose(); if (lessons) { await lessons.completion; if (lessons.outcome !== 'complete') throw new Error('Lesson preparation retirement remains unresolved.'); } await sceneBrowser?.dispose(); await sceneLoader?.dispose(); } },
         { name: 'native-sound-selection', run: () => nativeSoundSelection?.dispose() },
         { name: 'physical-playback', run: () => physicalPlayback?.dispose() },
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },

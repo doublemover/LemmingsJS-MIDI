@@ -262,3 +262,17 @@ body.procgen-workstation {
 .studio-graft-anatomy[hidden] { display:none; }
 .studio-graft-anatomy > span { flex:1 1 140px; overflow-wrap:anywhere; }
 .studio-graft-anatomy > p { flex-basis:100%; }
+
+
+.studio-physical-lesson {
+  max-width: 72rem;
+  margin: 1rem auto;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
+.studio-physical-lesson > output { display: block; margin: 0.75rem 0; }
+.studio-physical-lesson > label { display: grid; gap: 0.4rem; }
+.studio-physical-lesson textarea { max-width: 100%; min-height: 4rem; }
+.studio-physical-lesson > div { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.studio-physical-lesson button { min-height: 2.75rem; }

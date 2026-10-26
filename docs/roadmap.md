@@ -4960,3 +4960,46 @@ macro equations, bounds and absence of audio sample playback. They are authored
 but unrun. Format, syntax/provenance and limited critical type checks are used;
 runtime/render/listening/device acceptance and complete nursery/comparison scene
 journeys remain deferred with the rest of the development batch.
+
+
+### Continuation 200 — observed physical practice lessons (#1110, #1097, #1151)
+
+Versioned LessonDefinition content now binds exact installed setup and zero-note
+scene hashes, prediction, allowed intervention, expected physical/musical
+comparison, separate optional hearing evidence, hints and a fresh zero-tick reset
+policy. The installed catalog authors the first two actual practice scenes;
+unsupported work/path/harmony and advanced journeys are not substituted with
+fictional setups. The scene browser exposes Learn this physical cause only for
+those installed definitions.
+
+One small lesson owner observes the existing complete causal batch stream. It
+requires a genuinely empty/no-onset control before each attempt, then an explicit
+prediction, unchanged baseline and actual source-linked pickup begins after the
+allowed physical change. Pickup lessons compare the real geometry; spacing
+lessons require both different actual birth intervals and different observed
+arrival intervals for new actors. Changed requested settings alone cannot pass.
+Arrival comparison is explicitly completed-tick precision. Source IDs must join
+current-world MotionCommitted facts and live snapshot actors. Stale documents,
+generations, gaps, incomplete batches and unrelated graph/sound changes cannot
+produce success. Evidence and receipt sets remain bounded; no tutorial timer,
+autoplay, hidden intervention, extra actor or independent sound source is added.
+
+The panel uses existing staged world preparation/publication and paused transport
+for explicit empty/setup/reset loads, plus Back/Skip/Close/re-entry. Epoch-fenced
+cancellation keeps obsolete prepares and receipts from grading another attempt.
+It does not enable local audio, MIDI, recording or any permission. Physical
+success, backend acceptance and user-reported hearing remain separate; accepted
+intents do not claim rendered PCM or human hearing. Visual evidence is available
+without audio. Small versioned progress persists under an independent local key,
+never inside musical projects; denied storage leaves a session-only result and
+replay still requires new evidence. Closing retains the user's playable world.
+
+Fixtures cover zero control, prediction and actual variation; unrelated/foreign
+causes, stale epochs/generations, missing batches, incomplete coverage; requested
+spacing without changed physical results; sound-off/rejected/stale receipts;
+separate progress reopening/denied storage; exact catalog references and observed
+Reset/Back/Skip/Close/re-entry. They are authored but unrun. Runtime/browser,
+controller and usability qualification, the remaining three authored lesson
+worlds, save/reopen/fossil/memory journeys and genuine human prediction/listening
+results remain pending. Only format, syntax/provenance and limited critical type
+checks are used during this development pass.

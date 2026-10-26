@@ -263,3 +263,22 @@ a background loop. Missing/discontinuous travel follows the existing end-voice
 policy. The compact anatomy keeps EXCITER, BODY and PICKUP/MIX separate, and saved
 patches retain exact component and traversal references. Audition uses an explicitly
 labeled control fixture; actual physical rendering and listening remain unqualified.
+
+
+The physical score browser offers **Learn this physical cause** for **One Foot,
+One Sound** and **Space Becomes Rhythm** when their exact pinned setup and Quiet
+Control scenes are installed. First load the empty control and explicitly Play:
+no actor must mean no new onset. Load the lesson setup paused, write a prediction,
+observe the unchanged baseline, then change the displayed physical cause using
+Physical authoring or Release gestures. A changed request alone is not success.
+The spacing lesson compares actual birth and arrival intervals at completed-tick
+precision. Use Reset for a fresh empty control, Back or Skip for free exploration.
+The panel never moves an actor or enables audio for you.
+
+Physical evidence, accepted sound and your optional report of hearing are shown
+separately. With audio unavailable, use the visual evidence path; it does not
+verify hearing. Progress is stored separately from musical projects, can survive
+reopening, and remains session-only when browser storage is denied. Replaying a
+lesson starts a fresh observed attempt. Work/path/harmony lessons and advanced
+material/memory journeys are still awaiting their actual setup scenes and
+qualification; two available practice lessons do not imply that full acceptance.
