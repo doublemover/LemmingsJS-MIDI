@@ -4,7 +4,8 @@ import { validateSeedLayerProfile } from '../../js/midi/content/SeedLayerProfile
 import { prepareSeedLayerPlan } from '../../js/app/midi-ui/SeedLayerPlan.js';
 import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 import { OwnedSeedLayerKernel } from '../../js/app/midi-ui/worklet/OwnedSeedLayerProcessor.js';
-import { BEGIN, UPDATE, END, APPLIED, ENDED, REJECTED, FAULTED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+import { BEGIN, UPDATE, END, LEASE, APPLIED, ENDED, REJECTED, FAULTED } from '../../js/app/midi-ui/worklet/OwnedSineProcessor.js';
+import { seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../js/midi/content/SeedLayerMotion.js';
 import { computeOwnedSourceBank } from '../../js/app/resources/OwnedSourceBankComputation.js';
 
 const identity = { engineArtifactHash: '1'.repeat(64), patchDefinitionHash: '2'.repeat(64), graphRevision: 1 };
@@ -47,6 +48,22 @@ describe('aligned seed composite source (authored runtime qualification deferred
     const patch = seedLayerDefinition(), kernel = create(); submit(kernel, [row(BEGIN, 0, 1, patch.parameters, pcm.descriptor), row(END, 256, 2, patch.parameters, pcm.descriptor, { 13: 64, 20: 1 }), row(UPDATE, 512, 3, patch.parameters, pcm.descriptor, { 15: 16, 20: 48, 14: 512 })]);
     render(kernel, 1024); expect(kernel.active[0]).to.equal(0); expect(kernel.source.cloudState.every(value => value === 0)).to.equal(true); expect(kernel.source.grains.every(value => value === 0)).to.equal(true); expect(render(kernel, 128)[0].every(value => value === 0)).to.equal(true);
     const natural = create(); submit(natural, [row(BEGIN, 0, 1, patch.parameters, pcm.descriptor)]); render(natural, 4000); expect(natural.active[0]).to.equal(0); expect(render(natural, 128)[0].every(value => value === 0)).to.equal(true);
+  });
+  for (const rate of [44100, 48000, 96000]) it('keeps Bowed Scrap births inside observed spans, snapshots mid-span and rests across gaps at ' + rate, () => {
+    const patch = seedLayerDefinition('bowed-scrap'), kernel = create('bowed-scrap', rate, patch);
+    submit(kernel, [row(BEGIN, 0, 1, patch.parameters, pcm.descriptor, { ...seedLayerContactBeginFields({ lastSequence: 0 }), 34: 0, 36: 0 })]);
+    expect(render(kernel, 128)[0].every(value => value === 0)).to.equal(true); expect(kernel.source.cloudState[29]).to.equal(0);
+    submit(kernel, [row(UPDATE, 128, 2, patch.parameters, pcm.descriptor, seedLayerContactMotionFields({ firstFrame: 128, endFrame: 512, from: 0, to: 0.25, sequence: 1 })), row(UPDATE, 512, 3, patch.parameters, pcm.descriptor, seedLayerContactMotionFields({ firstFrame: 512, endFrame: 768, from: 0.25, to: 0.25, sequence: 2 }))]);
+    render(kernel, 192); const bytes = new Uint8Array(kernel.stateByteLength()); kernel.snapshotInto(bytes, identity); const resumed = create('bowed-scrap', rate, patch); resumed.restoreFrom(bytes, identity);
+    expect(render(resumed, 500)).to.deep.equal(render(kernel, 500)); expect(kernel.source.cloudState[29]).to.be.greaterThan(0); const births = kernel.source.cloudState[29];
+    render(kernel, 2200); expect(kernel.source.cloudState[29]).to.equal(births); expect(kernel.source.cloudState[6]).to.equal(0); expect(kernel.active[0]).to.equal(1);
+    submit(kernel, [row(END, kernel.lastFrame, 4, patch.parameters, pcm.descriptor, { 13: 64 })]); render(kernel, 128); expect(kernel.active[0]).to.equal(0); expect(receipts(kernel).filter(receipt => receipt[0] === REJECTED || receipt[0] === FAULTED)).to.have.length(0);
+  });
+  it('extends an unreleased composite lease and refuses to revive a source after release', () => {
+    const patch = seedLayerDefinition('bowed-scrap'), kernel = create('bowed-scrap', 48000, patch);
+    submit(kernel, [row(BEGIN, 0, 1, patch.parameters, pcm.descriptor, { ...seedLayerContactBeginFields({ lastSequence: 0 }), 13: 64, 16: 1024 }), row(LEASE, 256, 2, patch.parameters, pcm.descriptor, { 16: 4096 })]); render(kernel, 1200);
+    expect(kernel.active[0]).to.equal(1); expect(kernel.source.state[21]).to.equal(4096); const bytes = new Uint8Array(kernel.stateByteLength()); kernel.snapshotInto(bytes, identity);
+    submit(kernel, [row(END, 1200, 3, patch.parameters, pcm.descriptor, { 13: 64 }), row(LEASE, 1220, 4, patch.parameters, pcm.descriptor, { 16: 8192 })]); render(kernel, 128); expect(kernel.active[0]).to.equal(0); expect(receipts(kernel).filter(receipt => receipt[0] === REJECTED)).to.have.length(1);
   });
   it('rejects a state cut from a different residual loss or modal-fit recipe without mutating the target', () => {
     const patch = seedLayerDefinition(), kernel = create(); submit(kernel, [row(BEGIN, 0, 1, patch.parameters, pcm.descriptor)]); render(kernel, 128); const bytes = new Uint8Array(kernel.stateByteLength()); kernel.snapshotInto(bytes, identity);

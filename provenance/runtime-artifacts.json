@@ -348,6 +348,7 @@
         "js/midi/content/SampleReadProfile.js",
         "js/midi/content/SampleTraversal.js",
         "js/midi/content/SealedBodyProfile.js",
+        "js/midi/content/SeedLayerMotion.js",
         "js/midi/content/SeedLayerProfile.js",
         "js/midi/content/ShapeBodyAsset.js",
         "js/midi/content/ShapeBodyRecipe.js",
@@ -376,8 +377,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 265,
-      "sha256": "b6046a06ac50736606d670584f0ed8b264a9367e700b0b6357ffb8c4c30dc775"
+      "fileCount": 266,
+      "sha256": "94ecadf5be3480c150ebd822119e678f023fcbcd44661603d35cb883416980e7"
     },
     {
       "id": "lemmings-timing-worker-source",

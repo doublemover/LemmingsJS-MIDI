@@ -82,7 +82,7 @@ const profiles = Object.freeze({
     buildId: 'owned-seed-layers-v1', abi: 'owned-seed-layers-f64-command-v1', workletUrl: new URL('./worklet/OwnedSeedLayerProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', auxiliaryBankIds: () => ['grain-window-v1'], storageBytes: seedLayerSourceBytes, heapEstimate: 2 * 1048576,
     seedDomain: 'decomposed-seed-grain-choices-v1', cost: () => 96, minHz: 20, maxHz: 2000, bendCents: 0, minimumControlSeconds: 0.008,
-    acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsExpression: (expression, voice) => (expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0) && (!voice.seedLayerMotion || !['activity01', 'position01', 'freezePosition'].some(key => expression[key] != null)),
     acceptsOnset: (p, frequency, pcm) => validOwnedPcmSetDescriptor(pcm) && pcm.banks.length === 3 && finite(frequency / p.rootHz * p.pitchRatio, 0.25, 4),
     expressions: [['position01', 8, 19], ['densityHz', 16, 20], ['grainMilliseconds', 32, 21], ['spread01', 64, 23], ['freezePosition', 128, 26], ['activity01', 256, 28], ['tone01', 512, 32]],
     beginFields: (p, seed, pcm) => ({ 18: seed, 19: p.position01, 20: p.densityHz, 21: p.grainMilliseconds, 22: p.pitchRatio, 23: p.spread01, 24: 0, 25: pcm.banks[0].sourceFrames, 26: p.freezePosition, 27: 0, 28: p.activity01, 29: 0, 30: p.reverse, 31: p.rootHz, 32: p.tone01, 34: p.transientGain01, 35: p.sustainedGain01, 36: p.residualGain01, 37: p.residualT60Seconds }) }),

@@ -4,6 +4,7 @@ import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/cont
 import { acceptsSampleCursorSegment, SAMPLE_CURSOR_DISCONTINUITIES } from '../../midi/content/SampleCursorProfile.js';
 import { prepareOwnedPcmSet } from './OwnedPcmSet.js';
 import { retireOwnedProcessorState } from './OwnedProcessorRetirement.js';
+import { planSeedLayerContactBegin, planSeedLayerContactMotion, advanceSeedLayerContactMotion, seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../midi/content/SeedLayerMotion.js';
 import { prepareSeedLayerPlan } from './SeedLayerPlan.js';
 import { validateSeedLayerProfile } from '../../midi/content/SeedLayerProfile.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
@@ -44,7 +45,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const performanceParameters = source.parameters, liveSourceIds = source.liveIds;
   const expressionIds = new Set(['pressure01', 'pan01', 'pitchOffsetCents', ...liveSourceIds]);
   const runtime = Object.freeze({ ...source.runtime, hostProtocolVersion: PROTOCOL, retirementProtocol: 1 });
-  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: isSampler, feedforwardSampleBody: isSampler, positionDrivenSamples: isSampler, canonicalTravelSamples: isSampler, releaseVelocity: isSampler, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), sealedWindModel: engineId === 'worklet-wind', pressureDrivenWind: engineId === 'worklet-wind', experimentalRegisterPolicy: engineId === 'worklet-wind', sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', decomposedSeedLayers: isLayered, livePitchUpdates: !['worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
+  const capabilities = Object.freeze({ ...sineCapabilities, maximumVoices: MAX_VOICES, sampleMaps: isSampler, feedforwardSampleBody: isSampler, positionDrivenSamples: isSampler, canonicalTravelSamples: isSampler, releaseVelocity: isSampler, offlineRender: source.offlineRender, continuousPhysicalBindings: isExtended && !source.requiresPCMSet && !['worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), sealedWindModel: engineId === 'worklet-wind', pressureDrivenWind: engineId === 'worklet-wind', experimentalRegisterPolicy: engineId === 'worklet-wind', sealedFrictionModel: engineId === 'worklet-friction', canonicalFrictionTravel: engineId === 'worklet-friction', decomposedSeedLayers: isLayered, canonicalContactGrains: isLayered, livePitchUpdates: !['worklet-seed-layers', 'worklet-texture', 'worklet-friction', 'worklet-wind'].includes(engineId), proceduralTextures: engineId === 'worklet-texture', feedforwardTextureBody: engineId === 'worklet-texture', canonicalTextureTravel: engineId === 'worklet-texture', restoration: source.restoration, perVoicePitch: engineId !== 'worklet-texture',
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
@@ -487,6 +488,8 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!source.acceptsOnset(parameters, frequency, pcmDescriptor, context.sampleRate) || isLayered && !samplePlan.acceptsOnset(frequency)) return reject('source-region-or-pitch-out-of-range', intent.voiceId);
     let circularTravel = null;
     if (source.travelPlanner) { try { circularTravel = source.travelPlanner(parameters, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, intent.voiceId); } }
+    let seedLayerMotion = null;
+    if (isLayered) { try { seedLayerMotion = planSeedLayerContactBegin(samplePlan, intent, targetFrame); } catch (error) { return reject(error.message, intent.voiceId); } }
     let sampleSelection = null;
     if (isSampler) { try { sampleSelection = samplePlan.select(intent); } catch (error) { return reject(error.message || 'sample-selection-unavailable', intent.voiceId); } }
     let traversal = null;
@@ -527,7 +530,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     catch { return reject('audio-resource-budget', intent.voiceId); }
     const token = epochToken(executionEpoch);
     if (token == null) { resourceLease?.release(); return reject('execution-identity-capacity', intent.voiceId); }
-    const voice = { owner, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence } : null, traversalIdentity: traversal?.ownerIdentity ?? null, sampleSelection, samplePitch: sampleSelection ? Object.freeze({ ...intent.pitch }) : null, positionFrontier: null, positionCommands: isSampler ? new Set() : null, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
+    const voice = { owner, seedLayerMotion, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence } : null, traversalIdentity: traversal?.ownerIdentity ?? null, sampleSelection, samplePitch: sampleSelection ? Object.freeze({ ...intent.pitch }) : null, positionFrontier: null, positionCommands: isSampler ? new Set() : null, audioLaneId: intent.audioLaneId ?? null, onsetLaneToken, laneTransferUntil: 0, renderCost, workloadClass: preview._workloadClass(owner), number: 0, voiceId: intent.voiceId, semanticGeneration: intent.generation, semanticEpoch: executionEpoch,
       resourceLease, initialLeaseEndFrame: endFrame, requestedLeaseEndFrame: endFrame, effectiveLeaseEndFrame: null,
       pendingLeases: new Map(), leaseFailure: null,
       epochToken: token, slot, slotToken: ++slotTokens[slot], id: ++preview._voiceSequence, start: targetFrame / context.sampleRate,
@@ -563,7 +566,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (sampleSelection) { const profile = samplePlan.entries[sampleSelection.zoneIndex].attack.cursorProfile; if (profile) voice.positionFrontier = { frame: targetFrame, released: false, length: 0, lastSequence: 0, lastEndFrame: targetFrame, lastEndPosition: traversal?.initialSourceFrame ?? profile.regionStartFrame, lastSeekFrame: -profile.slewFrames };
       if (traversal) { voice.positionFrontier.lastSequence = traversal.segment.sequence; voice.positionFrontier.lastEndFrame = traversal.segment.endOutputFrame; voice.positionFrontier.lastEndPosition = traversal.segment.endSourceFrame; } }
     const excitationSeed = ownedSourceSeed(source, patch, intent, performance);
-    const sourceFields = { ...source.beginFields(parameters, excitationSeed, pcmDescriptor, sampleSelection, circularTravel), ...sampleTraversalBeginFields(traversal) };
+    const sourceFields = { ...source.beginFields(parameters, excitationSeed, pcmDescriptor, sampleSelection, circularTravel), ...sampleTraversalBeginFields(traversal), ...seedLayerContactBeginFields(seedLayerMotion) };
     if (laneTapsEnabled) { try { sendLaneRoute(voice, voiceRouteMask(voice)); } catch { resourceLease?.release(); markFault('lane-route-port-failed'); return reject('lane-route-port-failed', intent.voiceId); } }
     const result = command(BEGIN, targetFrame, voice, { 6: frequency, 7: voice.peak, 8: pressure, 9: Math.max(-1, Math.min(1, pan + patch.pan01)),
       10: Math.round(transitionAttackSeconds(intent, parameters.attackSeconds) * context.sampleRate), 11: Math.round(parameters.decaySeconds * context.sampleRate),
@@ -585,7 +588,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     }
     if (circularTravel) return Object.freeze({ ...result, [source.travelReceiptKey]: circularTravel.receipt, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }) });
     if (sampleSelection) return Object.freeze({ ...result, region: sampleSelection.region, rateRatio: sampleSelection.rateRatio, readDerivative: sampleSelection.readDerivative, sourceRenderer: 'owned-sample', ...(traversal ? { sampleTraversal: traversal.receipt } : {}), sourceBank: pcmDescriptor, articulation: sampleSelection.articulation });
-    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) }) : result;
+    return isExtended ? Object.freeze({ ...result, performance, articulation: resolveOwnedArticulationPolicy({ engineId, parameters, seedLayers: patch.samplePatch?.seedLayers }), ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}), ...(seedLayerMotion ? { seedLayerContact: seedLayerMotion.receipt } : {}) }) : result;
   };
   const update = (voiceId, expression, targetFrame, executionEpoch = 'live', rampSeconds = smoothingSeconds) => {
     const voice = voices.get(keyFor(executionEpoch, voiceId)), now = frameNow();
@@ -625,6 +628,13 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   const updateSamplePosition = (...args) => queueSamplePosition(...args);
   const updateSampleTravel = (voiceId, intent, targetFrame, executionEpoch = 'live') => {
     const voice = voices.get(keyFor(executionEpoch, voiceId));
+    if (isLayered && samplePlan.profile.family === 'bowed-scrap') {
+      if (!voice?.seedLayerMotion || !ready || intent.voiceId !== voiceId || intent.generation !== voice.semanticGeneration || targetFrame < frameNow()) return reject('contact-motion-owner-unavailable', voiceId);
+      let motion, next; try { motion = planSeedLayerContactMotion(samplePlan, intent, targetFrame); next = advanceSeedLayerContactMotion(voice.seedLayerMotion, motion, Math.round(voice.releaseAt * context.sampleRate)); } catch (error) { return reject(error.message, voiceId); }
+      const outcome = command(UPDATE, motion.firstFrame, voice, seedLayerContactMotionFields(motion));
+      if (outcome.status === 'accepted') voice.seedLayerMotion = next;
+      return Object.freeze({ ...outcome, ...(outcome.status === 'accepted' ? { seedLayerMotion: motion.receipt } : {}) });
+    }
     if (!isSampler || !voice?.sampleSelection || !samplePlan.entries[voice.sampleSelection.zoneIndex].attack.traversal) return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-sample-travel-binding' });
     let planned; try { planned = planSampleTraversal(samplePlan.entries[voice.sampleSelection.zoneIndex].attack, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, voiceId); }
     if (planned.ownerIdentity !== voice.traversalIdentity || intent.voiceId !== voiceId || intent.generation !== voice.semanticGeneration) return reject('sample-travel-owner-or-discontinuity-changed', voiceId);
@@ -691,6 +701,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     const requestedReleaseFrames = Math.max(1, Math.round((release?.seconds ?? voice.release) * context.sampleRate));
     const deadline = Math.max(now + 1, Math.round(voice.end * context.sampleRate));
     if (voice.circularTravel && release?.force !== true) frame = Math.max(frame, voice.circularTravel.lastEndFrame);
+    if (voice.seedLayerMotion && release?.force !== true) frame = Math.max(frame, voice.seedLayerMotion.lastEndFrame);
     if (voice.traversalIdentity && release?.force !== true) frame = Math.max(frame, voice.positionFrontier.lastEndFrame);
     frame = Math.min(frame, deadline - 1);
     const releaseFrames = Math.min(requestedReleaseFrames, Math.max(1, deadline - frame));

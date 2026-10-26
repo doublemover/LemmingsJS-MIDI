@@ -129,7 +129,6 @@ const validateInstrumentPatchV2 = (input, descriptor) => {
     rendererProfile: engine.capabilities.advancedSampleMaps === true ? OWNED_SAMPLE_MAP_PROFILE : NATIVE_SAMPLE_MAP_PROFILE });
   if (input.seedLayers != null && input.engineId !== 'worklet-seed-layers' || input.engineId === 'worklet-seed-layers' && input.seedLayers == null) throw new Error('Decomposed seed layers require their explicit owned composite engine.');
   const seedLayers = input.seedLayers == null ? null : validateSeedLayerProfile(input.seedLayers, sampleRefs);
-  if (seedLayers?.family === 'bowed-scrap') throw new Error('Bowed Scrap contact-begin admission is not available in this engine revision.');
   const macros = validateInstrumentMacros(input.macros, engine.parameters);
   if (engine.capabilities.continuousMacroPerformance === false && macros.some(macro => macro.mode === 'continuous')) throw new Error('Continuous macros are unavailable on this engine.');
   if (macros.some(macro => macro.targets.some(target => schema.get(target.parameter).capability && !engine.capabilities[schema.get(target.parameter).capability]))) throw new Error('Unsupported macro target capability.');

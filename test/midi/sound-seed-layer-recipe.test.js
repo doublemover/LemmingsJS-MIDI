@@ -15,14 +15,14 @@ const input = async (transform = 'hammer-cloud') => {
   const layerMaterials = patch.seedLayers.components.map(component => ({ manifest: { ...original(), derivedTransform: { ...recipe, recipeHash, component: component.role } }, assetHash: component.assetHash, byteLength: 19264 }));
   let modalFit = null;
   if (transform === 'hollow-tool') { const modalRecipe = { algorithmRevision: 'coarse-local-stereo-decay-fit-v1', parentAssetHash: layerHashes[1] }; modalFit = { parentAssetHash: layerHashes[1], recipe: modalRecipe, recipeHash: await hashData(modalRecipe), estimate: { schema: 'lemmings-modal-estimate/v1', modes: seedLayerDefinition('hollow-tool').seedLayers.bodyFit.modes } }; }
-  return { manifest: original(), assetHash: recipe.parentAssetHash, byteLength: 19264, transform, pitch: { mode: 'pitched', rootCents: 6900 }, decomposition, layerMaterials, modalFit };
+  return { manifest: original(), assetHash: recipe.parentAssetHash, byteLength: 19264, transform, pitch: { mode: 'pitched', rootCents: 6900 }, decomposition, layerMaterials, modalFit, traversalBinding: transform === 'bowed-scrap' ? seedLayerDefinition('bowed-scrap').seedLayers.motionBinding : null };
 };
 const rejects = async (promise, message) => { let failure; try { await promise; } catch (error) { failure = error; } expect(failure?.message).to.include(message); };
 
 describe('saved three-child sound-seed recipes (runtime and listening acceptance deferred)', () => {
   let descriptor;
   before(async () => { [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-seed-layers', engineVersion: 1, artifactHash: '7'.repeat(64) }]); });
-  for (const transform of ['hammer-cloud', 'hollow-tool']) it('compiles the entire ' + transform + ' source inventory with one owned onset and explicit creative ancestry', async () => {
+  for (const transform of ['hammer-cloud', 'bowed-scrap', 'hollow-tool']) it('compiles the entire ' + transform + ' source inventory with one owned onset and explicit creative ancestry', async () => {
     const source = await input(transform), result = await createSoundSeedLayerRecipe(source), same = await createSoundSeedLayerRecipe(source);
     expect(result.contractHash).to.equal(same.contractHash); expect(result.contract.parentBackingLayers).to.equal(0); expect(result.contract.sourceCost.worstCasePerSourceUnits).to.equal(96);
     expect(result.source.files.filter(file => file.kind === 'sample').map(file => file.sha256)).to.deep.equal(layerHashes); expect(result.source.files.some(file => file.sha256 === source.assetHash)).to.equal(false);

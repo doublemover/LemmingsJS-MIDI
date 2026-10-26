@@ -9,6 +9,7 @@ import { SOUND_CONTENT_CONTROL_FIXTURE, seedLayerControlFixture, TEXTURE_CONTROL
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
 import { prepareSeedLayerPlan } from './SeedLayerPlan.js';
+import { seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../midi/content/SeedLayerMotion.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
 import { encodeOwnedAudioWav } from './OwnedAudioWav.js';
@@ -53,14 +54,17 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   for (let index = 0; index < fixture.events.length; index++) {
     const event = fixture.events[index], offset = index * WIDTH, expression = event.expression || {};
     packet[offset] = 1; packet[offset + 1] = Math.round(event.seconds * sampleRate); packet[offset + 2] = index + 1;
-    packet[offset + 3] = event.kind === 'begin' ? BEGIN : ['update', 'position'].includes(event.kind) ? UPDATE : END; packet[offset + 4] = 0; packet[offset + 5] = 1; packet[offset + 17] = 1;
+    packet[offset + 3] = event.kind === 'begin' ? BEGIN : ['update', 'position', 'seed-layer-motion'].includes(event.kind) ? UPDATE : END; packet[offset + 4] = 0; packet[offset + 5] = 1; packet[offset + 17] = 1;
     if (event.kind === 'begin') {
       if (!owned.acceptsOnset(values, frequency(event.pitchCents), pcmDescriptor, sampleRate)) throw new Error('Offline source onset is out of range.');
       for (const [field, value] of Object.entries(owned.beginFields(values, seed, pcmDescriptor, selected, ['worklet-texture', 'worklet-friction'].includes(owned.id) ? owned.travelPlanner(values, { controlFixture: true }, packet[offset + 1], sampleRate) : null))) packet[offset + Number(field)] = value;
+      if (event.seedLayerControlFixture) for (const [field, value] of Object.entries(seedLayerContactBeginFields({ lastSequence: 0 }))) packet[offset + Number(field)] = value;
       packet[offset + 6] = frequency(event.pitchCents); packet[offset + 7] = event.velocity01 * values.gain01 * patch.mix.gain01;
       packet[offset + 8] = expression.pressure01; packet[offset + 9] = Math.max(-1, Math.min(1, expression.pan01 + patch.mix.pan01));
       packet[offset + 10] = Math.round(values.attackSeconds * sampleRate); packet[offset + 11] = Math.round(values.decaySeconds * sampleRate);
       packet[offset + 12] = values.sustain01; packet[offset + 13] = releaseFrames; packet[offset + 16] = frames + 128;
+    } else if (event.kind === 'seed-layer-motion') {
+      for (const [field, value] of Object.entries(seedLayerContactMotionFields({ firstFrame: packet[offset + 1], endFrame: Math.round((event.seconds + event.spanSeconds) * sampleRate), from: event.from, to: event.to, sequence: event.sequence }))) packet[offset + Number(field)] = value;
     } else if (event.kind === 'position') {
       const segment = event.segment;
       packet[offset + 15] = 8; packet[offset + 18] = segment.firstOutputFrame; packet[offset + 19] = segment.endOutputFrame;

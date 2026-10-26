@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { createCausalMusicEngine, validateCausalInstrumentGraph } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
-import { createSeedLayerContactBinding, planSeedLayerContactBegin, planSeedLayerContactMotion } from '../../js/midi/content/SeedLayerMotion.js';
+import { createSeedLayerContactBinding, planSeedLayerContactBegin, planSeedLayerContactMotion, advanceSeedLayerContactMotion, SEED_LAYER_CONTACT_FIXTURE } from '../../js/midi/content/SeedLayerMotion.js';
 import { prepareSeedLayerPlan } from '../../js/app/midi-ui/SeedLayerPlan.js';
 import { seedLayerDefinition, seedLayerPCM } from '../helpers/seedLayers.js';
 
@@ -23,6 +23,8 @@ describe('contact-owned seed travel admission (deferred runtime fixtures)', () =
     const updates = [outbound, rest, returned].flat(); expect(updates.map(intent => intent.kind)).to.deep.equal(['update', 'update', 'update']); expect(new Set([...beginnings, ...updates, ...ended].map(intent => intent.voiceId)).size).to.equal(1); expect(ended.map(intent => intent.kind)).to.deep.equal(['end']);
     const spans = updates.map((intent, index) => planSeedLayerContactMotion(plan, intent, index * 960)); expect(spans.map(span => span.ownerIdentity)).to.deep.equal(new Array(3).fill(admitted.ownerIdentity));
     expect(spans.map(span => [span.from * 2400, span.to * 2400])).to.deep.equal([[0, 200], [200, 200], [200, 300]]); expect(spans.every(span => span.receipt.semanticBegins === 0)).to.equal(true);
+    let frontier = admitted; for (const span of spans) frontier = advanceSeedLayerContactMotion(frontier, span); expect(frontier.segments).to.equal(3);
+    for (const changed of [{ ...spans[2], sequence: frontier.lastSequence }, { ...spans[2], sequence: frontier.lastSequence + 1, ownerIdentity: 'other-contact' }, { ...spans[2], sequence: frontier.lastSequence + 1, firstFrame: frontier.lastEndFrame, from: 0 }]) expect(() => advanceSeedLayerContactMotion(frontier, changed)).to.throw('changed contact owner');
     engine.dispose(); reopened.dispose();
   });
   it('does not create a transient from arbitrary motion or continue a contact after unknown coverage or another span', () => {
@@ -36,5 +38,11 @@ describe('contact-owned seed travel admission (deferred runtime fixtures)', () =
     for (const change of [value => { value.sourceKind = 'MotionCommitted'; }, value => { value.contactTravel.orientation = 'signedX'; }, value => { value.route = 'midi'; }, value => { value.contactTravel.sustain = false; }]) {
       const value = mapping(); change(value); expect(() => validateCausalInstrumentGraph({ version: 1, revision: 1, instruments: [value] })).to.throw(); expect(() => createSeedLayerContactBinding(value)).to.throw();
     }
+  });
+  it('keeps an explicitly authored private fixture separate from physical contact evidence', () => {
+    const fixture = { controlFixture: true, seedLayerControlFixture: SEED_LAYER_CONTACT_FIXTURE, voiceId: 'fixture', generation: 1 }, begin = planSeedLayerContactBegin(plan, fixture, 0);
+    const motion = planSeedLayerContactMotion(plan, { ...fixture, seedLayerControlMotion: { schema: 'lemmings-seed-layer-control-motion/v1', firstFrame: 0, endFrame: 960, from: 0, to: 0.25, sequence: 1 } }, 0);
+    expect(begin.receipt.physicalTakeEvidence).to.equal(false); expect(motion.receipt).to.include({ physicalTakeEvidence: false, acousticReceipt: false, semanticBegins: 0 }); expect(advanceSeedLayerContactMotion(begin, motion).segments).to.equal(1);
+    expect(() => planSeedLayerContactBegin(plan, { ...fixture, controlFixture: false }, 0)).to.throw('real completed contact begin');
   });
 });

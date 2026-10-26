@@ -5,9 +5,9 @@ import { canonicalDataText, cloneData, freezeData, hashData, hashDataText } from
 const fail = message => { throw new TypeError('Layered seed recipe: ' + message); };
 const component = (id, values) => ({ id, role: id, parameters: Object.fromEntries(Object.entries(values).map(([key, [value, unit]]) => [key, { value, unit }])) });
 
-export async function createSoundSeedLayerRecipe({ manifest, assetHash, byteLength, transform = 'hammer-cloud', pitch, decomposition, layerMaterials, modalFit = null } = {}) {
-  if (!['hammer-cloud', 'hollow-tool'].includes(transform) || pitch?.mode !== 'pitched' || decomposition?.schema !== 'lemmings-seed-decomposition/v1' || decomposition.parentAssetHash !== assetHash || decomposition.recipe?.parentAssetHash !== assetHash || decomposition.recipeHash !== await hashData(decomposition.recipe) || !Array.isArray(layerMaterials) || layerMaterials.length !== 3) fail('Choose the exact ready linked-stereo decomposition, three immutable children and an explicit grain/body root.');
-  if (transform === 'hammer-cloud' && modalFit != null) fail('A fitted replacement must be explicitly named Hollow Tool.');
+export async function createSoundSeedLayerRecipe({ manifest, assetHash, byteLength, transform = 'hammer-cloud', pitch, decomposition, layerMaterials, modalFit = null, traversalBinding = null } = {}) {
+  if (!['hammer-cloud', 'bowed-scrap', 'hollow-tool'].includes(transform) || pitch?.mode !== 'pitched' || decomposition?.schema !== 'lemmings-seed-decomposition/v1' || decomposition.parentAssetHash !== assetHash || decomposition.recipe?.parentAssetHash !== assetHash || decomposition.recipeHash !== await hashData(decomposition.recipe) || !Array.isArray(layerMaterials) || layerMaterials.length !== 3) fail('Choose the exact ready linked-stereo decomposition, three immutable children and an explicit grain/body root.');
+  if (transform !== 'hollow-tool' && modalFit != null) fail('A fitted replacement must be explicitly named Hollow Tool.');
   const base = await createSoundSeedRecipe({ manifest, assetHash, byteLength, pitch, transform: 'hammer-seed' });
   const rootHz = 440 * 2 ** ((pitch.rootCents - 6900) / 1200);
   if (rootHz < 20 || rootHz > 2000) fail('The declared grain/body root exceeds the owned source register.');
@@ -25,7 +25,7 @@ export async function createSoundSeedLayerRecipe({ manifest, assetHash, byteLeng
   const seedLayers = validateSeedLayerProfile({ schema: SEED_LAYER_SCHEMA, revision: SEED_LAYER_REVISION, family: transform, parentAssetHash: assetHash, decompositionRevision: decomposition.recipe.algorithmRevision,
     decompositionRecipeHash: decomposition.recipeHash, parentRegionFrames: decomposition.recipe.regionFrames,
     components: layerMaterials.map((material, index) => ({ role: SEED_LAYER_ROLES[index], assetHash: material.assetHash, sourceFrames: material.manifest.frames, sourceRate: material.manifest.sampleRate, channels: 2 })),
-    reconstruction: decomposition.reconstruction, motionBinding: null, bodyFit }, sampleRefs);
+    reconstruction: decomposition.reconstruction, motionBinding: transform === 'bowed-scrap' ? traversalBinding : null, bodyFit }, sampleRefs);
   const contract = freezeData({ ...base.contract, transform, algorithmRevision: SEED_LAYER_REVISION, seedLayers, decomposition: decomposition.recipe,
     ...(modalFit ? { modalFit: { recipe: modalFit.recipe, estimate: modalFit.estimate } } : {}),
     childOwnership: 'one-semantic-onset;one-source-slot;three-private-children;coherent-end-and-forced-retirement', fixedBankSet: ['sample-read-v1', 'grain-window-v1'],
@@ -33,11 +33,11 @@ export async function createSoundSeedLayerRecipe({ manifest, assetHash, byteLeng
     quality: transform === 'hollow-tool' ? 'creative-modal-replacement-of-sustained-component;not-accurate-reconstruction' : 'granular-revoice;not-transparent-time-warp-or-perceptual-source-isolation' });
   const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), source = cloneData(base.source), recipe = source.recipes[0];
   const recipeId = 'seed.layers.' + contractHash.slice(0, 24), sampleTemplate = source.files[0], dataTemplate = source.files[1];
-  source.pack.id = recipe.id = recipeId; source.pack.name = recipe.name = transform === 'hammer-cloud' ? 'Hammer / Cloud · three owned seed layers' : 'Hollow Tool · creative fitted sustained-body hybrid';
+  source.pack.id = recipe.id = recipeId; source.pack.name = recipe.name = transform === 'hammer-cloud' ? 'Hammer / Cloud · three owned seed layers' : transform === 'bowed-scrap' ? 'Bowed Scrap · one real contact with observed-motion grains' : 'Hollow Tool · creative fitted sustained-body hybrid';
   recipe.tags = ['sound-seed', transform, 'three-owned-children', 'creative-revoice']; recipe.engine = { id: 'worklet-seed-layers', version: 1 }; recipe.seedLayers = seedLayers; delete recipe.sampleMap;
   recipe.sampleRefs = sampleRefs; recipe.dependencies = [...sampleRefs.map(ref => ref.sha256), contractHash];
   recipe.components = [component('exciter', { pitchRatio: [1, 'ratio'], rootHz: [rootHz, 'Hz'], reverse: [0, 'enum'], transientGain01: [1, 'amplitude-linear'], residualGain01: [1, 'amplitude-linear'], residualT60Seconds: [0.3, 's'] }),
-    component('resonator', { sustainedGain01: [1, 'amplitude-linear'], position01: [0.5, 'normalized'], densityHz: [16, 'Hz'], grainMilliseconds: [65, 'ms'], spread01: [0.15, 'normalized'], activity01: [1, 'normalized'], tone01: [0.65, 'normalized'], freezePosition: [0, 'enum'] }),
+    component('resonator', { sustainedGain01: [1, 'amplitude-linear'], position01: [transform === 'bowed-scrap' ? 0 : 0.5, 'normalized'], densityHz: [16, 'Hz'], grainMilliseconds: [65, 'ms'], spread01: [0.15, 'normalized'], activity01: [transform === 'bowed-scrap' ? 0 : 1, 'normalized'], tone01: [0.65, 'normalized'], freezePosition: [0, 'enum'] }),
     component('envelope', { attackSeconds: [0, 's'], decaySeconds: [0, 's'], sustain01: [1, 'ratio'], releaseSeconds: [bodyFit ? Math.min(4, Math.max(...bodyFit.modes.map(mode => mode.t60Seconds)) * 1.5) : 0.15, 's'] }),
     component('output', { gain01: [0.6, 'amplitude-linear'], pan01: [0, 'normalized'] })];
   recipe.macros = [];

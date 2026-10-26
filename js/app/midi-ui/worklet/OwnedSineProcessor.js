@@ -247,6 +247,7 @@ class OwnedSineKernel {
         this.receipt(REJECTED, sequence, slot, token, frame, 11); return;
       }
       if (queue[16] <= voices[at + 16]) { this.receipt(REJECTED, sequence, slot, token, frame, 12); return; }
+      if (this.source?.renewLease && !this.source.renewLease(slot, queue[16], frame)) { this.receipt(REJECTED, sequence, slot, token, frame, 11); return; }
       voices[at + 16] = queue[16];
     }
     voices[at + 26] = frame; voices[at + 27] = sequence;

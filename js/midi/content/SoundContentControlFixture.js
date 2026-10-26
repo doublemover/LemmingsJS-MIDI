@@ -1,4 +1,5 @@
 import { freezeData } from '../../core/CanonicalData.js';
+import { SEED_LAYER_CONTACT_FIXTURE } from './SeedLayerMotion.js';
 
 export const SOUND_CONTENT_CONTROL_FIXTURE = freezeData({ schema: 'lemmings-control-audition/v1', id: 'pressure-pan-pitch-v1', source: 'authored-control-fixture',
   physicalTakeEvidence: false, events: [
@@ -26,6 +27,11 @@ export function seedLayerControlFixture(patch) {
   const material = patch?.seedLayers?.components?.[0], root = patch?.parameters?.rootHz ?? 261.6255653005986;
   if (!material || !Number.isSafeInteger(material.sourceFrames) || !Number.isSafeInteger(material.sourceRate) || material.sourceFrames < 2 || material.sourceRate < 8000 || material.sourceFrames > material.sourceRate * 8 || !Number.isFinite(root) || root < 20 || root > 2000) throw new TypeError('Layered audition requires exact component timing and an explicit grain/body root.');
   const hold = Math.min(8, material.sourceFrames / material.sourceRate + 0.02);
+  if (patch.seedLayers.family === 'bowed-scrap') return freezeData({ schema: 'lemmings-control-audition/v1', id: SEED_LAYER_CONTACT_FIXTURE, source: 'authored-control-fixture', physicalTakeEvidence: false,
+    events: [{ kind: 'begin', seconds: 0, pitchCents: 6900 + 1200 * Math.log2(root / 440), velocity01: 0.6, expression: { pressure01: 0.6, pan01: 0 }, seedLayerControlFixture: SEED_LAYER_CONTACT_FIXTURE },
+      { kind: 'seed-layer-motion', seconds: 0, spanSeconds: hold / 4, from: 0, to: 0.25, sequence: 1 },
+      { kind: 'seed-layer-motion', seconds: hold / 4, spanSeconds: hold / 4, from: 0.25, to: 0.25, sequence: 2 },
+      { kind: 'seed-layer-motion', seconds: hold / 2, spanSeconds: hold / 4, from: 0.25, to: 0.5, sequence: 3 }, { kind: 'end', seconds: hold }] });
   return freezeData({ schema: 'lemmings-control-audition/v1', id: 'three-aligned-seed-children-one-onset-v1', source: 'authored-control-fixture', physicalTakeEvidence: false,
     events: [{ kind: 'begin', seconds: 0, pitchCents: 6900 + 1200 * Math.log2(root / 440), velocity01: 0.6, expression: { pressure01: 0.6, pan01: 0 } },
       { kind: 'update', seconds: hold / 3, expression: { pressure01: 0.8, pan01: -0.25 } },

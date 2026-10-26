@@ -488,7 +488,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         operationKind: sourceKind === 'TerrainWorkCommitted' ? instrument.operationKind : null,
         causeKind: ['ContactResolved', 'ContactSpanBegan'].includes(sourceKind) ? instrument.causeKind : null,
         gateX: sourceKind === 'MotionCommitted' ? instrument.gateX ?? 40 : null,
-        articulation: sourceKind === 'MotionCommitted' ? instrument.articulation : null });
+        articulation: sourceKind === 'MotionCommitted' ? instrument.articulation : null, contactTravel: sourceKind === 'ContactSpanBegan' ? instrument.contactTravel : null });
       const renderPhysicalList = () => {
         const needle = (state.physicalSearch || '').trim().toLowerCase();
         const matching = graph.instruments.filter(instrument => `${instrument.id} ${instrument.sourceKind} ${instrument.role}`.toLowerCase().includes(needle));

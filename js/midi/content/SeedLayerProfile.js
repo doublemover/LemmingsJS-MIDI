@@ -23,7 +23,7 @@ export function validateSeedLayerProfile(raw, sampleRefs) {
   if (!keys(r, ['comparedFrames', 'channels', 'maximumAbsoluteError', 'rmsError', 'sourceRms', 'relativeRmsError', 'evidence']) || r.comparedFrames !== frames || r.channels !== 2 || !finite(r.maximumAbsoluteError, 0, SEED_LAYER_NEUTRAL_TOLERANCE) || !finite(r.rmsError, 0, SEED_LAYER_NEUTRAL_TOLERANCE) || !finite(r.sourceRms, 0, 16) || !Number.isFinite(r.relativeRmsError) || r.relativeRmsError < 0 || r.evidence !== 'measured-neutral-Float32-sum-after-declared-crop;not-perceptual-source-isolation') fail('Neutral reconstruction must have its measured bounded error receipt before a creative layered recipe.');
   if (value.family === 'bowed-scrap') {
     value.motionBinding = validateSampleTraversalBinding(value.motionBinding);
-    if (value.motionBinding.mode !== 'one-way-rubbing' || value.motionBinding.lifetimeScope !== 'contactSpan') fail('Bowed Scrap requires actual contact-span motion, including its rests and end.');
+    if (value.motionBinding.mode !== 'one-way-rubbing' || value.motionBinding.lifetimeScope !== 'contactSpan' || value.motionBinding.originPixels !== 0) fail('Bowed Scrap requires actual contact-span motion, including its rests and end.');
   } else if (value.motionBinding != null) fail('A strike family cannot silently acquire a continuous motion source.');
   else value.motionBinding = null;
   if (value.family === 'hollow-tool') {

@@ -6159,3 +6159,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   loss and incompatible-policy fixtures. This commit supplies observations and
   planning only; Bowed Scrap remains unavailable until its DSP latch, live and
   offline command adapters and explicit audition controls are connected.
+
+
+### Continuation 241 — Bowed Scrap live/offline contact latch (#1178)
+
+- Connected the real contact-begin proof and completed travel spans to the same
+  owned three-child source. Only that contact begin starts the transient. The
+  sustained child interpolates its finite grain-window coordinate within each
+  admitted ordered span and derives birth activity from observed displacement;
+  rest, missing spans and gaps open no new births. Grain pitch stays independent.
+  Source end closes every input; existing bounded grain/release tails retain the
+  same root owner. A held contact may outlive the transient/residual material.
+- Live and causal/offline adapters check contact identity, event order, position
+  continuity, finite coordinates and lease coverage before the existing command
+  transport. Snapshots carry the bounded motion latch and compare it with child
+  position/activity, pitch, core frame and owner deadline. Accepted lease renewal
+  now notifies this composite source through an optional shared-kernel hook;
+  released sources cannot use renewal to revive input or extend their tail.
+- Added an explicit physical-scene editor template, reviewed-save requirement,
+  contact mapping choice and Bowed Scrap recipe in the seed lab. Private audible
+  and offline control fixtures use a separately typed authored contact/motion
+  program with `physicalTakeEvidence:false`; it cannot be mislabeled as observed
+  world contact. The ordinary scene/contact end owner remains authoritative.
+- Extended authored unrun three-rate mid-span state, rest/gap birth closure,
+  held-contact EOF, lease renewal/revival rejection, false evidence and complete
+  three-family recipe fixtures. Formatting, syntax/import checks, critical types
+  and static provenance pass (10 components / 335 files). No runtime, browser,
+  audio/listening, benchmark or full-suite validation was run. The three layer
+  families are implemented; #1178 acceptance and the remaining backlog are open.

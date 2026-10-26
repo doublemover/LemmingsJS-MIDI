@@ -45,9 +45,9 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       .finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
   const prepare = (candidate, { transform, pitch, modalFit = null, decomposition = null, layerComponents = null, graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, isCurrent = () => true } = {}) => run('compiling', async (operation, checkOwner) => {
-    const layered = ['hammer-cloud', 'hollow-tool'].includes(transform);
+    const layered = ['hammer-cloud', 'bowed-scrap', 'hollow-tool'].includes(transform);
     if (layered && (!Array.isArray(layerComponents) || layerComponents.length !== 3 || layerComponents.some(entry => !entry?.metadata?.().assetReady))) throw fail('Prepare the complete current decomposition before compiling a layered seed.');
-    const motionTarget = ['motion-body-graft', 'texture-body-graft', 'sealed-friction-body-graft'].includes(transform) ? targetIdentity() : null;
+    const motionTarget = ['bowed-scrap', 'motion-body-graft', 'texture-body-graft', 'sealed-friction-body-graft'].includes(transform) ? targetIdentity() : null;
     if (motionTarget === 'null') throw fail('A motion body requires an explicit document and lane target identity.');
     const check = () => { checkOwner(); if (!isCurrent() || !candidate.metadata().assetReady || layered && layerComponents.some(entry => !entry.metadata().assetReady)) throw fail('The seed draft changed while preparing its instrument.'); if (motionTarget && targetIdentity() !== motionTarget) throw fail('The motion mapping document or lane target changed while preparing its instrument.'); };
     let loan = null, job = null, workspace = null, next = null, prepared = null;

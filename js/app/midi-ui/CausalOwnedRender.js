@@ -1,5 +1,6 @@
 import { planSampleTraversal, sampleTraversalBeginFields } from '../../midi/content/SampleTraversal.js';
 import { acceptsSampleCursorSegment } from '../../midi/content/SampleCursorProfile.js';
+import { planSeedLayerContactBegin, planSeedLayerContactMotion, advanceSeedLayerContactMotion, seedLayerContactBeginFields, seedLayerContactMotionFields } from '../../midi/content/SeedLayerMotion.js';
 import { prepareSeedLayerPlan } from './SeedLayerPlan.js';
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { verifyOwnedPcmSetPayload } from '../resources/OwnedPcmSetVerification.js';
@@ -149,9 +150,11 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
         try { nativeSourcePlan = owned.planOnset({ fundamentalHz: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), sampleRate, parameters: values, pitchOffsetCents: expression.pitchOffsetCents ?? 0 }); }
         catch { throw failure('native-source-preflight', 'Captured onset exceeds the native source register or bend profile.', { intentId: intent.intentId }); }
       }
-      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = { ...owned.beginFields(values, seed, pcmDescriptor, samplePlan, circularTravel), ...sampleTraversalBeginFields(traversal) };
+      let seedLayerMotion = null;
+      if (seedLayerPlan) { try { seedLayerMotion = planSeedLayerContactBegin(seedLayerPlan, intent, frame); } catch (error) { throw failure('seed-contact-preflight', error.message, { intentId: intent.intentId }); } }
+      const seed = samplePlan?.region.selectionSeed ?? (owned.native ? null : ownedSourceSeed(owned, patch, intent, performance)), sourceFields = { ...owned.beginFields(values, seed, pcmDescriptor, samplePlan, circularTravel), ...sampleTraversalBeginFields(traversal), ...seedLayerContactBeginFields(seedLayerMotion) };
       const ownReleaseFrames = Math.max(1, Math.round(values.releaseSeconds * sampleRate));
-      voice = { key, laneId, routeLaneId: laneId, laneTransferUntil: 0, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: { ...intent, performanceControls: admittedTargetControls }, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
+      voice = { key, seedLayerMotion, laneId, routeLaneId: laneId, laneTransferUntil: 0, start: frame, order, releaseAt: null, end: null, slot: -1, token: 0, begin: { ...intent, performanceControls: admittedTargetControls }, baseFrequency: frequency / 2 ** ((expression.pitchOffsetCents ?? 0) / 1200), events: [],
         parameters: values, circularTravel: circularTravel ? { ownerIdentity: circularTravel.ownerIdentity, lastEndFrame: circularTravel.endFrame, lastPhase: circularTravel.to, lastSequence: circularTravel.sequence, segments: 1 } : null, nativeSourcePlan, samplePlan, traversalIdentity: traversal?.ownerIdentity ?? null, sampleTravelEndFrame: traversal?.segment.endOutputFrame ?? 0,
         positionFrontier: traversal ? { frame, released: false, length: 0, lastSequence: traversal.segment.sequence, lastEndFrame: traversal.segment.endOutputFrame, lastEndPosition: traversal.segment.endSourceFrame, lastSeekFrame: -sampleSourcePlan.entries[samplePlan.zoneIndex].attack.cursorProfile.slewFrames } : null,
         sampleTraversalSegments: traversal ? 1 : 0, lastSampleTraversal: traversal?.receipt ?? null, releaseFrames: ownReleaseFrames, articulation: { ...resolveOwnedArticulationPolicy({ ...patch, parameters: values }), ...(nativeSourcePlan?.oneShotHoldSeconds != null ? { oneShotTailSeconds: nativeSourcePlan.oneShotHoldSeconds } : {}), ...(samplePlan?.articulation || {}) },
@@ -168,7 +171,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       if (!voice || voice.end != null) throw failure('missing-voice-history', 'A captured control or end has no still-owned original onset.', { intentId: intent.intentId });
       if (frame < voice.start) throw failure('invalid-voice-time', 'A captured control precedes its own original onset.', { intentId: intent.intentId });
       if (intent.kind === 'end') {
-        const at = Math.max(voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0, intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame);
+        const at = Math.max(voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0, voice.seedLayerMotion?.lastEndFrame ?? 0, intent.terminationReason === 'one-shot' ? Math.max(frame, voice.start + Math.round(voice.articulation.oneShotTailSeconds * sampleRate)) : frame);
         voice.releaseAt = at; voice.end = at + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); capturedEnds++;
         voice.events.push({ kind: 'end', frame: at, order, intentId: intent.intentId, values: { 13: voice.releaseFrames } });
       } else if (intent.articulationState?.transfer) {
@@ -180,6 +183,10 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
         }
       } else {
         let mask = 0, controlFrame = frame; const values = { 14: Math.ceil(0.008 * sampleRate) };
+        if (voice.seedLayerMotion && intent.articulationState?.travel) {
+          let motion; try { motion = planSeedLayerContactMotion(seedLayerPlan, intent, frame); voice.seedLayerMotion = advanceSeedLayerContactMotion(voice.seedLayerMotion, motion); } catch (error) { throw failure('seed-contact-motion-preflight', error.message, { intentId: intent.intentId }); }
+          mask = 1024; controlFrame = motion.firstFrame; Object.assign(values, seedLayerContactMotionFields(motion)); delete values[15];
+        }
         if (voice.circularTravel && intent.articulationState?.travel) {
           let planned; try { planned = owned.travelPlanner(voice.parameters, intent, frame, sampleRate); } catch (error) { throw failure(owned.travelDomain + '-travel-preflight', error.message, { intentId: intent.intentId }); }
           const frontier = voice.circularTravel;
@@ -229,7 +236,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
   for (const voice of voices.values()) {
     if (voice.end == null) {
       if (tail.mode === 'bounded-natural') throw failure('unknown-natural-release', 'A held voice has no captured release before this boundary. Choose exact crop or an explicit derived boundary release.');
-      if (tail.mode === 'boundary-release') { voice.releaseAt = Math.max(endFrame, voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0); voice.end = voice.releaseAt + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
+      if (tail.mode === 'boundary-release') { voice.releaseAt = Math.max(endFrame, voice.sampleTravelEndFrame, voice.circularTravel?.lastEndFrame ?? 0, voice.seedLayerMotion?.lastEndFrame ?? 0); voice.end = voice.releaseAt + (voice.samplePlan ? (owned.requiresPCMSet ? Math.ceil(nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : nativeSampleReleaseFrames(voice.samplePlan, voice.parameters.releaseSeconds, sampleRate)) : owned.native ? voice.parameters.releaseSeconds * sampleRate : voice.releaseFrames); derivedReleases++;
         voice.events.push({ kind: 'end', frame: voice.releaseAt, order: ++ordinal, intentId: null, values: { 13: voice.releaseFrames } }); }
       else voice.end = endFrame + voice.releaseFrames + 128;
     }
@@ -404,7 +411,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',
       ...(plan.owned.travelPolicy ? { [plan.owned.travelReceiptKey]: { ...plan.circularTravel, policy: plan.owned.travelPolicy, restoration: plan.owned.restoration + ';owned-source-kernel-cut;pcm-equivalence-qualification-pending' } } : { circularTravel: plan.circularTravel }), sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
       ...(plan.sampleSourcePlan ? { sampleTraversal: plan.sampleTraversal, sampleMap: { id: plan.sampleSourcePlan.map.mapId, revision: plan.sampleSourcePlan.map.revision, profile: plan.sampleSourcePlan.map.rendererProfile ?? 'native-forward-v1', sourcePool: plan.renderVoices, maximumLogicalGates: plan.patch.voicePolicy.maxVoices, chokedVoices: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, selection: 'one-deterministic-onset-selection;release-child-retains-original-map-entry' } } : {}),
-      ...(plan.seedLayerPlan ? { seedLayers: { revision: plan.seedLayerPlan.revision, profile: plan.seedLayerPlan.profile, footprint: plan.seedLayerPlan.footprint, sourceBanks: plan.seedLayerPlan.sourceBanks, timing: plan.seedLayerPlan.timing } } : {}),
+      ...(plan.seedLayerPlan ? { seedLayers: { revision: plan.seedLayerPlan.revision, profile: plan.seedLayerPlan.profile, footprint: plan.seedLayerPlan.footprint, sourceBanks: plan.seedLayerPlan.sourceBanks, timing: plan.seedLayerPlan.timing, contactVoices: [...plan.voices.values()].filter(voice => voice.seedLayerMotion).length, admittedMotionSegments: [...plan.voices.values()].reduce((sum, voice) => sum + (voice.seedLayerMotion?.segments || 0), 0) } } : {}),
       sourceBank: plan.pcmDescriptor, sourceResampling: plan.seedLayerPlan ? 'fixed-original-rate-transient-residual;independent-owned-grains;creative-hybrid-not-qualified-warp' : plan.owned.requiresPCMSet ? 'owned-sample-sample-read-v1;128taps;phase128;rate19;unqualified-spectral-and-listening-profile' : plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,
       normalization: 'none', integerClipping: 'not-applicable', dither: 'none-float-output', sharedMasterAndLimiter: 'excluded' },
