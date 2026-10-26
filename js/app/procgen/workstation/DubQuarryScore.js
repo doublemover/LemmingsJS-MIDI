@@ -4,7 +4,7 @@ import { validateSceneTerrainLayout } from '../SceneTerrainLayout.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { normalizeWorkerLimits } from '../ProcgenWorkerLimits.js';
 import { normalizePopulationPolicy } from '../ProcgenPopulationPolicy.js';
-import { validateProjectJunctions } from './PhysicalJunctionProject.js';
+import { createScoreStepJunction } from './ScoreRouteJunction.js';
 import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 import { validatePerformanceScene } from './PerformanceScene.js';
 import { createEmbeddedScenePatch } from './EmbeddedScenePatch.js';
@@ -14,12 +14,7 @@ export const DUB_QUARRY_ROUTES = freezeData([
   { id: 'open-courtyard', title: 'Open courtyard', width: 768, spread: 12, echoSeconds: 0.24, roof: false },
   { id: 'echo-gallery', title: 'Long echo gallery', width: 1024, spread: 18, echoSeconds: 0.36, roof: true }
 ]);
-function replyJunction(layoutHash) {
-  const floor = 168;
-  return validateProjectJunctions([{ id: 'dub-quarry-reply-route', revision: 1, safetyVersion: 1, control: { x1: 208, x2: 256, y1: floor, y2: floor + 16 }, influence: { x1: 192, x2: 272, y1: floor - 24, y2: floor + 24 },
-    ports: [{ id: 'in', role: 'inlet', position: { x: 194, y: floor }, direction: 'right', support: [{ dx: 0, dy: 1, solid: true }] }, { id: 'out', role: 'outlet', position: { x: 270, y: floor }, direction: 'right', support: [{ dx: 0, dy: 1, solid: true }] }],
-    configurations: [{ id: 'direct', outletIds: ['out'], spans: Array.from({ length: 16 }, (_, row) => ({ y: floor + row, x1: 208, x2: 256, solid: true })) }, { id: 'stepped', outletIds: ['out'], spans: Array.from({ length: 16 }, (_, row) => { const x = 224 + (Math.ceil((16 - row) / 2) - 1) * 4; return [{ y: floor + row, x1: 208, x2: x, solid: false }, { y: floor + row, x1: x, x2: 256, solid: true }]; }).flat() }], requiredAssets: [layoutHash] }]);
-}
+function replyJunction(layoutHash) { return createScoreStepJunction({ id: 'dub-quarry-reply-route', layoutHash, floorY: 168 }); }
 
 export async function createDubQuarryScores({ sourceHash, descriptor, signal } = {}) {
   if (descriptor?.engineId !== 'worklet-pluck' || descriptor.maximumVoices < 12) throw new TypeError('Dub Quarry needs its pinned twelve-voice pluck capacity.');

@@ -16,7 +16,7 @@ import { baseScoredTerrainFixture } from './helpers/scored-terrain.js';
 const h = value => value.repeat(64);
 describe('finite Builder-Miner contact scores (runtime/listening qualification deferred)', function() {
   this.timeout(120000); let items, entries, masks;
-  before(async () => { entries = await describeNativeInstrumentEngines(['worklet-sine', 'native-fm'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') }))); items = await createBuilderMinerScores({ sourceHash: h('b'), descriptor: entries[1] }); masks = await loadProcgenMasks(); });
+  before(async () => { entries = await describeNativeInstrumentEngines(['worklet-sine', 'native-fm'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') }))); items = await createBuilderMinerScores({ sourceHash: h('b'), descriptor: entries.find(value => value.engineId === 'native-fm') }); masks = await loadProcgenMasks(); });
   it('pins three finite work systems, exact command stations, changed-solid mappings and independent dry recipes', async () => {
     const library = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors: entries }) });
     const rows = library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('builder-miner.')); expect(rows).to.have.length(3);

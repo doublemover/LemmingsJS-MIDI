@@ -1,3 +1,6 @@
+import { createGlacierChoirScores } from './GlacierChoirScore.js';
+import { createRescueOrchestraScores } from './RescueOrchestraScore.js';
+import { createSwitchyardScores } from './SwitchyardScore.js';
 import { createDubQuarryScores } from './DubQuarryScore.js';
 import { createGlassOrbitScores } from './GlassOrbitScore.js';
 import { createBuilderMinerScores } from './BuilderMinerScore.js';
@@ -118,7 +121,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
   if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
     put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
-    for (const item of [...await createGlassOrbitScores({ sourceHash, descriptor: fm, signal }), ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
+    for (const item of [...await createSwitchyardScores({ sourceHash, descriptor: fm, signal }), ...await createGlassOrbitScores({ sourceHash, descriptor: fm, signal }), ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
@@ -135,6 +138,20 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       await registry.register(item.scene); signal?.throwIfAborted();
     }
   }
+  const registerAuthoredScores = async items => {
+    for (const item of items) {
+      signal?.throwIfAborted(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const { reference } of item.scene.patchRefs) {
+        const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
+        put('patch', reference.patchId, reference.revision, reference.definitionHash, 'embedded');
+      }
+      await registry.register(item.scene);
+    }
+  };
+  const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
+  if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
+  for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor?.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },
     getRecipe(scene) { const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },

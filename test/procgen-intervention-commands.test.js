@@ -48,6 +48,15 @@ describe('simulation boundary intervention commands', () => {
     expect(brick.parentCauseIds).to.deep.equal(['builder:1']);
     world.dispose();
   });
+  it('starts canonical crew tracking only for an explicit accepted worker request', () => {
+    for (const trackCrew of [false, true]) {
+      const world = ready(), batches = []; world.soundEvents.onBatch.on(batch => batches.push(batch));
+      world.enqueueIntervention(command(world, 'crew-skill:' + trackCrew, { parameters: { workerKind: 'builders', trackCrew } })); world.step();
+      const facts = batches.flatMap(batch => batch.facts); expect(facts.some(fact => fact.kind === 'CommandApplied')).to.equal(true); expect(facts.some(fact => fact.kind === 'CrewRouteOpened')).to.equal(trackCrew);
+      if (trackCrew) expect(facts.find(fact => fact.kind === 'CrewRouteOpened').admittedCrew).to.be.greaterThan(0); world.dispose();
+    }
+    const world = ready(); expect(() => world.prepareIntervention(command(world, 'invalid-crew', { parameters: { workerKind: 'builders', trackCrew: 'true' } }))).to.throw('Crew tracking'); world.dispose();
+  });
 
   it('orders competing proposals by origin policy and stable ID, independent of enqueue order', () => {
     const run = reverse => {

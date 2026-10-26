@@ -12,6 +12,16 @@ const batch = (tick, facts = [], population = actors) => ({ version: 1, worldId:
 const setup = extra => { const observer = createActivityWindowObserver(); observer.configure(validateActivityWindows({ activityWindows: [definition(extra)] }, graph), graph); return observer; };
 const run = (observer, tick, facts = [], options = {}, domain = environment) => { const b = batch(tick, facts); return observer.observe(b, b.facts, domain, options); };
 describe('physical inactivity and rooted route cadence', () => {
+  it('requires the declared complete crew and rejoin region without changing legacy cadence profiles', () => {
+    const completionPolicy = { kind: 'crew-route', expectedCrew: 3, goalRegion: { x1: 132, x2: 208, y1: 64, y2: 112 }, intervals: [0, 400, 700] }, population = [1, 2, 3].map(actorId => ({ actorId, laneId: 0, x: 140 + actorId, y: 95, action: 'walking', actionInstanceId: 'walk:' + actorId }));
+    const completion = { kind: 'RouteCompleted', completionId: 'world:crew:fixed-three', crewProjectId: 'fixed-three', positionAfter: { x: 140, y: 95 }, participants: [1, 2, 3], admittedCrew: 3, completionCoverage: 'complete', routeRevisionsUnchanged: true, prerequisiteSourceEventIds: ['opened', 'connected', 'arrived:1', 'arrived:2', 'arrived:3'] };
+    for (const changed of [{}, { admittedCrew: 2, participants: [1, 2], prerequisiteSourceEventIds: ['opened', 'connected', 'arrived:1', 'arrived:2'] }, { positionAfter: { x: 120, y: 95 } }, { completionCoverage: 'incomplete' }, { routeRevisionsUnchanged: false }]) {
+      const observer = setup({ completionPolicy }), b = batch(1, [{ ...completion, ...changed }], population), result = observer.observe(b, b.facts, environment);
+      expect(result.responses).to.have.length(Object.keys(changed).length ? 0 : 3);
+      if (!Object.keys(changed).length) { const restored = setup({ completionPolicy }); restored.restore(JSON.parse(JSON.stringify(observer.snapshot()))); const next = batch(2, [completion], population); expect(restored.observe(next, next.facts, environment).responses).to.have.length(0); }
+    }
+    for (const expectedCrew of [0, 65, '3', NaN]) expect(() => setup({ completionPolicy: { ...completionPolicy, expectedCrew } })).to.throw('fixed-cohort goal');
+  });
   it('emits no hidden attacks in an empty or static non-voiced world', () => {
     for (const population of [[], actors]) { const graph = { version: 1, revision: 1, activityWindows: [definition()], instruments: [] }, engine = createCausalMusicEngine({ getGraph: () => graph });
       for (let tick = 1; tick <= 100; tick++) expect(engine.processBatch(batch(tick, [], population))).to.have.length(0);

@@ -6187,3 +6187,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   and static provenance pass (10 components / 335 files). No runtime, browser,
   audio/listening, benchmark or full-suite validation was run. The three layer
   families are implemented; #1178 acceptance and the remaining backlog are open.
+
+### Continuation 242 — Switchyard, Glacier and fixed-cohort Rescue studies (#1098, #1101, #1103)
+
+- Added three finite dry FM Switchyard arrangements, actual flight/work/ricochet
+  mappings, one-shot builder/blocker stations, a reusable safe step junction and
+  two explicitly owned zero-send echo variants. The blocked return has no
+  substitute snare. Refactored Dub Quarry to use the same unchanged step geometry.
+- Added three dry Hollow Ooh Glacier arrangements and an optional Spectrum
+  descent palette with identical physical recipes. Actual flight owns held
+  voices; the small choir's support drone is explicitly intentional. Grain and
+  freeze editions remain pending rather than appearing as nonfunctional controls.
+- Added crossing, unresolved-delay and actual-loss Rescue studies in original
+  pluck, dry choir and local modal palettes. Explicit worker commands may enroll
+  the canonical crew owner. A saved cadence can require an exact crew count and
+  rejoin region in addition to complete unique route prerequisites and unchanged
+  revisions; legacy completion policies preserve their canonical representation.
+- Authored real-world trace, empty-world, terminal-loss, palette/control
+  invariance and complete-cohort fixtures. Corrected older score fixtures to
+  select engines by identity instead of catalog position. These fixtures are
+  unrun. Formatting, 21-file syntax/import checks, critical types and static
+  provenance pass (10 components / 335 files). No runtime or listening tests ran.
+- These are explicit dry studies, not acceptance of the full scene issues.
+  Sample-kit, speech, shared-body, captured grain/freeze, sealed-wind, physical
+  geometry qualification, private demo takes and listening variants remain open.

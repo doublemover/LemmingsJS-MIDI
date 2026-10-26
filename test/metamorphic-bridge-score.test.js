@@ -16,7 +16,7 @@ import { createTestBackgroundJobs } from './helpers/background-worker.js';
 import { baseScoredTerrainFixture } from './helpers/scored-terrain.js';
 
 const h = value => value.repeat(64), descriptors = () => describeNativeInstrumentEngines(['worklet-sine', 'worklet-friction'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') })));
-const item = async () => createMetamorphicBridgeScore({ sourceHash: h('b'), descriptor: (await descriptors())[1] });
+const item = async () => createMetamorphicBridgeScore({ sourceHash: h('b'), descriptor: (await descriptors()).find(value => value.engineId === 'worklet-friction') });
 const refusal = async operation => { try { await operation(); } catch (caught) { return caught; } throw new Error('Expected refusal.'); };
 
 describe('Metamorphic Bridge score and initial canonical body (qualification deferred)', function() {
@@ -28,7 +28,7 @@ describe('Metamorphic Bridge score and initial canonical body (qualification def
     expect((await refusal(() => verifySceneMorphMechanism(origin.recipe.initialMorphMechanism, []))).code).to.equal('scene-morph-unavailable');
   });
   it('prepares the explicitly named two-body strategy with unchanged world, source and signed travel', async () => {
-    const engines = await descriptors(), paired = await item(), blend = await createMetamorphicBridgeScore({ sourceHash: h('b'), descriptor: engines[1], strategy: 'blend' }), mechanism = blend.recipe.initialMorphMechanism;
+    const engines = await descriptors(), paired = await item(), blend = await createMetamorphicBridgeScore({ sourceHash: h('b'), descriptor: engines.find(value => value.engineId === 'worklet-friction'), strategy: 'blend' }), mechanism = blend.recipe.initialMorphMechanism;
     expect(blend.scene.id).to.equal('metamorphic-bridge.blend'); expect(blend.scene.cost.sharedBodies).to.equal(2); expect(sceneMorphMechanismCost(mechanism)).to.deep.equal({ bodyCount: 2, modeCount: 10, strategy: 'prepared-endpoint-audio-blend' }); expect(blend.recipe.initialTerrainLayout).to.deep.equal(paired.recipe.initialTerrainLayout); expect(blend.recipe.initialReleaseGesture).to.deep.equal(paired.recipe.initialReleaseGesture); expect(blend.scene.patchRefs).to.deep.equal(paired.scene.patchRefs); expect(blend.scene.causalMappings).to.deep.equal(paired.scene.causalMappings); await verifySceneMorphMechanism(mechanism, blend.scene.causalMappings.instruments);
     expect(() => validateSceneMorphMechanism({ ...mechanism, schema: 'lemmings-scene-morph-route/v1' })).to.throw('explicit v2');
     const budget = createResourceBudget(), context = { state: 'running', sampleRate: 48000 }, bindings = []; let state = null, prepared;

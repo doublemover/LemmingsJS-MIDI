@@ -58,6 +58,7 @@ const enqueueIntervention = (world, command) => {
     const freeze = value => { if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); } }; freeze(parameters.terrain);
   }
   for (const [key, value] of Object.entries(['set-release-gesture', 'terrain-edit', 'junction-request', 'junction-define', 'physical-authoring'].includes(command.kind) ? {} : command.parameters || {})) {
+    if (key === 'trackCrew') { if (command.kind !== 'assign-worker' || typeof value !== 'boolean') throw new Error('Crew tracking requires an explicit worker-command boolean.'); parameters[key] = value; continue; }
     if (!['workerKind', 'targetX', 'spawnBeatTicks', 'spawnSpreadTicks'].includes(key) ||
         !(typeof value === 'string' && value.length <= 32 || Number.isFinite(value))) throw new Error('Unsupported intervention parameter.');
     parameters[key] = value;
@@ -167,7 +168,10 @@ const applyInterventions = world => {
           else if (command.kind === 'junction-request') { terrainResult = applyJunctionRequest(world, command.parameters.request, command); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'junction-define') { terrainResult = applyJunctionDefinition(world, command.parameters.definition); accepted = terrainResult.status === 'accepted'; }
           else if (command.kind === 'terrain-edit') { terrainResult = applyTerrainPlan(planTerrainCommand(command.parameters.terrain, world), world); accepted = terrainResult.status === 'accepted'; }
-          else if (command.kind === 'assign-worker') accepted = world.assignWorker(actor, command.parameters.workerKind, command.parameters.targetX ?? actor.x);
+          else if (command.kind === 'assign-worker') {
+            accepted = world.assignWorker(actor, command.parameters.workerKind, command.parameters.targetX ?? actor.x);
+            if (accepted && command.parameters.trackCrew) world.lanePolicy?.begin(actor, { kind: command.parameters.workerKind, targetX: command.parameters.targetX ?? actor.x });
+          }
           else if (command.kind === 'place-blocker') {
             if (actor.action === world.actions[State.WALKING] && world.hasGroundAt(actor.x, actor.y + 1)) {
               accepted = world.actions[State.BLOCKING].triggerLemAction(actor);

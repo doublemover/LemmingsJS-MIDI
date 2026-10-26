@@ -20,7 +20,7 @@ const descriptors = () => describeNativeInstrumentEngines(['worklet-sine', 'nati
 describe('Glass Orbit finite spatial-harp scores (qualification deferred)', function() {
   this.timeout(120000);
   let items, entries;
-  before(async () => { entries = await descriptors(); items = await createGlassOrbitScores({ sourceHash: h('b'), descriptor: entries[1] }); });
+  before(async () => { entries = await descriptors(); items = await createGlassOrbitScores({ sourceHash: h('b'), descriptor: entries.find(value => value.engineId === 'native-fm') }); });
   it('installs all nine exact source-bound arrangements with finite cohorts, physical return and reviewed requirements', async () => {
     const library = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors: entries }) }), rows = library.registry.page({ limit: 64 }).rows.filter(row => row.id.startsWith('glass-orbit.'));
     expect(rows).to.have.length(9);
@@ -35,7 +35,7 @@ describe('Glass Orbit finite spatial-harp scores (qualification deferred)', func
   });
   it('does not silently substitute another engine or source tier', async () => {
     const library = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors: [entries[0]] }) }); expect(library.registry.page({ limit: 64 }).rows.some(row => row.id.startsWith('glass-orbit.'))).to.equal(false);
-    let error; try { await createGlassOrbitScores({ sourceHash: h('b'), descriptor: { ...entries[1], maximumVoices: 2 } }); } catch (caught) { error = caught; } expect(error?.message).to.include('Glass Orbit');
+    let error; try { await createGlassOrbitScores({ sourceHash: h('b'), descriptor: { ...entries.find(value => value.engineId === 'native-fm'), maximumVoices: 2 } }); } catch (caught) { error = caught; } expect(error?.message).to.include('Glass Orbit');
   });
   const runWorld = async (item, masks, paused = false) => {
     const budget = createResourceBudget({ limitBytes: 64 * 1048576 }), jobs = createTestBackgroundJobs({ identity: () => ({ activeExecution: 'bound', buildId: 'glass-orbit-fixture' }) }), terrain = new ProcgenScoredTerrain(baseScoredTerrainFixture([], item.scene.cost.lanes), item.recipe.initialTerrainLayout, { resourceBudget: budget, jobs }); await terrain.prepare();
