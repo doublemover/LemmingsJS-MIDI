@@ -1039,3 +1039,21 @@ exact cut validation include the outer coefficients, controls and parent lifetim
 The ordinary compile/audition/durable-apply and selected ancestry rebuild paths
 retain old instruments on failed preparation. Current fixtures are authored but
 unrun; numerical, spectral, cost, device and listening qualification remains open.
+
+
+Reviewed maps can choose **Prepared blend · both endpoint bodies and tails** for
+control references. Each side is an independently admitted fixed body of up to
+eight modes. Both receive the same finite control input throughout the reference;
+MORPH changes only convex audio weights, with no new onset or intermediate-mode
+claim. The original four/six-mode example therefore owns ten mode states. The
+retained WAV and cache identity bind both profiles and the two-body count.
+
+The blend policy has its own readout preview, render, Prelisten and export path.
+Live prepared blend publication now uses its dedicated canonical graph adapter.
+Both endpoint states, their complete mode counts and tails are reserved and
+reported separately from the paired-held body. The same manual or admitted real
+travel control changes only convex audio weights. Budget failure retains the old
+graph; body-only Panic clears both endpoints. The initial one-body scene adapter
+retains its narrower explicit profile. These
+new blend fixtures have not run, and runtime cost, PCM and perceptual continuity
+still require the combined validation and listening pass.

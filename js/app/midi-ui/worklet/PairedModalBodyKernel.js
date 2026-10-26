@@ -1,10 +1,13 @@
+import { prepareResonatorBlendBodyProfile, resonatorBlendBodyIdentity } from '../../../midi/content/ResonatorBlendProfile.js';
+import { ResonatorBlendKernel } from './ResonatorBlendKernel.js';
 import { preparePairedModalBodyProfile, pairedModalBodyIdentity } from '../../../midi/content/PairedModalBodyProfile.js';
 import { ResonatorMorphKernel, admitResonatorMorphKernelProfile } from './ResonatorMorphKernel.js';
 
 export class PairedModalBodyKernel {
-  constructor({ sampleRate = 48000, parameters } = {}) {
-    this.profile = preparePairedModalBodyProfile(parameters, sampleRate); this.identity = pairedModalBodyIdentity(this.profile);
-    this.body = new ResonatorMorphKernel(admitResonatorMorphKernelProfile(this.profile.body, this.profile.parameters.profileIdentity));
+  constructor({ sampleRate = 48000, parameters, strategy = 'paired' } = {}) {
+    if (!['paired', 'blend'].includes(strategy)) throw new TypeError('Choose the explicit paired or prepared-blend body strategy.');
+    this.profile = strategy === 'blend' ? prepareResonatorBlendBodyProfile(parameters, sampleRate) : preparePairedModalBodyProfile(parameters, sampleRate); this.identity = strategy === 'blend' ? resonatorBlendBodyIdentity(this.profile) : pairedModalBodyIdentity(this.profile);
+    this.body = strategy === 'blend' ? new ResonatorBlendKernel(this.profile.body) : new ResonatorMorphKernel(admitResonatorMorphKernelProfile(this.profile.body, this.profile.parameters.profileIdentity));
     this.body.setMorph(this.profile.parameters.morph01); this.frame = this.faults = this.leftSample = this.rightSample = 0; this.muted = false;
   }
   panic() { this.body.panic(); this.leftSample = this.rightSample = 0; this.muted = true; }

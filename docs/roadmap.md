@@ -5612,3 +5612,52 @@ export-budget acknowledgments still prevent a false complete receipt.
   actual PCM, spectra, decay, device cost and matched-level listening remain
   deferred. Additional strike/FM grafts, comparison stems and Instrument Nursery
   still need their complete end-to-end content/workflow and qualification.
+
+
+### Continuation 222 — explicitly owned two-endpoint control blends
+
+- Added the prepared-dual-body-blend strategy for #1225 control references. Exact
+  reviewed map/endpoints produce two fixed self-correspondence profiles, each
+  bounded to eight modes. Both complete states receive the same finite control
+  input and retain independent positive-loss tails. MORPH changes only raised-
+  cosine convex readout weights; no intermediate physical object or mode-state
+  transfer is asserted. Ten states, not six paired slots, are charged for the
+  original four/six-mode proof.
+- Added strict bounded profile reconstruction, exact endpoint/self-map/derived
+  hashes and explicit two-body state/cost receipts. Rapid reversals do not reseed
+  or drop either side. The common reference strategy now owns separate decoder
+  identity and validates both the renderer revision and actual body count.
+- Connected reviewed blend policy selection, truthful readout-only preview,
+  worker control rendering, complete cache keys, isolated Prelisten and WAV
+  export. Onset-only and paired-held authorities remain distinct. Live prepared
+  blend graph publication is still explicitly unavailable until its dedicated
+  graph adapter counts both endpoints and tails; there is no silent pairing.
+- Authored unrun three-rate endpoint/readout, hidden-side ringing, positive-loss
+  balance, no-input energy, Panic, stale/forged profile, policy rejection, actual
+  bounded control WAV and controlled cache-body-count fixtures. Static checks
+  only; numerical/device/listening qualification remains deferred.
+
+
+### Continuation 223 — canonical live prepared blends and true endpoint cost
+
+- Connected prepared two-endpoint blends to ordinary native/owned owner graphs,
+  manual and observed signed-distance MORPH, retained body inspection, body-only
+  Panic and exact processor readiness/offline-completion identity. Both fixed
+  endpoint states share one upstream semantic source and keep their own tails;
+  graph restoration remains explicitly deterministic preroll.
+- Added dedicated blend graph/processor identity and full source verification
+  before producer creation. State, full source/profile metadata, worklet module
+  preparation and overlap are reserved. Processing receipts count two bodies
+  and all ten proof modes instead of one paired six-slot body. Graph body count,
+  state headroom and transition admission remain bounded; rejection preserves
+  the prior graph. A new map cannot overwrite a stale live body revision.
+- Enabled the reviewed authoring panel's live blend application without silently
+  changing policy. Manual or one admitted physical travel owner controls only
+  convex readout weights. Next-onset, paired-held and blend remain distinct
+  capabilities. Initial one-body scene mechanisms retain their narrower exact
+  adapter; generic shared-body scene rehearsal is not silently approximated.
+- Authored unrun supported-rate graph/direct parity, full endpoint cost, bad
+  profile, budget refusal, Panic, oversized-endpoint/last-good and control-cache
+  fixtures. Combined runtime/browser/PCM, cost, alias/decay and matched-level
+  listening evidence remains deferred. Fitted/foundry endpoint/signature adapters
+  and their workflow are still separate remaining work for #1225.

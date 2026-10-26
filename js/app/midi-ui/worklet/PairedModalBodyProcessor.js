@@ -1,19 +1,19 @@
 import { PairedModalBodyKernel } from './PairedModalBodyKernel.js';
-import { RESONATOR_MORPH_KERNEL_REVISION } from '../../../midi/content/PairedModalBodyProfile.js';
 import { OfflineEffectCompletion } from './OfflineEffectCompletion.js';
 const ProcessorBase = globalThis.AudioWorkletProcessor || class {};
 export class PairedModalBodyProcessor extends ProcessorBase {
   static get parameterDescriptors() { return [{ name: 'morph', defaultValue: 0, minValue: 0, maxValue: 1, automationRate: 'a-rate' }]; }
+  createKernel(sampleRate, parameters) { return new PairedModalBodyKernel({ sampleRate, parameters }); }
   constructor(options) {
-    super(); const p = options?.processorOptions || {}; this.kernel = new PairedModalBodyKernel({ sampleRate: globalThis.sampleRate, parameters: p.parameters });
-    this.disposed = false; this.reportedFaults = 0; this.inspectedAt = -Infinity; this.faultMessage = { type: 'effect-fault', revision: RESONATOR_MORPH_KERNEL_REVISION, frame: 0, faults: 0 };
+    super(); const p = options?.processorOptions || {}; this.kernel = this.createKernel(globalThis.sampleRate, p.parameters); const revision = this.kernel.profile.revision;
+    this.disposed = false; this.reportedFaults = 0; this.inspectedAt = -Infinity; this.faultMessage = { type: 'effect-fault', revision, frame: 0, faults: 0 };
     this.port.onmessage = event => {
       if (event.data?.type === 'dispose') { this.kernel.panic(); this.disposed = true; this.port.postMessage({ type: 'disposed', frame: this.kernel.frame }); }
       else if (!this.disposed && event.data?.type === 'panic') this.kernel.panic();
       else if (!this.disposed && event.data?.type === 'inspect' && this.kernel.frame - this.inspectedAt >= globalThis.sampleRate / 4) { this.inspectedAt = this.kernel.frame; this.port.postMessage({ type: 'effect-health', ...this.kernel.diagnostics() }); }
     };
-    this.offlineCompletion = new OfflineEffectCompletion({ endFrame: p.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate, revision: RESONATOR_MORPH_KERNEL_REVISION, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
-    this.port.postMessage({ type: 'ready', revision: RESONATOR_MORPH_KERNEL_REVISION, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
+    this.offlineCompletion = new OfflineEffectCompletion({ endFrame: p.offlineEndFrame ?? null, sampleRate: globalThis.sampleRate, revision, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity, port: this.port });
+    this.port.postMessage({ type: 'ready', revision, sampleRate: globalThis.sampleRate, stateBytes: this.kernel.profile.stateBytes, configurationKey: this.kernel.identity });
   }
   process(inputs, outputs, parameters) {
     const left = outputs[0]?.[0], right = outputs[0]?.[1]; if (!left || !right) return true;
@@ -24,4 +24,5 @@ export class PairedModalBodyProcessor extends ProcessorBase {
     this.offlineCompletion.observe(globalThis.currentFrame, left.length, this.kernel.faults, this.kernel.muted); return true;
   }
 }
-if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-paired-modal-body-v1', PairedModalBodyProcessor);
+export class ResonatorBlendBodyProcessor extends PairedModalBodyProcessor { createKernel(sampleRate, parameters) { return new PairedModalBodyKernel({ sampleRate, parameters, strategy: 'blend' }); } }
+if (typeof globalThis.registerProcessor === 'function') { globalThis.registerProcessor('lemmings-paired-modal-body-v1', PairedModalBodyProcessor); globalThis.registerProcessor('lemmings-resonator-blend-body-v1', ResonatorBlendBodyProcessor); }

@@ -1,3 +1,4 @@
+import { verifyResonatorBlendKernelProfile } from '../../midi/content/ResonatorBlendProfile.js';
 import { PairedModalBodyKernel } from './worklet/PairedModalBodyKernel.js';
 import { verifyPairedModalBodyProfile } from '../../midi/content/PairedModalBodyProfile.js';
 import { validateSpectralCaptureReceipt } from '../../midi/content/SpectralCaptureReceipt.js';
@@ -24,7 +25,7 @@ export function prepareOwnedEffectGraphPlan(definition, sampleRate = 48000, retu
 export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48000, returnNodeIds = [], frameOrigin = 0 } = {}) {
   if (!Number.isSafeInteger(frameOrigin) || frameOrigin < 0) throw new TypeError('Effect rendering requires a nonnegative analysis frame origin.');
   const plan = prepareOwnedEffectGraphPlan(definition, sampleRate, returnNodeIds), hash = await effectGraphHash(plan);
-  for (const node of plan.nodes) if (node.pairedBody) await verifyPairedModalBodyProfile(node.pairedBody);
+  for (const node of plan.nodes) { if (node.pairedBody) await verifyPairedModalBodyProfile(node.pairedBody); if (node.blendBody) await verifyResonatorBlendKernelProfile(node.blendBody.body); }
   const indices = new Map(plan.order.map((id, i) => [id, i])), values = new Float32Array(plan.nodes.length * 2), presence = new Uint8Array(plan.nodes.length), controls = new Float64Array(plan.nodes.length * 4), gain = new Float64Array(plan.nodes.length * 3);
   const sidechainIndices = new Map(plan.sidechainInputs.map((id, index) => [id, index]));
   const records = plan.nodes.map((entry, index) => {
@@ -36,7 +37,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         feedbackLowpassHz: p.feedbackLowpassHz, feedbackHighpassHz: p.feedbackHighpassHz, wet: p.wet01 });
     } else if (entry.kind === 'nonlinear-chain') { controls.set([p.driveDb, p.outputTrim01, 0, 0], at); kernel = new NonlinearChainKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'rectangular-membrane') kernel = new RectangularMembraneKernel({ sampleRate, parameters: p });
-    else if (entry.kind === 'paired-modal-body') { controls[at] = p.morph01; kernel = new PairedModalBodyKernel({ sampleRate, parameters: p }); }
+    else if (['paired-modal-body', 'resonator-blend-body'].includes(entry.kind)) { controls[at] = p.morph01; kernel = new PairedModalBodyKernel({ sampleRate, parameters: p, strategy: entry.blendBody ? 'blend' : 'paired' }); }
     else if (entry.kind === 'sympathetic-network') { controls.set([p.couple01, p.damp01, 0, 0], at); kernel = new SympatheticNetworkKernel({ sampleRate, parameters: p }); }
     else if (entry.kind === 'spectral-freeze') { controls[at] = 0; kernel = new SpectralFreezeKernel({ sampleRate, parameters: p, startFrame: frameOrigin }); }
     else if (entry.kind === 'allpass-notch') { controls.set([p.baseFrequencyHz, p.feedback, p.wet01, 0], at); kernel = new AllpassNotchKernel({ sampleRate, parameters: p }); }
@@ -63,7 +64,7 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       if (apply) { controls[at] = next.gain01; gain[index * 3 + 1] = next.gain01; gain[index * 3 + 2] = Math.max(1, Math.round(sampleRate * 0.008)); }
     } else if (entry.kind === 'rectangular-membrane') {
       kernel.setControls(next, apply);
-    } else if (entry.kind === 'paired-modal-body') {
+    } else if (['paired-modal-body', 'resonator-blend-body'].includes(entry.kind)) {
       if (keys.some(key => key !== 'morph01') || !finite(next.morph01, 0, 1) || kernel.muted) fail('invalid-effect-control', 'MORPH requires its active reviewed held body and normalized position.');
       if (apply) controls[at] = next.morph01;
     } else if (entry.kind === 'sympathetic-network') {
@@ -120,13 +121,13 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
         const g = index * 3; a *= gain[g]; b *= gain[g];
         if (gain[g + 2] > 0) { gain[g] += (gain[g + 1] - gain[g]) / gain[g + 2]; gain[g + 2]--; }
       } else if (kernel) {
-        if (entry.kind === 'paired-modal-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
+        if (entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body') kernel.sample(a, b, controls[at]); else if (entry.kind === 'rectangular-membrane') kernel.sample(a, b); else if (entry.kind === 'spectral-freeze') kernel.sample(a, b, controls[at], audioPresent); else if (entry.kind === 'allpass-notch') kernel.sample(a, b, controls[at], controls[at + 1], controls[at + 2]); else if (entry.kind === 'feedback-delay') kernel.sample(a, b, controls[at + 1], controls[at + 2]); else kernel.sample(a, b, controls[at], controls[at + 1]);
         if (entry.membrane) kernel.strikes.discardReceipts();
-        if (kernel.faults && !entry.membrane && !entry.network && !entry.pairedBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
+        if (kernel.faults && !entry.membrane && !entry.network && !entry.pairedBody && !entry.blendBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.'); a = kernel.leftSample; b = kernel.rightSample;
       }
-      if (kernel?.faults && !entry.membrane && !entry.network && !entry.pairedBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
+      if (kernel?.faults && !entry.membrane && !entry.network && !entry.pairedBody && !entry.blendBody) quarantine('effect-state-containment', 'The ' + entry.kind + ' branch quarantined invalid state.');
       if (!Number.isFinite(a) || !Number.isFinite(b)) quarantine('nonfinite-effect-output', 'The full owned effect graph produced nonfinite output.');
-      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' || entry.kind === 'spectral-freeze' || entry.kind === 'sympathetic-network' || entry.kind === 'paired-modal-body' || entry.kind === 'rectangular-membrane' ? 1 : 0;
+      presence[index] = audioPresent || entry.kind === 'feedback-delay' || entry.kind === 'nonlinear-chain' || entry.kind === 'multiband-vocoder' || entry.kind === 'ring-modulator' || entry.kind === 'allpass-notch' || entry.kind === 'spectral-freeze' || entry.kind === 'sympathetic-network' || entry.kind === 'paired-modal-body' || entry.kind === 'resonator-blend-body' || entry.kind === 'rectangular-membrane' ? 1 : 0;
       values[index * 2] = Math.fround(a); values[index * 2 + 1] = Math.fround(b);
     }
     leftSample = values[outputIndex]; rightSample = values[outputIndex + 1];
@@ -150,5 +151,5 @@ export async function createOwnedEffectGraphKernel({ definition, sampleRate = 48
       if (records.some(record => record.kernel?.faults || record.entry.membrane && record.kernel.strikes.frontier[6])) fail('effect-render-incomplete', 'An owned effect branch faulted or rejected an admitted finite strike.'); return true;
     },
     diagnostics: () => Object.freeze({ hash, frame, muted, processingRevisions: plan.processingRevisions, processingCost: plan.processingCost, graphScope: 'one-full-shared-owner-sum', sidechainInputs: plan.sidechainInputs, stemScope: 'simultaneous-node-output-taps',
-      pairedBodyStates: records.filter(record => record.entry.pairedBody).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), membraneStates: records.filter(record => record.entry.membrane).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), sympatheticStates: records.filter(record => record.entry.network).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), spectralStates: records.filter(record => record.entry.spectral).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
+      blendBodyStates: records.filter(record => record.entry.blendBody).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), pairedBodyStates: records.filter(record => record.entry.pairedBody).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), membraneStates: records.filter(record => record.entry.membrane).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), sympatheticStates: records.filter(record => record.entry.network).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), spectralStates: records.filter(record => record.entry.spectral).map(record => ({ nodeId: record.entry.id, ...record.kernel.diagnostics() })), summation: 'canonical-edge-order-float32-node-boundaries', restoration: 'deterministic-preroll', vocoderBanks: records.filter(record => record.entry.vocoder).map(record => ({ nodeId: record.entry.id, profile: record.kernel.profile, donorAvailable: record.kernel.donorAvailable, carrierAvailable: record.kernel.carrierAvailable, donorPeak: record.kernel.donorPeak, carrierPeak: record.kernel.carrierPeak, envelopePeak: record.kernel.envelopePeak })), outputProtection: 'external-excluded', qualification: 'implementation-awaiting-live-offline-pcm-equivalence' }) });
 }

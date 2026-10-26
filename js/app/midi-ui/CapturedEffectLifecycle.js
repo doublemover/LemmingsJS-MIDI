@@ -2,7 +2,7 @@ const fail = (code, message) => { throw Object.assign(new Error(message), { name
 const modes = new Set(['neutral', 'tail', 'mute', 'panic']);
 export function prepareCapturedEffectLifecycle(plan, events, graphStartFrame, transitionFrames) {
   const lifecycle = events.filter(event => event.kind === 'lifecycle');
-  if (lifecycle.length && plan.nodes.some(node => node.membrane || node.network || node.pairedBody || node.spectral)) fail('effect-processor-lifecycle-unavailable', 'This processor-owned body/spectrum needs its applied lifecycle evidence; API bypass timing alone cannot reconstruct it.');
+  if (lifecycle.length && plan.nodes.some(node => node.membrane || node.network || node.pairedBody || node.blendBody || node.spectral)) fail('effect-processor-lifecycle-unavailable', 'This processor-owned body/spectrum needs its applied lifecycle evidence; API bypass timing alone cannot reconstruct it.');
   let terminal = null; const canceledQueuedControls = [], retainedTailControls = [];
   for (const event of events) {
     if (terminal) {
