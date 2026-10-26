@@ -1917,3 +1917,29 @@ It and the new integration/cut/forged-state fixtures are unrun. Continuous
 stability regions, dropout/unwanted-register review, spectral/alias/pitch/device
 cost, Breathing Stairwell and levelmatched listening remain pending. This
 selectable experimental model is not a qualified wind emulation.
+
+
+Captured native-API command revoice now admits **single-graph** mute, tail,
+neutral and Panic for ordinary owned effect graphs. The new realization projects
+the captured API frontier, preserves the existing 20-ms input/dry envelopes,
+continues processing behind mute, clears on neutral/Panic, and retains a tail
+through its declared transition-plus-maximum-tail deadline. Controls remain valid
+while muted; later commands after detachment fail. A missed lifecycle frame fails
+before graph traversal. Shared return taps are explicitly internal node outputs
+before the owner's lifecycle output gate, so a muted internal tap is not claimed
+to be the audible master return. This replays the declared API operation into new
+memory, not observed device timing, original PCM or timer-delayed retirement.
+
+Processor-owned membrane/network/spectral lifecycle, body-only message-port Panic,
+owner-stop without tail disposition, multiple graph replacement and native
+convolution command scheduling remain unsupported. Their missing lifecycle facts
+are not inferred from host calls. Grouped supported-rate/mode fixtures compare
+the owned driver against the actual owner host's recorded gain automation; control,
+invalid/late and processor-boundary fixtures are authored but unrun. Browser PCM,
+actual device application and listening remain pending.
+
+Queued controls accepted before a detach keep their original submission ancestry:
+neutral/Panic cancel them; tail retains those inside its declared deadline.
+Commands actually submitted after detach still fail. The prepared replay records
+canceled/retained sequence IDs and never mutates the captured history. These
+additional scheduling fixtures are authored but unrun.

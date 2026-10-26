@@ -111,6 +111,7 @@
       "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js", "js/editor/EditorAssetCache.js", "js/app/midi-ui/SoundContentArchive.js", "js/app/midi-ui/SoundContentReader.js", "js/app/midi-ui/SoundContentLibrary.js"],
       "files": [
         "js/app/midi-ui/AudioAssetRef.js",
+        "js/app/midi-ui/CapturedEffectLifecycle.js",
         "js/app/midi-ui/CapturedEffectReplay.js",
         "js/app/midi-ui/CapturedSpectralReplay.js",
         "js/app/midi-ui/CausalEffectSelection.js",
@@ -307,8 +308,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 196,
-      "sha256": "38f8905e87103d9bb5896a0b36dcd6f1524c30695d146697a0178d2f5cfe8afc"
+      "fileCount": 197,
+      "sha256": "d5ad795d14f0a4feaac794b1327f82aa5d0a833f397edc7ba26950800f29209c"
     },
     {
       "id": "lemmings-timing-worker-source",

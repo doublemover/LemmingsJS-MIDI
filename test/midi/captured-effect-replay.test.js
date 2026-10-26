@@ -44,7 +44,7 @@ describe('captured effect command revoice', () => {
     expect((await rejection(() => prepareCapturedEffectReplay(source, 48000, 48000))).code).to.equal('effect-history-order');
     source.effectEvents[1].ownerRouteRevision = 1; source.effectCoverage.gaps.push({ kind: 'effect-performance' });
     expect((await rejection(() => prepareCapturedEffectReplay(source, 48000, 48000))).code).to.equal('effect-history-unavailable');
-    source.effectCoverage.gaps = []; source.effectEvents.push({ ...source.effectEvents[0], sequence: 3, operation: 'bypass', definition: undefined, targetFrame: 10000, mode: 'panic' });
+    source.effectCoverage.gaps = []; source.effectEvents.push({ ...source.effectEvents[0], sequence: 3, operation: 'bypass', definition: undefined, targetFrame: 10000, mode: 'owner-stop' });
     expect((await rejection(() => prepareCapturedEffectReplay(source, 48000, 48000))).code).to.equal('effect-lifecycle-replay-unavailable');
   });
   it('does not treat requested causal identities or malformed numbers as rendered evidence', async () => {

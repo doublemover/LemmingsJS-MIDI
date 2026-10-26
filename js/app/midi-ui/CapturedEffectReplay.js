@@ -1,3 +1,4 @@
+import { prepareCapturedEffectLifecycle, createCapturedEffectLifecycleDriver } from './CapturedEffectLifecycle.js';
 import { prepareCapturedSpectralReplay } from './CapturedSpectralReplay.js';
 import { validateEffectPerformance } from '../../midi/content/EffectPerformance.js';
 import { prepareEffectGraphRevision, effectGraphHash } from '../../midi/content/EffectGraphRevision.js';
@@ -28,7 +29,7 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
   for (const { packet, projected } of projectedPackets) {
     if (packet.streamId !== publication.streamId || packet.ownerRouteRevision !== publication.ownerRouteRevision || packet.graphDefinitionHash !== publication.graphDefinitionHash || packet.sequence <= previous) fail('effect-history-order', 'Captured effects mix routes, streams or nonmonotonic command identities.'); previous = packet.sequence;
     if (packet.operation === 'body-panic') fail('effect-body-lifecycle-replay-unavailable', 'A body-only Panic was submitted through the message port; its applied audio frame is unavailable in this captured-command profile.');
-    if (packet.operation === 'bypass') fail('effect-lifecycle-replay-unavailable', 'This history includes an effect stop, bypass, mute or Panic. Choose a range ending before that transition or explicit static revoice.');
+    if (packet.operation === 'bypass') events.push({ kind: 'lifecycle', frame: projected.frame, mode: packet.mode, sequence: packet.sequence, sourceEventIds: packet.sourceEventIds });
     if (packet.operation === 'control') {
       if (projected.frame < 0 || projected.frame < initial.frame) fail('effect-control-before-publication', 'A captured parameter precedes its prepared graph.');
       if (plan.nodes.some(node => node.spectral) && Math.abs(projected.origin - initial.origin) > 1) fail('effect-analysis-grid-rebased', 'Spectral capture crosses an audio-clock rebase; its original analysis grid is unavailable in this render profile.');
@@ -43,6 +44,8 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
     }
   }
   events.sort((a, b) => a.frame - b.frame || a.sequence - b.sequence);
+  const transitionFrames = Math.max(1, Math.round(sampleRate * 0.02)), lifecycle = prepareCapturedEffectLifecycle(plan, events, initial.frame, transitionFrames);
+  if (lifecycle.canceledQueuedControls.length) { const canceled = new Set(lifecycle.canceledQueuedControls); for (let index = events.length - 1; index >= 0; index--) if (canceled.has(events[index].sequence)) events.splice(index, 1); }
   const supports = new Map();
   for (const event of events) if (event.kind === 'body-strike') {
     const held = (supports.get(event.nodeId) || []).filter(end => end > event.frame);
@@ -51,7 +54,7 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
   }
   const body = { schema: 'lemmings-captured-effect-replay/v1', definition: plan.definition, events, bodySourceIntentIds, lastBodyDriveFrame, graphStartFrame: initial.frame, frameOrigin: initial.origin,
     sampleRate, graphHash: await effectGraphHash(plan), capturedGraphHash: publication.graphDefinitionHash, sourceCanonicalHash: source.sourceCanonicalHash,
-    transitionFrames: Math.max(1, Math.round(sampleRate * 0.02)), operation: 'captured-API-command-revoice',
+    transitionFrames, lifecycle, operation: 'captured-API-command-revoice',
     initialMemory: 'cleared-new-realization;not-an-exact-live-DSP-state-reconstruction',
     evidence: 'controls:native-API-submission-not-processor-acknowledgment;finite-strikes:processor-frame-acknowledged;no-acoustic-output-claim',
     spectralCapture: spectral.evidence,
@@ -60,15 +63,16 @@ export async function prepareCapturedEffectReplay(source, sampleRate, endFrame) 
 }
 export function createCapturedEffectReplayDriver(replay, graph) {
   if (!replay || replay.schema !== 'lemmings-captured-effect-replay/v1' || graph.hash !== replay.graphHash) fail('effect-replay-identity', 'Effect command replay needs its exact admitted graph.');
-  for (const event of replay.events) { if (event.kind === 'spectral-capture') { if (typeof graph.validateSpectralCapture !== 'function' || typeof graph.assertSpectralCapture !== 'function') fail('effect-spectral-replay-unavailable', 'The graph cannot validate acknowledged analysis windows.'); graph.validateSpectralCapture(event.nodeId, event.capture); } else if (event.kind !== 'body-strike') graph.validateUpdate(event.nodeId, event.values); }
+  const lifecycle = createCapturedEffectLifecycleDriver(replay, graph);
+  for (const event of replay.events) { if (event.kind === 'lifecycle') lifecycle.validate(event); else if (event.kind === 'spectral-capture') { if (typeof graph.validateSpectralCapture !== 'function' || typeof graph.assertSpectralCapture !== 'function') fail('effect-spectral-replay-unavailable', 'The graph cannot validate acknowledged analysis windows.'); graph.validateSpectralCapture(event.nodeId, event.capture); } else if (event.kind !== 'body-strike') graph.validateUpdate(event.nodeId, event.values); }
   let cursor = 0, leftSample = 0, rightSample = 0;
   return Object.freeze({ sample(left, right, frame, sidechainSamples = null, presence = null) {
     const begin = cursor;
-    while (cursor < replay.events.length && replay.events[cursor].frame <= frame) { const event = replay.events[cursor++]; if (event.kind === 'spectral-capture') { if (event.frame !== frame) fail('effect-spectral-late-replay', 'An analysis window missed its exact replay frontier.'); graph.update(event.nodeId, { hold01: 1 }); } else if (event.kind === 'body-strike') { if (event.frame !== frame) fail('effect-body-late-replay', 'A finite source missed its exact replay frame.'); graph.enqueueBodyStrike(event.nodeId, event.command); } else graph.update(event.nodeId, event.values); }
-    const gate = Math.max(0, Math.min(1, (frame - replay.graphStartFrame) / replay.transitionFrames));
+    while (cursor < replay.events.length && replay.events[cursor].frame <= frame) { const event = replay.events[cursor++]; if (event.kind === 'lifecycle') lifecycle.apply(event, frame); else if (event.kind === 'spectral-capture') { if (event.frame !== frame) fail('effect-spectral-late-replay', 'An analysis window missed its exact replay frontier.'); graph.update(event.nodeId, { hold01: 1 }); } else if (event.kind === 'body-strike') { if (event.frame !== frame) fail('effect-body-late-replay', 'A finite source missed its exact replay frame.'); graph.enqueueBodyStrike(event.nodeId, event.command); } else graph.update(event.nodeId, event.values); }
+    lifecycle.step(frame); const gate = lifecycle.inputGain;
     if (sidechainSamples) for (let index = 0; index < sidechainSamples.length; index++) sidechainSamples[index] *= gate;
     graph.sample(left * gate, right * gate, sidechainSamples, presence);
     for (let index = begin; index < cursor; index++) { const event = replay.events[index]; if (event.kind === 'spectral-capture') graph.assertSpectralCapture(event.nodeId, event.capture); }
-    leftSample = graph.leftSample + left * (1 - gate); rightSample = graph.rightSample + right * (1 - gate);
+    leftSample = graph.leftSample * lifecycle.outputGain + left * lifecycle.dryGain; rightSample = graph.rightSample * lifecycle.outputGain + right * lifecycle.dryGain;
   }, get leftSample() { return leftSample; }, get rightSample() { return rightSample; } });
 }

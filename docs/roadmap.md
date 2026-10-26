@@ -5362,3 +5362,29 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   provide no observed playability, PCM, device or user-listening result yet. The
   wind pressure/pitch stability map, sustained/tail/alias/cost acceptance and all
   other remaining backlog development continue before consolidated validation.
+
+
+### Continuation 213 — captured ordinary effect lifecycle revoice
+
+- Added captured mute/tail/neutral/Panic replay for one ordinary owned effect
+  graph. Actual captured API frames drive the declared input/dry envelopes and
+  immediate wet mute/clear policy; tail retirement uses the declared bounded
+  transition-plus-maximum-tail frontier. A muted graph can retain controls; a
+  detached graph cannot accept another command. Missed lifecycle frontiers fail.
+- Shared return taps are explicitly before the owner output lifecycle gate. The
+  new render is a cleared realization of API operations, not original live PCM,
+  observed device application, exact host memory or polling-retirement timing.
+- Processor-owned bodies/spectral state, body-only port Panic, owner-stop lacking
+  tail disposition, native convolution command scheduling and multiple graph
+  replacement still need their own lifecycle evidence and remain rejected.
+- Authored unrun three-rate/four-mode scheduling parity against the actual owner
+  host, muted controls/internal taps, detachment, late-frontier, pre-mutation and
+  processor-boundary fixtures. Existing unsupported-lifecycle coverage now uses
+  the still-unsupported owner-stop case. No runtime/browser/audio/CI validation
+  has run; the combined validation/repair pass remains deferred.
+
+Queued controls accepted before a detach keep their original submission ancestry:
+neutral/Panic cancel them; tail retains those inside its declared deadline.
+Commands actually submitted after detach still fail. The prepared replay records
+canceled/retained sequence IDs and never mutates the captured history. These
+additional scheduling fixtures are authored but unrun.
