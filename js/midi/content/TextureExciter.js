@@ -2,7 +2,7 @@ import { freezeData } from '../../core/CanonicalData.js';
 
 export const TEXTURE_EXCITER_REVISION = 'owned-spatial-hash-texture-excitation-v1';
 export const TEXTURE_EXCITER_KINDS = Object.freeze(['sand-drag', 'cloth-rub', 'crackle-skin', 'foam-air']);
-export const TEXTURE_EXCITER_LIMITS = Object.freeze({ voices: 8, state: 48, modes: 5, modeWidth: 8, pulses: 32, pulseWidth: 8, birthsPer128Frames: 32, maximumPixelsPerSecond: 512, maximumSignedCoordinatePixels: 8000000, maximumSpanSeconds: 2 });
+export const TEXTURE_EXCITER_LIMITS = Object.freeze({ voices: 8, state: 48, modes: 8, modeWidth: 8, pulses: 32, pulseWidth: 8, birthsPer128Frames: 32, maximumPixelsPerSecond: 512, maximumSignedCoordinatePixels: 8000000, maximumSpanSeconds: 2 });
 export const TEXTURE_MODE_FREQUENCIES = Object.freeze([
   Object.freeze([600, 1170, 2600, 4100, 5700]), Object.freeze([450, 900, 1800, 3100, 4700]),
   Object.freeze([380, 830, 1700, 3400, 6100]), Object.freeze([700, 1600, 700, 1600, 700])

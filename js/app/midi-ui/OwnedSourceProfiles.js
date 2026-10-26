@@ -1,3 +1,4 @@
+import { validTextureBodyCommand, textureBodyCommandFields } from '../../midi/content/TextureBodyProfile.js';
 import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from '../../midi/content/TextureExciter.js';
 import { planTextureTravel } from '../../midi/content/TextureTravel.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel, validateCircularCoordinateControl } from '../../midi/content/CircularSpectrum.js';
@@ -56,11 +57,12 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
 };
 const profiles = Object.freeze({
   'worklet-texture': createProfile({ id: 'worklet-texture', controlReferenceRender: true, width: TEXTURE_LAYOUT.width, voices: TEXTURE_LAYOUT.voices, fields: NATIVE_TEXTURE_FIELDS, parameters: NATIVE_TEXTURE_PARAMETERS,
-    buildId: 'owned-texture-v1-spatial-gating', abi: 'owned-texture-f64-command-v1', workletUrl: new URL('./worklet/OwnedTextureProcessor.js', import.meta.url).href,
-    rateLimit: true, seedDomain: 'spatial-texture-v1', minHz: 20, maxHz: 2000, bendCents: 0, storageBytes: textureSourceBytes, heapEstimate: 65536, cost: () => 5 + 32,
+    buildId: 'owned-texture-v2-private-body', abi: 'owned-texture-f64-command-v2', workletUrl: new URL('./worklet/OwnedTextureProcessor.js', import.meta.url).href,
+    rateLimit: true, seedDomain: 'spatial-texture-v1', minHz: 20, maxHz: 2000, bendCents: 0, storageBytes: textureSourceBytes, heapEstimate: 65536, cost: p => 32 + (p.graftModeCount || 5),
+    acceptsOnset: (p, frequency, pcm, rate) => validTextureBodyCommand(textureBodyCommandFields(p), frequency, rate),
     travelPlanner: planTextureTravel, travelReceiptKey: 'textureTravel', restoration: 'semanticResume', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
-    acceptsParameters: p => { try { prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[p.textureKind], roughnessPerPixel: p.roughnessPerPixel, dragSlope: p.dragSlope, shade01: p.shade01, bodySeconds: p.textureBodySeconds }); return true; } catch { return false; } },
-    beginFields: (p, seed, pcm, selected, travel) => ({ 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
+    acceptsParameters: p => { try { if (!validTextureBodyCommand(textureBodyCommandFields(p), 20, 48000)) return false; prepareTextureExciter({ kind: TEXTURE_EXCITER_KINDS[p.textureKind], roughnessPerPixel: p.roughnessPerPixel, dragSlope: p.dragSlope, shade01: p.shade01, bodySeconds: p.textureBodySeconds }); return true; } catch { return false; } },
+    beginFields: (p, seed, pcm, selected, travel) => ({ ...textureBodyCommandFields(p), 18: seed, 19: p.textureKind, 20: p.roughnessPerPixel, 21: p.dragSlope, 22: p.shade01, 23: p.textureBodySeconds,
       ...(travel ? { 34: travel.firstFrame, 35: travel.endFrame, 36: travel.from, 37: travel.to, 38: 1 } : {}) }) }),
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
     buildId: 'owned-sample-v6-motion-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,

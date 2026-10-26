@@ -1,3 +1,4 @@
+import { validTextureBodyCommand } from '../../../midi/content/TextureBodyProfile.js';
 import { TEXTURE_EXCITER_LIMITS as LIMITS, TEXTURE_MODE_FREQUENCIES, textureSpatialHash } from '../../../midi/content/TextureExciter.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
@@ -5,19 +6,32 @@ const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInt
 const unit = value => value / 4294967296;
 
 export class SpatialTextureKernel {
-  constructor(sampleRate, { state = new Float64Array(LIMITS.state), modes = new Float64Array(LIMITS.modes * LIMITS.modeWidth), pulses = new Float64Array(LIMITS.pulses * LIMITS.pulseWidth), admission = new Float64Array([-1, 0]) } = {}) {
-    if (![44100, 48000, 96000].includes(sampleRate) || !(state instanceof Float64Array) || state.length !== LIMITS.state || !(modes instanceof Float64Array) || modes.length !== LIMITS.modes * LIMITS.modeWidth || !(pulses instanceof Float64Array) || pulses.length !== LIMITS.pulses * LIMITS.pulseWidth || !(admission instanceof Float64Array) || admission.length !== 2) throw new TypeError('Texture excitation needs its exact preallocated state and pulse admission.');
-    this.rate = sampleRate; this.state = state; this.modes = modes; this.pulses = pulses; this.admission = admission; this.leftSample = this.rightSample = 0;
+  constructor(sampleRate, { state = new Float64Array(LIMITS.state), modes = new Float64Array(LIMITS.modes * LIMITS.modeWidth), pulses = new Float64Array(LIMITS.pulses * LIMITS.pulseWidth), observation = new Float64Array(LIMITS.modes), admission = new Float64Array([-1, 0]) } = {}) {
+    if (![44100, 48000, 96000].includes(sampleRate) || !(state instanceof Float64Array) || state.length !== LIMITS.state || !(modes instanceof Float64Array) || modes.length !== LIMITS.modes * LIMITS.modeWidth || !(pulses instanceof Float64Array) || pulses.length !== LIMITS.pulses * LIMITS.pulseWidth || !(observation instanceof Float64Array) || observation.length !== LIMITS.modes || !(admission instanceof Float64Array) || admission.length !== 2) throw new TypeError('Texture excitation needs its exact preallocated state and pulse admission.');
+    this.rate = sampleRate; this.state = state; this.modes = modes; this.pulses = pulses; this.observation = observation; this.admission = admission; this.leftSample = this.rightSample = 0;
   }
   begin(kind, seed, roughness, drag, shade, bodySeconds, fromPixels, toPixels, firstFrame, endFrame, onsetFrame = firstFrame) {
     if (!integer(onsetFrame, 0, firstFrame) || !integer(kind, 0, 3) || !integer(seed, 0, 0xffffffff) || !finite(roughness, 0.2, 0.8) || !finite(drag, 0, 1) || !finite(shade, 0, 1) || !finite(bodySeconds, kind === 3 ? 0.08 : 0.02, kind === 0 ? 0.07 : 0.25) || !this.validSpan(fromPixels, toPixels, firstFrame, endFrame)) return false;
     this.clear(); const s = this.state; s[0] = 1; s[1] = seed; s[2] = kind; s[3] = roughness; s[4] = drag; s[5] = shade; s[6] = bodySeconds; s[8] = fromPixels; s[10] = fromPixels; s[12] = firstFrame; s[13] = onsetFrame - 1; s[14] = Math.floor(fromPixels * roughness); s[28] = Math.exp(-2 * Math.PI * 120 / this.rate); s[29] = 1 - Math.exp(-2 * Math.PI * (2500 + 3500 * shade) / this.rate); s[41] = 1 - Math.exp(-1 / (bodySeconds * this.rate));
-    for (let mode = 0; mode < LIMITS.modes; mode++) {
+    for (let mode = 0; mode < 5; mode++) {
       if (kind === 3 && mode >= 2) continue;
       const at = mode * LIMITS.modeWidth, frequency = TEXTURE_MODE_FREQUENCIES[kind][mode], angle = 2 * Math.PI * frequency / this.rate, t60 = kind === 3 ? Math.log(1000) * 0.9 / (Math.PI * frequency) : (kind === 0 ? Math.max(0.02, bodySeconds * (1 - mode * 0.12)) : bodySeconds * (1 - mode * 0.12)), radius = Math.exp(-Math.log(1000) / (t60 * this.rate));
-      this.modes[at] = Math.cos(angle); this.modes[at + 1] = Math.sin(angle); this.modes[at + 2] = radius; this.modes[at + 3] = (1 - radius) / (kind === 3 ? 2 : LIMITS.modes);
+      this.modes[at] = Math.cos(angle); this.modes[at + 1] = Math.sin(angle); this.modes[at + 2] = radius; this.modes[at + 3] = (1 - radius) / (kind === 3 ? 2 : 5);
     }
     return this.setSpan(fromPixels, toPixels, firstFrame, endFrame);
+  }
+  configureExternalBody(command, frequency) {
+    if (!validTextureBodyCommand(command, frequency, this.rate)) return false;
+    const s = this.state, count = command[40]; if (!count) return true;
+    let reference = 0;
+    for (let mode = 0; mode < count; mode++) { const at = 46 + mode * 4; reference += Math.max(Math.abs(command[at + 2]), Math.abs(command[at + 3])); }
+    this.modes.fill(0); s[42] = count; s[43] = command[41]; s[44] = command[44]; s[47] = frequency;
+    for (let mode = 0; mode < count; mode++) {
+      const src = 46 + mode * 4, at = mode * LIMITS.modeWidth, angle = 2 * Math.PI * frequency * command[src] / this.rate, t60 = command[42] * (1 - 0.9 * command[43]) * command[src + 1], radius = Math.exp(-Math.log(1000) / (t60 * this.rate));
+      this.modes[at] = Math.cos(angle); this.modes[at + 1] = Math.sin(angle); this.modes[at + 2] = radius; this.modes[at + 3] = (1 - radius) / (2 * Math.SQRT2);
+      this.observation[mode] = (command[src + 2] + (command[src + 3] - command[src + 2]) * command[45]) / Math.max(1, reference);
+    }
+    return true;
   }
   validSpan(fromPixels, toPixels, firstFrame, endFrame) {
     return finite(fromPixels, -LIMITS.maximumSignedCoordinatePixels, LIMITS.maximumSignedCoordinatePixels) && finite(toPixels, -LIMITS.maximumSignedCoordinatePixels, LIMITS.maximumSignedCoordinatePixels) && integer(firstFrame, 0) && integer(endFrame, firstFrame + 1) && endFrame - firstFrame <= this.rate * LIMITS.maximumSpanSeconds && Math.abs(toPixels - fromPixels) * this.rate / (endFrame - firstFrame) <= LIMITS.maximumPixelsPerSecond;
@@ -28,7 +42,7 @@ export class SpatialTextureKernel {
     s[9] = fromPixels; s[10] = toPixels; s[11] = firstFrame; s[12] = endFrame; return true;
   }
   end(frame) { if (!integer(frame, 0)) throw new RangeError('Texture end needs the actual output frame.'); this.state[7] = 1; this.state[32] = frame; }
-  clear() { this.state.fill(0); this.modes.fill(0); this.pulses.fill(0); this.leftSample = this.rightSample = 0; }
+  clear() { this.state.fill(0); this.modes.fill(0); this.observation.fill(0); this.pulses.fill(0); this.leftSample = this.rightSample = 0; }
   birth(frame, startFrame, duration, left, right) {
     const s = this.state, bucket = Math.floor(frame / 128); s[24]++;
     if (this.admission[0] !== bucket) { this.admission[0] = bucket; this.admission[1] = 0; }
@@ -74,15 +88,22 @@ export class SpatialTextureKernel {
     s[34] += left * left + right * right;
     const highLeft = left - s[15] + s[28] * s[16], highRight = right - s[18] + s[28] * s[19]; s[15] = left; s[16] = Math.abs(highLeft) < 1e-24 ? 0 : highLeft; s[18] = right; s[19] = Math.abs(highRight) < 1e-24 ? 0 : highRight;
     const alpha = s[29] * (s[30] || 1); s[17] += alpha * (s[16] - s[17]); s[20] += alpha * (s[19] - s[20]); if (Math.abs(s[17]) < 1e-24) s[17] = 0; if (Math.abs(s[20]) < 1e-24) s[20] = 0; left = s[17] * 0.5; right = s[20] * 0.5;
+    const dryLeft = left, dryRight = right;
+    if (s[42]) {
+      s[46] = Math.max(s[46], Math.abs(left), Math.abs(right));
+      if (!Number.isFinite(s[46]) || s[46] > 1) s[45] = 1;
+      if (!moving || s[45]) left = right = 0;
+      else { left *= s[44]; right *= s[44]; }
+    }
     let bodyLeft = 0, bodyRight = 0;
-    for (let mode = 0; mode < LIMITS.modes; mode++) {
+    for (let mode = 0, count = s[42] || 5; mode < count; mode++) {
       const at = mode * LIMITS.modeWidth, c = this.modes[at], sn = this.modes[at + 1], radius = this.modes[at + 2], gain = this.modes[at + 3];
       const a = this.modes[at + 4], b = this.modes[at + 5], x = (a * c - b * sn) * radius + left * gain, y = (a * sn + b * c) * radius;
       const d = this.modes[at + 6], e = this.modes[at + 7], u = (d * c - e * sn) * radius + right * gain, v = (d * sn + e * c) * radius;
-      this.modes[at + 4] = Math.abs(x) < 1e-24 ? 0 : x; this.modes[at + 5] = Math.abs(y) < 1e-24 ? 0 : y; this.modes[at + 6] = Math.abs(u) < 1e-24 ? 0 : u; this.modes[at + 7] = Math.abs(v) < 1e-24 ? 0 : v; bodyLeft += x; bodyRight += u;
+      this.modes[at + 4] = Math.abs(x) < 1e-24 ? 0 : x; this.modes[at + 5] = Math.abs(y) < 1e-24 ? 0 : y; this.modes[at + 6] = Math.abs(u) < 1e-24 ? 0 : u; this.modes[at + 7] = Math.abs(v) < 1e-24 ? 0 : v; const pickup = s[42] ? this.observation[mode] : 1; bodyLeft += x * pickup; bodyRight += u * pickup;
     }
-    const wet = s[2] === 1 ? 0.1 : s[2] === 3 ? 0.7 : 0.8;
-    this.leftSample = left * (1 - wet) + bodyLeft * wet; this.rightSample = right * (1 - wet) + bodyRight * wet;
+    const wet = s[42] ? s[43] : s[2] === 1 ? 0.1 : s[2] === 3 ? 0.7 : 0.8, bodyGain = s[42] ? 0.4 : 1;
+    this.leftSample = dryLeft * (1 - wet) + bodyLeft * wet * bodyGain; this.rightSample = dryRight * (1 - wet) + bodyRight * wet * bodyGain;
     if (!Number.isFinite(this.leftSample) || !Number.isFinite(this.rightSample) || Math.max(Math.abs(this.leftSample), Math.abs(this.rightSample)) > 1.000001) throw new RangeError('Texture excitation violated its admitted peak bound.');
     s[23] = Math.max(s[23], Math.abs(this.leftSample), Math.abs(this.rightSample)); s[35] += this.leftSample * this.leftSample + this.rightSample * this.rightSample;
   }

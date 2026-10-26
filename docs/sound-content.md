@@ -823,3 +823,18 @@ snapshot. Exact transfer requests are rejected before mutation. Pulse statistics
 block/reversal/stop/Panic fixtures, spectral/alias assessment, device cost and
 matched-level listening remain separate qualification work. Material Ribbon,
 fitted-body texture grafts and sealed bow/reed outer bodies remain pending.
+
+
+Spatial texture body grafts use the seed lab's **Spatial texture → modal body**
+transform. Select a committed sustained signed-axis journey mapping, the exciter,
+a tin/wood or reviewed fitted body, and a declared body root. Compile, audition,
+save and apply through the existing revision owner. The frozen seed is retained
+only as analysis/regeneration ancestry. It is not an audible backing sample.
+EXCITE scales body input, BODY sets intrinsic amplitude T60, DAMP multiplies that
+T60 by (1 − 0.9 × DAMP), and MIX linearly blends the filtered spatial exciter and
+0.4-gain signed body observation. Controls affect new voices. The body uses the
+onset note and fixed ratios; live pitch bending is unavailable. The four-second
+linear release envelope is independent of intrinsic T60 and is a declared owner
+cutoff. A stopped spatial source cannot replenish the body through dry filter
+or burst tails. This original relative audio template is pending runtime,
+spectral, device and matched-level listening qualification.

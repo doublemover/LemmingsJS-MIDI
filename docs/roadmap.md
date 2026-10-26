@@ -4924,3 +4924,39 @@ provenance and limited critical typecheck checks are used. Physical-scene/browse
 integration, measured pulse/spectral/alias/cost evidence, matched-level listening,
 Material Ribbon, fitted external-body variants, exact texture state transfer and
 sealed bow/reed families remain pending before comprehensive acceptance.
+
+
+### Continuation 199 — spatial texture → private body grafts (#1216, #1233, #1179)
+
+The owned texture source now has an explicit one-way external-body port. Its
+80-scalar onset binds 1–8 positive-decay modal rotations, fixed onset body tuning,
+EXCITE, intrinsic BODY T60, DAMP and independent dry/body MIX. Audio input comes
+from the actual spatial exciter after its spectral filters, without the original
+short material resonator. Only observed motion replenishes the external body;
+finite burst/filter dry tails do not sneak excitation across a rest or END.
+Signed pickup weights share one maximum-L1 reference. Injection uses the declared
+peak bound and (1-r)/(2 sqrt(2)), with 0.4 observation gain; invalid/overflowing
+input stops replenishment while existing modal state retains positive decay.
+All modes and observation arrays are preallocated and included in source bytes.
+No detector envelope or extracted bow/reed feedback port is accepted.
+
+The seed lab exposes all four spatial exciters paired with the original tin/wood
+body or a reviewed fitted body. The ordinary compiler, immutable archive,
+audition, save, undoable lane apply and exact-target/stale-draft owners handle the
+result. Frozen material is body-analysis/regeneration ancestry, never sampled by
+this instrument. Fitted frequencies/decays/weights and original hashes remain
+visible in the contract. Tin pollen is a named sand/tin starting combination.
+The selected source, fitted/composed parents and texture selection also join the
+explicit revoice rebuild plan. A failed replacement leaves the original patch.
+
+This tier is next-onset only: existing actors retain their body, coefficients and
+observation. The separate four-second linear owned release envelope and final
+cutoff are explicit; changing BODY never overwrites intrinsic loss with exciter
+support. Live body position, force calibration, exact texture snapshots, shared
+world bodies and feedback-family extraction are not claimed. Fixtures cover
+motion/rest/end contraction, silent excitation, invalid preparation without
+mutation, complete retirement, all four compiled choices, fitted ancestry,
+macro equations, bounds and absence of audio sample playback. They are authored
+but unrun. Format, syntax/provenance and limited critical type checks are used;
+runtime/render/listening/device acceptance and complete nursery/comparison scene
+journeys remain deferred with the rest of the development batch.
