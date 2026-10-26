@@ -2,7 +2,7 @@ import { performanceSceneHash } from './PerformanceScene.js';
 import { validatePhysicalLessonDefinition } from './PhysicalLessonDefinition.js';
 
 export async function createInstalledPhysicalLessons(catalog) {
-  const rows = catalog.registry.page({ limit: 64 }).rows, resolve = id => { const row = rows.find(value => value.id === id && value.supported); return row ? catalog.registry.resolve(row) : null; };
+  const resolve = id => { const row = catalog.registry.findSupported({ id }); return row ? catalog.registry.resolve(row) : null; };
   const zero = resolve('practice.quiet-control'); if (!zero) return Object.freeze([]);
   const reference = async scene => ({ id: scene.id, version: scene.version, hash: await performanceSceneHash(scene) }), zeroNoteScene = await reference(zero), lessons = [];
   for (const spec of [

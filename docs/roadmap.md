@@ -6269,3 +6269,15 @@ export-budget acknowledgments still prevent a false complete receipt.
   silence, single-application, state-restore and foundry closure fixtures, unrun.
   Formatting, nine-file syntax/import checks, critical types and static provenance
   pass (10 components / 335 files). No DSP, solver, browser or full-suite tests ran.
+
+### Continuation 246 — exact scene lookup beyond browser pages (#1151, #1110)
+
+- Added an indexed latest-supported scene lookup independent of page ordering.
+  Explicit content versions remain hash-pinned; unsupported future schemas stay
+  inspectable without hiding an older supported scene. Lesson installation uses
+  that index, and lesson loading resolves its exact saved reference directly.
+- Removed a brittle whole-catalog count from a practice fixture. Added unrun
+  eighty-leading-scene regression coverage and supported/future version-order,
+  immutability and wrong-hash cases. Formatting, five-file syntax/import checks,
+  critical types and static provenance pass (10 components / 335 files). Runtime,
+  browser and full-suite validation remain deferred.

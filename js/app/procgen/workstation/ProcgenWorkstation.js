@@ -1172,8 +1172,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (definitions.length) physicalLessonView = lessonView.createPhysicalLessonView({ document, window, definitions, cancelLoad: () => sceneLoader.cancel(), onStatus: status,
           loadScene: async (reference, { signal }) => {
             if (stageSession?.active()) throw new Error('Exit Stage before loading a lesson world.');
-            signal.throwIfAborted(); const row = sceneCatalog.registry.page({ limit: 64 }).rows.find(value => value.id === reference.id && value.version === reference.version && value.hash === reference.hash);
-            if (!row) throw new Error('The exact lesson scene version is unavailable.'); const scene = sceneCatalog.registry.resolve(row);
+            signal.throwIfAborted(); const scene = sceneCatalog.registry.resolve(reference);
             if (await performanceSceneHash(scene) !== reference.hash) throw new Error('The lesson source changed.'); signal.throwIfAborted(); sceneLoader.select(scene);
             const prepared = await sceneLoader.prepare(); signal.throwIfAborted(); if (prepared.status !== 'ready') throw new Error('Lesson setup requirements are unavailable; the current world remains active.');
             const applied = await sceneLoader.apply(); signal.throwIfAborted(); if (applied.status !== 'committed') throw new Error('Lesson setup was canceled.');

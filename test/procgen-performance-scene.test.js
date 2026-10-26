@@ -34,6 +34,11 @@ const scene = async (count = 4, density = 'sparse') => {
 const available = async dependency => ({ ...dependency, status: 'available', storage: 'installed-runtime' });
 
 describe('versioned physical scene content and complete dependency closure', () => {
+  it('indexes the latest supported version independently of paging, registration order and inspect-only future schemas', async () => {
+    const registry = createPerformanceSceneRegistry(), first = await scene(), second = { ...first, version: 2, title: 'Later supported score' }; await registry.register(second); await registry.register(first); await registry.register({ schema: 'lemmings-performance-scene/v999', id: first.id, version: 3, title: 'Unsupported later schema' });
+    const selected = registry.findSupported({ id: first.id }); expect(selected.version).to.equal(2); expect(registry.resolve(selected)).to.deep.equal(second); expect(registry.findSupported({ id: first.id, version: 1 }).hash).to.equal(await performanceSceneHash(first)); expect(registry.findSupported({ id: first.id, version: 3 })).to.equal(null); expect(registry.findSupported({ id: 'missing.score' })).to.equal(null); expect(Object.isFrozen(selected)).to.equal(true);
+    expect(() => registry.findSupported({ id: first.id, version: 0 })).to.throw('scene identity'); expect(() => registry.resolve({ ...selected, hash: h('e') })).to.throw('exact scene');
+  });
   for (const lanes of [4, 8]) for (const density of ['sparse', 'medium', 'dense']) it('pins ' + lanes + ' lanes with ' + density + ' authored admission bounds', async () => {
     const value = await scene(lanes, density), proof = await checkPerformanceSceneRequirements(value, { resolveDependency: available });
     expect(proof.status).to.equal('ready'); expect(proof.dependencies.filter(entry => entry.dependency.kind === 'engine')).to.have.length(1); expect(proof.cost.lanes).to.equal(lanes); expect(proof.acousticReceipt).to.equal(false);
@@ -117,8 +122,9 @@ describe('installed crossing scores and the existing world candidate adapter', (
   });
   it('pins finite practice releases before the first cohort and rehearses an actor-free control without phantom attacks', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') }))), getCatalog = async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors });
-    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }), masks = await loadProcgenMasks(); expect(library.registry.page().rows.filter(row => !row.id.startsWith('dub-quarry.'))).to.have.length(8);
-    for (const row of library.registry.page().rows.filter(row => ['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.quiet-control'].includes(row.id))) {
+    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }), masks = await loadProcgenMasks();
+    for (const id of ['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.quiet-control']) {
+      const row = library.registry.findSupported({ id }); expect(row, id).not.to.equal(null);
       const value = library.registry.resolve(row), origin = await library.origin(value), budget = createResourceBudget(); let original;
       const adapter = createPerformanceSceneWorldAdapter({ resourceBudget: budget, getCatalog, getOrigin: (scene, variants) => library.origin(scene, variants), prepareWorld: async ({ sceneRecipe }) => {
         original = new ProcgenLaneWorld({ masks, cohorts: true, laneCount: sceneRecipe.settings.laneCount, laneHeight: sceneRecipe.settings.laneHeight, seed: sceneRecipe.settings.seed, initialReleaseGesture: sceneRecipe.initialReleaseGesture, assists: false, stallPolicy: { secondsWithoutProgress: 1000 } });

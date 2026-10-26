@@ -62,6 +62,14 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) }), lessons = await createInstalledPhysicalLessons(catalog);
     expect(lessons).to.have.length(5); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
   });
+  it('resolves every lesson and exact scene reference beyond the first sixty-four inventory rows', async () => {
+    const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) });
+    const base = catalog.registry.resolve(catalog.registry.findSupported({ id: 'practice.quiet-control' }));
+    for (let index = 0; index < 80; index++) await catalog.registry.register({ ...base, id: 'filler.' + index, title: 'AAA filler ' + String(index).padStart(3, '0') });
+    expect(catalog.registry.page({ limit: 64 }).rows.some(row => row.id.startsWith('practice.'))).to.equal(false);
+    const lessons = await createInstalledPhysicalLessons(catalog); expect(lessons).to.have.length(5);
+    for (const lesson of lessons) { expect(catalog.registry.resolve(lesson.setupScene).id).to.equal(lesson.setupScene.id); expect(catalog.registry.resolve(lesson.zeroNoteScene).id).to.equal('practice.quiet-control'); }
+  });
   it('keeps Reset, Back, Skip, Close and re-entry on one observer without automatic physical actions', async () => {
     const dom = new JSDOM('<body></body>', { url: 'http://localhost' }), definitions = [definition(), definition('entry-spacing-change')]; let loads = 0;
     const view = createPhysicalLessonView({ document: dom.window.document, window: dom.window, definitions, loadScene: async reference => { loads++; return binding(reference.hash[0], reference.hash[0] === 'b' ? 1 : 2); } });

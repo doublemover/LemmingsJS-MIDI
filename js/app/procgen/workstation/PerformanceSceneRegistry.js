@@ -3,7 +3,7 @@ import { inspectPerformanceScene, validatePerformanceScene, performanceSceneHash
 
 export function createPerformanceSceneRegistry({ maximumScenes = 4096 } = {}) {
   if (!Number.isInteger(maximumScenes) || maximumScenes < 1 || maximumScenes > 4096) throw new TypeError('Invalid scene inventory limit.');
-  const entries = new Map(); let revision = 0;
+  const entries = new Map(), latestSupported = new Map(); let revision = 0;
   return Object.freeze({
     async register(raw) {
       const metadata = inspectPerformanceScene(raw), key = metadata.id + ':' + metadata.version;
@@ -11,7 +11,14 @@ export function createPerformanceSceneRegistry({ maximumScenes = 4096 } = {}) {
       const previous = entries.get(key);
       if (previous) { if (previous.hash !== hash || canonicalDataText(previous.metadata).text !== canonicalDataText(metadata).text) throw new Error('A scene version cannot be overwritten with different content.'); return previous.metadata; }
       if (entries.size >= maximumScenes) throw new Error('Scene registry capacity exceeded.');
-      entries.set(key, { metadata, scene, hash }); revision++; return metadata;
+      const entry = { metadata, scene, hash }; entries.set(key, entry);
+      if (scene && (!latestSupported.has(metadata.id) || latestSupported.get(metadata.id).metadata.version < metadata.version)) latestSupported.set(metadata.id, entry);
+      revision++; return metadata;
+    },
+    findSupported({ id, version = null } = {}) {
+      if (typeof id !== 'string' || !id || id.length > 160 || version !== null && (!Number.isInteger(version) || version < 1 || version > 2147483647)) throw new TypeError('Choose a scene identity and optional exact content version.');
+      const entry = version === null ? latestSupported.get(id) : entries.get(id + ':' + version);
+      return entry?.scene ? freezeData({ ...entry.metadata, hash: entry.hash }) : null;
     },
     resolve({ id, version, hash }) { const entry = entries.get(id + ':' + version); if (!entry?.scene || entry.hash !== hash) throw new Error('The exact scene version is unavailable.'); return entry.scene; },
     page({ query = '', mechanism = null, density = null, lessonLevel = null, offset = 0, limit = 24, expectedRevision = revision } = {}) {
