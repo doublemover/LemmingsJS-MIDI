@@ -6381,3 +6381,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   10 components / 336 source files). No WASM compilation/execution, runtime,
   browser, audio/listening or full-suite test ran. Verified image transport,
   restoration, live source ownership and cost qualification remain pending.
+
+### Continuation 252 — bounded compiled-module worker output (#1186, #1234)
+
+- Initial stretch image jobs can now carry their already compiled immutable
+  `WebAssembly.Module` through the existing acknowledged snapshot transport.
+  One explicit output capability permits at most one native module; input
+  receivers override any forged capability to false. The main service enables
+  it only for the exact image job under a bound execution identity. Other jobs
+  retain the plain-data restriction. Modules are structured-cloned, never added
+  to an ArrayBuffer transfer list or converted into executable project JSON.
+- Sender/receiver node and peak limits charge a declared 16 MiB code estimate,
+  and retained-byte receipts include it. This is a conservative logical charge,
+  not measured browser memory or a device tier. Actual heap/module byte buffers
+  retain their separate existing transfer and producer-retirement frontiers.
+- Authored unrun cloning, source preservation, default denial, spoof/duplicate,
+  capacity, cancellation, job-specific output and forged-ingress fixtures. Image
+  fixtures inspect the returned module/stack export without claiming audibility.
+  Formatting, seven-file syntax/import checks, critical types and static provenance
+  pass (267 worker modules; 10 components / 336 source files). No WASM compilation,
+  instantiation, runtime, browser, listening or full-suite test ran. Material
+  verification, restoration, the live adapter and measured cost remain pending.

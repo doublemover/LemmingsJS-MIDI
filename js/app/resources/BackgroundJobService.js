@@ -120,7 +120,7 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
                     !Number.isSafeInteger(metadata.nodes) || metadata.nodes < 1 || metadata.nodes > 4000000 || metadata.retainedBytes != null && (!Number.isSafeInteger(metadata.retainedBytes) || metadata.retainedBytes < 0 || metadata.retainedBytes > estimatedPeakBytes)) throw failure('invalid-result', 'Background worker result exceeds its admitted protocol.');
                 if (identity.activeExecution === 'bound' && !compareActiveExecutionIdentity(message.executionIdentity, 'browser-background-jobs').matched) throw failure('worker-build-mismatch', 'Background worker executes a different application build.');
                 executionIdentity = message.executionIdentity; outputMetadata = { inputBytes: metadata.inputBytes, nodes: metadata.nodes, retainedBytes: metadata.retainedBytes };
-                outputReceiver = createBackgroundSnapshotReceiver({ maxBytes: Math.min(256 * 1048576, Math.floor(estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes, allowOwnedBinary: true });
+                outputReceiver = createBackgroundSnapshotReceiver({ maxBytes: Math.min(256 * 1048576, Math.floor(estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes, allowOwnedBinary: true, allowOwnedWasmModule: kind === 'prepare-stretch-core-image' && identity.activeExecution === 'bound' });
                 outputTransport.mode = 'acknowledged-snapshot-pages'; outputStarted = now(); worker.postMessage({ ...envelope, type: 'output-ack', sequence: 0 }); return;
               }
               if (message.type === 'output-page') {

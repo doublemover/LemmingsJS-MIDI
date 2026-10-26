@@ -23,7 +23,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
         if (request.type !== 'input-start' || !BACKGROUND_JOB_KINDS.includes(request.kind) || request.sequence !== 0 || Object.hasOwn(request, 'input')) throw new Error('Background worker requires a bounded snapshot stream.');
         if (request.requiredIdentity?.activeExecution === 'bound' && !compareIdentity(request.requiredIdentity)) throw new Error('Background worker executes a different immutable build.');
         if (request.limits?.maxBytes > 64 * 1048576) throw new Error('Worker input exceeds the protocol byte ceiling.');
-        receiver = createBackgroundSnapshotReceiver(request.limits); phase = 'receiving'; respond({ type: 'input-ack', sequence: 0 }); return;
+        receiver = createBackgroundSnapshotReceiver({ ...request.limits, allowOwnedWasmModule: false }); phase = 'receiving'; respond({ type: 'input-ack', sequence: 0 }); return;
       }
       if (phase === 'sending' && request.type === 'output-ack') {
         if (!outputAcknowledgment || request.sequence !== outputAcknowledgment.sequence) throw new Error('Stale background result acknowledgment.');
@@ -48,7 +48,7 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       }
       const ownedTransferBuffers = new Set(transfers);
       if (ownedTransferBuffers.size !== transfers.length || ownedTransferBuffers.size > 32) ownedTransferBuffers.clear();
-      const resultLimits = { maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };
+      const resultLimits = { allowOwnedWasmModule: source.kind === 'prepare-stretch-core-image', maxBytes: Math.min(256 * 1048576, Math.floor(source.limits.estimatedPeakBytes / 2)), maxNodes: 4000000, estimatedPeakBytes: source.limits.estimatedPeakBytes };
       phase = 'sending'; await sendOutput({ type: 'output-start', sequence: 0, metadata: { inputBytes: result.inputBytes, nodes: result.nodes, retainedBytes: result.retainedBytes ?? null }, executionIdentity: identity() });
       let sequence = 0;
       for await (const packet of encodeBackgroundSnapshotPages(result.value, { ...resultLimits, ownedTransferBuffers, isCurrent: () => phase === 'sending' })) { sequence = packet.sequence; await sendOutput({ type: 'output-page', sequence, packet }, backgroundSnapshotTransfers(packet)); }

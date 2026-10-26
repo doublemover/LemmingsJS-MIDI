@@ -150,7 +150,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: input.sampleRate, blockFrames: input.blockFrames, intervalFrames: input.intervalFrames, randomSeed: input.randomSeed, maximumHeapBytes: input.maximumHeapBytes, captureInitialImage: true, estimatedPeakBytes, signal, current, yieldControl }); guard(signal, current);
       const image = core.getInitialImage(), metadataBytes = canonicalDataText(image.metadata, { maxBytes: 65536, maxNodes: 4096 }).bytes.length;
       const value = Object.freeze({ ...image, applicationBuildId: execution.buildId });
-      return { value, inputBytes: input.wasmBytes.byteLength + 4096, nodes: 16, retainedBytes: image.heapBytes.byteLength + image.moduleBytes.byteLength + metadataBytes * 8 + 65536 };
+      return { value, inputBytes: input.wasmBytes.byteLength + 4096, nodes: 16, retainedBytes: image.heapBytes.byteLength + image.moduleBytes.byteLength + image.metadata.compiledModuleEstimateBytes + metadataBytes * 8 + 65536 };
     } finally { core?.dispose(); }
   }
   if (kind === 'qualify-original-shape-refinement') {

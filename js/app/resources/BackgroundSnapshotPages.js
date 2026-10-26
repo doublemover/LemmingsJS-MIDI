@@ -2,18 +2,20 @@ import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 export const BACKGROUND_SNAPSHOT_SCHEMA = 'owned-background-snapshot-pages/v1';
 export const BACKGROUND_SNAPSHOT_PACKET_BYTES = 65536;
 export const BACKGROUND_SNAPSHOT_PACKET_OPERATIONS = 256;
+export const BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES = 16 * 1048576;
 const TEXT_UNITS = 4096, BINARY_BYTES = 32768;
 const types = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array, DataView };
 const unsafe = key => ['__proto__', 'constructor', 'prototype'].includes(key);
 const fail = message => Object.assign(new Error(message), { name: 'BackgroundSnapshotError', code: 'snapshot-transport' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
+const wasmModule = value => { if (typeof globalThis.WebAssembly?.Module !== 'function' || !(value instanceof WebAssembly.Module)) return false; try { return WebAssembly.Module.exports(value).length <= 256; } catch { return false; } };
 const own = (value, key) => { const property = Object.getOwnPropertyDescriptor(value, key); if (!property || !Object.hasOwn(property, 'value')) throw fail('Snapshot transport requires own data properties.'); return property.value; };
 const validLimits = ({ maxBytes, maxNodes, estimatedPeakBytes }) => {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 256 * 1048576 || !Number.isSafeInteger(maxNodes) || maxNodes < 1 || maxNodes > 4000000 || !Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < 4096 || estimatedPeakBytes > 512 * 1048576) throw fail('Invalid snapshot transport limits.');
 };
 const operationBytes = operation => 64 + operation.reduce((sum, value) => sum + (typeof value === 'string' ? value.length * 2 : value instanceof ArrayBuffer ? operation[0] === 'owned-binary' ? 8 : value.byteLength : 8), 0);
 function* snapshotOperations(value, limits) {
-  const active = new WeakSet(), transferred = new WeakSet(); let nodes = 0, dataBytes = 0;
+  const active = new WeakSet(), transferred = new WeakSet(); let nodes = 0, dataBytes = 0, nativeModules = 0;
   const claim = (bytes = 0) => { dataBytes += bytes; if (dataBytes > limits.maxBytes * 2 || dataBytes * 2 + nodes * 64 > limits.estimatedPeakBytes) throw fail('Snapshot transport exceeds its admitted footprint.'); };
   const visit = function*(input, depth) {
     if (++nodes > limits.maxNodes || depth > 48) throw fail('Snapshot transport exceeds its structural bound.'); claim();
@@ -37,6 +39,10 @@ function* snapshotOperations(value, limits) {
       for (let offset = 0; offset < length; offset += BINARY_BYTES) { if (source.byteLength !== length) throw fail('Owned snapshot buffer changed during transfer.'); const bytes = source.slice(offset, offset + BINARY_BYTES); yield ['bytes', bytes.buffer]; }
       yield ['binary-end']; return;
     }
+    if (limits.allowOwnedWasmModule && wasmModule(input)) {
+      if (nativeModules || transferred.has(input) || BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES > limits.maxBytes) throw fail('At most one unique owned WASM module must fit the declared result limit.');
+      nativeModules++; transferred.add(input); claim(BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES); yield ['owned-wasm-module', input]; return;
+    }
     const array = Array.isArray(input), prototype = Object.getPrototypeOf(input);
     if (array ? prototype !== Array.prototype : ![Object.prototype, null].includes(prototype)) throw fail('Unsupported snapshot object prototype.');
     if (Object.hasOwn(input, 'toJSON')) throw fail('Snapshot serialization hooks are not supported.');
@@ -55,8 +61,9 @@ function* snapshotOperations(value, limits) {
   yield* visit(value, 0);
 }
 export async function* encodeBackgroundSnapshotPages(value, { maxBytes = 64 * 1048576, maxNodes = 4000000, estimatedPeakBytes,
-  signal, ownedTransferBuffers = null, isCurrent = () => true, yieldTask = yieldBackgroundTask, now = () => performance.now(), sliceMs = 3, onSlice = () => {} } = {}) {
-  const limits = { maxBytes, maxNodes, estimatedPeakBytes, ownedTransferBuffers }; validLimits(limits);
+  signal, ownedTransferBuffers = null, allowOwnedWasmModule = false, isCurrent = () => true, yieldTask = yieldBackgroundTask, now = () => performance.now(), sliceMs = 3, onSlice = () => {} } = {}) {
+  const limits = { maxBytes, maxNodes, estimatedPeakBytes, ownedTransferBuffers, allowOwnedWasmModule }; validLimits(limits);
+  if (typeof allowOwnedWasmModule !== 'boolean') throw fail('Native module transport requires an explicit boolean capability.');
   if (ownedTransferBuffers != null && (!(ownedTransferBuffers instanceof Set) || ownedTransferBuffers.size > 32)) throw fail('Invalid explicitly owned result transfer set.');
   if (!Number.isFinite(sliceMs) || sliceMs <= 0 || sliceMs > 4) throw fail('Invalid snapshot slice target.');
   const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw fail('Snapshot source ownership changed.'); };
@@ -75,9 +82,10 @@ export async function* encodeBackgroundSnapshotPages(value, { maxBytes = 64 * 10
     check();
   } finally { iterator.return(); }
 }
-export function createBackgroundSnapshotReceiver({ maxBytes = 64 * 1048576, maxNodes = 4000000, estimatedPeakBytes, allowOwnedBinary = false } = {}) {
+export function createBackgroundSnapshotReceiver({ maxBytes = 64 * 1048576, maxNodes = 4000000, estimatedPeakBytes, allowOwnedBinary = false, allowOwnedWasmModule = false } = {}) {
   const limits = { maxBytes, maxNodes, estimatedPeakBytes }; validLimits(limits);
-  const stack = []; let root, hasRoot = false, nodes = 0, dataBytes = 0, sequence = 0, finished = false, reading = false;
+  if (typeof allowOwnedWasmModule !== 'boolean') throw fail('Native module transport requires an explicit boolean capability.');
+  const stack = []; let root, hasRoot = false, nodes = 0, dataBytes = 0, sequence = 0, finished = false, reading = false, nativeModules = 0;
   const claim = (bytes, futureNode = false) => { dataBytes += bytes; if (dataBytes > maxBytes * 2 || dataBytes * 2 + (nodes + Number(futureNode)) * 64 > estimatedPeakBytes) throw fail('Received snapshot exceeds its admitted footprint.'); };
   const attach = value => {
     if (++nodes > maxNodes || stack.length > 48) throw fail('Received snapshot exceeds its node/depth bound.'); claim(0);
@@ -89,7 +97,7 @@ export function createBackgroundSnapshotReceiver({ maxBytes = 64 * 1048576, maxN
   };
   const consume = operation => {
     if (!Array.isArray(operation) || typeof operation[0] !== 'string') throw fail('Invalid snapshot operation.'); const [kind, value, extra] = operation, parent = stack.at(-1);
-    if (['value', 'object', 'array', 'string', 'binary', 'owned-binary'].includes(kind) && (nodes >= maxNodes || stack.length > 48 || parent && !(parent.kind === 'object' && parent.key !== null || parent.kind === 'array' && parent.index < parent.length) || !parent && hasRoot)) throw fail('Snapshot has no bounded writable value slot.');
+    if (['value', 'object', 'array', 'string', 'binary', 'owned-binary', 'owned-wasm-module'].includes(kind) && (nodes >= maxNodes || stack.length > 48 || parent && !(parent.kind === 'object' && parent.key !== null || parent.kind === 'array' && parent.index < parent.length) || !parent && hasRoot)) throw fail('Snapshot has no bounded writable value slot.');
     if (kind === 'key' && operation.length === 2) {
       if (parent?.kind !== 'object' || parent.key !== null || typeof value !== 'string' || value.length > TEXT_UNITS || unsafe(value) || Object.hasOwn(parent.value, value)) throw fail('Invalid or repeated snapshot property.'); claim(value.length * 2 + 16); parent.key = value;
     } else if (kind === 'value' && operation.length === 2) {
@@ -105,6 +113,9 @@ export function createBackgroundSnapshotReceiver({ maxBytes = 64 * 1048576, maxN
       if (parent?.kind !== 'string' || typeof value !== 'string' || value.length > TEXT_UNITS || parent.received + value.length > parent.length) throw fail('Invalid snapshot text page.'); parent.text += value; parent.received += value.length;
     } else if (kind === 'string-end' && operation.length === 1) {
       if (parent?.kind !== 'string' || parent.received !== parent.length) throw fail('Incomplete snapshot text.'); stack.pop(); attach(parent.text);
+    } else if (kind === 'owned-wasm-module' && operation.length === 2) {
+      if (!allowOwnedWasmModule || nativeModules || BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES > maxBytes || !wasmModule(value)) throw fail('Invalid or unadmitted owned WASM module result.');
+      nativeModules++; claim(BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES, true); attach(value);
     } else if (kind === 'owned-binary' && operation.length === 3) {
       if (!allowOwnedBinary || !(extra instanceof ArrayBuffer) || extra.byteLength > maxBytes || value !== 'ArrayBuffer' && !Object.hasOwn(types, value) || types[value]?.BYTES_PER_ELEMENT && extra.byteLength % types[value].BYTES_PER_ELEMENT) throw fail('Invalid explicitly owned binary result.');
       claim(extra.byteLength, true); attach(value === 'ArrayBuffer' ? extra : new types[value](extra));
@@ -122,7 +133,7 @@ export function createBackgroundSnapshotReceiver({ maxBytes = 64 * 1048576, maxN
     const bytes = packet.operations.reduce((sum, operation) => { if (!Array.isArray(operation) || operation.length > 3) throw fail('Invalid snapshot operation envelope.'); return sum + operationBytes(operation); }, 0);
     if (bytes !== packet.bytes || bytes > BACKGROUND_SNAPSHOT_PACKET_BYTES) throw fail('Snapshot packet exceeds its byte bound.');
   };
-  const receipt = () => ({ sequence, nodes, dataBytes, retainedEstimateBytes: dataBytes * 2 + nodes * 64 });
+  const receipt = () => ({ sequence, nodes, dataBytes, retainedEstimateBytes: dataBytes * 2 + nodes * 64, ...(nativeModules ? { nativeModules, nativeModuleEstimateBytes: nativeModules * BACKGROUND_SNAPSHOT_WASM_MODULE_ESTIMATE_BYTES } : {}) });
   return Object.freeze({ push(packet) {
     validatePacket(packet); reading = true;
     try { for (const operation of packet.operations) consume(operation); sequence++; return receipt(); } finally { reading = false; }
