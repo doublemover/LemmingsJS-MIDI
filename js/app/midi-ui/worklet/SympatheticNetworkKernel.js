@@ -9,7 +9,7 @@ export class SympatheticNetworkKernel {
     this.edgeIndices = new Uint32Array(edges * 2); this.edgeCoefficients = new Float64Array(edges * 2); this.lossMasks = new Float64Array(8); this.lossDepths = new Float64Array(this.profile.lossMasks.length * count); this.lossFactors = new Float64Array(this.profile.lossMasks.length ? count : 0);
     this.pickupPositions = new Float64Array(8); this.pickupGrid = Float64Array.from(this.profile.pickupGrid?.weights || []); this.pickupWeights = new Float64Array(this.profile.pickupGrid ? count * 2 : 0);
     if (this.profile.pickupGrid) { const grid = this.profile.pickupGrid; for (let index = 0; index < 4; index++) this.pickupPositions[index] = this.pickupPositions[index + 4] = Math.fround((index < 2 ? grid.leftPosition : grid.rightPosition)[index % 2 ? 'y01' : 'x01']); }
-    for (let index = 0; index < this.profile.lossMasks.length; index++) this.lossDepths.set(this.profile.lossMasks[index].poleDepths, index * count);
+    for (let index = 0; index < this.profile.lossMasks.length; index++) { const mask = this.profile.lossMasks[index]; this.lossDepths.set(mask.operator ? mask.weights : mask.poleDepths, index * count); }
     for (let index = 0; index < count; index++) { const m = this.profile.modes[index]; this.coefficients.set([m.cosine, m.sine, m.longRadius, m.shortRadius, m.excitation, m.pickup], index * 6); }
     for (let index = 0; index < edges; index++) { const edge = this.profile.edges[index]; this.edgeIndices.set([edge.from, edge.to], index * 2); this.edgeCoefficients.set([edge.cosineDelta, edge.sine], index * 2); }
     this.frame = this.faults = this.leftSample = this.rightSample = 0; this.muted = false; this.couple = this.profile.parameters.couple01; this.damp = this.profile.parameters.damp01;
@@ -38,6 +38,15 @@ export class SympatheticNetworkKernel {
     }
   }
   panic() { this.state.fill(0); this.lossMasks.fill(0); this.pickupPositions.fill(0); this.pickupWeights.fill(0); this.leftSample = this.rightSample = 0; this.muted = true; }
+  applyPointLoss(base, count) {
+    for (let slot = 0; slot < this.profile.lossMasks.length; slot++) {
+      const mask = this.profile.lossMasks[slot]; if (!mask.operator || this.lossMasks[slot] === 0) continue;
+      const offset = slot * count; let projection = 0;
+      for (let mode = 0; mode < count; mode++) projection += this.lossDepths[offset + mode] * this.state[base + mode * 2];
+      const scale = this.lossMasks[slot] * mask.projectionDepth * projection;
+      for (let mode = 0; mode < count; mode++) this.state[base + mode * 2] -= scale * this.lossDepths[offset + mode];
+    }
+  }
   sample(left, right, couple = this.profile.parameters.couple01, damp = this.profile.parameters.damp01) {
     this.frame++; this.leftSample = this.rightSample = 0; if (this.muted) return;
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32 || !Number.isFinite(couple) || !Number.isFinite(damp) || couple < 0 || couple > 1 || damp < 0 || damp > 1) { this.faults++; this.panic(); return; }
@@ -45,7 +54,7 @@ export class SympatheticNetworkKernel {
     const count = this.profile.modeCount;
     this.updatePickups();
     for (let index = 0; index < this.profile.lossMasks.length; index++) this.lossMasks[index] += (this.lossMasks[index + 4] - this.lossMasks[index]) * this.smoothing;
-    if (this.profile.lossMasks.length) for (let index = 0; index < count; index++) { let extraLoss = 0; for (let mask = 0; mask < this.profile.lossMasks.length; mask++) extraLoss = Math.max(extraLoss, this.lossDepths[mask * count + index] * this.lossMasks[mask]); this.lossFactors[index] = 1 - extraLoss; }
+    if (this.profile.lossMasks.length) for (let index = 0; index < count; index++) { let extraLoss = 0; for (let mask = 0; mask < this.profile.lossMasks.length; mask++) if (!this.profile.lossMasks[mask].operator) extraLoss = Math.max(extraLoss, this.lossDepths[mask * count + index] * this.lossMasks[mask]); this.lossFactors[index] = 1 - extraLoss; }
     for (let channel = 0; channel < 2; channel++) {
       const base = channel * count * 2, input = channel ? right : left; let energy = 0, output = 0;
       for (let index = 0; index < count; index++) {
@@ -58,6 +67,7 @@ export class SympatheticNetworkKernel {
         const c = 1 + this.edgeCoefficients[index * 2] * this.couple, s = this.edgeCoefficients[index * 2 + 1] * this.couple;
         for (let component = 0; component < 2; component++) { const a = this.state[from + component], b = this.state[to + component]; this.state[from + component] = c * a - s * b; this.state[to + component] = s * a + c * b; }
       }
+      this.applyPointLoss(base, count);
       for (let index = 0; index < count; index++) { const at = base + index * 2, a = this.state[at], b = this.state[at + 1]; energy += a * a + b * b; output += a * (this.profile.pickupGrid ? this.pickupWeights[channel * count + index] : this.coefficients[index * 6 + 5]); }
       if (!Number.isFinite(energy) || energy > 1024.0001 || !Number.isFinite(output) || Math.abs(output) > 32.000001) { this.faults++; this.panic(); return; }
       if (channel) this.rightSample = output; else this.leftSample = output;

@@ -45,4 +45,8 @@ describe('solved top-face pickup field (runtime and listening qualification defe
     let current = true; error = null; try { await createShapeBodyEdgeField(asset, { ...options, current: () => current, yieldControl: async () => { current = false; } }); } catch (caught) { error = caught; } expect(error.message).to.include('generation changed');
     const p = copy(parameters(field.maps[0])); p.pickupGrid.fieldRevision = 'invented-surface'; expect(() => prepareSympatheticNetworkProfile(p)).to.throw('exact source');
   });
+  it('offers signed point-loss as a separate explicit model with the same solved pickup and strike projections', async () => {
+    const point = await createShapeBodyEdgeField(asset, { ...options, lossKind: 'point' }); expect(point.receipt.lossPolicy).to.include('rank-one'); expect(point.receipt.field.weights).to.deep.equal(field.receipt.field.weights); expect(point.fieldHash).not.to.equal(field.fieldHash);
+    for (let index = 0; index < point.maps.length; index++) { const p = parameters(point.maps[index]); for (let site = 0; site < p.lossMasks.length; site++) { expect(p.lossMasks[site].operator).to.equal('signed-rank-one-modal-velocity-v1'); expect(p.lossMasks[site].weights).to.deep.equal(point.receipt.excitationVectors[site]); } expect(prepareSympatheticNetworkProfile(p).preparation.kind).to.include('rank-one'); }
+  });
 });

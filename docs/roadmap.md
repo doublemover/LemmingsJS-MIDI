@@ -6247,3 +6247,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   unchanged-state/silence, snapshot, package and stale-source fixtures. Formatting,
   nine-file syntax/import checks, critical types and static provenance pass
   (10 components / 335 files). No solver, DSP, browser or full-suite test ran.
+
+### Continuation 245 — explicit signed site loss in shared bodies (#1215, #1217)
+
+- Added a positive rank-one site operator over the real velocity quadrature of
+  the declared normalized complex-modal energy model. It preserves signed cross
+  terms and the site's null space. The exact positive loss flow is prepared once;
+  amount interpolates identity and that contraction, and multiple sites compose
+  in pinned slot order after diagonal loss and existing mode/scattering evolution.
+  The audio loop allocates no arrays and evaluates no new exponentials.
+- The common reference retains between-site gain; no site is renormalized.
+  Existing diagonal masks retain their old contract. Point projection only
+  removes energy, leaves displacement unchanged during its loss substep, and
+  releasing a contact cannot restore dissipated energy. Snapshots and graph hashes
+  include the exact operator and coefficients. This is a split modal audio model,
+  not evidence of calibrated material, force or acoustic accuracy.
+- Foundry controls explicitly choose diagonal versus signed point loss. The
+  shared-body panel now exposes both pickup coordinates for solved surface fields
+  and keeps invariant vertical controls disabled for edge/authored row copies.
+- Authored three-rate analytic, null-space, cross-mode, multi-contact contraction,
+  silence, single-application, state-restore and foundry closure fixtures, unrun.
+  Formatting, nine-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). No DSP, solver, browser or full-suite tests ran.

@@ -3,6 +3,7 @@ import { cloneData, freezeData, canonicalDataText, encodeUtf8 } from '../../core
 export const SYMPATHETIC_NETWORK_REVISION = 'owned-contractive-complex-modal-network-signed-reference-input-v4';
 export const NETWORK_LOSS_CONTROLS = Object.freeze(Array.from({ length: 4 }, (_, index) => 'modeLoss' + index + 'Amount01'));
 export const NETWORK_PICKUP_CONTROLS = Object.freeze(['pickupLeftX01', 'pickupLeftY01', 'pickupRightX01', 'pickupRightY01']);
+export const NETWORK_POINT_LOSS_OPERATOR = 'signed-rank-one-modal-velocity-v1';
 export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
   const p = cloneData(raw, { maxBytes: 262144, maxNodes: 16384 }), allowed = ['bodies', 'edges', 'couple01', 'damp01', 'lossMasks', 'pickupGrid', 'excitationWeights', 'excitationReferenceNorm'];
   const id = value => typeof value === 'string' && /^[a-zA-Z][a-zA-Z0-9._:-]{0,95}$/.test(value), finite = (x, a, b) => Number.isFinite(x) && x >= a && x <= b;
@@ -43,6 +44,13 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
   }
   if (p.lossMasks != null && (!Array.isArray(p.lossMasks) || p.lossMasks.length > 4 || new Set(p.lossMasks.map(mask => mask?.id)).size !== p.lossMasks.length)) throw new TypeError('Prepare at most four unique authored mode-loss masks.');
   const lossMasks = (p.lossMasks || []).map(mask => {
+    if (mask?.operator === NETWORK_POINT_LOSS_OPERATOR) {
+      if (!keys(mask, ['id', 'operator', 'extraAmplitudeT60Seconds', 'weights']) || !id(mask.id) || !finite(mask.extraAmplitudeT60Seconds, 0.02, 4) || !Array.isArray(mask.weights) || mask.weights.length !== modes.length || mask.weights.some(value => !finite(value, -1, 1))) throw new TypeError('Point loss needs an exact signed modal site vector and positive additional amplitude-T60 seconds.');
+      const squaredNorm = mask.weights.reduce((sum, value) => sum + value * value, 0);
+      if (!(squaredNorm > 1e-24 && squaredNorm <= 1)) throw new RangeError('Point loss must retain its common-reference site gain inside the unit L2 bound.');
+      return { id: mask.id, operator: NETWORK_POINT_LOSS_OPERATOR, extraAmplitudeT60Seconds: mask.extraAmplitudeT60Seconds, weights: mask.weights, squaredNorm,
+        projectionDepth: -Math.expm1(-Math.log(1000) * squaredNorm / (mask.extraAmplitudeT60Seconds * sampleRate)) / squaredNorm };
+    }
     if (!keys(mask, ['id', 'extraAmplitudeT60Seconds', 'weights']) || !id(mask.id) || !finite(mask.extraAmplitudeT60Seconds, 0.02, 4) || !Array.isArray(mask.weights) || mask.weights.length !== modes.length || mask.weights.some(value => !finite(value, 0, 1)) || !mask.weights.some(value => value > 0)) throw new TypeError('A mode-loss mask needs explicit nonnegative weights and additional amplitude-T60 seconds.');
     return { id: mask.id, extraAmplitudeT60Seconds: mask.extraAmplitudeT60Seconds, weights: mask.weights, poleDepths: mask.weights.map(weight => -Math.expm1(-Math.log(1000) * weight / (mask.extraAmplitudeT60Seconds * sampleRate))) };
   });
@@ -63,9 +71,10 @@ export function prepareSympatheticNetworkProfile(raw, sampleRate = 48000) {
     excitationPolicy: p.excitationWeights ? 'signed-input-vector-divided-by-common-reference;scaled-by-one-minus-maximum-prepared-radius' : 'L2-normalized-input-vector-scaled-by-one-minus-maximum-prepared-radius',
     couplingPolicy: 'same-frame-canonical-sequential-scattering;no-graph-cycle-or-physical-feedback',
     tuningPolicy: 'prepared-revision-only;old-network-keeps-admitted-tail', tailPolicy: 'hard-two-T60-ceiling-at-longest-prepared-damping',
-    preparation: { kind: 'authored-selected-mode-positive-loss;not-spatial-mode-shapes', overlap: 'maximum-additional-pole-depth-per-mode', slots: lossMasks.length, slewSeconds: 0.008, release: 'future-decay-returns;dissipated-energy-not-restored' },
+    preparation: { kind: lossMasks.some(mask => mask.operator) ? 'signed-site-rank-one-modal-velocity-loss;normalized-modal-energy-model' : 'authored-selected-mode-positive-loss;not-spatial-mode-shapes', overlap: lossMasks.some(mask => mask.operator) ? 'diagonal-maximum-then-canonical-sequential-point-contractions;prepared-slot-order' : 'maximum-additional-pole-depth-per-mode', slots: lossMasks.length, slewSeconds: 0.008, release: 'future-decay-returns;dissipated-energy-not-restored',
+      ...(lossMasks.some(mask => mask.operator) ? { equation: 'p <- p - amount * (1-exp(-ln(1000)*dot(v,v)/(T60*sampleRate)))/dot(v,v) * v * dot(v,p);q-unchanged', quadratures: 'real=normalized-modal-velocity;imaginary=frequency-scaled-modal-displacement', interpretation: 'positive-rank-one-loss-flow-within-split-complex-modal-audio-model;not-force-or-material-calibration', gainPolicy: 'one-common-site-reference;no-per-site-renormalization' } : {}) },
     pickupPreparation: { kind: pickupGrid ? pickupGrid.fieldRevision ? pickupGrid.fieldRevision === 'solved-tet4-surface-v1' ? 'two-independent-solved-surface-observation-positions' : 'two-independent-solved-edge-observation-positions' : 'two-independent-authored-observation-positions' : 'fixed-normalized-pickup-vector', energyPolicy: 'read-existing-modal-state;no-excitation-or-damping-change', slewSeconds: 0.008, maximumL2Norm: 1, release: 'hold-last-observation-position' },
-    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length, pickupWeightProductsPerFrame: pickupGrid ? modes.length * 8 : 0 },
+    cost: { modeUpdatesPerStereoFrame: modes.length * 2, complexEdgeRotationsPerStereoFrame: edges.length * 2, modeMaskComparisonsPerFrame: lossMasks.length * modes.length, ...(lossMasks.some(mask => mask.operator) ? { pointLossProductsPerFrame: lossMasks.filter(mask => mask.operator).length * modes.length * 4 } : {}), pickupWeightProductsPerFrame: pickupGrid ? modes.length * 8 : 0 },
     qualification: 'implementation-awaiting-decay-mode-cost-and-listening-qualification' };
   profile.configurationBytes = encodeUtf8(sympatheticNetworkIdentity(profile)).length; profile.stateBytes += profile.configurationBytes;
   return freezeData(profile);

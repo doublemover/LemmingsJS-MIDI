@@ -2,11 +2,13 @@ import { verifyShapeBodyAsset, selectShapeBodyTier, shapeBodyFailure } from '../
 import { recheckElasticModes } from './ShapeBodyRefinement.js';
 import { prepareEffectGraphRevision } from '../../midi/content/EffectGraphRevision.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
+import { NETWORK_POINT_LOSS_OPERATOR } from '../../midi/content/SympatheticNetworkProfile.js';
 
 export const SHAPE_BODY_EDGE_FIELD_REVISION = 'signed-solved-bar-edge-common-reference-v1';
 export const SHAPE_BODY_SURFACE_FIELD_REVISION = 'signed-solved-bar-top-boundary-triangles-common-reference-v1';
-export async function createShapeBodyEdgeField(raw, { fieldKind = 'edge', sampleRate = 48000, signal, current = () => true, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
+export async function createShapeBodyEdgeField(raw, { fieldKind = 'edge', lossKind = 'diagonal', sampleRate = 48000, signal, current = () => true, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
   if (!['edge', 'surface'].includes(fieldKind)) shapeBodyFailure('Choose the exact solved edge or top-surface observation field.');
+  if (!['diagonal', 'point'].includes(lossKind)) shapeBodyFailure('Choose the explicit diagonal approximation or signed point-loss model.');
   const surface = fieldKind === 'surface';
   const check = () => { signal?.throwIfAborted(); if (!current()) shapeBodyFailure('The solved edge field generation changed.'); }; check();
   const asset = await verifyShapeBodyAsset(raw); check();
@@ -36,11 +38,11 @@ export async function createShapeBodyEdgeField(raw, { fieldKind = 'edge', sample
     field: { width: 4, height: 2, weights, xDomain: surface ? 'normalized-distance-along-solved-top-face' : 'normalized-distance-along-exact-connected-edge', yDomain: surface ? 'normalized-distance-across-solved-top-face' : 'intentionally-invariant;not-a-two-dimensional-surface', interpolation: surface ? 'piecewise-affine-on-actual-exposed-Tet4-triangles;lower-left-to-upper-right-diagonal' : 'piecewise-linear-on-actual-Tet4-edges;duplicated-y-row-for-existing-bilinear-renderer', pickupReference, normalization: surface ? 'one-maximum-L2-reference-over-all-surface-nodes;no-site-renormalization' : 'one-maximum-L2-reference-over-all-edge-nodes;no-site-renormalization' },
     strikeSites: asset.source.excitationSites, excitationVectors: excitationVectors.map(vector => vector.map(value => value / excitationReference)), excitationReference,
     excitationPolicy: 'signed-solved-site-projection;common-reference;bounded-first-order-complex-mode-audio-input;not-force-calibrated-second-order-elastic-response',
-    lossPolicy: 'positive-diagonal-squared-site-projection-approximation;not-full-rank-one-point-damping', semanticOnsetsAdded: 0,
+    lossPolicy: lossKind === 'point' ? 'positive-signed-rank-one-site-velocity-loss;normalized-complex-modal-split-flow;not-force-or-material-calibrated' : 'positive-diagonal-squared-site-projection-approximation;not-full-rank-one-point-damping', semanticOnsetsAdded: 0,
     qualification: { meshConvergence: 'not-qualified-by-this-field', acousticAccuracy: false, listening: false, deviceCost: false, effectRealization: 'shared-retained-eight-mode-audio-state;not-per-actor-resonators' } });
   const fieldHash = await hashData(receipt, { maxBytes: 262144, maxNodes: 16384 }); check();
   const bodyId = (surface ? 'shape-surface.' : 'shape-edge.') + asset.assetHash.slice(0, 16), gridId = (surface ? 'shape-surface-field.' : 'shape-edge-field.') + fieldHash.slice(0, 16), positions = { left: { x01: 0.15, y01: surface ? 0.2 : 0.5 }, right: { x01: 0.85, y01: surface ? 0.8 : 0.5 } };
-  const lossMasks = receipt.excitationVectors.map((vector, index) => ({ id: 'shape-site-' + asset.source.excitationSites[index].id, extraAmplitudeT60Seconds: 0.06, weights: vector.map(value => value * value) }));
+  const lossMasks = receipt.excitationVectors.map((vector, index) => ({ id: 'shape-site-' + asset.source.excitationSites[index].id, extraAmplitudeT60Seconds: 0.06, ...(lossKind === 'point' ? { operator: NETWORK_POINT_LOSS_OPERATOR } : {}), weights: lossKind === 'point' ? vector : vector.map(value => value * value) }));
   const maps = asset.source.excitationSites.map((site, index) => {
     const node = (id, kind, parameters = {}) => ({ id, kind, parameters }), edge = (from, to) => ({ from: { nodeId: from, port: 'audio' }, to: { nodeId: to, port: 'audio' }, gain01: 1 });
     const parameters = { bodies: [{ id: bodyId, excitation01: 1, pickup01: 1, modes: modes.map(mode => ({ frequencyHz: mode.frequencyHz, decaySeconds: mode.t60Seconds / 1.5, gain01: 1 })) }], edges: [], couple01: 0, damp01: 0,

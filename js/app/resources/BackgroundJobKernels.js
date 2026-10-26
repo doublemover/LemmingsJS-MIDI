@@ -149,10 +149,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'build-shape-body-content') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
-    if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds', 'fieldKind'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');
+    if (execution.activeExecution !== 'bound' || input?.solverBuildHash !== execution.buildId || estimatedPeakBytes < 128 * 1048576 || Object.keys(input).some(key => !['source', 'solverBuildHash', 'modeCount', 'sampleRate', 'seconds', 'fieldKind', 'lossKind'].includes(key))) throw problem('engine-identity-unbound', 'Foundry content requires the actual worker build and its complete solve/calibration/compilation reservation.');
+    if (!['edge', 'surface'].includes(input.fieldKind ?? 'edge') || !['diagonal', 'point'].includes(input.lossKind ?? 'diagonal')) throw problem('invalid-shape-preparation', 'Choose an explicit supported bar observation and loss model before solving.');
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: 16384 }), options = { signal, current, estimatedPeakBytes, yieldControl, onProgress };
     const asset = await solveShapeBody({ source: input.source, solverBuildHash: execution.buildId }, options), calibration = await renderShapeBodyCalibration({ asset, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds }, options); guard(signal, current);
-    const sharedBody = await createShapeBodyEdgeField(asset, { ...options, sampleRate: input.sampleRate, fieldKind: input.fieldKind ?? 'edge' }); guard(signal, current);
+    const sharedBody = await createShapeBodyEdgeField(asset, { ...options, sampleRate: input.sampleRate, fieldKind: input.fieldKind ?? 'edge', lossKind: input.lossKind ?? 'diagonal' }); guard(signal, current);
     const recipe = await createShapeBodyRecipe({ asset, calibration, edgeField: sharedBody }), catalog = await getNativeInstrumentCatalog(); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity.buildId !== execution.buildId) throw problem('engine-identity-unbound', 'The foundry compiler differs from its executing worker.');
     const compiled = await compileSoundContent(recipe.source, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
