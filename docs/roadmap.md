@@ -6229,3 +6229,21 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Formatting, five-file syntax/import checks, critical types and static provenance
   pass (10 components / 335 files). No runtime, browser, audio/listening or full
   suite checks ran. Instrument Nursery and broader anatomy acceptance remain open.
+
+### Continuation 244 — solved two-coordinate bar pickup field (#1217, #1215)
+
+- Added an explicit top-face alternative to the existing one-dimensional bar
+  edge. Its eight nodes and six triangles must be the exact exposed Tet4 faces,
+  including their diagonals. Both normalized coordinates project signed solved
+  nodal displacement using one reference over the whole field. The renderer uses
+  the actual triangular affine interpolation; it does not substitute bilinear
+  geometry or renormalize each pickup position.
+- Foundry preparation, worker input, ordinary pack ancestry and shared-body
+  offering retain the chosen field kind. The two pickups observe the existing
+  shared modal state independently. Mesh convergence, acoustic accuracy and
+  listening remain unqualified; the diagonal loss model remains explicitly an
+  approximation, and other solids/refinements do not receive a fabricated field.
+- Authored unrun boundary/projection, triangle-oracle, two-coordinate movement,
+  unchanged-state/silence, snapshot, package and stale-source fixtures. Formatting,
+  nine-file syntax/import checks, critical types and static provenance pass
+  (10 components / 335 files). No solver, DSP, browser or full-suite test ran.

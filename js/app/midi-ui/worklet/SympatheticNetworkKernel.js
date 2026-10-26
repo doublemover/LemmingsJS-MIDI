@@ -32,7 +32,8 @@ export class SympatheticNetworkKernel {
     for (let index = 0; index < 4; index++) { const delta = this.pickupPositions[index + 4] - this.pickupPositions[index]; this.pickupPositions[index] = Math.abs(delta) < 1e-12 ? this.pickupPositions[index + 4] : this.pickupPositions[index] + delta * this.smoothing; }
     for (let channel = 0; channel < 2; channel++) {
       const x = this.pickupPositions[channel * 2] * (grid.width - 1), y = this.pickupPositions[channel * 2 + 1] * (grid.height - 1), x0 = Math.min(grid.width - 2, Math.floor(x)), y0 = Math.min(grid.height - 2, Math.floor(y)), dx = x - x0, dy = y - y0;
-      const a = (y0 * grid.width + x0) * count, b = a + count, c = a + grid.width * count, d = c + count, wa = (1 - dx) * (1 - dy), wb = dx * (1 - dy), wc = (1 - dx) * dy, wd = dx * dy;
+      const a = (y0 * grid.width + x0) * count, b = a + count, c = a + grid.width * count, d = c + count, triangular = grid.fieldRevision === 'solved-tet4-surface-v1';
+      const wa = triangular ? 1 - Math.max(dx, dy) : (1 - dx) * (1 - dy), wb = triangular ? Math.max(0, dx - dy) : dx * (1 - dy), wc = triangular ? Math.max(0, dy - dx) : (1 - dx) * dy, wd = triangular ? Math.min(dx, dy) : dx * dy;
       for (let mode = 0; mode < count; mode++) this.pickupWeights[channel * count + mode] = wa * this.pickupGrid[a + mode] + wb * this.pickupGrid[b + mode] + wc * this.pickupGrid[c + mode] + wd * this.pickupGrid[d + mode];
     }
   }

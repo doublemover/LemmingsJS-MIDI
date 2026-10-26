@@ -378,7 +378,7 @@
         "js/util/performanceInstrumentation.js"
       ],
       "fileCount": 266,
-      "sha256": "d7aa105ed13fba01621bf43a36ccaff4306da9a2e9db1d5403361ce1bce76ef5"
+      "sha256": "8844f305949b4ca5b263d2a48304edabe95cd9a778bcbdf9a1acd34702237363"
     },
     {
       "id": "lemmings-timing-worker-source",

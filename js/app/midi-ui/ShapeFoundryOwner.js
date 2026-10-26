@@ -25,7 +25,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
     const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || active !== operation) throw fail('The foundry operation owner changed.'); };
     operation.promise = Promise.resolve().then(() => work(operation, check)).catch(caught => { error = caught.message; phase = unknown.size ? 'ownership-unknown' : current ? 'previous-prepared-body-retained' : 'idle'; throw caught; }).finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
-  const prepare = ({ shapeId = 'pocket-bar', modeCount = 8, sampleRate = 48000, seconds = 2 } = {}, { isCurrent = () => true } = {}) => run('preparing-original-solid', async (operation, checkOwner) => {
+  const prepare = ({ shapeId = 'pocket-bar', modeCount = 8, sampleRate = 48000, seconds = 2, fieldKind = 'edge' } = {}, { isCurrent = () => true } = {}) => run('preparing-original-solid', async (operation, checkOwner) => {
     let job = null, workspace = null, next = null, sharedStorage = null;
     const releaseProducer = () => { if (!job) return; try { job.release(); if (!['released', 'canceled'].includes(job.retirementState().phase)) throw fail('The foundry producer has unresolved retirement.'); }
     catch (caught) { unknown.add({ caught, job, workspace, sharedStorage, stage: next }); job = workspace = next = sharedStorage = null; throw caught; } job = null; };
@@ -35,7 +35,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
       check(); if (![8, 16, 32].includes(modeCount) || ![44100, 48000, 96000].includes(sampleRate) || !Number.isFinite(seconds) || seconds < 0.2 || seconds > 4) throw fail('Choose a supported explicit tier, sample rate and finite duration.');
       const catalog = await getCatalog(); check(); if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId)) throw fail('Build the current immutable application before preparing a foundry instrument.');
       const source = createOriginalShapeBodySource(shapeId, { validate: false }), sourceRevision = await hashData(source, { maxBytes: 262144, maxNodes: 16384 }); check();
-      const input = { source, solverBuildHash: catalog.executionIdentity.buildId, modeCount, sampleRate, seconds }, inputBytes = canonicalDataText(input, { maxBytes: 262144, maxNodes: 16384 }).bytes.length;
+      const input = { source, solverBuildHash: catalog.executionIdentity.buildId, modeCount, sampleRate, seconds, fieldKind }, inputBytes = canonicalDataText(input, { maxBytes: 262144, maxNodes: 16384 }).bytes.length;
       job = await jobs.compute({ kind: 'build-shape-body-content', ownerId: 'shape-foundry', ownerEpoch: operation.ordinal, sourceRevision, inputBytes, maxBytes: 262144, estimatedPeakBytes: 128 * 1048576,
         budgetAdapter: resourceBudget, signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent(), deadlineMs: 180000, prepareInput: () => input,
         onProgress: value => { if (!disposed && active === operation) { progress = Object.freeze(value); phase = value.phase || 'preparing'; report(); } } }); check();
@@ -49,7 +49,7 @@ export function createShapeFoundryOwner({ audio, resourceBudget, jobs = backgrou
       if (next.metadata().patches.length !== 1) throw fail('The foundry did not prepare one complete ordinary instrument.');
       const endpointFile = payloads.find(entry => entry.sha256 === result.overview.assetHash); if (!endpointFile || endpointFile.blob.size > 2 * 1048576) throw fail('The exact retained foundry body source is unavailable or oversized.');
       sharedStorage = createOwnedResourceReservation({ budget: resourceBudget, owner: 'shape-foundry-edge-and-endpoint', generation: operation.ordinal, kind: 'solved-edge-and-retained-endpoint-source', category: 'candidate', bytes: endpointFile.blob.size + 131072 + (result.sharedBody ? canonicalDataText(result.sharedBody, { maxBytes: 524288, maxNodes: 32768 }).bytes.length * 8 : 0) });
-      const record = { endpointFile, sharedBody: result.sharedBody ? freezeData(result.sharedBody) : null, sharedStorage, stage: next, identity: next.metadata().patches[0], overview: freezeData(result.overview), contract: freezeData(result.receipt), config: Object.freeze({ shapeId, modeCount, sampleRate, seconds }), installed: false };
+      const record = { endpointFile, sharedBody: result.sharedBody ? freezeData(result.sharedBody) : null, sharedStorage, stage: next, identity: next.metadata().patches[0], overview: freezeData(result.overview), contract: freezeData(result.receipt), config: Object.freeze({ shapeId, modeCount, sampleRate, seconds, fieldKind }), installed: false };
       releaseProducer(); releaseWorkspace(); check(); discard(current); current = record; next = sharedStorage = null; phase = 'compiled-body-ready'; return state();
     } catch (caught) {
       if (caught.backgroundRetirementCompletion) caught.backgroundRetirement = await caught.backgroundRetirementCompletion;

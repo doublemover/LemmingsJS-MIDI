@@ -15,21 +15,21 @@ export function createSympatheticMapView({ document, getPlayback, getLanes, save
   const source = select('Actual excitation bus'), recipe = select('Body map'), touch = select('TOUCH · prepared excitation body'), audition = select('Pickup audition'), surface = select('Observed authored mode-loss map');
   for (const value of SYMPATHETIC_MAP_RECIPES) option(recipe, value, value.replaceAll('-', ' '));
   option(audition, 'all', 'All body pickups'); option(audition, 'direct', 'Directly excited body only'); option(audition, 'sympathetic', 'Unexcited body pickups only');
-  const refreshBodies = () => { const old = touch.value, count = ['felt-bridge', 'foundry-edge'].includes(recipe.value) ? 1 : recipe.value === 'string-trellis' ? 4 : recipe.value === 'metal-constellation' ? 6 : 3; touch.replaceChildren(); for (let index = 0; index < count; index++) option(touch, index, 'Body ' + (index + 1)); if (old !== '' && Number(old) < count) touch.value = old; if (recipe.value === 'felt-bridge') audition.value = 'all'; };
+  const refreshBodies = () => { const old = touch.value, count = ['felt-bridge', 'foundry-edge', 'foundry-surface'].includes(recipe.value) ? 1 : recipe.value === 'string-trellis' ? 4 : recipe.value === 'metal-constellation' ? 6 : 3; touch.replaceChildren(); for (let index = 0; index < count; index++) option(touch, index, 'Body ' + (index + 1)); if (old !== '' && Number(old) < count) touch.value = old; if (recipe.value === 'felt-bridge') audition.value = 'all'; };
   listen(recipe, 'change', () => { refreshBodies(); syncLossInputs(); }); refreshBodies();
   const live = (key, value) => { if (!expected) return; try { getPlayback().updateEffectGraph('bodies', { [key]: value }, undefined, expected); } catch (error) { say(error.message); } };
   const slider = (label, min, max, step, value, update) => { const wrapper = node('label', label), input = node('input'); input.type = 'range'; input.min = min; input.max = max; input.step = step; input.value = value; input.setAttribute('aria-label', label); wrapper.append(input); fields.append(wrapper); if (update) listen(input, 'input', () => update(Number(input.value))); return input; };
   const couple = slider('COUPLE', 0, 1, 0.01, 0.65, value => live('couple01', value)), damp = slider('DAMP', 0, 1, 0.01, 0.3, value => live('damp01', value)), tune = slider('TUNE · prepared ratio', 0.5, 2, 0.01, 1), mix = slider('Return level · prepare to apply', 0, 0.35, 0.01, 0.2);
   const lossInputs = [0, 1, 2].map(index => slider('Prepared positive mode mask ' + (index + 1) + ' · positive loss', 0, 1, 0.01, 0, value => live('modeLoss' + index + 'Amount01', value)));
   const pickupInputs = ['Left', 'Right'].map((side, index) => slider(side + ' observation position · prepared x field', 0, 1, 0.01, index ? 0.85 : 0.15, value => live('pickup' + side + 'X01', value)));
-  const syncLossInputs = () => { const solved = recipe.value === 'foundry-edge'; for (const input of [couple, tune, touch, audition]) input.disabled = !!pending || solved; const bound = getPlayback()?.preparedSurfaceBodies?.()?.bodies.some(body => body.active && body.nodeId === 'bodies' && body.graphDefinitionHash === expected?.graphDefinitionHash && body.ownerRouteRevision === expected?.ownerRouteRevision); for (let index = 0; index < lossInputs.length; index++) lossInputs[index].disabled = !!pending || !expected || bound || !committed?.lossMaskIds?.[index]; for (const input of pickupInputs) input.disabled = !!pending || !expected || bound || !committed?.pickupGridId; }; syncLossInputs();
+  const syncLossInputs = () => { const solved = ['foundry-edge', 'foundry-surface'].includes(recipe.value); for (const input of [couple, tune, touch, audition]) input.disabled = !!pending || solved; const bound = getPlayback()?.preparedSurfaceBodies?.()?.bodies.some(body => body.active && body.nodeId === 'bodies' && body.graphDefinitionHash === expected?.graphDefinitionHash && body.ownerRouteRevision === expected?.ownerRouteRevision); for (let index = 0; index < lossInputs.length; index++) lossInputs[index].disabled = !!pending || !expected || bound || !committed?.lossMaskIds?.[index]; for (const input of pickupInputs) input.disabled = !!pending || !expected || bound || !committed?.pickupGridId; }; syncLossInputs();
   const controls = [source, recipe, touch, audition, surface, couple, damp, tune, mix, ...lossInputs, ...pickupInputs];
   const button = (label, action, busy = false) => { const value = node('button', label); value.type = 'button'; listen(value, 'click', async () => { if (disposed || pending && !busy) return; try { await action(); } catch (error) { say(error.message); } }); actions.append(value); };
   button('Prepare body map', async () => {
     const playback = getPlayback(); if (!playback?.prepareEffectGraph) throw new Error('Physical audio is unavailable.');
     let model;
-    if (recipe.value === 'foundry-edge') {
-      if (!offered) throw new Error('Offer a prepared original bar edge from the shape foundry first.');
+    if (['foundry-edge', 'foundry-surface'].includes(recipe.value)) {
+      if (!offered) throw new Error('Offer a prepared original bar boundary from the shape foundry first.');
       const graph = JSON.parse(canonicalDataText(offered.graph, { maxBytes: 262144, maxNodes: 16384 }).text);
       graph.revision = ++revision; graph.nodes.find(node => node.id === 'excitation').parameters.sourceBusId = source.value;
       graph.nodes.find(node => node.id === 'dry').parameters.gain01 = 1 - Number(mix.value); graph.nodes.find(node => node.id === 'return').parameters.gain01 = Number(mix.value);
@@ -57,7 +57,7 @@ export function createSympatheticMapView({ document, getPlayback, getLanes, save
   button('Panic and clear bodies', () => { if (expected) getPlayback()?.setEffectBypass?.('panic', expected); expected = null; syncLossInputs(); say('Owned body state cleared.'); });
   const offerFoundry = model => {
     if (disposed || pending || unknownOffers.size) throw new Error('Finish or cancel the current shared-body preparation before offering another field.');
-    if (model?.schema !== 'lemmings-sympathetic-map/v1' || model.recipe !== 'foundry-edge' || !/^[a-f0-9]{64}$/.test(model.fieldHash) || !resourceBudget) throw new Error('Choose a retained solved bar-edge map from the foundry.');
+    if (model?.schema !== 'lemmings-sympathetic-map/v1' || !['foundry-edge', 'foundry-surface'].includes(model.recipe) || !/^[a-f0-9]{64}$/.test(model.fieldHash) || !resourceBudget) throw new Error('Choose a retained solved bar-boundary map from the foundry.');
     const reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'shared-body-offered-foundry-field', kind: 'bounded-owned-field-copy', category: 'candidate', bytes: 4 * 1048576 });
     let copy;
     const releaseCopy = () => { try { reservation.release(); } catch (error) { unknownOffers.add({ reservation, copy }); throw error; } };
@@ -65,8 +65,8 @@ export function createSympatheticMapView({ document, getPlayback, getLanes, save
     catch (error) { releaseCopy(); throw error; }
     try { offeredStorage?.release(); } catch (error) { unknownOffers.add({ reservation: offeredStorage, copy: offered }); releaseCopy(); throw error; }
     offeredStorage = reservation; offered = copy; committed = expected = null;
-    if (!Array.from(recipe.options).some(entry => entry.value === 'foundry-edge')) option(recipe, 'foundry-edge', 'Solved original bar edge · offered strike site');
-    recipe.value = 'foundry-edge'; couple.value = '0'; damp.value = '0'; tune.value = '1'; audition.value = 'all'; refreshBodies();
+    if (!Array.from(recipe.options).some(entry => entry.value === copy.recipe)) option(recipe, copy.recipe, 'Solved original bar ' + (copy.recipe === 'foundry-surface' ? 'top face' : 'edge') + ' · offered strike site');
+    recipe.value = copy.recipe; couple.value = '0'; damp.value = '0'; tune.value = '1'; audition.value = 'all'; refreshBodies();
     for (const input of lossInputs) input.value = '0';
     say('Offered solved bar edge at strike ' + model.siteId + ' · field ' + model.fieldHash.slice(0, 12) + '. Choose the actual source bus and Prepare. One eight-mode body retains its state while pickups move; y is invariant along this edge. Mesh, listening and device qualification remain pending.');
   };
