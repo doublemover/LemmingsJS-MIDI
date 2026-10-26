@@ -5,8 +5,8 @@ const admitted = new WeakSet();
 const integer = (value, low = 0, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const fail = message => { throw Object.assign(new TypeError('Buffered warp: ' + message), { code: 'invalid-buffered-warp-plan' }); };
-export const acceptsWarpRate = value => [0.75, 1, 1.5].includes(value);
-export const acceptsWarpPitch = value => [0.5, 1, 2].includes(value);
+export const acceptsWarpRate = value => value === 0.75 || value === 1 || value === 1.5;
+export const acceptsWarpPitch = value => value === 0.5 || value === 1 || value === 2;
 
 // This is a source-coordinate/ownership plan, not qualification of a DSP backend.
 // Prepared PCM must be copied/resampled to outputRate by the eventual owned

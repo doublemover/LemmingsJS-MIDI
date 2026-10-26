@@ -5810,3 +5810,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   output, unknown publication, finite end, explicit seek/loop and preparation-
   deadline fixtures. Only formatting/syntax/type/provenance checks are intended
   before the deferred combined runtime pass.
+
+
+### Continuation 229 — pinned direct-core host and bounded materialization
+
+- Fingerprinted the exact #1186 upstream 1.3.2 Emscripten source at
+  a670068d9aeb64913331d5cc29337b19a457a7df and its embedded 64,494-byte WASM
+  without evaluating/compiling either artifact. Both SHA-256 identities and the
+  exact minified C binding ABI are explicit. The compiled bytes include their
+  Linear dependency behavior; source-build reproducibility remains unestablished.
+  No upstream wrapper, Blob loader, arbitrary eval or vendor source was patched.
+- Added an admitted-worker direct core host: verified copied bytes, explicit
+  configuration, separate actual core latency reports, deterministic constructor
+  randomness, private stereo input/output buffers and bounded heap growth only
+  during preparation. Nonzero seek/process/flush capacity priming covers all nine
+  starting rate/pitch points. Normal process/flush reuse fixed views, reject
+  source/output aliasing and stop on nonfinite/out-of-contract output. Source
+  seek does not secretly run every output block. Core/reset RNG history and
+  deterministic-preroll restoration remain explicit.
+- Added the static materializer with pinned size/hash, bounded download or exact
+  local source, output restricted to workspace dist, preserved mismatched existing
+  outputs and lossless binary extraction. No binary is committed. A separate
+  explicit 27-point real-WASM finite/stereo/cost probe is authored but unrun.
+  Its eventual output cannot certify browser cost, source onset mapping, pitch
+  spectra, allocator activity, matched-level listening or a playable quality tier.
+- Added unrun invalid artifact/configuration/workspace, output preservation,
+  download-bound and path-escape fixtures. The core host has not been executed.
+  Compilation, live/offline sample mapping, PCM conversion and reader leases,
+  worker baking, command application and performance/quality acceptance remain
+  separate required adapter work. Static checks alone do not make this a ready
+  instrument or close #1186.

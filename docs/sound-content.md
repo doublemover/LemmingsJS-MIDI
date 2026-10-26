@@ -1146,3 +1146,22 @@ rate conversion, baking and live/offline qualification still need implementation
 The initial coordinate contract deliberately accepts only rates 0.75/1/1.5 and
 pitch ratios 0.5/1/2, with explicit formants-shift-with-pitch semantics. A valid
 plan never certifies the backend's artifact or quality claims.
+
+
+The pitch/time adapter now has a project-owned direct host for the pinned
+Signalsmith 1.3.2 core. It verifies the exact compiled byte identity and bypasses
+the upstream wrapper scheduler. The host prepares fixed private stereo buffers
+and an admitted heap in a worker; normal processing cannot grow that heap or
+write into a shared source cache. Capacity priming is not proof that the opaque
+core performs zero internal allocation, nor evidence of device or spectral cost.
+Resetting spectral history retains the core's RNG history; a reproducible fresh
+voice reconstructs its declared seed/configuration and deterministic preroll.
+
+`npm run prepare:stretch-core -- --name=rook` losslessly extracts the pinned core
+into `dist/assets/` after verifying the complete upstream source and WASM hashes.
+It executes neither upstream JavaScript nor WASM. `--source=PATH` uses an exact
+locally retained upstream file. The separately authored
+`npm run qualify:stretch-core -- --name=rook` does execute real DSP and remains
+reserved for the deferred validation pass. Even a passing finite/stereo smoke
+probe does not publish a quality tier. Playback, prepared-rate PCM ownership,
+onset/seek/tail mapping and complete browser/offline qualification remain pending.
