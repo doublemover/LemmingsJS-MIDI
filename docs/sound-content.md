@@ -1102,3 +1102,19 @@ Body-only still receives normal excitation and keeps its tail. These private
 references do not imply measured level matching or an actual physical take.
 Comparison receipts name the temporary definition and cannot authorize installing
 a full patch that has not itself completed its normal audition.
+
+
+**Glass Orbit** is available as finite Solo, Crossing duet and Small flock dry FM
+scores. Each has a 12-tone pentatonic, a 220 Hz ratio field
+`[1, 9/8, 5/4, 3/2, 5/3]`, and a nineteen-equal-divisions-of-the-octave variant.
+The latter uses degrees `0, 3, 6, 11, 15` at its five gates; it is not described
+as twelve-tone equal temperament. The ratio field targets 220, 275 and 330 Hz
+at degrees 0, 2 and 3 before renderer error.
+
+Only actual swept crossings create attacks. The steel stop reverses the same
+finite actors; direct/stepped junction requests wait for existing physical safety
+admission. Flock pitches use current observed formation. Tuning variants retain
+identical score geometry and release timing. Gate movement uses explicit physical
+authoring; a gate moved over a stationary actor does not retroactively attack.
+These dry scores have no sympathetic or room layer and still await runtime,
+external-output tuning, device and listening qualification.

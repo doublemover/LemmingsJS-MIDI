@@ -1,3 +1,4 @@
+import { createGlassOrbitScores } from './GlassOrbitScore.js';
 import { createMetamorphicBridgeScore } from './MetamorphicBridgeScore.js';
 import { createWindPerformanceScore } from './WindPerformanceScore.js';
 import { createFrictionPerformanceScore } from './FrictionPerformanceScore.js';
@@ -101,6 +102,16 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
     for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
     await registry.register(item.scene); signal?.throwIfAborted();
+  }
+  const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
+  if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
+    put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
+    for (const item of await createGlassOrbitScores({ sourceHash, descriptor: fm, signal })) {
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+      await registry.register(item.scene); signal?.throwIfAborted();
+    }
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },

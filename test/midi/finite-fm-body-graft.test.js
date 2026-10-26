@@ -44,7 +44,7 @@ describe('original finite FM excitation and ordinary body graft (qualification d
     let current = true; expect((await refusal(() => bakeFiniteFmExcitation(input(48000), { ...options, current: () => current, yieldControl: async () => { current = false; } }))).message).to.include('ancestry changed');
   });
   it('uses the bounded production worker transport for material preparation', async () => {
-    const jobs = createTestBackgroundJobs({ getExecutionIdentity: () => ({ activeExecution: 'bound', buildId: 'finite-fm-fixture' }) }); let result;
+    const jobs = createTestBackgroundJobs({ identity: () => ({ activeExecution: 'bound', buildId: 'finite-fm-fixture' }) }); let result;
     try { result = await jobs.compute({ kind: 'bake-finite-fm-exciter', ownerId: 'finite-fm-test', ownerEpoch: 1, sourceRevision: 'parent-a', inputBytes: canonicalDataText(input(48000)).bytes.length, estimatedPeakBytes: 32 * 1048576, maxBytes: 262144, prepareInput: () => input(48000) }); expect(result.receipt).to.include({ kind: 'bake-finite-fm-exciter', method: 'dedicated-worker' }); expect(result.value.manifest.frames).to.equal(576); expect(result.value.assetHash).to.equal(await digest(result.value.bytes)); }
     finally { result?.release(); jobs.dispose(); }
   });

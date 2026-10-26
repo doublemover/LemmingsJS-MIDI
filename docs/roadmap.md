@@ -5721,3 +5721,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   failed-preparation/last-good and exact readout invariance fixtures. Static
   checks only. Actual take-aligned four-way comparisons and Instrument Nursery
   still need end-to-end scene content and runtime/listening qualification.
+
+
+### Continuation 226 — original Glass Orbit spatial-harp scores
+
+- Added nine installed #1100 dry-glass scores: finite solo, crossing duet and
+  small flock, each with a 12-tone pentatonic, explicit [1,9/8,5/4,3/2,5/3]
+  ratio field rooted at 220 Hz, or nineteen equal divisions of the octave.
+  Tuning variants share the exact same geometry, release/cohort policy, seed
+  and source patch. Five swept world gates have explicit direction/edit behavior;
+  no synthetic chord or attack runs underneath actual crossings.
+- Added visible long safe floors, far steel returns and direct/stepped physical
+  junction configurations through the existing empty-influence admission owner.
+  Each finite actor can cross the same gates on its real return. Requested,
+  pending, expired and rejected route changes remain physical outcomes, without
+  success accents or replacement actors. Small-flock voicing uses the existing
+  observed formation/field owners, with at most three members sounding at once.
+- Added a validated source-bound embedded patch reference helper and the original
+  dry glass FM patch, HARDNESS and RING onset controls, explicit original gain,
+  requirements, cost/overlap bounds, paused loading and manual-only assistance.
+  GATE SPREAD and TUNING describe their existing explicit physical-authoring and
+  scene-prepare owners; this does not claim an automatic tuning/gate macro.
+  Missing FM capability omits these scores rather than substituting a body.
+- Authored unrun inventory/dependency/origin, identical-world tuning, explicit
+  220/275/330 Hz target, formation/finite-cohort, absent-engine, actual compiled
+  terrain/reversal, empty-world silence and same-trace/two-tuning fixtures.
+  Runtime, backend pitch error, five-minute cost and human legibility/listening
+  qualification remain deferred. Trellis, Pocket Cathedral, spectrum/period and
+  Metamorphic Rail orchestrations remain separate work; no issue is closed.
