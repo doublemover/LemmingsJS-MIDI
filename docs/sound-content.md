@@ -1057,3 +1057,31 @@ graph; body-only Panic clears both endpoints. The initial one-body scene adapter
 retains its narrower explicit profile. These
 new blend fixtures have not run, and runtime cost, PCM and perceptual continuity
 still require the combined validation and listening pass.
+
+
+Fitted and foundry bodies now feed MORPH through explicit source adapters. Offer
+an existing reviewed fit directly from the seed laboratory, or offer a retained
+foundry body with its actual strike and left/right pickup sites. The panel also
+accepts saved fit, solved body and complete derived-endpoint JSON files.
+
+Fitted frequency and T60 retain their exact recipe/parent identities, while
+interaction weights start **Unknown**. Fitted spectral magnitude and phase do
+not identify an independent exciter or pickup. The signature editor lets you
+supply reviewed signed common-reference values. Its optional fixed ±1/8 preset
+is explicitly authored synthetic coupling and never presented as an estimate.
+Every publication creates a new source hash/revision and invalidates the draft
+map. Existing frozen live bodies keep their ownership.
+
+Foundry endpoints use verified signed mass-normalized mode projections divided
+by the displayed common scalar. Choose the same reference for both solved
+endpoints; automatic endpoint normalization is unavailable. Invalid modes or an
+insufficient scalar fail with the actual allowed source/site information. Mode
+IDs are stable within the exact immutable source, with no assertion that equal
+indexes in different bodies identify the same mode. Pair/site review remains
+necessary before a paired body or prepared blend can render or become live.
+
+Endpoint downloads retain the derived source declaration, signed values and
+parent hashes. Parent availability/regeneration remains separate from playback
+of the frozen numeric model. Imports, source readers, worker results and exports
+have bounded independent lifetimes. These new adapter/workflow fixtures are
+unrun; browser, cost, PCM and perceptual continuity still await qualification.

@@ -78,6 +78,6 @@ describe('original offline tetrahedral shape foundry', function() {
     try { await comparing; } catch (error) { comparisonError = error; } expect(comparisonError.message).to.include('exact current'); expect(owner.state().refinement).to.equal(null); expect(owner.state().patchIdentity).to.equal(identity);
     let caught; try { await owner.prepare({ seconds: 0.2 }, { isCurrent: () => false }); } catch (error) { caught = error; } expect(caught.message).to.include('draft changed'); expect(owner.state().patchIdentity).to.equal(identity);
     try { await owner.apply(); } catch (error) { caught = error; } expect(caught.message).to.include('Commit this staged pack'); expect(applied).to.equal(0); expect(releases).to.be.greaterThan(0);
-    const receipt = owner.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    const sourceReader = owner.borrowEndpointSource(), receipt = owner.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(JSON.parse(await sourceReader.file.text()).schema).to.equal('lemmings-shape-body-asset/v1'); sourceReader.release(); expect(() => sourceReader.file.text()).to.throw('retired'); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 });

@@ -1,3 +1,4 @@
+import { validateResonatorEndpointDocument } from '../../midi/content/ResonatorEndpointAdapters.js';
 import { validateResonatorMorphEndpoint, createResonatorMorphMap, prepareResonatorMorphMap, evaluateResonatorMorph } from '../../midi/content/ResonatorMorph.js';
 import { canonicalDataText, freezeData, cloneData, hashData } from '../../core/CanonicalData.js';
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
@@ -11,10 +12,10 @@ let ownerOrdinal = 0;
 export function createResonatorMorphOwner({ resourceBudget, jobs = backgroundJobService, onState = () => {} } = {}) {
   const ownerId = 'resonator-morph-' + (++ownerOrdinal), retirement = createProcgenRetirementScope(), sources = [null, null], pending = new Set(), unknown = new Set(), exports = new Set();
   let revision = 0, sourceRevision = 0, operationOrdinal = 0, disposed = false, active = null, candidate = null, resolved = null, error = null, phase = 'choose-endpoints';
-  const state = () => Object.freeze({ revision, sourceRevision, disposed, active: !!active, phase, error, unknownRetirement: unknown.size, endpoints: sources.map(record => record?.value || null), candidate: candidate?.value || null, map: resolved?.value || null, continuousRendererQualified: false });
+  const state = () => Object.freeze({ revision, sourceRevision, disposed, active: !!active, phase, error, unknownRetirement: unknown.size, endpoints: sources.map(record => record?.value || null), sourceDocuments: sources.map(record => record?.document || null), candidate: candidate?.value || null, map: resolved?.value || null, continuousRendererQualified: false });
   const report = () => { if (!disposed) try { onState(state()); } catch {} };
   const reserve = (kind, bytes) => createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId, generation: revision, kind, category: 'candidate', bytes });
-  const releaseRecord = record => { if (record) { try { record.workspace.release(); } catch (caught) { record.retirementError = caught; unknown.add(record); throw caught; } record.value = record.prepared = null; } };
+  const releaseRecord = record => { if (record) { try { record.workspace.release(); } catch (caught) { record.retirementError = caught; unknown.add(record); throw caught; } record.value = record.prepared = record.document = null; } };
   const invalidate = () => { revision++; active?.controller.abort(fail('The endpoint or map draft changed.')); active = null; releaseRecord(candidate); releaseRecord(resolved); candidate = resolved = null; error = null; phase = 'choose-endpoints'; };
   const begin = kind => {
     if (disposed || unknown.size || pending.size >= 4 || sources.some(record => !record?.value)) throw fail('Choose two complete endpoints and settle earlier preparation/retirement first.');
@@ -29,21 +30,50 @@ export function createResonatorMorphOwner({ resourceBudget, jobs = backgroundJob
     finally { pending.delete(operation); if (active === operation) active = null; operation.resolve(); report(); }
     if (operation.retirementError) throw operation.retirementError;
   };
-  const capture = operation => ({ a: sources[0].value, b: sources[1].value, operation });
+  const capture = operation => { const aReference = sources[0].document?.source.reference, bReference = sources[1].document?.source.reference; if (aReference && bReference && aReference.commonReference !== bReference.commonReference) throw fail('Use the same explicit common coupling reference for both solved endpoint signatures.'); return { a: sources[0].value, b: sources[1].value, operation }; };
   const execute = async (kind, task) => {
     const operation = begin(kind);
     try { return await task(operation); }
     catch (caught) { if (!disposed && active === operation) { error = caught.message; phase = operation.controller.signal.aborted ? 'canceled' : 'failed'; } throw caught; }
     finally { finish(operation); }
   };
+  const publishEndpoint = (slot, raw, document = null) => {
+    if (disposed || unknown.size || ![0, 1].includes(slot)) throw fail('The endpoint owner is unavailable.');
+    const workspace = reserve('morph-endpoint-and-display-metadata', 4 * 1048576); let value;
+    try { value = validateResonatorMorphEndpoint(raw); workspace.resize(2 * 1048576 + canonicalDataText({ value, document }, { maxBytes: 262144, maxNodes: 32768 }).bytes.length * 12); }
+    catch (caught) { releaseRecord({ workspace }); throw caught; }
+    try { invalidate(); releaseRecord(sources[slot]); sources[slot] = { value, document, workspace }; sourceRevision++; phase = sources.every(record => record?.value) ? 'endpoints-ready' : 'choose-endpoints'; report(); return state(); }
+    catch (caught) { releaseRecord({ workspace, value }); throw caught; }
+  };
+  const prepareEndpointSource = async (slot, prepareInput, inputBytes, estimatedPeakBytes, workspaceBytes) => {
+    if (disposed || pending.size || active || unknown.size || ![0, 1].includes(slot)) throw fail('Settle the current endpoint preparation or retirement before deriving another source.');
+    const controller = new AbortController(), ordinal = ++operationOrdinal, boundary = revision, operation = { ordinal, revision: boundary, controller, workspace: reserve('morph-derived-source-and-document-overlap', workspaceBytes), result: null, settlement: null, resolve: null };
+    operation.settlement = new Promise(resolve => { operation.resolve = resolve; }); pending.add(operation); active = operation; phase = 'deriving-exact-endpoint-source'; report();
+    try {
+      operation.result = await jobs.compute({ kind: 'derive-resonator-endpoint', ownerId, ownerEpoch: ordinal, sourceRevision: 'endpoint-source:' + ordinal, inputBytes, maxBytes: 4 * 1048576 + 65536, maxNodes: 131072, estimatedPeakBytes, budgetAdapter: resourceBudget, signal: controller.signal, isCurrent: () => !disposed && active === operation && revision === boundary, prepareInput }); check(operation);
+      const receipt = operation.result.receipt;
+      if (receipt?.method !== 'dedicated-worker' || receipt.kind !== 'derive-resonator-endpoint' || receipt.sourceRevision !== 'endpoint-source:' + ordinal || receipt.executionIdentity?.activeExecution !== 'bound') throw fail('Endpoint derivation needs its exact bounded application worker.');
+      const document = await validateResonatorEndpointDocument(operation.result.value); check(operation); retireBackgroundResult(operation.result); operation.result = null; check(operation); return publishEndpoint(slot, document.endpoint, document);
+    } catch (caught) { if (!disposed && active === operation) { phase = controller.signal.aborted ? 'canceled' : 'failed'; error = caught.message; } throw caught; }
+    finally { finish(operation); }
+  };
+  const exportValue = (value, immutableSourceRef, formatVersion, suggestedFilename) => {
+    if (disposed || unknown.size || active) throw fail('Settle the current source preparation before exporting.');
+    for (const artifact of exports) if (!artifact.metadata().activeLeases) { artifact.discard(); if (artifact.metadata().budgetState === 'released' || artifact.metadata().budgetState === 'unbudgeted') exports.delete(artifact); }
+    if (exports.size >= 8) throw fail('Earlier map/endpoint deliveries still retain their bounded reader slots.');
+    const bytes = canonicalDataText(value, { maxBytes: 131072, maxNodes: 16384 }).bytes, artifact = prepareExportArtifact({ bytes, immutableSourceRef, formatVersion, mediaType: 'application/json', suggestedFilename, budgetAdapter: resourceBudget }); exports.add(artifact); return artifact;
+  };
   return Object.freeze({ state,
-    setEndpoint(slot, raw) {
-      if (disposed || unknown.size || ![0, 1].includes(slot)) throw fail('The endpoint owner is unavailable.');
-      const workspace = reserve('morph-endpoint-and-display-metadata', 1048576); let value;
-      try { value = validateResonatorMorphEndpoint(raw); workspace.resize(Math.max(4096, canonicalDataText(value).bytes.length * 12)); }
-      catch (caught) { releaseRecord({ workspace }); throw caught; }
-      try { invalidate(); releaseRecord(sources[slot]); sources[slot] = { value, workspace }; sourceRevision++; phase = sources.every(record => record?.value) ? 'endpoints-ready' : 'choose-endpoints'; report(); return state(); }
-      catch (caught) { releaseRecord({ workspace, value }); throw caught; }
+    setEndpoint(slot, raw) { return publishEndpoint(slot, raw); },
+    importEndpointSource(slot, file, options = {}) {
+      if (!file || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 2 * 1048576 || typeof file.text !== 'function' || !['fitted', 'shape', 'document'].includes(options.kind)) return Promise.reject(fail('Choose a fitted, solved-shape or derived endpoint JSON file of at most two MiB.'));
+      const selected = cloneData(options, { maxBytes: 65536, maxNodes: 8192 }), inputBytes = file.size * 2 + canonicalDataText(selected).bytes.length + 512;
+      return prepareEndpointSource(slot, () => Promise.resolve(file.text()).then(sourceText => ({ kind: selected.kind, sourceText, options: selected.options ?? {} })), inputBytes, 192 * 1048576, 64 * 1048576);
+    },
+    authorSignatures(slot, weights) {
+      if (!sources[slot]?.value) return Promise.reject(fail('Import the current endpoint before authoring signatures.'));
+      const source = sources[slot].value, options = cloneData({ weights, reviewed: true }, { maxBytes: 65536, maxNodes: 8192 }), input = freezeData({ kind: 'author-signatures', source, options }), inputBytes = canonicalDataText(input, { maxBytes: 262144, maxNodes: 32768 }).bytes.length;
+      return prepareEndpointSource(slot, () => input, inputBytes, 64 * 1048576, 8 * 1048576);
     },
     async importEndpoint(slot, file) {
       if (!file || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 65536 || typeof file.text !== 'function') throw fail('Choose an endpoint JSON file of at most 64 KiB.');
@@ -58,7 +88,7 @@ export function createResonatorMorphOwner({ resourceBudget, jobs = backgroundJob
     invalidateMap() { if (disposed) return; revision++; active?.controller.abort(fail('The resolved pair draft changed.')); active = null; releaseRecord(resolved); resolved = null; error = null; phase = candidate ? 'candidate-needs-review' : 'endpoints-ready'; report(); },
     setEndpoints(a, b) {
       if (disposed || unknown.size) throw fail('The endpoint owner is unavailable.'); const records = [];
-      try { for (const raw of [a, b]) { const record = { workspace: reserve('morph-endpoint-and-display-metadata', 1048576), value: null }; records.push(record); record.value = validateResonatorMorphEndpoint(raw); record.workspace.resize(Math.max(4096, canonicalDataText(record.value).bytes.length * 12)); } invalidate(); for (const old of sources) releaseRecord(old); sources[0] = records[0]; sources[1] = records[1]; sourceRevision++; phase = 'endpoints-ready'; report(); return state(); }
+      try { for (const raw of [a, b]) { const record = { workspace: reserve('morph-endpoint-and-display-metadata', 4 * 1048576), value: null }; records.push(record); record.value = validateResonatorMorphEndpoint(raw); record.workspace.resize(2 * 1048576 + canonicalDataText(record.value).bytes.length * 12); } invalidate(); for (const old of sources) releaseRecord(old); sources[0] = records[0]; sources[1] = records[1]; sourceRevision++; phase = 'endpoints-ready'; report(); return state(); }
       catch (caught) { for (const record of records) try { releaseRecord(record); } catch {} throw caught; }
     },
     async importProof(file) {
@@ -83,7 +113,8 @@ export function createResonatorMorphOwner({ resourceBudget, jobs = backgroundJob
     }); },
     referenceSource() { if (disposed || unknown.size || !resolved) throw fail('Prepare a current reviewed map before a control reference.'); return freezeData({ revision, map: resolved.value, a: sources[0].value, b: sources[1].value }); },
     preview(u, sampleRate = 48000) { if (disposed || unknown.size || !resolved || active) throw fail('Prepare the reviewed map before previewing its parameters.'); return evaluateResonatorMorph(resolved.prepared, u, sampleRate); },
-    prepareExport() { if (disposed || unknown.size || !resolved || active) throw fail('Prepare the current reviewed map before exporting.'); for (const artifact of exports) if (!artifact.metadata().activeLeases) { artifact.discard(); if (artifact.metadata().budgetState === 'released' || artifact.metadata().budgetState === 'unbudgeted') exports.delete(artifact); } if (exports.size >= 8) throw fail('Earlier map deliveries still retain their bounded reader slots.'); const bytes = canonicalDataText(resolved.value, { maxBytes: 65536, maxNodes: 8192 }).bytes, artifact = prepareExportArtifact({ bytes, immutableSourceRef: 'sha256:' + resolved.value.hash, formatVersion: 'lemmings-resonator-morph-map/v1', mediaType: 'application/json', suggestedFilename: 'resonator-morph-' + resolved.value.hash.slice(0, 12) + '.json', budgetAdapter: resourceBudget }); exports.add(artifact); return artifact; },
+    prepareEndpointExport(slot) { const record = sources[slot]; if (!record?.value) throw fail('Choose the current endpoint before exporting.'); return exportValue(record.document || record.value, 'resonator-endpoint:' + record.value.sourceAssetHash, record.document?.schema || record.value.schema, 'resonator-endpoint-' + (slot ? 'b-' : 'a-') + record.value.sourceAssetHash.slice(0, 12) + '.json'); },
+    prepareExport() { if (!resolved) throw fail('Prepare the current reviewed map before exporting.'); return exportValue(resolved.value, 'sha256:' + resolved.value.hash, 'lemmings-resonator-morph-map/v1', 'resonator-morph-' + resolved.value.hash.slice(0, 12) + '.json'); },
     cancel() { active?.controller.abort(fail('Correspondence preparation canceled.')); },
     dispose() {
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; active?.controller.abort(fail('Correspondence owner closed.'));

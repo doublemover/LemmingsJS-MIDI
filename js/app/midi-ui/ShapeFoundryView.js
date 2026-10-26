@@ -2,7 +2,7 @@ import { createShapeFoundryOwner } from './ShapeFoundryOwner.js';
 import { ORIGINAL_SHAPE_BODY_IDS } from '../../midi/content/OriginalShapeMeshes.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 
-export function createShapeFoundryView({ document, audio, resourceBudget, jobs, getTargetIdentity, onApply, onOfferSharedBody, onStatus = () => {} }) {
+export function createShapeFoundryView({ document, audio, resourceBudget, jobs, getTargetIdentity, onApply, onOfferSharedBody, onOfferResonatorSource, onStatus = () => {} }) {
   const listeners = [], retirement = createProcgenRetirementScope(); let disposed = false, owner, preparedTarget = null, active = null, previousFocus = null;
   const node = (tag, text = '') => { const value = document.createElement(tag); value.textContent = text; return value; };
   const listen = (target, event, action) => { target.addEventListener(event, action); listeners.push(() => target.removeEventListener(event, action)); };
@@ -13,6 +13,7 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
   const shape = select('Original solid', ORIGINAL_SHAPE_BODY_IDS.map(id => [id, id.replaceAll('-', ' ')])), modes = select('Explicit mode budget', [8, 16, 32].map(value => [value, value + ' selected modes · unsupported tiers decline'])), rate = select('Prepared source rate', [44100, 48000, 96000].map(value => [value, value + ' Hz'])); rate.value = '48000';
   const duration = field('Finite body sample · seconds', node('input')); duration.type = 'number'; duration.min = '0.2'; duration.max = '4'; duration.step = '0.1'; duration.value = '2';
   const site = select('Explicit strike site', [['end', 'End'], ['shoulder', 'Shoulder'], ['corner', 'Corner']]);
+  const pickupLeft = select('MORPH left solved pickup', []), pickupRight = select('MORPH right solved pickup', []), couplingReference = field('MORPH common coupling reference · same value across endpoints', node('input')); couplingReference.type = 'number'; couplingReference.min = '0.000000000001'; couplingReference.max = '1000000000000000000'; couplingReference.step = 'any'; couplingReference.value = '32'; let pickupAsset = null; const morphButtons = [];
   const config = () => ({ shapeId: shape.value, modeCount: Number(modes.value), sampleRate: Number(rate.value), seconds: Number(duration.value) }), key = value => JSON.stringify(value), targetKey = () => key(getTargetIdentity());
   const say = text => { if (!disposed) { status.textContent = text; try { onStatus(text); } catch {} } };
   let prepareButton, auditionButton, saveButton, applyButton, refinementButton, sharedButton;
@@ -23,6 +24,9 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
     prepareButton.disabled = !!active || value.active; auditionButton.disabled = !!active || value.active || !value.compiledReady || !matching || !targetMatches; saveButton.disabled = !!active || value.active || !value.auditionReady; applyButton.disabled = !!active || value.active || !value.durable || !value.auditionReady || !matching || !targetMatches;
     refinementButton.disabled = !!active || value.active || !value.compiledReady || !matching || !targetMatches || value.config?.shapeId !== 'pocket-bar';
     sharedButton.disabled = !!active || value.active || !matching || !targetMatches || value.sharedBody?.state !== 'prepared' || typeof onOfferSharedBody !== 'function';
+    for (const button of morphButtons) button.disabled = !!active || value.active || !matching || !targetMatches || !value.compiledReady || typeof onOfferResonatorSource !== 'function';
+    pickupLeft.disabled = pickupRight.disabled = couplingReference.disabled = !!active || value.active || !value.compiledReady || !matching;
+    if (value.overview?.assetHash !== pickupAsset) { pickupAsset = value.overview?.assetHash; const entries = value.overview?.pickupSites || []; for (const [index, input] of [pickupLeft, pickupRight].entries()) { const old = input.value; input.replaceChildren(); for (const entry of entries) { const option = node('option', entry.id + ' · vertex ' + entry.vertex); option.value = entry.id; input.append(option); } input.value = entries.some(entry => entry.id === old) ? old : entries[Math.min(index, entries.length - 1)]?.id || ''; } }
     if (value.sharedBody) readiness.textContent += ' · shared edge ' + value.sharedBody.state + (value.sharedBody.reason ? ': ' + value.sharedBody.reason : '');
     if (value.refinement) readiness.textContent += ' · low-mode mesh comparison ' + value.refinement.status.replaceAll('-', ' ');
     if (value.overview) details.textContent = JSON.stringify({ ...value.overview, content: value.contract, sharedEdge: value.sharedBody, meshRefinementComparison: value.refinement }, null, 2);
@@ -35,6 +39,7 @@ export function createShapeFoundryView({ document, audio, resourceBudget, jobs, 
   }));
   auditionButton = button('Prelisten selected site', run(() => owner.audition(site.value, { isCurrent: () => preparedTarget === targetKey() })));
   sharedButton = button('Offer selected strike to shared bar edge', () => { const model = owner.sharedMap(site.value); if (!model || preparedTarget !== targetKey()) throw new Error('Prepare the current original bar and choose its exact strike site first.'); suspend(); onOfferSharedBody(model); });
+  for (const index of [0, 1]) morphButtons.push(button('Offer signed body to MORPH ' + (index ? 'B' : 'A'), run(async () => { const value = owner.state(); if (!value.compiledReady || preparedTarget !== targetKey() || key(value.config) !== key(config()) || !couplingReference.checkValidity()) throw new Error('Prepare the current exact body and choose solved sites with a valid common reference.'); const loan = owner.borrowEndpointSource(), options = { modeIndices: value.overview.tier.modeIndices, excitationSiteId: site.value, pickupLeftSiteId: pickupLeft.value, pickupRightSiteId: pickupRight.value, commonReference: Number(couplingReference.value) }; suspend(); try { await onOfferResonatorSource(index, loan.file, options); } finally { loan.release(); } })));
   saveButton = button('Save immutable instrument', run(() => owner.install()));
   refinementButton = button('Compare original bar refinement', run(() => owner.compareRefinement({ isCurrent: () => preparedTarget === targetKey() && key(owner.state().config) === key(config()) })));
   applyButton = button('Apply to selected lane', run(async () => { await owner.apply({ isCurrent: () => preparedTarget === targetKey() && key(owner.state().config) === key(config()) }); preparedTarget = targetKey(); say('Applied the ordinary saved instrument through the lane Undo boundary. Physical routes are unchanged.'); }));

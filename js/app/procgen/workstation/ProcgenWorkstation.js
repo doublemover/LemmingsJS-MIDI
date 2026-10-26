@@ -1330,6 +1330,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (failure) throw failure;
     return committed;
   };
+  const ensureSoundSeedLab = () => { if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound authoring ownership is unavailable.'); return soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
+    displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
+    getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && value.sourceKind === 'MotionCommitted' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'; }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
   const handlers = {
     clearSolos: () => {
       if (!project.procgen.lanes.some(lane => lane.solo)) return;
@@ -1476,10 +1479,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     harvestSoundSeed(source) {
       if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound-seed ownership is unavailable.');
-      soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
-        displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
-        getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && value.sourceKind === 'MotionCommitted' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'; }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status });
-      return soundSeedLab.open(source);
+
+      return ensureSoundSeedLab().open(source);
     },
     openMasterCapture() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Browser master capture is unavailable.'); return; }
@@ -1493,10 +1494,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
       soundLibrary.open();
     },
+    async offerMorphSource(index, kind, source, options = {}) {
+      if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Resonator authoring ownership is unavailable.');
+
+      return ensureSoundSeedLab().offerMorphSource(index, kind, source, options);
+    },
     openShapeFoundry() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Shape foundry resource ownership is unavailable.'); return; }
       shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
-        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onStatus: status }); shapeFoundry.open();
+        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
     },
     applyInstalledInstrument(candidate, { signal, hold = false } = {}) { return soundTransactions.select(candidate, { signal, hold, laneId: selected().id }); },
     selectNativeSound(laneId, patchId) {

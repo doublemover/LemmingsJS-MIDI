@@ -1,3 +1,4 @@
+import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
 import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
 import { analyzeResonatorMorph } from '../../midi/content/ResonatorMorph.js';
 import { compileSceneTerrainLayout } from '../procgen/SceneTerrainLayout.js';
@@ -154,7 +155,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity.buildId !== execution.buildId) throw problem('engine-identity-unbound', 'The foundry compiler differs from its executing worker.');
     const compiled = await compileSoundContent(recipe.source, { targets: catalog.descriptors.map(descriptor => ({ descriptor })), signal }); guard(signal, current);
     const value = { prepared: compiled.prepared, contents: recipe.contents, receipt: recipe.receipt, sharedBody, overview: { id: asset.id, assetHash: asset.assetHash, meshHash: asset.meshHash, sourceHash: asset.sourceHash, solver: asset.solver, validation: asset.validation, modeCount: input.modeCount, sampleRate: input.sampleRate, seconds: input.seconds,
-      sites: asset.source.excitationSites, tier: { modeIndices: calibration.files[0].manifest.modeIndices, retainedSalience01: calibration.files[0].manifest.tier.retainedSalience01 } } };
+      sites: asset.source.excitationSites, pickupSites: asset.source.pickupSites, tier: { modeIndices: calibration.files[0].manifest.modeIndices, retainedSalience01: calibration.files[0].manifest.tier.retainedSalience01 } } };
     const retainedBytes = recipe.contents.reduce((sum, file) => sum + file.bytes.byteLength * 3 + 65536, 8 * 1048576) + canonicalDataText(sharedBody, { maxBytes: 524288, maxNodes: 32768 }).bytes.length * 8;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Foundry generated material exceeds its complete result reservation.');
     return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes };
@@ -173,6 +174,12 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const metadata = canonicalDataText({ ...input, planes: undefined }, { maxBytes: 65536, maxNodes: 4096, domain: 'Impulse analysis source metadata' });
     const inputBytes = value.bytes + metadata.bytes.byteLength; if (inputBytes > maxBytes) throw problem('input-capacity', 'Impulse source exceeds its job byte bound.');
     return { value, inputBytes, nodes: metadata.nodes + input.planes.length, retainedBytes: 65536 };
+  }
+  if (kind === 'derive-resonator-endpoint') {
+    const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 4 * 1048576 + 65536), maxNodes: Math.min(maxNodes, 131072), domain: 'Derived resonator endpoint source' });
+    if (estimatedPeakBytes < metadata.bytes.length * 32 + 32 * 1048576) throw problem('workspace-capacity', 'Complete endpoint/source verification workspace is not admitted.');
+    const value = await deriveResonatorEndpoint(input, { signal, current, yieldControl }); guard(signal, current); const encoded = canonicalDataText(value, { maxBytes: 131072, maxNodes: 16384 });
+    return { value, inputBytes: metadata.bytes.length, nodes: metadata.nodes, retainedBytes: encoded.bytes.length * 32 + 131072 };
   }
   if (kind === 'render-resonator-morph-reference') {
     const metadata = canonicalDataText(input, { maxBytes: Math.min(maxBytes, 262144), maxNodes: Math.min(maxNodes, 32768), domain: 'Paired modal body reference' });

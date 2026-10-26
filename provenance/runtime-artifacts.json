@@ -325,6 +325,7 @@
         "js/midi/content/ProceduralTactileSources.js",
         "js/midi/content/RectangularMembraneProfile.js",
         "js/midi/content/ResonatorBlendProfile.js",
+        "js/midi/content/ResonatorEndpointAdapters.js",
         "js/midi/content/ResonatorMorph.js",
         "js/midi/content/ResonatorMorphGraph.js",
         "js/midi/content/RingModulatorProfile.js",
@@ -361,8 +362,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 250,
-      "sha256": "9b93ef65e023658b04f40b902199b362fd1c5d8c5f1334ed5b90351e016c66c4"
+      "fileCount": 251,
+      "sha256": "0ce3c01e5a1edbb4d98bad217db735a2e39c0a8fb6b613edb20ca4005e95c186"
     },
     {
       "id": "lemmings-timing-worker-source",

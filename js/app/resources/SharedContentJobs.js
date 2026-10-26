@@ -1,7 +1,7 @@
 import { backgroundJobService } from './BackgroundJobService.js';
 import { requireSynchronousResourceAcknowledgement, retireBackgroundResult } from './ResourceRetirement.js';
 
-export const SHARED_PURE_JOB_KINDS = Object.freeze(['render-resonator-morph-reference', 'analyze-resonator-morph', 'asset-hash', 'asset-decode', 'parse-json', 'encode-json', 'encode-canonical-json',
+export const SHARED_PURE_JOB_KINDS = Object.freeze(['derive-resonator-endpoint', 'render-resonator-morph-reference', 'analyze-resonator-morph', 'asset-hash', 'asset-decode', 'parse-json', 'encode-json', 'encode-canonical-json',
   'encode-recovery-page', 'decode-recovery-page', 'compile-sound-content', 'inspect-wave-asset', 'decode-wave-source', 'analyze-native-impulse',
   'generate-procedural-sound', 'prepare-owned-source-bank', 'snapshot-canonical-data', 'inspect-causal-archive-entry']);
 const failure = (code, message) => Object.assign(new Error(message), { name: 'BackgroundJobError', code });

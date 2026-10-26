@@ -5661,3 +5661,35 @@ export-budget acknowledgments still prevent a false complete receipt.
   fixtures. Combined runtime/browser/PCM, cost, alias/decay and matched-level
   listening evidence remains deferred. Fitted/foundry endpoint/signature adapters
   and their workflow are still separate remaining work for #1225.
+
+
+### Continuation 224 — fitted/foundry endpoints and explicit interaction signatures
+
+- Added the bounded worker-only derived endpoint path for #1225. Exact saved fit
+  recipe/parent hashes retain selected stable mode IDs, frequency and amplitude
+  T60. Excitation/pickup weights remain unknown: spectral amplitude and stereo
+  phase are not independent physical interaction signatures. Users can enter
+  explicit signed values or deliberately choose the fixed ±1/8 synthetic preset
+  for up to eight modes, then review/publish a new immutable signature revision.
+- Solved shape inputs verify the complete retained source/asset and signed modal
+  projections. Explicit strike/left/right sites, selected indices or the existing
+  curated eight-mode salience tier, and one common scalar reference produce exact
+  signed endpoint weights. Unsupported frequency/loss and too-small references
+  fail with concrete source details. No mode clamping, independent endpoint
+  normalization, inferred physical identity or unreviewed correspondence occurs.
+- Added complete derived endpoint/source documents and hash validation, atomic
+  last-good publication, bounded source/signature/display metadata, independent
+  JSON export delivery and common-reference compatibility checks. Worker workspace
+  is reserved before source text/copies; canceled or stale results never publish.
+  Unknown producer retirement retains its leases and blocks new preparation.
+- Connected saved-fit/file import, direct current-fit offers, actual foundry site
+  selectors and independently charged immutable body-source readers to the same
+  authoring panel. Source readers can outlive their parent view with their own
+  reservation. Correspondence/pair/site review still precedes render/live use;
+  signature edits invalidate the draft map while the frozen live body stays owned.
+- Authored unrun fit/non-inference, explicit-weight revision, signed solved-site
+  and portable source, foreign hash/projection, source-document export, delayed
+  completed result, producer cancellation, accessible preset/review and independent
+  foundry-reader lifetime fixtures. Static checks only; numerical, browser, device
+  and matched-level perceptual qualification remain deferred. Source parent
+  availability and regeneration are separate from a frozen endpoint's playback.

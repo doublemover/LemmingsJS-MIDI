@@ -286,3 +286,8 @@ body.procgen-workstation {
 .studio-resonator-morph pre { max-height: 16rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .studio-morph-reference-controls { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; }
 .studio-morph-reference-controls p, .studio-morph-reference-controls output { flex-basis: 100%; }
+
+.studio-morph-signatures { overflow-x: auto; max-width: 100%; }
+.studio-morph-signatures input[type="number"] { width: 7rem; }
+.studio-morph-signatures td { min-width: 8rem; vertical-align: top; }
+.studio-morph-signatures th { overflow-wrap: anywhere; }

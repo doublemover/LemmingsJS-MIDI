@@ -74,7 +74,7 @@ export function createSoundSeedDerivedOwner({ resourceBudget, jobs = backgroundJ
           record.api = Object.freeze({ artifact: record.artifact, manifest: freezeData(entry.manifest), metadata: () => Object.freeze({ ...saved, assetReady: !candidateScope.getReceipt() && record.artifact.metadata().retained, compiledPatchReady: false, audibleAuditionReady: false, durable: false }),
             withWaveform(visitor) { if (!record.waveform || candidateScope.getReceipt() || typeof visitor !== 'function') throw fail('Derived waveform retired.'); const output = visitor(record.waveform); if (output?.then) throw fail('Derived waveform visits must be synchronous.'); } });
         }
-        operation.next.summary = freezeData({ parentAssetHash: result.recipe.parentAssetHash, generation, recipe: result.recipe, reconstruction: result.reconstruction,
+        operation.next.summary = freezeData({ schema: result.schema, recipeHash: result.recipeHash ?? null, parentAssetHash: result.recipe.parentAssetHash, generation, recipe: result.recipe, reconstruction: result.reconstruction,
           components: result.components.map(entry => ({ kind: entry.kind, assetHash: entry.assetHash })), recombinedAssetHash: result.recombined?.assetHash ?? null, estimate: result.estimate ?? null, evidence: 'analysis-ready;audition-and-durability-not-established' });
       } catch (failure) {
         caught = failure; if (failure.retirement && failure.retirement.outcome !== 'complete') unknown.add({ failure });
