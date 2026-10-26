@@ -282,3 +282,21 @@ reopening, and remains session-only when browser storage is denied. Replaying a
 lesson starts a fresh observed attempt. Work/path/harmony lessons and advanced
 material/memory journeys are still awaiting their actual setup scenes and
 qualification; two available practice lessons do not imply that full acceptance.
+
+
+An authored physical score can pin an optional initial terrain layout: bounded
+ordered solid, air and steel rectangles, with explicit pixel colors and physical
+lane dimensions. Preparation compiles and checks the actual collision and raster
+source before constructing a candidate world. It uses shared worker admission;
+there is no heavy UI-thread fallback or silent replacement with another floor.
+The initial extent has no generated physical gadgets or growth clock. The base
+terrain remains available beyond that finite extent. This source format is a
+building block for the remaining authored performance/lesson worlds; it is not
+by itself a completed Builder-Miner Workshop or playable path/harmony lesson.
+
+Scored recovery requires the exact source layout, installed themes and lane seeds.
+An unavailable/future source leaves the current world available and reports a
+source-profile error. Source and worker-result release wait for world/renderer
+reader retirement; unresolved retirement keeps the resource reservation owned.
+Runtime, visual, playability and recovery qualification for this source remains
+pending with the development batch.

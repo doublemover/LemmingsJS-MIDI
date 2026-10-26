@@ -33,7 +33,7 @@ const configurePhysicalJunctions = (world, input, revision) => {
   for (const [id, actual] of world.physicalJunctions.actual) if (!definitions.some(value => value.id === id && value.revision === actual.authoringRevision)) world.physicalJunctions.actual.delete(id);
   return true;
 };
-const sourceAssets = world => (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain?.recipe?.assetSha256 ?? terrain?.sourceDescriptor?.sourceRevision).filter(Boolean);
+const sourceAssets = world => [...(world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain?.recipe?.assetSha256 ?? terrain?.sourceDescriptor?.sourceRevision).filter(Boolean), ...(world.terrain?.sceneTerrainLayoutHash ? [world.terrain.sceneTerrainLayoutHash] : [])];
 const normalizeJunctionRequest = (world, input) => {
   if (!plain(input) || !identity(input.junctionId) || !identity(input.configurationId) || !integer(input.authoringRevision) || !integer(input.expiryTick) || input.expiryTick <= world.tickIndex || input.expiryTick > world.tickIndex + 3600 || !['rejectIfBusy', 'waitForSafeBoundary'].includes(input.policy ?? 'rejectIfBusy')) throw new Error('Invalid bounded junction request.');
   const definition = world.physicalJunctions.definitions.find(value => value.id === input.junctionId);

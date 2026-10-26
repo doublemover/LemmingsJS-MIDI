@@ -1,5 +1,30 @@
 // A synchronous teardown entry point with an optional bounded, observable async tail.
 // Each scope owns one ordered retirement; repeat and reentrant callers share its receipt.
+export function afterProcgenRetirement(prerequisites, action) {
+  const completed = value => {
+    if (value && typeof value.then === 'function') return Promise.resolve(value).then(completed);
+    if (value?.schema !== 'lemmings-retirement/v1') return null;
+    const check = () => { if (value.outcome !== 'complete') throw new Error('A prerequisite retirement is unresolved; dependent resources remain owned.'); };
+    if (value.state === 'retired') { check(); return null; }
+    return Promise.resolve(value.completion).then(check);
+  };
+  const pending = prerequisites.map(completed).filter(Boolean);
+  if (!pending.length) return action();
+  return Promise.all(pending).then(() => { const result = action(), waiting = completed(result); return waiting ? Promise.resolve(waiting).then(() => result) : result; });
+}
+
+export function retireProcgenWorldResources({ world, renderer, terrain, assets, resourceLease } = {}) {
+  const readers = createProcgenRetirementScope(), sources = createProcgenRetirementScope();
+  return createProcgenRetirementScope().retire([
+    { name: 'world-readers', run: () => readers.retire([{ name: 'world', run: () => world?.dispose() }, { name: 'renderer', run: () => renderer?.dispose() }]) },
+    { name: 'world-sources', run: () => sources.retire([
+      { name: 'terrain-assets', run: () => afterProcgenRetirement([readers.getReceipt()], () => terrain?.dispose?.()) },
+      { name: 'display-assets', run: () => afterProcgenRetirement([readers.getReceipt()], () => assets?.dispose?.()) }
+    ]) },
+    { name: 'asset-provider-lease', run: () => afterProcgenRetirement([readers.getReceipt(), sources.getReceipt()], () => resourceLease?.release()) }
+  ]);
+}
+
 export function createProcgenRetirementScope({ deadlineMs = 5000 } = {}) {
   let receipt = null;
   return {

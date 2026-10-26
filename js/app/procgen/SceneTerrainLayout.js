@@ -44,7 +44,7 @@ export function createSceneTerrainViews(result) {
 export async function compileSceneTerrainLayout(raw, { signal, current = () => true, estimatedPeakBytes = 16 * 1048576, crypto = globalThis.crypto, yieldControl = async () => {}, onProgress = () => {} } = {}) {
   const guard = () => { signal?.throwIfAborted(); if (!current()) throw new Error('Scene terrain source changed during compilation.'); };
   guard(); const layout = validateSceneTerrainLayout(raw), shape = sceneTerrainStorageShape(layout), metadata = canonicalDataText(layout, { maxBytes: 131072, maxNodes: 16384 });
-  const requiredPeakBytes = shape.bytes * 2 + metadata.bytes.length * 8 + shape.cells + 131072;
+  const requiredPeakBytes = shape.bytes * 2 + metadata.bytes.length * 32 + shape.cells + 262144;
   if (!Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < requiredPeakBytes || shape.bytes > SCENE_TERRAIN_LIMITS.maximumBytes || !crypto?.subtle?.digest) fail('The complete source/raster/hash workspace and SHA-256 capability must be admitted before allocation.');
   const digest = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
   const layoutHash = await digest(metadata.bytes); guard(); const storage = new Uint8Array(shape.bytes), steelScratch = new Uint8Array(shape.cells);

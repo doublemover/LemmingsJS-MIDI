@@ -5082,3 +5082,52 @@ critical type checks are used. The next dependency is the actual staged terrain
 provider, checkpoint source-profile compatibility and authored lesson/world
 layouts; this compiler alone does not yet replace installed world geometry or
 qualify the remaining scene/lesson journeys.
+
+
+### Continuation 204 — staged owned terrain source and checkpoint profile (#1097, #1110, #1045)
+
+The optional initialTerrainLayout score recipe now resolves through an actual
+owned ProcgenScoredTerrain provider. Boot compiles its original rectangles in the
+shared bound worker before constructing the world, installs exact collision and
+raster chunks before any actor/recovery anchor, and retains the complete result
+lease for the source lifetime. Dimension/source/byte-integrity checks reject an
+unavailable or mismatched candidate without changing the active world. Reopening
+a source scene recompiles the exact embedded initial geometry before restoring
+its state; it does not replace geometry with an approximate procedural floor.
+
+All terrain query channels use the same immutable compiled planes in the bounded
+initial extent. Existing sparse world edits retain their own overlay. Lane seeds
+bind explicit installed themes; unknown lanes cannot borrow a different scored
+chunk. No procedural physical objects or fine-growth appearance schedule is
+inserted inside the initial source. Outside its finite extent the original base
+source remains available, with the declared static source/growth policy. The
+provider exposes original source/layout/storage hashes and charged typed bytes,
+not an invented musical cause or measured performance tier. Geometry hashes also
+join physical-authoring/junction source-compatibility checks.
+
+Scored checkpoint assignments use component codec 2, preserving codec 1 for
+ordinary terrain. Restore checks the source profile, exact layout hash, actual
+lane seeds, theme assignments and original terrain settings before mutating any
+world owner. Foreign/future source profiles cannot be restored through ordinary
+terrain, and a scored source cannot accept an unrelated ordinary checkpoint.
+The existing staged scene adapter verifies the actual bound worker result before
+publication. This is optional source support; authored work/path/harmony score
+layouts and their complete lesson journeys remain the next development batch.
+
+World teardown now has explicit reader → source → provider dependencies through
+the existing retirement scope. A renderer/world failure keeps geometry results,
+assets, provider leases and candidate reservations owned. Boot failure cleanup
+uses the same path. This fixes the previous concurrent release ordering, which
+could return a new source lease while a renderer still owned a read. Producer
+retirement and synchronous result-release acknowledgements remain mandatory.
+
+Fixtures cover the production paged worker transport, collision/raster agreement,
+source reset/rebinding, unbound/already-canceled preparation, confirmed ordered
+read/result/base/provider retirement, false result acknowledgement, unknown
+readers, and actual world checkpoint continuation with unchanged target state on
+forged settings/seeds/future/plain-source restore. They are authored but unrun.
+Only format, syntax/provenance and limited critical type checks are performed;
+world/renderer/browser, visual/playability, CPU/heap and recovery qualification
+remain deferred to the combined acceptance pass.
+
+Continuation 204 ownership follow-through: top-level world replacement also retains the active-world allocation and provider owners until the complete asynchronous reader/source chain confirms retirement. Unresolved source retirement retains the charge; the outer owner cannot infer completion from a requested Stop. An authored deferred-reader allocation fixture is added with the other pending runtime cases.

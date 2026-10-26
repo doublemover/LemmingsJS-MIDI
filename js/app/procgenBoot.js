@@ -1,3 +1,4 @@
+import { ProcgenScoredTerrain } from './procgen/ProcgenScoredTerrain.js';
 import { getActiveExecutionIdentity } from '../runtime/ActiveExecutionIdentity.js';
 import { verifyPerformanceSceneOrigin } from './procgen/workstation/PerformanceSceneRecipe.js';
 import { prepareProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryCapture.js';
@@ -16,7 +17,7 @@ import { freshProcgenSeed, validateProcgenSession, createProcgenSessionStorage }
 import { parseProcgenStartupIntent, loadProcgenStartupSource } from './procgen/workstation/ProcgenStartupIntent.js';
 import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
-import { createProcgenRetirementScope } from './procgen/ProcgenRetirement.js';
+import { createProcgenRetirementScope, afterProcgenRetirement, retireProcgenWorldResources } from './procgen/ProcgenRetirement.js';
 import { createResourceBudget } from './resources/ResourceBudget.js';
 import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
@@ -111,27 +112,31 @@ const disposeProcgenRuntime = () => {
   const runtime = activeProcgenRuntime;
   if (!runtime) return lastProcgenRuntimeRetirement;
   activeProcgenRuntime = null;
-  const scope = createProcgenRetirementScope();
+  const scope = createProcgenRetirementScope(), readers = createProcgenRetirementScope(), sources = createProcgenRetirementScope(), providers = createProcgenRetirementScope();
   lastProcgenRuntimeRetirement = scope.retire([
-    { name: 'save-distances', run: () => saveProcgenDistances(runtime.world) },
-    { name: 'focus-blur-listener', run: () => runFocusBlurCleanup(runtime) },
-    { name: 'local-output', run: () => procgenUi?.local.suspendGame() },
-    { name: 'lanes', run: () => runtime.lanes?.stop()?.completion },
-    { name: 'controller', run: () => runtime.controller?.stop?.() },
-    { name: 'view-controller', run: () => {
-      if (runtime.view && runtime.view.procgenController === runtime.controller) runtime.view.procgenController = null;
-    } },
-    { name: 'debug-state', run: () => {
-      if (typeof window !== 'undefined') { window.procgenDebugState = null; window.__PROCGEN_LANES__ = null; }
-    } },
-    { name: 'stage-adapter', run: () => runtime.stageAdapter?.dispose?.() },
-    { name: 'game', run: () => runtime.game?.stop?.() },
-    { name: 'game-resources', run: () => runtime.resources?.dispose?.() },
-    { name: 'view', run: () => runtime.view?.dispose?.() },
-    { name: 'asset-provider-lease', run: () => runtime.providerLease?.release() },
-    { name: 'asset-provider', run: () => runtime.fileProvider?.dispose?.() },
-    { name: 'world-budget', run: () => runtime.worldBudgetToken && procgenResourceBudget.release({
-      token: runtime.worldBudgetToken, owner: 'active-world' }) }
+    { name: 'runtime-readers', run: () => readers.retire([
+      { name: 'save-distances', run: () => saveProcgenDistances(runtime.world) },
+      { name: 'focus-blur-listener', run: () => runFocusBlurCleanup(runtime) },
+      { name: 'local-output', run: () => procgenUi?.local.suspendGame() },
+      { name: 'lanes', run: () => runtime.lanes?.stop()?.completion },
+      { name: 'controller', run: () => runtime.controller?.stop?.() },
+      { name: 'view-controller', run: () => {
+        if (runtime.view && runtime.view.procgenController === runtime.controller) runtime.view.procgenController = null;
+      } },
+      { name: 'debug-state', run: () => {
+        if (typeof window !== 'undefined') { window.procgenDebugState = null; window.__PROCGEN_LANES__ = null; }
+      } },
+      { name: 'stage-adapter', run: () => runtime.stageAdapter?.dispose?.() },
+      { name: 'game', run: () => runtime.game?.stop?.() },
+      { name: 'view', run: () => runtime.view?.dispose?.() }
+    ]) },
+    { name: 'runtime-sources', run: () => sources.retire([{ name: 'game-resources', run: () => afterProcgenRetirement([readers.getReceipt()], () => runtime.resources?.dispose?.()) }]) },
+    { name: 'runtime-providers', run: () => providers.retire([
+      { name: 'asset-provider-lease', run: () => afterProcgenRetirement([readers.getReceipt(), sources.getReceipt()], () => runtime.providerLease?.release()) },
+      { name: 'asset-provider', run: () => afterProcgenRetirement([readers.getReceipt(), sources.getReceipt()], () => runtime.fileProvider?.dispose?.()) }
+    ]) },
+    { name: 'world-budget', run: () => afterProcgenRetirement([readers.getReceipt(), sources.getReceipt(), providers.getReceipt()], () => runtime.worldBudgetToken && procgenResourceBudget.release({
+      token: runtime.worldBudgetToken, owner: 'active-world' })) }
   ]);
   return lastProcgenRuntimeRetirement;
 };
@@ -393,6 +398,8 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
       requiredFamilies: session?.world?.assets?.map(asset => asset.family) ?? null,
       signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
+    const initialTerrainLayout = sceneRecipe?.initialTerrainLayout ?? session?.project?.procgen?.sceneOrigin?.recipe?.initialTerrainLayout ?? null;
+    if (initialTerrainLayout) { terrain = new ProcgenScoredTerrain(terrain, initialTerrainLayout, { resourceBudget: procgenResourceBudget, ownerEpoch: serial, isCurrent: canCommit }); await terrain.prepare({ signal: lease?.signal }); if (!canCommit()) return false; }
     assets = new ProcgenAssetManager({ styleName: 'crystal', groundSet: 4, config: configs[0], fileProvider });
     await assets.load({ signal: lease?.signal, operationId: lease?.id });
     if (!canCommit()) return false;
@@ -458,18 +465,17 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
     return publish();
   } catch (error) { preparationError = error; throw error; }
   finally {
+    const candidateRetirement = createProcgenRetirementScope();
     const retirement = createProcgenRetirementScope().retire([
       ...(!committed && !staged ? [
-        { name: 'candidate-runtime', run: () => lanes ? lanes.stop() : candidate?.dispose() },
-        { name: 'candidate-terrain', run: () => terrain?.dispose() },
-        { name: 'candidate-display-assets', run: () => assets?.dispose() },
-        { name: 'candidate-budget', run: () => { if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner }); } }
+        { name: 'candidate-runtime', run: () => candidateRetirement.retire([{ name: 'world-resources', run: () => lanes ? lanes.stop() : retireProcgenWorldResources({ world: candidate, terrain, assets }) }]) },
+        { name: 'candidate-budget', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (candidateBudgetToken) procgenResourceBudget.release({ token: candidateBudgetToken, owner: candidateBudgetOwner }); }) }
       ] : []),
-      { name: 'preparation-provider-lease', run: () => resourceLease?.release() },
-      { name: 'preparation-resources', run: () => resources?.dispose?.() },
-      { name: 'late-preparation-resources', run: () => { if (!resources) return resourcePromise?.then(prepared => prepared.dispose?.(), () => {}); } },
-      { name: 'preparation-provider', run: () => { if (fileProvider?.acquireLease) return fileProvider.dispose(); } },
-      { name: 'preparation-view', run: () => view.dispose() }
+      { name: 'preparation-provider-lease', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => resourceLease?.release()) },
+      { name: 'preparation-resources', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => resources?.dispose?.()) },
+      { name: 'late-preparation-resources', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (!resources) return resourcePromise?.then(prepared => prepared.dispose?.(), () => {}); }) },
+      { name: 'preparation-provider', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (fileProvider?.acquireLease) return fileProvider.dispose(); }) },
+      { name: 'preparation-view', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => view.dispose()) }
     ]);
     await retirement.completion;
     if (retirement.outcome !== 'complete') {

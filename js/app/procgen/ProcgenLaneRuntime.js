@@ -1,7 +1,7 @@
 import { ParticleTable } from '../../render/ParticleTable.js';
 import { ProcgenLaneWorld, DEFAULT_LANE_HEIGHT } from './ProcgenLaneWorld.js';
 import { ProcgenLaneRenderer } from './ProcgenLaneRenderer.js';
-import { createProcgenRetirementScope } from './ProcgenRetirement.js';
+import { createProcgenRetirementScope, retireProcgenWorldResources } from './ProcgenRetirement.js';
 
 // Accumulate real time rather than speed-scaled time: even extreme finite
 // multipliers cannot poison the backlog, and slow ticks can span many frames.
@@ -107,11 +107,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
           { name: 'animation-frame', run: () => { if (pendingFrame != null) windowRef.cancelAnimationFrame(pendingFrame); } },
           { name: 'preview-router', run: () => view.setMidiPreviewRouter(null) },
           { name: 'preview-reference', run: () => { previewRouter = null; view.midiPreviewRouter = null; } },
-          { name: 'world', run: () => world.dispose() },
-          { name: 'renderer', run: () => renderer.dispose() },
-          { name: 'terrain-assets', run: () => terrain?.dispose?.() },
-          { name: 'display-assets', run: () => assets?.dispose?.() },
-          { name: 'asset-provider-lease', run: () => resourceLease?.release() }
+          { name: 'world-resources', run: () => retireProcgenWorldResources({ world, renderer, terrain, assets, resourceLease }) }
         ]);
       },
       resize() { if (activated && running) renderer.resize(); } };
@@ -119,11 +115,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
     retirement.retire([
       { name: 'visibility-listener', run: () => { if (constructionVisibility) windowRef.document.removeEventListener?.('visibilitychange', constructionVisibility); } },
       { name: 'animation-frame', run: () => { if (constructionFrame != null) windowRef.cancelAnimationFrame(constructionFrame); } },
-      { name: 'renderer', run: () => renderer?.dispose() },
-      { name: 'world', run: () => world?.dispose() },
-      { name: 'terrain-assets', run: () => terrain?.dispose?.() },
-      { name: 'display-assets', run: () => assets?.dispose?.() },
-      { name: 'asset-provider-lease', run: () => resourceLease?.release() }
+      { name: 'world-resources', run: () => retireProcgenWorldResources({ world, renderer, terrain, assets, resourceLease }) }
     ]);
     throw error;
   }

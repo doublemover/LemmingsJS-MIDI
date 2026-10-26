@@ -35,6 +35,7 @@ const preparePhysicalAuthoringCommand = (world, input) => {
   if (state.revision !== command.expectedRevision || junctionState.revision !== command.expectedJunctionRevision || digestPlan(state.graph) !== command.expectedGraphDigest) return { status: 'stale', reason: 'stale-authoring-owner' };
   if (command.graph.revision <= (state.graph?.revision ?? -1) || command.operation === 'fragment-place' && state.instances.some(instance => instance.id === command.instanceId)) return { status: 'stale', reason: 'stale-authoring-graph-or-instance' };
   const assets = (world.terrain?.themes || [{ terrain: world.terrain }]).map(({ terrain }) => terrain?.recipe?.assetSha256 ?? terrain?.sourceDescriptor?.sourceRevision);
+  if (world.terrain?.sceneTerrainLayoutHash) assets.push(world.terrain.sceneTerrainLayoutHash);
   if (command.requiredAssets.some(hash => !assets.includes(hash))) return { status: 'rejected', reason: 'authoring-source-mismatch' };
   if (!Number.isSafeInteger(state.revision + 1) || !Number.isSafeInteger(junctionState.revision + 1)) throw new RangeError('Physical authoring revision exhausted.');
   for (const definition of command.junctions) { const prior = junctionState.definitions.find(value => value.id === definition.id); if (prior && JSON.stringify(prior) !== JSON.stringify(definition) && definition.revision <= prior.revision) throw new Error('Changed junction requires a newer revision.'); }
