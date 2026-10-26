@@ -1,7 +1,8 @@
+import { isSceneMacroAction } from './SceneMacroAction.js';
 import { freezeData } from '../../../core/CanonicalData.js';
 
 const performanceCommands = new Set(['stage', 'stageExit', 'stageGo', 'stagePlay', 'stagePause', 'scenes', 'stopOutput', 'panicOutput', 'transport', 'clearSolos', 'laneMixView',
-  'beginMacroGesture', 'previewMacroGesture', 'finishMacroGesture', 'commitPerformedMacros', 'reconcileSoundPreview', 'cancelLearn',
+  'performSceneMacro', 'beginMacroGesture', 'previewMacroGesture', 'finishMacroGesture', 'commitPerformedMacros', 'reconcileSoundPreview', 'cancelLearn',
   'openQuarryEcho', 'openCrossExcitation', 'openTravelColoration', 'openSpectralFreeze', 'openSympatheticMap', 'openRectangularMembrane', 'openPrelistenMonitor', 'openMasterCapture',
   'openReleaseGestures', 'performReleaseGesture', 'cancelReleaseGestures', 'openPhysicalJunctions', 'requestJunction', 'cancelJunctionRequest',
   'captureInterventionLayer', 'markCausalTake', 'rearmPhysicalMusic', 'retryDisplay', 'observe', 'disarmPhysicalFeedback', 'disarmCausalBranchFeedback',
@@ -18,7 +19,7 @@ export function createPerformanceStageSession({ canEnter = () => true, getIdenti
       enteringIdentity = getIdentity(); setPresentation(true); active = true; return state(); },
     permitsCommand(name, args = []) { if (!active) return true; if (!performanceCommands.has(name)) return false;
       return name !== 'transport' || args[0] && Object.getPrototypeOf(args[0]) === Object.prototype && Object.keys(args[0]).every(key => ['bpm', 'gameSpeed', 'speedMode', 'linked'].includes(key)); },
-    permitsEdit(action) { return !active || action?.type === 'procgen/lane' && action.patch && Object.getPrototypeOf(action.patch) === Object.prototype && Object.keys(action.patch).length > 0 && Object.keys(action.patch).every(key => mixFields.has(key)); },
+    permitsEdit(action) { return !active || isSceneMacroAction(action) || action?.type === 'procgen/lane' && action.patch && Object.getPrototypeOf(action.patch) === Object.prototype && Object.keys(action.patch).length > 0 && Object.keys(action.patch).every(key => mixFields.has(key)); },
     reject,
     async go() { const candidate = getCandidate(); if (!active || disposed || applying || candidate?.canApply !== true || candidate?.phase !== 'ready') { try { onStatus('Prepare the exact NEXT scene against the current document before GO.'); } catch {} return false; }
       applying = true;

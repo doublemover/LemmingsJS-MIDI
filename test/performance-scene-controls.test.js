@@ -2,18 +2,26 @@ import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { createPerformanceSceneControlView } from '../js/app/procgen/workstation/PerformanceSceneControlView.js';
 
-const fixture = () => {
+const fixture = ({ macros = false } = {}) => {
   const dom = new JSDOM('<body></body>'), document = dom.window.document, calls = [], schedule = { retired: 0 }, state = { actual: { configurationId: 'direct', status: 'applied' }, pending: [], receipts: [], authoringRevision: 1 };
-  const scene = { title: 'A finite authored score', physicalControls: [{ id: 'spacing', label: 'SPACING', minimum: 12, maximum: 192, step: 6, initial: 54, target: 'release-gesture:nominalGapTicks;next-cohort' }, { id: 'return', label: 'RETURN', target: 'junction:return-path;explicit-request' }, { id: 'snap', label: 'SNAP · next onset', target: 'patch-macro:snap;next-onset-only' }] };
+  const scene = { title: 'A finite authored score', physicalControls: [{ id: 'spacing', label: 'SPACING', minimum: 12, maximum: 192, step: 6, initial: 54, target: 'release-gesture:nominalGapTicks;next-cohort' }, { id: 'return', label: 'RETURN', target: 'junction:return-path;explicit-request' }, { id: 'snap', label: 'SNAP · next onset', unit: 'normalized', minimum: 0, maximum: 1, step: 0.01, target: 'patch-macro:snap;next-onset-only' }] };
   const world = { generation: 1, population: { releaseGesture: { id: 'original', revision: 1, nominalGapTicks: 54, finiteBurstCount: 3, paused: false }, pendingReleaseGesture: null }, physicalJunctions: { definitions: [{ id: 'return-path', revision: 1, configurations: [{ id: 'direct' }, { id: 'stepped' }] }] }, queryJunction: () => state };
-  let currentScene = scene, currentWorld = world;
+  let currentScene = scene, currentWorld = world; const macroState = { sceneHash: 'a'.repeat(64), value01: 0.5, targets: [{ laneId: 'one' }, { laneId: 'two' }], error: null };
   const view = createPerformanceSceneControlView({ document, parent: document.body, displayScheduler: { register() { return { invalidate() {}, dispose() { schedule.retired++; } }; } }, getScene: () => currentScene, getWorld: () => currentWorld,
+    ...(macros ? { getSceneMacroState: () => { if (macroState.error) throw new Error(macroState.error); return macroState; }, performSceneMacro: input => { calls.push(['macro', input]); macroState.value01 = input.value01; return { status: 'committed' }; } } : {}),
     performReleaseGesture: gesture => { calls.push(['spacing', gesture]); return { status: 'queued' }; }, requestJunction: (...args) => { calls.push(['junction', ...args]); state.pending = [{ desiredConfiguration: args[1], state: 'waiting-safe-boundary' }]; return { status: 'queued' }; }, openControl: (...args) => calls.push(['editor', ...args]) });
   const button = text => [...view.element.querySelectorAll('button')].find(value => value.textContent === text);
-  return { dom, view, world, scene, state, calls, schedule, button, document, replace(scene, world) { currentScene = scene; currentWorld = world; }, dispose() { const receipt = view.dispose(); dom.window.close(); return receipt; } };
+  return { dom, view, world, scene, state, calls, schedule, button, document, macroState, replace(scene, world) { currentScene = scene; currentWorld = world; }, dispose() { const receipt = view.dispose(); dom.window.close(); return receipt; } };
 };
 
 describe('active physical score controls (UI fixtures authored; runtime acceptance deferred)', () => {
+  it('applies the complete authored macro through its canonical transaction and projects mixed or unavailable values honestly', () => {
+    const f = fixture({ macros: true }); try {
+      const original = JSON.stringify(f.world), input = [...f.view.element.querySelectorAll('input')].find(input => input.getAttribute('aria-label').startsWith('SNAP')); input.value = '0.8'; f.button('Apply to later onsets').click(); f.view.refresh();
+      expect(f.calls[0]).to.deep.equal(['macro', { sceneHash: 'a'.repeat(64), controlId: 'snap', value01: 0.8 }]); expect(JSON.stringify(f.world)).to.equal(original); expect(f.view.element.textContent).to.include('Saved value: 0.8');
+      f.macroState.value01 = null; f.view.refresh(); expect(f.view.element.textContent).to.include('Mixed saved values'); f.macroState.error = 'The authored patch was replaced.'; f.view.refresh(); expect(f.button('Apply to later onsets').disabled).to.equal(true); expect(f.view.element.textContent).to.include('patch was replaced');
+    } finally { f.dispose(); }
+  });
   it('performs only the requested next-cohort spacing and projects the actual policy separately', () => {
     const f = fixture(); try {
       const input = f.view.element.querySelector('input'), original = JSON.stringify(f.world.population.releaseGesture); input.value = '108'; f.button('Request spacing').click();

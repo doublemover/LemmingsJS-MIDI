@@ -1,6 +1,6 @@
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneControlView({ document, parent, displayScheduler, getScene, getWorld, performReleaseGesture, requestJunction, openControl, onStatus = () => {} } = {}) {
+export function createPerformanceSceneControlView({ document, parent, displayScheduler, getScene, getWorld, performReleaseGesture, requestJunction, getSceneMacroState = null, performSceneMacro = null, openControl, onStatus = () => {} } = {}) {
   const retirement = createProcgenRetirementScope(), rows = [], listeners = [];
   let disposed = false, selectedScene = null, selectedWorld = null, generation = null;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -21,7 +21,7 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
       const result = node('output'); result.setAttribute('aria-label', control.label + ' actual state');
       if (['release-gesture:nominalGapTicks', 'release-gesture:spreadTicks'].includes(binding)) {
         const field = binding.slice('release-gesture:'.length), caption = field === 'spreadTicks' ? 'spread' : 'spacing';
-        const input = node('input'); input.type = 'number'; input.min = String(control.minimum); input.max = String(control.maximum); input.step = String(control.step); input.value = String(world?.population?.pendingReleaseGesture?.[field] ?? world?.population?.releaseGesture?.[field] ?? control.initial); input.setAttribute('aria-label', control.label); line.append(input);
+        const input = node('input'); input.type = 'number'; input.required = true; input.min = String(control.minimum); input.max = String(control.maximum); input.step = String(control.step); input.value = String(world?.population?.pendingReleaseGesture?.[field] ?? world?.population?.releaseGesture?.[field] ?? control.initial); input.setAttribute('aria-label', control.label); line.append(input);
         const apply = button('Request ' + caption, () => {
           if (!input.checkValidity()) throw new Error('Choose entry spacing inside this score’s authored range.');
           const source = selectedWorld?.population?.pendingReleaseGesture || selectedWorld?.population?.releaseGesture;
@@ -30,6 +30,16 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
           if (receipt?.status !== 'queued') throw new Error(receipt?.reason || 'The release request was not admitted.');
           report('Entry ' + caption + ' requested for the next cohort boundary. Existing actors keep their motion.');
         }, line); rows.push({ kind: 'spacing', field, caption, result, apply, input });
+      } else if (binding.startsWith('patch-macro:') && getSceneMacroState && performSceneMacro) {
+        const input = node('input'); input.type = 'number'; input.required = true; input.min = '0'; input.max = '1'; input.step = String(control.step); input.placeholder = 'Mixed'; input.setAttribute('aria-label', control.label); line.append(input);
+        try { const state = getSceneMacroState(control.id); input.value = state.value01 == null ? '' : String(state.value01); } catch {}
+        const apply = button('Apply to later onsets', () => {
+          if (!input.checkValidity()) throw new Error('Choose a normalized macro value from zero to one.');
+          const state = getSceneMacroState(control.id), receipt = performSceneMacro({ sceneHash: state.sceneHash, controlId: control.id, value01: Number(input.value) });
+          if (!['committed', 'unchanged'].includes(receipt?.status)) throw new Error('The complete scene macro edit was not admitted.');
+          report('Scene macro applied to its authored lanes for later causal onsets. Existing actors and held voices keep their state.');
+        }, line);
+        button('Open lane editor', () => openControl(control, selectedScene), line); rows.push({ kind: 'macro', control, input, result, apply });
       } else if (binding.startsWith('junction:')) {
         const id = binding.slice('junction:'.length), definition = world?.physicalJunctions?.definitions.find(item => item.id === id), input = node('select'); input.setAttribute('aria-label', control.label);
         for (const configuration of definition?.configurations || []) { const option = node('option', configuration.id); option.value = configuration.id; input.append(option); } input.value = world?.queryJunction?.(id, { includeDefinition: false })?.actual?.configurationId || definition?.configurations[0]?.id || ''; line.append(input);
@@ -52,6 +62,9 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
       if (row.kind === 'spacing') {
         const actual = world?.population?.releaseGesture, pending = world?.population?.pendingReleaseGesture;
         row.result.textContent = actual ? 'Realized ' + row.caption + ': ' + actual[row.field] + ' ticks' + (pending ? ' · pending: ' + pending[row.field] + ' ticks' : '') + (actual.paused ? ' · entrants paused' : '') : 'No active release policy'; row.apply.disabled = !world || !actual;
+      } else if (row.kind === 'macro') {
+        try { const state = getSceneMacroState(row.control.id); row.result.textContent = (state.value01 == null ? 'Mixed saved values' : 'Saved value: ' + state.value01) + ' · ' + state.targets.length + ' authored lanes · later onsets only'; row.apply.disabled = false; }
+        catch (error) { row.result.textContent = error.message; row.apply.disabled = true; }
       } else {
         const state = world?.queryJunction?.(row.id, { includeDefinition: false }), pending = state?.pending || [];
         row.result.textContent = (state?.actual ? 'Realized: ' + state.actual.configurationId + ' · ' + state.actual.status : 'No realized route') + (pending.length ? ' · pending: ' + pending.map(request => request.desiredConfiguration + ' · ' + request.state).join('; ') : state?.receipts?.at(-1)?.reason ? ' · ' + state.receipts.at(-1).reason : '');

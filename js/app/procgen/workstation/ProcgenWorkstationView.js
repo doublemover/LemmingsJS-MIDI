@@ -11,6 +11,7 @@ import { quarterMeterPosition } from '../../../midi/project/MidiMusicalPosition.
 import { createInstrumentDisplayScheduler } from '../../resources/InstrumentDisplayScheduler.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createPerformanceSceneControlView } from './PerformanceSceneControlView.js';
+import { readSceneMacroControl } from './SceneMacroAction.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
@@ -885,6 +886,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const sceneControls = createPerformanceSceneControlView({ document, parent: presentationRoot, displayScheduler,
     getScene: () => getProject().procgen.sceneOrigin?.manifest || null, getWorld: () => getRuntime()?.world || null,
     performReleaseGesture: gesture => handlers.performReleaseGesture(gesture), requestJunction: (...args) => handlers.requestJunction(...args), onStatus: text => { status.textContent = text; },
+    getSceneMacroState: id => readSceneMacroControl(getProject(), id), performSceneMacro: input => handlers.performSceneMacro(input),
     openControl: (control, scene) => {
       if (control.target.startsWith('effect-macro:THROW;') || control.target.startsWith('quarry-echo:')) return handlers.openQuarryEcho?.();
       if (control.target.startsWith('scene-browser:')) return handlers.scenes?.();

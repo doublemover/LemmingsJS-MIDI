@@ -6312,3 +6312,26 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Updated foundry generation and authored analytic fixtures. Formatting, three-file
   syntax/import checks, critical types and static provenance pass (10 components /
   335 files). Runtime, numerical, browser and listening validation remain deferred.
+
+### Continuation 249 — atomic authored scene macros (#1098, #1101, #1103, #1152)
+
+- Added a bounded canonical scene-macro action for one to eight exact authored
+  lanes. The current scene hash, declared normalized control, pack/definition
+  hashes, onset-only capability and every baseline must all match. Missing,
+  duplicate, omitted, replaced or stale targets reject the whole action before
+  publishing any lane. Unrelated controls/lanes remain shared and unchanged.
+- One project edit advances only affected lane revisions and carries their exact
+  changed-field metadata into the existing history, causal performance capture
+  and runtime projection. It changes no instrument reference, physical graph,
+  actor, release policy or held voice. Active individual gestures and pending
+  world/sound/take transactions fence the grouped Apply operation. Stage admits
+  this typed performance edit while retaining its other edit restrictions.
+- Active-scene sound controls now accept explicit normalized values for later
+  causal onsets, project mixed saved values honestly and disable replaced sources.
+  Deep lane editing retains its existing owner. Blank physical numeric requests
+  are rejected instead of becoming an implicit zero spread.
+- Authored unrun atomicity, second-target failure, exact source/baseline, no-op,
+  structural sharing, unchanged runtime inputs, Stage and UI projection fixtures.
+  Formatting, ten-file syntax/import checks, critical types and static provenance
+  pass (10 components / 335 files). Runtime, browser, audio/listening and full-suite
+  validation remain deferred; demonstration and broader scene acceptance are open.

@@ -989,7 +989,7 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
 };
 
 function reduceMidiProject(project, intent = {}) {
-  if (isCanonicalMidiProject(project) && ['procgen/worldTheme', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+  if (isCanonicalMidiProject(project) && ['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
     'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch'].includes(intent.type)) {
     const next = reduceCanonicalProcgenProject(project, intent);
     return next === project ? project : recordProcgenProjectChange(project, markCanonicalMidiProject(touchProject(next)), intent);

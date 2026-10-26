@@ -1,3 +1,4 @@
+import { prepareSceneMacroAction } from './SceneMacroAction.js';
 import { performanceSceneHash } from './PerformanceScene.js';
 import { createPerformanceStageSession } from './PerformanceStageSession.js';
 import { createRectangularMembraneView } from '../../midi-ui/RectangularMembraneView.js';
@@ -61,7 +62,7 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
-const FAST_PROCGEN_ACTIONS = new Set(['procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
+const FAST_PROCGEN_ACTIONS = new Set(['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
@@ -74,6 +75,7 @@ const historyPatchBytes = (before, after, action) => {
     return commandBytes + JSON.stringify(pattern?.steps[action.index] ?? null).length * 2 + structuralBytes;
   }
   if (action.type === 'procgen/pattern') return commandBytes + JSON.stringify(lane?.patterns[action.slot ?? lane.activeSlot] ?? null).length * 2 + structuralBytes;
+  if (action.type === 'procgen/sceneMacro') return commandBytes + action.targets.reduce((bytes, target) => bytes + JSON.stringify(procgenLane(before.procgen.lanes, target.laneId)?.instrumentControls ?? null).length * 2, 0) + structuralBytes;
   if (action.type === 'procgen/lane') return commandBytes + JSON.stringify(Object.fromEntries(Object.keys(action.patch || {}).map(key => [key, lane?.[key]]))).length * 2 + structuralBytes;
   if (action.type === 'procgen/palette' || action.type === 'procgen/removeLane')
     return commandBytes + JSON.stringify(lane ?? null).length * 2 + structuralBytes;
@@ -1516,6 +1518,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. The prior sound is unchanged.'));
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
       return soundTransactions.select(signal => nativeSoundSelection.prepare(alias.patchId, { signal }), { laneId, patch: alias.lanePatch });
+    },
+    performSceneMacro(input) {
+      if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || soundTransactions.diagnostics().active || macroGestures.diagnostics().active) throw new Error('Finish the current world, sound, take or macro gesture before applying a scene macro.');
+      const action = prepareSceneMacroAction(project, input), before = project, result = dispatch(action);
+      if (!result || result === false) throw new Error('The scene macro edit was not admitted.');
+      return Object.freeze({ status: result === before ? 'unchanged' : 'committed', value01: action.value01, laneIds: Object.freeze(action.targets.map(target => target.laneId)), physicalMutation: false, application: 'next-causal-onset' });
     },
     beginMacroGesture: (laneId, macroId, options) => { if (worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop || soundTransactions.diagnostics().active) throw new Error('Finish the pending sound/world/take operation before a macro gesture.'); return macroGestures.begin(laneId, macroId, options); },
     previewMacroGesture: (handle, value, pressure = null) => pressure == null ? macroGestures.set(handle, value) : macroGestures.pressure(handle, pressure),
