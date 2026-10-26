@@ -5208,3 +5208,31 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   four-credit worklet containment cases. No runtime/numerical/browser/audio test
   has been executed in this frontloaded pass. Static checks precede the commit;
   consolidated validation and real listening/cost results remain pending.
+
+
+### Continuation 207 — original sealed friction model foundation
+
+- Added bounded Hairline, Glass Drag and Rosin Grain source specifications: signed
+  observed bow velocity, normalized pressure/contact/body controls, explicit
+  110–660 Hz root domain and two provisional source slots. The original model is
+  not yet registered as a selectable engine; its owned source adapter, typed patch
+  compiler/profile, travel receipts, exact cuts and ordinary recipes follow in the
+  next dependency batch. This does not mark #1136 implemented or qualified.
+- Added a preallocated sealed relative-velocity nonlinear feedback kernel with
+  positive modal midpoint integration, exact digital-pole frequency/T60 coefficient
+  conversion, sixteen bounded bisections and a declared uniqueness bound. Actual
+  bow motion supplies work; friction/linear losses are nonnegative, and a numerical
+  energy-defect guard contains invalid state before output. Rest/end remove input
+  work while the existing body relaxes. Two signed common-reference observations
+  and DC blocking read the same independently owned body; no oscillator or attack
+  clock supplies hidden friction motion.
+- Rosin roughness is a positive four-pixel spatial field, with the time-correlation
+  interpretation explicitly restricted to the stated observed speed interval.
+  Invalid future/span/frontier changes, shared/overlapping state and corrupt energy
+  are rejected or quarantined under the bounded source contract.
+- Authored unrun grouped rate/family energy balances, stationary silence, rest/end,
+  pressure, reversal, render partition, future motion, invalid input/alias and
+  independent-source containment fixtures. Primary research was inspected for the
+  energy/relative-velocity background; the source defines its own original scalar
+  model. No numerical probe, runtime, listening, stability map or device cost
+  measurement has run. Long sustain and full engine/content acceptance remain open.

@@ -1832,3 +1832,32 @@ explicitly limited request-replay description. General multi-graph/lifecycle
 reconstruction and arbitrary live DSP restoration remain open. New numerical,
 state-cut, credit, history and grouped window-replay fixtures are authored but
 unrun; browser/PCM/listening/cost qualification is still pending.
+
+
+The original friction foundation defines Hairline, Glass Drag and Rosin Grain
+modal bodies with a sealed relative-velocity force port. It uses positive damped
+implicit midpoint modes and a smoothed Stribeck/Coulomb curve. If contact velocity
+is `a + Y*F`, the source solves `F = friction(vBow - a - Y*F)` in a fixed bracket
+with sixteen bisections. A conservative bound keeps `Y*maximumNegativeSlope < 0.5`,
+so the root is unique in the declared rate/control domain. The force has the same
+sign as relative velocity; a numerical sign projection removes a force that
+would violate this condition. This is an original bounded model specification,
+not an empirically qualified violin or a physical force measurement.
+
+For midpoint modal energy, the discrete identity is
+`deltaE + linearLoss + F*(vBow-vContact)*dt = F*vBow*dt`.
+The kernel checks its positive numerical defect before emitting output. At rest
+`vBow=0`; changes in contact pressure can dissipate existing energy but supply no
+bow work. Positive mode loss retains the declared tail. Digital frequency/T60
+poles are converted to positive midpoint coefficients at onset. Output reads two
+signed velocity observations through a common reference and a 20 Hz DC blocker.
+Rosin's positive roughness field is attached to four-pixel spatial cells; its
+20–80 ms interpretation applies only at observed speeds of 50–200 pixels/s.
+
+Background references: [Russo, Ducceschi and Bilbao on modal bowed-string energy
+balance](https://mdphys.org/PDF/dafx_2022.pdf) and the [Faust physical-model
+inventory](https://faustlibraries.grame.fr/libs/physmodels/). The new source code
+specifies its own bounded scalar solver, parameters and observations. Owned voice,
+canonical travel, content and restoration integration are the next development
+batch. Numerical stability sweeps, long sustain, spectral/alias/tone, CPU cost and
+matched-level listening are unrun; this foundation is not yet a selectable engine.
