@@ -5003,3 +5003,18 @@ controller and usability qualification, the remaining three authored lesson
 worlds, save/reopen/fossil/memory journeys and genuine human prediction/listening
 results remain pending. Only format, syntax/provenance and limited critical type
 checks are used during this development pass.
+
+
+### Continuation 201 — retain texture travel across causal receipts and revoice (#1179, #1111)
+
+The dispatcher now retains the typed textureTravel receipt for owned begin and
+canonical travel updates alongside their exact intent, batch, source IDs and
+sink epoch. It previously projected only circular/sample travel, discarding this
+new source's canonical receipt from live delivery history and take capture.
+Revoice manifests now name texture spatial travel and semanticResume explicitly,
+without labeling coordinates as circular pitch cycles. Source-specific preflight
+and continuity failures use the texture label; circular render metadata remains
+unchanged. Authored fixtures cover dispatcher/callback/history retention and an
+actual causal-engine movement/rest/reversal sequence rendered as one owned source.
+They remain unrun with the combined runtime acceptance pass. Only formatting,
+syntax/provenance and limited critical type checks are performed here.

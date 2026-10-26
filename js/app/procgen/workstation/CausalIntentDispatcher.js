@@ -118,7 +118,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.bodyStrike ? { bodyStrike: outcome.bodyStrike } : {}), ...(outcome?.circularTravel ? { circularTravel: outcome.circularTravel } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.bodyStrike ? { bodyStrike: outcome.bodyStrike } : {}), ...(outcome?.circularTravel ? { circularTravel: outcome.circularTravel } : {}), ...(outcome?.textureTravel ? { textureTravel: outcome.textureTravel } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);

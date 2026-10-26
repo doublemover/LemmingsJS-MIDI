@@ -1,3 +1,6 @@
+import { renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
+import { createCausalMusicEngine } from '../../js/app/procgen/workstation/CausalMusicEngine.js';
+import { sampleTravelGraph, sampleMotionBatch } from '../helpers/sampleTraversal.js';
 import { expect } from 'chai';
 import fs from 'node:fs/promises';
 import { SpatialTextureKernel } from '../../js/app/midi-ui/worklet/SpatialTextureKernel.js';
@@ -73,4 +76,15 @@ describe('owned spatial procedural textures (runtime and listening qualification
     const patch = compiled.prepared.patches[0], source = { packId: compiled.prepared.pack.id, packVersion: compiled.prepared.pack.version, contentHash: compiled.prepared.contentHash, patchIdentity: patch.identity, definitionHash: await hashData(patch.definition), attribution: 'Original control fixture' };
     const rendered = await renderOwnedSourceControls({ definition: patch.definition, descriptor, source }, { yieldControl: async () => {} }); expect(rendered.manifest.statistics.peak).to.be.greaterThan(0); expect(rendered.manifest.physicalTakeEvidence).to.equal(false);
   });
+  it('revoices actual canonical movement/rest/reversal as one source with texture-specific manifest evidence', async () => {
+    const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-texture', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), raw = JSON.parse(await fs.readFile(new URL('../../content/sounds/procedural-textures.json', import.meta.url), 'utf8'));
+    const compiled = await compileSoundContent(raw, { targets: [{ descriptor }] }), engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });
+    const intents = [sampleMotionBatch(1, 0, 8), sampleMotionBatch(2, 8, 16), sampleMotionBatch(3, 16, 16), sampleMotionBatch(4, 16, 8)].flatMap(batch => engine.processBatch(batch));
+    const revoice = { operation: 'sound-only-revoice', version: 1, takeId: 'take:texture', takeRevision: 1, sourceCanonicalHash: 'c'.repeat(64), sourceState: 'finalized', nextSequence: null,
+      sourceVersions: { physicalMusic: 9 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 500 }, intents };
+    const result = await renderCausalOwnedTake({ definition: compiled.prepared.patches[0].definition, descriptor, revoice, sampleRate: 48000, startSeconds: 0, endSeconds: 0.3, tail: { mode: 'bounded-natural', maxSeconds: 1 } }, { yieldControl: async () => {} });
+    expect(result.manifest.commands.capturedBegins).to.equal(1); expect(result.manifest.realization.textureTravel.voices).to.equal(1); expect(result.manifest.realization.textureTravel.segments).to.equal(intents.filter(intent => intent.articulationState?.travel).length);
+    expect(result.manifest.realization.textureTravel.policy).to.include('no-pitch-cycle'); expect(result.manifest.realization.textureTravel.restoration).to.include('semanticResume'); expect(result.manifest.realization).not.to.have.property('circularTravel'); engine.dispose();
+  });
+
 });

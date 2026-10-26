@@ -137,7 +137,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       let samplePlan = null;
       if (selectSample) { try { samplePlan = selectSample(intent); } catch (error) { throw failure('sample-onset-preflight', error.message, { intentId: intent.intentId }); } }
       let circularTravel = null;
-      if (owned.travelPlanner) { try { circularTravel = owned.travelPlanner(values, intent, frame, sampleRate); } catch (error) { throw failure('circular-travel-preflight', error.message, { intentId: intent.intentId }); } }
+      if (owned.travelPlanner) { try { circularTravel = owned.travelPlanner(values, intent, frame, sampleRate); } catch (error) { throw failure(owned.id === 'worklet-texture' ? 'texture-travel-preflight' : 'circular-travel-preflight', error.message, { intentId: intent.intentId }); } }
       let traversal = null;
       if (sampleSourcePlan && samplePlan) { const entry = sampleSourcePlan.entries[samplePlan.zoneIndex].attack;
         if (entry.mode === 'positionDriven') { try { traversal = planSampleTraversal(entry, intent, frame, sampleRate); } catch (error) { throw failure('sample-travel-preflight', error.message, { intentId: intent.intentId }); } }
@@ -179,7 +179,7 @@ export async function planCausalSourceRender({ revoice, definition, descriptor, 
       } else {
         let mask = 0, controlFrame = frame; const values = { 14: Math.ceil(0.008 * sampleRate) };
         if (voice.circularTravel && intent.articulationState?.travel) {
-          let planned; try { planned = owned.travelPlanner(voice.parameters, intent, frame, sampleRate); } catch (error) { throw failure('circular-travel-preflight', error.message, { intentId: intent.intentId }); }
+          let planned; try { planned = owned.travelPlanner(voice.parameters, intent, frame, sampleRate); } catch (error) { throw failure(owned.id === 'worklet-texture' ? 'texture-travel-preflight' : 'circular-travel-preflight', error.message, { intentId: intent.intentId }); }
           const frontier = voice.circularTravel;
           if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7) throw failure('circular-travel-continuity', 'Circular travel changed owner, epoch, observed phase or output coverage.');
           frontier.lastEndFrame = planned.endFrame; frontier.lastPhase = planned.to; frontier.lastSequence = planned.sequence; frontier.segments++;
@@ -400,7 +400,7 @@ export async function renderCausalOwnedTake(input, { signal, yieldControl = () =
     realization: { scope: plan.owned.id === 'worklet-sine' ? 'new-local-sine-realization-of-immutable-intents' : 'new-local-owned-source-realization-of-immutable-intents', liveAdmissionHistoryRecreated: false, historicalHardwareTimbreRecreated: false,
       smoothingSeconds: 0.008, articulationPolicy: plan.articulation.policy, oneShotHoldSeconds: plan.owned.extended ? null : plan.articulation.oneShotTailSeconds, oneShotHoldPolicy: 'per-onset-effective-source-parameters',
       sourcePerformanceControls: plan.owned.id === 'worklet-sine' ? 'retained-in-source-intents-replaced-by-explicit-new-sine-patch' : 'captured-controls-retained-explicit-new-target-controls-and-recorded-physical-causes-applied',
-      circularTravel: plan.circularTravel, sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
+      ...(plan.owned.id === 'worklet-texture' ? { textureTravel: { ...plan.circularTravel, policy: 'canonical-signed-axis-spatial-texture;completed-observed-spans;rest-closes-excitation;no-pitch-cycle', restoration: 'semanticResume;exact-filter-burst-and-modal-state-transfer-unavailable' } } : { circularTravel: plan.circularTravel }), sourceControls: { ...plan.sourceControls, observedKinds: [...plan.sourceControls.observedKinds].sort(), missingPhysicalObservations: 'held-or-no-qualified-source-no-invented-facts' },
       ...(plan.sampleSourcePlan ? { sampleTraversal: plan.sampleTraversal, sampleMap: { id: plan.sampleSourcePlan.map.mapId, revision: plan.sampleSourcePlan.map.revision, profile: plan.sampleSourcePlan.map.rendererProfile ?? 'native-forward-v1', sourcePool: plan.renderVoices, maximumLogicalGates: plan.patch.voicePolicy.maxVoices, chokedVoices: [...plan.voices.values()].filter(voice => voice.chokeFrame != null).length, selection: 'one-deterministic-onset-selection;release-child-retains-original-map-entry' } } : {}),
       sourceBank: plan.pcmDescriptor, sourceResampling: plan.owned.requiresPCMSet ? 'owned-sample-sample-read-v1;128taps;phase128;rate19;unqualified-spectral-and-listening-profile' : plan.owned.requiresPCM ? 'source-rate-pcm-linear-read-resampling' : 'none',
       fixedBank: kernel.source?.bank ? { id: kernel.source.bank.id, hash: kernel.source.bank.hash, bytes: kernel.source.bank.bytes } : null,

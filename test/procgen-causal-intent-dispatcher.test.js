@@ -26,6 +26,15 @@ describe('causal intent sink dispatch', () => {
     const [control] = dispatcher.dispatch([{ ...intent, intentId: 'pressure', expression: { pressure01: 0.5 } }], { generation: 1, batchId: 'batch' });
     expect(control.stage).to.equal('queued'); expect(calls).to.equal(1);
   });
+  it('retains typed texture travel through begin/update sink history without calling it a pitch cycle or acoustic proof', () => {
+    const observed = [], travel = Object.freeze({ schema: 'lemmings-texture-travel-receipt/v1', sourceEventId: 'motion', physicalTakeEvidence: true, acousticReceipt: false, coordinateScale: '128-world-pixels-per-internal-coordinate-unit;not-a-pitch-cycle' });
+    const backend = { begin: () => ({ status: 'accepted', stage: 'queued', textureTravel: travel }), updateCanonicalTravel: () => ({ status: 'accepted', stage: 'queued', textureTravel: travel }) };
+    const dispatcher = createCausalIntentDispatcher({ sinks: [{ id: 'local', route: 'local', backend }], toTargetFrame: () => 100, onReceipt: receipt => observed.push(receipt) });
+    const intent = { version: 1, kind: 'begin', voiceId: 'v', intentId: 'texture-begin', generation: 1, route: 'local', sourceEventIds: ['motion'], scoreTime: {} };
+    const receipt = dispatcher.dispatch([intent, { ...intent, kind: 'update', intentId: 'texture-update', articulationState: { travel: { sourceEventId: 'motion' } } }], { generation: 1, batchId: 'batch' });
+    expect(receipt).to.have.length(2); for (const item of receipt) { expect(item.textureTravel).to.equal(travel); expect(item).not.to.have.property('circularTravel'); expect(item.stage).to.equal('queued'); }
+    expect(observed).to.deep.equal(receipt); expect(dispatcher.diagnostics().receipts).to.deep.equal(receipt); dispatcher.dispose();
+  });
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   it('retires every execution and preserves cancellation failures across independent sinks', () => {

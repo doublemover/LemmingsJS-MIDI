@@ -501,7 +501,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
     const endFrame = leases.get(generationKey) ?? targetFrame + Math.ceil(preview._maxNoteSeconds * context.sampleRate);
     if (endFrame <= targetFrame + parameters.releaseSeconds * context.sampleRate) return reject('execution-lease-expired', intent.voiceId);
-    if (circularTravel && circularTravel.endFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject('circular-travel-lease-expired', intent.voiceId);
+    if (circularTravel && circularTravel.endFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject((engineId === 'worklet-texture' ? 'texture' : 'circular') + '-travel-lease-expired', intent.voiceId);
     if (traversal && traversal.segment.endOutputFrame >= endFrame - Math.ceil(parameters.releaseSeconds * context.sampleRate)) return reject('sample-travel-lease-expired', intent.voiceId);
     const chokeOverrides = sampleSelection ? new Map() : null, chokeVictims = sampleSelection ? [] : null; let nextChoke = Infinity;
     if (sampleSelection?.region.chokeGroup) for (const member of voices.values()) {
@@ -632,7 +632,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (!voice?.circularTravel) return updateSampleTravel(voiceId, intent, targetFrame, executionEpoch);
     let planned; try { planned = source.travelPlanner(voice.sourceValues, intent, targetFrame, context.sampleRate); } catch (error) { return reject(error.message, voiceId); }
     const frontier = voice.circularTravel;
-    if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7 || planned.endFrame >= Math.round(voice.releaseAt * context.sampleRate) || intent.voiceId !== voiceId) return reject('circular-travel-owner-or-continuity', voiceId);
+    if (!planned || planned.ownerIdentity !== frontier.ownerIdentity || planned.sequence <= frontier.lastSequence || planned.firstFrame < frontier.lastEndFrame || Math.abs(planned.from - frontier.lastPhase) > 1e-7 || planned.endFrame >= Math.round(voice.releaseAt * context.sampleRate) || intent.voiceId !== voiceId) return reject((engineId === 'worklet-texture' ? 'texture' : 'circular') + '-travel-owner-or-continuity', voiceId);
     const outcome = command(UPDATE, planned.firstFrame, voice, { 15: 64, 25: planned.from, 26: planned.to, 27: planned.endFrame - planned.firstFrame });
     if (outcome.status === 'accepted') { frontier.lastEndFrame = planned.endFrame; frontier.lastPhase = planned.to; frontier.lastSequence = planned.sequence; }
     return Object.freeze({ ...outcome, ...(outcome.status === 'accepted' ? { [source.travelReceiptKey]: planned.receipt } : {}) });
