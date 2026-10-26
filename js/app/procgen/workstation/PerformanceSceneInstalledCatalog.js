@@ -1,3 +1,4 @@
+import { createAdditionalPracticeScores } from './PerformancePracticeScores.js';
 import { validateReleaseGesture } from '../ReleaseGesture.js';
 import { hashData, freezeData } from '../../../core/CanonicalData.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
@@ -66,6 +67,14 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
         requirements: { required: [{ kind: 'physical-observation', id: 'PickupCrossing', revision: 1, hash: pickupHash, description: 'Swept world-space pickup observations derived from complete actual motion' }, { kind: 'physical-observation', id: 'MotionCommitted', revision: 1, hash: observationHash, description: 'Complete committed actor motion' }], optional: [], substitutableWithNamedApproximation: [] },
         credits: [{ name: 'LemmingsJS-MIDI', role: 'Original finite-cohort practice score and pluck', source: null }], cost: { lanes: laneCount, maximumVoices: laneCount * 4, sharedBodies: 0, estimateClass: 'authored-upper-bound-not-measured-realtime-capacity' }, mechanisms: ['crossing'], density: 'sparse', lessonLevel: practice.paused ? 0 : 1 });
       await registry.register(scene); signal?.throwIfAborted();
+    }
+    const lessonDefinition = { ...pluckDefinition, id: 'scene.lesson-pluck', name: 'Physical lesson pluck', macros: [{ id: 'brightness', name: 'BRIGHTNESS', mode: 'onset-only', default01: 0.5, smoothingMs: 0, perceptualDirection: 'Brighter excitation on later actual attacks.', targets: [{ parameter: 'excitationBrightness01', unit: 'normalized', minimum: 0.15, maximum: 0.85, curve: 'linear', composition: 'replace', clamp: true }] }] };
+    const lessonHash = await hashData(lessonDefinition), lessonPackHash = await hashData({ schema: 'lemmings-original-scene-patches/v1', sourceHash, definitionHash: lessonHash }); put('patch', lessonDefinition.id, 1, lessonHash, 'embedded');
+    const lessonReference = { ...pluckReference, patchId: lessonDefinition.id, definitionHash: lessonHash, definition: lessonDefinition, packHash: lessonPackHash };
+    for (const item of await createAdditionalPracticeScores({ sourceHash, reference: lessonReference })) {
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      await registry.register(item.scene); signal?.throwIfAborted();
     }
   }
   return Object.freeze({ registry, available: true, reason: null, sourceHash,

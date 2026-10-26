@@ -58,9 +58,9 @@ describe('observed physical lessons (runtime/browser acceptance deferred)', () =
     expect(() => progress.write('lesson.bad', { version: 1, physicalObserved: true, soundAccepted: false, reportedHearing: true, evidencePath: 'reported-hearing' })).to.throw();
     const denied = createPhysicalLessonProgress({ storage: { getItem() { throw new Error('denied'); }, setItem() { throw new Error('denied'); } } }); expect(denied.state().persistence).to.include('session-only');
   });
-  it('uses actual pinned catalog scenes and offers no fabricated setup for the remaining lessons', async () => {
+  it('uses all five actual pinned catalog scenes and retains an independent actor-free control', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('d') }))), catalog = await createInstalledPerformanceSceneCatalog({ getCatalog: async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('e') }, descriptors }) }), lessons = await createInstalledPhysicalLessons(catalog);
-    expect(lessons).to.have.length(2); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
+    expect(lessons).to.have.length(5); expect(lessons.map(value => value.setupScene.id)).to.deep.equal(['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.work-becomes-percussion', 'practice.path-becomes-delay', 'practice.crowd-becomes-harmony']); expect(lessons.every(value => value.zeroNoteScene.id === 'practice.quiet-control')).to.equal(true);
   });
   it('keeps Reset, Back, Skip, Close and re-entry on one observer without automatic physical actions', async () => {
     const dom = new JSDOM('<body></body>', { url: 'http://localhost' }), definitions = [definition(), definition('entry-spacing-change')]; let loads = 0;

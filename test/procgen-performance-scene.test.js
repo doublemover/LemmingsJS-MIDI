@@ -117,8 +117,8 @@ describe('installed crossing scores and the existing world candidate adapter', (
   });
   it('pins finite practice releases before the first cohort and rehearses an actor-free control without phantom attacks', async () => {
     const descriptors = await describeNativeInstrumentEngines(['worklet-sine', 'worklet-pluck'].map(engineId => ({ engineId, engineVersion: 1, artifactHash: h('a') }))), getCatalog = async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors });
-    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }), masks = await loadProcgenMasks(); expect(library.registry.page().rows).to.have.length(5);
-    for (const row of library.registry.page().rows.filter(row => row.id.startsWith('practice.'))) {
+    const library = await createInstalledPerformanceSceneCatalog({ getCatalog }), masks = await loadProcgenMasks(); expect(library.registry.page().rows).to.have.length(8);
+    for (const row of library.registry.page().rows.filter(row => ['practice.one-foot-one-sound', 'practice.space-becomes-rhythm', 'practice.quiet-control'].includes(row.id))) {
       const value = library.registry.resolve(row), origin = await library.origin(value), budget = createResourceBudget(); let original;
       const adapter = createPerformanceSceneWorldAdapter({ resourceBudget: budget, getCatalog, getOrigin: (scene, variants) => library.origin(scene, variants), prepareWorld: async ({ sceneRecipe }) => {
         original = new ProcgenLaneWorld({ masks, cohorts: true, laneCount: sceneRecipe.settings.laneCount, laneHeight: sceneRecipe.settings.laneHeight, seed: sceneRecipe.settings.seed, initialReleaseGesture: sceneRecipe.initialReleaseGesture, assists: false, stallPolicy: { secondsWithoutProgress: 1000 } });

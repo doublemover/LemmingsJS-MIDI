@@ -1,3 +1,4 @@
+import { baseScoredTerrainFixture as baseSource } from './helpers/scored-terrain.js';
 import { expect } from 'chai';
 import { ProcgenScoredTerrain } from '../js/app/procgen/ProcgenScoredTerrain.js';
 import { afterProcgenRetirement, createProcgenRetirementScope, retireProcgenWorldResources } from '../js/app/procgen/ProcgenRetirement.js';
@@ -9,18 +10,6 @@ import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
 const layout = () => ({ schema: 'lemmings-scene-terrain/v1', id: 'score.owned-source', revision: 1, width: 256, laneHeight: 96, lanes: [{ laneId: 0, regions: [{ kind: 'solid', x1: 0, x2: 256, y1: 88, y2: 96, color: 0xff526f74 }, { kind: 'air', x1: 96, x2: 112, y1: 80, y2: 96, color: 0 }] }] });
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
-const baseSource = (events = []) => {
-  const theme = { recipe: { id: 'fixture-rock', family: 'rock', assetSha256: 'a'.repeat(64) }, pieces: [], objects: [], height: 96, workstation: true, hazardSpacing: 1024, sharedSpanBudget: 1 }, retirement = createProcgenRetirementScope();
-  const base = { themes: [{ family: 'rock', familyId: 'rock', styleName: 'rock', terrain: theme }], chunkWidth: 128, height: 96, memoryMB: 0, laneAssignments: ['rock'], laneThemes: [], assignments: new Map(), collision: new Map(), objects: [], pieces: [],
-    configure(_lanes, _actors, options) { base.height = theme.height = options.laneHeight; theme.workstation = !!options.workstation; theme.hazardSpacing = options.hazardSpacing ?? 0; },
-    registerLanes(seeds) { base.assignments = new Map(Array.from(seeds, seed => [seed, 0])); base.laneThemes = Array(seeds.length).fill('rock'); }, forSeed() { return theme; },
-    setLaneAssignments(values) { base.laneAssignments = [...values]; }, exportAssignments() { return { assignments: [...base.assignments], laneAssignments: [...base.laneAssignments], laneThemes: [...base.laneThemes] }; },
-    restoreAssignments(value) { base.assignments = new Map(value.assignments); base.laneAssignments = [...value.laneAssignments]; base.laneThemes = [...value.laneThemes]; },
-    getChunk(_seed, chunk) { if (!base.collision.has(chunk)) base.collision.set(chunk, { origin: chunk * 128, solid: new Uint32Array(384), steel: new Uint32Array(384), pixels: new Uint32Array(12288), topProfile: new Int16Array(128).fill(-1), placements: [], objects: [] }); return base.collision.get(chunk); },
-    describe(seed, chunk) { return base.getChunk(seed, chunk); }, objectsAt() { return []; }, growthPlan() { return null; }, solidSample() { return false; }, steelSample() { return false; }, rasterSample() { return 0; }, surface() { return -1; }, collisionAt() { return false; }, retainDescriptors() {},
-    getDebugState() { return { fixture: true }; }, reset() { base.collision.clear(); base.assignments.clear(); }, dispose() { return retirement.retire([{ name: 'fixture-source', run: () => { events.push('base-assets'); base.reset(); } }]); }
-  }; return base;
-};
 const make = async ({ raw = layout(), bound = true, events = [], wrappedJobs = null } = {}) => {
   const budget = createResourceBudget({ limitBytes: 64 * 1048576 }), jobs = createTestBackgroundJobs(bound ? { identity: () => ({ activeExecution: 'bound', buildId: 'explicit-test-build' }) } : {}), base = baseSource(events);
   const owned = new ProcgenScoredTerrain(base, raw, { resourceBudget: budget, jobs: wrappedJobs ? wrappedJobs(jobs) : jobs });

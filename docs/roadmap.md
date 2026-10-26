@@ -5131,3 +5131,46 @@ world/renderer/browser, visual/playability, CPU/heap and recovery qualification
 remain deferred to the combined acceptance pass.
 
 Continuation 204 ownership follow-through: top-level world replacement also retains the active-world allocation and provider owners until the complete asynchronous reader/source chain confirms retirement. Unresolved source retirement retains the charge; the outer owner cannot infer completion from a requested Stop. An authored deferred-reader allocation fixture is added with the other pending runtime cases.
+
+
+### Continuation 205 — complete authored five-lesson development pass
+
+- Added three distinct bounded initial geometry scores: a finite two-entrant
+  changed-material work bench, one-entrant direct/stepped junction route, and
+  three-entrant formation field. All use the bound-worker source provider and
+  start paused with explicit finite releases. The new recipe assist policy is
+  manual-only; initial junction definitions are installed before the recovery
+  anchor. No scene invents an applied skill or junction command.
+- Installed all five versioned lesson manifests on the existing scene owner.
+  The advanced observer is read-only and bounded to 16 entrant tracks, 64 manual
+  command links and the small assessment records. Work requires a quiet actual
+  walking baseline plus two distinct version-2 changed-solid contact operations
+  rooted in an accepted manual skill. Route delay requires a current admitted
+  junction configuration, a new post-switch entrant, accumulated actual motion
+  and a changed observed arrival duration at the unchanged pickup. Formation
+  requires changed actual birth/spatial spread and qualified pitch assignment,
+  followed by a later onset carrying the changed declared timbre macro.
+- Added an explicit work-change policy to causal mappings: solid, appearance or
+  attempted contact. Existing mappings retain their behavior when absent. New
+  teaching maps select changed solid cells so a repaint cannot masquerade as a
+  productive brick. No operation is multiplied into a roll or inferred from SFX.
+- The formation field declares ratios 1,9/8,5/4,3/2,5/3 with its 220 Hz reference
+  represented at 6900 semantic cents. It uses actual bounded formation assignment;
+  BRIGHTNESS is an onset-only typed pluck macro. Sound/physical identity checks,
+  backend acceptance and explicit reported hearing remain separate.
+- Scored checkpoint assignments now retain the complete bounded original layout
+  alongside its digest, allowing independent inspection/rehearsal to compile its
+  own owned source. The inspection reader/source/provider dependency chain keeps
+  both source results and its outer world reservation charged until confirmed
+  retirement. Exact source/settings verification still precedes restoration.
+- Authored grouped fixtures cover exact source/catalog/dependency identities,
+  manual work/operation phases and solid-versus-appearance filtering, actual
+  direct/stepped traversal, changed formation and subsequent macro onset,
+  independent checkpoint continuation and invalid/unrelated cause rejection.
+  Shared explicit base fixtures do not substitute for installed asset or browser
+  qualification; initial source cells use the production worker/compiler.
+- Runtime tests/builds/browser/audio/listening/performance and usability sessions
+  remain deferred in accordance with the development-first request. The full
+  Builder-Miner Workshop, Glass Orbit and other large named scenes, advanced
+  learning journeys and their acceptance remain open. Five implemented lesson
+  observers do not establish completed issue #1110 acceptance.

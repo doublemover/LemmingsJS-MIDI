@@ -76,13 +76,14 @@ const validateCausalInstrumentGraph = value => {
     if (input.articulation && input.sourceKind !== 'MotionCommitted') throw new Error('Travel articulation requires committed motion.');
     if (input.sourceLanes !== undefined && (!Array.isArray(input.sourceLanes) || !input.sourceLanes.length || input.sourceLanes.length > 1024 || input.sourceLanes.some(lane => !Number.isInteger(lane) || lane < 0 || lane >= 1024) || new Set(input.sourceLanes).size !== input.sourceLanes.length)) throw new Error('Instrument source lanes must be unique physical source indices.');
     const probability = validateCausalProbabilityPolicy(input.probability);
+    if (input.workChangePolicy != null && (input.sourceKind !== 'TerrainWorkCommitted' || !['solid', 'appearance', 'attempt'].includes(input.workChangePolicy))) throw new Error('Work change policy requires an explicit actual operation source.');
     if (input.sourceKind === 'TerrainWorkCommitted' && input.operationKind != null && !nonempty(input.operationKind)) throw new Error('Invalid work operation.');
     if (['ContactResolved', 'ContactSpanBegan'].includes(input.sourceKind) && input.causeKind != null && !nonempty(input.causeKind)) throw new Error('Invalid contact cause.');
     if ([input.sampleGesture, input.sampleKitId].some(value => value != null && (typeof value !== 'string' || !/^[a-z][a-z0-9._:-]{0,127}$/i.test(value) || ['__proto__', 'constructor', 'prototype'].includes(value)))) throw new Error('Invalid authored sample gesture or kit identity.');
     return Object.freeze({ id: input.id, ...(input.sourceLanes ? { sourceLanes: Object.freeze([...input.sourceLanes].sort((a, b) => a - b)) } : {}), ...(input.topologyRegionId ? { topologyRegionId: input.topologyRegionId } : {}), ...(input.formationId ? { formationId: input.formationId } : {}), ...(input.harmonicFields ? { harmonicFields: true } : {}), sourceKind: input.sourceKind, ...(response ? { response } : {}), ...(actionVoicePolicy ? { actionVoicePolicy } : {}), ...(voiceTransfer ? { voiceTransfer } : {}), action: input.action ?? null,
       ...(input.cargoRole ? { cargoRole: input.cargoRole } : {}), ...(input.cargoStationId ? { cargoStationId: input.cargoStationId } : {}), ...(input.activityWindowId ? { activityWindowId: input.activityWindowId } : {}), ...(input.motifId ? { motifId: input.motifId } : {}), ...(input.encounterId ? { encounterId: input.encounterId } : {}), ...(input.pickupId ? { pickupId: input.pickupId } : {}), ...(input.routeId ? { routeId: input.routeId } : {}),
       ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
-      operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
+      ...(input.workChangePolicy ? { workChangePolicy: input.workChangePolicy } : {}), operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
       articulation: input.articulation ? validateArticulationField(input.articulation) : null,
       ...(probability ? { probability } : {}), probability01: input.probability01 == null ? 1 : Number.isFinite(input.probability01) ? Math.min(1, Math.max(0, input.probability01)) : 0,
@@ -433,6 +434,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           const negative = Number.isFinite(before) && Number.isFinite(after) && before > instrument.gateX && after <= instrument.gateX;
           if (!(positive && instrument.crossingDirection !== 'negative' || negative && instrument.crossingDirection !== 'positive')) continue;
         }
+        if (instrument.workChangePolicy === 'solid' && !(fact.physicalPayload?.changedSolidCells > 0) || instrument.workChangePolicy === 'appearance' && !(fact.physicalPayload?.changedAppearanceCells > 0)) continue;
         if (instrument.changedOnly && !((fact.physicalPayload?.changedSolidCells || 0) > 0 || (fact.physicalPayload?.changedAppearanceCells || 0) > 0)) continue;
         let topologyBinding = null;
         if (instrument.topologyRegionId) {

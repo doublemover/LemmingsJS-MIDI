@@ -1,3 +1,4 @@
+import { configurePhysicalJunctions } from './procgen/PhysicalJunctions.js';
 import { ProcgenScoredTerrain } from './procgen/ProcgenScoredTerrain.js';
 import { getActiveExecutionIdentity } from '../runtime/ActiveExecutionIdentity.js';
 import { verifyPerformanceSceneOrigin } from './procgen/workstation/PerformanceSceneRecipe.js';
@@ -414,11 +415,11 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
       generation: serial, kind: 'candidate', bytes: estimateCandidateWorldBytes(settings),
       pinned: true, reloadable: false });
     candidate = new ProcgenLaneWorld({ laneCount: settings.laneCount, laneHeight: settings.laneHeight, seed: settings.seed, sprites, masks, terrain,
-      speed: settings.speed, cohorts: true, workstation: true, hazardSpacing: settings.hazardSpacing,
+      speed: settings.speed, cohorts: true, workstation: true, assists: (sceneRecipe?.assistPolicy ?? session?.project?.procgen?.sceneOrigin?.recipe?.assistPolicy) !== 'manual-only', hazardSpacing: settings.hazardSpacing,
       previousDistances: sceneRecipe ? [] : readProcgenDistances(), workerLimits: settings.workerLimits, populationPolicy: settings.populationPolicy, initialReleaseGesture: sceneRecipe?.initialReleaseGesture ?? null, particleTable: new ParticleTable(palette) });
     if (session) restoreProcgenCheckpoint(candidate, session.world);
     if (session?.recoveryJournal) await replayProcgenRecoveryJournal(candidate, session.recoveryJournal, { signal: lease?.signal });
-    if (sceneRecipe) candidate.configurePhysicalAuthoring(sceneRecipe.project.procgen.physicalGraph, sceneRecipe.project.procgen.fragmentInstances || []);
+    if (sceneRecipe) { candidate.configurePhysicalAuthoring(sceneRecipe.project.procgen.physicalGraph, sceneRecipe.project.procgen.fragmentInstances || []); if (sceneRecipe.project.procgen.junctions?.length) configurePhysicalJunctions(candidate, sceneRecipe.project.procgen.junctions, 1); }
     await prepareProcgenRecoveryJournal(candidate, { resourceBudget: procgenResourceBudget, signal: lease?.signal, isCurrent: () => canCommit() && !committed });
     lanes = createProcgenLaneRuntime({ canvas, resources, resourceLease, renderBudget, sprites, masks, assets, terrain, initialWorld: candidate, workstation: true, initiallySuspended: true,
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });

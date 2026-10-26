@@ -265,23 +265,45 @@ patches retain exact component and traversal references. Audition uses an explic
 labeled control fixture; actual physical rendering and listening remain unqualified.
 
 
-The physical score browser offers **Learn this physical cause** for **One Foot,
-One Sound** and **Space Becomes Rhythm** when their exact pinned setup and Quiet
-Control scenes are installed. First load the empty control and explicitly Play:
-no actor must mean no new onset. Load the lesson setup paused, write a prediction,
-observe the unchanged baseline, then change the displayed physical cause using
-Physical authoring or Release gestures. A changed request alone is not success.
-The spacing lesson compares actual birth and arrival intervals at completed-tick
-precision. Use Reset for a fresh empty control, Back or Skip for free exploration.
-The panel never moves an actor or enables audio for you.
+The physical score browser offers **Learn this physical cause** for all five
+installed practice setups: **One Foot, One Sound**, **Space Becomes Rhythm**,
+**Work Becomes Percussion**, **Path Becomes Delay** and **Crowd Becomes Harmony**.
+First load Quiet Control and explicitly Play: no actor must mean no new onset.
+Load the lesson setup paused, write a prediction, observe the unchanged baseline,
+then perform the displayed cause through the existing physical controls. A
+changed request alone is not success. Reset loads a fresh empty control; Back
+and Skip leave free exploration available. The panel sends no gameplay command
+and never enables audio for you.
+
+The work setup has a finite two-entrant bench and manual skills. Its quiet
+walking baseline leads to an explicit builder/miner assignment. Two actual
+changed-solid work operations must name the accepted manual command, action
+instance, operation and contact phase. Appearance-only repainting, animation,
+SFX and rejected skills do not satisfy this mapping. This is a small teaching
+bench, not the full multi-material Builder-Miner Workshop orchestration.
+
+The path setup begins with a direct surface and one finite entrant. In Junctions
+request **stepped**, then wait for actual safe application. Release a fresh
+entrant with the same entry spacing. Success requires its observed travel to
+be longer and its birth-to-arrival duration to differ at the same fixed pickup.
+A pending/expired/rejected switch cannot count. These are authored candidate
+routes; their playability and measured traversal envelopes await runtime review.
+
+The crowd setup uses three finite entrants and a just pentatonic field: ratios
+1, 9/8, 5/4, 3/2 and 5/3, with degree zero represented by 6900 cents against a
+220 Hz reference. Actual formation chooses each actor's pitch. After the first
+flock leaves the field, change finite release spacing and perform another
+three-entrant phrase. Birth spread, spatial spread and assigned pitches must
+all differ, with actors observed together in the field. Then keep that physical
+policy, change **BRIGHTNESS** through the sound controls and explicitly release
+a later attack. Brightness affects later excitation; the macro creates no onset.
 
 Physical evidence, accepted sound and your optional report of hearing are shown
-separately. With audio unavailable, use the visual evidence path; it does not
-verify hearing. Progress is stored separately from musical projects, can survive
-reopening, and remains session-only when browser storage is denied. Replaying a
-lesson starts a fresh observed attempt. Work/path/harmony lessons and advanced
-material/memory journeys are still awaiting their actual setup scenes and
-qualification; two available practice lessons do not imply that full acceptance.
+separately. The sound-off path does not verify hearing. Progress is stored apart
+from projects; denied storage falls back to the current session. Replaying a
+lesson requires a fresh observed attempt. All five implementations have authored
+fixtures; runtime, browser/accessibility/controller, listening and usability
+qualification remain pending. Advanced material/memory journeys remain open.
 
 
 An authored physical score can pin an optional initial terrain layout: bounded
@@ -291,10 +313,14 @@ source before constructing a candidate world. It uses shared worker admission;
 there is no heavy UI-thread fallback or silent replacement with another floor.
 The initial extent has no generated physical gadgets or growth clock. The base
 terrain remains available beyond that finite extent. This source format is a
-building block for the remaining authored performance/lesson worlds; it is not
-by itself a completed Builder-Miner Workshop or playable path/harmony lesson.
+building block for the authored practice worlds and remaining larger performances;
+source preparation alone does not qualify their playability.
 
-Scored recovery requires the exact source layout, installed themes and lane seeds.
+Scored recovery retains the complete bounded source layout as well as its hash,
+installed themes and lane seeds. Independent inspection/rehearsal recompiles its
+own source under worker admission; it borrows no live terrain buffers. Initial
+manual-assist policy and junction definitions are installed before the recovery
+anchor, without inventing an applied player command.
 An unavailable/future source leaves the current world available and reports a
 source-profile error. Source and worker-result release wait for world/renderer
 reader retirement; unresolved retirement keeps the resource reservation owned.
