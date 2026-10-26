@@ -6139,3 +6139,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   contact-scoped motion admission are connected; its typed ancestry alone is
   not playable content. Broad acceptance/CI and the remaining backlog remain
   deferred to the consolidated validation phase after development.
+
+
+### Continuation 240 — real contact-begin travel observations (#1178)
+
+- Added a separately authored `contactTravel` policy for local support-contact
+  mappings. The existing causal contact-span owner creates the sole onset and
+  the existing travel accumulator supplies completed motion coordinates for
+  that same actor/span. Rest and physical reversal retain unsigned contact-path
+  coordinates; contact end, unknown coverage, scope change, discontinuity or
+  update exhaustion ends the held source instead of synthesizing another one.
+- Added pure seed admission/planning helpers that require actual completed
+  contact-begin evidence, bind source events and scope identity, and convert
+  recorded ordered spans into bounded grain-window position/activity controls.
+  Finite source coordinates, exact segment timing, required path precision and
+  no-extrapolation remain explicit. These are source-control receipts, not an
+  acoustic or perceptual qualification.
+- Authored unrun real-engine contact/motion/checkpoint/end, false-onset, scope
+  loss and incompatible-policy fixtures. This commit supplies observations and
+  planning only; Bowed Scrap remains unavailable until its DSP latch, live and
+  offline command adapters and explicit audition controls are connected.

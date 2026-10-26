@@ -73,6 +73,8 @@ const validateCausalInstrumentGraph = value => {
     if (input.sourceKind === 'MotionCommitted' && !input.articulation && (!Number.isFinite(input.gateX) || Math.abs(input.gateX) > 1000000000 ||
         !['either', 'positive', 'negative'].includes(input.crossingDirection ?? 'either'))) throw new Error('Motion instrument needs a valid gate.');
     if (input.articulation?.metric === 'qualified-route-arc-pixels' && !domain.routes.some(route => route.id === input.articulation.routeId)) throw new Error('Directed travel requires an existing qualified route atlas definition.');
+    const contactTravel = input.contactTravel == null ? null : validateArticulationField(input.contactTravel);
+    if (contactTravel && (input.sourceKind !== 'ContactSpanBegan' || input.route !== 'local' || input.causeKind !== 'support' || contactTravel.lifetimeScope !== 'contactSpan' || !['segment-path', 'endpoint-chord'].includes(contactTravel.metric) || contactTravel.orientation !== 'unsigned' || contactTravel.phaseMode !== 'contact-stroke' || contactTravel.sustain !== true || input.articulation || input.preparedBodyStrike || input.topologyRegionId || input.actionVoicePolicy || input.response || input.voiceTransfer || input.formationId || input.harmonicFields)) throw new Error('Contact travel requires one local support-contact voice and its bounded unsigned contact path.');
     if (input.articulation && input.sourceKind !== 'MotionCommitted') throw new Error('Travel articulation requires committed motion.');
     if (input.sourceLanes !== undefined && (!Array.isArray(input.sourceLanes) || !input.sourceLanes.length || input.sourceLanes.length > 1024 || input.sourceLanes.some(lane => !Number.isInteger(lane) || lane < 0 || lane >= 1024) || new Set(input.sourceLanes).size !== input.sourceLanes.length)) throw new Error('Instrument source lanes must be unique physical source indices.');
     const probability = validateCausalProbabilityPolicy(input.probability);
@@ -85,7 +87,7 @@ const validateCausalInstrumentGraph = value => {
       ...(input.ensembleId ? { ensembleId: input.ensembleId } : {}), ...(preparedBodyStrike ? { preparedBodyStrike } : {}),
       ...(input.workChangePolicy ? { workChangePolicy: input.workChangePolicy } : {}), operationKind: input.operationKind ?? null, causeKind: input.causeKind ?? null,
       gateX: input.sourceKind === 'MotionCommitted' ? input.gateX : null,
-      articulation: input.articulation ? validateArticulationField(input.articulation) : null,
+      articulation: input.articulation ? validateArticulationField(input.articulation) : null, ...(contactTravel ? { contactTravel } : {}),
       ...(probability ? { probability } : {}), probability01: input.probability01 == null ? 1 : Number.isFinite(input.probability01) ? Math.min(1, Math.max(0, input.probability01)) : 0,
       crossingDirection: input.crossingDirection ?? 'either',
       changedOnly: input.changedOnly === true, pitchCents: input.pitchCents, velocity01: input.velocity01,
@@ -343,7 +345,16 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
             { contactAnchor: Object.freeze({ ...fact.anchor }), surfaceRevision: fact.surfaceRevision, observedTick: fact.observedTick }));
         }
       }
-      if (fact.kind === 'MotionCommitted') for (const record of byActor.get(fact.actorId) || []) {
+      if (fact.kind === 'MotionCommitted') for (const record of [...(byActor.get(fact.actorId) || [])]) {
+        if (record.instrument.contactTravel) {
+          if (physicalUpdates >= maxPhysicalUpdatesPerBatch || fact.contactSpanId !== record.scopeInstanceId || motionCounts.get(fact.actorId) > 128) { suppressed.set(record.voiceId, record); endVoice(batch, record, fact, 'contact-travel-budget-or-scope', output); continue; }
+          let observed;
+          try { observed = travel.consume(batch, fact, record.instrument.id, record.instrument.contactTravel, current.revision); } catch { observed = { status: 'rejected', reason: 'contact-travel-evidence' }; }
+          if (observed.status !== 'accepted') { suppressed.set(record.voiceId, record); endVoice(batch, record, fact, observed.reason, output); travel.release(member => member.instrumentId === record.instrument.id && member.actorId === fact.actorId); continue; }
+          const state = observed.state, observation = Object.freeze({ ...observed.observation, sourceSequence: fact.causalSequence + 1, segmentOrdinal: motionOrdinals.get(fact.actorId) - 1, segmentCount: motionCounts.get(fact.actorId),
+            completedTickDurationMs: Number.isFinite(batch.tickDurationMs) && batch.tickDurationMs > 0 ? batch.tickDurationMs : null, timing: 'completed-tick-equal-segments-v1' });
+          output.push(intentFor(batch, fact, record.instrument, 'update', record.voiceId, null, batch.generation, {}, { travelPhase01: observed.phase01, pathDistancePixels: state.pathDistancePixels, contactPathDistancePixels: state.contactPathDistancePixels, travel: observation })); physicalUpdates++; continue;
+        }
         const policy = record.instrument.actionVoicePolicy; if (!policy || batch.tick - (record.lastExpressionTick ?? -Infinity) < policy.updateEveryTicks) continue;
         const expression = actionExpression(policy, fact), changed = Object.entries(expression).some(([key, value]) => Math.abs(value - (record.lastExpression?.[key] ?? Infinity)) >= policy.expressionDeadband);
         if (!changed) continue;
@@ -352,7 +363,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       }
       const cause = byActor.has(fact.actorId) ? captureInstrumentCause(fact) : null;
       if (cause) for (const record of [...byActor.get(fact.actorId)]) {
-        if (!record.physicalSourceKinds.includes(cause.sourceKind)) continue;
+        if (record.instrument.contactTravel && fact.kind === 'MotionCommitted' || !record.physicalSourceKinds.includes(cause.sourceKind)) continue;
         if (physicalUpdates >= maxPhysicalUpdatesPerBatch) { suppressed.set(record.voiceId, record); endVoice(batch, record, fact, 'physical-control-budget', output); continue; }
         const intent = intentFor(batch, fact, record.instrument, 'update', record.voiceId, null, batch.generation);
         output.push(Object.freeze({ ...intent, intentId: intent.intentId + ':physical', performanceCause: cause })); physicalUpdates++;
