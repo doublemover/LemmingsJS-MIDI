@@ -170,6 +170,8 @@
         "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
         "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
         "js/app/midi-ui/worklet/OwnedTextureState.js",
+        "js/app/midi-ui/worklet/OwnedWindProcessor.js",
+        "js/app/midi-ui/worklet/OwnedWindState.js",
         "js/app/midi-ui/worklet/RectangularMembraneKernel.js",
         "js/app/midi-ui/worklet/RectangularMembraneProcessor.js",
         "js/app/midi-ui/worklet/RingModulatorKernel.js",
@@ -181,6 +183,7 @@
         "js/app/midi-ui/worklet/SympatheticNetworkKernel.js",
         "js/app/midi-ui/worklet/SympatheticNetworkProcessor.js",
         "js/app/midi-ui/worklet/VocoderBankKernel.js",
+        "js/app/midi-ui/worklet/WindModalKernel.js",
         "js/app/procgen/ProcgenAuthoredAssemblies.js",
         "js/app/procgen/ProcgenRetirement.js",
         "js/app/procgen/ProcgenTerrainDescriptors.js",
@@ -292,6 +295,7 @@
         "js/midi/content/TextureExciter.js",
         "js/midi/content/TextureTravel.js",
         "js/midi/content/VocoderBankProfile.js",
+        "js/midi/content/WindModel.js",
         "js/render/BaseImageInfo.js",
         "js/render/ColorPalette.js",
         "js/render/Frame.js",
@@ -303,8 +307,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 192,
-      "sha256": "c0e5402d8c104071469915934e10b3f64ed63c469fc2fdb23d1f54a3e9a8e07f"
+      "fileCount": 196,
+      "sha256": "38f8905e87103d9bb5896a0b36dcd6f1524c30695d146697a0178d2f5cfe8afc"
     },
     {
       "id": "lemmings-timing-worker-source",

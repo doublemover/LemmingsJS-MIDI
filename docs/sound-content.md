@@ -875,3 +875,24 @@ new actor bodies; existing channel pressure expression ramps a moving held body.
 The scene exposes this distinction and starts paused through the existing staged
 loader. Missing friction capability leaves the scene unavailable. Its authored
 physics/voice fixtures, actual playback and listening remain unrun.
+
+
+**Prepare breath / wind bodies** stages Hollow Reed, Air Pipe and experimental
+Overblown Branch from `content/sounds/wind-bodies.json`. Their original sealed
+nonlinear modal source is `worklet-wind`. AIR, BITE, LENGTH and LEAK prepare new
+bodies; existing channel pressure ramps each owned held source to a zero floor.
+LENGTH is an acoustic size ratio, dividing the onset frequency. Each kind rejects
+unsupported actual root/pressure combinations rather than silently retuning. The
+experimental branch has one threshold-hysteretic register change per held token,
+not an extra semantic onset. No PCM, microphone or autonomous accompaniment is
+introduced. The authored held-pressure control audition is explicitly not a
+physical take. Missing source capability fails normal preparation.
+
+The two slots and static work dimensions are provisional shared-budget policies.
+Exact kernel snapshots validate independently owned modal/noise/filter/register,
+core identities and queued controls before mutation. This does not establish
+arbitrary host restoration or qualified PCM continuation. The grouped pressure,
+pitch and bite map and sixty-second sustains are authored in
+`scripts/qualify-wind-source.mjs --name=rook`; they and the integration fixtures
+are unrun. Stability/dropout/register regions, alias/pitch, device cost, physical
+Breathing Stairwell playback and levelmatched listening remain pending.

@@ -1,14 +1,17 @@
+import { validateOwnedWindState } from './OwnedWindState.js';
+import { WIND_MODEL_LIMITS } from '../../../midi/content/WindModel.js';
 import { validateOwnedFrictionState } from './OwnedFrictionState.js';
 import { FRICTION_MODEL_LIMITS } from '../../../midi/content/FrictionModel.js';
 import { validateOwnedTextureState } from './OwnedTextureState.js';
 import { TEXTURE_EXCITER_LIMITS } from '../../../midi/content/TextureExciter.js';
 import { resolveCircularSpectrum } from '../../../midi/content/CircularSpectrum.js';
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
-import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, TEXTURE_LAYOUT, FRICTION_LAYOUT } from '../OwnedSourceLayout.js';
+import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, TEXTURE_LAYOUT, FRICTION_LAYOUT, WIND_LAYOUT } from '../OwnedSourceLayout.js';
 
 export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v3-lane-transfer';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
+  56: { id: 'worklet-wind', kind: 8, layout: WIND_LAYOUT, arrays: ['state', 'modes'], scalars: ['leftSample', 'rightSample'] },
   48: { id: 'worklet-friction', kind: 7, layout: FRICTION_LAYOUT, arrays: ['state', 'modes'], scalars: ['leftSample', 'rightSample'] },
   80: { id: 'worklet-texture', kind: 6, layout: TEXTURE_LAYOUT, arrays: ['state', 'modes', 'pulses', 'observation', 'admission'], scalars: ['leftSample', 'rightSample'] },
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
@@ -33,7 +36,7 @@ const profileFor = kernel => {
   if (!profile || !source || source.rate !== kernel.sampleRate || source.voices !== kernel.maxVoices ||
       !integer(source.voices, 1, profile.layout.voices)) fail('Unknown source or incompatible owned voice profile.');
   const t = TEXTURE_EXCITER_LIMITS;
-  const expected = profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
+  const expected = profile.kind === 8 ? [source.voices * WIND_MODEL_LIMITS.state, source.voices * WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth] : profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
     profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
       profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
         profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorScalars] :
@@ -44,7 +47,7 @@ const profileFor = kernel => {
   }
   if (profile.kind === 1 && (source.stride !== Math.ceil(kernel.sampleRate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin || source.maxInitializationWrites !== 65536))
     fail('Pluck storage or initialization budget differs from its state profile.');
-  if (![1, 6, 7].includes(profile.kind) && !hash(source.bank?.hash) || profile.kind === 4 && (!hash(source.descriptor?.bankHash) ||
+  if (![1, 6, 7, 8].includes(profile.kind) && !hash(source.bank?.hash) || profile.kind === 4 && (!hash(source.descriptor?.bankHash) ||
       source.sourceGain !== 0.9 / Math.max(1, source.descriptor.peak) / 4)) fail('Source asset identity or derived gain is unavailable.');
   if (profile.kind === 5 && (!(source.configuration instanceof Uint8Array) || !(source.configuration.buffer instanceof ArrayBuffer) || source.configuration.length > 524288 ||
       !hash(source.descriptor?.bankHash) || source.ownsEnvelope !== true || typeof source.validateStoredState !== 'function' || typeof source.synchronizeState !== 'function' || typeof source.rehydrateState !== 'function' ||
@@ -85,6 +88,10 @@ const inspectSource = (kernel, profile, view) => {
   if (profile.kind === 4 && (!integer(data.scalars[0], -1) || !integer(data.scalars[1], 0, GRANULAR_LAYOUT.birthsPerBucket) ||
       !finite(data.scalars[2]) || !finite(data.scalars[3]))) fail('Granular birth frontier is invalid.');
   const core = HEADER, width = kernel.width, voiceOffset = core + 128 + 512 * width * 8, activeOffset = voiceOffset + 64 * 28 * 8;
+  if (profile.kind === 8) {
+    validateOwnedWindState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
+    return data;
+  }
   if (profile.kind === 7) {
     validateOwnedFrictionState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
     return data;
@@ -183,7 +190,7 @@ export function writeOwnedSourceState(kernel, destination, identity) {
   if (profile.kind === 5) destination.set(kernel.source.configuration, offset);
   view.setUint32(252, checksum(destination), true); verify(kernel, destination, profile);
   return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, bytes: destination.length,
-    immutableAssets: profile.kind === 7 ? 'original-sealed-friction-and-inline-controls-bound-to-core-artifact-and-patch-pins' : profile.kind === 6 ? 'original-spatial-kernel-and-inline-body-bound-to-core-artifact-and-patch-pins' : 'pinned-exact-bank-hashes-not-copied', qualification: 'state-contract-awaiting-pcm-equivalence' });
+    immutableAssets: profile.kind === 8 ? 'original-sealed-wind-and-inline-controls-bound-to-core-artifact-and-patch-pins' : profile.kind === 7 ? 'original-sealed-friction-and-inline-controls-bound-to-core-artifact-and-patch-pins' : profile.kind === 6 ? 'original-spatial-kernel-and-inline-body-bound-to-core-artifact-and-patch-pins' : 'pinned-exact-bank-hashes-not-copied', qualification: 'state-contract-awaiting-pcm-equivalence' });
 }
 
 export function restoreOwnedSourceState(kernel, source, identity) {

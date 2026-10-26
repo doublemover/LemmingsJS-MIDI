@@ -19,3 +19,11 @@ export function prepareWindModel(raw = {}, sampleRate = 48000) {
 }
 export function windForceCurve(contactVelocity, noise, cap, velocityScale) { return cap * Math.tanh((contactVelocity + noise) / velocityScale); }
 export function windRandomStep(value) { value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return value >>> 0; }
+
+export function windRandomAdvance(value, count) {
+  if (!Number.isInteger(value) || value < 1 || value > 0xffffffff || !Number.isSafeInteger(count) || count < 0) throw new TypeError('Invalid wind noise frontier.');
+  let power = Uint32Array.from({ length: 32 }, (_, bit) => windRandomStep(2 ** bit)), scratch = new Uint32Array(32);
+  const apply = (matrix, vector) => { let result = 0, bit = 0; while (vector) { if (vector & 1) result ^= matrix[bit]; vector >>>= 1; bit++; } return result >>> 0; };
+  while (count > 0) { if (count % 2) value = apply(power, value); count = Math.floor(count / 2); if (!count) break; for (let bit = 0; bit < 32; bit++) scratch[bit] = apply(power, power[bit]); const swap = power; power = scratch; scratch = swap; }
+  return value;
+}

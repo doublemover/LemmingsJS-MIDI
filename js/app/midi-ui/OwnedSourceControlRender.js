@@ -5,7 +5,7 @@ import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
 import { createOwnedControlKernel } from '../resources/OwnedControlKernel.js';
 import { validateInstrumentPatchV2 } from '../../midi/content/InstrumentPatchV2.js';
-import { SOUND_CONTENT_CONTROL_FIXTURE, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
+import { SOUND_CONTENT_CONTROL_FIXTURE, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXTURE, WIND_CONTROL_FIXTURE } from '../../midi/content/SoundContentControlFixture.js';
 import { canonicalDataText, hashData } from '../../core/CanonicalData.js';
 
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
@@ -34,7 +34,7 @@ export async function renderOwnedSourceControls({ definition, descriptor, sample
   if (sampleGesture !== null && !owned.requiresPCMSet) throw new TypeError('This source does not expose authored sample gestures.');
   const samplePlan = owned.requiresPCMSet ? prepareOwnedSamplePlan(patch, pcmDescriptor, sampleRate) : null;
   const sampleControls = samplePlan ? createOwnedSampleControlFixture(samplePlan, sampleGesture ?? samplePlan.map.neutralArticulationId) : null;
-  const fixture = sampleControls?.fixture || (owned.id === 'worklet-friction' ? FRICTION_CONTROL_FIXTURE : owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
+  const fixture = sampleControls?.fixture || (owned.id === 'worklet-wind' ? WIND_CONTROL_FIXTURE : owned.id === 'worklet-friction' ? FRICTION_CONTROL_FIXTURE : owned.id === 'worklet-texture' ? TEXTURE_CONTROL_FIXTURE : SOUND_CONTENT_CONTROL_FIXTURE), selected = sampleControls?.selected || null;
   const identity = { onsetId: 'control-fixture', voiceId: 'control-fixture', actorId: null, generation: 1 };
   const performance = owned.extended ? compileInstrumentPerformance(patch, owned.parameters).resolve({}, 0, identity) : null;
   const values = performance?.values || Object.fromEntries(Object.entries(owned.fields).map(([id, spec]) => [id, patch.parameters[id] ?? spec[2]]));

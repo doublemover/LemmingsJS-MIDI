@@ -1,3 +1,4 @@
+import { prepareWindModel, WIND_MODEL_KINDS, WIND_PITCH_DOMAINS } from '../../midi/content/WindModel.js';
 import { prepareFrictionModel, FRICTION_MODEL_KINDS } from '../../midi/content/FrictionModel.js';
 import { planFrictionTravel } from '../../midi/content/FrictionTravel.js';
 import { validTextureBodyCommand, textureBodyCommandFields } from '../../midi/content/TextureBodyProfile.js';
@@ -6,9 +7,9 @@ import { planTextureTravel } from '../../midi/content/TextureTravel.js';
 import { resolveCircularSpectrum, circularSpectrumParameters, planCircularTravel, validateCircularCoordinateControl } from '../../midi/content/CircularSpectrum.js';
 import { prepareSampleBodyProfile, acceptsSampleBodyOnset } from '../../midi/content/SampleBodyProfile.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
-import { FRICTION_LAYOUT, frictionSourceBytes, TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
+import { WIND_LAYOUT, windSourceBytes, FRICTION_LAYOUT, frictionSourceBytes, TEXTURE_LAYOUT, textureSourceBytes, SINE_LAYOUT, PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, sampleSourceBytes, pluckSourceBytes, choirSourceBytes, spectrumSourceBytes, granularSourceBytes,
   CHOIR_SOURCE_HEAP_ESTIMATE, SPECTRUM_SOURCE_HEAP_ESTIMATE, GRANULAR_SOURCE_HEAP_ESTIMATE, SAMPLE_SOURCE_HEAP_ESTIMATE } from './OwnedSourceLayout.js';
-import { NATIVE_FRICTION_FIELDS, NATIVE_FRICTION_PARAMETERS, NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
+import { NATIVE_WIND_FIELDS, NATIVE_WIND_PARAMETERS, NATIVE_FRICTION_FIELDS, NATIVE_FRICTION_PARAMETERS, NATIVE_TEXTURE_FIELDS, NATIVE_TEXTURE_PARAMETERS, NATIVE_WORKLET_FIELDS, NATIVE_PLUCK_FIELDS, NATIVE_PLUCK_PARAMETERS, NATIVE_CHOIR_FIELDS, NATIVE_CHOIR_PARAMETERS,
   NATIVE_SPECTRUM_FIELDS, NATIVE_SPECTRUM_PARAMETERS, NATIVE_GRANULAR_FIELDS, NATIVE_GRANULAR_PARAMETERS, NATIVE_OWNED_SAMPLE_FIELDS, NATIVE_OWNED_SAMPLE_PARAMETERS } from './NativeInstrumentSchema.js';
 
 const finite = (value, low, high) => Number.isFinite(value) && value >= low && value <= high;
@@ -58,6 +59,11 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
   });
 };
 const profiles = Object.freeze({
+  'worklet-wind': createProfile({ id: 'worklet-wind', controlReferenceRender: true, width: WIND_LAYOUT.width, voices: WIND_LAYOUT.voices, fields: NATIVE_WIND_FIELDS, parameters: NATIVE_WIND_PARAMETERS, buildId: 'owned-wind-v1-sealed-modal', abi: 'owned-wind-f64-command-v1', workletUrl: new URL('./worklet/OwnedWindProcessor.js', import.meta.url).href,
+    rateLimit: true, seedDomain: 'sealed-modal-wind-v1', minHz: 82.5, maxHz: 1650, bendCents: 0, storageBytes: windSourceBytes, heapEstimate: 65536, cost: () => 28, restoration: 'exactSnapshot', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
+    acceptsParameters: p => { try { if (!Number.isInteger(p.windKind) || !WIND_MODEL_KINDS[p.windKind]) return false; prepareWindModel({ kind: WIND_MODEL_KINDS[p.windKind], air01: p.airPressure01, bite01: p.bite01, lengthRatio: p.acousticLengthRatio, leak01: p.breathLeak01, bell01: p.bellOpening01 }); return true; } catch { return false; } },
+    acceptsOnset: (p, frequency) => { const range = WIND_PITCH_DOMAINS[p.windKind], root = frequency / p.acousticLengthRatio; return !!range && root >= range[0] && root <= range[1]; },
+    beginFields: (p, seed) => ({ 18: seed, 19: p.windKind, 20: p.airPressure01, 21: p.bite01, 22: p.acousticLengthRatio, 23: p.breathLeak01, 24: p.bellOpening01 }) }),
   'worklet-friction': createProfile({ id: 'worklet-friction', controlReferenceRender: true, width: FRICTION_LAYOUT.width, voices: FRICTION_LAYOUT.voices, fields: NATIVE_FRICTION_FIELDS, parameters: NATIVE_FRICTION_PARAMETERS, buildId: 'owned-friction-v1-sealed-modal', abi: 'owned-friction-f64-command-v1', workletUrl: new URL('./worklet/OwnedFrictionProcessor.js', import.meta.url).href,
     rateLimit: true, seedDomain: 'sealed-friction-v1', minHz: 110, maxHz: 660, bendCents: 0, storageBytes: frictionSourceBytes, heapEstimate: 65536, cost: p => 16 + (p.frictionKind === 1 ? 6 : 12), travelPlanner: planFrictionTravel, travelReceiptKey: 'frictionTravel', travelDomain: 'friction', travelPolicy: 'canonical-signed-axis-sealed-friction;observed-spans;zero-bow-work-at-rest;onset-tuned-body', restoration: 'exactSnapshot', acceptsExpression: expression => expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,
     acceptsParameters: p => { try { if (!Number.isInteger(p.frictionKind) || !FRICTION_MODEL_KINDS[p.frictionKind]) return false; prepareFrictionModel({ kind: FRICTION_MODEL_KINDS[p.frictionKind], dragSlope: p.frictionDragSlope, pressure01: p.frictionPressure01, contactPosition01: p.frictionContact01, bodyMix01: p.frictionBodyMix01 }); return true; } catch { return false; } },

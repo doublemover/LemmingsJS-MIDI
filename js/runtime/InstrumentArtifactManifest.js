@@ -5,6 +5,7 @@ export const INSTRUMENT_ARTIFACT_ROOTS = Object.freeze({
   'native-fm': 'js/app/midi-ui/nativeOscillatorBackend.js',
   'native-modal': 'js/app/midi-ui/nativeOscillatorBackend.js',
   'native-sample': 'js/app/midi-ui/sampleInstrumentBackend.js',
+  'worklet-wind': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-friction': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-choir': 'js/app/midi-ui/workletInstrumentBackend.js',
   'worklet-pluck': 'js/app/midi-ui/workletInstrumentBackend.js',

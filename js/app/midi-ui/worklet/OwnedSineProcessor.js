@@ -15,7 +15,7 @@ class OwnedSineKernel {
   constructor(sampleRate, maxVoices = MAX_VOICES, { source = null, width = WIDTH } = {}) {
     if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 384000 ||
         !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > MAX_VOICES) throw new Error('Invalid sine kernel limits.');
-    if (![18, 24, 26, 33, 40, 48, 73, 80].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function') || source.ownsEnvelope && typeof source.finished !== 'function')) throw new Error('Invalid owned source profile.');
+    if (![18, 24, 26, 33, 40, 48, 56, 73, 80].includes(width) || width !== 18 && !source || source && (width === 18 || ['begin', 'sample', 'validFrequency', 'validUpdate', 'applyUpdate'].some(method => typeof source[method] !== 'function') || source.ownsEnvelope && typeof source.finished !== 'function')) throw new Error('Invalid owned source profile.');
     this.width = width; this.source = source;
     this.sampleRate = sampleRate; this.maxVoices = maxVoices;
     this.queue = new Float64Array(CAPACITY * this.width); this.queueLength = 0;

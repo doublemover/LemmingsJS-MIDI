@@ -5307,3 +5307,33 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   dropout/register/pitch/spectrum/DC/device measurements and levelmatched listening
   remain pending. Owned adapter/cuts, content, expression and Breathing Stairwell
   are the next dependency work for #1137, not completed acceptance here.
+
+
+### Continuation 211 — owned wind expression, ordinary content and exact cuts
+
+- Integrated `worklet-wind` with the existing two-slot gate/lease/lifecycle,
+  per-actor channel pressure, typed patch schema/compiler, artifact/profile
+  closure, lane preparation and owned control/offline/revoice paths. Conditional
+  source domains validate the actual onset-Hz/acoustic-size ratio. Unsupported
+  live bend fails; an internal register change retains its original token.
+- Added independently owned exact kernel cuts and pre-mutation validation of
+  source/core pins, positive coefficients, register/hysteresis banks, pressure,
+  filter observations and cumulative energy. Deterministic noise age validates
+  through an O(log age), bounded 32-bit linear jump rather than replaying samples.
+  This API does not qualify an arbitrary live host checkpoint or PCM equivalence.
+- Added three ordinary original recipes with AIR/BITE/LENGTH/LEAK onset macros,
+  sealed semantic interfaces, honest single-profile limits and existing library
+  preparation/audition/save/apply. Held channel pressure is distinct from onset
+  macros. The explicit pressure fixture contains no physical-take claim and the
+  source introduces no external feedback loop, PCM or additional MIDI owner.
+- Authored unrun rate/family exact cuts, future queue/register/rest/end/retired
+  boundaries, same-pitch pressure independence, cancellation/Panic, forged
+  valid-checksum state, noise jumps, conditional onset admission and ordinary
+  control-render fixtures. Added the unrun three-rate pressure/pitch/bite grid
+  and sixty-second sustain runner, reporting numerical/DC/register/pitch/process
+  observations separately from acoustic/device qualification.
+- Breath scene/gesture proofs, full stability/dropout/register region review,
+  alias/tone, actual device worklet cost, PCM continuation and levelmatched
+  listening remain pending for #1137. Static-only checks precede the commit;
+  runtime/build/browser/audio/CI qualification continues to wait for the combined
+  validation pass after remaining development, as requested.

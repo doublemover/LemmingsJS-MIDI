@@ -1902,7 +1902,18 @@ not an empirically found stable region or calibrated reed mechanism.
 Background references are [Smith's woodwind negative-resistance discussion](https://dsprelated.com/freebooks/pasp/Woodwinds.html)
 and the [Faust physical-model inventory](https://faustlibraries.grame.fr/libs/physmodels/).
 The new kernel specifies its own curve, modal coefficients and register policy;
-no third-party implementation is copied. Owned engine/content and proof-scene
-integration follow this foundation. Numerical stability maps, sixty-second
-sustain, spectral/alias/pitch/cost and levelmatched listening are unrun. This
-foundation is not yet a selectable engine or a qualified wind emulation.
+no third-party implementation is copied. `worklet-wind` now integrates the owned
+voice/pressure/lifecycle, typed patch/content, explicit held-pressure control
+audition and offline/revoice paths. Exact kernel cuts retain nonlinear/modal,
+noise/filter, register, gate/identity and future command state. Restore validates
+coefficients, energy, hysteresis and the deterministic noise age with a bounded
+logarithmic jump; it does not replay a long audio prefix on the control thread.
+The new ordinary recipes expose AIR/BITE/LENGTH/LEAK at onset and existing held
+channel pressure for active bodies. Unsupported live pitch bending is rejected.
+
+`scripts/qualify-wind-source.mjs` authors the three-rate pressure/pitch/bite grid
+and sixty-second sustains with finite/DC/energy/register/pitch/cost observations.
+It and the new integration/cut/forged-state fixtures are unrun. Continuous
+stability regions, dropout/unwanted-register review, spectral/alias/pitch/device
+cost, Breathing Stairwell and levelmatched listening remain pending. This
+selectable experimental model is not a qualified wind emulation.

@@ -19,3 +19,5 @@ export const TEXTURE_CONTROL_FIXTURE = freezeData({ ...SOUND_CONTENT_CONTROL_FIX
     ...(event.expression ? { expression: Object.fromEntries(Object.entries(event.expression).filter(([key]) => key !== 'pitchOffsetCents')) } : {}) })) });
 
 export const FRICTION_CONTROL_FIXTURE = freezeData({ ...TEXTURE_CONTROL_FIXTURE, id: 'sealed-friction-seventy-eight-pixel-control-v1', motionProgram: 'seventy-eight-pixels-in-six-hundred-fifty-ms;then-rest-and-tail;authored-not-physical-take' });
+
+export const WIND_CONTROL_FIXTURE = freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: 'sealed-wind-held-pressure-v1', events: TEXTURE_CONTROL_FIXTURE.events });
