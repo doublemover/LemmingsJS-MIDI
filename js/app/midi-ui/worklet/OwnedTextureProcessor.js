@@ -29,17 +29,14 @@ export class OwnedTextureSource {
   release(slot, _frames, frame) { this.children[slot].end(frame); }
   retire(slot) { this.children[slot].clear(); }
   sample(slot, _frequency, frame) { const child = this.children[slot]; child.sample(frame); this.leftSample = child.leftSample; this.rightSample = child.rightSample; return (this.leftSample + this.rightSample) * 0.5; }
-  diagnostics() { return { kind: 'owned-spatial-texture', revision: TEXTURE_EXCITER_REVISION, restoration: 'semanticResume;modal-and-filter-history-not-restored', pulseSlotsPerVoice: LIMITS.pulses, maximumBirthsPer128Frames: LIMITS.birthsPer128Frames,
+  diagnostics() { return { kind: 'owned-spatial-texture', revision: TEXTURE_EXCITER_REVISION, restoration: 'exactSnapshot;pcm-equivalence-qualification-pending', pulseSlotsPerVoice: LIMITS.pulses, maximumBirthsPer128Frames: LIMITS.birthsPer128Frames,
     birthBucket: this.admission[0], bucketBirths: this.admission[1], voices: this.children.map((child, slot) => child.state[0] ? ({ slot, seed: child.state[1], kind: child.state[2], signedPositionPixels: child.state[8], lastOutputFrame: child.state[13], requestedChildren: child.state[24], rejectedChildren: child.state[25], peak: child.state[23], inputEnergy: child.state[34], outputEnergy: child.state[35], externalBodyModes: child.state[42], bodyInputStopped: !!child.state[45], maximumBodyInputPeak: child.state[46], fixedBodyRootHz: child.state[47] }) : null).filter(Boolean) }; }
 }
 export class OwnedTextureKernel extends OwnedSineKernel {
   constructor(rate, voices = TEXTURE_LAYOUT.voices) { super(rate, voices, { width: TEXTURE_LAYOUT.width, source: new OwnedTextureSource(rate, voices) }); }
-  stateByteLength() { throw new Error('This texture profile supports semanticResume; exact audio state transfer is unavailable.'); }
-  snapshotInto() { throw new Error('This texture profile supports semanticResume; exact audio state transfer is unavailable.'); }
-  restoreFrom() { throw new Error('This texture profile supports semanticResume; exact audio state transfer is unavailable.'); }
 }
 export class OwnedTextureProcessor extends OwnedSineProcessor {
   createKernel(rate, voices) { return new OwnedTextureKernel(rate, Math.min(voices, TEXTURE_LAYOUT.voices)); }
-  runtimeIdentity() { return { engineId: 'worklet-texture', engineVersion: 1, runtimeABI: 'owned-texture-f64-command-v2', buildId: 'owned-texture-v2-private-body', restoration: 'semanticResume' }; }
+  runtimeIdentity() { return { engineId: 'worklet-texture', engineVersion: 1, runtimeABI: 'owned-texture-f64-command-v2', buildId: 'owned-texture-v3-state-cut', restoration: 'exactSnapshot' }; }
 }
 if (typeof globalThis.registerProcessor === 'function') globalThis.registerProcessor('lemmings-owned-texture-v1', OwnedTextureProcessor);

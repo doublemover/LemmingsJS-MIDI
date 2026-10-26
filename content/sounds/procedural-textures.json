@@ -907,7 +907,7 @@
         }
       ],
       "transitions": [],
-      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity, exact audio snapshot or qualified crossfade is asserted."
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
@@ -935,7 +935,7 @@
         }
       ],
       "transitions": [],
-      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity, exact audio snapshot or qualified crossfade is asserted."
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
@@ -963,7 +963,7 @@
         }
       ],
       "transitions": [],
-      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity, exact audio snapshot or qualified crossfade is asserted."
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
     },
     {
       "schema": "lemmings-authored-sound-realizations/v1",
@@ -991,7 +991,7 @@
         }
       ],
       "transitions": [],
-      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity, exact audio snapshot or qualified crossfade is asserted."
+      "singleProfileLimit": "Only this scoped actor-owned realization is available. No cheaper tier, measured material identity or qualified crossfade is asserted. Exact kernel-state cuts await PCM-equivalence qualification."
     }
   ]
 }

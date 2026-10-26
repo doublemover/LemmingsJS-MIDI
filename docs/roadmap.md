@@ -5018,3 +5018,36 @@ unchanged. Authored fixtures cover dispatcher/callback/history retention and an
 actual causal-engine movement/rest/reversal sequence rendered as one owned source.
 They remain unrun with the combined runtime acceptance pass. Only formatting,
 syntax/provenance and limited critical type checks are performed here.
+
+
+### Continuation 202 — owned texture source-state cut implementation (#1179, #1001, #1045)
+
+The texture kernel now joins the existing owned-source state envelope as a new
+kind, rather than implementing a separate checkpoint owner. Its five exact-size
+Float64 arrays retain exciter/filter/correlation/cursor state, all modal states,
+finite pulses (including actual birth frame), signed observation weights and the
+shared absolute-128-frame admission quota. Output scalars, queued parent commands,
+release, mix and lane-routing/core ancestry share the existing CRC and exact
+artifact/patch/graph pins. This supersedes the semanticResume-only implementation
+of continuations 198–201 at the kernel API boundary; arbitrary live-host/audio
+checkpoint preservation remains a separate integration and qualification task.
+
+Validation runs before any target mutation. It checks complete storage shapes,
+retired zero state, source/core token/epoch/generation/pitch/release frontiers,
+contiguous rendered-frame cursor, bounded spatial spans, native coefficient
+reconstruction, positive external modal loss/register/injection, signed L1
+observation, state energy/peak bounds, finite burst membership/amplitudes and
+absolute-frame quota. Bankless original texture state is pinned by the core
+artifact and patch identities; no synthetic sample-bank hash is introduced.
+The extension preserves older source kinds and their byte layouts. Runtime build
+identity advances while the 80-scalar command ABI remains unchanged.
+
+Authored fixtures cover all four exciters at 44.1/48/96 kHz, independent restored
+buffers and varied render partitions; queued begin/reverse/end, at-rest/private
+body tail, completed retirement, future crackle offspring and preserved quota;
+plus valid-checksum forged arity/coefficient/core/quota, wrong identity, corrupt
+checksum and aliased/incorrect transfer rejection without target mutation. They
+are unrun. Only formatting, syntax/provenance and limited critical type checks
+are performed. Profile and manifest text explicitly retain pending PCM/browser
+qualification; this implementation does not promote a measured device tier or
+cross-browser/listening guarantee.

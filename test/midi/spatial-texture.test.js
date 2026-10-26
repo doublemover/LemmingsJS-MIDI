@@ -66,12 +66,12 @@ describe('owned spatial procedural textures (runtime and listening qualification
     expect(planned.from).to.equal(0); expect(planned.to).to.equal(8 / 128); expect(planned.endFrame - planned.firstFrame).to.equal(2880); expect(planned.receipt.physicalTakeEvidence).to.equal(true); expect(planned.receipt.firstSignedPositionPixels).to.equal(0); expect(planned.receipt.endSignedPositionPixels).to.equal(8); expect(planned.receipt).not.to.have.property('firstPhaseCycles');
     expect(() => planTextureTravel(p, { ...intent, actorId: 8 }, 100, 48000)).to.throw(); expect(() => planTextureTravel(p, { ...intent, sourceEventIds: [] }, 100, 48000)).to.throw();
     expect(planTextureTravel(p, { controlFixture: true }, 100, 48000).receipt.physicalTakeEvidence).to.equal(false);
-    expect(() => prepareTextureExciter({ kind: 'sand-drag', bodySeconds: 0.25 })).to.throw('authored domain'); expect(profile.restoration).to.equal('semanticResume');
-    const kernel = new OwnedTextureKernel(48000, 1), before = kernel.source.state.slice(); expect(() => kernel.restoreFrom(new Uint8Array(1024))).to.throw('semanticResume'); expect(kernel.source.state).to.deep.equal(before);
+    expect(() => prepareTextureExciter({ kind: 'sand-drag', bodySeconds: 0.25 })).to.throw('authored domain'); expect(profile.restoration).to.equal('exactSnapshot');
+    const kernel = new OwnedTextureKernel(48000, 1), before = kernel.source.state.slice(); expect(() => kernel.restoreFrom(new Uint8Array(1024))).to.throw('exact-size'); expect(kernel.source.state).to.deep.equal(before);
   });
   it('compiles the four ordinary saved recipes and uses the same renderer for explicit motion/rest control WAVs', async () => {
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-texture', engineVersion: 1, artifactHash: 'a'.repeat(64) }]), raw = JSON.parse(await fs.readFile(new URL('../../content/sounds/procedural-textures.json', import.meta.url), 'utf8'));
-    const compiled = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(compiled.prepared.patches).to.have.length(4); expect(descriptor.capabilities).to.include({ proceduralTextures: true, semanticResumeOnly: true, perVoicePitch: false });
+    const compiled = await compileSoundContent(raw, { targets: [{ descriptor }] }); expect(compiled.prepared.patches).to.have.length(4); expect(descriptor.capabilities).to.include({ proceduralTextures: true, exactSourceStateTransfer: true, perVoicePitch: false });
     for (const patch of compiled.prepared.patches) { expect(patch.definition.sampleRefs).to.have.length(0); expect(patch.definition.macros.map(macro => macro.name)).to.deep.equal(['GRAIN', 'DRAG', 'SHADE', 'BODY']); }
     const patch = compiled.prepared.patches[0], source = { packId: compiled.prepared.pack.id, packVersion: compiled.prepared.pack.version, contentHash: compiled.prepared.contentHash, patchIdentity: patch.identity, definitionHash: await hashData(patch.definition), attribution: 'Original control fixture' };
     const rendered = await renderOwnedSourceControls({ definition: patch.definition, descriptor, source }, { yieldControl: async () => {} }); expect(rendered.manifest.statistics.peak).to.be.greaterThan(0); expect(rendered.manifest.physicalTakeEvidence).to.equal(false);
@@ -84,7 +84,7 @@ describe('owned spatial procedural textures (runtime and listening qualification
       sourceVersions: { physicalMusic: 9 }, coverage: { status: 'known-covered' }, boundary: { status: 'captured-initial-state', state: { voices: [], sourceTimeMs: 0 } }, finalBoundaryState: { sourceTimeMs: 500 }, intents };
     const result = await renderCausalOwnedTake({ definition: compiled.prepared.patches[0].definition, descriptor, revoice, sampleRate: 48000, startSeconds: 0, endSeconds: 0.3, tail: { mode: 'bounded-natural', maxSeconds: 1 } }, { yieldControl: async () => {} });
     expect(result.manifest.commands.capturedBegins).to.equal(1); expect(result.manifest.realization.textureTravel.voices).to.equal(1); expect(result.manifest.realization.textureTravel.segments).to.equal(intents.filter(intent => intent.articulationState?.travel).length);
-    expect(result.manifest.realization.textureTravel.policy).to.include('no-pitch-cycle'); expect(result.manifest.realization.textureTravel.restoration).to.include('semanticResume'); expect(result.manifest.realization).not.to.have.property('circularTravel'); engine.dispose();
+    expect(result.manifest.realization.textureTravel.policy).to.include('no-pitch-cycle'); expect(result.manifest.realization.textureTravel.restoration).to.include('exactSnapshot'); expect(result.manifest.realization).not.to.have.property('circularTravel'); engine.dispose();
   });
 
 });

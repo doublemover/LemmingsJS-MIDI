@@ -1,10 +1,13 @@
+import { validateOwnedTextureState } from './OwnedTextureState.js';
+import { TEXTURE_EXCITER_LIMITS } from '../../../midi/content/TextureExciter.js';
 import { resolveCircularSpectrum } from '../../../midi/content/CircularSpectrum.js';
 import { ownedKernelStateBytes, writeOwnedKernelState, restoreOwnedKernelState } from './OwnedSineState.js';
-import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT } from '../OwnedSourceLayout.js';
+import { PLUCK_LAYOUT, CHOIR_LAYOUT, SPECTRUM_LAYOUT, GRANULAR_LAYOUT, SAMPLE_LAYOUT, TEXTURE_LAYOUT } from '../OwnedSourceLayout.js';
 
 export const OWNED_SOURCE_STATE_ABI = 'owned-source-state-le-v3-lane-transfer';
 const HEADER = 256, MAX_BYTES = 16 * 1048576;
 const profiles = Object.freeze({
+  80: { id: 'worklet-texture', kind: 6, layout: TEXTURE_LAYOUT, arrays: ['state', 'modes', 'pulses', 'observation', 'admission'], scalars: ['leftSample', 'rightSample'] },
   24: { id: 'worklet-pluck', kind: 1, layout: PLUCK_LAYOUT, arrays: ['state', 'buffer', 'scratch'], scalars: ['initializationWrites', 'initializationDenials', 'initializationBucket'] },
   26: { id: 'worklet-choir', kind: 2, layout: CHOIR_LAYOUT, arrays: ['state', 'bands'], scalars: [] },
   73: { id: 'worklet-spectrum', kind: 3, layout: SPECTRUM_LAYOUT, arrays: ['state', 'partials'], scalars: [] },
@@ -26,7 +29,8 @@ const profileFor = kernel => {
   const profile = profiles[kernel?.width], source = kernel?.source;
   if (!profile || !source || source.rate !== kernel.sampleRate || source.voices !== kernel.maxVoices ||
       !integer(source.voices, 1, profile.layout.voices)) fail('Unknown source or incompatible owned voice profile.');
-  const expected = profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
+  const t = TEXTURE_EXCITER_LIMITS;
+  const expected = profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
     profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
       profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
         profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorScalars] :
@@ -37,7 +41,7 @@ const profileFor = kernel => {
   }
   if (profile.kind === 1 && (source.stride !== Math.ceil(kernel.sampleRate / PLUCK_LAYOUT.delayFloorHz) + PLUCK_LAYOUT.delayMargin || source.maxInitializationWrites !== 65536))
     fail('Pluck storage or initialization budget differs from its state profile.');
-  if (profile.kind !== 1 && !hash(source.bank?.hash) || profile.kind === 4 && (!hash(source.descriptor?.bankHash) ||
+  if (![1, 6].includes(profile.kind) && !hash(source.bank?.hash) || profile.kind === 4 && (!hash(source.descriptor?.bankHash) ||
       source.sourceGain !== 0.9 / Math.max(1, source.descriptor.peak) / 4)) fail('Source asset identity or derived gain is unavailable.');
   if (profile.kind === 5 && (!(source.configuration instanceof Uint8Array) || !(source.configuration.buffer instanceof ArrayBuffer) || source.configuration.length > 524288 ||
       !hash(source.descriptor?.bankHash) || source.ownsEnvelope !== true || typeof source.validateStoredState !== 'function' || typeof source.synchronizeState !== 'function' || typeof source.rehydrateState !== 'function' ||
@@ -78,6 +82,10 @@ const inspectSource = (kernel, profile, view) => {
   if (profile.kind === 4 && (!integer(data.scalars[0], -1) || !integer(data.scalars[1], 0, GRANULAR_LAYOUT.birthsPerBucket) ||
       !finite(data.scalars[2]) || !finite(data.scalars[3]))) fail('Granular birth frontier is invalid.');
   const core = HEADER, width = kernel.width, voiceOffset = core + 128 + 512 * width * 8, activeOffset = voiceOffset + 64 * 28 * 8;
+  if (profile.kind === 6) {
+    validateOwnedTextureState({ source, arrays: data.arrays, scalars: data.scalars, frame: view.getFloat64(core + 24, true), active: slot => view.getUint8(activeOffset + slot), voice: (slot, field) => view.getFloat64(voiceOffset + (slot * 28 + field) * 8, true) });
+    return data;
+  }
   if (profile.kind === 5) {
     if (data.scalars.some(value => Math.abs(value) > 256)) fail('Sample read scalar state exceeds its source bound.');
     source.validateStoredState(state, data.arrays[1].get, data.arrays[2].get);
@@ -145,9 +153,9 @@ const verify = (kernel, bytes, profile) => {
   if (view.getUint32(0, true) !== 0x3153444c || view.getUint32(4, true) !== 2 || view.getUint32(8, true) !== bytes.length ||
       view.getUint32(12, true) !== coreBytes || view.getUint32(16, true) !== profile.kind || view.getUint32(20, true) !== kernel.width ||
       view.getUint32(24, true) !== profile.arrays.length || view.getUint32(28, true) !== profile.scalars.length || view.getUint32(252, true) !== checksum(bytes)) fail('Source state ABI, profile, size or checksum differs.');
-  for (let i = 0; i < 3; i++) if (view.getUint32(32 + i * 4, true) !== (kernel.source[profile.arrays[i]]?.byteLength || 0)) fail('Source memory shape differs.');
+  for (let i = 0; i < (profile.kind === 6 ? 5 : 3); i++) if (view.getUint32(32 + i * 4, true) !== (kernel.source[profile.arrays[i]]?.byteLength || 0)) fail('Source memory shape differs.');
   if (profile.kind === 5 && view.getUint32(44, true) !== kernel.source.configuration.length) fail('Sample state configuration size differs.');
-  for (let i = 44; i < 252; i++) if (!(i >= 64 && i < 128) && !(profile.kind === 5 && i < 48) && bytes[i]) fail('Source state reserved header is noncanonical.');
+  for (let i = 44; i < 252; i++) if (!(i >= 64 && i < 128) && !(profile.kind === 5 && i < 48) && !(profile.kind === 6 && i < 52) && bytes[i]) fail('Source state reserved header is noncanonical.');
   if (profile.kind === 5) { const configuration = kernel.source.configuration, offset = bytes.length - configuration.length; for (let i = 0; i < configuration.length; i++) if (bytes[offset + i] !== configuration[i]) fail('Sample state belongs to a different exact prepared map.'); }
   identities(view, kernel.source, false); return { view, data: inspectSource(kernel, profile, view), coreBytes };
 };
@@ -168,7 +176,7 @@ export function writeOwnedSourceState(kernel, destination, identity) {
   if (profile.kind === 5) destination.set(kernel.source.configuration, offset);
   view.setUint32(252, checksum(destination), true); verify(kernel, destination, profile);
   return Object.freeze({ ...cut, abi: OWNED_SOURCE_STATE_ABI, engineId: profile.id, bytes: destination.length,
-    immutableAssets: 'pinned-exact-bank-hashes-not-copied', qualification: 'state-contract-awaiting-pcm-equivalence' });
+    immutableAssets: profile.kind === 6 ? 'original-spatial-kernel-and-inline-body-bound-to-core-artifact-and-patch-pins' : 'pinned-exact-bank-hashes-not-copied', qualification: 'state-contract-awaiting-pcm-equivalence' });
 }
 
 export function restoreOwnedSourceState(kernel, source, identity) {

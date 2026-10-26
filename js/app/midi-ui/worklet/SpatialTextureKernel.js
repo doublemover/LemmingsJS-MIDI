@@ -49,7 +49,7 @@ export class SpatialTextureKernel {
     const free = (~(s[21] >>> 0)) >>> 0;
     if (!free || this.admission[1] >= LIMITS.birthsPer128Frames) { s[25]++; return false; }
     const slot = 31 - Math.clz32((free & -free) >>> 0), at = slot * LIMITS.pulseWidth;
-    this.pulses[at] = startFrame; this.pulses[at + 1] = duration; this.pulses[at + 2] = left; this.pulses[at + 3] = right; s[21] = ((s[21] >>> 0) | 1 << slot) >>> 0; this.admission[1]++; return true;
+    this.pulses[at] = startFrame; this.pulses[at + 1] = duration; this.pulses[at + 2] = left; this.pulses[at + 3] = right; this.pulses[at + 4] = frame; s[21] = ((s[21] >>> 0) | 1 << slot) >>> 0; this.admission[1]++; return true;
   }
   sample(frame) {
     this.leftSample = this.rightSample = 0; const s = this.state;

@@ -165,6 +165,7 @@
         "js/app/midi-ui/worklet/OwnedSourceState.js",
         "js/app/midi-ui/worklet/OwnedSpectrumProcessor.js",
         "js/app/midi-ui/worklet/OwnedTextureProcessor.js",
+        "js/app/midi-ui/worklet/OwnedTextureState.js",
         "js/app/midi-ui/worklet/RectangularMembraneKernel.js",
         "js/app/midi-ui/worklet/RectangularMembraneProcessor.js",
         "js/app/midi-ui/worklet/RingModulatorKernel.js",
@@ -294,8 +295,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 183,
-      "sha256": "9092635fa6bfa7ec60cfdb241444617ad1a9b49ba4ab1edc06030320366bf79e"
+      "fileCount": 184,
+      "sha256": "804375574ff172dccabfaaefbc868d46655cca79d09189944a43384ada448814"
     },
     {
       "id": "lemmings-timing-worker-source",

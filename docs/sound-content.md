@@ -817,12 +817,16 @@ discontinuities, excessive speed and unsupported tuning fail instead of starting
 a backing sound. The initial profile supports 44.1/48/96 kHz, at most 512 observed
 world pixels/second and signed coordinates within eight million pixels.
 
-Restoration is **semanticResume**: the new source can be revoiced from semantic
-causes but its old filters, burst queue and modal history are not an exact audio
-snapshot. Exact transfer requests are rejected before mutation. Pulse statistics,
-block/reversal/stop/Panic fixtures, spectral/alias assessment, device cost and
-matched-level listening remain separate qualification work. Material Ribbon,
-fitted-body texture grafts and sealed bow/reed outer bodies remain pending.
+The owned texture kernel implements **exactSnapshot** cuts under the existing
+artifact/patch/graph identity and checksum envelope. Spatial cursor, finite burst
+birth/start/duration/amplitude, shared absolute-frame quota, correlation/filter
+memory, modal state and signed pickup weights are copied into an independent
+renderer. Restore validates every source array and its owned core gate before
+mutation. Queued commands, release/retirement and the original parent envelope
+remain part of the core cut. This kernel API is pending PCM-equivalence and
+browser qualification; it does not certify an arbitrary live host checkpoint or
+claim listening quality. A future/incompatible cut is rejected rather than
+silently resumed with a new noise/body history.
 
 
 Spatial texture body grafts use the seed lab's **Spatial texture → modal body**
