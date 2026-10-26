@@ -5553,3 +5553,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   shared-body scenes until it can reproduce their complete control path. Bridge
   browser/PCM/route measurements, moving-control cost and matched-level listening
   remain pending; this experimental authored score is not acoustic qualification.
+
+
+### Continuation 220 — complete isolated rehearsal of the reviewed route body
+
+- Extended private scene rehearsal to the exact one-body initial morph mechanism.
+  The candidate loans its verified recipe; the worker checks its complete hash,
+  source build, body count and sustained mapping before preparing DSP. Other
+  unsupported shared-body topologies still fail explicitly. Source and recipe
+  DTOs are sealed independently of caller edits.
+- Mixed the same bounded assetless lane renders through one owned paired-body
+  graph and projected only the first matching journey's actual signed-distance
+  intents into MORPH. Canonical order, source interval and source end are checked;
+  no onset or motion is manufactured. Native and owned paired-body adapters use
+  the same Float32 automation coordinate. The body receives the same owner sum
+  rather than a separate body for each lane or actor.
+- Retained the complete declared body-tail window after the source boundary tail,
+  with bounded workspace, cooperative cancellation and explicit offline fault
+  refusal. The retained WAV manifest binds exact recipe, graph, map/profile,
+  source voice/generation, control-schedule hash, tail and numerical diagnostics.
+  The cue owner rejects foreign body/recipe results before playback.
+- Authored unrun supported-rate real private-world-source/DSP render, same-input
+  repeat identity, complete tail/no extra onset, stale/missing recipe, workspace,
+  cancellation and stale-owner fixtures. This is new isolated rehearsal PCM, not
+  historical performance, browser/device or acoustic evidence. All runtime and
+  listening checks remain deferred for the combined qualification pass.

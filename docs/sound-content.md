@@ -1010,5 +1010,9 @@ The initial mechanism is part of the exact scene recipe/origin. Preparation
 checks the reviewed source hashes and mapping, counts one shared body and retains
 all temporary storage until cancellation settles. An explicit performer graph
 replacement stays in place. This score still needs browser, route, cost, PCM and
-matched-level listening evidence; its private Prelisten rehearsal remains
-explicitly unavailable until the shared-body control path is supported there.
+matched-level listening evidence; its private Prelisten rehearsal now renders the exact reviewed shared body,
+actual private-source route controls and the complete declared body tail. The
+recipe, graph/profile and control-schedule hashes remain in the retained WAV
+manifest. This is a new isolated source prefix, not a reproduction of a prior
+physical take or evidence about acoustic output. Other shared-body mechanisms
+need their own complete rehearsal adapters.

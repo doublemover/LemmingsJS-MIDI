@@ -12,7 +12,7 @@ export class PairedModalBodyKernel {
     this.leftSample = this.rightSample = 0;
     if (this.muted) { this.frame++; return; }
     if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left) > 32 || Math.abs(right) > 32 || !Number.isFinite(morph01) || morph01 < 0 || morph01 > 1) { this.faults++; this.panic(); this.frame++; return; }
-    this.body.sample((left * 0.5 + right * 0.5) / 32 * this.profile.parameters.inputGain01, this.frame++, morph01);
+    this.body.sample((left * 0.5 + right * 0.5) / 32 * this.profile.parameters.inputGain01, this.frame++, Math.fround(morph01));
     if (this.body.state[7]) { this.faults++; this.panic(); return; }
     this.leftSample = this.body.leftSample * 0.25; this.rightSample = this.body.rightSample * 0.25;
   }
