@@ -1,4 +1,5 @@
 import { createGlassOrbitScores } from './GlassOrbitScore.js';
+import { createBuilderMinerScores } from './BuilderMinerScore.js';
 import { createMetamorphicBridgeScore } from './MetamorphicBridgeScore.js';
 import { createWindPerformanceScore } from './WindPerformanceScore.js';
 import { createFrictionPerformanceScore } from './FrictionPerformanceScore.js';
@@ -108,7 +109,17 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const fm = catalog.descriptors.find(value => value.engineId === 'native-fm');
   if (fm?.capabilities.perVoicePitch && fm.maximumVoices >= 8) {
     put('engine', fm.engineId, fm.engineVersion, fm.artifactHash); put('parameter-schema', fm.engineId, fm.engineVersion, fm.parameterSchemaHash);
-    for (const item of await createGlassOrbitScores({ sourceHash, descriptor: fm, signal })) {
+    for (const item of [...await createGlassOrbitScores({ sourceHash, descriptor: fm, signal }), ...await createBuilderMinerScores({ sourceHash, descriptor: fm, signal })]) {
+      recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
+      for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
+      for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');
+      await registry.register(item.scene); signal?.throwIfAborted();
+    }
+  }
+  const modal = catalog.descriptors.find(value => value.engineId === 'native-modal');
+  if (modal?.maximumVoices >= 8) {
+    put('engine', modal.engineId, modal.engineVersion, modal.artifactHash); put('parameter-schema', modal.engineId, modal.engineVersion, modal.parameterSchemaHash);
+    for (const item of await createBuilderMinerScores({ sourceHash, descriptor: modal, signal })) {
       recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, 1, item.recipeHash, 'embedded');
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const patch of item.scene.patchRefs) put('patch', patch.reference.patchId, patch.reference.revision, patch.reference.definitionHash, 'embedded');

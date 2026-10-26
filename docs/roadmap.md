@@ -5924,3 +5924,29 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Static checks only. Live WarpVoice streaming/automation, onset/spectral/tail
   acceptance, browser/device cost, matched-level listening and the combined
   runtime/CI pass remain pending; finite material is not a qualified live tier.
+
+### Continuation 233 — finite Builder-Miner dialogue and operation-owned attacks
+
+- Added six explicit #1099 score entries: dialogue, staggered pair and a third
+  bashing crew, each with separately named dry FM and four-mode modal recipes.
+  Equivalent realizations retain identical physical recipes and causal mapping.
+  Original modal tables have positive finite loss, distinct strike responses and
+  no material-identification or perceptual qualification claim.
+- Authored adjacent finite benches, bounded excavation above a steel floor,
+  one entrant per lane, exact work stations and manual-only world policy. A
+  performer must explicitly arm the existing physical feedback owner to request
+  each station's skill once, or assign skills manually. No scene load silently
+  arms automation. Actual commands and outcomes use the existing journal.
+- Only operation-accurate successful solid changes create attacks. Station
+  crossings, requested/rejected assignments, animation/SFX, protected work and
+  exhausted material produce no replacement notes. No crew or terrain is
+  replenished to complete a phrase. Existing lane mute/solo and later-onset
+  hardness edits leave physical work independent.
+- Authored unrun real-world fixtures for builder/miner phase and operation
+  ratios, bounded command counts, third-crew bashing, unarmed/empty silence,
+  unchanged physical motion under sound edits, immutable source closure and
+  explicit modal/FM variants. Geometry, action-phase runtime results, resource
+  costs, audio separation and listening acceptance remain unestablished.
+- Prepared multisample/friction, talking tools, phrase cargo, live graft and
+  shared-body variations remain separate work; these six dry scores do not
+  claim the complete scene issue is closed. Combined validation remains deferred.
