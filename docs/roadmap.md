@@ -6013,3 +6013,37 @@ export-budget acknowledgments still prevent a false complete receipt.
   metrics, audio/physical cause displays, measured cost and listening remain
   unqualified. Cargo Journey echo, tape/duck variants, room zones and the shared
   gallery body remain separate development; the complete issue remains open.
+
+
+### Continuation 236 — native-source private rehearsal and exact input accounting
+
+- Added the missing native FM/modal/oscillator private-scene path used by Glass
+  Orbit and the dry Workshop scores. Existing OfflineAudioContext preparation
+  runs outside the worker; at most four assetless native lanes and 32 MiB of
+  retained PCM are admitted sequentially. Native samples remain unavailable
+  without their separate material adapter. No owned oscillator impersonates a
+  native source, and cross-browser bit identity remains explicitly unclaimed.
+- Factored the lane revoice/source identity shared by native preparation and the
+  worker mixer. The worker independently replans captured intents, verifies
+  exact source/definition/engine/build, completed frame interval and native
+  receipt, then uses the existing native WAV encoder and common lane mix.
+  Missing, duplicate, stale or unrelated native PCM is rejected before output.
+- Native PCM remains reserved through snapshot-copy acknowledgment. Retained
+  plans, channel planes, transport/encoding overlap and mixed output are counted
+  separately. Cancellation waits for an accepted native producer; unknown
+  release is retained, never blindly retried. Independent lane releases still
+  run when one fails, and upstream partial retirement reaches the cue owner.
+- Corrected inspected JSON byte accounting: array commas and object colons/
+  commas now match canonical serialized bytes, including empty containers.
+  The old conservative separator count could reject requests sized from their
+  exact canonical payload. Structural/retained-object estimates remain separate.
+- Moved Glass Orbit's evenly spaced first gate closer so its finite private
+  prefix can include a real source attack. Pitch declarations, finite actors,
+  source ownership and reverse-return behavior retain their existing policies.
+- Authored unrun mechanical native-PCM fixtures for exact plans, worker encoding,
+  handoff lifetime, late cancellation, partial preparation and independent
+  unknown cleanup, plus exact JSON byte-boundary/Unicode fixtures. These are
+  not native synthesis, onset, browser, acoustic or listening qualification.
+- Static checks only. Explicit private Workshop station arming, composite layer
+  families, live warp and the other roadmap work remain development; combined
+  runtime/numerical/browser validation and CI qualification remain deferred.

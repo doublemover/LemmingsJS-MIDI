@@ -1,3 +1,4 @@
+import { prepareSceneNativeRehearsal } from './SceneNativeRehearsal.js';
 import { prepareSceneEffectRack } from './SceneEffectRack.js';
 import { effectGraphHash } from '../../../midi/content/EffectGraphRevision.js';
 import { sceneMorphMechanismCost } from './SceneMorphMechanism.js';
@@ -18,7 +19,7 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
     const bodyCost = scene.cost.sharedBodies ? sceneMorphMechanismCost(candidate.rehearsalRecipe.initialMorphMechanism) : null;
     const context = audio.getAudioContext(), monitor = audio.getMonitorRouteState();
     if (!audio.getState().enabled || context?.state !== 'running' || !['rehearsal', 'separate-device'].includes(monitor.mode) || !['ready', 'playing-route'].includes(monitor.state)) throw failure('scene-rehearsal-cue-unavailable', 'Enable browser audio and choose an explicit Prelisten route before preparing a rehearsal.');
-    const controller = new AbortController(), scope = createProcgenRetirementScope(); let loan = null, clone = null, engine = null, listener = null, job = null, cue = null, session = null, audition = null, workspace = null, workerFault = null, ready = false, fenceTimer = null;
+    const controller = new AbortController(), scope = createProcgenRetirementScope(); let loan = null, clone = null, engine = null, listener = null, job = null, cue = null, session = null, audition = null, workspace = null, workerFault = null, ready = false, fenceTimer = null, nativeSources = null, nativeInputHanded = false, upstreamRetirement = null;
     const abort = () => controller.abort(signal.reason); signal?.addEventListener('abort', abort, { once: true }); if (signal?.aborted) abort();
     const check = () => { controller.signal.throwIfAborted(); if (!isCurrent() || audio.getAudioContext() !== context || context.state !== 'running' || audio.getMonitorRouteState().revision !== monitor.revision || audition && !audition.isCurrent()) throw failure('stale-scene-rehearsal', 'The scene, private monitor route or audio clock changed.'); };
     const releaseJob = async () => {
@@ -34,8 +35,8 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
     const close = () => {
       if (scope.getReceipt()) return scope.getReceipt(); ready = false; clearInterval(fenceTimer); fenceTimer = null; controller.abort(failure('scene-rehearsal-stopped', 'The rehearsal stopped.'));
       const dependencies = createProcgenRetirementScope().retire([
-        { name: 'private-physical-world', run: cleanupWorld }, { name: 'rehearsal-render-worker', run: releaseJob },
-        { name: 'owned-pcm-cue', run: () => cue?.dispose() }, { name: 'cue-session', run: () => session?.dispose() }
+        { name: 'private-physical-world', run: cleanupWorld }, { name: 'native-private-sources', run: async () => { if (!nativeInputHanded) await releaseJob(); if (nativeSources) { const receipt = nativeSources.retire(); await receipt.completion; if (receipt.outcome !== 'complete') throw failure('scene-native-retirement-unknown', 'Native private sources retain unresolved ownership.'); nativeSources = null; } } }, { name: 'rehearsal-render-worker', run: releaseJob },
+        { name: 'upstream-retirement', run: () => { if (upstreamRetirement) throw failure('scene-rehearsal-retirement-unknown', 'A preparation source retains unresolved producer ownership.'); } }, { name: 'owned-pcm-cue', run: () => cue?.dispose() }, { name: 'cue-session', run: () => session?.dispose() }
       ]);
       const receipt = scope.retire([{ name: 'rehearsal-producers', run: () => dependencies }, { name: 'rehearsal-storage', run: async () => { await dependencies.completion; if (dependencies.outcome !== 'complete') throw failure('scene-rehearsal-retirement-unknown', 'Rehearsal producers have unresolved ownership.'); workspace?.release(); } }]);
       receipt.completion.then(value => { signal?.removeEventListener('abort', abort); audition?.close(value); }); return receipt;
@@ -66,9 +67,12 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
         durationSeconds: (last.sourceTimeMs + last.tickDurationMs - origin) / 1000, worldId: world.worldId, generation: world.generation, seed: world.seed, intents });
       const sourceHash = await hashData(source, { maxBytes: 8 * 1048576, maxNodes: 524288 }); check(); await cleanupWorld(); check();
       const rack = candidate.rehearsalRecipe?.initialEffectRack, effectPlan = rack ? prepareSceneEffectRack(rack, context.sampleRate) : null;
-      const input = { scene, sceneHash: preflight.sceneHash, source, sampleRate: context.sampleRate, ...(scene.cost.sharedBodies || rack ? { recipe: candidate.rehearsalRecipe } : {}) }, inputBytes = canonicalDataText(input, { maxBytes: 8 * 1048576, maxNodes: 524288 }).bytes.length;
+      nativeSources = await prepareSceneNativeRehearsal({ scene, source, sourceHash, sampleRate: context.sampleRate, resourceBudget, jobs, signal: controller.signal, isCurrent }); check();
+      const nativeLanes = nativeSources?.inputs(), input = { scene, sceneHash: preflight.sceneHash, source, sampleRate: context.sampleRate, ...(scene.cost.sharedBodies || rack ? { recipe: candidate.rehearsalRecipe } : {}), ...(nativeLanes ? { nativeLanes } : {}) };
+      const metadata = { ...input, ...(nativeLanes ? { nativeLanes: nativeLanes.map(row => ({ sourceIndex: row.sourceIndex, input: { ...row.input, planes: null } })) } : {}) }, inputBytes = canonicalDataText(metadata, { maxBytes: 8 * 1048576, maxNodes: 524288 }).bytes.length + (nativeSources?.bytes || 0);
+
       job = await jobs.compute({ kind: 'render-scene-rehearsal', ownerId: 'performance-scene-rehearsal', ownerEpoch: 0, sourceRevision: sourceHash, signal: controller.signal, isCurrent,
-        inputBytes, maxBytes: inputBytes, estimatedPeakBytes: 128 * 1048576, deadlineMs: 120000, budgetAdapter: resourceBudget, prepareInput: () => input }); check();
+        inputBytes, maxBytes: inputBytes, estimatedPeakBytes: 128 * 1048576 + (nativeSources?.bytes || 0) * 3, deadlineMs: 120000, budgetAdapter: resourceBudget, prepareInput: () => input, releasePreparedInput: () => { if (nativeSources) { nativeSources.releaseInputs(); nativeInputHanded = true; input.nativeLanes = null; for (const row of nativeLanes) row.input = null; } return true; } }); check();
       const result = job.value;
       if (!(result?.bytes instanceof Uint8Array) || result.bytes.byteLength > 16 * 1048576 || result.manifest?.sourceHash !== sourceHash || result.manifest.sceneHash !== preflight.sceneHash || result.manifest.applicationBuildId !== scene.sourceVersion.hash || result.manifest.currentWorldAdvanced !== false || result.manifest.nextWorldAdvanced !== false || result.manifest.externalOutput !== false || scene.cost.sharedBodies && (result.manifest.recipeHash !== scene.worldRecipeRef.hash || result.manifest.body?.mapHash !== candidate.rehearsalRecipe.initialMorphMechanism.map.hash || result.manifest.body?.semanticOnsetsAdded !== 0 || result.manifest.body?.faults !== 0 || result.manifest.body?.bodyCount !== scene.cost.sharedBodies || result.manifest.body?.strategy !== bodyCost.strategy || result.manifest.body?.modeCount !== bodyCost.modeCount)) throw failure('scene-rehearsal-render-unbound', 'The worker rehearsal differs from its admitted scene and physical source.');
       if (effectPlan && (result.manifest.recipeHash !== scene.worldRecipeRef.hash || result.manifest.effects?.definitionHash !== await hashData(effectPlan.rack.graph, { maxBytes: 65536, maxNodes: 8192 }) || result.manifest.effects.graphHash !== await effectGraphHash(effectPlan.plan) || result.manifest.effects.semanticOnsetsAdded !== 0 || result.manifest.effects.controls !== 'authored-static-defaults;no-replayed-throw-gestures' || result.manifest.effects.tailFrames !== effectPlan.previewTailFrames || result.manifest.effects.declaredMaximumTailFrames !== effectPlan.plan.maximumTailFrames || result.manifest.effects.tailTruncatedByPreviewBound !== (effectPlan.previewTailFrames < effectPlan.plan.maximumTailFrames))) throw failure('scene-rack-rehearsal-unbound', 'The private rack render differs from its authored graph, processing identity or explicitly bounded preview tail.');
@@ -77,6 +81,7 @@ export function createPerformanceSceneRehearsal({ audio, prepareInspectionWorld,
       cue.completion.then(() => close()); fenceTimer = setInterval(() => { try { check(); } catch (error) { controller.abort(error); } }, 50);
       return Object.freeze({ routing: 'isolated-local', externalOutput: false, manifest, playback, monitorRoute: monitor, completion: cue.completion.then(() => close().completion), state: () => Object.freeze({ playing: ready && !scope.getReceipt(), retirement: scope.getReceipt()?.outcome || null }), retire: close });
     } catch (error) {
+      if (error.retirement && error.retirement.outcome !== 'complete') upstreamRetirement = error.retirement;
       if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
       if (error.backgroundRetirement && !['released', 'canceled'].includes(error.backgroundRetirement.phase)) workerFault = error;
       const receipt = close(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error;

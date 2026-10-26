@@ -107,7 +107,7 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
       if (Array.isArray(input)) {
         if (Object.getPrototypeOf(input) !== Array.prototype || Object.hasOwn(input, 'toJSON')) throw problem('invalid-data', 'Background arrays cannot define serialization behavior.');
         if (input.length + nodes > maxNodes) throw problem('structure-capacity', 'Background array exceeds its element bound.');
-        bytes += input.length + 2;
+        bytes += Math.max(0, input.length - 1) + 2;
         if (bytes > maxBytes || bytes * 6 + nodes * 32 > estimatedPeakBytes) throw problem('memory-capacity', 'Background array exceeds its admitted representation bound.');
         stack.push({ value: input, depth: item.depth, index: 0, array: true });
         if (++units % 2048 === 0) { guard(signal, current); onProgress({ phase: 'validating-snapshot', completedUnits: units, totalUnits: null }); await yieldControl(); }
@@ -117,7 +117,7 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
         if (keys.length + nodes >= maxNodes || bytes * 6 + (keys.length + nodes) * 64 > estimatedPeakBytes) throw problem('structure-capacity', 'Background snapshot exceeds its property staging bound.'); keys.push(key);
         if (keys.length % 2048 === 0) { guard(signal, current); await yieldControl(); }
       }
-      bytes += keys.length * 4 + 2;
+      bytes += Math.max(0, keys.length * 2 - 1) + 2;
       for (let index = keys.length - 1; index >= 0; index--) {
         const key = keys[index], descriptor = Object.getOwnPropertyDescriptor(input, key);
         if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw problem('invalid-data', 'Background snapshots cannot contain getters.');
@@ -340,7 +340,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     }
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
-  const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render'].includes(kind) });
+  const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
   if (kind === 'encode-recovery-page' || kind === 'decode-recovery-page') {
     let value;
     try { value = kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input, { maxBytes, signal }) : await decodeProcgenRecoveryPage(input, { maxBytes, signal }); }
