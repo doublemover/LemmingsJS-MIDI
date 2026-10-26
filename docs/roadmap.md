@@ -5950,3 +5950,35 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Prepared multisample/friction, talking tools, phrase cargo, live graft and
   shared-body variations remain separate work; these six dry scores do not
   claim the complete scene issue is closed. Combined validation remains deferred.
+
+
+### Continuation 234 — atomic same-take graft readout comparison
+
+- Added #1216's four-readout preparation over the existing isolated take renderer:
+  an explicitly pinned original, exciter only, body after the same excitation
+  and full graft. Four ordinary render owners run sequentially under the shared
+  worker/resource admission. All outputs must share the exact saved take
+  revision, semantic history, build, sample rate, crop and frame inventory.
+- Dry/body readouts change only the existing graft readout and remove its mix
+  macro. Source assets still resolve against the real unchanged installed pack;
+  no modified patch is misrepresented as an installed immutable revision. Each
+  WAV retains its actual rendered definition hash; the comparison inventory
+  binds original references, derivations, actual file digests and tail receipts.
+- Comparison ranges are bounded to sixteen seconds, four bounded render manifests
+  and 64 MiB of actual output. Common tail policies retain per-readout truncation
+  details. Fixed authored gain is preserved without loudness normalization. A
+  missing renderer/asset, different source/build/frame domain, stale request or
+  canceled late producer cannot publish a partial set. Prior active readers
+  prevent replacement. Independent producer cleanup is attempted separately;
+  unknown retirement retains its charged metadata and blocks further work.
+- The take render dialog can explicitly pin an original instrument, then prepare
+  the saved graft on that take. Existing file selection, delivery and seed
+  inspection handle all four readouts. Opening, rendering and comparison do not
+  enable live audio, overwrite a take or install/apply the readout patches.
+- Authored unrun synthetic-render ownership fixtures for sequential admission,
+  actual digest binding, exact material references, source/build/frame mismatch,
+  failed/stale/canceled preparation, borrowed prior files and independent cleanup
+  failure. They establish no numerical DSP, acoustic or listening result.
+- Static checks only; real same-take numerical/tail comparisons, isolated audible
+  comparison, Instrument Nursery and device/listening qualification remain in
+  the deferred combined acceptance pass and remaining development backlog.

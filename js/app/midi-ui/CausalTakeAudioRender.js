@@ -1,4 +1,5 @@
 import { createCausalRenderLaneResolver } from '../procgen/workstation/CausalLaneRouting.js';
+import { prepareGraftComparison } from '../../midi/content/GraftComparison.js';
 import { prepareCapturedEffectReplay } from './CapturedEffectReplay.js';
 import { prepareCausalOwnedConvolutionInput } from './CausalOwnedConvolutionRender.js';
 import { prepareCausalNativeRenderInput } from './CausalNativeRender.js';
@@ -64,9 +65,9 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       }, retirementState: () => scope.getReceipt() }); bundles.add(bundle); return bundle;
   };
   const prepare = ({ takeId, takeRevision, definition = null, materialReference = null, sampleRate = 48000, startSeconds = 0, endSeconds,
-    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, restorationMode = 'forward-preroll', effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, includeCapturedReturn = true, signal: externalSignal, isCurrent = () => true } = {}) => {
+    tail = { mode: 'exact-crop' }, stemLaneIds = [], includeAllLaneStems = false, restorationMode = 'forward-preroll', effectGraph = null, effectReturnNodeIds = [], capturedEffects = false, includeCapturedReturn = true, graftComparison = null, signal: externalSignal, isCurrent = () => true } = {}) => {
     externalSignal?.throwIfAborted();
-    if (typeof capturedEffects !== 'boolean' || typeof includeCapturedReturn !== 'boolean' || capturedEffects && (effectGraph !== null || restorationMode !== 'forward-preroll') || !['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
+    if (graftComparison !== null && !['exciter-only', 'body-only'].includes(graftComparison) || typeof capturedEffects !== 'boolean' || typeof includeCapturedReturn !== 'boolean' || capturedEffects && (effectGraph !== null || restorationMode !== 'forward-preroll') || !['forward-preroll', 'owned-state-cut'].includes(restorationMode) || disposed || active || unresolved.size || typeof takeId !== 'string' || !takeId || takeId.length > 256 || ![44100, 48000, 96000].includes(sampleRate) ||
         !Number.isFinite(startSeconds) || startSeconds < 0 || startSeconds >= 120 || !Number.isFinite(endSeconds) || endSeconds <= startSeconds || endSeconds > 120 ||
         !Array.isArray(stemLaneIds) || stemLaneIds.length > 16 || stemLaneIds.some(lane => typeof lane !== 'string' || !lane || lane.length > 128) ||
         new Set(stemLaneIds).size !== stemLaneIds.length || typeof includeAllLaneStems !== 'boolean' || typeof isCurrent !== 'function' || effectGraph != null && (!effectGraph || Object.getPrototypeOf(effectGraph) !== Object.prototype) ||
@@ -84,7 +85,10 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
       try {
         operation.workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: ownerId + ':' + ordinal, kind: 'causal-render-input', bytes: 2 * 1048576 });
         const reference = materialReference ? validateSoundContentReference(materialReference) : null;
-        const patch = cloneData(definition || reference?.definition || CAUSAL_RENDER_SINE, { maxBytes: 262144, maxNodes: 16384 }), policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
+        let patch = cloneData(definition || reference?.definition || CAUSAL_RENDER_SINE, { maxBytes: 262144, maxNodes: 16384 });
+        const baseDefinitionHash = await hashData(patch), comparison = graftComparison ? await prepareGraftComparison(patch, graftComparison) : null; check();
+        if (comparison) patch = comparison.definition;
+        const policy = cloneData(tail, { maxBytes: 1024, maxNodes: 32 }); let lanes = Object.freeze(stemLaneIds.slice());
         let effectReplay = null; let graph = effectGraph ? cloneData(effectGraph, { maxBytes: 65536, maxNodes: 8192 }) : null, returns = Object.freeze(effectReturnNodeIds.slice());
         if (!policy || Object.getPrototypeOf(policy) !== Object.prototype || !['exact-crop', 'bounded-natural', 'boundary-release'].includes(policy.mode) || Object.keys(policy).some(key => !['mode', 'maxSeconds'].includes(key)) || !Number.isFinite(policy.maxSeconds ?? 4) || (policy.maxSeconds ?? 4) < 0 || (policy.maxSeconds ?? 4) > (graph || capturedEffects ? 30 : 4))
           throw failure('render-tail-policy', 'Choose a bounded source/effect tail policy.');
@@ -110,7 +114,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
         const ownedConvolution = !native && !!effectPlan?.impulseCount;
         if (effectPlan?.impulseCount && (!getMaterialProvider || typeof globalThis.OfflineAudioContext !== 'function')) throw failure('native-body-unavailable', 'Native body rendering requires the shared material provider and OfflineAudioContext.');
         if (effectPlan?.impulseCount && lanes.length + returns.length > 15) throw failure('native-convolution-tap-capacity', 'Choose at most fifteen combined dry lanes and shared body returns.');
-        if (reference && (reference.definitionHash !== definitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
+        if (reference && (reference.definitionHash !== baseDefinitionHash || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => reference.engineRequirement[key] === descriptor[key])))
           throw failure('engine-revision-mismatch', 'The selected immutable instrument definition or renderer differs from the saved reference.');
         if (profile.requiresPCM || profile.requiresNativeAssets) {
           if (!reference || !getMaterialProvider) throw failure('material-reference-required', 'Choose a pinned installed sample source for this render.');
@@ -201,7 +205,7 @@ export function createCausalTakeAudioRenderer({ journal, resourceBudget, jobs = 
             formatVersion: manifest.schema, mediaType: 'audio/wav', suggestedFilename: 'take-' + binding.sourceCanonicalHash.slice(0, 12) + '-' + filename + '.wav',
             coverageLossReportRef: 'embedded-lmjs-render-manifest', maxBytes: 64 * 1048576, budgetAdapter: resourceBudget }); candidates.push({ id: String(index), label, artifact, manifest: freezeData(file.manifest) });
         }
-        check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt });
+        check(); bundle = makeBundle(candidates, manifest); result = Object.freeze({ bundle, receipt: operation.job.receipt, ...(comparison ? { comparison: comparison.comparison } : {}) });
       } catch (error) {
         if (error.backgroundRetirementCompletion) error.backgroundRetirement = await error.backgroundRetirementCompletion;
         operation.producerState = error.backgroundRetirement || null; originalError = error; lastError = String(error?.message || 'Causal render failed.').slice(0, 512); }
