@@ -1876,3 +1876,33 @@ the grouped sixty-second speed/pressure/rest/reversal and numerical/cost evidenc
 run at all three rates. It and the new integration/state-cut fixtures are unrun.
 Stability-region, spectral/alias/tone, physical Bow Orchard playback, device cost
 and matched-level listening qualification remain pending.
+
+
+The original wind foundation uses a bounded **saturating negative-resistance
+modal port**, rather than claiming a measured clarinet/flute implementation. The
+force is `F = cap*tanh((a + Y*F + filteredBreath)/velocityScale)` with positive
+modal midpoint losses. Its conservative slope product stays below 0.25, making
+the scalar residual strictly increasing; twenty bisections bound work per sample.
+The exact discrete energy identity is `deltaE + positiveLoss = F*vContact*dt`.
+Pressure supplies that port's work. Zero pressure removes it; existing positive
+body loss can ring. The kernel checks energy balance and finite output before
+emission, with independently owned fixed arrays and containment on invalid state.
+
+Hollow Reed uses an odd modal family, Air Pipe an open-pipe harmonic family.
+LENGTH is a relative acoustic size (`actual base Hz = onset Hz / LENGTH`), with
+admission checking the published root domain. It never changes terrain. AIR,
+BITE, LEAK and bell opening are normalized authored controls. Seeded breath is
+filtered at 900 Hz highpass/6 kHz lowpass with a maximum -26 dB reference scale;
+its noise draws create no semantic attacks. The experimental Overblown Branch
+arms below 0.32 and rises above 0.42 normalized effective pressure, allowing at
+most one octave change per held source. The coordinate change preserves modal
+energy; it does not allocate another voice. This is an authored register policy,
+not an empirically found stable region or calibrated reed mechanism.
+
+Background references are [Smith's woodwind negative-resistance discussion](https://dsprelated.com/freebooks/pasp/Woodwinds.html)
+and the [Faust physical-model inventory](https://faustlibraries.grame.fr/libs/physmodels/).
+The new kernel specifies its own curve, modal coefficients and register policy;
+no third-party implementation is copied. Owned engine/content and proof-scene
+integration follow this foundation. Numerical stability maps, sixty-second
+sustain, spectral/alias/pitch/cost and levelmatched listening are unrun. This
+foundation is not yet a selectable engine or a qualified wind emulation.

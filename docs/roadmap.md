@@ -5283,3 +5283,27 @@ Continuation 204 ownership follow-through: top-level world replacement also reta
   Stability, sound/continuity, browser, device and listening acceptance remain
   pending; the scene is an authored score, not an acoustic qualification result.
   Runtime validation continues to wait for the remaining implementation pass.
+
+
+### Continuation 210 — original sealed breath/modal wind foundation
+
+- Added original Hollow Reed, Air Pipe and experimental Overblown Branch
+  specifications with bounded AIR/BITE/LENGTH/LEAK/bell domains, distinct
+  pressure/pitch limits, acoustic-size units and zero expression-pressure floor.
+  They are artificial modal wind models, not measured clarinet/flute emulations
+  or copied Faust components. They are not yet selectable engine profiles.
+- Added preallocated positive-loss implicit modal integration and a saturating
+  negative-resistance force port. Twenty fixed bisections solve a strictly
+  increasing bounded scalar residual; a conservative slope-product bound admits
+  the stated rate/control domain. The discrete energy balance separates actual
+  source-port work and passive body loss, with finite/energy fault containment.
+- Seeded filtered breath is subordinate to pressure, with 30/80-ms attacks and
+  120/300-ms breath-release ramps. LENGTH changes acoustic size explicitly, not
+  route geometry. The experimental branch uses threshold hysteresis and one
+  energy-preserving register change per owned gesture, with no new source attack.
+- Authored unrun grouped-rate energy, zero-pressure silence/relaxation, end/tail,
+  partition/seed, register-hysteresis, invalid domain/frame/storage and independent
+  fault-containment fixtures. Full pressure/pitch stability regions, long sustain,
+  dropout/register/pitch/spectrum/DC/device measurements and levelmatched listening
+  remain pending. Owned adapter/cuts, content, expression and Breathing Stairwell
+  are the next dependency work for #1137, not completed acceptance here.
