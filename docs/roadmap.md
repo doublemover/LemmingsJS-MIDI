@@ -6707,3 +6707,19 @@ export-budget acknowledgments still prevent a false complete receipt.
   The source/log-bound evidence is in the full-suite repair receipt. Actual
   live-tap/decoder, cold/soak/native-device and listening qualification remain
   separate; no current-head CI success is claimed before its run completes.
+
+### Continuation 263 — explicit game-clock exhaustion (#910)
+
+- GameTimer no longer resets its finite tick counter to zero. Invalid horizon
+  assignments refuse before mutation; forward stepping refuses before before-tick
+  notification, and animation catch-up suspends at the last valid tick without
+  scheduling another frame. Diagnostics expose exhaustion. Explicit seek/rewind
+  and new-timer restart remain separate; delegated rewind retains its owner result.
+- Trigger cooldowns retain an unreachable terminal signed-counter sentinel
+  instead of wrapping and reopening. The bounded deadline is recorded before
+  history packing; invalid values refuse before changing cooldown/history.
+- Nine boundary fixtures cover manual and RAF stepping, foreground auto-resume,
+  unchanged remaining time, real trigger/history chronology and explicit recovery.
+  Complete focused `npm test game`: **939 passing / zero failures** (11.80s);
+  formatting, shared preflights, whitespace and provenance pass. No repeated full
+  suite was needed for this isolated follow-through; CI validates the new head.

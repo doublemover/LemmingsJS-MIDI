@@ -96,23 +96,16 @@ class GameTimer {
   getTimeTravelController() { return this.#timeTravel; }
 
   get tickIndex() { return this.#tickIndex; }
+  get counterExhausted() { return this.#tickIndex >= COUNTER_LIMIT - 1; }
   set tickIndex(v) {
-    if (v >= COUNTER_LIMIT) {
-      console.warn('tickIndex wrapped, resetting to 0');
-      this.#tickIndex = 0;
-    } else {
-      this.#tickIndex = Math.max(0, Math.trunc(Number(v) || 0));
-    }
+    const next = Math.max(0, Math.trunc(Number(v) || 0));
+    if (!Number.isFinite(next) || next >= COUNTER_LIMIT) throw new RangeError('Game tick counter exhausted. Seek or restart explicitly.');
+    this.#tickIndex = next;
     this.#lastGameSecond = this.#getWholeGameSecond();
   }
   #incrementTickIndex() {
     const next = this.#tickIndex + 1;
-    if (next >= COUNTER_LIMIT) {
-      console.warn('tickIndex wrapped, resetting to 0');
-      this.#tickIndex = 0;
-      this.#lastGameSecond = 0;
-      return;
-    }
+    if (next >= COUNTER_LIMIT) throw new RangeError('Game tick counter exhausted.');
     this.#tickIndex = next;
   }
 
@@ -160,6 +153,7 @@ class GameTimer {
   }
 
   continue() {
+    if (this.counterExhausted) return false;
     if (this.isRunning()) return true;
     this.#lastTime = this.#now();
     this.#running = true;
@@ -195,17 +189,17 @@ class GameTimer {
    * @param {number} steps
    */
   tick(steps = 1) {
-    if (this.isRunning()) return;
+    if (this.isRunning() || !Number.isFinite(steps)) return false;
     const count = Math.trunc(Math.abs(steps));
     const dir = Math.sign(steps);
     if (dir < 0 && this.#timeTravel?.stepBackward) {
-      this.#timeTravel.stepBackward(count);
-      return;
+      return this.#timeTravel.stepBackward(count);
     }
     const beforeTick = this.onBeforeGameTick;
     const onTick = this.onGameTick;
     for (let i = 0; i < count; i++) {
       if (dir >= 0) {
+        if (this.counterExhausted) return false;
         if (beforeTick) beforeTick.trigger(this.#tickIndex);
         this.#incrementTickIndex();
         this.#emitGameSecondIfChanged();
@@ -217,6 +211,7 @@ class GameTimer {
         if (onTick) onTick.trigger();
       }
     }
+    return true;
   }
 
   #loop(now) {
@@ -254,13 +249,16 @@ class GameTimer {
         this.#lastTime = now - delta;
         const beforeTick = this.onBeforeGameTick;
         const onTick = this.onGameTick;
-        for (let i = 0; i < steps; ++i) {
+        for (let i = 0; i < steps && this.#running; ++i) {
+          if (this.counterExhausted) { this.suspend(); return; }
           if (beforeTick) beforeTick.trigger(this.#tickIndex);
           this.#incrementTickIndex();
           this.#emitGameSecondIfChanged();
           if (onTick) onTick.trigger();
         }
       }
+      if (this.counterExhausted) this.suspend();
+      if (!this.#running) return;
       if (!this.#scheduleFrame()) {
         this.#running = false;
         this.#rafId = null;

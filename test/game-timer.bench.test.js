@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { withConsoleStub } from './helpers/console.js';
 import { setGlobalLemmings, withGlobalLemmings, withMissingGlobalLemmings } from './helpers/lemmings.js';
 import { GameTimer } from '../js/game/GameTimer.js';
 import { COUNTER_LIMIT } from '../js/core/constants.js';
@@ -172,15 +171,10 @@ describe('GameTimer bench speed control', function() {
     });
   });
 
-  it('wraps tickIndex and converts time units', function() {
+  it('refuses exhausted tickIndex assignments and converts time units', function() {
     const timer = new GameTimer({ timeLimit: 1 });
-    let warning = null;
-    const restoreConsole = withConsoleStub({ warn: msg => { warning = msg; } });
-    timer.tickIndex = COUNTER_LIMIT;
-    restoreConsole();
-
+    expect(() => { timer.tickIndex = COUNTER_LIMIT; }).to.throw(RangeError, 'counter exhausted');
     expect(timer.tickIndex).to.equal(0);
-    expect(warning).to.match(/tickIndex wrapped/i);
 
     timer.tickIndex = 120;
     expect(timer.getGameTime()).to.be.closeTo(7.2, 0.001);

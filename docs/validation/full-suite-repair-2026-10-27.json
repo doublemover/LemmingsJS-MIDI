@@ -757,5 +757,64 @@
       "No native MIDI2, listening, soak or universal performance qualification is claimed.",
       "The newest CI result is pending; 5951f72d remains the separately verified green CI checkpoint."
     ]
+  },
+  "continuation263": {
+    "date": "2026-10-27",
+    "parentRevision": "2bf6bf343e261ebda70e105756de9de37c0c36b7",
+    "issue": 910,
+    "scope": "Finite legacy game-clock and trigger cooldown horizon; focused game/history regression batch following the 6266/0 full-suite checkpoint.",
+    "sourceFiles": [
+      {
+        "path": "js/game/GameTimer.js",
+        "sha256": "19ff09d0084f646578a1b52fa44c7c0344d510e801eb6cf6fce888872bcf9a36"
+      },
+      {
+        "path": "js/level/Trigger.js",
+        "sha256": "b0feb52134885eea092944013d78bd5740efe621011c02278ec2a649704c248a"
+      },
+      {
+        "path": "js/app/e2e/E2EStateSerialization.js",
+        "sha256": "9eeed837cd873369fc4a8cb5a6d6b5b9653bc95f50b528837cc4f67bcc2a98d4"
+      },
+      {
+        "path": "test/game-timer.bench.test.js",
+        "sha256": "fce6d96f59ed0060f762c094128910e3222ba592b540f2343246c88fc2c8e1a6"
+      },
+      {
+        "path": "test/game-timer.counter-boundary.test.js",
+        "sha256": "23580a66979cd29ab8b57c70107a341d796187338a35180a5ac319a556a98415"
+      },
+      {
+        "path": "test/trigger.test.js",
+        "sha256": "344161fbeb5704d1ecf5b025b2e312ee87ce99a6e81501145234b8cc0dbc0a6e"
+      }
+    ],
+    "command": "npm test game",
+    "result": {
+      "passed": 939,
+      "failed": 0,
+      "exitCode": 0,
+      "runtimeSeconds": 11.8
+    },
+    "logPath": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog263-cadence-cooldown-20261027.log",
+    "logSha256": "ab69d1aea112a3b5cc766ab83c5d6793981924b851e0a7c1b15c8316925421d3",
+    "acceptance": [
+      "Refuse horizon assignments before changing time or emitting seconds.",
+      "No partial before/after tick pair at the terminal counter.",
+      "RAF catch-up suspends without another owned frame; foreground auto-resume refuses exhaustion.",
+      "Trigger cooldowns clamp to the unreachable signed-counter sentinel before history recording; multiple same-tick contacts cannot reopen them.",
+      "Actual HistoryStore retains the final delta and exact cooldown sentinel.",
+      "Explicit rewind/seek/new timer remain distinct; refused delegated rewind is not reported as success."
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs and runtime-global guards",
+      "branch whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "This is the focused game/history suite, not another complete Node suite.",
+      "CI is pending; the previous full local checkpoint has 6266 passing and zero failures."
+    ]
   }
 }

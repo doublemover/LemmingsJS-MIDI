@@ -470,6 +470,7 @@ const getGameState = (view) => {
     timer: timer
       ? {
         tickIndex: timer.tickIndex,
+        counterExhausted: timer.counterExhausted === true,
         speedFactor: timer.speedFactor,
         frameTime: timer.frameTime,
         tps: timer.tps,
