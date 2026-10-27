@@ -2590,5 +2590,297 @@
       "API-accepted zone setup remains receiver-unverified; manual receiver configuration is labelled assumed.",
       "Physical MIDI receiver conformance is not claimed."
     ]
+  },
+  "continuation269": {
+    "date": "2026-10-27",
+    "scope": "Retain independent SHA-256 live-forward state and terrain checkpoints without exhausting the bounded oracle with repeated large serialized terrain. Await hashing, reject retired owners and validate digest evidence at the shared smoke gate.",
+    "sourceFiles": [
+      {
+        "path": "scripts/HistoryReplayEvidence.js",
+        "sha256": "ae363529ea1cf1e875f348baf03629fbc1c61e7ceb355f18b6f3e7f5e9a61c1c"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "06f8084d4a24c4be98e55f3ac05f3b99608eb18e57c5ee318e6ada954e5b0126"
+      },
+      {
+        "path": "scripts/BenchmarkReceipt.js",
+        "sha256": "cecf5a4c3e668450cd41bd2eb33280d0e49a35859054f8c3f4994edba49de503"
+      },
+      {
+        "path": "test/history-replay-evidence.test.js",
+        "sha256": "4642739cdb2f589fbb9ee73f0db94bc915e44662ca1ad0a9f2f5df49c38f263a"
+      },
+      {
+        "path": "test/bench-history-stress.test.js",
+        "sha256": "a5dcfe86c9a6d7a885e02ab1970002d3921c5681eeeabb12f17cc754e5c94d4f"
+      },
+      {
+        "path": "test/bench-smoke.test.js",
+        "sha256": "c51f65d403ac3053c41ec16bbbcf13afaa8c0e0fe6be3c05e1d50fddd711336d"
+      }
+    ],
+    "runs": [
+      {
+        "command": "node scripts/bench-history-stress.js --url=http://127.0.0.1:8081/?e2e=1 --soak",
+        "exitCode": 1,
+        "scope": "Before digest retention; target reached at all three speeds but insufficient independent checkpoints refused qualification",
+        "logSha256": "ed05a9af7be7cc6db9418c836deb716085b6fcfa8f626c2b15fe1ab1706808c5",
+        "actual": {
+          "receipt": {
+            "schema": "lemmings-benchmark-result/v2",
+            "kind": "history",
+            "profile": "soak",
+            "status": "completed",
+            "scenarioIds": [
+              "speed:30",
+              "speed:60",
+              "speed:120"
+            ],
+            "units": {
+              "duration": "milliseconds",
+              "throughput": "ticks-per-second",
+              "historySpan": "ticks"
+            },
+            "samplePolicy": "all-observations; filtered summaries are diagnostic only"
+          },
+          "profile": "soak",
+          "environment": {
+            "node": "v26.12.1",
+            "platform": "win32",
+            "architecture": "x64",
+            "cpuModel": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+            "logicalCpus": 16,
+            "systemMemoryBytes": 137345265664,
+            "browser": {
+              "engine": "chromium",
+              "version": "153.0.8010.12",
+              "headless": true
+            }
+          },
+          "targetSpanTicks": 60000,
+          "sampleMs": 1000,
+          "seekGate": {
+            "seekSamples": 12,
+            "seekP95MsMax": 400,
+            "requireReplayParity": true,
+            "requireBoundedRetention": true,
+            "requireTargetSpan": true,
+            "requireColdCompaction": true
+          },
+          "results": [
+            {
+              "sampleCount": 115,
+              "speedFactor": 30,
+              "durationMs": 127714,
+              "samplingDurationMs": 127683,
+              "retentionPreparation": {
+                "targetSpan": 60000,
+                "changed": true,
+                "before": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 24000,
+                  "historyWarnTicks": 18000
+                },
+                "applied": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                },
+                "maximumRequestedCapTicks": 100000
+              },
+              "maxSpanTicks": 60068,
+              "targetSpanTicks": 60000,
+              "seekProbe": {
+                "status": "failed",
+                "evidence": "exact-forward-state-and-base64-terrain",
+                "startRestored": false,
+                "restoredTick": null,
+                "observations": [],
+                "retainedOracleBytes": 0,
+                "maximumOracleBytes": 0,
+                "oracleSampling": null,
+                "checkpointTicks": [],
+                "minTick": 0,
+                "maxTick": 0,
+                "startTick": 60428,
+                "deltaAvailable": true,
+                "hashMatch": false,
+                "count": 0,
+                "p50Ms": 0,
+                "p95Ms": 0,
+                "maxMs": 0,
+                "samplesMs": []
+              },
+              "history": {
+                "spanTicks": 60068,
+                "coldBlockCount": 226,
+                "coldBlockBytes": 1054385443,
+                "coldBlockDecodes": 4,
+                "coldBlockCacheHits": 660,
+                "retention": {
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                }
+              },
+              "memory": {
+                "usedJSHeapSize": 1830000000,
+                "totalJSHeapSize": 1940000000,
+                "jsHeapSizeLimit": 3760000000
+              }
+            },
+            {
+              "sampleCount": 77,
+              "speedFactor": 60,
+              "durationMs": 98244,
+              "samplingDurationMs": 98214,
+              "retentionPreparation": {
+                "targetSpan": 60000,
+                "changed": true,
+                "before": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 24000,
+                  "historyWarnTicks": 18000
+                },
+                "applied": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                },
+                "maximumRequestedCapTicks": 100000
+              },
+              "maxSpanTicks": 60046,
+              "targetSpanTicks": 60000,
+              "seekProbe": {
+                "status": "failed",
+                "evidence": "exact-forward-state-and-base64-terrain",
+                "startRestored": false,
+                "restoredTick": null,
+                "observations": [],
+                "retainedOracleBytes": 0,
+                "maximumOracleBytes": 0,
+                "oracleSampling": null,
+                "checkpointTicks": [],
+                "minTick": 0,
+                "maxTick": 0,
+                "startTick": 60406,
+                "deltaAvailable": true,
+                "hashMatch": false,
+                "count": 0,
+                "p50Ms": 0,
+                "p95Ms": 0,
+                "maxMs": 0,
+                "samplesMs": []
+              },
+              "history": {
+                "spanTicks": 60046,
+                "coldBlockCount": 226,
+                "coldBlockBytes": 1054385443,
+                "coldBlockDecodes": 4,
+                "coldBlockCacheHits": 660,
+                "retention": {
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                }
+              },
+              "memory": {
+                "usedJSHeapSize": 1830000000,
+                "totalJSHeapSize": 1940000000,
+                "jsHeapSizeLimit": 3760000000
+              }
+            },
+            {
+              "sampleCount": 68,
+              "speedFactor": 120,
+              "durationMs": 86757,
+              "samplingDurationMs": 86739,
+              "retentionPreparation": {
+                "targetSpan": 60000,
+                "changed": true,
+                "before": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 24000,
+                  "historyWarnTicks": 18000
+                },
+                "applied": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                },
+                "maximumRequestedCapTicks": 100000
+              },
+              "maxSpanTicks": 60088,
+              "targetSpanTicks": 60000,
+              "seekProbe": {
+                "status": "failed",
+                "evidence": "exact-forward-state-and-base64-terrain",
+                "startRestored": false,
+                "restoredTick": null,
+                "observations": [],
+                "retainedOracleBytes": 0,
+                "maximumOracleBytes": 0,
+                "oracleSampling": null,
+                "checkpointTicks": [],
+                "minTick": 0,
+                "maxTick": 0,
+                "startTick": 60448,
+                "deltaAvailable": true,
+                "hashMatch": false,
+                "count": 0,
+                "p50Ms": 0,
+                "p95Ms": 0,
+                "maxMs": 0,
+                "samplesMs": []
+              },
+              "history": {
+                "spanTicks": 60088,
+                "coldBlockCount": 227,
+                "coldBlockBytes": 1063605111,
+                "coldBlockDecodes": 4,
+                "coldBlockCacheHits": 660,
+                "retention": {
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 60000,
+                  "historyWarnTicks": 54000
+                }
+              },
+              "memory": {
+                "usedJSHeapSize": 1830000000,
+                "totalJSHeapSize": 1940000000,
+                "jsHeapSizeLimit": 3760000000
+              }
+            }
+          ],
+          "failures": [
+            "speed=30 applied replay state/terrain verification failed: Insufficient independently observed forward checkpoints.",
+            "speed=30 no first-touch cold decode occurred inside a timed seek",
+            "speed=60 applied replay state/terrain verification failed: Insufficient independently observed forward checkpoints.",
+            "speed=60 no first-touch cold decode occurred inside a timed seek",
+            "speed=120 applied replay state/terrain verification failed: Insufficient independently observed forward checkpoints.",
+            "speed=120 no first-touch cold decode occurred inside a timed seek"
+          ]
+        }
+      },
+      {
+        "command": "npm test bench",
+        "passed": 79,
+        "failed": 0,
+        "runtimeSeconds": 21.26,
+        "logSha256": "67019a0e132a793502b595a1c0beabfd5ffdd2fdc47126400af4bcf7baac64bb"
+      }
+    ],
+    "limits": [
+      "Supported three-speed soak retest is in progress; no completion claim yet.",
+      "SHA-256 fingerprints are computed from independent live state and full terrain buffers, never by prewarming stored deltas.",
+      "Seek timing ends before asynchronous oracle hashing; all digest work is outside the timed reconstruction interval."
+    ]
   }
 }

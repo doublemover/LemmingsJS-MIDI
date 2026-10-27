@@ -274,10 +274,10 @@ const summarizeTimings = (timingsMs) => {
 };
 
 const readHistoryAfterFrame = (scope = globalThis) => new Promise((resolve, reject) => {
-  scope.requestAnimationFrame(() => {
+  scope.requestAnimationFrame(async () => {
     try {
       const game = scope.__E2E__?.getState?.()?.game;
-      scope.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__?.capture(game);
+      await scope.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__?.capture(game);
       resolve(game?.history || null);
     } catch (error) { reject(error); }
   });
@@ -446,6 +446,8 @@ const run = async (config = createHistoryBenchConfig()) => {
           observations: seekProbe?.observations || [], retainedOracleBytes: seekProbe?.retainedOracleBytes ?? 0,
           maximumOracleBytes: seekProbe?.maximumOracleBytes ?? 0, oracleSampling: seekProbe?.oracleSampling ?? null,
           checkpointTicks: seekProbe?.checkpointTicks || [],
+          hashAlgorithm: seekProbe?.hashAlgorithm ?? null, maximumSerializedCheckpointBytes: seekProbe?.maximumSerializedCheckpointBytes ?? null,
+          startSerializedBytes: seekProbe?.startSerializedBytes ?? null,
           minTick: seekProbe?.minTick ?? 0,
           maxTick: seekProbe?.maxTick ?? 0,
           startTick: seekProbe?.startTick ?? 0,

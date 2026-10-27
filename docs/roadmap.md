@@ -6808,3 +6808,17 @@ export-budget acknowledgments still prevent a false complete receipt.
   The musical-header fixture now observes the completed deferred display write.
 - **120 MPE/controller/MIDI-owner cases** and all **20 browser boundaries** pass.
   The receipt retains earlier batch failures and their focused follow-through.
+
+### Continuation 269 — bounded independent replay digests
+
+- The supported soak reached 60,000 ticks at 30/60/120x but correctly refused
+  replay qualification when repeated full terrain snapshots displaced required
+  checkpoints from the 32 MiB oracle. Its failed receipt is preserved.
+- Independent live-forward checkpoints now retain SHA-256 digests of complete
+  state and terrain. The per-checkpoint serialization bound remains enforced;
+  twelve distributed targets fit without relaxing the required sample count.
+  Hashing completes before another sample is admitted and stays outside timed
+  reconstruction. Retired asynchronous owners cannot publish or pause a new one.
+- Shared admission validates digest algorithms, matching hashes and serialization
+  bounds. Actor, terrain and no-op negative controls remain strict. All **79
+  benchmark cases pass**; the supported three-speed soak retest is in progress.

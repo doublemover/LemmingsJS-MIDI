@@ -70,6 +70,15 @@ describe('bench-history-stress helpers', function () {
     expect(await observation).to.equal(history);
     expect(reads).to.equal(1);
   });
+  it('waits for independent checkpoint hashing before admitting the next history sample', async function () {
+    let frame, finishHash, completed = false;
+    const hash = new Promise(resolve => { finishHash = resolve; });
+    const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => { frame = callback; },
+      __E2E__: { getState: () => ({ game: { history: { spanTicks: 60000 } } }) },
+      __LEMMINGS_HISTORY_REPLAY_EVIDENCE__: { capture: () => hash } }).then(value => { completed = true; return value; });
+    frame(); await Promise.resolve(); expect(completed).to.equal(false);
+    finishHash(); expect(await observation).to.deep.equal({ spanTicks: 60000 });
+  });
   it('includes the terminal history observation and clamps the last sampling interval', async function () {
     let time = 0;
     const reads = [], waits = [];

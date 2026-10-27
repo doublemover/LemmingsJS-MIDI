@@ -22,6 +22,25 @@ const fixture = () => ({
 });
 
 describe('admitted benchmark smoke gates', () => {
+  it('admits bounded SHA-256 replay evidence and rejects missing, mismatched or forged digest metadata', () => {
+    const prepare = () => {
+      const input = fixture();
+      for (const row of input.history.results) {
+        Object.assign(row.seekProbe, { evidence: 'sha256-forward-state-and-base64-terrain', hashAlgorithm: 'SHA-256', maximumSerializedCheckpointBytes: 32 * 1048576, startSerializedBytes: 1024 });
+        for (const observed of row.seekProbe.observations) Object.assign(observed, { hashAlgorithm: 'SHA-256', expectedHash: 'a'.repeat(64), actualHash: 'a'.repeat(64) });
+      }
+      return input;
+    };
+    expect(evaluateSmokeResults(prepare(), thresholds).ok).to.equal(true);
+    for (const alter of [input => { input.history.results[0].seekProbe.hashAlgorithm = 'fnv'; },
+      input => { input.history.results[0].seekProbe.startSerializedBytes = 33 * 1048576; },
+      input => { delete input.history.results[0].seekProbe.maximumSerializedCheckpointBytes; },
+      input => { input.history.results[0].seekProbe.observations[0].expectedHash = 'x'.repeat(64); },
+      input => { input.history.results[0].seekProbe.observations[0].actualHash = 'b'.repeat(64); },
+      input => { delete input.history.results[0].seekProbe.observations[0].hashAlgorithm; }]) {
+      const input = prepare(); alter(input); expect(evaluateSmokeResults(input, thresholds).ok).to.equal(false);
+    }
+  });
   it('covers every declared soak sampling window without shortening the workload to fit the parent deadline', () => {
     const plan = createSmokeRunPlan({ soakRequested: true, env: {} });
     const history = createHistoryBenchConfig({ argv: plan.historyArgs, env: {}, log: { warn() {} } });

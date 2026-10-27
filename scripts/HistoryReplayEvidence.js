@@ -4,6 +4,9 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
   if (!Number.isSafeInteger(samples) || samples < 1 || samples > 32 || !Number.isSafeInteger(maximumBytes) || maximumBytes < 1 || maximumBytes > 32 * 1048576 ||
       typeof api?.getState !== 'function' || typeof api.getBuffer !== 'function' || typeof api.seek !== 'function') throw new Error('Independent replay evidence is unavailable or excessive.');
   const maximumCheckpoints = samples * 2 + 2;
+  const crypto = scope.crypto || globalThis.crypto, Encoder = scope.TextEncoder || globalThis.TextEncoder;
+  if (typeof crypto?.subtle?.digest !== 'function' || typeof Encoder !== 'function') throw new Error('Independent replay SHA-256 is unavailable.');
+  const encoder = new Encoder();
   let checkpoints = [], retainedBytes = 0, disposed = false;
   const now = () => scope.performance.now();
   const counters = game => {
@@ -11,7 +14,7 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
     if (!['coldBlockDecodes', 'coldBlockCacheHits', 'coldDecodedBytes'].every(name => Number.isSafeInteger(history?.[name]) && history[name] >= 0)) throw new Error('Cold replay work counters are unavailable.');
     return { decodes: history.coldBlockDecodes, cacheHits: history.coldBlockCacheHits, decodedBytes: history.coldDecodedBytes };
   };
-  const capture = (game = api.getState()?.game) => {
+  const capture = async (game = api.getState()?.game) => {
     if (!Number.isSafeInteger(game?.timer?.tickIndex) || game.timer.tickIndex < 0) throw new Error('Replay state boundary is unavailable.');
     const width = game.level?.width, height = game.level?.height, pixels = width * height;
     const terrainStringBytes = 2 * (4 * Math.ceil(pixels / 3) + 4 * Math.ceil(pixels * 4 / 3));
@@ -30,12 +33,17 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
       level: game.level ? { name: game.level.name, width: game.level.width, height: game.level.height,
         releaseRate: game.level.releaseRate, releaseCount: game.level.releaseCount, entrances: game.level.entrances } : null, buffers });
     if (text.length * 2 > maximumBytes) throw new Error('Independent replay checkpoint exceeds its storage bound.');
-    return { tick: game.timer.tickIndex, text, bytes: text.length * 2 };
+    const encoded = encoder.encode(text);
+    if (encoded.byteLength > maximumBytes) throw new Error('Independent replay checkpoint exceeds its storage bound.');
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', encoded));
+    const hash = Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('');
+    return { tick: game.timer.tickIndex, hash, bytes: hash.length * 2 + 8, serializedBytes: text.length * 2 };
   };
   const owner = {
-    capture(game = api.getState()?.game) {
+    async capture(game = api.getState()?.game) {
       if (disposed) throw new Error('Replay evidence is disposed.');
-      const checkpoint = capture(game);
+      const checkpoint = await capture(game);
+      if (disposed) throw new Error('Replay evidence is disposed.');
       if (checkpoints.at(-1)?.tick === checkpoint.tick) return;
       if (checkpoints.at(-1)?.tick > checkpoint.tick) throw new Error('Forward replay checkpoint moved backwards.');
       const minimumTick = game?.history?.minTick;
@@ -50,24 +58,27 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
         retainedBytes -= checkpoints.splice(remove, 1)[0].bytes;
       }
     },
-    probe() {
+    async probe() {
       const observations = [], seekMs = [];
       let start = null, stage = 'preflight';
       try {
+        if (disposed) throw new Error('Replay evidence is disposed.');
         const game = api.getState()?.game;
         if (game?.timer?.running !== false) throw new Error('Replay benchmark must be paused before seeking.');
-        start = capture(game);
+        start = await capture(game);
         const min = game.history?.minTick, max = game.history?.maxTick;
         if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || start.tick > max + 1) throw new Error('Retained history does not cover the actual starting state boundary.');
         const targets = checkpoints.filter(point => point.tick >= min && point.tick < start.tick);
         if (targets.length < samples) throw new Error('Insufficient independently observed forward checkpoints.');
         const selected = Array.from({ length: samples }, (_, index) => targets[Math.floor(index * targets.length / samples)]);
-        const seek = (expected, phase) => {
+        const seek = async (expected, phase) => {
+          if (disposed) throw new Error('Replay evidence is disposed.');
           const before = counters(api.getState()?.game), started = now();
           const accepted = api.seek(expected.tick);
-          const durationMs = now() - started, afterGame = api.getState()?.game, after = counters(afterGame), actual = capture(afterGame);
+          const durationMs = now() - started, afterGame = api.getState()?.game, after = counters(afterGame), actual = await capture(afterGame);
+          if (disposed) throw new Error('Replay evidence is disposed.');
           const row = { phase, targetTick: expected.tick, observedTick: actual.tick, accepted: accepted === true, durationMs,
-            exactStateMatch: actual.text === expected.text, coldDecodes: after.decodes - before.decodes,
+            exactStateMatch: actual.hash === expected.hash, hashAlgorithm: 'SHA-256', expectedHash: expected.hash, actualHash: actual.hash, coldDecodes: after.decodes - before.decodes,
             coldCacheHits: after.cacheHits - before.cacheHits, coldDecodedBytes: after.decodedBytes - before.decodedBytes };
           if (phase === 'first-touch') row.phase = row.coldDecodes > 0 ? 'first-touch-cold' : 'already-warm';
           else if (phase === 'warm-repeat' && row.coldDecodes > 0) row.phase = 'repeat-cold';
@@ -75,23 +86,25 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
           if (!row.accepted || !row.exactStateMatch || actual.tick !== expected.tick || afterGame.timer.running !== false || row.coldDecodes < 0) throw new Error('Replay did not apply the independently observed state and terrain.');
         };
         for (const target of selected) {
-          stage = 'first-touch'; seek(target, 'first-touch');
-          stage = 'return'; seek(start, 'return');
-          stage = 'warm-repeat'; seek(target, 'warm-repeat');
-          stage = 'return'; seek(start, 'return');
+          stage = 'first-touch'; await seek(target, 'first-touch');
+          stage = 'return'; await seek(start, 'return');
+          stage = 'warm-repeat'; await seek(target, 'warm-repeat');
+          stage = 'return'; await seek(start, 'return');
         }
-        return { status: 'complete', evidence: 'exact-forward-state-and-base64-terrain', deltaAvailable: true, hashMatch: true,
+        return { status: 'complete', evidence: 'sha256-forward-state-and-base64-terrain', deltaAvailable: true, hashMatch: true,
           minTick: min, maxTick: max, startTick: start.tick, restoredTick: api.getState()?.game?.timer?.tickIndex,
           startRestored: true, observations, seekMs, retainedOracleBytes: retainedBytes, maximumOracleBytes: maximumBytes,
-          oracleSampling: 'time-distributed-live-forward-checkpoints', checkpointTicks: checkpoints.map(point => point.tick) };
+          oracleSampling: 'time-distributed-live-forward-sha256-checkpoints', checkpointTicks: checkpoints.map(point => point.tick),
+          hashAlgorithm: 'SHA-256', maximumSerializedCheckpointBytes: maximumBytes, startSerializedBytes: start.serializedBytes };
       } catch (error) {
-        try { api.pause?.(); } catch {}
-        return { status: 'failed', evidence: 'exact-forward-state-and-base64-terrain', deltaAvailable: checkpoints.length > 0,
+        try { if (!disposed) api.pause?.(); } catch {}
+        return { status: 'failed', evidence: 'sha256-forward-state-and-base64-terrain', deltaAvailable: checkpoints.length > 0,
+          retainedOracleBytes: retainedBytes, maximumOracleBytes: maximumBytes, checkpointTicks: checkpoints.map(point => point.tick),
           hashMatch: false, startRestored: false, startTick: start?.tick ?? null, observations, seekMs, stage, error: error?.message || String(error) };
       }
     },
     dispose() { disposed = true; checkpoints = []; retainedBytes = 0; if (scope[key] === owner) delete scope[key]; }
   };
   scope[key] = owner;
-  return { maximumCheckpoints, maximumBytes };
+  return { maximumCheckpoints, maximumBytes, hashAlgorithm: 'SHA-256' };
 }

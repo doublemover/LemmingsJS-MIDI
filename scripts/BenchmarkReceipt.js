@@ -93,14 +93,19 @@ export function admitSmokeMeasurements({ performance, history, hotpaths }, { pro
     const span = count(item?.maxSpanTicks, `history.results[${index}].maxSpanTicks`, 0);
     count(item?.sampleCount, `history.results[${index}].sampleCount`);
     const replay = item?.seekProbe, path = `history.results[${index}].seekProbe`;
-    if (replay?.status !== 'complete' || replay.evidence !== 'exact-forward-state-and-base64-terrain' || replay.startRestored !== true ||
+    const digestEvidence = replay?.evidence === 'sha256-forward-state-and-base64-terrain';
+    if (replay?.status !== 'complete' || !['exact-forward-state-and-base64-terrain', 'sha256-forward-state-and-base64-terrain'].includes(replay.evidence) || replay.startRestored !== true ||
         replay.deltaAvailable !== true || replay.hashMatch !== true || replay.restoredTick !== replay.startTick) invalid(path, 'independent applied-state/terrain parity and exact starting-boundary restoration are required');
+    if (digestEvidence && (replay.hashAlgorithm !== 'SHA-256' || !Number.isSafeInteger(replay.maximumSerializedCheckpointBytes) ||
+        replay.maximumSerializedCheckpointBytes < 1 || replay.maximumSerializedCheckpointBytes > 32 * 1048576 ||
+        !Number.isSafeInteger(replay.startSerializedBytes) || replay.startSerializedBytes < 1 || replay.startSerializedBytes > replay.maximumSerializedCheckpointBytes)) invalid(path, 'independent SHA-256 checkpoint algorithm or serialization bound is invalid');
     count(replay?.startTick, path + '.startTick', 0);
     if (!Array.isArray(replay?.observations) || replay.observations.length < 4 || replay.observations.length > 128) invalid(path + '.observations', 'bounded first-touch/repeat/return work observations are required');
     for (const [ordinal, row] of (Array.isArray(replay?.observations) ? replay.observations : []).entries()) {
       const rowPath = `${path}.observations[${ordinal}]`;
       if (row?.accepted !== true || row.exactStateMatch !== true || row.observedTick !== row.targetTick ||
           !['first-touch-cold', 'already-warm', 'warm-repeat', 'repeat-cold', 'return'].includes(row.phase)) invalid(rowPath, 'seek completion, target state or measured cache phase is invalid');
+      if (digestEvidence && (row?.hashAlgorithm !== 'SHA-256' || typeof row.expectedHash !== 'string' || !/^[a-f0-9]{64}$/.test(row.expectedHash) || row.actualHash !== row.expectedHash)) invalid(rowPath, 'independent forward and applied replay SHA-256 digests must match');
       count(row?.targetTick, rowPath + '.targetTick', 0); number(row?.durationMs, rowPath + '.durationMs');
       count(row?.coldDecodes, rowPath + '.coldDecodes', 0); count(row?.coldCacheHits, rowPath + '.coldCacheHits', 0); count(row?.coldDecodedBytes, rowPath + '.coldDecodedBytes', 0);
       if (row?.phase === 'first-touch-cold' && !(row.coldDecodes > 0) || row?.phase === 'warm-repeat' && row.coldDecodes !== 0) invalid(rowPath + '.phase', 'cache phase disagrees with actual decoding work');
