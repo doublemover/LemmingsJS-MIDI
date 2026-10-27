@@ -55,6 +55,33 @@ musical tempo. Clear **Link world** to control the two independently. The header
 shows requested and measured simulation speed separately; musical time does not
 slow to hide simulation overload.
 
+The BPM field edits the base tempo in internal-clock modes; effective tempo is
+shown in **Status details** alongside the world multiplier. With external clock,
+the field reports the observed tempo and remains read-only.
+
+The operational strip separates **Play/Pause world**, musical transport,
+browser context and the named note destination. **Stop music** stops musical
+transport; **Panic** uses the existing output safety owner. A single prioritized
+reason explains silence, clock loss, unavailable output or unsaved recovery.
+Open **Status details** for exact timing and independent note, clock and controller
+evidence. A connected port does not establish controller liveness or audible
+delivery; bridge health remains unreported unless the backend supplies evidence.
+
+Selecting MIDI output requests no permission by itself. Choose **Discover MIDI
+outputs**, review a named destination in the selector, then **Activate MIDI
+output**. Discovery sends no notes or setup to an unselected destination, even
+when only one device exists. Names include endpoint IDs to distinguish identical
+devices. Losing the reviewed endpoint stops output; reconnecting preserves the
+reviewed identity and requires explicit activation. It never selects the first
+enumerated device or falls back to another endpoint. Permission denial, an empty
+catalog and a lost endpoint have distinct explanations. No hidden test note is
+played to manufacture a successful status.
+
+Native dialogs include **Stop music** and **Panic** controls that use those same
+output owners. Pointer activation preserves the current text draft and does not
+submit its form. Output safety cancels a captured edit before release; it remains
+available while a dialog makes the outside toolbar inert.
+
 The MIDI inspector connects devices, selects the input and a lane's note output,
 assigns its channel, and chooses a separate clock output. **MIDI Thru** starts off.
 Selecting external clock makes received MIDI the timing authority. Clock loss

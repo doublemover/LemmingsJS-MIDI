@@ -5,7 +5,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const fixture = (backend = 'midi') => {
+const fixture = (backend = 'midi', reviewed = true) => {
   const calls = [], secondCalls = [], outputs = [makeOutput([1], calls, 'first'), makeOutput([1], secondCalls, 'second')]; outputs[0].name = 'First device'; outputs[1].name = 'Second device';
   const listeners = new Map(), webMidi = { enabled: false, outputs, requests: 0,
     async enable(options) { expect(options.sysex).to.equal(false); this.requests++; this.enabled = true; },
@@ -21,9 +21,62 @@ const fixture = (backend = 'midi') => {
   const config = { enabled: false, mpe: { enabled: false }, defaultChannel: 1, timing: { scheduleAheadMs: 0 }, position: { mappings: [] },
     sfx: { [SoundEffectIds.SPAWN]: { note: 61, velocity: 90, durationTicks: 2, outputId: 'unrelated-saved-device' } } };
   const output = createProcgenMidiOutput({ local, backend, getView: () => view, getConfig: () => config, getWebMidi: () => webMidi });
+  if (backend === 'midi' && reviewed) output.setOutputId('first');
   return { output, webMidi, local, calls, secondCalls, config, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
 };
 describe('procgen selected audible destination', () => {
+  it('discovers without choosing or activating a port, then requires a reviewed ID independent of enumeration order', async () => {
+    const f = fixture('midi', false);
+    try {
+      expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: null }); expect(f.webMidi.requests).to.equal(0);
+      expect(await f.output.start()).to.equal(false); expect(f.webMidi.requests).to.equal(1); expect(f.view.midiPreviewRouter).to.equal(null);
+      expect(f.output.getState()).to.include({ status: 'needs-selection', enabled: false, selectedOutputId: null, discoveredOutputCount: 2, midiPermission: 'granted' });
+      expect(f.calls).to.have.length(0); expect(f.secondCalls).to.have.length(0);
+      f.webMidi.outputs.reverse(); await f.output.discover(); expect(f.output.getState().selectedOutputId).to.equal(null);
+      f.output.setOutputId('first'); expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: 'first', selectedOutputName: 'First device' });
+      expect(await f.output.start()).to.equal(true); expect(f.output.getState()).to.include({ enabled: true, outputId: 'first' }); expect(f.secondCalls).to.have.length(0);
+    } finally { f.output.dispose(); }
+  });
+  it('isolates duplicate names, inactive endpoint removal and discovery from the activated route', async () => {
+    const f = fixture('midi', false); f.webMidi.outputs.forEach(port => { port.name = 'Identical keyboard'; });
+    try {
+      await f.output.discover(); f.output.setOutputId('second'); expect(await f.output.start()).to.equal(true); const router = f.view.midiPreviewRouter, writes = f.secondCalls.length;
+      await f.output.discover(); expect(f.view.midiPreviewRouter).to.equal(router); expect(f.secondCalls).to.have.length(writes); expect(f.calls).to.have.length(0);
+      f.webMidi.outputs = f.webMidi.outputs.filter(port => port.id === 'second'); f.output.refreshDevices();
+      expect(f.view.midiPreviewRouter).to.equal(router); expect(f.output.getState()).to.include({ outputId: 'second', enabled: true }); expect(f.secondCalls).to.have.length(writes);
+      f.webMidi.outputs = []; f.output.refreshDevices(); expect(f.output.getState()).to.include({ enabled: false, selectedOutputId: 'second', selectedOutputName: 'Identical keyboard', failureKind: 'destination-missing' });
+      f.webMidi.outputs = [makeOutput([1], [], 'second')]; f.output.refreshDevices(); expect(f.output.getState().enabled).to.equal(false);
+    } finally { f.output.dispose(); }
+  });
+  it('cancels discovery publication and keeps denied access separate from a missing device', async () => {
+    const f = fixture('midi', false); let resolve;
+    try {
+      f.webMidi.enable = () => new Promise(done => { resolve = () => { f.webMidi.enabled = true; done(); }; });
+      const pending = f.output.discover(); f.output.stop(); resolve(); await pending;
+      expect(f.output.getState()).to.include({ status: 'off', enabled: false, selectedOutputId: null }); expect(f.view.midiPreviewRouter).to.equal(null);
+      f.webMidi.enabled = false; f.webMidi.enable = async () => { throw Object.assign(new Error('denied'), { name: 'NotAllowedError' }); };
+      f.output.setOutputId('first'); expect(await f.output.start()).to.equal(false); expect(f.output.getState()).to.include({ midiPermission: 'denied', failureKind: 'permission-denied', enabled: false });
+      expect(f.calls).to.have.length(0); expect(f.secondCalls).to.have.length(0); expect(f.local.starts).to.equal(0);
+    } finally { f.output.dispose(); }
+  });
+  it('reports revoked permission without mutating a route during a state read, then retires it at the existing cadence', async () => {
+    const f = fixture();
+    try {
+      await f.output.start(); const router = f.view.midiPreviewRouter, writes = f.calls.length; f.webMidi.enabled = false;
+      for (let index = 0; index < 20; index++) expect(f.output.getOperationalState()).to.include({ enabled: false, failureKind: 'permission-revoked' });
+      expect(f.view.midiPreviewRouter).to.equal(router); expect(f.calls).to.have.length(writes); expect(f.output.syncStatus()).to.equal(true); expect(f.view.midiPreviewRouter).to.equal(null);
+    } finally { f.output.dispose(); }
+  });
+  it('requires current activation admission both before and after pending permission', async () => {
+    const f = fixture('midi', false); let allowed = false, resolve;
+    const output = createProcgenMidiOutput({ local: f.local, backend: 'midi', getView: () => f.view, getConfig: () => f.config, getWebMidi: () => f.webMidi, canActivate: () => allowed });
+    try {
+      output.setOutputId('first'); expect(await output.start()).to.equal(false); expect(f.webMidi.requests).to.equal(0);
+      allowed = true; f.webMidi.enable = () => new Promise(done => { resolve = () => { f.webMidi.enabled = true; done(); }; });
+      const pending = output.start(); allowed = false; resolve(); expect(await pending).to.equal(false); expect(output.getState().status).to.equal('selected');
+      expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+    } finally { output.dispose(); f.output.dispose(); }
+  });
   it('publishes completed MIDI activation to bounded subscribers and isolates a failed consumer', async () => {
     const f = fixture(), states = [];
     const remove = f.output.subscribe(state => states.push(state)); f.output.subscribe(() => { throw new Error('Detached presentation'); });

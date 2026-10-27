@@ -376,6 +376,9 @@ test('foreign pointer release cannot commit pattern painting and owner cancellat
   expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
   await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: window.workstationViewTest.pointerId })));
   await page.mouse.up(); expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
+  await page.locator('.studio-cell').first().focus(); await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(1);
+  expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps[0].enabled)).toBe(true);
 });
 
 

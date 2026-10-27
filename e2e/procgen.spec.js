@@ -118,10 +118,12 @@ test('legacy: procgen selected MIDI destination connects explicitly, sends actua
     } });
   });
   await page.goto('/procgen.html?workstation=0&e2e=1&seed=midi-output&lanes=4&output=midi'); await ready(page);
-  await expect(page.locator('#procgenOutput')).toHaveValue('midi'); await expect(page.locator('#procgenListen')).toHaveText('Connect MIDI');
+  await expect(page.locator('#procgenOutput')).toHaveValue('midi'); await expect(page.locator('#procgenListen')).toHaveText('Discover MIDI outputs');
   expect(await page.evaluate(() => window.__procgenMidiRequests)).toBe(0); await expect(page.locator('#procgenMasterVolume')).toBeDisabled();
-  await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('#procgenMidiDevice')).toHaveValue('pw-output-1');
+  await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#procgenMidiDevice')).toHaveValue(''); expect(await page.evaluate(() => window.__procgenMidiBytes.length)).toBe(0);
+  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); await expect(page.locator('#procgenMidiDevice')).toHaveValue('pw-output-1');
   await page.evaluate(() => window.__PROCGEN_LANES__.step(80));
   await expect.poll(() => page.evaluate(() => window.__procgenMidiBytes.filter(bytes => (bytes[0] & 240) === 144 && bytes[2] > 0).length)).toBeGreaterThan(0);
   expect(await page.evaluate(() => window.__procgenMidiRequests)).toBe(1);

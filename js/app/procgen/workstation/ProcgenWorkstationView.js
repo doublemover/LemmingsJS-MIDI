@@ -1,3 +1,5 @@
+import { createProcgenOperationalView } from './ProcgenOperationalView.js';
+import { createModalOutputSafety } from '../../controls/ModalOutputSafety.js';
 import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
@@ -108,6 +110,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const panel = byId('procgenPanel'), panelParent = panel?.parentNode, panelSibling = panel?.nextSibling;
   if (panel) presentationRoot.append(panel);
   const status = node('output', 'Ready', 'studio-status'); status.setAttribute('aria-live', 'polite');
+  const modalSafety = createModalOutputSafety({ document, stop: () => handlers.stopOutput?.(), panic: () => {
+    const panic = document.getElementById('procgenPanic'); if (panic) panic.click(); else handlers.panicOutput?.();
+  }, onStatus: message => { status.textContent = message; } });
   const storageStatus = node('output', 'Unsaved', 'studio-storage-status'); storageStatus.setAttribute('aria-label', 'Project save status');
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
@@ -117,9 +122,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
   const cueGo = button('GO · stop and load', () => handlers.stageGo?.()); cueGo.disabled = true;
   cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
-  let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
+  let projection, dragging = null, stroke = null, layoutKey = null, queuedBeat = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, stageActive = false;
+  const operationalView = createProcgenOperationalView({ document, readSnapshot: () => handlers.operationalState?.() || null,
+    performAction: (...args) => handlers.recoverOperational?.(...args), onStatus: text => { status.textContent = text; } });
+  topbar.append(operationalView.element);
+  const operationalSurface = displayScheduler.register({ id: 'workstation-operational', element: operationalView.element, intervalMs: 100,
+    write: () => operationalView.render(handlers.operationalState?.() || null) }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   const detachRenderer = () => {
@@ -172,7 +182,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   on(window, 'blur', () => resizeLease?.cancel('blur'));
   on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); setInspectorWidth(state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16)); });
   const layoutMode = select([['strip', 'Strip'], ['overlay', 'Overlay']], state.layout, value => { state.layout = value; render(); handlers.preferences?.(); }, 'Sequencer layout');
-  const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 1 }); bpm.setAttribute('aria-label', 'BPM');
+  const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 0.01 }); bpm.setAttribute('aria-label', 'BPM');
+  bpm.title = 'Base musical tempo. Linked game-speed mode multiplies it by the world speed; Status details show effective tempo.';
   const speedMode = select([['bpm', 'BPM'], ['game', 'Game speed']], 'bpm', value => handlers.transport?.({ speedMode: value }), 'Speed mode');
   const linked = input(true, value => handlers.transport?.({ linked: value }), { type: 'checkbox' });
   const root = select(NOTES.map((note, index) => [index, note]), getProject().global.scale.root, value => dispatch({ type: 'procgen/global', patch: { scale: { ...getProject().global.scale, root: Number(value) } } }), 'Global key');
@@ -183,7 +194,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const clockHealth = node('output', 'Internal clock', 'studio-clock-source-status'); clockHealth.setAttribute('aria-label', 'Clock source status');
   const displayStatus = node('output', 'Display ready', 'studio-display-status'); displayStatus.setAttribute('aria-live', 'polite');
   const retryDisplay = button('Retry display', () => handlers.retryDisplay?.(), 'Retry canvas display after context loss'); retryDisplay.hidden = true;
-  const stopOutput = button('Stop', () => handlers.stopOutput?.(), 'Stop the musical transport and flush pending output'); stopOutput.id = 'studioStopOutput';
+  const stopOutput = button('Stop music', () => handlers.stopOutput?.(), 'Stop the musical transport and flush pending output'); stopOutput.id = 'studioStopOutput';
   let fullscreenSession = null;
   const fullscreenCommand = () => { void fullscreenSession?.toggle(); };
   const fullscreenMenu = node('details', null, 'studio-transport-overflow');
@@ -746,8 +757,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         continue;
       }
       for (let index = 0; index < pattern.length; index++) {
-        const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', () => {
-          if (window.performance.now() < suppressClickUntil) return;
+        const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', event => {
+          if (state.tool !== 'select' && event?.detail > 0) return;
           state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[displaySlot]?.steps[index]?.chord ? 'Chord' : 'Step';
           if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
@@ -793,7 +804,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     controlTree.update(scale, matched || current.name, { identity: getDocumentIdentity() });
     if (!partial) { layout(); renderRows(); }
     renderInspector();
-    records.setAttribute('aria-pressed', String(!!state.recording));
+    operationalSurface.invalidate(); records.setAttribute('aria-pressed', String(!!state.recording));
   }
 
   function patchStep(action) {
@@ -852,7 +863,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const source = getProject(), transform = projection;
     const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: `pattern:${lane.id}:${slot}`, identity: source,
       getIdentity: () => getProject() === source && projection === transform ? source : null,
-      onCancel: () => { stroke = null; if (!disposed) renderRows(); } });
+      onCancel: () => { stroke = null; try { grid.releasePointerCapture?.(event.pointerId); } catch { /* Capture may already be released. */ } if (!disposed) renderRows(); } });
     if (!lease) return;
     stroke = { lease, pointerId: event.pointerId, laneId: lane.id, slot, steps: lane.patterns[slot].steps.slice(), enabled: state.tool === 'draw', changed: false };
     grid.setPointerCapture?.(event.pointerId);
@@ -861,7 +872,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   on(window, 'pointermove', event => { if (stroke?.lease.owns(event)) paint(document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.studio-cell')); });
   on(window, 'pointerup', event => {
     if (!stroke?.lease.finish(event)) return;
-    const completed = stroke; stroke = null; suppressClickUntil = window.performance.now() + 100;
+    const completed = stroke; stroke = null; try { grid.releasePointerCapture?.(completed.pointerId); } catch { /* Capture may already be released. */ }
     if (completed.changed) dispatch({ type: 'procgen/pattern', laneId: completed.laneId, slot: completed.slot, patch: { steps: completed.steps } });
     else render();
   });
@@ -877,7 +888,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const mix = handlers.laneMixView?.(id), lane = procgenLane(getProject().procgen.lanes, id); if (!mix || !lane) continue;
       if (control.inspect().gestureId == null) control.setState({ value: lane.gain, effectiveValue: mix.effectiveGain });
       const row = [...lanes.children].find(value => value.dataset.laneId === id), status = row?.querySelector('[data-lane-mix-status]');
-      if (status) { status.textContent = mix.outputState.replaceAll('-', ' ') + (mix.eventRate ? ` · ${mix.eventRate.toFixed(0)} events/s` : ''); status.title = `Signal ${mix.signalStatus}; ${mix.meterSource}; gain ${mix.gainEvidence}`; }
+      if (status) { const text = mix.outputState.replaceAll('-', ' ') + (mix.eventRate ? ` · ${mix.eventRate.toFixed(0)} events/s` : ''); if (status.textContent !== text) status.textContent = text;
+        const title = `Signal ${mix.signalStatus}; ${mix.meterSource}; gain ${mix.gainEvidence}`; if (status.title !== title) status.title = title; }
     }
   } });
   const macroSurface = displayScheduler.register({ id: 'workstation-macro-pickup', element: fields, intervalMs: 50, write: refreshMacroState });
@@ -893,7 +905,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const paintTransport = position => {
     if (!position || disposed || position.documentIdentity !== getDocumentIdentity()) return;
     bpm.disabled = position.clockSource === 'external';
-    controlTree.update(bpm, String(Math.round(position.bpm * 100) / 100), { identity: getDocumentIdentity() });
+    controlTree.update(bpm, String(Math.round((position.clockSource === 'external' ? position.bpm : position.baseBpm ?? position.bpm) * 100) / 100), { identity: getDocumentIdentity() });
     const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
     const text = meter ? `${meter.bar} : ${meter.beat}` : '—'; if (clockStatus.textContent !== text) clockStatus.textContent = text;
     clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
@@ -1013,9 +1025,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         ? `Last durable edit revision ${recovery.durableRevision}, world tick ${recovery.durableTick ?? 'unknown'}` : 'No recovery checkpoint yet');
     },
     launched: () => renderRows(),
+    refreshOperational: () => operationalSurface.invalidate(),
     transport(position) {
       state.beat = position.beat;
-      transportSurface.publish(Object.freeze({ documentIdentity: getDocumentIdentity(), beat: position.beat, bpm: position.bpm, clockSource: position.clockSource,
+      operationalSurface.invalidate(); transportSurface.publish(Object.freeze({ documentIdentity: getDocumentIdentity(), beat: position.beat, bpm: position.bpm, baseBpm: position.baseBpm, gameSpeed: position.gameSpeed, clockSource: position.clockSource,
         clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {
@@ -1038,7 +1051,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },

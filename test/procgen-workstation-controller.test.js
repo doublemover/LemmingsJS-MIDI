@@ -55,11 +55,46 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
-    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
+    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; }, allowSave() { rejectSave = false; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('keeps UI edit ownership through the first durable Save and advances it only on logical document replacement', async () => {
+    const f = setup({ storageOverride: { async saveDocument(id, revision) { return { id, revision: revision + 1 }; }, close() {} } });
+    try {
+      const identity = f.viewProps.getDocumentIdentity(); await f.studio.handlers.save(); expect(f.studio.getDocumentState().id).to.be.a('string');
+      expect(f.viewProps.getDocumentIdentity()).to.equal(identity); await f.studio.handlers.new(); expect(f.viewProps.getDocumentIdentity()).not.to.equal(identity);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('retains a current save blocker across ordinary updates and clears it only after a current successful Save', async () => {
+    const f = setup();
+    try {
+      f.failSave(); await f.studio.handlers.save(); expect(f.studio.getOperationalSnapshot().blockedReason.code).to.equal('storage-error');
+      f.studio.handlers.transport({ baseBpm: 150, bpm: 150 }); expect(f.storageReceipts.at(-1).error.message).to.equal('Storage unavailable');
+      expect(f.studio.getOperationalSnapshot().blockedReason.code).to.equal('storage-error');
+      f.allowSave(); await f.studio.handlers.save(); expect(f.studio.getOperationalSnapshot().blockedReason.code).not.to.equal('storage-error');
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('permits read-only operational queries in Stage while refusing route activation and stale recovery actions', async () => {
+    const f = setup({ backend: 'midi', outputId: 'chosen' });
+    try {
+      await f.studio.handlers.stage(); const messages = f.statuses.length, state = f.studio.handlers.operationalState();
+      expect(f.statuses).to.have.length(messages); expect(f.physicalOwner.canActivateOutput()).to.equal(false); expect(state.recoveryAction.id).to.equal('exit-stage');
+      expect(await f.studio.handlers.recoverOperational('exit-stage', state.identity)).not.to.equal(false);
+      expect(f.physicalOwner.canActivateOutput()).to.equal(true); expect(await f.studio.handlers.recoverOperational('exit-stage', state.identity)).to.equal(false);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('invalidates paused operational evidence when controller visibility changes independently of output or clock', async () => {
+    const f = setup(); let refreshes = 0;
+    try {
+      f.studio.transport.pause(); f.view.refreshOperational = () => refreshes++;
+      f.studio.ports.setInput({ id: 'controller', state: 'connected', addListener() {}, removeListener() {} });
+      const before = refreshes; f.studio.ports.configure({ activeSensingVisibility: 'filtered' }); expect(refreshes).to.be.greaterThan(before);
+      const current = f.studio.getOperationalSnapshot(); expect(current.controller).to.include({ connected: true, liveness: 'unavailable' });
+      expect(current.blockedReason.code).to.equal('controller-observation'); expect(current.clockAuthority.state).to.equal('internal'); expect(current.transport.state).to.equal('stopped');
+    } finally { await f.studio.dispose().completion; }
+  });
   it('prepares a reviewed project checkpoint without requesting a download or enabling output', async () => {
     let releases = 0;
     const f = setup({ backgroundJobs: { async compute(options) {
@@ -135,12 +170,14 @@ describe('ProcGen workstation orchestration', () => {
     await f.studio.dispose().completion;
   });
   it('authorizes the selected physical note route after asynchronous MIDI activation and retires its subscription', async () => {
-    let notify, retired = 0;
+    let notify, retired = 0, refreshes = 0;
     const output = { id: 'physical-state-route', state: 'connected', channels: { 1: { sendControlChange() {}, sendNoteOn() {}, sendNoteOff() {} } } };
     const f = setup({ backend: 'midi', outputId: output.id, webMidi: { outputs: [output], inputs: [] }, outputSubscribe: listener => { notify = listener; return () => retired++; } });
+    f.view.refreshOperational = () => refreshes++;
     f.studio.bindRuntime(); expect(f.studio.ports.getNoteRoute().status).to.equal('rejected');
     f.enable(); notify(); expect(f.studio.ports.getNoteRoute()).to.include({ status: 'accepted', outputId: output.id, ownedVoices: true });
-    await f.studio.dispose().completion; expect(retired).to.equal(1); notify(); expect(f.studio.ports.getNoteRoute().status).to.equal('rejected');
+    expect(refreshes).to.be.greaterThan(0); const beforeUnchanged = refreshes; notify(); expect(refreshes).to.equal(beforeUnchanged + 1);
+    await f.studio.dispose().completion; expect(retired).to.equal(1); const afterDispose = refreshes; notify(); expect(refreshes).to.equal(afterDispose); expect(f.studio.ports.getNoteRoute().status).to.equal('rejected');
   });
   it('records explicit MPE policy changes in the project and restores them through undo', async () => {
     const f = setup(); f.studio.bindRuntime(); const world = f.runtime.world;

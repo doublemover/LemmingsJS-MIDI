@@ -199,16 +199,16 @@ for (const dpr of [1, 2]) test.describe('desktop knob precision at DPR ' + dpr, 
     });
     expect(geometry).toMatchObject({ width: 44, height: 44, radius: '50%', contained: true });
     const before = await snapshot(page), revision = await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision);
-    await page.evaluate(() => { window.pointerHeader = document.querySelector('.studio-lane-header'); window.pointerCell = document.querySelector('.studio-cell'); window.pointerMutations = 0;
-      window.pointerObserver = new MutationObserver(records => { window.pointerMutations += records.filter(record => record.type === 'childList').length; }); window.pointerObserver.observe(document.querySelector('.studio-lane-headers'), { childList: true, subtree: true }); });
+    await page.evaluate(() => { window.pointerHeader = document.querySelector('.studio-lane-header'); window.pointerCell = document.querySelector('.studio-cell'); window.pointerMutations = 0; window.pointerMutationTargets = [];
+      window.pointerObserver = new MutationObserver(records => { const changes = records.filter(record => record.type === 'childList'); window.pointerMutations += changes.length; for (const record of changes) if (window.pointerMutationTargets.length < 16) window.pointerMutationTargets.push({ target: record.target.className, text: record.target.textContent }); }); window.pointerObserver.observe(document.querySelector('.studio-lane-headers'), { childList: true, subtree: true }); });
     await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
     for (let sample = 1; sample <= 60; sample++) await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - sample);
     await page.mouse.move(1950, bounds.y + bounds.height / 2 - 60); await page.mouse.up();
     await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision)).toBe(revision + 1);
     const after = await snapshot(page), evidence = await page.evaluate(() => { window.pointerObserver.disconnect(); return { header: window.pointerHeader === document.querySelector('.studio-lane-header'),
-      cell: window.pointerCell === document.querySelector('.studio-cell'), childListMutations: window.pointerMutations, dpr: window.devicePixelRatio, viewport: [window.innerWidth, window.innerHeight] }; });
+      cell: window.pointerCell === document.querySelector('.studio-cell'), childListMutations: window.pointerMutations, mutations: window.pointerMutationTargets, dpr: window.devicePixelRatio, viewport: [window.innerWidth, window.innerHeight] }; });
+    await test.info().attach('desktop-knob-gesture', { body: JSON.stringify({ ...evidence, geometry, pointerSamples: 60, canonicalCommits: 1, physicalHashUnchanged: after.hash === before.hash }), contentType: 'application/json' });
     expect(after.hash).toBe(before.hash); expect(evidence).toMatchObject({ header: true, cell: true, childListMutations: 0, dpr, viewport: [1920, 1080] });
-    await test.info().attach('desktop-knob-gesture', { body: JSON.stringify({ ...evidence, geometry, pointerSamples: 60, canonicalCommits: 1, physicalHashUnchanged: true }), contentType: 'application/json' });
     if (dpr === 1) await page.screenshot({ path: test.info().outputPath('desktop-parameter-controls.png') });
     await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.undo()); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].pan)).toBe(0);
     const next = await cap.boundingBox(), checkpoint = await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision);

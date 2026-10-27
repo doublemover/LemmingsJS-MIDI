@@ -35,6 +35,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     enabled: (status === 'live' || status === 'suspended') && audio.getState().enabled,
     audio: audio.getState()
   });
+  const getOperationalState = () => { const observed = audio.getOperationalState?.() || audio.getState();
+    return Object.freeze({ status, message, enabled: (status === 'live' || status === 'suspended') && observed.enabled, audio: observed });
+  };
   const report = (nextStatus, nextMessage) => {
     status = nextStatus;
     message = nextMessage;
@@ -165,7 +168,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return disposePromise;
   };
   const setCapture = observer => { capture = observer; router?.setCapture(capture); audio.setCapture?.(capture); };
-  return { start, stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, setCapture, audio };
+  return { start, stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, getOperationalState, setCapture, audio };
 };
 
 export { createLocalGamePreview };

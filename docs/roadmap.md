@@ -7243,3 +7243,52 @@ export-budget acknowledgments still prevent a false complete receipt.
   provenance, formatting and whitespace pass. New full CI remains pending;
   #994 hardware/relative-baseline/assistive-device and #998 real desktop
   screen-reader qualification remain explicit.
+
+### Continuation 286 — operational state and reviewed MIDI activation
+
+- One read-only operational snapshot and compact strip separate world state,
+  musical transport, browser context, reviewed note destination, clock roles,
+  controller evidence and output pressure. Exact blockers have explicit priority;
+  storage/recovery, uncertain owned releases and lost clock cannot be displaced
+  by ordinary silence. Details disclose requested versus measured simulation and
+  base versus effective musical tempo without claiming audible delivery.
+- The strip borrows the canonical Listen/Panic nodes. Output notifications,
+  pause changes and metric receipts invalidate the existing bounded display
+  scheduler, including when musical transport is stopped. Compact source getters
+  avoid full audio resource graphs and retained-record scans; immutable lane mix
+  summaries are cached by source identity. Recovery uses existing command owners
+  with source guards and Stage policy, never a second stream or clock.
+- Native dialogs expose Stop/Panic through the same canonical output owners.
+  Pointer activation keeps text focus and does not submit a draft; safety cancels
+  captured edits before release. Weak dialog ownership and two document listeners
+  avoid retaining removed modal trees; replacing or disposing the view retires
+  callbacks and removes its connected controls.
+- MIDI discovery and activation are separate. Discovery requests access only
+  explicitly, never activates a destination, and retains the reviewed endpoint
+  ID/name. Same-name choices include IDs. No first-enumerated fallback remains;
+  route loss/reconnect never rearms. Permission denial/revocation, empty catalog,
+  missing destination, API failure and preparation remain distinct. Removing
+  inactive B leaves active A and its messages unchanged.
+- Save errors remain visible through ordinary edits until a current successful
+  Save or logical document replacement. Assigning the first durable ID preserves
+  the current UI edit owner. Internal BPM entry edits base tempo; external-clock
+  tempo remains observed and read-only. No-source-event recovery opens the
+  existing isolated lesson without loading a world or enabling output.
+- CI for 059dc669 passed 55/56 desktop boundaries, then stopped before coverage
+  on a late click after an owned pointer cancellation. Pattern gestures now own
+  pointer-generated commits; keyboard activation remains explicit. Pointer
+  capture is released on owned completion/cancellation. The time-based click
+  suppression window is removed. Eight unchanged lane-status text writes are
+  also removed while retaining the zero-mutation DPR assertions.
+- Validation results and exact source/log hashes are recorded in the existing
+  full-suite receipt. One full Node run passed **6,503 cases** before the final
+  modal/sensing follow-through; **413 current focused cases** pass afterward.
+  The full desktop browser pass reached 59 passing cases with two identified
+  failures. The final grouped seven-case retest passes after repairing the new
+  test's checkpoint hash call and a stale display-action activation race. Native
+  dialog Panic preserves the draft/project/physical hash; paused sensing changes
+  preserve note-route/clock identity and send no bytes. Full remote CI and broader
+  independent controller/clock/backend
+  production journeys remain explicit
+  completion checks for #1072; no real device, acoustic or assistive-device
+  certification is inferred. The minimum viewport remains 1920x1080 desktop.

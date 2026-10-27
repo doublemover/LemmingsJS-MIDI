@@ -18,6 +18,9 @@ test('default physical scene sends causal MIDI without pattern cells or a browse
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes.every(lane => lane.mode === 'physical' && lane.patterns.length === 0))).toBe(true);
   expect(await page.evaluate(() => window.__physicalMidiRequests)).toBe(0);
   await page.locator('#procgenOutput').selectOption('midi'); await page.locator('#procgenListen').click();
+  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.__physicalMidiBytes.length)).toBe(0);
+  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.ports.configure({ recording: true }); window.__PROCGEN_STUDIO__.play(); });
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.ports.getRecording().filter(row => row.intentId && (row.data[0] & 0xf0) === 0x90 && row.data[2] > 0).length), { timeout: 15000 }).toBeGreaterThan(0);

@@ -411,12 +411,18 @@ class BrowserNotePreview {
     return session.api;
   }
 
+  getOperationalState() {
+    return Object.freeze({ status: this._status, message: this._message, enabled: this._enabled && this._context?.state === 'running',
+      contextState: this._context?.state || 'not-created', contextEpoch: this._contextEpoch, activeVoices: this._voices.size,
+      pendingNotes: this._previewPending.length, masterVolume: this._masterVolume });
+  }
+
   getState() {
     return {
       status: this._status,
       message: this._message,
       enabled: this._enabled && this._context?.state === 'running',
-      contextEpoch: this._contextEpoch,
+      contextEpoch: this._contextEpoch, contextState: this._context?.state || 'not-created',
       resourceAccounting: this._audioResources.diagnostics(),
       retirement: retirementState(this._retirement.getReceipt()), retiredVoices: this._retiredVoices.size, unclosedContext: !!this._retiringContext,
       activeVoices: this._voices.size, sharedMix: this._sessions.size > 0, sessionCount: this._sessions.size,

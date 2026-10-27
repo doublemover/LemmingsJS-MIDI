@@ -33,6 +33,15 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('routes an immediate reviewed-output activation by current backend state rather than a delayed status-strip action', () => {
+    const f = fixture(); let starts = 0, discoveries = 0;
+    const state = { enabled: false, selectedBackend: 'midi', midiPermission: 'granted', selectedOutputId: 'reviewed', status: 'selected' };
+    try {
+      f.ui.local.getOperationalState = () => state; f.ui.local.start = () => starts++; f.ui.local.discover = () => discoveries++;
+      f.el('procgenListen').dataset.operationalAction = 'discover'; f.el('procgenListen').dispatchEvent({ type: 'click' }); expect(starts).to.equal(1); expect(discoveries).to.equal(0);
+      state.failureKind = 'permission-revoked'; f.el('procgenListen').dataset.operationalAction = 'activate'; f.el('procgenListen').dispatchEvent({ type: 'click' }); expect(starts).to.equal(1); expect(discoveries).to.equal(1);
+    } finally { f.ui.dispose(); }
+  });
   it('keeps titles neutral while custom bindings load and generates help from the admitted registry', async () => {
     let resolve; const pending = new Promise(done => { resolve = done; }), f = fixture('', null, {}, null, () => pending);
     const calls = []; f.runtime.lanes = { renderer: { camera: { getState: () => ({ scale: 1 }), setZoom: value => calls.push(value) } } };
@@ -423,7 +432,7 @@ describe('compact procgen drawer', () => {
     f.runtime.lanes = { pause: () => calls.push('pause'), step: () => calls.push('step') };
     f.window.dispatchEvent({ type: 'keydown', code: 'BracketRight', preventDefault() {} });
     expect(calls).to.deep.equal(['pause', 'step']);
-    expect(f.el('procgenPause').textContent).to.equal('Play');
+    expect(f.el('procgenPause').textContent).to.equal('Play world');
     f.el('procgenStep').dispatchEvent({ type: 'click' });
     expect(calls).to.deep.equal(['pause', 'step', 'step']); f.ui.dispose();
   });
@@ -451,7 +460,7 @@ describe('compact procgen drawer', () => {
     f.runtime.lanes = { pause: () => calls.push('pause'), resume: () => calls.push('resume'), step: () => calls.push('step'), renderer: { camera: { followFrontier: () => calls.push('follow') } } };
     f.el('procgenSeed').value = 'forest'; f.el('procgenRestart').dispatchEvent({ type: 'click' });
     expect(f.ui.settings.seed).to.equal(normalizeSeed('forest')); expect(f.restarts).to.equal(1);
-    f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play');
+    f.el('procgenPause').dispatchEvent({ type: 'click' }); expect(f.el('procgenPause').textContent).to.equal('Play world');
     f.el('procgenStep').dispatchEvent({ type: 'click' }); f.el('procgenFollow').dispatchEvent({ type: 'click' });
     expect(calls).to.deep.equal(['pause', 'step', 'follow']);
     f.el('procgenMasterVolume').value = '180'; f.el('procgenMasterVolume').dispatchEvent({ type: 'input', target: f.el('procgenMasterVolume') });

@@ -154,6 +154,21 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     }
     retainedRangeDirty = false;
   };
+  const outputRouteState = () => [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
+    const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
+    const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
+    const schedulerState = scheduler.getOutputRouteState?.(id), ready = schedulerState?.mpeReady !== false && schedulerState?.ownedVoiceAdmissionReady !== false;
+    return { ...schedulerState, outputId: id, name: port?.name || active?.port.name || null, selected, authorized: !!active, active: !!active && ready,
+      activationFailure: activationFailures.get(id) ?? null,
+      configurationFailure: lastConfigurationFailure?.outputIds.includes(id) ? lastConfigurationFailure.reason : null,
+      available: !!port && port.state !== 'disconnected', state: active ? ready ? 'active' : 'setup-rejected' : selected || routeIntents.has(id) ? 'unavailable' : 'discovered',
+      connectionEpoch: active?.connectionEpoch ?? null, routeRevision: active?.routeRevision ?? routeRevision,
+      role: active?.intent.role || (selected ? 'default-note' : 'note') };
+  });
+  const getOperationalState = () => Object.freeze({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null, clockOutputId: clockOutput?.id || null,
+    inputPortConnected: input ? input.state !== 'disconnected' : null,
+    inputLiveness: Object.freeze({ sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', activeSensingVisibility, ...inputLiveness }),
+    routeRevision, outputRoutes: outputRouteState(), pressure: scheduler.getOutputPressure?.(now(), noteOutput?.id) || null });
   const getState = () => { refreshRetainedRange(); return ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
     clockOutputId: clockOutput?.id || null, thru, recording, learning: !!learn,
     inputPortConnected: input ? input.state !== 'disconnected' : null,
@@ -166,17 +181,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       return state?.mpeReady !== false && state?.ownedVoiceAdmissionReady !== false;
     }).map(([id]) => id),
     routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
-    outputRoutes: [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
-      const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
-      const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
-      const schedulerState = scheduler.getOutputRouteState?.(id), ready = schedulerState?.mpeReady !== false && schedulerState?.ownedVoiceAdmissionReady !== false;
-      return { ...schedulerState, outputId: id, name: port?.name || active?.port.name || null, selected, authorized: !!active, active: !!active && ready,
-        activationFailure: activationFailures.get(id) ?? null,
-        configurationFailure: lastConfigurationFailure?.outputIds.includes(id) ? lastConfigurationFailure.reason : null,
-        available: !!port && port.state !== 'disconnected', state: active ? ready ? 'active' : 'setup-rejected' : selected || routeIntents.has(id) ? 'unavailable' : 'discovered',
-        connectionEpoch: active?.connectionEpoch ?? null, routeRevision: active?.routeRevision ?? routeRevision,
-        role: active?.intent.role || (selected ? 'default-note' : 'note') };
-    }), recordedEvents: retainedEvents, droppedRecords,
+    outputRoutes: outputRouteState(), recordedEvents: retainedEvents, droppedRecords,
     recordingComplete: !incompleteReason, incompleteReason, incompleteReasons: [...incompleteReasons], firstLostSequence,
     retainedRange: { firstSequence: firstRetainedSequence, lastSequence: lastRetainedSequence,
       firstTimestamp: firstRetainedMs, lastTimestamp: lastRetainedMs },
@@ -672,7 +677,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return true;
   }
   return {
-    getState, receiveMidi, flush, panic, recordOutput,
+    getState, getOperationalState, receiveMidi, flush, panic, recordOutput,
     setInput: replaceInput,
     setNoteOutput(port, { rearm = false } = {}) {
       if (disposed || !rearm && noteOutput === port && (!port || resolveOutput() === port)) return;

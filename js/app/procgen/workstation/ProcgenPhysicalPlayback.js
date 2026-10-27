@@ -292,6 +292,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
+    operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, leaseFailures }),
     diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected,
       preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };

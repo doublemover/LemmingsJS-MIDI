@@ -69,11 +69,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   try { const stored = JSON.parse(window.localStorage?.getItem(workerStorageKey) || 'null'); if (stored?.version === 1) settings.workerLimits = normalizeWorkerLimits(stored.value); } catch { /* Keep session defaults. */ }
   let config = projectToMidiConfig(project), disposed = false;
   let syncTargetHelp = () => {};
-  let physicalControlOwner = null;
+  let physicalControlOwner = null, operationalMetrics = null;
+  const needsMidiDiscovery = state => state.selectedBackend === 'midi' && (state.midiPermission !== 'granted' || !state.selectedOutputId || ['destination-missing', 'permission-revoked'].includes(state.failureKind));
   const renderOutput = state => {
     syncTargetHelp();
     const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
-    if (button) { button.textContent = state.enabled || state.status === 'starting' ? 'Stop output' : midi ? 'Connect MIDI' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
+    const discover = needsMidiDiscovery(state);
+    if (button) { button.dataset.outputAction = state.enabled || ['starting', 'discovering'].includes(state.status) ? 'stop' : discover ? 'discover' : midi ? 'activate' : 'listen'; button.textContent = state.enabled || ['starting', 'discovering'].includes(state.status) ? state.status === 'discovering' ? 'Cancel discovery' : midi ? 'Deactivate MIDI output' : 'Disable browser output' : midi ? discover ? 'Discover MIDI outputs' : 'Activate MIDI output' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
     if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (!midi && settings.soundFont ? ' Requested sample bank is unavailable; using the browser synth.' : '');
     if (byId('procgenMasterVolume')) byId('procgenMasterVolume').disabled = midi;
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
@@ -82,10 +84,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
   local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
-    backend: settings.output, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {
+    backend: settings.output, canActivate: () => physicalControlOwner?.canActivateOutput?.() ?? true, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {
       const select = byId('procgenMidiDevice'); if (!select) return;
       select.replaceChildren(); const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = ports.length ? 'Choose MIDI output' : 'Connect to find MIDI outputs'; select.append(placeholder);
-      for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name || port.id; select.append(option); }
+      for (const port of ports) { const option = document.createElement('option'); option.value = port.id; option.textContent = port.name ? port.name + ' · ' + port.id : port.id; select.append(option); }
       select.value = selectedId || '';
     } });
   if (byId('procgenOutput')) byId('procgenOutput').value = settings.output || 'synth';
@@ -103,7 +105,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
           tracks: project.tracks.slice(0, 16).map(track => ({ id: track.id, channel: track.channel, program: track.program })), ensemble: project.ensemble, laneMusic: project.global.laneMusic },
         limits: { capacity: outputCapture.capacity, maxDurationMs: outputCapture.maxDurationMs } };
     } });
-  const tensionControls = createMidiTensionControls({ document, prefix: 'procgenTension', getProject: () => project,
+  const tensionControls = createMidiTensionControls({ document, prefix: 'procgenTension', getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter, getLaneCount: () => settings.laneCount,
     update: patch => {
       commitAutomation(reduceMidiProject(project, { type: 'ensemble.tension.update', patch }));
@@ -139,11 +142,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     for (const listener of projectListeners) listener(project);
   };
   const dispatchAutomation = intent => commitAutomation(reduceMidiProject(project, intent));
-  const spanControls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => settings.laneCount,
+  const spanControls = createProcgenMidiSpanControls({ document, getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project, getLaneCount: () => settings.laneCount,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
     getBackend: () => local.getState().selectedBackend === 'midi' ? 'midi' : 'synth',
     onSelect: (id, ids) => spanOverlay.select(id, ids), onIntent: dispatchAutomation });
-  const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getProject: () => project,
+  const spanOverlay = createProcgenMidiSpanOverlay({ document, getRuntime, getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getDomain: () => byId('procgenSpanDomain')?.value || 'beats', getTarget: () => byId('procgenSpanTarget')?.value || 'velocity',
     onUpdate: (automationId, patch) => dispatchAutomation({ type: 'automation.update', automationId, patch }),
     onBatchUpdate: updates => dispatchAutomation({ type: 'automation.batch.update', updates }),
@@ -155,7 +160,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   };
   listen(byId('procgenSpanUndo'), 'click', () => restoreAutomation('undo'));
   listen(byId('procgenSpanRedo'), 'click', () => restoreAutomation('redo')); syncAutomationHistory();
-  musicDirection = createMidiMusicDirectionControls({ document, prefix: 'procgenMusic', getProject: () => project,
+  musicDirection = createMidiMusicDirectionControls({ document, prefix: 'procgenMusic', getOperationalMetrics: () => operationalMetrics,
+    getProject: () => project,
     getRouter: () => getRuntime()?.view?.midiPreviewRouter,
     update: musicDirector => dispatchAutomation({ type: 'global.update', patch: { musicDirector } }) });
   musicControls = createProcgenMusicControls({ document, getState: () => procgenMusicState(project, settings),
@@ -266,7 +272,12 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     try { window.localStorage?.setItem(musicKey, JSON.stringify({ version: 1, preset: settings.preset, mode: settings.mode })); } catch { /* Keep session palette. */ }
   };
   listen(byId('procgenPreset'), 'change', () => refreshPreset({ replaceRollingDefaults: true })); listen(byId('procgenPhrases'), 'change', () => refreshPreset()); syncMusic();
-  listen(byId('procgenListen'), 'click', () => { if (local.getState().enabled || local.getState().status === 'starting') local.stop(); else local.start(); });
+  listen(byId('procgenListen'), 'click', () => {
+    const state = local.getOperationalState();
+    if (state.enabled || ['starting', 'discovering'].includes(state.status)) return local.stop();
+    if (needsMidiDiscovery(state)) return local.discover();
+    return local.start();
+  });
   let restartId = 0;
   const doRestart = async ({ applySeed = false } = {}) => {
     if (physicalControlOwner?.canRestart && !physicalControlOwner.canRestart()) return false;
@@ -383,7 +394,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   let paused = false;
   const setPaused = next => {
     paused = !!next; getRuntime()?.lanes?.[paused ? 'pause' : 'resume']?.();
-    if (byId('procgenPause')) { byId('procgenPause').textContent = paused ? 'Play' : 'Pause'; byId('procgenPause').setAttribute('aria-pressed', String(paused)); }
+    if (byId('procgenPause')) { byId('procgenPause').textContent = paused ? 'Play world' : 'Pause world'; byId('procgenPause').setAttribute('aria-pressed', String(paused)); }
+    physicalControlOwner?.operationalChanged?.();
   };
   listen(byId('procgenPause'), 'click', () => setPaused(!paused));
   const stepOnce = () => { if (!paused) setPaused(true); getRuntime()?.lanes?.step(); };
@@ -483,6 +495,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, getShareDescriptor, syncActiveCount,
+    getOperationalMetrics: () => operationalMetrics,
     getProject: () => project,
     setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
@@ -491,6 +504,9 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     setPaused, setSpeed, restart: doRestart,
     isPaused: () => paused,
     syncMetrics(state) {
+      operationalMetrics = Object.freeze({ achievedTicksPerSecond: Number.isFinite(state.achievedTicksPerSecond) ? state.achievedTicksPerSecond : null,
+        observedAt: window.performance?.now?.() ?? null, generation: state.generation, alive: state.alive });
+      physicalControlOwner?.operationalChanged?.();
       local.syncStatus?.();
       syncActiveCount(state.alive); syncProgress(state); tensionControls.syncStatus(); spanControls.syncStatus(); musicDirection.syncStatus();
       const pressure = getRuntime()?.view?.midiPreviewRouter?.getOutputPressure?.();

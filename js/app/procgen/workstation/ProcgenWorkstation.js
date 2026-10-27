@@ -1,3 +1,4 @@
+import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { prepareSceneMacroAction } from './SceneMacroAction.js';
 import { performanceSceneHash } from './PerformanceScene.js';
 import { createPerformanceStageSession } from './PerformanceStageSession.js';
@@ -149,7 +150,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let masterCapture = null, soundSeedLab = null, shapeFoundry = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, rectangularMembraneView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let stageSession = null;
-  let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, physicalLessonView = null, sceneToolsPending = null;
+  let sceneCatalog = null, sceneLoader = null, sceneBrowser = null, physicalLessonView = null, physicalLessonDefaultId = null, sceneToolsPending = null;
   let prelistenMonitor = null;
   let causalAudioRender = null;
   let pendingHistory = null;
@@ -158,7 +159,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const retirement = createProcgenRetirementScope();
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
-  let editRevision = 0, savedRevision = -1, lastSavedAt = null;
+  let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
   const pendingSaveGenerations = new Set();
   let transportStopGeneration = 0;
   const historySizes = new WeakMap();
@@ -187,9 +188,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       { name: 'causal-parent-view', run: () => { if (physicalScoreParentLease) { retireCausalRead(physicalScoreParentLease); physicalScoreParentLease = null; } } }
     ]); return scoreViewRetirement;
   };
-  const storageStatus = error => view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error,
-    recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
-      pendingRevision: editRevision, error: recoveryError, retirement: recoveryRetirement } });
+  const currentStorageError = () => lastStorageError?.generation === documentGeneration ? lastStorageError.error : null;
+  const storageStatus = error => {
+    if (error) lastStorageError = { generation: documentGeneration, error: Object.freeze({ message: String(error.message || error).slice(0, 240) }) };
+    view?.storage?.({ dirty: editRevision !== savedRevision, savedAt: lastSavedAt, error: currentStorageError(),
+      recovery: { state: recoveryState, durableRevision: durableRecoveryRevision, durableTick: durableRecoveryTick,
+        pendingRevision: editRevision, error: recoveryError, retirement: recoveryRetirement } });
+  };
   const inputTarget = lease => {
     const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
     const pattern = lane?.patterns?.[lease.slot];
@@ -484,6 +489,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const wasRecording = state.recording;
       state.recording = midiState.recording;
       view?.recording?.(midiState.recording, midiState);
+      view?.refreshOperational?.();
       if (wasRecording && !midiState.recording && midiState.incompleteReasons.includes('recording-cap-reached'))
         status('Recording storage full. Performance continues; export is labeled partial.');
     },
@@ -1214,7 +1220,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const audio = legacy.local.getState(), world = runtime().world, clock = transport.getState();
     return JSON.stringify([documentGeneration, projectRevision, editRevision, world.generation, world.sourceEditRevision ?? null, state.outputId ?? null, state.inputId ?? null, state.clockOutputId ?? null, !!state.thru, audio.enabled, audio.selectedBackend, audio.outputId ?? audio.selectedOutputId ?? null, audio.outputSinkId ?? null, clock.bpm, clock.baseBpm, clock.gameSpeed, clock.speedMode, clock.linked, clock.clockSource]);
   };
-  const openPerformanceScenes = async () => {
+  const openPerformanceScenes = async ({ showBrowser = true } = {}) => {
     if (disposed) return;
     if (!sceneBrowser) {
       sceneToolsPending ||= (async () => {
@@ -1229,7 +1235,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
           beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
           onState: refreshSceneCue });
-        const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return;
+        const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return; physicalLessonDefaultId = definitions[0]?.setupScene.id || null;
         if (definitions.length) physicalLessonView = lessonView.createPhysicalLessonView({ document, window, definitions, cancelLoad: () => sceneLoader.cancel(), onStatus: status,
           loadScene: async (reference, { signal }) => {
             if (stageSession?.active()) throw new Error('Exit Stage before loading a lesson world.');
@@ -1246,7 +1252,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       })().catch(error => { sceneToolsPending = null; throw error; });
       await sceneToolsPending;
     }
-    if (!disposed) sceneBrowser?.open();
+    if (!disposed && showBrowser) sceneBrowser?.open();
   };
   async function loadSession(value, admittedLease = null, { signal, historyRestore = false } = {}) {
     if (stageSession?.active()) return stageSession.reject();
@@ -1398,7 +1404,36 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const ensureSoundSeedLab = () => { if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound authoring ownership is unavailable.'); return soundSeedLab ||= createSoundSeedLabView({ document, window, audio: legacy.local.audio, getPlayback: () => physicalPlayback, resourceBudget, jobs: backgroundJobs,
     displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
     getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && (value.sourceKind === 'ContactSpanBegan' && value.causeKind === 'support' && value.contactTravel?.lifetimeScope === 'contactSpan' || value.sourceKind === 'MotionCommitted' && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'); }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
+  const getOperationalSnapshot = () => {
+    const world = runtime()?.world, output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
+    const identity = JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId || null, world?.generation, outputEpoch, midi.routeRevision,
+      output.selectedOutputId || output.outputId || null, output.enabled, output.status, position.clockSource, position.clockStatus, state.laneId, !!currentStorageError(), recoveryState, !!stageSession?.active()]);
+    return createProcgenOperationalSnapshot({ identity, simulation: { available: !!world, preparing: worldBusy || !world && !startupCommitted,
+      paused: legacy.isPaused?.() ?? !position.playing, requestedSpeed: legacy.settings.speed,
+      achievedTicksPerSecond: metrics && world && metrics.generation === world.generation ? metrics.achievedTicksPerSecond : null, measurementTime: metrics?.observedAt, tickDurationMs: world?.timer?.frameTime },
+    transport: position, output, midi, physical: physicalPlayback?.operationalState?.() || null, lanes: project.procgen.lanes,
+    storage: { error: currentStorageError() }, recovery: { state: recoveryState, error: recoveryError }, stage: !!stageSession?.active() });
+  };
   const handlers = {
+    operationalState: getOperationalSnapshot,
+    recoverOperational: async (action, identity) => {
+      const current = getOperationalSnapshot();
+      if (disposed || identity !== current.identity || action !== current.recoveryAction.id) { status('Operational state changed. Review the current action.'); return false; }
+      if (action === 'discover') return legacy.local.discover?.();
+      if (action === 'listen' || action === 'activate') return legacy.local.start();
+      if (action === 'export') return handlers.export();
+      if (action === 'play') return handlers.stagePlay();
+      if (action === 'exit-stage') return handlers.stageExit();
+      if (action === 'review-output' || action === 'review-backend') {
+        const control = document.getElementById(action === 'review-output' ? 'procgenMidiDevice' : 'procgenOutput'); control?.focus?.({ preventScroll: true }); return !!control;
+      }
+      if (action === 'inspect-midi' || action === 'inspect-clock') { state.tab = 'MIDI'; view.renderInspector(); return true; }
+      if (action === 'inspect-physical' || action === 'inspect-mix') { state.tab = action === 'inspect-mix' ? 'Lane' : selected().mode === 'pattern' ? 'Lane' : 'Physical'; view.renderInspector(); return true; }
+      if (action === 'lesson') { await openPerformanceScenes({ showBrowser: false }); if (disposed || getOperationalSnapshot().identity !== identity) return false;
+        if (!physicalLessonView || !physicalLessonDefaultId) throw new Error('No installed isolated lesson is available. The current world is unchanged.');
+        physicalLessonView.open(physicalLessonDefaultId); return true; }
+      return false;
+    },
     clearSolos: () => {
       if (!project.procgen.lanes.some(lane => lane.solo)) return;
       if (!Number.isSafeInteger(project.procgen.revision + 1)) throw new Error('Project revision exhausted.');
@@ -1650,7 +1685,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return transport.getState();
     },
     stage: safe(async () => {
-      stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
+      stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && legacy.local.getState().status !== 'starting' && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
         getIdentity: () => JSON.stringify([documentGeneration, projectRevision]), setPresentation: value => view?.stageMode?.(value), getCandidate: () => sceneLoader?.state(),
         applyCandidate: () => sceneLoader.apply(), cancelCandidate: () => sceneLoader?.cancel(), onStatus: status });
       const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); legacy.refreshShortcutHints?.(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
@@ -1716,7 +1751,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (disposed) return false;
         if (documentGeneration !== saveDocumentGeneration || operationSerial !== saveOperationSerial) return true;
         if (receipt) { documentId = receipt.id; documentRevision = receipt.revision; }
-        savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; storageStatus();
+        savedName = name; savedRevision = revision; lastSavedAt = session.savedAt; lastStorageError = null; storageStatus();
         status(editRevision === revision ? 'Saved ' + name + '.' : 'Snapshot saved; newer edits are unsaved.'); return true;
       } catch (error) {
         if (documentGeneration === saveDocumentGeneration && operationSerial === saveOperationSerial) storageStatus(error);
@@ -1875,12 +1910,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
-  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => JSON.stringify([documentId, documentGeneration]), dispatch, handlers, canCommand, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   let observedOutputRoute = outputRouteKey(legacy.local.getState());
   const unsubscribeOutputState = legacy.local.subscribe?.(state => {
     if (disposed) return; const next = outputRouteKey(state || legacy.local.getState());
     if (next !== observedOutputRoute) { observedOutputRoute = next; syncPorts(); }
+    view?.refreshOperational?.();
   });
   if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);
   if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
@@ -1932,9 +1968,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const canWorldShortcut = action => !disposed && (action === 'restartLevel' ? !stageSession?.active() :
     action === 'nuke' || action === 'nukeInstant' ? !stageSession?.active() && !!runtime()?.world && !worldBusy && !causalTakeStart && !causalTakeStop : true);
   const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
-    getRecipeSpeed: () => transport.getState().gameSpeed, canShortcut: canWorldShortcut,
+    getRecipeSpeed: () => transport.getState().gameSpeed, canActivateOutput: () => !stageSession?.active(), canShortcut: canWorldShortcut,
     getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),
-    canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue,
+    canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue, operationalChanged: () => view?.refreshOperational?.(),
     speed(value) { configureTransport({ gameSpeed: value }); legacy.setSpeed(value, { owned: true }); lastLegacySpeed = legacy.settings.speed; persist(); refreshSceneCue(); return value; },
     nuke(laneId) {
       const world = runtime()?.world; if (!canWorldShortcut('nuke')) return false;
@@ -1959,6 +1995,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
+    getOperationalSnapshot,
     getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
       ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },

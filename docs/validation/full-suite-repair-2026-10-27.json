@@ -838,7 +838,8 @@
     },
     "excludesContinuations": [
       284,
-      285
+      285,
+      286
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -9527,6 +9528,306 @@
       "Full CI for this continuation remains pending. The latest fully green checkpoint is 0607eec4 and excludes continuations 284/285.",
       "The pointer fixtures use 60 actual browser samples; they do not claim a measured 60Hz wall-clock rate, audio-node allocation profile or hardware/assistive-device qualification.",
       "Remaining #994 relative hardware/baseline/report and actual desktop assistive-device matrix is not claimed complete. #998 still needs current full CI and real desktop screen-reader smoke."
+    ],
+    "publishedCiOutcome": {
+      "head": "059dc669de94237b25c3199a16e7f567a1e1a25c",
+      "job": 122476528418,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40585742393/job/122476528418",
+      "browserPassed": 55,
+      "browserFailed": 1,
+      "coverageSkipped": true,
+      "failure": "A pointer-generated click after owned cancellation committed one pattern edit. Fixed by continuation 286 without timing-based click suppression.",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci285-failure.log",
+        "sha256": "89d83ec6356bf81af27b60846cc8ac40f999c220bb0c71211263f100138452f3",
+        "bytes": 112997
+      }
+    }
+  },
+  "continuation286": {
+    "baseHead": "059dc669de94237b25c3199a16e7f567a1e1a25c",
+    "scope": "Read-only operational status, explicit named MIDI discovery/activation, native-dialog output safety and paused evidence ownership; desktop minimum 1920x1080.",
+    "implemented": [
+      "Frozen scalar operational snapshots separate simulation, transport, actual browser context, local backend, named note route, clock roles, controller evidence and pressure. Priority blockers and one current recovery action preserve storage/recovery/owned-release/clock failures above ordinary silence. Bridge health remains honestly unreported.",
+      "Borrow the canonical Listen/Panic nodes and invalidate the existing bounded display scheduler from output, simulation metrics, pause and MIDI evidence notifications, including stopped transport. Compact getters avoid full audio accounting graphs and retained-record scans; immutable lane summaries use source-identity caching.",
+      "Discover only after explicit access intent and never activate during discovery. Require a named reviewed endpoint even with a single port; remove first-enumeration fallback, disambiguate equal names by ID, retain reviewed identity across loss/reconnect and never auto-rearm or fall back. Distinguish permission denial/revocation, empty catalog, destination loss, preparation and API send failure.",
+      "Native Listen dispatch uses authoritative current backend state, never a delayed display action. Immediate selection/activation is not redirected back into discovery; a revoked permission still requires rediscovery. Stage blocks route activation before and after asynchronous access.",
+      "Source-bound recovery uses existing play, output, export, inspector, Stage and isolated lesson owners. No hidden test note, automatic lesson load or secondary stream/clock is added.",
+      "Keep Save failure sticky for the current document until a current successful Save or logical replacement. Assigning the first durable document ID preserves the current UI edit owner. Internal BPM edits base tempo; external BPM stays observed/read-only. Paused requested speed comes from the selected setting rather than timer zero.",
+      "Native modal Stop/Panic invokes existing output owners without submitting the form or moving pointer focus. Captured edits cancel before release. Weak dialog metadata, two document listeners and cleared retired callbacks avoid retaining removed modal trees; replacement retires the previous document lease.",
+      "Pattern pointer gestures own pointer-generated commits; canceled gestures cannot publish through a late click, while keyboard activation remains explicit. Owned completion/cancellation releases capture. Remove the time-based suppression window and avoid eight unchanged lane-status text replacements."
+    ],
+    "validation": {
+      "fullNode": {
+        "command": "npm test",
+        "passed": 6503,
+        "failed": 0,
+        "seconds": 425.29,
+        "scope": "One full run collected before the final modal/sensing/current-action follow-through. Final changed owners and five modal cases are separately retested below; no final full-tree pass is inferred.",
+        "budgetMs": 180000,
+        "budgetEnforced": false
+      },
+      "currentFocusedNode": {
+        "passed": 413,
+        "failed": 0,
+        "reportedDuration": "2s"
+      },
+      "browserBatches": [
+        {
+          "scope": "All maintained boundaries before modal integration",
+          "passed": 59,
+          "failed": 1,
+          "duration": "5.0m",
+          "failure": "The old physical MIDI case expected discovery to activate an unspecified endpoint."
+        },
+        {
+          "scope": "All maintained boundaries with modal integration, before final corrections",
+          "passed": 59,
+          "failed": 2,
+          "duration": "4.7m",
+          "failures": [
+            "New modal fixture called a nonexistent world.physicsHash method; corrected to the existing checkpoint hash helper.",
+            "An immediate selected-output activation read stale display action=discover; corrected to authoritative current backend dispatch."
+          ]
+        },
+        {
+          "scope": "Final grouped operational-status and causal physical-MIDI boundaries after every correction",
+          "passed": 7,
+          "failed": 0,
+          "duration": "22.6s",
+          "cases": [
+            "1080p state/details/Panic visibility and no side effects",
+            "reversed same-name ports, explicit activation, inactive B removal, A loss and reconnect without rearm",
+            "permission denial without fallback",
+            "empty authorized catalog",
+            "native dialog Panic/Stop preserves unsaved name, project and physical hash through reconnect",
+            "paused filtered/observable controller evidence updates without note-route/clock change or output bytes",
+            "real causal physical MIDI bytes without a browser audio clock, followed by owned cleanup"
+          ]
+        }
+      ],
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "visualReview": "Reviewed actual 1920x1080 status-details and parameter-control screenshots. Primary blockers/actions and Panic are visible; details distinguish base/effective tempo and actual evidence. No subminimum viewport, mobile emulation or phone/tablet qualification is included.",
+      "logs": {
+        "fullNode": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-suite-20261027.log",
+          "sha256": "869b1a5af31518ef730399a1cbb33740699eb48d5d1446683ef1f12a0d4a090b",
+          "bytes": 590948
+        },
+        "currentOwners": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-owners-sealed-20261027.log",
+          "sha256": "8fa0be1948f39b57009c1b60b255feda06c01342394c0ae2e842fdd7ffffbe41",
+          "bytes": 39499
+        },
+        "fullBrowserBeforeOverlay": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-browser-publish-20261027.log",
+          "sha256": "c2877d3dbe15171ceb5fc48d864259f5a03f20f1b38db6c83c18593ea69a315e",
+          "bytes": 37489
+        },
+        "fullBrowserBeforeFinalCorrections": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-browser-final-20261027.log",
+          "sha256": "71e6b9c40ff99cfd11dc5e96d4548c585697be5567af9eee2b68365d4ec1bb68",
+          "bytes": 40564
+        },
+        "currentCorrectedBrowserGroup": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-browser-sealed-20261027.log",
+          "sha256": "1d446182d1338bb1a0ba76bcc58fd46eba21d2572cdaee8dce54f0a8e2fdc25c",
+          "bytes": 1514
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-format-commit-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "static": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog286-static-sealed-20261027.log",
+          "sha256": "8aac3d488ff58802331d959f987c1df3ac6ee4743103c242b50319ee8f5844df",
+          "bytes": 371
+        },
+        "previousCiFailure": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci285-failure.log",
+          "sha256": "89d83ec6356bf81af27b60846cc8ac40f999c220bb0c71211263f100138452f3",
+          "bytes": 112997
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css/procgen-workstation.css",
+        "sha256": "8a1f0f3ad48da6701ddd70d37b50be8058ba347a45fa7812d098cb767b151607",
+        "bytes": 33003
+      },
+      {
+        "path": "docs/procgen-workstation.md",
+        "sha256": "0a84c4a2d1284bcbc7bed85ff0ef44039914fd5285cfdaf8339a74b8f607a559",
+        "bytes": 26047
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "5ac6f9186e61d97aef2a7d438daff51d2e66d6cdefca494260c5c323f891dc2c",
+        "bytes": 530501
+      },
+      {
+        "path": "e2e/helpers/webmidiStub.js",
+        "sha256": "2645db5d552b4bce994927b25e1723e9bc8fa85c1cf3df1186983f5110dc5820",
+        "bytes": 6434
+      },
+      {
+        "path": "e2e/procgen-operational-status.spec.js",
+        "sha256": "52bc9ce0efd2ff3102dff54abeec0b4c3b636f53c3b29a66d2893ae6870695a6",
+        "bytes": 9666
+      },
+      {
+        "path": "e2e/procgen-physical-midi.spec.js",
+        "sha256": "aae9631b10744c5a4a7b9bedddfd83f9f442d1b5bff09d41d78e06385e2eaa80",
+        "bytes": 3166
+      },
+      {
+        "path": "e2e/procgen-workstation-commands.spec.js",
+        "sha256": "8a6d407bac39095052b657ec6adde9a12eb6130c4662da11c9ca034c59a37090",
+        "bytes": 23622
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "sha256": "ac9df86ce246eff9c7fb6f8ceda43c899d669f3b455b8d96e52180aa9a290666",
+        "bytes": 35695
+      },
+      {
+        "path": "e2e/procgen.spec.js",
+        "sha256": "22d25623f61e1f49df68a5e1f518f3c164d7164fb746d2c01b6f66c4014799ea",
+        "bytes": 17780
+      },
+      {
+        "path": "js/app/controls/ModalOutputSafety.js",
+        "sha256": "07d309f89c7eca43324328da9e88983a89d6bd12fb65a1ed62bfc4868fa31fc1",
+        "bytes": 3021
+      },
+      {
+        "path": "js/app/midi-ui/browserNotePreview.js",
+        "sha256": "3768680afe18c4c587e7f860f9444423aefe11aeee0b08d40b7449a1e14bf331",
+        "bytes": 83858
+      },
+      {
+        "path": "js/app/midi-ui/localGamePreview.js",
+        "sha256": "04520e89eaae9ef9b8e16724ed974548223d1fcdd9a5bb2d644a1fedcfdea8b2",
+        "bytes": 7060
+      },
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "sha256": "213d9d2d2279602df7ca4096233626b5f3dab8fe8d3a7f18e814ded8a5b0ee3b",
+        "bytes": 14046
+      },
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "sha256": "45fb8d16dacd6b25ce8df55b688f0299a025130370fc42c21281c87771bff4bb",
+        "bytes": 47568
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceStageSession.js",
+        "sha256": "ac5adde3141d14328b4fe6432eaf261eaae74edc7528b517ff978f4691840a86",
+        "bytes": 4103
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "sha256": "1b14e58abd02cb0be0134c706523cf4495102e7ab3009b982193656077272843",
+        "bytes": 61684
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+        "sha256": "ef450a45d60cd77444b7d847917b796f5bac8d187646f52e4f781aa1d4677d6b",
+        "bytes": 11869
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+        "sha256": "8c1874cd393f6c7fabe598027379ef5691fdd408d7413ae60947654bf3b62b8b",
+        "bytes": 7085
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "sha256": "1c3a2ff5a3c14caa857b834e7b5b8a56e02b4436d081984f4bfb66d01561264b",
+        "bytes": 33874
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "9d3b9c5beb98bc0be07947041abd7b54a3f17c9e62647797e7a1ac50f2691b13",
+        "bytes": 186606
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "f1689efa53479b0b4884e7bbd8d7ab6060e56907ef68f367b189d51c62bf0c32",
+        "bytes": 108483
+      },
+      {
+        "path": "package.json",
+        "sha256": "f7327188ee66077a5554e9aebd8e56fcf6295e4f2ae944540b3f653c46b09bfc",
+        "bytes": 8745
+      },
+      {
+        "path": "procgen.html",
+        "sha256": "f91f4a0759db005557af6249c9b429e2fb481b5e7a03de94b6655fbc0cbccb85",
+        "bytes": 18431
+      },
+      {
+        "path": "test/midi/procgen-midi-output.test.js",
+        "sha256": "64d5cb2937f262eebbb20c14b3a870f744e0b1409ace0182b6762fb011af7a15",
+        "bytes": 16589
+      },
+      {
+        "path": "test/modal-output-safety.test.js",
+        "sha256": "f9c6c6870bbda9aabe0eb1fb2118f7fcd22eb24dabaeddcf733712b23ccfc81e",
+        "bytes": 4229
+      },
+      {
+        "path": "test/procgen-operational-state.test.js",
+        "sha256": "bc6473270e7d63a3f2bba967ab3f4cef4eadc6326629a6a29b2d867e0a6ee8e5",
+        "bytes": 8354
+      },
+      {
+        "path": "test/procgen-operational-view.test.js",
+        "sha256": "897a55ab7e8fc34eef09aeeb82f2207c3355bc5450b02a3b87ad9e181222615e",
+        "bytes": 3453
+      },
+      {
+        "path": "test/procgen-ui.test.js",
+        "sha256": "80fbeeceeb5f68b13e91a54f4b2bafa9b061862e986a645f4c7f9f36c68246ff",
+        "bytes": 49050
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "77aca705438e2ff706736851fd68440144a5c327297243d58dcb301c05905488",
+        "bytes": 93298
+      }
+    ],
+    "ciRepair": {
+      "head": "059dc669de94237b25c3199a16e7f567a1e1a25c",
+      "job": 122476528418,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40585742393/job/122476528418",
+      "browserPassed": 55,
+      "browserFailed": 1,
+      "coverageSkipped": true,
+      "failure": "A pointer-generated click after owned cancellation committed one pattern edit. Fixed by continuation 286 without timing-based click suppression.",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci285-failure.log",
+        "sha256": "89d83ec6356bf81af27b60846cc8ac40f999c220bb0c71211263f100138452f3",
+        "bytes": 112997
+      }
+    },
+    "limitations": [
+      "Current remote full CI is pending. The fully green 0607eec4 checkpoint excludes continuations 284/285/286. Browser results above retain their exact cohorts; a combined 62-case same-head pass is not claimed.",
+      "Operational scope still needs broader independent clock/backend failure production journeys and supported overlay/busy-state coverage. Browser state/virtual-port evidence does not certify hardware, acoustic delivery, native bridge health or assistive devices.",
+      "The original 150 Node failures remain cleared. The GitHub audit still has 229 open issues; this batch is progress on #1072 and follow-through for #998, not completion of the entire backlog."
     ]
   }
 }
