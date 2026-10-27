@@ -7122,3 +7122,14 @@ export-budget acknowledgments still prevent a false complete receipt.
   entries. Undo/Redo preserves the charge. These are conservative logical charges,
   not process heap measurements. Formatting, types, undefined calls, provenance
   and whitespace pass. Full CI for this continuation remains pending.
+
+### Continuation 281 — reconcile issue scope with desktop minimum
+
+- Inspected all 233 remaining open issues for phone/tablet/mobile layout targets.
+  Closed #1035 (touch-first mobile layout) and #1090 (Android/iOS MIDI hosts) as
+  **not planned**, following the owner's explicit 1920x1080 desktop minimum.
+  This does not claim either mobile feature was implemented or qualified.
+- Corrected desktop acceptance/dependencies in #1009, #1031, #1072, #1076,
+  #1082, #1085 and #1203; #1232 already carries the desktop correction. Desktop
+  keyboard/IME, mouse/pointer cancellation, fullscreen/resize, accessibility,
+  lifecycle and source-ownership requirements remain. 231 issues remain open.

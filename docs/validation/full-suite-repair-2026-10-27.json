@@ -8705,5 +8705,29 @@
       "Full CI for this continuation is pending. The previous 74067889 run has passed static checks, 44 desktop browser boundaries, protocol and benchmark smoke and is still running coverage.",
       "These controlled retained-charge observations do not establish process heap/GC or native device performance. No external hardware or acoustic claim."
     ]
+  },
+  "continuation281": {
+    "scope": "Apply the repository owner's explicit 1920x1080 desktop-only minimum to the remaining GitHub issue specifications.",
+    "inspectedOpenIssues": 233,
+    "closedNotPlanned": [
+      1035,
+      1090
+    ],
+    "updatedDesktopAcceptance": [
+      1009,
+      1031,
+      1072,
+      1076,
+      1082,
+      1085,
+      1203
+    ],
+    "alreadyCorrected": [
+      1232
+    ],
+    "remainingOpenAfterScopeClosures": 231,
+    "closureMeaning": "The two mobile-only proposals were closed as not planned, not as implemented or device-qualified. Desktop keyboard/IME, mouse/pointer cancellation, fullscreen/resize, lifecycle and source ownership remain in scope.",
+    "sourcePolicy": "AGENTS.md and the shared desktop browser/capture baseline from fa6f39d2, with remaining testing-guidance follow-through in 74067889.",
+    "validation": "Issue bodies and returned closed/not_planned states verified through the connected GitHub API; no new runtime change or test run for this issue-only scope sweep."
   }
 }
