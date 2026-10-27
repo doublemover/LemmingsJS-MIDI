@@ -93,6 +93,15 @@ available. Source preview instead offers the existing physical-mapping review.
 Opening the lesson explains a cause without loading its setup or sending a test
 note; loading a setup remains a separate explicit action.
 
+The MIDI inspector keeps **Last request**, **API submission** and unknown receiver
+state separate for Sustain, Pitch bend and Pressure. Unknown starts blank rather
+than at zero. Requests survive ordinary rerenders, tab changes and the first Save;
+changing document, endpoint generation/epoch or channel invalidates the old
+target. An explicit offline request remains visible as unconfirmed and is never
+automatically replayed when a device reconnects. These are channel requests, not
+receiver readback or proof of sound. Stage permits reading the evidence while
+blocking mutation.
+
 While the initial world prepares, output activation waits and Panic remains
 reachable. An initial preparation failure has its own visible reason and offers
 the existing **Start fresh session** action. A late startup error cannot replace

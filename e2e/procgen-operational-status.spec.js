@@ -150,7 +150,7 @@ test('real asset preparation keeps Panic reachable, reports initial-world failur
   const failAsset = async route => { requests++; await gate; await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Controlled unavailable world asset' }); };
   await page.route('**/MAIN.DAT*', failAsset);
   try {
-    await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8', { waitUntil: 'commit' }); await expect.poll(() => requests).toBeGreaterThan(0);
+    await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8', { waitUntil: 'commit' }); await expect.poll(() => requests, { timeout: 30000 }).toBeGreaterThan(0);
     await expect(strip(page)).toHaveAttribute('data-world-state', 'preparing'); await expect(page.locator('#procgenListen')).toBeDisabled(); await expect(page.locator('#procgenPanic')).toBeVisible();
     await page.locator('#procgenPanic').click(); await expect(strip(page)).toHaveAttribute('data-world-state', 'preparing');
     release(); await expect(strip(page)).toHaveAttribute('data-state', 'world-failed'); await expect(strip(page)).toContainText('World preparation failed');

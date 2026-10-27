@@ -27,7 +27,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
     renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef, renderBudget, deferPresentation: initiallySuspended });
     let paused = initiallySuspended, activated = !initiallySuspended;
     let clockDriven = false, clockTime = null;
-    let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0;
+    let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0, achievedTicksPerSecond = null;
     let displayedActiveCount = -1;
     const reportActiveCount = () => {
       const count = world.activeCount ?? world.stall.lanes.reduce((sum, lane) => sum + lane.alive, 0);
@@ -59,8 +59,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       reportActiveCount();
       if (lastMetrics == null) { lastMetrics = time; lastMetricTick = world.tickIndex; }
       if (time - lastMetrics >= 1000) {
-        world.timer.achievedTicksPerSecond = (world.tickIndex - lastMetricTick) * 1000 / (time - lastMetrics);
-        lastMetrics = time; lastMetricTick = world.tickIndex; onMetrics?.(world.getDebugState());
+        achievedTicksPerSecond = (world.tickIndex - lastMetricTick) * 1000 / (time - lastMetrics);
+        lastMetrics = time; lastMetricTick = world.tickIndex; onMetrics?.({ ...world.getDebugState(), achievedTicksPerSecond });
       }
       frame = windowRef.requestAnimationFrame(update);
     };
@@ -77,7 +77,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       frame = windowRef.requestAnimationFrame(update); constructionFrame = frame; return true;
     };
     if (!initiallySuspended) activate();
-    const getDebugState = () => ({ ...world.getDebugState(), selectedTheme: terrain?.recipe.family || assets.styleName,
+    const getDebugState = () => ({ ...world.getDebugState(), achievedTicksPerSecond, selectedTheme: terrain?.recipe.family || assets.styleName,
       renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits, actorCandidates: renderer.actorVisibility.candidates.length, actorIndexRebuilds: renderer.actorVisibility.rebuilds || 0, display: renderer.getDisplayState() } });
     return { view, game: world, world, renderer, getDebugState, activate,
       isActivated: () => activated && running,
@@ -96,7 +96,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
         if (!activated || !running) throw new Error('A prepared world cannot step before publication.');
         const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
         for (let i = 0; i < Math.max(1, Math.min(10000, Math.trunc(count))); i++) world.step(now);
-        renderer.render(); reportActiveCount(); onMetrics?.(world.getDebugState());
+        achievedTicksPerSecond = null; renderer.render(); reportActiveCount(); onMetrics?.({ ...world.getDebugState(), achievedTicksPerSecond });
         lastMetrics = null;
       },
       stop() {

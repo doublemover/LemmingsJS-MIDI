@@ -4,6 +4,8 @@ import { CharacterParticles } from '../js/lemmings/CharacterParticles.js';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
+import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
+import { hashProcgenPhysicsCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
 const canvasFixture = () => {
   const pixels = [];
   const context = { globalAlpha: 1, fillRect(x, y, w, h) { pixels.push({ x, y, w, h, color: this.fillStyle, alpha: this.globalAlpha }); }, createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
@@ -13,6 +15,22 @@ const canvasFixture = () => {
   return { width: 900, height: 450, ownerDocument, pixels, getContext: () => context,
     addEventListener: (event, fn) => listeners.set(event, fn), removeEventListener: event => listeners.delete(event), listeners };
 };
+
+describe('read-only runtime throughput observation', () => {
+  it('reports paused throughput without adding diagnostic fields to the physical timer or changing its checkpoint hash', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 1 }), callbacks = new Map(), metrics = []; let serial = 0, time = 0;
+    const windowRef = { document: { hidden: false, addEventListener() {}, removeEventListener() {} }, performance: { now: () => time }, devicePixelRatio: 1,
+      requestAnimationFrame(callback) { callbacks.set(++serial, callback); return serial; }, cancelAnimationFrame(id) { callbacks.delete(id); } };
+    const runtime = createProcgenLaneRuntime({ canvas: canvasFixture(), initialWorld: world, assets: { groundPieces: [] }, windowRef, onMetrics: value => metrics.push(value) });
+    try {
+      runtime.pause(); const before = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
+      for (const timestamp of [0, 1000, 2000]) { const callback = callbacks.values().next().value; callbacks.clear(); time = timestamp; callback(timestamp); }
+      expect(world.tickIndex).to.equal(0); expect(Object.hasOwn(world.timer, 'achievedTicksPerSecond')).to.equal(false);
+      expect(metrics.at(-1).achievedTicksPerSecond).to.equal(0); expect(runtime.getDebugState().achievedTicksPerSecond).to.equal(0);
+      expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world))).to.equal(before);
+    } finally { await runtime.stop().completion; }
+  });
+});
 describe('bounded shared-lane renderer', () => {
   it('publishes a completed actor index before drawing without running sprite bounds in the physical tick', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 8 });

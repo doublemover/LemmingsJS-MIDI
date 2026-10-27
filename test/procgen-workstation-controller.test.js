@@ -60,6 +60,32 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('retains exact MIDI expression requests across unrelated project edits and invalidates channel/document targets', async () => {
+    const f = setup(); const laneId = f.studio.getProject().procgen.lanes[0].id, events = [];
+    f.studio.ports.sendEvent = event => { events.push(event); return true; };
+    try {
+      const input = { type: 'sustain', laneId, channel: 1, outputId: null }, initial = f.studio.handlers.expressionState(input);
+      expect(initial.requestedValue).to.equal(null); expect(f.studio.handlers.expression({ ...input, value: 127, targetKey: initial.targetKey })).to.equal(true);
+      f.studio.dispatch({ type: 'procgen/lane', laneId, patch: { name: 'Same expression owner' } });
+      expect(f.studio.handlers.expressionState(input)).to.include({ requestedValue: 127, submittedValue: 127, receiverValue: null });
+      f.studio.dispatch({ type: 'procgen/lane', laneId, patch: { channel: 2 } });
+      expect(f.studio.handlers.expression({ ...input, value: 0, targetKey: initial.targetKey })).to.equal(false); expect(events).to.have.length(1);
+      const nextInput = { ...input, channel: 2 }, next = f.studio.handlers.expressionState(nextInput); expect(next.requestedValue).to.equal(null);
+      f.studio.handlers.expression({ ...nextInput, targetKey: next.targetKey, value: 64 }); expect(events).to.have.length(2);
+      await f.studio.handlers.new(); expect(f.studio.handlers.expression({ ...input, targetKey: initial.targetKey, value: 0 })).to.equal(false); expect(events).to.have.length(2);
+      expect(f.studio.handlers.expressionState(input).requestedValue).to.equal(null);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('keeps unconfirmed MIDI submission distinct from a prior submitted request and makes Stage queries read-only', async () => {
+    const f = setup(); let sends = 0;
+    f.studio.ports.sendEvent = () => ++sends === 1;
+    try {
+      const input = { type: 'sustain' }; f.studio.handlers.expression({ ...input, value: 127 }); f.studio.handlers.expression({ ...input, value: 0 });
+      expect(f.studio.handlers.expressionState(input)).to.include({ requestedValue: 0, submittedValue: 127, receiverValue: null, delivery: 'unconfirmed' });
+      await f.studio.handlers.stage(); expect(f.studio.handlers.expressionState(input).canRequest).to.equal(false);
+      expect(f.studio.handlers.expression({ ...input, value: 64 })).to.equal(false); expect(sends).to.equal(2);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('binds failed initial-world recovery to the existing Start fresh owner and ignores failure after successful publication', async () => {
     const f = setup(); let starts = 0;
     try {

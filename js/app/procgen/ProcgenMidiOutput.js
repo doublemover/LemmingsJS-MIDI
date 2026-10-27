@@ -20,12 +20,12 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
   const getState = (compact = false) => {
     if (selected === 'synth') {
       const state = compact && local.getOperationalState ? local.getOperationalState() : local.getState(); return { ...state, selectedBackend: selected,
-        backend: state.enabled ? 'local-browser-audio' : 'no-active-output', outputId: null, outputName: null };
+        backend: state.enabled ? 'local-browser-audio' : 'no-active-output', outputId: null, outputName: null, outputGeneration: generation };
     }
     const error = router?.scheduler?.lastOutputError, permissionLost = !!output && !getWebMidi()?.enabled, nextStatus = error || permissionLost ? 'error' : status, available = devices();
     return { status: nextStatus, message: error ? failureMessage(error) : permissionLost ? 'MIDI access is no longer granted. Discover again, then reactivate the reviewed destination.' : message, enabled: ['live', 'suspended'].includes(nextStatus), selectedBackend: selected,
       backend: error || permissionLost ? 'midi-output-error' : ['live', 'suspended'].includes(status) ? 'web-midi' : 'no-active-output',
-      outputId: output?.id || null, outputName: output?.name || null, selectedOutputId: outputId,
+      outputId: output?.id || null, outputName: output?.name || null, selectedOutputId: outputId, outputGeneration: generation,
       failureKind: error ? 'api-send' : permissionLost ? 'permission-revoked' : failureKind, selectedOutputName: available.find(port => port.id === outputId)?.name || reviewedName, discoveredOutputCount: available.length,
       midiPermission: !getWebMidi() || getWebMidi().supported === false ? 'unavailable' : getWebMidi().enabled ? 'granted' : permission, audio: compact && local.audio.getOperationalState ? local.audio.getOperationalState() : local.audio.getState() };
   };

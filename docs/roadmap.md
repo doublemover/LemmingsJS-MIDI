@@ -7343,3 +7343,40 @@ export-budget acknowledgments still prevent a false complete receipt.
   Partial master recording remains explicit. This follow-through completes the
   implemented #1072 startup/busy-state journey without claiming device, acoustic
   or assistive-device certification.
+
+### Continuation 289 — MIDI request evidence and observational CI repairs
+
+- Sustain, Pitch bend and Pressure no longer reset their picture to a fictional
+  zero on render. Blank unknown values, last requested value, accepted API
+  submission and unknown receiver state remain separate. Target keys bind logical
+  document, lane, backend generation, endpoint lease epoch, channel and parameter.
+  Inactive-device/input changes and first Save preserve the valid target; endpoint
+  reuse, document/channel changes and retired inputs cannot redirect a command.
+- Retention is bounded to 64 primitive records with a lazy 256 KiB owned charge,
+  admitted before any send. Invalid/denied requests cannot emit bytes, evictions
+  become unknown, stale acknowledgments cannot confirm a newer request, and
+  retirement releases the charge. Stage queries remain read-only. Explicit
+  offline requests retain their text baseline while reporting submission and
+  receiver uncertainty; reconnect never replays them.
+- CI at e7e42463 passed 64/67 browser boundaries and stopped before coverage.
+  Artifact 12778926657 has SHA-256
+  650e2c948b3b169eabd101eb7be8a7a7449ed6bc1e989ea0637fbc7f21e14583.
+  The lesson hash failure exposed a real observational write: the RAF sampler
+  was adding achieved TPS to the physical timer. Throughput now lives solely in
+  runtime diagnostics; a paused real-runtime regression preserves the same full
+  physical checkpoint hash across three frame callbacks. No hash assertion or
+  canonical physics projection rule is weakened.
+- The held-note boundary observes the actual active gate and pauses/captures in
+  one browser task, retaining its exact one-voice/queued-phrase assertions.
+  Startup interception waits for the real asset request: the CI trace had fetched
+  2,623 modules but had not reached MAIN.DAT within the old five-second predicate.
+  All required preparing/failure/Panic/fresh-recovery assertions remain.
+- The grouped pass succeeds at **274 Node cases / 18 browser boundaries**, including
+  all three repaired CI failures. A final four-case MIDI group passes after the
+  offline text-baseline follow-through. Exact signed bytes, invalid-entry
+  rejection, tab/rerender/Save retention, inactive removal, endpoint reuse and
+  stale callback rejection are exercised against real production modules and
+  virtual ports at 1920x1080. Types, undefined calls, provenance, formatting and
+  whitespace pass. This fixes #996's MIDI evidence counterexample; the per-lane
+  OLED pages/live causal adapter remain separate development. Current full CI
+  remains pending; the last green checkpoint is cd22832b.

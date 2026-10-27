@@ -44,7 +44,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const el = node('input'); el.type = options.type || 'number';
     for (const key of ['min', 'max', 'step', 'placeholder']) if (options[key] != null) el[key] = String(options[key]);
     if (el.type === 'checkbox') el.checked = !!value; else el.value = value ?? '';
-    return controlTree.bind(el, { getIdentity: getDocumentIdentity, change: event => {
+    return controlTree.bind(el, { getIdentity: options.getIdentity || getDocumentIdentity, change: event => {
       const current = event.currentTarget;
       if (current.type === 'checkbox') return changed(current.checked);
       if (current.type === 'text') return changed(current.value);
@@ -632,7 +632,21 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       nextFields.append(button('Connect MIDI', () => handlers.connect?.()),
         ...(pattern ? [button('Learn step note', () => handlers.learn?.())] : []),
         node('p', 'Clock and note routing are independent. Incoming clock is never echoed.', 'studio-hint'));
-      for (const [type, title, low, high] of [['sustain', 'Sustain', 0, 127], ['bend', 'Pitch bend', -8192, 8191], ['pressure', 'Pressure', 0, 127]]) labeled(title, input(0, value => handlers.expression?.({ type, value, channel: lane.channel, outputId: lane.outputId }), { type: 'range', min: low, max: high }), nextFields);
+      for (const [type, title, low, high] of [['sustain', 'Sustain', 0, 127], ['bend', 'Pitch bend', -8192, 8191], ['pressure', 'Pressure', 0, 127]]) {
+        const target = { type, laneId: lane.id, channel: lane.channel, outputId: lane.outputId }, evidence = handlers.expressionState?.(target);
+        const group = node('div', null, 'studio-midi-expression'); group.dataset.controlKey = 'midi-expression:' + (evidence?.targetKey || type);
+        const control = labeled(title, input(evidence?.requestedValue ?? '', value => {
+          const result = handlers.expression?.({ ...target, value, targetKey: evidence?.targetKey });
+          if (result !== false) return result;
+          const current = handlers.expressionState?.(target); return current?.targetKey === evidence?.targetKey && current?.requestedValue === value;
+        }, {
+          min: low, max: high, step: 1, placeholder: 'Unknown', getIdentity: () => handlers.expressionState?.(target)?.targetKey || null }), group);
+        control.disabled = !evidence?.targetKey || evidence.canRequest === false;
+        const submitted = evidence?.submittedValue == null ? '' : 'API submission ' + evidence.submittedValue;
+        const state = node('output', evidence?.requestedValue == null ? 'No request observed; receiver state unknown.' :
+          `Last request ${evidence.requestedValue}; ${evidence.delivery === 'submitted' ? submitted + ' accepted' : evidence.delivery === 'requested' ? 'submission pending' : 'submission unconfirmed' + (submitted ? '; earlier ' + submitted : '')}; receiver state unknown.`);
+        state.setAttribute('aria-label', title + ' request evidence'); state.dataset.evidenceState = evidence?.delivery || 'unknown'; group.append(state); nextFields.append(group);
+      }
       nextFields.append(node('output', state.lastMidi || 'No input received', 'studio-midi-monitor'));
       nextFields.append(node('p', pattern ? (state.inputId ? `Input ready · recording targets ${lane.name}, phrase ${state.slot + 1}.` :
         'Connect and select a MIDI input to record notes or learn a step.') :

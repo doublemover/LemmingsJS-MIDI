@@ -364,3 +364,5 @@ body.procgen-workstation {
 .studio-operational-actions { flex:0 0 auto; }
 .studio-modal-output-safety { display:flex; justify-content:flex-end; gap:8px; position:sticky; top:0; margin:0 0 8px; padding:4px; background:inherit; z-index:1; }
 .studio-modal-output-safety [data-output-safety-action=output-panic] { background:#c43b49; color:#fff; }
+.studio-midi-expression { min-width:0; }
+.studio-midi-expression > output { display:block; margin:2px 0 8px; font-size:11px; color:#486274; overflow-wrap:anywhere; }

@@ -1,4 +1,5 @@
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
+import { createMidiParameterEvidence } from './MidiParameterEvidence.js';
 import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { prepareSceneMacroAction } from './SceneMacroAction.js';
 import { performanceSceneHash } from './PerformanceScene.js';
@@ -160,6 +161,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const routerRestores = new Map();
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
   const retirement = createProcgenRetirementScope();
+  const midiParameterEvidence = createMidiParameterEvidence({ resourceBudget });
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
   let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
@@ -1422,6 +1424,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed || startupCommitted) return false;
     startupFailure = String(error?.message || 'The initial world could not be prepared.').slice(0, 200); view?.refreshOperational?.(); return true;
   };
+  const expressionTarget = event => {
+    if (disposed || !event || !['sustain', 'bend', 'pressure'].includes(event.type)) return null;
+    const lane = selected(), channel = event.channel ?? lane.channel;
+    if (!Number.isInteger(channel) || channel < 1 || channel > 16 || event.laneId && (event.laneId !== lane.id || channel !== lane.channel || (event.outputId ?? null) !== (lane.outputId ?? null))) return null;
+    const output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState();
+    const outputId = event.outputId || lane.outputId || output.outputId || output.selectedOutputId || midi.noteOutputId || null;
+    const route = midi.outputRoutes.find(value => value.outputId === outputId), key = JSON.stringify([documentGeneration, lane.id, output.selectedBackend,
+      output.outputGeneration ?? null, outputId, route?.connectionEpoch ?? null, channel, 'owned-channel-expression', event.type]);
+    if (key.length > 1024) return null;
+    return Object.freeze({ key, parameter: event.type, outputId, channel, endpointEpoch: route?.connectionEpoch ?? null,
+      endpointName: route?.name || output.selectedOutputName || outputId || 'No MIDI destination', available: route?.active === true });
+  };
   const handlers = {
     operationalState: getOperationalSnapshot,
     recoverOperational: async (action, identity) => {
@@ -1738,7 +1752,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     clockOutput(id) { state.clockOutputId = id || null; syncPorts(); persist(); },
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
     connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts({ rearmDefault: true }); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
-    expression(event) { ports.sendEvent({ ...event, type: event.type === 'pitchBend' ? 'bend' : event.type }); },
+    expressionState(event) {
+      const target = expressionTarget(event); return target ? Object.freeze({ ...midiParameterEvidence.read(target), endpointName: target.endpointName,
+        endpointEpoch: target.endpointEpoch, available: target.available, channel: target.channel, canRequest: !stageSession?.active() }) : null;
+    },
+    expression(event) {
+      const request = { ...event, type: event.type === 'pitchBend' ? 'bend' : event.type }, target = expressionTarget(request);
+      if (!target || request.targetKey && request.targetKey !== target.key) { status('MIDI expression target changed. Review the current output before sending.'); return false; }
+      let ticket;
+      try { ticket = midiParameterEvidence.request(target, request.value, now()); }
+      catch (error) { status('MIDI expression was not sent: ' + error.message); return false; }
+      let submitted = false;
+      try { submitted = ports.sendEvent({ type: target.parameter, value: request.value, channel: target.channel, outputId: target.outputId }) === true; }
+      catch (error) { status('MIDI expression submission is unconfirmed: ' + error.message); }
+      finally { midiParameterEvidence.settle(ticket, submitted, now()); view?.renderInspector?.(); }
+      return submitted;
+    },
     save: safe(async ({ asCopy = false, rename = false } = {}) => {
       if (pendingSaveGenerations.has(documentGeneration)) return false;
       if (worldBusy) throw new Error('Wait for the world change to finish before saving.');
@@ -1921,11 +1950,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
+  const expressionOutputKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? state.selectedOutputId ?? null, state.outputGeneration ?? null]);
   let observedOutputRoute = outputRouteKey(legacy.local.getState());
+  let observedExpressionOutput = expressionOutputKey(legacy.local.getState());
   const unsubscribeOutputState = legacy.local.subscribe?.(state => {
     if (disposed) return; const next = outputRouteKey(state || legacy.local.getState());
     if (next !== observedOutputRoute) { observedOutputRoute = next; syncPorts(); }
     view?.refreshOperational?.();
+    const expressionOutput = expressionOutputKey(state || legacy.local.getState());
+    if (expressionOutput !== observedExpressionOutput) { observedExpressionOutput = expressionOutput; view?.renderInspector?.(); }
   });
   if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);
   if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
@@ -2061,6 +2094,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'prelisten-monitor', run: () => prelistenMonitor?.dispose() },
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
+        { name: 'midi-parameter-evidence', run: () => midiParameterEvidence.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
         { name: 'view', run: () => view.dispose() },
         { name: 'storage', run: () => {

@@ -18,7 +18,7 @@ export function createPerformanceStageSession({ canEnter = () => true, getIdenti
     enter() { if (disposed || active) return false; if (!canEnter()) { try { onStatus('Finish the current world or authoring operation before entering stage mode.'); } catch {} return false; }
       enteringIdentity = getIdentity(); setPresentation(true); active = true; return state(); },
     permitsCommand(name, args = []) { if (!active) return true;
-      if (name === 'operationalState') return true;
+      if (name === 'operationalState' || name === 'expressionState') return true;
       if (name === 'recoverOperational') return ['play', 'exit-stage', 'discover'].includes(args[0]);
       if (!performanceCommands.has(name)) return false;
       return name !== 'transport' || args[0] && Object.getPrototypeOf(args[0]) === Object.prototype && Object.keys(args[0]).every(key => ['bpm', 'gameSpeed', 'speedMode', 'linked'].includes(key)); },

@@ -18,11 +18,12 @@ test('sustained synth gate and queued phrase survive a paused checkpoint without
     studio.transport.seek(0); studio.handlers.record(true); studio.play();
     studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
   });
-  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(1);
-  const saved = await page.evaluate(() => {
-    const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.heldSession = studio.capture('Held');
+  const held = await page.waitForFunction(() => {
+    const studio = window.__PROCGEN_STUDIO__;
+    if (studio.getPlaybackState().activeNotes !== 1 || studio.engine.snapshot().active.length !== 1) return false;
+    studio.transport.pause(); window.heldSession = studio.capture('Held');
     return { active: window.heldSession.patterns.active.length, beat: window.heldSession.transport.beat, queued: window.heldSession.project.procgen.lanes[0].queuedSlot };
-  });
+  }, null, { timeout: 15000 }); const saved = await held.jsonValue(); await held.dispose();
   expect(saved.active).toBe(1); expect(saved.queued).toBe(1);
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().activeNotes)).toBe(0);
   await page.evaluate(async () => window.__PROCGEN_STUDIO__.loadSession(window.heldSession));

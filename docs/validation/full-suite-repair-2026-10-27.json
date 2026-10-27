@@ -838,7 +838,8 @@
     },
     "excludesContinuations": [
       287,
-      288
+      288,
+      289
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -10148,6 +10149,221 @@
       "Current full CI is pending. The latest green cd22832b checkpoint excludes continuations 287/288.",
       "The retained earlier Partial master capture is not Ready/contiguous recording evidence. Browser and virtual-port results do not certify hardware, acoustic delivery or assistive devices.",
       "This completes the implemented startup/busy-state portion of #1072; the wider backlog remains open."
+    ],
+    "publishedCiOutcome": {
+      "head": "e7e4246357aba40761ec1e5f070eedde3ec89e8e",
+      "job": 122523932556,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40599543668/job/122523932556",
+      "browserPassed": 64,
+      "browserFailed": 3,
+      "browserReportedDuration": "9.4m",
+      "coverageSkipped": true,
+      "failures": [
+        "Built-app lesson retained project but changed the physical checkpoint hash.",
+        "The asset-interception predicate saw no MAIN.DAT request within five seconds.",
+        "A held-note checkpoint had zero active pattern voices after an inter-process observation/pause round trip."
+      ],
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci288-failure.log",
+        "sha256": "94304bcfc5353ddffb2de47e498e35e83ccb36ddcfa62eed84a5ad64e0372b42",
+        "bytes": 149939
+      },
+      "artifact": {
+        "id": 12778926657,
+        "bytes": 23042505,
+        "sha256": "650e2c948b3b169eabd101eb7be8a7a7449ed6bc1e989ea0637fbc7f21e14583",
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci288-boundary.zip"
+      }
+    }
+  },
+  "continuation289": {
+    "baseHead": "e7e4246357aba40761ec1e5f070eedde3ec89e8e",
+    "scope": "Bounded target-specific MIDI parameter request/submission evidence and repairs for all three preceding CI failures.",
+    "implemented": [
+      "Replace fictional initial/rerendered zero with blank unknown and explicit Last request/API submission/unknown receiver values for Sustain, Pitch bend and Pressure.",
+      "Bind evidence and input identity to document, lane, backend output generation, endpoint epoch, channel and parameter. Keep valid values through unrelated edits, first durable Save and inactive-device/input changes; reject stale/channel/document/endpoint-reuse callbacks before sending.",
+      "Bound storage to 64 primitive entries, admit its lazy 262144-byte owned reservation before any send, validate integer ranges/key length, retain unknown on eviction, reject late acknowledgments and retire the reservation with the controller.",
+      "Keep explicit offline requests as unconfirmed UI requests; their entered baseline survives Escape/rerender without becoming a receiver claim or automatic replay. Stage permits only read-only evidence queries.",
+      "Move achieved-throughput sampling out of the physical timer into runtime diagnostics. Actual paused RAF callbacks no longer mutate the physical checkpoint hash. The canonical physics projection and equality assertions remain unchanged.",
+      "Observe and pause/capture the exact active synth gate within one browser task. Retain one active voice and queued-phrase assertions rather than extending or relaxing them.",
+      "Wait up to 30 seconds for actual cold asset interception. CI artifact evidence shows 2623 module requests and no MAIN.DAT yet at the old five-second predicate; no preparation/failure/Panic/recovery assertion is removed."
+    ],
+    "validation": {
+      "nodePassed": 274,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "14s",
+      "browserGrouped": {
+        "passed": 18,
+        "failed": 0,
+        "reportedDuration": "1.4m",
+        "scope": "All three repaired CI cases, initial MIDI evidence cases, operational/startup and legacy MIDI/span journeys before the final offline text-baseline adjustment."
+      },
+      "browserFinalMidi": {
+        "passed": 4,
+        "failed": 0,
+        "reportedDuration": "10.0s",
+        "scope": "Final MIDI parameter readouts including the added offline request/Escape/rerender baseline case. This overlaps three grouped cases; counts are not summed."
+      },
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "productionEvidence": [
+        "Exact bend -8192, pressure 127 and sustain 0 produce the expected MIDI1 bytes; invalid pressure 128 produces none and Escape restores 127.",
+        "Sustain request 127 remains through project rename, input change, tab return, inactive B removal and first durable Save; one explicit sustain-on message is retained and receiver state stays unknown.",
+        "A stale detached input cannot send to B; A reuse/reconnect does not claim a receiver reset or recover the old target value.",
+        "Explicit offline sustain 0 stays as an unconfirmed request; editing 42 then Escape restores request 0, with no MIDI bytes.",
+        "Three actual paused RAF callbacks preserve the full physical checkpoint hash while reporting zero achieved TPS without adding a diagnostic timer field."
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog289-node-20261027.log",
+          "sha256": "1b47774cf3e7f96b16d5a602e783c1805c57efa0acd16dba0651ef98c037c3b0",
+          "bytes": 26728
+        },
+        "browserGrouped": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog289-browser-20261027.log",
+          "sha256": "49c596de4a51072d911809ea0d743f4248bff175c4e9b2622577277aaf714271",
+          "bytes": 3468
+        },
+        "browserFinalMidi": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog289-midi-final-20261027.log",
+          "sha256": "ddd171d3349c395e8f088b74a8c647da41b91232a1af2a2962f606097e920628",
+          "bytes": 1059
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog289-format-final-publish-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "static": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog289-static-final-20261027.log",
+          "sha256": "8aac3d488ff58802331d959f987c1df3ac6ee4743103c242b50319ee8f5844df",
+          "bytes": 371
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css/procgen-workstation.css",
+        "sha256": "e98171b7c79607bfbebc7d9cb9603e9a80527a45c9479f78af0f3ce37c59fc57",
+        "bytes": 33169
+      },
+      {
+        "path": "docs/procgen-workstation.md",
+        "sha256": "8f3a0f40a8955380b3cc57c8abc9015016060836d9da89398d907631ac7467d1",
+        "bytes": 27594
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "c6e3ba31da5b5da5d09f69e39a8ed3f82faf9dce09cef3790182ba8eb385aa1e",
+        "bytes": 536698
+      },
+      {
+        "path": "e2e/procgen-midi-parameter-evidence.spec.js",
+        "sha256": "e046309b201b36f47d94916939b8bc56817fe71dc546ac9cef1316d1224c446a",
+        "bytes": 7519
+      },
+      {
+        "path": "e2e/procgen-operational-status.spec.js",
+        "sha256": "b167d2a3da60f64571daf70abebf21138311d21481fe53aec60249b169758065",
+        "bytes": 17969
+      },
+      {
+        "path": "e2e/procgen-workstation-transport.spec.js",
+        "sha256": "718829b07a1d9e24a7f8a93813ecf17ea1834662e99d7b6bf8ef99d2c6930e79",
+        "bytes": 6420
+      },
+      {
+        "path": "js/app/procgen/ProcgenLaneRuntime.js",
+        "sha256": "df038101bd5d7f317266b1c93b2c5364c62cb71c875cc7f8efaa59d7cecabcfa",
+        "bytes": 8401
+      },
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "sha256": "c7a7d05bb820b12512a84628ba7153b9467979b78f7d90acdb27530710e86ed8",
+        "bytes": 14106
+      },
+      {
+        "path": "js/app/procgen/workstation/MidiParameterEvidence.js",
+        "sha256": "e47c1786cdfdeb939a3ebc766e0ff817d9bfee5e2510008cc937a4ba16fb1cb9",
+        "bytes": 3813
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceStageSession.js",
+        "sha256": "676a5c5fbf17aedfb2232ebfabe948a5caeaf7d1f160b4b124a82e41af682142",
+        "bytes": 4133
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "9c8d95cd05bf645e8dca52845d2ae3824a32f3dd3dc49ebcb180cfcaf6095e24",
+        "bytes": 191059
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "ff1596a64a0373ecb075afcfed6945ee8e506f6dfbe8ece8c9e13c40187505e0",
+        "bytes": 109951
+      },
+      {
+        "path": "package.json",
+        "sha256": "944a16e13cca3168318edeaf67a6bc04e64f12ba2fee918e842297b090171cd2",
+        "bytes": 8789
+      },
+      {
+        "path": "test/midi-parameter-evidence.test.js",
+        "sha256": "451f0abf02fa272d75309886f79fa23e8d366a9ed9516fdc34f4350b46709591",
+        "bytes": 4451
+      },
+      {
+        "path": "test/procgen-lane-renderer.test.js",
+        "sha256": "a0ae763bccdc8f0e31bfa02ed39e83b2270a4ec7508238a2d45883f1d5e3c555",
+        "bytes": 13965
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "d9e7abc81c0f19a04886edcc0e8fddc1ef362316b45381f38e856d81cde8be58",
+        "bytes": 97484
+      }
+    ],
+    "ciRepair": {
+      "head": "e7e4246357aba40761ec1e5f070eedde3ec89e8e",
+      "job": 122523932556,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40599543668/job/122523932556",
+      "browserPassed": 64,
+      "browserFailed": 3,
+      "browserReportedDuration": "9.4m",
+      "coverageSkipped": true,
+      "failures": [
+        "Built-app lesson retained project but changed the physical checkpoint hash.",
+        "The asset-interception predicate saw no MAIN.DAT request within five seconds.",
+        "A held-note checkpoint had zero active pattern voices after an inter-process observation/pause round trip."
+      ],
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci288-failure.log",
+        "sha256": "94304bcfc5353ddffb2de47e498e35e83ccb36ddcfa62eed84a5ad64e0372b42",
+        "bytes": 149939
+      },
+      "artifact": {
+        "id": 12778926657,
+        "bytes": 23042505,
+        "sha256": "650e2c948b3b169eabd101eb7be8a7a7449ed6bc1e989ea0637fbc7f21e14583",
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci288-boundary.zip"
+      }
+    },
+    "limitations": [
+      "Current full CI is pending; the latest fully green cd22832b checkpoint excludes this continuation.",
+      "The trace proves the lesson hash mismatch but does not serialize its exact differing checkpoint field. Source inspection identifies the sampler write, and the new actual-runtime regression verifies its removal without changing physics hash rules.",
+      "Requested/API-submitted state is not receiver readback or acoustic evidence. Per-lane OLED pages and the live fact/mapping/admission adapter remain development under #996/#997.",
+      "The wider backlog remains open; no hardware or assistive-device certification is inferred."
     ]
   }
 }
