@@ -6402,3 +6402,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   pass (267 worker modules; 10 components / 336 source files). No WASM compilation,
   instantiation, runtime, browser, listening or full-suite test ran. Material
   verification, restoration, the live adapter and measured cost remain pending.
+
+### Continuation 253 — sealed material and worker image restoration (#1186, #1138)
+
+- Added a strict initial-image profile for pinned module/stack identity, actual
+  prepared sample rate, I/O coordinates, whole-heap extent, RNG frontier and
+  initial-only restoration meaning. Worker capture validates this profile before
+  publication. An arbitrary held-state label cannot become an initial image.
+- Added non-render verification of independent module-byte, heap and complete
+  configuration hashes with admitted copy/hash overlap. The resulting bank keeps
+  private buffers, exposes bounded whole-heap copying and explicitly reserved
+  independent forks, and separates data-reference disposal from producer evidence.
+  Actual worker receipt/build ownership remains with the caller.
+- Added a worker-only restorer using the returned compiled module, fresh memory
+  and independent RNG. It copies the verified initial heap without rerunning
+  constructors or configuration, checks actual block/interval/latency exports and
+  stack frontiers, and retains fixed I/O views. Normal process/seek/flush paths
+  allocate no JS arrays; post-construction memory growth is refused. This does
+  not prove the core's internal allocator behavior or permit live render-thread
+  instantiation. The live setup/voice adapter remains a separate pending step.
+- Authored unrun source/restored control-history equality, private forks, independent
+  runtimes, tampering, configuration/build/rate/peak rejection and lifetime fixtures.
+  Formatting, five-file syntax/import checks, critical types and static provenance
+  pass (268 worker modules; 10 components / 337 source files). No WASM compilation,
+  instantiation, DSP, browser, listening or full-suite tests ran.

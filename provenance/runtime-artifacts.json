@@ -360,6 +360,7 @@
         "js/midi/content/SoundRealizationProfiles.js",
         "js/midi/content/SpectralCaptureReceipt.js",
         "js/midi/content/SpectralFreezeProfile.js",
+        "js/midi/content/StretchImageProfile.js",
         "js/midi/content/SympatheticNetworkProfile.js",
         "js/midi/content/TextureBodyProfile.js",
         "js/midi/content/TextureExciter.js",
@@ -378,8 +379,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 267,
-      "sha256": "6ea3529410dac5a3836c38844068822001f516024e72d5e4bc3df0d2c9f7d76f"
+      "fileCount": 268,
+      "sha256": "30926a6f45650bdbbd904d3ed5ddad57589ab0a0669c8e2243d54a46d35ed083"
     },
     {
       "id": "lemmings-timing-worker-source",
