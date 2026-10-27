@@ -6634,3 +6634,9 @@ export-budget acknowledgments still prevent a false complete receipt.
   83.46% branches, 88.17% functions). The fallback fixture now supplies its
   intended base explicitly; all 28 runner tests pass under c8 with
   GITHUB_BASE_REF=master. Production source and coverage thresholds are unchanged.
+
+- A subsequent CI run exposed a terminal host-clock versus game-frame race
+  (history ratio 0.4995). Each history observation now joins a completed browser
+  frame before reading state. The deterministic stale-state regression, all
+  43 combined benchmark/runner cases and the actual smoke batch pass; workload
+  targets and thresholds remain unchanged.

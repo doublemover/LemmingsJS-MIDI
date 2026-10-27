@@ -5,6 +5,7 @@ import {
   DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
+  readHistoryAfterFrame,
   sampleHistoryWindow,
   summarizeTimings,
   toBoolean,
@@ -12,6 +13,16 @@ import {
 } from '../scripts/bench-history-stress.js';
 
 describe('bench-history-stress helpers', function () {
+  it('observes history after the scheduled game frame rather than its stale prior state', async function () {
+    let frame, reads = 0, history = { spanTicks: 2997 };
+    const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => { frame = callback; },
+      __E2E__: { getState: () => { reads++; return { game: { history } }; } } });
+    expect(reads).to.equal(0);
+    history = { spanTicks: 3004 };
+    frame();
+    expect(await observation).to.equal(history);
+    expect(reads).to.equal(1);
+  });
   it('includes the terminal history observation and clamps the last sampling interval', async function () {
     let time = 0;
     const reads = [], waits = [];

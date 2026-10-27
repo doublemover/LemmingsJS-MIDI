@@ -249,6 +249,10 @@ const summarizeTimings = (timingsMs) => {
   };
 };
 
+const readHistoryAfterFrame = (scope = globalThis) => new Promise(resolve => {
+  scope.requestAnimationFrame(() => resolve(scope.__E2E__?.getState?.()?.game?.history || null));
+});
+
 const sampleHistoryWindow = async ({ durationMs, sampleMs, targetSpan, readHistory, assertBudget = () => {}, now = Date.now, wait = sleep }) => {
   const start = now();
   let maxSpan = 0, lastHistory = null, sampleCount = 0;
@@ -344,7 +348,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         durationMs, sampleMs, targetSpan,
         assertBudget: () => assertRuntimeBudget(`speed=${speed} sampling`),
         readHistory: () => withTimeout(
-          page.evaluate(() => window.__E2E__?.getState?.()?.game?.history || null),
+          page.evaluate(readHistoryAfterFrame),
           opTimeoutMs,
           'readHistoryState'
         )
@@ -548,6 +552,7 @@ export {
   parseArgs,
   parseSpeedList,
   run,
+  readHistoryAfterFrame,
   sampleHistoryWindow,
   summarizeTimings,
   toBoolean,

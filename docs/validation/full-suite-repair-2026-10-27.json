@@ -546,5 +546,62 @@
       "scope": "Only test/run-tests-script.test.js; repository-wide coverage thresholds remain unchanged."
     },
     "latestCi": "Pending after the test-only fixture repair."
+  },
+  "frameSamplingFollowup": {
+    "scope": "History sampling observes completed browser frames so a terminal host-clock read cannot capture pre-frame state. Workload targets and thresholds remain unchanged.",
+    "priorCi": {
+      "sourceRevision": "c26b10329369bc316a251ade23606f9b710e4de9",
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40465358836/job/122059310560",
+      "historyRatio": 0.4995
+    },
+    "unit": {
+      "passed": 43,
+      "failed": 0,
+      "command": "npx mocha test/bench-history-stress.test.js test/bench-smoke.test.js test/run-tests-script.test.js"
+    },
+    "benchmark": {
+      "result": {
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 28842,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9094,
+          "benchHistoryStress": 14097,
+          "benchHotpaths": 5650
+        },
+        "metrics": {
+          "perfP95Frame": 7.5,
+          "perfP50Tps": 166.66666666666666,
+          "historyRatio": 0.5005,
+          "antsAvgMs": 13.14,
+          "tileCompositionAvgMs": 2.4,
+          "overlayPlaneAvgMs": 11.43,
+          "scaledBlitAvgMs": 27.48
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5005
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0023333333333333
+          }
+        ]
+      },
+      "logSha256": "1f0356dc0b07fa073ee91fdecb32b9fc802a17874b09898a00de62b01550fe60"
+    }
   }
 }
