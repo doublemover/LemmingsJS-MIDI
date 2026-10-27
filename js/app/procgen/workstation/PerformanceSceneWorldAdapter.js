@@ -8,19 +8,26 @@ import { createOwnedResourceReservation } from '../../resources/OwnedResourceRes
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { freezeData, canonicalDataText, hashData } from '../../../core/CanonicalData.js';
 import { captureProcgenCheckpointCooperative } from './ProcgenCheckpoint.js';
+import { WAVE_SOURCE_DECODER_VERSION } from '../../midi-ui/WaveSourceProfile.js';
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'PerformanceSceneError', code });
-export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prepareWorld, resourceBudget } = {}) {
+export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prepareWorld, resourceBudget, getMaterialProvider = null } = {}) {
   if (typeof getCatalog !== 'function' || typeof getOrigin !== 'function' || typeof prepareWorld !== 'function' || !resourceBudget) throw new TypeError('Scene world preparation needs the installed score, catalog and existing world budget owners.');
   return async ({ scene, preflight, baseIdentity, signal, isCurrent, onPhase = () => {} }) => {
-    let world = null, workspace = null; const retirement = createProcgenRetirementScope(), rehearsalReads = new Set(), rehearsalLoans = new Set();
+    let world = null, workspace = null; const retirement = createProcgenRetirementScope(), rehearsalReads = new Set(), rehearsalLoans = new Set(), materials = [], materialReports = [];
     const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw failure('stale-scene-operation', 'The scene candidate or document changed.'); };
     const retire = () => {
       if (retirement.getReceipt()) return retirement.getReceipt();
       const reads = [...rehearsalReads]; for (const read of reads) read.controller.abort(failure('scene-retired', 'The prepared scene retired during rehearsal capture.'));
       const worldRetirement = Promise.allSettled(reads.map(read => read.promise)).then(async () => { const receipt = world?.retire(); if (receipt?.completion) await receipt.completion; if (receipt && receipt.outcome !== 'complete') throw failure('scene-retirement-unknown', 'Prepared world retirement is unresolved.'); });
+      const materialRetirement = worldRetirement.then(async () => {
+        if (rehearsalLoans.size) throw failure('scene-checkpoint-reader-unknown', 'A rehearsal reader still owns this scene.');
+        const receipt = createProcgenRetirementScope().retire(materials.map((material, index) => ({ name: 'scene-sound-material-' + index, run: () => material.release() }))); await receipt.completion;
+        if (receipt.outcome !== 'complete') throw Object.assign(failure('scene-material-retirement-unknown', 'Prepared sound material readers remain unresolved.'), { retirement: receipt }); materials.length = 0;
+      });
       return retirement.retire([{ name: 'prepared-world', run: () => worldRetirement },
-        { name: 'scene-plan', run: async () => { await worldRetirement; if (rehearsalLoans.size) throw failure('scene-checkpoint-reader-unknown', 'A rehearsal checkpoint reader still owns its admitted snapshot.'); workspace?.release(); } }]);
+        { name: 'prepared-sound-material', run: () => materialRetirement },
+        { name: 'scene-plan', run: async () => { await materialRetirement; workspace?.release(); } }]);
     };
     try {
       check(); workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'performance-scene:' + preflight.sceneHash, kind: 'scene-plan', bytes: 2 * 1048576 });
@@ -33,8 +40,16 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       onPhase('sound-compile');
       if (source.initialMorphMechanism) { if (scene.cost.sharedBodies !== sceneMorphMechanismCost(source.initialMorphMechanism).bodyCount) throw failure('scene-body-cost-unbound', 'The score must count every body in its explicit paired or prepared-endpoint strategy.'); await verifySceneMorphMechanism(source.initialMorphMechanism, scene.causalMappings.instruments); check(); }
       for (const patch of scene.patchRefs) {
-        if (patch.reference.assetHashes.length) throw failure('scene-asset-adapter-unavailable', 'Sample-based scene loading needs an asset-pin preparation adapter; metadata availability alone is insufficient.');
-        const resolved = await resolveSoundContentReference(patch.reference, { engineDescriptors: catalog.descriptors, availableHashes: assets, signal }); check();
+        let availableHashes = assets;
+        if (patch.reference.assetHashes.length) {
+          if (typeof getMaterialProvider !== 'function' || patch.reference.definition.engineId === 'native-sample') throw failure('scene-asset-adapter-unavailable', 'This scene needs the owned source-PCM pin adapter; native-context decoding cannot implicitly enable audio.');
+          const provider = getMaterialProvider(); if (typeof provider?.acquire !== 'function') throw failure('scene-asset-adapter-unavailable', 'Pinned local scene material is unavailable.');
+          onPhase('sound-assets'); const material = await provider.acquire({ reference: patch.reference, engineDescriptors: catalog.descriptors, owner: 'scene:' + preflight.sceneHash + ':' + patch.laneId, generation: 0, decodeProfile: 'source-pcm', signal, isCurrent }); materials.push(material); check();
+          const refs = new Map(patch.reference.definition.sampleRefs.map(ref => [ref.sha256, ref]));
+          if (!Array.isArray(material.availableHashes) || !Array.isArray(material.assets) || material.assets.length !== refs.size || new Set(material.assets.map(pin => pin?.ref?.contentHash)).size !== refs.size || material.assets.some(pin => !pin?.isActive?.() || !refs.has(pin.ref.contentHash) || refs.get(pin.ref.contentHash).bytes !== pin.ref.bytes || pin.variant?.contentHash !== pin.ref.contentHash || pin.variant.decoderVersion !== WAVE_SOURCE_DECODER_VERSION || pin.variant.targetSampleRate !== pin.ref.sourceSampleRate || pin.buffer?.sampleRate !== pin.ref.sourceSampleRate || pin.buffer.length !== pin.ref.frames || pin.buffer.numberOfChannels !== pin.ref.channels)) throw failure('scene-material-pin-unbound', 'The scene needs exact live source-rate PCM pins, not metadata availability or a device-rate surrogate.');
+          availableHashes = material.availableHashes; materialReports.push({ laneId: patch.laneId, playbackSampleHashes: [...refs.keys()], verifiedDependencyCount: availableHashes.length, decodedSourceBytes: material.assets.reduce((sum, pin) => sum + pin.buffer.length * pin.buffer.numberOfChannels * 4, 0) }); onPhase('sound-compile');
+        }
+        const resolved = await resolveSoundContentReference(patch.reference, { engineDescriptors: catalog.descriptors, availableHashes, signal }); check();
         if (resolved.status !== 'ready') throw failure('scene-patch-unavailable', 'A required pinned scene patch cannot be realized by this build: ' + resolved.status);
         const key = patch.reference.engineRequirement.engineId, count = patch.reference.definition.voicePolicy.maxVoices; pools.set(key, (pools.get(key) || 0) + count);
       }
@@ -55,7 +70,7 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       if (source.initialTerrainLayout) { const receipt = world.world.terrain?.sourceReceipt?.(); if (canonicalDataText(world.world.terrain?.sceneTerrainLayout ?? null).text !== canonicalDataText(source.initialTerrainLayout).text || receipt?.status !== 'prepared' || receipt.method !== 'dedicated-worker' || receipt.activeExecution !== 'bound' || receipt.layoutHash !== await hashData(source.initialTerrainLayout)) throw failure('scene-source-geometry-unbound', 'The initial terrain requires its exact owned worker result before the first actor or recovery anchor.'); check(); }
       onPhase('world-geometry'); if (canonicalDataText(world.world.physicalAuthoring?.graph).text !== canonicalDataText(scene.causalMappings).text) throw failure('scene-mapping-unbound', 'The candidate recovery anchor must already own the exact prepared physical mapping.'); check(); onPhase('resource-admission');
       return Object.freeze({ sceneHash: preflight.sceneHash, variants: preflight.variants, baseIdentity, rehearsalRecipe: source,
-        admission: freezeData({ status: 'admitted', world: true, sound: true, mapping: true, sourcePools: Object.fromEntries(pools), soundPreparation: 'pinned-definition-and-pool-preflight;audio-context-enable-remains-explicit' }),
+        admission: freezeData({ status: 'admitted', world: true, sound: true, mapping: true, sourcePools: Object.fromEntries(pools), soundPreparation: 'pinned-definition-and-pool-preflight;audio-context-enable-remains-explicit', ...(materialReports.length ? { materials: materialReports, materialPreparation: 'verified-source-rate-PCM-and-data-pins;live-renderers-prepare-on-explicit-audio-enable' } : {}) }),
         async borrowRehearsalCheckpoint({ signal: readSignal, isCurrent: readCurrent = () => true } = {}) {
           check(); readSignal?.throwIfAborted(); if (!world.isCurrent() || world.world.tickIndex !== 0 || rehearsalReads.size || rehearsalLoans.size || retirement.getReceipt()) throw failure('scene-preview-capacity', 'One unadvanced scene checkpoint reader may be owned at a time.');
           const read = { controller: new AbortController(), promise: null }, reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'scene-rehearsal:' + preflight.sceneHash, kind: 'cooperative-scene-checkpoint-copy-and-encoding-estimate', bytes: 64 * 1048576 });

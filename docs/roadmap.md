@@ -6469,3 +6469,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   physical-trace fixtures. Formatting, seven-file syntax/import checks, critical
   types, diff whitespace and static provenance pass (10 components / 337 files).
   No runtime, browser, numerical, audio, listening or full-suite tests ran.
+
+### Continuation 256 — graft ancestry and scene sample pins (#1130, #1186, #1216)
+
+- Corrected material preparation's assumption that every dependency must be a
+  playable sample. It now bounds/traverses the complete immutable file ancestry,
+  verifies non-playback bytes with SHA-256 under explicit read/hash reservations,
+  and decodes only declared sample references. Availability receipts distinguish
+  verified data dependencies from playable samples. Corruption, missing ancestors,
+  cancellation and unresolved reader retirement do not publish usable material.
+- Removed the lane adapter's blanket rejection of asset-backed procedural
+  instruments. Such lanes still resolve their actual engine, exact definition and
+  complete verified dependency closure; a data-only texture/wind/friction graft
+  receives no invented PCM pin or extra source.
+- Added owned source-rate scene preparation through the shared material provider.
+  Exact live PCM pins, original rate/frame/channel identity and decoder revision
+  are checked before a candidate world is constructed. Native-context sample
+  decoding remains unavailable through this path, and audio enable remains an
+  explicit later user action. The candidate holds pins through commit/cancel and
+  releases them only after world/checkpoint readers retire; unknown retirement
+  retains pins and the scene plan charge. Live renderers acquire their own copies
+  or pins when audio is enabled. Sample-based rehearsal remains a separate pending
+  profile, rather than accepting metadata as rendered audio evidence.
+- Authored unrun real compiled graft/data closure, mixed WAV+recipe, procedural
+  lane application, corrupt/missing ancestry, cancellation, unknown-reader charge,
+  source-rate scene admission, paused commit and ordered retirement cases.
+  Formatting, seven-file syntax/import checks, critical types, diff whitespace and
+  static provenance pass (10 components / 337 files). No runtime or audio tests ran.

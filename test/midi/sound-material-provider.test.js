@@ -47,13 +47,14 @@ describe('shared sound material inspection and preparation', () => {
   });
   it('shares decoded PCM across installed pinned definitions while returning independent pins', async () => {
     const bytes = wav(), contentHash = hash(bytes), packHash = 'a'.repeat(64), definitionHash = 'b'.repeat(64), budget = createResourceBudget();
+    const recipeBytes = new TextEncoder().encode('{"source":"original"}'), recipeHash = hash(recipeBytes), recipeFile = { path: 'recipe.json', sha256: recipeHash, bytes: recipeBytes.length, kind: 'generated-data', mediaType: 'application/json', parents: [] };
     const file = { path: 'samples/original.wav', sha256: contentHash, bytes: bytes.length, kind: 'sample', mediaType: 'audio/wav', rights: { licenseId: 'NOASSERTION', attribution: 'Original synthetic fixture' } };
-    const patch = { identity: 'biome.test@1', definitionHash, state: 'definition-admitted', dependencies: [contentHash], definition: { sampleRefs: [{ sha256: contentHash, bytes: bytes.length }] } };
-    const prepared = { contentHash: packHash, pack: { files: [file] }, patches: [patch] };
+    const patch = { identity: 'biome.test@1', definitionHash, state: 'definition-admitted', dependencies: [contentHash, recipeHash], definition: { sampleRefs: [{ sha256: contentHash, bytes: bytes.length }] } };
+    const prepared = { contentHash: packHash, pack: { files: [file, recipeFile] }, patches: [patch] };
     let decodes = 0, packPins = 0, assetPins = 0;
     const provider = createSoundMaterialProvider({ resourceBudget: budget, registry: {
       async loadPack() { packPins++; return { prepared, release() { packPins--; } }; },
-      async loadAsset() { assetPins++; return { blob: new Blob([bytes]), release() { assetPins--; } }; }
+      async loadAsset(hash) { assetPins++; return { blob: new Blob([hash === recipeHash ? recipeBytes : bytes]), release() { assetPins--; } }; }
     }, jobs: { async compute(specification) {
       const result = await runBackgroundJobKernel(specification.kind, await specification.prepareInput(), { estimatedPeakBytes: specification.estimatedPeakBytes });
       let phase = 'computed'; return { value: result.value, release() { phase = 'released'; }, retirementState: () => ({ phase }) };
@@ -63,7 +64,7 @@ describe('shared sound material inspection and preparation', () => {
     } }) });
     const reference = { packHash, definitionHash, patchId: 'biome.test', revision: 1 };
     const a = await provider.acquire({ reference }), b = await provider.acquire({ reference });
-    expect(a.assets[0].buffer).to.equal(b.assets[0].buffer); expect(decodes).to.equal(1); expect(packPins).to.equal(0); expect(assetPins).to.equal(0);
+    expect(a.availableHashes).to.include(recipeHash); expect(a.verification.dataOnlyHashes).to.deep.equal([recipeHash]); expect(a.assets).to.have.length(1); expect(a.assets[0].buffer).to.equal(b.assets[0].buffer); expect(decodes).to.equal(1); expect(packPins).to.equal(0); expect(assetPins).to.equal(0);
     a.release(); expect(b.assets[0].isActive()).to.equal(true); b.release();
     const retirement = provider.dispose(); await retirement.completion; expect(retirement.outcome).to.equal('complete'); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });

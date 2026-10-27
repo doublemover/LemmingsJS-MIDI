@@ -125,6 +125,22 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
     if (error) throw error;
     if (formats.size >= maxEntries) formats.delete(formats.keys().next().value); formats.set(file.sha256, format); return format;
   };
+  const verifyDataDependency = async (file, stage, operation) => {
+    if (!Number.isSafeInteger(file.bytes) || file.bytes < 0 || file.bytes > 16 * 1048576) throw failure('material-adapter-unavailable', 'The non-playback dependency exceeds its bounded encoded profile.');
+    const workspace = resources.reserve({ kind: 'sound-dependency-byte-verification', owner: operation.id, estimateBytes: file.bytes * 3 + 1048576, consumerOwned: true });
+    let reader = null, error = null;
+    try {
+      reader = await borrowBlob(file, stage, operation.controller.signal); operation.check();
+      const bytes = new Uint8Array(await reader.blob.arrayBuffer()); operation.check();
+      const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(value => value.toString(16).padStart(2, '0')).join(''); operation.check();
+      if (bytes.length !== file.bytes || digest !== file.sha256) throw failure('content-mismatch', 'A sound recipe/model ancestry dependency differs from its immutable bytes.');
+    } catch (caught) { error = caught; }
+    const retired = createProcgenRetirementScope().retire([{ name: 'sound-dependency-reader', run: () => reader?.release() }]); await retired.completion;
+    if (retired.outcome !== 'complete') { workspace.retainUnknown(new Error('Sound ancestry reader retirement is unknown.')); faults.add(retired); throw Object.assign(error || failure('retirement-unknown', 'Sound ancestry reader retirement is unknown.'), { retirement: retired }); }
+    const released = createProcgenRetirementScope().retire([{ name: 'sound-dependency-workspace', run: () => workspace.release() }]); await released.completion;
+    if (released.outcome !== 'complete') { faults.add(released); throw Object.assign(error || failure('retirement-unknown', 'Sound ancestry workspace retirement is unknown.'), { retirement: released }); }
+    if (error) throw error;
+  };
   const acquire = async ({ stage = null, patchIdentity = null, reference = null, engineDescriptors = [], owner = 'sound-material', generation = 0, signal, isCurrent = () => true,
     decodeProfile = null, decodeContext = null, joinCancellation = false } = {}) => {
     signal?.throwIfAborted();
@@ -147,7 +163,15 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
         const prepared = source.prepared, patch = prepared.patches.find(entry => reference ? entry.definitionHash === reference.definitionHash && entry.identity === reference.patchId + '@' + reference.revision : entry.identity === patchIdentity);
         if (!patch || patch.state !== 'definition-admitted' || reference && prepared.contentHash !== reference.packHash) throw failure('content-mismatch', 'Pinned sound material definition is unavailable.');
         const refs = patch.definition.sampleRefs;
-        if (refs.length > (['native-sample', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) ? 32 : 1) || patch.dependencies.some(hash => !refs.some(ref => ref.sha256 === hash))) throw failure('material-adapter-unavailable', 'This material needs a supported source-only adapter within its declared asset limit.');
+        if (refs.length > (['native-sample', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) ? 32 : 1)) throw failure('material-adapter-unavailable', 'This material exceeds its declared playable sample limit.');
+        const playbackHashes = new Set(refs.map(ref => ref.sha256)), closure = new Set(patch.dependencies), files = new Map(prepared.pack.files.map(file => [file.sha256, file]));
+        for (const hash of closure) {
+          if (closure.size > 512) throw failure('material-adapter-unavailable', 'Sound ancestry exceeds its bounded file closure.');
+          const file = files.get(hash); if (!file) throw failure('asset-missing', 'An exact sound ancestry dependency is absent from the pinned pack.');
+          for (const parent of file.parents || []) closure.add(parent);
+        }
+        const dataOnlyHashes = [];
+        for (const hash of closure) if (!playbackHashes.has(hash)) { await verifyDataDependency(files.get(hash), stage, operation); operation.check(); dataOnlyHashes.push(hash); }
         const sourcePcm = ['worklet-granular', 'worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId); let sourcePcmBytes = 0;
         if (['worklet-sample', 'worklet-seed-layers'].includes(patch.definition.engineId) && decodeProfile != null && decodeProfile !== 'source-pcm') throw failure('material-adapter-unavailable', 'Owned sample maps require their canonical source-PCM decoder profile.');
         for (const ref of new Map(refs.map(ref => [ref.sha256, ref])).values()) {
@@ -165,7 +189,8 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
             decodeProfile: decodeProfile || (sourcePcm ? 'source-pcm' : 'native-context'), decodeContext, joinCancellation })); operation.check();
         }
         releaseSource();
-        const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze([...new Set(refs.map(ref => ref.sha256))]),
+        const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze([...new Set([...closure, ...playbackHashes])]),
+          verification: Object.freeze({ policy: 'verify-entire-dependency-byte-closure;decode-only-declared-playback-samples', dataOnlyHashes: Object.freeze(dataOnlyHashes), playbackSampleHashes: Object.freeze([...playbackHashes]) }),
           release() { const receipt = releaseAssets(); if (receipt.outcome === 'complete') loans.delete(loan); else faults.add(receipt); return receipt; } });
         loans.add(loan); return loan;
       } catch (error) { const receipt = releaseAssets(); await receipt.completion; if (receipt.outcome !== 'complete') { faults.add(receipt); error.retirement = receipt; } throw error; }
