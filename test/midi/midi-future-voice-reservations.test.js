@@ -39,14 +39,39 @@ describe('ordinary and local future voice reservations', () => {
       expect(f.scheduler._activeNotes.size).to.equal(1); f.scheduler.dispose();
     }));
 
-    it(`retains the sounding owner when replacement setup is refused for ${name}`, () => withFakeClockAndPerformance(clock => {
+    it(`contains a setup refusal after releasing the victim at the onset frontier for ${name}`, () => withFakeClockAndPerformance(clock => {
       const f = fixture({ independent, track });
       f.send({ note: 60 }); f.send({ note: 64, timeMs: 1000, timbre: 99 });
       f.output.channels[1].sendControlChange = () => false; clock.tick(1000);
+      expect(f.notes().map(call => [call.type, call.note])).to.deep.equal([['noteOn', 60], ['noteOff', 60]]);
+      expect(f.scheduler._activeNotes.size).to.equal(0); expect(f.scheduler._pendingNoteOns.size).to.equal(0); f.scheduler.dispose();
+    }));
+    it(`refuses unsupported setup before releasing a sounding owner for ${name}`, () => withFakeClockAndPerformance(clock => {
+      const f = fixture({ independent, track }); f.send({ note: 60 }); f.send({ note: 64, timeMs: 1000, timbre: 99 });
+      delete f.output.channels[1].sendControlChange; clock.tick(1000);
       expect(f.notes().map(call => [call.type, call.note])).to.deep.equal([['noteOn', 60]]);
-      expect(f.scheduler._activeNotes.size).to.equal(1); f.scheduler.dispose();
+      expect(f.scheduler._countSoundingNotes()).to.equal(1); expect(f.scheduler._pendingNoteOns.size).to.equal(0); f.scheduler.dispose();
+    }));
+    it(`orders victim release before setup and onset for ${name}`, () => withFakeClockAndPerformance(clock => {
+      const f = fixture({ independent, track }); f.send({ note: 60 }); f.send({ note: 64, timeMs: 1000, timbre: 99 });
+      clock.tick(999); expect(f.notes()).to.have.length(1); clock.tick(1);
+      expect(f.calls.filter(call => ['noteOn', 'noteOff', 'cc'].includes(call.type)).map(call => call.type)).to.deep.equal(['noteOn', 'noteOff', 'cc', 'noteOn']);
+      f.scheduler.dispose();
     }));
   }
+
+  it('retires all shared-channel expression victims before changing the controller', () => withFakeClockAndPerformance(clock => {
+    const f = fixture({ limit: 4 }); f.send({ note: 60 }); f.send({ note: 62 });
+    f.send({ note: 64, timeMs: 1000, timbre: 99 }); clock.tick(1000);
+    expect(f.calls.filter(call => ['noteOn', 'noteOff', 'cc'].includes(call.type)).map(call => call.type)).to.deep.equal(['noteOn', 'noteOn', 'noteOff', 'noteOff', 'cc', 'noteOn']);
+    expect(f.scheduler._countSoundingNotes()).to.equal(1); f.scheduler.dispose();
+  }));
+  it('contains capacity lost during local setup without inventing a replacement onset', () => withFakeClockAndPerformance(clock => {
+    const f = fixture({ independent: true }); f.send({ note: 60 }); f.send({ note: 64, timeMs: 1000, timbre: 99 });
+    f.output.channels[1].sendControlChange = () => { f.output.canAllocateVoice = () => false; return true; }; clock.tick(1000);
+    expect(f.notes().map(call => [call.type, call.note])).to.deep.equal([['noteOn', 60], ['noteOff', 60]]);
+    expect(f.scheduler._activeNotes.size).to.equal(0); f.scheduler.dispose();
+  }));
 
   for (const independent of [false, true]) {
     it(`retains queued ownership when an immediate replacement submission is refused (${independent})`, () => withFakeClockAndPerformance(clock => {

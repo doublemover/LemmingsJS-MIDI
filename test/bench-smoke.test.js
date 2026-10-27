@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { evaluateSmokeResults } from '../scripts/bench-smoke.js';
+import { evaluateSmokeResults, createSmokeRunPlan } from '../scripts/bench-smoke.js';
+import { createHistoryBenchConfig } from '../scripts/bench-history-stress.js';
 import { createBenchmarkReceipt, REQUIRED_SMOKE_HOTPATHS } from '../scripts/BenchmarkReceipt.js';
 
 const thresholds = { perfP95FrameMsMax: 250, perfP50TpsMin: 15, historySpanRatioMin: 0.5,
@@ -21,6 +22,36 @@ const fixture = () => ({
 });
 
 describe('admitted benchmark smoke gates', () => {
+  it('covers every declared soak sampling window without shortening the workload to fit the parent deadline', () => {
+    const plan = createSmokeRunPlan({ soakRequested: true, env: {} });
+    const history = createHistoryBenchConfig({ argv: plan.historyArgs, env: {}, log: { warn() {} } });
+    expect(history.durationMs).to.equal(180000); expect(history.speeds).to.deep.equal([30, 60, 120]);
+    expect(history.maxRuntimeMs).to.be.at.least(history.durationMs * history.speeds.length + 60000);
+    expect(plan.historyTimeoutMs).to.be.greaterThan(history.maxRuntimeMs);
+    expect(plan.performanceTimeoutMs).to.be.greaterThan(300000);
+  });
+  it('honors explicit producer and parent deadlines instead of silently raising a user limit', () => {
+    const plan = createSmokeRunPlan({ soakRequested: true, timeoutMs: 1234, env: {} });
+    expect([plan.performanceTimeoutMs, plan.historyTimeoutMs, plan.hotpathsTimeoutMs]).to.deep.equal([1234, 1234, 1234]);
+    const history = createHistoryBenchConfig({ argv: ['--profile=soak', '--maxRuntime=1234'], env: {}, log: { warn() {} } });
+    expect(history.maxRuntimeMs).to.equal(1234);
+  });
+  it('scales the default history deadline for customized window and scenario counts', () => {
+    const history = createHistoryBenchConfig({ argv: ['--profile=soak', '--duration=200000', '--speeds=30,60,120,240'], env: {}, log: { warn() {} } });
+    expect(history.maxRuntimeMs).to.be.at.least(860000);
+    const smoke = createSmokeRunPlan({ env: {} });
+    expect(smoke.historyArgs).to.include('--duration=6000'); expect(smoke.historyTimeoutMs).to.equal(70000);
+  });
+  it('rejects invalid explicit supervision deadlines', () => {
+    for (const timeoutMs of [0, NaN, Infinity]) expect(() => createSmokeRunPlan({ timeoutMs })).to.throw('positive and finite');
+  });
+  it('derives supervision from the environment actually inherited by the history producer', () => {
+    const env = { HISTORY_DURATION_MS: '200000', HISTORY_SPEEDS: '30,60,120,240' };
+    const plan = createSmokeRunPlan({ soakRequested: true, env });
+    const history = createHistoryBenchConfig({ argv: plan.historyArgs, env, log: { warn() {} } });
+    expect(history.maxRuntimeMs).to.be.at.least(860000);
+    expect(plan.historyTimeoutMs).to.be.greaterThan(history.maxRuntimeMs);
+  });
   it('passes complete finite observations for every required scenario', () => {
     const gate = evaluateSmokeResults(fixture(), thresholds);
     expect(gate).to.include({ ok: true, measurementValid: true }); expect(gate.failures).to.deep.equal([]);

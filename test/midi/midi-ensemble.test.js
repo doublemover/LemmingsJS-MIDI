@@ -48,7 +48,7 @@ describe('Lemming MIDI ensemble', function() {
       const before = calls.length;
       scheduler.sendNote({ ...spec, note: 57, program: 29, pan: -42 });
       const changed = calls.slice(before);
-      expect(changed.slice(0, 2).map(call => call.type)).to.deep.equal(['program', 'cc']);
+      expect(changed.map(call => call.type)).to.deep.equal(['noteOff', 'noteOff', 'program', 'cc', 'noteOn']);
       expect(changed.filter(call => call.type === 'noteOff')).to.have.length(2);
       expect(changed.find(call => call.type === 'program').value).to.equal(29);
       expect(scheduler._activeNotes.size).to.equal(1);

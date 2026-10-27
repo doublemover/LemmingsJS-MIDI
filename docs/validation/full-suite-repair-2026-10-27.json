@@ -1946,5 +1946,114 @@
       "Retained oracle bytes measure checkpoint payload, not whole-app peak memory.",
       "New-head CI pending; b58e7ae1 is separately verified green."
     ]
+  },
+  "continuation265": {
+    "date": "2026-10-27",
+    "parentRevision": "eb52474237df5d2d4ff133d67563e3f63d02a9f4",
+    "issues": [
+      1122,
+      1254
+    ],
+    "scope": "Strict onset-frontier victim release before setup; unsupported preflight preservation and late failure containment. Supervision covers maximum configured scenario windows without overriding explicit deadlines.",
+    "sourceFiles": [
+      {
+        "path": "js/midi/scheduler/MidiSchedulerSendMethods.js",
+        "sha256": "07d4dcd6c7d2aa093c06a013b92aae5b57bb8b508819e012d6956de490388afa"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "a98a1f3a70f0d95c34fa80c59b550c863f3536567aa97c64ff2965fea4e36064"
+      },
+      {
+        "path": "scripts/bench-smoke.js",
+        "sha256": "29452521cd77c0a6475119765844a3860cad38bdead1759f5e0f6e5c93b5c67d"
+      },
+      {
+        "path": "test/bench-smoke.test.js",
+        "sha256": "cb6ecbae86f85ea029764d659807dbbcb36e0bc8efcb65b9cf9e0f5811ac7646"
+      },
+      {
+        "path": "test/midi/midi-ensemble.test.js",
+        "sha256": "c51e20e0d9087d9332a02aacfe9f2f531520ab77c304b9826f4bb967c6259219"
+      },
+      {
+        "path": "test/midi/midi-future-voice-reservations.test.js",
+        "sha256": "ca57a04e94e5fe65bd6a82ae925da6dd764d9d40f451f1b70c0c7570a24e8015"
+      },
+      {
+        "path": "test/midi/midi-scheduler-voice-gates.test.js",
+        "sha256": "6da9f718328d5cefd0f97d3d2f74128444ff008d84f435eaa2d9a34943aac719"
+      }
+    ],
+    "initialMidi": {
+      "command": "npm test midi",
+      "passed": 2393,
+      "failed": 2,
+      "scope": "Two older fixture expectations retained setup-before-release; new ordering cases passed."
+    },
+    "combined": {
+      "command": "npm test midi bench workflow",
+      "passed": 2499,
+      "failed": 0,
+      "exitCode": 0,
+      "runtimeSeconds": 61.31,
+      "logSha256": "d3c4763227a2b52632b0c26144192a258ea5de3194a0ba3d28d3db95bd6f8742"
+    },
+    "browserSmoke": {
+      "command": "node scripts/bench-smoke.js --url=http://127.0.0.1:8081/?e2e=1",
+      "exitCode": 0,
+      "logSha256": "8bcbf0cad31f59c93d0f0645efe8f697f478330f5a82a3f0dcbf061d77451c69",
+      "ok": true,
+      "profile": "smoke",
+      "totalDurationMs": 26919,
+      "thresholds": {
+        "perfP95FrameMsMax": 250,
+        "perfP50TpsMin": 15,
+        "historySpanRatioMin": 0.5,
+        "antsAvgMsMax": 250,
+        "tileCompositionAvgMsMax": 250,
+        "overlayPlaneAvgMsMax": 250,
+        "scaledBlitAvgMsMax": 250
+      },
+      "durationsMs": {
+        "benchPerformance": 9368,
+        "benchHistoryStress": 14769,
+        "benchHotpaths": 2779
+      },
+      "metrics": {
+        "perfP95Frame": 116.60000000000036,
+        "perfP50Tps": 88.24059067218256,
+        "historyRatio": 0.5016666666666667,
+        "antsAvgMs": 13.99,
+        "tileCompositionAvgMs": 2.85,
+        "overlayPlaneAvgMs": 12.08,
+        "scaledBlitAvgMs": 30.08
+      },
+      "failures": [],
+      "diagnostics": [],
+      "measurementValid": true,
+      "scenarios": [
+        {
+          "speed": 30,
+          "ratio": 0.5016666666666667
+        },
+        {
+          "speed": 60,
+          "ratio": 1.0065
+        }
+      ]
+    },
+    "staticChecks": [
+      "format",
+      "critical checkJs/runtime-global guards",
+      "undefined-call scan",
+      "branch whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "qualificationLimits": [
+      "Adapter return is not receiver-observed or acoustic evidence. A setup failure after the release frontier does not reconstruct an old voice.",
+      "Soak supervision arithmetic is tested; no long-soak completion is claimed.",
+      "Full CI checkpoint b58e7ae1 remains separate from this later batch."
+    ]
   }
 }

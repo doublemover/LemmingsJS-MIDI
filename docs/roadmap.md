@@ -6744,3 +6744,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   and dependency checks pass. The receipt distinguishes that checkpoint from
   this later batch. Long soak, hardware/native and listening evidence remain
   separate.
+
+### Continuation 265 — replacement frontier and complete-window supervision
+
+- #1122: ordinary/local budget and shared-controller victims release at onset
+  before replacement setup/Note On. Unsupported setup is refused before victim
+  release. Late adapter refusal is contained as partial dispatch; the old gate
+  is not automatically reconstructed. Local source capacity is checked again
+  after setup. Terminal reasons identify budget/same-pitch/controller replacement.
+- #1254: history defaults cover the maximum configured scenario windows plus
+  startup/probe allowance. Parent soak supervision derives from that producer
+  configuration, including inherited duration/speed overrides. Workload windows
+  are unchanged; explicit producer/parent deadlines remain hard limits. Target
+  span may still end a scenario early; actual duration remains in the receipt.
+- Initial MIDI collection: 2,393 passing / two outdated ordering expectations.
+  All follow-through fixes were collected before the combined retest:
+  **2,499 passing / zero failures** (61.31s), plus actual browser benchmark smoke
+  with valid measurements and no failures/diagnostics. Formatting, shared static
+  guards, undefined calls, whitespace and provenance pass. Long-soak, native and
+  listening qualification remain separate.

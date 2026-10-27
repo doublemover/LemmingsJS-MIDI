@@ -176,7 +176,7 @@ const createHistoryBenchConfig = (
     opTimeoutMs: toPositiveNumber(args.get('opTimeout') || env.HISTORY_OP_TIMEOUT_MS, 30000),
     maxRuntimeMs: toPositiveNumber(
       args.get('maxRuntime') || env.HISTORY_MAX_RUNTIME_MS,
-      profile.maxRuntimeMs ?? ((durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20))
+      Math.max(profile.maxRuntimeMs ?? 0, (durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20))
     ),
     seekSamples: Math.max(1, Math.trunc(toPositiveNumber(
       args.get('seekSamples') || env.HISTORY_SEEK_SAMPLES,

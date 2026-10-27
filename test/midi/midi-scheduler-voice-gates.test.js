@@ -183,7 +183,7 @@ describe('owned MIDI voice gates', function() {
     });
   });
 
-  it('retries rejected setup without poisoning controller dedup or cutting a held note', function() {
+  it('retries refused frontier setup without poisoning dedup or resurrecting the released victim', function() {
     withFakeClockAndPerformance(() => {
       const calls = [], output = makeOutput([1], calls), scheduler = new MidiScheduler({ mpe: { enabled: false } });
       scheduler.setOutput(output); scheduler.sendNote({ note: 60, durationTicks: 0 });
@@ -191,7 +191,8 @@ describe('owned MIDI voice gates', function() {
       output.channels[1].sendControlChange = () => { attempts++; return false; };
       expect(scheduler.sendNote({ note: 64, timbre: 99, durationTicks: 0 })).to.equal(false);
       expect(attempts).to.equal(1);
-      expect(calls.filter(call => call.type === 'noteOff')).to.have.length(0);
+      expect(calls.filter(call => call.type === 'noteOff').map(call => call.note)).to.deep.equal([60]);
+      expect(scheduler._activeNotes.size).to.equal(0);
       output.channels[1].sendControlChange = (cc, value) => { attempts++; calls.push({ type: 'cc', cc, value }); return true; };
       expect(scheduler.sendNote({ note: 65, timbre: 99, durationTicks: 0 })).to.equal(true);
       expect(attempts).to.equal(2);

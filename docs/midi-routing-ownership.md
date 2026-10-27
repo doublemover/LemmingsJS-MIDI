@@ -273,3 +273,22 @@ submission boundary. An accepted MPE mode change retires old owned voices and
 updates route revisions before new setup. Setup failure remains a distinct
 non-ready route state. New scope and queue regression fixtures are deferred
 until the backlog implementation phase is complete.
+
+## Future-note replacement frontier
+
+Queued reservations do not own a sounding voice. At dispatch, ordinary MIDI and
+independent local gates revalidate route/source capacity and required setup
+methods before selecting victims. Canceled future notes and known preflight
+refusals leave the sounding owner intact.
+
+At the requested onset, victim releases precede replacement controller/program
+setup and Note On. Shared-channel controller edits also retire affected voices
+before changing their channel state. Terminal evidence names budget, same-pitch
+or shared-controller replacement rather than treating it as natural completion.
+
+An adapter can refuse setup or onset after the release frontier. The failed
+replacement is contained, pending ownership is removed, and the old gate is not
+reconstructed automatically. This is a partial dispatch outcome; a Boolean
+adapter return does not prove receiver processing or acoustic output. Controller
+cache values are committed only after accepted submissions, so a refused setup
+can be retried without suppressing its unsent values.

@@ -260,3 +260,12 @@ qualified whole-crew routes remain ordinary regressions.
 compares the preserved old policy explicitly; ordinary regressions require the
 current policy to reach the real goal. Set `LEMMINGS_E2E_EXECUTABLE` to an installed
 Chromium-compatible browser path for local journeys; CI uses Playwright Chromium.
+
+History benchmark default supervision covers the maximum configured sampling
+windows across all selected speeds plus startup/probe allowance. The aggregate
+soak supervisor derives its history deadline from that producer configuration,
+including inherited `HISTORY_DURATION_MS` and `HISTORY_SPEEDS` overrides. This
+does not shorten any sampling window. Reaching the target span can still end a
+scenario early, and receipts retain its actual sampling duration. Explicit
+`HISTORY_MAX_RUNTIME_MS`, `--maxRuntime`, `BENCH_SMOKE_TIMEOUT_MS` or `--timeoutMs`
+limits remain hard limits; they are not silently raised to complete a profile.

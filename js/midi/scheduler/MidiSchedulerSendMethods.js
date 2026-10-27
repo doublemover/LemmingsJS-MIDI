@@ -202,27 +202,11 @@ const midiSchedulerSendMethods = {
           const expression = this._expressionPlan(spec, output, channelNumber);
           if (expression.coalesced) this._observe('coalesced', { ...captureMeta, type: 'controllers',
             count: expression.coalesced, reason: 'unchanged-controllers' });
-          for (const control of expression.controls) {
-            if (!ownsVoice()) { dispatchFailed = true; return; }
-            const method = control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange';
-            const args = control.type === 'cc' ? [control.cc, control.value, { time: sendTimeMs }] : [control.value, { time: sendTimeMs }];
-            const target = output.channels?.[control.channel];
-            const submission = typeof target?.[method] === 'function' ? this._submitAccountedOutput(output, control.channel, method, args, captureMeta,
-              { token, phase: 'on', trackId, laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority }) : { ok: false };
-            if (!submission.ok) {
-              dispatchFailed = true;
-              if (submission.error) this.lastOutputError = submission.error?.message || String(submission.error);
-              this._expressionByOutput.delete(output);
-              this.recordThrottle('setup-rejected', this._nowMs(), captureMeta);
-              this._stopActiveNoteToken(token, 'setup-rejected');
-              return;
-            }
-            if (!ownsVoice()) { dispatchFailed = true; return; }
-            control.state[control.key] = control.value;
-            control.state.bindings.set(control.binding, control.value);
+          if (expression.controls.some(control => typeof output.channels?.[control.channel]?.[
+            control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange'] !== 'function')) {
+            dispatchFailed = true; this.recordThrottle('setup-unsupported', this._nowMs(), captureMeta);
+            this._stopActiveNoteToken(token, 'setup-unsupported'); return;
           }
-          Object.assign(expression.state, expression.spanState);
-
           if (!active.mpe) {
             if (output.supportsIndependentNoteGates) {
               localVictims = this._planLocalNoteAdmission(output, meta, trackId, voiceBudget);
@@ -244,15 +228,40 @@ const midiSchedulerSendMethods = {
               }
             }
           }
-
           const zonePatchChanged = mpeEnabled && expression.controls.some(control => control.channel !== channelNumber);
           if ((!mpeEnabled || zonePatchChanged) && !output.supportsPerNoteInstrument && expression.controls.length) {
             for (const [previousToken, previous] of [...this._activeNotes]) {
               if (previousToken !== token && previous.hasStarted && previous.output === output &&
                   (zonePatchChanged ? previous.mpe : previous.channel === channelNumber)) {
-                this._stopActiveNoteToken(previousToken);
+                this._stopActiveNoteToken(previousToken, zonePatchChanged ? 'mpe-zone-patch-replaced' : 'channel-expression-replaced');
               }
             }
+          }
+          for (const control of expression.controls) {
+            if (!ownsVoice()) { dispatchFailed = true; return; }
+            const method = control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange';
+            const args = control.type === 'cc' ? [control.cc, control.value, { time: sendTimeMs }] : [control.value, { time: sendTimeMs }];
+            const target = output.channels?.[control.channel];
+            const submission = typeof target?.[method] === 'function' ? this._submitAccountedOutput(output, control.channel, method, args, captureMeta,
+              { token, phase: 'on', trackId, laneIndex: meta.laneIndex ?? 0, laneCount: meta.laneCount ?? 1, sfxId: meta.sfxId, priority: meta.priority }) : { ok: false };
+            if (!submission.ok) {
+              dispatchFailed = true;
+              if (submission.error) this.lastOutputError = submission.error?.message || String(submission.error);
+              this._expressionByOutput.delete(output);
+              this.recordThrottle('setup-rejected', this._nowMs(), captureMeta);
+              this._stopActiveNoteToken(token, 'setup-rejected');
+              return;
+            }
+            if (!ownsVoice()) { dispatchFailed = true; return; }
+            control.state[control.key] = control.value;
+            control.state.bindings.set(control.binding, control.value);
+          }
+          Object.assign(expression.state, expression.spanState);
+
+          if (!active.mpe && output.supportsIndependentNoteGates &&
+              typeof output.canAllocateVoice === 'function' && !output.canAllocateVoice()) {
+            dispatchFailed = true; this.recordThrottle('local-source-cap', this._nowMs(), captureMeta);
+            this._stopActiveNoteToken(token, 'local-admission-changed'); return;
           }
 
           if (!ownsVoice()) { dispatchFailed = true; return; }
