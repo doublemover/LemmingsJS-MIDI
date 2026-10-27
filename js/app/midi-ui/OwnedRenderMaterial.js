@@ -20,10 +20,11 @@ export async function prepareOwnedRenderMaterial({ provider, resources, definiti
     if (material.assets.length !== expected.size || new Set(material.assets.map(pin => pin.ref.contentHash)).size !== expected.size || material.assets.some(pin => expected.get(pin.ref.contentHash)?.bytes !== pin.ref.bytes)) throw new Error('Render material differs from its exact source reference inventory.');
     bank = await (set ? prepareOwnedPcmSet : prepareOwnedPcmBank)(set ? material.assets : material.assets[0], { resources, owner, generation, signal, isCurrent });
     copy = await bank.copyForProcessor({ signal, isCurrent });
+    const verifiedDependencyHashes = Array.isArray(material.availableHashes) ? Object.freeze([...material.availableHashes]) : null;
     const decoded = material.release(); await decoded.completion;
     if (decoded.outcome !== 'complete') throw Object.assign(new Error('Decoded render material retirement is unknown.'), { retirement: decoded });
     material = null;
-    return Object.freeze({ descriptor: bank.descriptor, get payload() { return copy.payload; }, release });
+    return Object.freeze({ descriptor: bank.descriptor, verifiedDependencyHashes, get payload() { return copy.payload; }, release });
   } catch (error) {
     failure = error.retirement || null; const receipt = release(); await receipt.completion;
     if (receipt.outcome !== 'complete') error.retirement = receipt; throw error;

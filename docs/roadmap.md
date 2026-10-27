@@ -6520,3 +6520,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   Formatting, six-file syntax/import checks, critical types and static provenance
   pass. Fetch confirms no missing master commits (386 ahead / 0 behind before this
   commit). No runtime, DSP, browser or full-suite tests ran.
+
+### Continuation 258 — source-backed private scene rehearsal (#1111, #1216, #1233)
+
+- Connected existing owned PCM preparation to private scene rehearsal. At most
+  four PCM-backed lanes and 16 MiB of aggregate source PCM are admitted; up to
+  eight owned lanes may carry separately verified data ancestry. No live-input
+  recorder, replacement clock, source decoder or second audition owner was added.
+- Prepared banks retain private input copies and actual dependency receipts. The
+  worker verifies exact lane/engine/definition bindings and its complete PCM
+  payload through the existing causal renderer. Compact definition, descriptor
+  and dependency-closure receipts are compared before any cue plays. Generated
+  JSON ancestry is explicitly verified by the shared provider before handoff;
+  the render worker does not claim to have independently received/rehashed it.
+- Handoff drops main input references and starts owned bank retirement, while the
+  rehearsal still joins that receipt before releasing its outer storage. Reentrant,
+  unacknowledged and failed reader retirement retain charges. Existing assetless
+  and separately prepared native lane paths preserve their input/result profiles.
+  Native-context sampled rehearsal remains unsupported through this adapter.
+- Nursery's third route can use this sampled private preview. Its manifest now
+  declares the aggregate FlightArc observation as well as lifecycle facts. The
+  cue remains a new private physical phrase with an explicit half-second boundary
+  release; it is not historical-take, full-decay or listening qualification.
+- Authored unrun real bank/payload/owned-render cases with mechanical source pins
+  and intents, changed/missing PCM, ancestry/index refusal, data-only sources,
+  capacity, cancellation and unknown-retirement cases. Actual source decoding and
+  scene geometry remain separate qualification. Formatting, eight-file syntax/
+  import checks, critical types and static provenance pass (268 worker modules;
+  10 components / 337 files). No runtime, browser, DSP or full-suite tests ran.
