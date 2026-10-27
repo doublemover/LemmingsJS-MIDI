@@ -520,5 +520,31 @@
       },
       "logSha256": "a99acb1b28bcfe199639073ac2c58961d3d19219ad53b6b6aec3d2dc98722065"
     }
+  },
+  "ciCoverageFollowup": {
+    "sourceRevision": "dc862f83f5d686ec95f5f8ac9d3dbdc5ec8fe68e",
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40463482446/job/122053282896",
+    "command": "npm run coverage",
+    "passed": 6198,
+    "failed": 1,
+    "coverage": {
+      "statements": 90.1,
+      "lines": 90.1,
+      "branches": 83.46,
+      "functions": 88.17,
+      "thresholdsMet": true
+    },
+    "failure": "Changed-file fallback fixture implicitly inherited GITHUB_BASE_REF instead of using its intended origin/master base.",
+    "repair": "The fixture now supplies --base=origin/master; standalone PR target resolution tests retain their original verified-base coverage.",
+    "focusedValidation": {
+      "passed": 28,
+      "failed": 0,
+      "environment": {
+        "GITHUB_BASE_REF": "master"
+      },
+      "instrumentation": "c8",
+      "scope": "Only test/run-tests-script.test.js; repository-wide coverage thresholds remain unchanged."
+    },
+    "latestCi": "Pending after the test-only fixture repair."
   }
 }

@@ -6628,3 +6628,9 @@ export-budget acknowledgments still prevent a false complete receipt.
   observes the complete final interval and records sampling duration separately
   from seek-probe time. All 14 benchmark helper/gate cases and the complete
   benchmark smoke batch pass with unchanged workload targets and thresholds.
+
+- CI full coverage reached 6,198 passing and one environment-sensitive runner
+  fixture failure, while meeting every threshold (90.1% lines/statements,
+  83.46% branches, 88.17% functions). The fallback fixture now supplies its
+  intended base explicitly; all 28 runner tests pass under c8 with
+  GITHUB_BASE_REF=master. Production source and coverage thresholds are unchanged.

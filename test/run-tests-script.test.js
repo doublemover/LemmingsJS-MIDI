@@ -242,18 +242,17 @@ describe('scripts/runTests', function () {
     expect(exits).to.deep.equal([0]);
   });
 
-  it('falls back to full suite when changed-file collection fails for a resolved base', function () {
+  it('falls back to full suite when changed-file collection fails for an explicit base', function () {
     const logs = { warn: [], error: [], log: [] };
     const spawned = [];
     const exits = [];
     const runGitCommand = createRunGitStub({
-      'rev-parse --verify --quiet origin/master': { status: 0, stdout: 'abc123' },
       'diff --name-only --diff-filter=ACMRD origin/master...HEAD': {
         status: 1,
         stdout: ''
       }
     });
-    main(['--changed'], {
+    main(['--changed', '--base=origin/master'], {
       spawn: (cmd, args) => {
         spawned.push({ cmd, args });
         return { status: 0 };
