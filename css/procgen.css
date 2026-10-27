@@ -325,3 +325,17 @@ body { flex-direction: column; }
 #procgenDrawer #procgenMusicSpreadValue { display: block; font-size: 12px; margin-top: 8px; color: #b4d5b8; }
 #procgenDrawer .procgen-music-card [hidden] { display: none; }
 #procgenLaneMusicAssignments { padding-left: 20px; font-size: 12px; line-height: 1.7; }
+
+.procgen-share-dialog { box-sizing: border-box; width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 20px; border: 1px solid #738a76; border-radius: 8px; background: #17251c; color: #edf4df; font: 14px/1.5 system-ui, sans-serif; }
+.procgen-share-dialog::backdrop { background: #000a; }
+.procgen-share-dialog h2 { margin: 0 0 12px; font-size: 20px; }
+.procgen-share-dialog h3 { margin: 18px 0 6px; font-size: 15px; }
+.procgen-share-dialog p { margin: 6px 0 12px; }
+.procgen-share-dialog label { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.procgen-share-dialog input[type=text] { box-sizing: border-box; width: 100%; padding: 8px; color: inherit; background: #0b170e; border: 1px solid #738a76; }
+.procgen-share-dialog button { margin: 10px 8px 0 0; padding: 8px 12px; border: 1px solid #738a76; border-radius: 4px; background: #293e2c; color: inherit; cursor: pointer; }
+.procgen-share-dialog button:disabled { opacity: .55; cursor: default; }
+.procgen-share-dialog .procgen-share-primary { background: #456927; font-weight: 650; }
+.procgen-share-dialog output { display: block; margin: 12px 0 0; }
+.procgen-share-dialog :focus-visible { outline: 2px solid #d4ed91; outline-offset: 3px; }
+.procgen-share-dialog [hidden] { display: none; }

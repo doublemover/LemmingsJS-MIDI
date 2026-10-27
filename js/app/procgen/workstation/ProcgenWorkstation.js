@@ -1121,14 +1121,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
   };
-  const prepareCausalArchive = async () => {
+  const prepareCausalArchive = async ({ signal } = {}) => {
+    signal?.throwIfAborted();
     const request = ++exportPreparationRevision, ownerGeneration = documentGeneration;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('No finished causal take is selected.');
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
-    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs });
-    if (disposed || request !== exportPreparationRevision || ownerGeneration !== documentGeneration || takeId !== (selectedCausalTakeId || lastCausalTake?.takeId)) {
+    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs, signal });
+    if (disposed || signal?.aborted || request !== exportPreparationRevision || ownerGeneration !== documentGeneration || takeId !== (selectedCausalTakeId || lastCausalTake?.takeId)) {
       prepared.artifact.discard(); return Object.freeze({ status: 'superseded', takeId });
     }
     preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
@@ -1143,6 +1144,50 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     else if (lastDelivery.state === 'failed') status('File is prepared, but the browser download request failed. Use Retry file.');
     publishExportState();
     return lastDelivery;
+  };
+  const prepareProjectExport = async ({ deliver = true, signal } = {}) => {
+    signal?.throwIfAborted();
+    if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
+    const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
+    const request = ++exportPreparationRevision, cancel = () => lease.controller.abort(signal.reason);
+    signal?.addEventListener('abort', cancel, { once: true });
+    let computed = null, sourceTick = null, sourceGeneration = null;
+    try {
+      computed = await backgroundJobs.compute({ kind: 'encode-json', ownerId: 'procgen-export', ownerEpoch: generation,
+        sourceRevision: `${generation}:${revision}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + project.procgen.lanes.length * 131072,
+        signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision && request === exportPreparationRevision,
+        prepareInput: () => {
+          const snapshot = capture(), world = snapshot.world?.graph?.owners?.find(owner => owner.name === 'world')?.props;
+          sourceTick = world?.tickIndex ?? snapshot.world?.tickIndex ?? null; sourceGeneration = world?.generation ?? null; return snapshot;
+        }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
+      if (!ownsOperation(lease) || documentGeneration !== generation || editRevision !== revision || request !== exportPreparationRevision) return null;
+      const artifact = prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
+        sourceRef: `project:${id}:${revision}:${sourceGeneration ?? 'unknown'}:${sourceTick ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
+      if (deliver && deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
+      else if (!deliver) status('Project checkpoint ready. Choose Save file or Retry file to request delivery.');
+      return artifact.metadata();
+    } finally { computed?.release(); signal?.removeEventListener('abort', cancel); finishOperation(lease); }
+  };
+  const getShareExportDescriptor = () => {
+    const world = runtime()?.world, takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    const capture = masterCapture?.state().capture;
+    const busy = disposed || !world || worldBusy || pendingHistory || physicalAuthoringAbort || currentOperation || causalTake || causalTakeStart || causalTakeStop || state.recording ||
+      capture?.unresolvedOwnership || ['preparing', 'recording', 'stopping'].includes(capture?.state);
+    const kind = takeId ? 'causal-take' : 'project';
+    return Object.freeze({ kind, available: !busy,
+      sourceToken: JSON.stringify([documentGeneration, editRevision, world?.generation ?? null, world?.sourceEditRevision ?? null, takeId ?? null]),
+      title: takeId ? 'Selected causal take archive' : 'Current project checkpoint',
+      scope: busy ? 'Finish active world, document, history and recording operations before preparing a performance file.' : takeId
+        ? 'Uses the selected finished take, its verified source hashes, physical checkpoints and journal records. Complete or partial coverage is retained in the archive.'
+        : 'Captures the current edited project and physical world when preparation begins. This checkpoint does not contain a recorded causal take.',
+      omitted: takeId ? 'External instrument or source assets may need a separate package. MIDI or audio alone does not preserve this physical take.'
+        : 'Stored takes, their causal history, audio and separately supplied assets are not included. Select a finished causal take first to export its archive.' });
+  };
+  const prepareShareExport = (reviewed, { signal } = {}) => {
+    signal?.throwIfAborted();
+    const current = getShareExportDescriptor();
+    if (!current.available || reviewed?.kind !== current.kind || reviewed?.sourceToken !== current.sourceToken) throw new Error('The reviewed performance source changed. Open sharing again to select the current source.');
+    return current.kind === 'causal-take' ? prepareCausalArchive({ signal }) : prepareProjectExport({ deliver: false, signal });
   };
   const safe = fn => async (...args) => { try { return await fn(...args); } catch (error) { status(error?.message || String(error)); return false; } };
   const adoptSceneRecipe = recipe => {
@@ -1719,24 +1764,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         return await loadSession(computed.value, lease);
       } finally { computed?.release(); finishOperation(lease); }
     }),
-    export: safe(async () => {
-      if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
-      const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
-      let computed = null, sourceTick = null, sourceGeneration = null;
-      try {
-        computed = await backgroundJobs.compute({ kind: 'encode-json', ownerId: 'procgen-export', ownerEpoch: generation,
-          sourceRevision: `${generation}:${revision}`, inputBytes: 0, estimatedPeakBytes: 128 * 1048576 + project.procgen.lanes.length * 131072,
-          signal: lease.signal, budgetAdapter: resourceBudget, isCurrent: () => ownsOperation(lease) && documentGeneration === generation && editRevision === revision,
-          prepareInput: () => {
-            const snapshot = capture(), world = snapshot.world?.graph?.owners?.find(owner => owner.name === 'world')?.props;
-            sourceTick = world?.tickIndex ?? snapshot.world?.tickIndex ?? null; sourceGeneration = world?.generation ?? null; return snapshot;
-          }, onProgress: phase => status(`Preparing project file: ${phase.phase}.`) });
-        if (!ownsOperation(lease)) return false;
-        prepareDownload({ bytes: computed.value, filename: name.replace(/[^a-z0-9_-]+/gi, '-') + '.procgen.json', type: 'application/json',
-          sourceRef: `project:${id}:${revision}:${sourceGeneration ?? 'unknown'}:${sourceTick ?? 'unknown'}`, formatVersion: 'procgen-session/v1' });
-        if (deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
-      } finally { computed?.release(); finishOperation(lease); }
-    }),
+    export: safe(() => prepareProjectExport()),
     exportMidi: safe(() => {
       const state = ports.getState();
       const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
@@ -1880,6 +1908,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
   let interventionSerial = 0;
   const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
+    getRecipeSpeed: () => transport.getState().gameSpeed,
+    getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),
     canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue,
     speed(value) { configureTransport({ gameSpeed: value }); legacy.setSpeed(value, { owned: true }); lastLegacySpeed = legacy.settings.speed; persist(); refreshSceneCue(); return value; },
     nuke(laneId) {

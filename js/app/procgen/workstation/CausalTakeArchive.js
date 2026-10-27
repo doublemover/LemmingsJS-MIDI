@@ -27,13 +27,16 @@ const uniqueRefs = refs => {
 // A prepared archive names one immutable finalized take revision. Each retry
 // reopens its original canonical records and checks their content hash before
 // yielding bytes to the file sink. The browser cannot certify disk durability.
-const prepareCausalTakeArchive = async ({ journal, storage, takeId, maxDeliveryBytes = MAX_ARCHIVE_BYTES, resourceBudget = null, jobs = backgroundJobService } = {}) => {
+const prepareCausalTakeArchive = async ({ journal, storage, takeId, maxDeliveryBytes = MAX_ARCHIVE_BYTES, resourceBudget = null, jobs = backgroundJobService, signal } = {}) => {
   if (!journal?.verify || !storage?.loadCausalTake || !storage?.loadCausalCheckpoint || !storage?.loadCausalChunk ||
       !Number.isSafeInteger(maxDeliveryBytes) || maxDeliveryBytes < 1 || maxDeliveryBytes > MAX_ARCHIVE_BYTES) {
     throw new Error('Causal take archive needs journal storage and a bounded delivery limit.');
   }
-  await journal.verify(takeId);
+  signal?.throwIfAborted();
+  await journal.verify(takeId, { signal });
+  signal?.throwIfAborted();
   const raw = await journal.openTake(takeId);
+  signal?.throwIfAborted();
   if (!raw || !['finalized', 'partial'].includes(raw.state) || !raw.finalizationHash)
     throw new Error('Finish the causal take before preparing its archive.');
   const manifest = cloneJournalData(raw, { maxBytes: 8 * 1048576 });

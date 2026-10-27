@@ -251,11 +251,13 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
   await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
   await dialog.getByRole('button', { name: 'Start master capture', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('recording', { timeout: 15000 });
+  await expect.poll(async () => `${await dialog.getByRole('status').textContent()}\n${(await dialog.locator('p').allTextContents()).join('\n')}`, { timeout: 15000 })
+    .toMatch(/^recording ·/);
   await expect.poll(async () => {
     const text = await dialog.getByRole('status').textContent(); return Number(text.match(/([\d,]+) received frames/)?.[1].replaceAll(',', '') || 0);
   }, { timeout: 15000 }).toBeGreaterThan(24000);
-  await dialog.getByRole('button', { name: 'Stop capture', exact: true }).click();
+  try { await dialog.getByRole('button', { name: 'Stop capture', exact: true }).click({ timeout: 1500 }); }
+  catch (error) { if (!/^(ready|partial) ·/.test(await dialog.getByRole('status').textContent())) throw error; }
   await expect(dialog.getByRole('status')).toContainText(/ready|partial/);
   await dialog.getByRole('button', { name: 'Save captured WAV', exact: true }).click(); await expect(dialog).toContainText('Save canceled. Captured PCM remains available.');
   await dialog.getByRole('button', { name: 'Save captured WAV', exact: true }).click(); await expect(dialog).toContainText('WAV stream closed successfully.');
@@ -268,6 +270,8 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   expect(receipt.fileClosed).toBe(true); expect(receipt.hardwareRequests).toBe(0); expect(samples.length).toBe(manifest.timelineFrames * 8);
   expect(manifest).toMatchObject({ schema: 'lemmings-master-pcm/v1', tap: 'post-protection-shared-browser-master', channels: 2,
     includesCurrentMasterOwnersAndAuditions: true, acousticEvidence: false, terminalAcknowledged: true, format: 'float32-le' });
+  expect(['Ready', 'Partial']).toContain(manifest.state);
+  console.log('Master capture receipt ' + JSON.stringify({ state: manifest.state, frames: manifest.timelineFrames, captured: manifest.capturedFrames, stopReason: manifest.stopReason, clockDiscontinuity: manifest.clockDiscontinuity }));
   let peak = 0, nonfinite = 0;
   for (let at = 0; at < samples.length; at += 4) { const sample = samples.readFloatLE(at); if (!Number.isFinite(sample)) nonfinite++; else peak = Math.max(peak, Math.abs(sample)); }
   expect(nonfinite).toBe(0); expect(peak).toBeGreaterThan(0);

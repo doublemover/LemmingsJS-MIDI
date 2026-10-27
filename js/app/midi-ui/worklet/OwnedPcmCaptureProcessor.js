@@ -11,7 +11,7 @@ class OwnedPcmCaptureKernel {
     this.states = new Uint8Array(PCM_CAPTURE_POOL); this.tokens = new Uint32Array(PCM_CAPTURE_POOL); this.gaps = new Float64Array(PCM_CAPTURE_GAPS * 3);
     this.current = -1; this.used = 0; this.chunkStartFrame = 0; this.sourceStartFrame = null; this.firstCapturedFrame = null; this.lastFrame = null;
     this.stopFrame = Infinity; this.stopReason = 'user-stop'; this.stopped = false; this.capturedFrames = 0; this.droppedFrames = 0;
-    this.sequence = 0; this.gapCount = 0; this.overflowFirstFrame = null; this.overflowLastFrame = null; this.rejectedReturns = 0;
+    this.sequence = 0; this.gapCount = 0; this.overflowFirstFrame = null; this.overflowLastFrame = null; this.rejectedReturns = 0; this.clockDiscontinuity = null;
     this.zeroChannelFrames = 0; this.monoFrames = 0;
   }
   returnBuffer(index, token, buffer) {
@@ -41,7 +41,11 @@ class OwnedPcmCaptureKernel {
   process(channels, frames, firstFrame, emit) {
     if (this.stopped) return false;
     if (!Number.isSafeInteger(frames) || frames < 1 || frames > 8192 || !Number.isSafeInteger(firstFrame) || firstFrame < 0 || firstFrame > Number.MAX_SAFE_INTEGER - frames ||
-        this.lastFrame != null && firstFrame !== this.lastFrame) { this.stopped = true; this.stopReason = 'noncontiguous-render-clock'; this.flush(emit); return false; }
+        this.sourceStartFrame != null && this.lastFrame != null && firstFrame !== this.lastFrame) {
+      if (Number.isSafeInteger(firstFrame) && firstFrame >= 0 && Number.isSafeInteger(frames) && frames > 0 && frames <= 8192 && this.lastFrame != null)
+        this.clockDiscontinuity = { expectedFrame: this.lastFrame, actualFrame: firstFrame, frames };
+      this.stopped = true; this.stopReason = 'noncontiguous-render-clock'; this.flush(emit); return false;
+    }
     const inputAvailable = Array.isArray(channels), layout = inputAvailable ? channels.length : 0;
     let validLayout = layout <= PCM_CAPTURE_CHANNELS;
     for (let channel = 0; channel < layout; channel++) if (!(channels[channel] instanceof Float32Array) || channels[channel].length !== frames) validLayout = false;
@@ -106,7 +110,7 @@ class OwnedPcmCaptureProcessor extends ProcessorBase {
         firstCapturedFrame: this.kernel.firstCapturedFrame, lastFrame: this.kernel.lastFrame, capturedFrames: this.kernel.capturedFrames,
         droppedFrames: this.kernel.droppedFrames, lastSequence: this.kernel.sequence, reason: this.kernel.stopReason, gapCount: this.kernel.gapCount,
         zeroChannelFrames: this.kernel.zeroChannelFrames, monoFrames: this.kernel.monoFrames,
-        gaps: this.kernel.gaps, overflowFirstFrame: this.kernel.overflowFirstFrame, overflowLastFrame: this.kernel.overflowLastFrame }, [this.kernel.gaps.buffer]);
+        gaps: this.kernel.gaps, overflowFirstFrame: this.kernel.overflowFirstFrame, overflowLastFrame: this.kernel.overflowLastFrame, clockDiscontinuity: this.kernel.clockDiscontinuity }, [this.kernel.gaps.buffer]);
     }
     return active;
   }

@@ -203,7 +203,8 @@ test('legacy: keyboard drawer entry reaches its controls and Escape exits a text
   await page.goto('/procgen.html?workstation=0&e2e=1&seed=42&lanes=2'); await ready(page);
   await page.locator('#procgenTab').focus(); await page.keyboard.press('Enter');
   await expect(page.locator('#procgenPreset')).toBeFocused();
-  await page.locator('#procgenShare').click(); await expect(page.locator('#procgenShareUrl')).toBeFocused();
+  await page.locator('#procgenShare').click(); await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape'); await expect(page.locator('#procgenShare')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.locator('#procgenTab')).toBeFocused();
   await expect(page.locator('#procgenTab')).toHaveAttribute('aria-expanded', 'false');

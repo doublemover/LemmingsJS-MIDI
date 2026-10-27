@@ -7938,5 +7938,244 @@
       "aheadMasterBeforeCommit": 411
     },
     "currentPushCi": "pending"
+  },
+  "continuation277": {
+    "date": "2026-10-27",
+    "parentRevision": "f17f4f7137cebdd942acf4c5d467dcad20bf46b8",
+    "scope": "Reviewed canonical recipe sharing, owned checkpoint/selected-take export handoff, asynchronous navigation readiness and pre-start PCM worklet clock ownership.",
+    "sourceFiles": [
+      {
+        "path": ".github/workflows/test.yml",
+        "sha256": "a53f95c11d9e38154c0ea85fdbe1798bb3cee22d2b164204ca7875f0e9696b35"
+      },
+      {
+        "path": "css/procgen.css",
+        "sha256": "c81d74f9688813106badd5102c2c48f64c08f4a2e09735bdb3b5e179cb583bdf"
+      },
+      {
+        "path": "e2e/game.spec.js",
+        "sha256": "d17577ffea113dc49330e61409e4d1850a864e1518114d27ea974aacdf74643d"
+      },
+      {
+        "path": "e2e/procgen-sharing.spec.js",
+        "sha256": "55292b5feceeee2b9ffca9872a83b40fe8f73d9ac00da044ab9a10255e69a339"
+      },
+      {
+        "path": "e2e/procgen.spec.js",
+        "sha256": "b5f3479f9b3665a4d7ecf59688e664a0b343499ddf5c82493b07ada6c803bbb6"
+      },
+      {
+        "path": "e2e/sound-content-workstation.spec.js",
+        "sha256": "23b10d3b14484eb939403819565dad37bb1ffb0dbb5a65728a262aadd6194ddb"
+      },
+      {
+        "path": "js/app/e2e/E2EStateSerialization.js",
+        "sha256": "978379ad799f073ade97851f9185020fc56e590277e5f700138942862d373839"
+      },
+      {
+        "path": "js/app/midi-ui/MasterCaptureView.js",
+        "sha256": "42608546ddde5152264f6975532ae002e62afae1dfb27bfc51b107440e5995ce"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedMasterCapture.js",
+        "sha256": "4a91c9f509e668266bbc2b599928e925870ffc05f5a343dbdb7db007ee71a50a"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js",
+        "sha256": "dadc1a2bc6a72b4a40c92363c4e1902718c91c88af280cc03189db7666749af6"
+      },
+      {
+        "path": "js/app/procgen/ProcgenShareView.js",
+        "sha256": "01aace80b5c3f6b178436accd5bc2073aa92775010580992e155d7288fc036c7"
+      },
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "sha256": "c45dad3f4d3112fff524353b61c80628c34e908cf8c704fb27b36804f065205c"
+      },
+      {
+        "path": "js/app/procgen/ProcgenUrlConfig.js",
+        "sha256": "c2ca6a85e2f8118620dec6a3528013c5d6720fe80ef5d7fc5b11952962051e36"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalTakeArchive.js",
+        "sha256": "9cda0a004113a63589fc8b6eb0bed726eafdacfdb5aebc387fa891b251c4e0dc"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenStartupIntent.js",
+        "sha256": "67a038bbd1ff6031fdb8692c09bda084e6557cb94f30de68fca947b60c5dd55c"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "214d9c158992a75576e348c39e7c55d6a9f86431840a0f5294c99d2ddd7962f6"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "b951405f3dd8387c653f34e719cec6ec0ebc465d43a40ab61414e0f6ee592739"
+      },
+      {
+        "path": "package.json",
+        "sha256": "1fab2509fbeb8f63b5fe05fec616433a9fedf349b7f1047d635f8ecfaf0d48a0"
+      },
+      {
+        "path": "procgen.html",
+        "sha256": "71275b47d44e78e3abc3b9d7042fb6c0007c94e309483551ada189c8cc2bef5e"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "sha256": "8411cf419e082c00a58c5fe80b3855dffa338df6ee8d9d11c24dbb046b349947"
+      },
+      {
+        "path": "test/midi/owned-master-capture.test.js",
+        "sha256": "96f7e7f0b3ba1de6d737e2064b28052f248056a5619d7e906269f4a60fe23b13"
+      },
+      {
+        "path": "test/midi/owned-pcm-capture-kernel.test.js",
+        "sha256": "8c8642783d1f7a7d3a5ac6ea146129b542308bf18fe35570b45166d0b9bfc44a"
+      },
+      {
+        "path": "test/procgen-causal-archive.test.js",
+        "sha256": "5101f2e280418ebee4697b5ee95e10add3600c8c27c3dbbd2582efec3ed88e06"
+      },
+      {
+        "path": "test/procgen-share-view.test.js",
+        "sha256": "ba727f3ee66f65f68b38afbda5474adc47cf560cf4513f1b58f21a1341fbcea7"
+      },
+      {
+        "path": "test/procgen-startup-intent.test.js",
+        "sha256": "ee41c332f0120074285f4bb397d50176671c1fa3c1a58572801ec8b73223de47"
+      },
+      {
+        "path": "test/procgen-ui.test.js",
+        "sha256": "c564de46dcb250ab0e270746993405c365c96e630a407eec83287ad06b4fc074"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "21ab105f77ffff6e7f98ca14713fc9253487a2db7fee52bbd7f14e2f465b27fb"
+      }
+    ],
+    "priorCI": {
+      "revision": "f17f4f7137cebdd942acf4c5d467dcad20bf46b8",
+      "jobUrl": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40539534220/job/122313844571",
+      "browserPassed": 39,
+      "browserFailed": 2,
+      "failures": [
+        "native keyboard level activation raced the asynchronous navigation owner",
+        "master capture rejected a pre-start render-clock discontinuity"
+      ],
+      "coverageRan": false,
+      "policy": "success",
+      "dependencyReview": "success"
+    },
+    "node": {
+      "passed": 161,
+      "failed": 0,
+      "duration": "1s",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-owners-qualified-20261027.log",
+        "sha256": "497149cd22083dea8ec60dd85a0f5e1f6d746a73c815b471a5f7af6427e30558",
+        "bytes": 14727
+      }
+    },
+    "browser": {
+      "scope": "Seven sharing/navigation cases pass in the final grouped run; the corrected master-capture case then passes three repetitions. These are grouped follow-through results, not another complete browser suite invocation.",
+      "group": {
+        "passed": 7,
+        "failed": 1,
+        "remainingFailure": "Capture had already finalized a truthful partial prefix before the fixture tried to stop it; an additional repetition retained fewer than the required 24,000 frames.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-browser-complete-20261027.log",
+          "sha256": "1e70f2ae4f3f6508e95cc40380f23ce60522e11782260e61577ed6a9ac005077",
+          "bytes": 4700
+        }
+      },
+      "capture": {
+        "passed": 3,
+        "failed": 0,
+        "duration": "1.1m",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-clock-qualified-20261027.log",
+          "sha256": "7517097110551f6db32fc9fae7ed211ea798f707c3fc74852bd1c7e04cb191c7",
+          "bytes": 1418
+        },
+        "receipts": [
+          {
+            "state": "Ready",
+            "timelineFrames": 102272,
+            "capturedFrames": 102272,
+            "sampleRate": 48000,
+            "channels": 2,
+            "stopReason": "user-stop",
+            "terminalAcknowledged": true,
+            "finitePCM": true,
+            "nonzeroPeak": true,
+            "canceledPickerPreservesPCM": true
+          },
+          {
+            "state": "Ready",
+            "timelineFrames": 102144,
+            "capturedFrames": 102144,
+            "sampleRate": 48000,
+            "channels": 2,
+            "stopReason": "user-stop",
+            "terminalAcknowledged": true,
+            "finitePCM": true,
+            "nonzeroPeak": true,
+            "canceledPickerPreservesPCM": true
+          },
+          {
+            "state": "Ready",
+            "timelineFrames": 101249,
+            "capturedFrames": 101249,
+            "sampleRate": 48000,
+            "channels": 2,
+            "stopReason": "user-stop",
+            "terminalAcknowledged": true,
+            "finitePCM": true,
+            "nonzeroPeak": true,
+            "canceledPickerPreservesPCM": true
+          }
+        ]
+      },
+      "diagnostics": [
+        "The initial sharing group had three failures: paused timer speed, nested/modal key ownership and an unavailable recipe copy action. All seven non-capture cases subsequently pass.",
+        "The clock diagnostic also reproduced a legitimate post-start discontinuity. Its known PCM prefix remains Partial; no complete-capture claim is made for that interrupted attempt. Clock receipts now retain expected/actual frame diagnostics.",
+        "The capture fixture accepts the existing Ready/Partial terminal contract and does not wait on a disabled Stop button. Its minimum received-frame threshold remains 24,000; every exported sample is still checked for finiteness and the output must have a nonzero peak."
+      ]
+    },
+    "checks": {
+      "format": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-format-qualified-20261027.log",
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+        "bytes": 55
+      },
+      "types": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-types-qualified-20261027.log",
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+        "bytes": 96
+      },
+      "undefinedCalls": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-undefined-qualified-20261027.log",
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+        "bytes": 111
+      },
+      "provenance": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog277-provenance-qualified-20261027.log",
+        "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
+        "bytes": 142
+      },
+      "masterBehind": 0
+    },
+    "maintainedBrowserBoundaries": {
+      "previous": 41,
+      "added": 2,
+      "expected": 43,
+      "observedInNewCI": false
+    },
+    "limitations": [
+      "Full CI for the new combined commit has not yet completed. Latest complete green checkpoint remains d08d99ab.",
+      "Version 1 recipe links explicitly refuse authored scenes; canonical portable scene ID/revision and asset admission are not implemented by this sharing sheet.",
+      "Checkpoint export omits stored causal journals/takes and separate assets; selected-take archive export is used when a finished causal take is selected.",
+      "No external hardware/acoustic, physical disk durability, hosted sharing or rights qualification is claimed."
+    ]
   }
 }

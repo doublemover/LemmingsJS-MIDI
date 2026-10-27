@@ -54,14 +54,19 @@ const createProcgenShareUrl = ({ url, seed, settings, camera, includeCamera = tr
   return result.href;
 };
 const createProcgenRecipeShareDescriptor = options => {
+  if (options.sceneOrigin) throw Object.assign(new Error('This authored scene cannot be reproduced by a version 1 seed recipe. Export its project or selected take instead.'), { code: 'scene-recipe-unsupported' });
   const url = createProcgenShareUrl(options), target = new URL(url);
   const plan = resolveProcgenStartupIntent({ search: target.search, seed: options.seed,
     legacyProject: null, legacySettings: {}, saved: null });
-  return Object.freeze({ schema: 'procgen-recipe-share/v1', url, scope: 'starting-recipe',
+  const presentation = readProcgenUrlConfig(target.search).camera;
+  if (options.includeCamera !== false) for (const field of ['cameraX', 'cameraY', 'scale']) {
+    if (options.camera?.[field] !== undefined && presentation[field] !== options.camera[field]) throw new Error('The camera framing is outside the supported recipe range');
+  }
+  return Object.freeze({ schema: 'procgen-recipe-share/v1', url, scope: 'starting-recipe', recipeIdentity: plan.intentId,
     worldOptions: Object.freeze({ ...plan.worldOptions }), sourceCompatibility: 'unverified-on-recipient',
-    includesCamera: options.includeCamera !== false, omitted: Object.freeze([
+    includesCamera: options.includeCamera !== false, camera: Object.freeze(presentation), omitted: Object.freeze([
       'edited terrain and routes', 'current actors', 'instrument patches and external assets',
-      'recorded takes and audio', 'local devices and output permissions'
+      'recorded takes and audio', 'custom worker and population policies', 'local devices and output permissions'
     ]) });
 };
 export { readProcgenUrlConfig, createProcgenShareUrl, createProcgenRecipeShareDescriptor };

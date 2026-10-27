@@ -18,6 +18,7 @@ const recipeDefaults = () => ({ laneCount: 8, laneHeight: DEFAULT_LANE_HEIGHT, p
 export const parseProcgenStartupIntent = (search = '') => {
   const params = new URLSearchParams(search);
   if (params.toString().length > 8192) throw new Error('Startup URL exceeds the supported size');
+  if (['scene', 'sceneId', 'sceneRevision'].some(key => params.has(key))) throw new Error('Authored scene recipe links are unsupported by this build. Use its project or take artifact to verify the required scene assets.');
   for (const key of STARTUP_KEYS) if (params.getAll(key).length > 1) throw new Error('Duplicate startup field: ' + key);
   const explicit = params.get('startup'), hasRecipe = RECIPE_KEYS.some(key => params.has(key));
   if (explicit != null && !startupModes.includes(explicit)) throw new Error('Unsupported startup mode');

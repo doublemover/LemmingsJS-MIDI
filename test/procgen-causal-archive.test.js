@@ -10,6 +10,17 @@ const graph = { version: 1, revision: 1, instruments: [
 ] };
 
 describe('causal take portable archive', () => {
+  it('passes preparation cancellation to verification and refuses a source returned after cancellation', async () => {
+    const controller = new AbortController(); let verifiedSignal, opened = 0;
+    const storage = { loadCausalTake() {}, loadCausalCheckpoint() {}, loadCausalChunk() {} };
+    const journal = { async verify(_takeId, { signal }) { verifiedSignal = signal; controller.abort(); }, async openTake() { opened++; } };
+    try { await prepareCausalTakeArchive({ journal, storage, takeId: 'take:cancel', signal: controller.signal }); throw new Error('Expected cancellation'); }
+    catch (error) { expect(error.name).to.equal('AbortError'); }
+    expect(verifiedSignal).to.equal(controller.signal); expect(opened).to.equal(0);
+    const second = new AbortController(); journal.verify = async () => {}; journal.openTake = async () => { second.abort(); return { state: 'finalized' }; };
+    try { await prepareCausalTakeArchive({ journal, storage, takeId: 'take:cancel', signal: second.signal }); throw new Error('Expected cancellation'); }
+    catch (error) { expect(error.name).to.equal('AbortError'); }
+  });
   it('streams one finalized source revision, verifies it for inspection, and rejects later byte mutation', async () => {
     const memory = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: memory.storage });
     const takeId = 'take:archive-fixture';

@@ -45,7 +45,8 @@ test('Level arrows support keyboard activation', { tag: '@boundary' }, async ({ 
   const levelSelect = page.locator('#levelIndexSelect');
   await page.waitForFunction(() => {
     const select = document.getElementById('levelIndexSelect');
-    return select && select.options.length > 1;
+    const state = window.__E2E__?.getState?.();
+    return select && select.options.length > 1 && state?.ready && !state.view.navigationPending;
   });
   const initialValue = await levelSelect.inputValue();
   const next = page.locator('#levelNextButton');
@@ -58,7 +59,8 @@ test('Level arrows support keyboard activation', { tag: '@boundary' }, async ({ 
   await page.keyboard.press('Enter');
   await page.waitForFunction((prevValue) => {
     const select = document.getElementById('levelIndexSelect');
-    return select && select.value !== prevValue;
+    const state = window.__E2E__?.getState?.();
+    return select && select.value !== prevValue && state?.ready && !state.view.navigationPending;
   }, initialValue);
 
   await prev.focus();
@@ -66,7 +68,8 @@ test('Level arrows support keyboard activation', { tag: '@boundary' }, async ({ 
   await page.keyboard.press('Space');
   await page.waitForFunction((prevValue) => {
     const select = document.getElementById('levelIndexSelect');
-    return select && select.value === prevValue;
+    const state = window.__E2E__?.getState?.();
+    return select && select.value === prevValue && state?.ready && !state.view.navigationPending;
   }, initialValue);
 });
 

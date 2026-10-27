@@ -30,6 +30,12 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('leaves Escape to an open modal without closing its originating drawer', () => {
+    const f = fixture(); f.el('procgenTab').dispatchEvent({ type: 'click', detail: 1 });
+    f.document.dispatchEvent({ type: 'keydown', key: 'Escape', composedPath: () => [{ tagName: 'DIALOG', open: true }] });
+    expect(f.el('procgenTab').getAttribute('aria-expanded')).to.equal('true');
+    f.document.dispatchEvent({ type: 'keydown', key: 'Escape' }); expect(f.el('procgenTab').getAttribute('aria-expanded')).to.equal('false'); f.ui.dispose();
+  });
   it('persists the opt-in recipe through the existing musical transaction and Undo without starting output', () => {
     const f = fixture(); expect(f.el('procgenMusicRecipe').value).to.equal('events'); expect(f.el('procgenMusicStatus').textContent).to.equal('Event music');
     f.el('procgenMusicRecipe').value = 'scenes'; f.el('procgenMusicRecipe').dispatchEvent({ type: 'change', target: f.el('procgenMusicRecipe') });
@@ -418,5 +424,13 @@ describe('compact procgen drawer', () => {
     const plan = f.ui.getShareDescriptor().worldOptions;
     expect(plan).to.include({ seed: 42, laneCount: 3, laneHeight: 144, pack: 2, speed: 3 });
     f.ui.dispose();
+  });
+  it('shares the owned game speed while the paused physical timer is zero', () => {
+    const f = fixture('?seed=42&speed=2.25');
+    f.runtime.world = { seed: 42, laneCount: 3, laneHeight: 144, timer: { speedFactor: 0 } };
+    f.runtime.recipeSettings = Object.freeze({ laneCount: 3, laneHeight: 144, pack: 2, speed: 2.25, decoration: 'none', preset: 'game-iron-ensemble', mode: 'steps' });
+    const release = f.ui.setPhysicalControlOwner({ getRecipeSpeed: () => 4.5 });
+    expect(f.ui.getShareDescriptor().worldOptions.speed).to.equal(4.5); release();
+    expect(f.ui.getShareDescriptor().worldOptions.speed).to.equal(2.25); f.ui.dispose();
   });
 });

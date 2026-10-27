@@ -120,4 +120,16 @@ describe('ProcGen startup intent', () => {
     expect(target.searchParams.get('speed')).to.equal('1.123456789');
     expect(resolveProcgenStartupIntent({ ...base, search: target.search, saved }).worldOptions).to.deep.equal(descriptor.worldOptions);
   });
+  it('keeps camera presentation outside physical recipe identity and refuses unsupported scene or camera semantics', () => {
+    const options = { url: 'https://example.test/procgen.html?device=private#recovery', seed: 999,
+      settings: { laneCount: 3, speed: 2, pack: 4, laneHeight: 192, preset: 'game-lydian-lanterns', mode: 'phrase', decoration: 'old-vegas' },
+      camera: { cameraX: 500, cameraY: 20, scale: 2, follow: false } };
+    const plain = createProcgenRecipeShareDescriptor({ ...options, includeCamera: false }), framed = createProcgenRecipeShareDescriptor(options);
+    expect(framed.recipeIdentity).to.equal(plain.recipeIdentity); expect(framed.camera).to.deep.equal(options.camera); expect(plain.camera).to.deep.equal({});
+    expect(resolveProcgenStartupIntent({ ...base, saved, search: new URL(framed.url).search }).worldOptions).to.deep.equal(framed.worldOptions);
+    expect(() => createProcgenRecipeShareDescriptor({ ...options, sceneOrigin: { sceneId: 'authored', revision: 1 } })).to.throw('authored scene');
+    expect(() => createProcgenRecipeShareDescriptor({ ...options, camera: { ...options.camera, scale: Infinity } })).to.throw('camera framing');
+    expect(() => createProcgenRecipeShareDescriptor({ ...options, url: 'https://example.test/' + 'x'.repeat(2100) + '/procgen.html' })).to.throw('URL size');
+    for (const field of ['scene', 'sceneId', 'sceneRevision']) expect(() => parseProcgenStartupIntent('?recipe=1&seed=999&' + field + '=missing')).to.throw('scene recipe links are unsupported');
+  });
 });

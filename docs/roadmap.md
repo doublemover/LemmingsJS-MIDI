@@ -7024,3 +7024,39 @@ export-budget acknowledgments still prevent a false complete receipt.
   critical types, undefined calls, provenance and whitespace checks pass; master
   is already contained. Eight new cases join maintained CI. Full CI for this
   combined commit must be checked after push; the wider GitHub backlog remains.
+
+### Continuation 277 — reviewed recipe sharing and owned performance handoff
+
+- A compact, lazy-loaded sharing sheet previews the canonical starting recipe,
+  omitted performance state and unverified recipient compatibility before its
+  primary Copy action. Camera framing is optional and does not change recipe
+  identity. Links scrub unrelated query/fragment state; unsupported authored
+  scenes are explicitly refused rather than silently reduced to their seed.
+- Clipboard success follows the real API acknowledgment. Permission denial
+  preserves a selected read-only URL and keyboard instructions. Closing the
+  sheet fences late clipboard completion and aborts its export preparation;
+  changed committed recipes require renewed review. Escape belongs to the modal
+  before its originating drawer. Paused recipes use the owned transport speed.
+- Performance preparation selects the finished causal take archive when one is
+  selected, otherwise a clearly scoped current project checkpoint. It delegates
+  to existing verification, encoding, resource and delivery owners, preserves
+  source hashes and partial coverage, and requests no download until a separate
+  delivery action. Canceled or superseded preparation cannot replace a newer
+  artifact or move focus into a reopened sheet.
+- CI for f17f4f71 passed 39 of 41 browser boundaries, then stopped before
+  coverage. Native level navigation now waits for its asynchronous load owner
+  before accepting the next activation. The capture failure also reproduced
+  locally: a pre-start worklet render-clock gap was treated as a discontinuity
+  inside the recorded interval. Warm-up now remains outside that interval;
+  repeated or skipped frames after the first captured frame still stop capture.
+  Failure traces are retained by CI for diagnosis.
+- The grouped owner checks pass 161 cases, including cancellation, supersession,
+  clipboard fallback, warm-up and strict post-start clock failure. Real browser
+  checks cover every admitted recipe field with clean and incompatible saved
+  preferences, actual camera framing, clipboard acknowledgment and denial,
+  narrow geometry, immutable take selection and separate file delivery. Final
+  grouped follow-through passes all seven sharing/navigation cases and three
+  real captures (102,272 / 102,144 / 101,249 frames), with canceled save retry,
+  finite PCM and nonzero peaks. The validation receipt preserves failed attempts
+  and truthful partial-prefix results. Full CI for the new commit remains pending;
+  no blanket closure of the remaining GitHub backlog is implied.

@@ -36,7 +36,9 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     { mode: 'pattern', patternPurpose: 'Complementary transport test fixture',
       patterns: [{ length: 4, steps: Array.from({ length: 4 }, () => ({ enabled: true, note: 60, duration: 1 })) }] }) });
   const projectListeners = new Set();
+  let physicalOwner = null;
   const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
+    setPhysicalControlOwner(owner) { physicalOwner = owner; return () => { if (physicalOwner === owner) physicalOwner = null; }; },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
     local: { audio, getState: () => ({ enabled, selectedBackend: backend, outputId }), ...(outputSubscribe ? { subscribe: outputSubscribe } : {}) } };
@@ -52,12 +54,49 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     captureCheckpoint: world => { captures.push(world); return { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
-  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
+  return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('prepares a reviewed project checkpoint without requesting a download or enabling output', async () => {
+    let releases = 0;
+    const f = setup({ backgroundJobs: { async compute(options) {
+      options.signal.throwIfAborted(); const snapshot = await options.prepareInput();
+      return { value: new TextEncoder().encode(JSON.stringify(snapshot)), release() { releases++; } };
+    } } });
+    const source = f.physicalOwner.getShareExportDescriptor(); expect(source).to.include({ kind: 'project', available: true });
+    expect(source.scope).to.include('does not contain a recorded causal take');
+    const artifact = await f.physicalOwner.prepareShareExport(source);
+    expect(artifact).to.include({ retained: true, formatVersion: 'procgen-session/v1' });
+    expect(f.studio.getExportState().delivery).to.equal(null); expect(f.legacy.local.getState().enabled).to.equal(false); expect(releases).to.equal(1);
+    let reveals = 0; f.view.revealPreparedExport = () => { reveals++; }; f.physicalOwner.revealPreparedExport(); expect(reveals).to.equal(1);
+    await f.studio.dispose().completion; expect(f.physicalOwner).to.equal(null);
+  });
+  it('refuses changed and already canceled share sources before capturing or admitting a job', async () => {
+    let jobs = 0; const f = setup({ backgroundJobs: { async compute() { jobs++; throw new Error('unexpected job'); } } });
+    const source = f.physicalOwner.getShareExportDescriptor(); f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.25 } });
+    expect(() => f.physicalOwner.prepareShareExport(source)).to.throw('reviewed performance source changed');
+    const controller = new AbortController(); controller.abort();
+    expect(() => f.physicalOwner.prepareShareExport(f.physicalOwner.getShareExportDescriptor(), { signal: controller.signal })).to.throw();
+    expect(jobs).to.equal(0); expect(f.captures).to.have.length(0); await f.studio.dispose().completion;
+  });
+  it('cancels an owned share job and retires its returned bytes without publishing them', async () => {
+    let complete, signal, releases = 0; const started = new Promise(resolve => { complete = resolve; });
+    const f = setup({ backgroundJobs: { async compute(options) { signal = options.signal; await started; return { value: new Uint8Array([1]), release() { releases++; } }; } } });
+    const controller = new AbortController(), pending = f.physicalOwner.prepareShareExport(f.physicalOwner.getShareExportDescriptor(), { signal: controller.signal });
+    expect(f.physicalOwner.getShareExportDescriptor().available).to.equal(false); controller.abort(); expect(signal.aborted).to.equal(true); complete();
+    expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact).to.equal(null); expect(releases).to.equal(1);
+    expect(f.physicalOwner.getShareExportDescriptor().available).to.equal(true); await f.studio.dispose().completion;
+  });
+  it('does not let an older project preparation replace a newer prepared MIDI artifact', async () => {
+    let complete, releases = 0; const gate = new Promise(resolve => { complete = resolve; });
+    const f = setup({ backgroundJobs: { async compute() { await gate; return { value: new Uint8Array([1]), release() { releases++; } }; } } });
+    const pending = f.physicalOwner.prepareShareExport(f.physicalOwner.getShareExportDescriptor());
+    await f.studio.handlers.exportMidi(); const midi = f.studio.getExportState().artifact; expect(midi.formatVersion).to.equal('smf1/v1'); complete();
+    expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact.artifactId).to.equal(midi.artifactId); expect(releases).to.equal(1); await f.studio.dispose().completion;
+  });
   it('keeps freshly admitted pattern voices after seeking away a paused resume boundary', async () => {
     const f = setup({ lookaheadMs: 80 }); f.studio.bindRuntime(); f.enable();
     f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'pattern', patternPurpose: 'A held phrase across the paused seek boundary' } });

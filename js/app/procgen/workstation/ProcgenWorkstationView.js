@@ -931,6 +931,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       displayStatus.dataset.state = current;
       retryDisplay.hidden = !['lost', 'unavailable'].includes(current);
     },
+    revealPreparedExport() {
+      exportDesk.open = true; exportDesk.scrollIntoView?.({ block: 'nearest' });
+      (savePrepared.disabled ? retryExport : savePrepared).focus?.({ preventScroll: true });
+    },
     exportState(artifact, delivery) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';

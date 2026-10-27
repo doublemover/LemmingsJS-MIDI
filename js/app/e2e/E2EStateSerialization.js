@@ -380,6 +380,7 @@ const getViewState = (view) => {
     gameType: view.gameType,
     levelGroupIndex: view.levelGroupIndex,
     levelIndex: view.levelIndex,
+    navigationPending: !!view.inMoveToLevel,
     gameSpeedFactor: view.gameSpeedFactor,
     scale: view.scale,
     bench: !!view.bench,

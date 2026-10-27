@@ -15,6 +15,23 @@ const receiver = (target, { recycle = false, transfer = false } = {}) => {
   return { packets, emit };
 };
 describe('bounded read-only PCM capture kernel', () => {
+  it('keeps pre-start graph warm-up outside the captured interval without inventing PCM or gaps', () => {
+    const capture = kernel({ targetStartFrame: 4096 }), output = receiver(capture, { recycle: true });
+    for (const firstFrame of [0, 0, 1024]) expect(capture.process(signal(128, firstFrame), 128, firstFrame, output.emit)).to.equal(true);
+    expect(capture.sourceStartFrame).to.equal(null); expect(capture.capturedFrames).to.equal(0); expect(output.packets).to.have.length(0);
+    expect(capture.process(signal(128, 4096), 128, 4096, output.emit)).to.equal(true);
+    expect(capture.process(signal(128, 4224), 128, 4224, output.emit)).to.equal(true);
+    capture.requestStop(4352); expect(capture.process(signal(128, 4352), 128, 4352, output.emit)).to.equal(false);
+    expect(capture).to.include({ sourceStartFrame: 4096, lastFrame: 4352, capturedFrames: 256, droppedFrames: 0, gapCount: 0, stopReason: 'user-stop' });
+    expect(output.packets).to.have.length(1); expect(output.packets[0]).to.include({ firstFrame: 4096, frameCount: 256 });
+    expect(output.packets[0].pcm[0]).to.equal(4096 / 32768);
+  });
+  for (const firstFrame of [0, 256]) it(`still rejects a render-clock discontinuity at ${firstFrame} after capture starts`, () => {
+    const capture = kernel(), output = receiver(capture, { recycle: true }); capture.process(signal(128), 128, 0, output.emit);
+    expect(capture.process(signal(128, firstFrame), 128, firstFrame, output.emit)).to.equal(false);
+    expect(capture).to.include({ sourceStartFrame: 0, lastFrame: 128, capturedFrames: 128, stopReason: 'noncontiguous-render-clock' });
+    expect(output.packets).to.have.length(1); expect(output.packets[0].frameCount).to.equal(128);
+  });
   it('captures the exact requested frame interval across variable render block sizes', () => {
     const capture = kernel({ targetStartFrame: 200 }), output = receiver(capture, { recycle: true });
     capture.process(signal(128), 128, 0, output.emit); capture.process(signal(256, 128), 256, 128, output.emit);

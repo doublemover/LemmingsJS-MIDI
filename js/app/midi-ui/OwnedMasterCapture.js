@@ -110,6 +110,9 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     let verified = false, gaps = [], end = operation.lastFrame ?? operation.sourceStartFrame;
     if (terminal) {
       try {
+        const clock = terminal.clockDiscontinuity;
+        if (clock != null && (terminal.reason !== 'noncontiguous-render-clock' || Object.keys(clock).length !== 3 || !integer(clock.expectedFrame) || clock.expectedFrame !== terminal.lastFrame || !integer(clock.actualFrame) || !integer(clock.frames) ||
+            clock.frames < 1 || clock.frames > 8192 || clock.expectedFrame === clock.actualFrame)) throw fail('Invalid capture render-clock receipt.');
         if (terminal.sourceStartFrame !== operation.sourceStartFrame && !(operation.sourceStartFrame == null && terminal.capturedFrames === 0) ||
             !integer(terminal.lastFrame) || terminal.sourceStartFrame != null && (!integer(terminal.sourceStartFrame) || terminal.lastFrame < terminal.sourceStartFrame ||
             terminal.lastFrame - terminal.sourceStartFrame > operation.maxFrames) || terminal.capturedFrames !== operation.capturedFrames ||
@@ -156,6 +159,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       intendedStartFrame: operation.targetStartFrame, sourceStartFrame: operation.sourceStartFrame, endFrameExclusive: end,
       timelineFrames, capturedFrames: operation.capturedFrames, state: complete ? 'Ready' : timelineFrames ? 'Partial' : 'Failed',
       stopReason: reason || operation.stopRequested || 'capture-interrupted', requestedStopReason: operation.stopRequested ?? null, terminalAcknowledged: verified, gaps,
+      clockDiscontinuity: verified ? terminal.clockDiscontinuity || null : null,
       missingFramePolicy: 'explicit-zero-placeholders-preserve-source-time', trailingCoverage: verified ? 'verified-through-end-frame' : 'unknown-after-last-received-frame',
       zeroChannelFrames: verified ? terminal.zeroChannelFrames : null, monoFrames: verified ? terminal.monoFrames : null,
       resampling: false, normalization: false, digestState: 'omitted-streaming', nativeRetirement: operation.nativeReceipt.outcome });

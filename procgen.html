@@ -170,10 +170,8 @@
 
     <footer class="procgen-workspace-footer">
     <div class="procgen-controls-row">
-      <button id="procgenShare" type="button">Copy starting recipe link</button>
-      <label><input id="procgenShareCamera" type="checkbox"> Include current camera view</label>
-      <p id="procgenShareStatus" role="status">A recipe link starts a new world. Edits, performers, takes, assets, devices and output permissions are excluded; the recipient must check source compatibility.</p>
-      <input id="procgenShareUrl" type="text" readonly hidden aria-label="Shareable run URL">
+      <button id="procgenShare" type="button" aria-haspopup="dialog">Share…</button>
+      <p id="procgenShareNotice" role="status">Review a starting recipe link or prepare a project or selected take file.</p>
     </div>
     <p id="procgenMetrics" role="status"></p>
     <p id="procgenStallStatus"></p>

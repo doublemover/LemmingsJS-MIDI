@@ -219,7 +219,10 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     if (open && event.detail === 0) byId('procgenPreset')?.focus();
   });
   const isEditing = event => event.target?.isContentEditable || ['TEXTAREA', 'SELECT'].includes(event.target?.tagName) || (event.target?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'submit'].includes(event.target.type || 'text'));
-  listen(document, 'keydown', event => { if (event.key === 'Escape' && !event.defaultPrevented && event.target?.tagName !== 'SELECT') { setOpen(false); setSpanEditing(false); setNukeArmed(false); } });
+  listen(document, 'keydown', event => {
+    if (event.key === 'Escape' && !event.defaultPrevented && event.target?.tagName !== 'SELECT' && !document.querySelector?.('dialog[open]') &&
+        !event.composedPath?.().some(node => node?.tagName === 'DIALOG' && node.open)) { setOpen(false); setSpanEditing(false); setNukeArmed(false); }
+  });
   const seedControls = byId('procgenSeedControls');
   listen(document, 'pointerdown', event => {
     if (seedControls?.open && !seedControls.contains(event.target)) seedControls.open = false;
@@ -440,29 +443,30 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     if (handled) event.preventDefault?.();
   };
   listen(window, 'keydown', handleKey);
-  const getShareDescriptor = () => {
+  const getShareDescriptor = ({ includeCamera = false } = {}) => {
     const runtime = getRuntime(), world = runtime?.world;
     if (!world) throw new Error('Wait for the committed world before copying a recipe');
     if (!runtime.recipeSettings && world.laneCount !== settings.laneCount) throw new Error('Wait for the world change to finish before copying a recipe');
     const committed = runtime.recipeSettings || settings;
-    return createProcgenRecipeShareDescriptor({ url: window.location.href, seed: world.seed,
+    return createProcgenRecipeShareDescriptor({ url: window.location.href, seed: world.seed, sceneOrigin: project.procgen?.sceneOrigin,
       settings: { ...committed, laneCount: world.laneCount, laneHeight: world.laneHeight,
-        speed: world.timer?.speedFactor ?? committed.speed },
+        speed: physicalControlOwner?.getRecipeSpeed?.() ?? (world.timer?.speedFactor > 0 ? world.timer.speedFactor : committed.speed ?? settings.speed) },
       camera: camera()?.getState() || { cameraX: 0, cameraY: 0, scale: 3, follow: true },
-      includeCamera: byId('procgenShareCamera')?.checked === true });
+      includeCamera });
   };
   const getShareUrl = () => getShareDescriptor().url;
+  let sharingView = null, sharingLoad = null;
   listen(byId('procgenShare'), 'click', async () => {
-    const input = byId('procgenShareUrl'); if (!input) return;
-    const status = byId('procgenShareStatus');
     try {
-      const descriptor = getShareDescriptor();
-      input.value = descriptor.url; input.hidden = false; input.focus?.(); input.select?.();
-      if (window.navigator?.clipboard?.writeText) {
-        await window.navigator.clipboard.writeText(input.value);
-        if (status) status.textContent = 'Starting recipe link copied. Source compatibility must be checked by the recipient; edits, takes, assets and devices are excluded.';
-      } else if (status) status.textContent = 'Select and copy this starting recipe link. Source compatibility is unverified; edits, takes, assets and devices are excluded.';
-    } catch (error) { if (status) status.textContent = `Could not copy recipe: ${error.message}. Select and copy the visible link if available.`; }
+      sharingLoad ||= import('./ProcgenShareView.js');
+      const { createProcgenShareView } = await sharingLoad;
+      if (disposed) return;
+      sharingView ||= createProcgenShareView({ document, window, getDescriptor: getShareDescriptor,
+        getExportDescriptor: () => physicalControlOwner?.getShareExportDescriptor?.(),
+        prepareExport: (source, options) => physicalControlOwner?.prepareShareExport?.(source, options),
+        onPrepared: () => physicalControlOwner?.revealPreparedExport?.() });
+      sharingView.open();
+    } catch (error) { if (!disposed && byId('procgenShareNotice')) byId('procgenShareNotice').textContent = `Could not open sharing: ${error.message}`; }
   });
   listen(window, 'blur', () => { if (!settings.workstation) local.suspendGame(); });
   listen(window, 'focus', () => { if (!settings.workstation && !document.hidden) local.resumeGame(); });
@@ -510,7 +514,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
       if (byId('procgenAliveCount') && runtime?.world) byId('procgenAliveCount').textContent = runtime.world.actors.reduce((count, actor) => count + (actor.failureReason ? 0 : 1), 0).toLocaleString() + ' alive';
       if (byId('procgenRunStatus')) byId('procgenRunStatus').textContent = `${settings.laneCount.toLocaleString()} ${settings.laneCount === 1 ? 'lane' : 'lanes'} · ${runtime?.world ? 'Wheel or Z/X zoom; arrows or drag pan; F follows the leader.' : 'Left-to-right generation'}`;
     },
-    dispose() { disposed = true; local.dispose(); captureControls.dispose(); musicControls.dispose(); musicDirection.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
+    dispose() { disposed = true; sharingView?.dispose(); local.dispose(); captureControls.dispose(); musicControls.dispose(); musicDirection.dispose(); tensionControls.dispose(); spanControls.dispose(); spanOverlay.dispose(); characters.dispose?.(); for (const [target, event, handler, options] of listeners) target?.removeEventListener(event, handler, options); }
   };
 };
 export { createProcgenUiController };

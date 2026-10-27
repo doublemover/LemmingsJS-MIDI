@@ -27,10 +27,10 @@ function fixture({ addModule = async () => {}, provenance = false } = {}) {
       for (let index = 0; index < frameCount; index++) { pcm[index * 2] = 1.25; pcm[index * 2 + 1] = -0.5; }
       this.emit({ type: 'pcm', sourceStartFrame: 0, firstFrame, frameCount, sequence: 1, index: 0, token: 1, buffer });
     }
-    end({ lastFrame = 4, capturedFrames = 4, droppedFrames = 0, gaps = [], reason = 'user-stop' } = {}) {
+    end({ lastFrame = 4, capturedFrames = 4, droppedFrames = 0, gaps = [], reason = 'user-stop', clockDiscontinuity = null } = {}) {
       const index = new Float64Array(256 * 3); index.set(gaps.flat());
       this.emit({ type: 'stopped', sourceStartFrame: 0, firstCapturedFrame: 0, lastFrame, capturedFrames, droppedFrames, lastSequence: 1,
-        gapCount: gaps.length, gaps: index, zeroChannelFrames: 0, monoFrames: 0, reason, overflowFirstFrame: null, overflowLastFrame: null });
+        gapCount: gaps.length, gaps: index, zeroChannelFrames: 0, monoFrames: 0, reason, overflowFirstFrame: null, overflowLastFrame: null, clockDiscontinuity });
     }
   }
   const owner = createOwnedMasterCapture({ preview, resourceBudget: budget, AudioWorkletNodeType: Node });
@@ -40,6 +40,14 @@ function fixture({ addModule = async () => {}, provenance = false } = {}) {
 }
 
 describe('owned browser master PCM capture', () => {
+  it('retains a verified prefix and bounded clock discontinuity in its partial manifest', async () => {
+    const f = fixture(); await f.owner.start({ seconds: 1 }); const node = f.nodes[0]; node.ready(); node.pcm();
+    node.end({ reason: 'noncontiguous-render-clock', clockDiscontinuity: { expectedFrame: 4, actualFrame: 128, frames: 128 } });
+    const result = f.owner.state(); expect(result.state).to.equal('partial');
+    expect(result.manifest).to.include({ terminalAcknowledged: true, timelineFrames: 4, capturedFrames: 4 });
+    expect(result.manifest.clockDiscontinuity).to.deep.equal({ expectedFrame: 4, actualFrame: 128, frames: 128 });
+    result.artifact.discard(); await f.owner.dispose().completion; expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('retains route observations and exact PCM segment bounds through finalization', async () => {
     const f = fixture({ provenance: true }); await f.owner.start({ seconds: 1 });
     const node = f.nodes[0]; node.ready(); node.pcm(); f.context.currentTime = 2 / 48000; f.changeRoute(1); node.end();

@@ -57,7 +57,8 @@ export function createMasterCaptureView({ document, window, preview, resourceBud
       `${snapshot.frames.toLocaleString()} source frames · ${snapshot.capturedFrames.toLocaleString()} received frames`;
     const manifest = snapshot.manifest;
     details.textContent = snapshot.error || (manifest ? `${manifest.state}: ${manifest.stopReason}. ${manifest.gaps.length} indexed gap(s). ` +
-      `${manifest.terminalAcknowledged ? 'End frame acknowledged.' : 'Coverage after the received prefix is unknown.'}` :
+      `${manifest.terminalAcknowledged ? 'End frame acknowledged.' : 'Coverage after the received prefix is unknown.'}` +
+      (manifest.clockDiscontinuity ? ` Render clock expected ${manifest.clockDiscontinuity.expectedFrame}, received ${manifest.clockDiscontinuity.actualFrame} (${manifest.clockDiscontinuity.frames} frames).` : '') :
       snapshot.state === 'preparing' ? 'Preparing bounded storage and the local capture processor…' : 'Start does not enable audio or open any MIDI device.');
     if (artifact?.retained && typeof window.showSaveFilePicker !== 'function') deliveryStatus.textContent = 'This browser does not provide streaming file saves. Keep this page open; exporting a full recording requires that capability.';
   };
