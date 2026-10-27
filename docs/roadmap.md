@@ -6845,3 +6845,17 @@ export-budget acknowledgments still prevent a false complete receipt.
   the generated snapshot, which was preserved. Fresh installed-generation startup
   also stalls with pending module requests; that separate qualification remains
   unresolved and is not represented by the passing source-app naming matrix.
+
+### Continuation 271 — cached module EOF and installed offline startup
+
+- The preceding installed-startup stall is repaired: Chromium left **70 cached
+  one-byte BYOB EOF reads pending**, blocking module imports. Generation reads
+  now use the ordinary stream reader while preserving header-first size refusal,
+  byte/chunk bounds, bounded slabs, cancellation and immutable content hashes.
+- **16 generation/parameter/formatter cases pass**. The actual installed ProcGen
+  generation starts online and reloads offline under the same bound build identity
+  (6.7s); the two naming matrices also pass in the combined **three-scenario
+  browser batch** (27.4s). This installed-startup regression joins CI boundaries.
+- Formatting, critical types, undefined calls, whitespace and runtime provenance
+  pass. Optional worklet/WASM, receiver and complete scene conformance remain
+  separate from this executed startup/offline-reload result.

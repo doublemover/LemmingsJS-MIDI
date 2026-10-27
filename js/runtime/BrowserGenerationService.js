@@ -19,8 +19,8 @@ export async function readBrowserBuildResponse(response, maximum, signal, { clai
   if (declared != null && /^\d+$/.test(declared) && Number(declared) > maximum) throw failure('response-capacity', 'Browser generation response exceeds its bound.');
   signal?.throwIfAborted();
   if (!response.body) { if (maximum === 0) return new Uint8Array(); throw failure('stream-required', 'Browser generation responses require bounded streaming.'); }
-  let reader, byob = false;
-  try { reader = response.body.getReader({ mode: 'byob' }); byob = true; } catch { reader = response.body.getReader(); }
+  // Chromium cache-backed BYOB streams can leave the final one-byte EOF read pending.
+  const reader = response.body.getReader();
   let rejectAbort;
   const interrupted = new Promise((_resolve, reject) => { rejectAbort = reject; });
   const cancel = reason => { try { Promise.resolve(reader.cancel(reason)).catch(() => {}); } catch { /* The platform reader already retired. */ } };
@@ -31,7 +31,7 @@ export async function readBrowserBuildResponse(response, maximum, signal, { clai
     const consume = async () => {
       while (true) {
         signal?.throwIfAborted();
-        const { done, value } = await (byob ? reader.read(new Uint8Array(Math.min(65536, maximum - size + 1))) : reader.read());
+        const { done, value } = await reader.read();
         signal?.throwIfAborted(); if (done) break;
         if (++chunks > 262144) throw failure('response-work-capacity', 'Browser generation stream exceeds its chunk work bound.');
         if (!(value instanceof Uint8Array) || size + value.byteLength > maximum) throw failure('response-capacity', 'Browser generation stream exceeds its bound.');

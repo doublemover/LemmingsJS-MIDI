@@ -92,4 +92,14 @@ describe('complete immutable browser installation', () => {
     try { await readBrowserBuildResponse(new globalThis.Response(new Uint8Array(11)), 10); } catch (failure) { error = failure; }
     expect(error.code).to.equal('response-capacity');
   });
+  it('does not open a cached BYOB reader whose final EOF observation can remain pending', async () => {
+    const bytes = new Uint8Array(65537).fill(29), response = new globalThis.Response(bytes), modes = [];
+    const observed = { ok: true, headers: response.headers, body: { getReader(options) {
+      modes.push(options?.mode || 'default');
+      if (options?.mode === 'byob') throw new Error('Cached BYOB EOF is not a usable completion boundary.');
+      return response.body.getReader();
+    } } };
+    expect([...await readBrowserBuildResponse(observed, bytes.length)]).to.deep.equal([...bytes]);
+    expect(modes).to.deep.equal(['default']);
+  });
 });

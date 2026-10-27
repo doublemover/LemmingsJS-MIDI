@@ -5450,6 +5450,62 @@
     "limits": [
       "The passing browser matrix uses the real source application, controller, dialog and IndexedDB; installed-generation startup remains unresolved separately.",
       "Automatic approval review rejected removal of the generated snapshot with only blocked by policy; the snapshot was preserved."
+    ],
+    "followThrough": "Installed-generation startup stalls repaired and qualified separately in continuation271; original failed runs and preserved generated snapshot remain recorded."
+  },
+  "continuation271": {
+    "date": "2026-10-27",
+    "scope": "Fix installed browser generation module import stalls at cached BYOB EOF while preserving bounded stream and immutable identity checks.",
+    "sourceFiles": [
+      {
+        "path": "js/runtime/BrowserGenerationService.js",
+        "sha256": "0cbc5e0cbcd2367cff62cc5272007a7fe7a71406e160aaa5371db228fe53ff95"
+      },
+      {
+        "path": "test/browser-generation-service.test.js",
+        "sha256": "efd297e901a04039c535c938a99cf773f2e255b003e13a475bc083f6f53e57fb"
+      },
+      {
+        "path": "e2e/browser-generation-startup.spec.js",
+        "sha256": "f478ccb58a28085ab1fe870302693a451cebc05ce2295125b435ccdd69452f96"
+      },
+      {
+        "path": "package.json",
+        "sha256": "fceff9644383f64569c80a250fe8cd3c6afb9bc54525b220bcaa52d3c9f95652"
+      }
+    ],
+    "diagnosis": {
+      "installedEntry": "Loading with imports pending",
+      "observedPendingByteReads": 70,
+      "requestedBytesPerPendingRead": 1,
+      "sourceEntryReady": true,
+      "change": "Use ordinary stream reader for cached response EOF; retain header-first size refusal, chunk/byte bounds, bounded slabs, cancellation and content hashes."
+    },
+    "runs": [
+      {
+        "command": "Browser-generation, parameter and formatter boundary units",
+        "passed": 16,
+        "failed": 0,
+        "logSha256": "c0ae64c2d185a5082b89152a803883556096c166fd501f59bb98b5755a0a5d17"
+      },
+      {
+        "command": "node scripts/run-browser-boundaries.js e2e/browser-generation-startup.spec.js e2e/procgen-project-naming.spec.js --workers=1",
+        "passed": 3,
+        "failed": 0,
+        "runtimeSeconds": 27.4,
+        "installedOnlineAndOfflineSeconds": 6.7,
+        "logSha256": "f2087bf860364e69e98abc8cc214c4598c7d4e11fd91ad593d7cca091b028e84"
+      }
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "Browser result qualifies the exercised ProcGen generation startup and offline reload; optional worklet/WASM/native receiver and complete scene conformance remain separate."
     ]
   }
 }
