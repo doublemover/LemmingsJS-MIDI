@@ -6763,3 +6763,16 @@ export-budget acknowledgments still prevent a false complete receipt.
   with valid measurements and no failures/diagnostics. Formatting, shared static
   guards, undefined calls, whitespace and provenance pass. Long-soak, native and
   listening qualification remain separate.
+
+### Continuation 266 — span-name commit caret and duplicate-event ownership
+
+- CI on 3afff28e exposed one failed browser boundary: a backward name selection
+  collapsed to the end across a project refresh. Span fields now reject detached
+  input events and unchanged values, and restore active text selection after
+  parent commit refreshes. No duplicate Undo intent is produced for one edit.
+- Regression covers parent caret clobber, repeated renders, duplicate changes,
+  stale detached events and blur commits that must not steal focus.
+- **2,396 MIDI cases pass** (67.49s), all **13 browser boundaries pass** (47.1s),
+  and the formerly flaky boundary passes **10 consecutive runs** (59.8s).
+  Formatting, shared guards, undefined calls, whitespace and provenance pass.
+  The receipt preserves the failed CI scope separately from these executed fixes.

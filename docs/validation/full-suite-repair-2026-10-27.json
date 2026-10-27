@@ -831,8 +831,11 @@
       "functions": 88.19
     },
     "excludesContinuations": [
-      264
-    ]
+      264,
+      265,
+      266
+    ],
+    "excludesLaterWork": true
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -2054,6 +2057,66 @@
       "Adapter return is not receiver-observed or acoustic evidence. A setup failure after the release frontier does not reconstruct an old voice.",
       "Soak supervision arithmetic is tested; no long-soak completion is claimed.",
       "Full CI checkpoint b58e7ae1 remains separate from this later batch."
+    ]
+  },
+  "continuation266": {
+    "date": "2026-10-27",
+    "parentRevision": "3afff28e58a66dda0c7b19f257e0d24c7711b11f",
+    "scope": "Repair CI span-name caret loss across project commit refresh; suppress unchanged and detached-input duplicate intents.",
+    "sourceFiles": [
+      {
+        "path": "js/app/midi-ui/midiAutomationSpanControls.js",
+        "sha256": "f1886489fe0f4795c8cb5fc5b26c33fdc0757aa90c7b34f6c63a08b6100c76d2"
+      },
+      {
+        "path": "test/midi/midi-automation-span-ui.test.js",
+        "sha256": "2d82f42ef643c610a229662cf94abee93c8fe8b66367d3e0ef3ba856a407e408"
+      }
+    ],
+    "trigger": {
+      "head": "3afff28e58a66dda0c7b19f257e0d24c7711b11f",
+      "job": 122126691087,
+      "stage": "browser boundaries",
+      "passed": 12,
+      "failed": 1,
+      "assertion": "Backward name selection [2,6,backward] became [11,11,forward]."
+    },
+    "runs": [
+      {
+        "command": "npm test midi",
+        "passed": 2396,
+        "failed": 0,
+        "exitCode": 0,
+        "runtimeSeconds": 67.49,
+        "logSha256": "04d21b599603ec96843e54a575f33df3be1c203fcfb17d56f0b06dd3a5207049"
+      },
+      {
+        "command": "npm run test-e2e:boundaries",
+        "passed": 13,
+        "failed": 0,
+        "exitCode": 0,
+        "runtimeSeconds": 47.1,
+        "logSha256": "69a4c219ec8d213b2c46f94ac16203e316cd0b617c76db700033725f4d6d62e6"
+      },
+      {
+        "command": "node scripts/run-browser-boundaries.js e2e/instrument-workbench.spec.js --grep \"Studio span bundles\" --repeat-each=10 --workers=1",
+        "passed": 10,
+        "failed": 0,
+        "exitCode": 0,
+        "runtimeSeconds": 59.8,
+        "logSha256": "52d46dbfd89bb17090281c40375be0b6eced12af4d3fdaa581f127226d1d68b8"
+      }
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs/runtime-global guards",
+      "undefined-call scan",
+      "branch whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "This targeted follow-through does not claim another full Node/coverage run.",
+      "CI on the next pushed head remains pending."
     ]
   }
 }

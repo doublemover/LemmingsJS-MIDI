@@ -65,6 +65,37 @@ describe('musical span editing and lane rectangles', () => {
     } finally { controls.dispose(); }
   });
 
+  it('preserves a backward caret through parent commit refreshes and ignores duplicate or detached changes', () => {
+    const document = new TestDocument(), createElement = document.createElement.bind(document);
+    document.createElement = tag => {
+      const element = createElement(tag);
+      element.setSelectionRange = (start, end, direction) => Object.assign(element, { selectionStart: start, selectionEnd: end, selectionDirection: direction });
+      return element;
+    };
+    const list = document.createElement('div'); document.registerElement('procgenSpanList', list);
+    let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }), controls; const intents = [];
+    controls = createProcgenMidiSpanControls({ document, getProject: () => project, getLaneCount: () => 8, getRouter: () => null,
+      onIntent: intent => {
+        intents.push(intent); project = reduceMidiProject(project, intent); controls?.render();
+        const active = document.activeElement;
+        if (active?.dataset?.spanProperty === 'name') active.setSelectionRange(active.value.length, active.value.length, 'forward');
+      } });
+    const id = controls.addSpan(), before = intents.length;
+    const name = () => find(find(list, element => element.dataset?.spanId === id), element => element.dataset?.spanProperty === 'name');
+    const original = name(); original.focus(); original.value = 'Studio rise'; original.setSelectionRange(2, 6, 'backward');
+    original.dispatchEvent({ type: 'change', target: original });
+    expect(project.automation.find(entry => entry.id === id).name).to.equal('Studio rise');
+    expect([name().selectionStart, name().selectionEnd, name().selectionDirection]).to.deep.equal([2, 6, 'backward']);
+    expect(document.activeElement).to.equal(name()); expect(intents.length).to.equal(before + 1);
+    name().dispatchEvent({ type: 'change', target: name() }); expect(intents.length).to.equal(before + 1);
+    original.value = 'Detached stale edit'; original.dispatchEvent({ type: 'change', target: original });
+    expect(intents.length).to.equal(before + 1); expect(project.automation.find(entry => entry.id === id).name).to.equal('Studio rise');
+    for (let index = 0; index < 5; index++) controls.render();
+    expect([name().selectionStart, name().selectionEnd, name().selectionDirection]).to.deep.equal([2, 6, 'backward']);
+    const outside = document.createElement('input'); outside.focus(); const current = name(); current.value = 'Blur commit';
+    current.dispatchEvent({ type: 'change', target: current }); expect(document.activeElement).to.equal(outside); controls.dispose();
+  });
+
   it('keeps multiple span editors open, applies one common transaction and retains field focus and names', () => {
     const document = new TestDocument(); document.registerElement('procgenSpanList', document.createElement('div'));
     let project = createMidiProjectFromMidiConfig({ sfx: {}, triggers: {} }); const intents = [];

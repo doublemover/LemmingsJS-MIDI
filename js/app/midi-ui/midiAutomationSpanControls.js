@@ -133,7 +133,23 @@ const createMidiAutomationSpanControls = ({ document, getProject, onIntent, getR
             const wrapper = document.createElement('label'); wrapper.textContent = label; const input = document.createElement(choices ? 'select' : 'input'); input.dataset.spanProperty = key;
             if (choices) for (const value of choices) { const option = document.createElement('option'); option.value = value; option.textContent = value; input.append(option); }
             else { input.type = key === 'name' ? 'text' : 'number'; input.step = '0.1'; }
-            input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label); input.addEventListener('change', () => { const value = choices || key === 'name' ? input.value : Number(input.value); if (choices || key === 'name' || Number.isFinite(value)) onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } }); }); wrapper.append(input); if (key === 'target') { const hint = document.createElement('small'); hint.dataset.spanTargetHelp = 'true'; wrapper.append(hint); } fields.append(wrapper);
+            input.value = String(lane[key]); input.setAttribute('aria-label', lane.name + ' ' + label);
+            input.addEventListener('change', () => {
+              if (!list.contains(input)) return;
+              const value = choices || key === 'name' ? input.value : Number(input.value);
+              if (!choices && key !== 'name' && !Number.isFinite(value)) return;
+              const current = getProject().automation.find(entry => entry.id === lane.id);
+              if (!current || current[key] === value) return;
+              const selection = input.type === 'text' && document.activeElement === input
+                ? [input.selectionStart, input.selectionEnd, input.selectionDirection] : null;
+              onIntent({ type: 'automation.update', automationId: lane.id, patch: { [key]: value } });
+              if (selection && Number.isInteger(selection[0])) {
+                const row = find(list, element => element.dataset?.spanId === lane.id);
+                const control = row && find(row, element => element.dataset?.spanProperty === key);
+                if (control?.value === value) { control.focus?.({ preventScroll: true }); control.setSelectionRange?.(...selection); }
+              }
+            });
+            wrapper.append(input); if (key === 'target') { const hint = document.createElement('small'); hint.dataset.spanTargetHelp = 'true'; wrapper.append(hint); } fields.append(wrapper);
           };
           field('Name', 'name'); field('Target', 'target', AUTOMATION_TARGETS); field('Start value', 'min'); field('End value', 'max'); row.append(fields);
           if (lane.span) {
