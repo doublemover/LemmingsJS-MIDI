@@ -6723,3 +6723,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   Complete focused `npm test game`: **939 passing / zero failures** (11.80s);
   formatting, shared preflights, whitespace and provenance pass. No repeated full
   suite was needed for this isolated follow-through; CI validates the new head.
+
+### Continuation 264 — actual cold replay and stable repeated MIDI work (#1254)
+
+- The independent oracle preserves time-distributed live forward checkpoints
+  within its existing caps, retires points outside retained history and exposes
+  checkpoint ticks/sampling provenance. History receipts include browser/host
+  metadata. Focused bench/workflow categories include semantic-producer fixtures
+  and shared-runner regressions.
+- `npm test bench workflow`: **99 passing / zero failures** (12.99s). Required-cold
+  browser replay passes at both speeds: 3,003/6,038 ticks retained, 3/15 cold
+  blocks, 2/3 timed cold decodes and 51/83 warm-repeat cache hits. Exact applied
+  state/terrain and start restoration pass; seek p95 is 7.1/5.3 ms on the recorded
+  Windows/Chromium host.
+- Router/scheduler each admit 8,400 attacks and submit 8,400 terminal releases in
+  each of four measured repetitions. Saturated rows reject all 8,400 attempts per
+  repetition. Final owned gates, queues and timers are zero.
+- Full CI is green on b58e7ae1: **6,266 passing under coverage**, 90.18% lines,
+  83.44% branches and 88.19% functions; browser/protocol/benchmark/static/policy
+  and dependency checks pass. The receipt distinguishes that checkpoint from
+  this later batch. Long soak, hardware/native and listening evidence remain
+  separate.

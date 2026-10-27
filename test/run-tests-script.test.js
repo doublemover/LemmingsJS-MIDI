@@ -94,7 +94,7 @@ describe('scripts/runTests', function () {
 
   it('builds focused args for bench category', function () {
     const args = buildMochaArgsForCategories(['bench']);
-    expect(args).to.deep.equal(['test/*bench*.test.js']);
+    expect(args).to.deep.equal(['test/*bench*.test.js', 'test/browser-work-observation.test.js', 'test/history-replay-evidence.test.js']);
   });
 
   it('builds focused args for game category', function () {

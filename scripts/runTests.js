@@ -51,9 +51,9 @@ const CATEGORY_PATTERNS = Object.freeze({
   ],
   midi: ['test/midi/**/*.test.js'],
   procgen: ['test/procgen-*.test.js'],
-  bench: ['test/*bench*.test.js'],
+  bench: ['test/*bench*.test.js', 'test/browser-work-observation.test.js', 'test/history-replay-evidence.test.js'],
   release: ['test/release-readiness.test.js'],
-  workflow: ['test/*workflow*.test.js'],
+  workflow: ['test/*workflow*.test.js', 'test/run-tests-script.test.js'],
   tools: ['test/tools/*.test.js', 'test/listSprites*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
   'work-removal': [

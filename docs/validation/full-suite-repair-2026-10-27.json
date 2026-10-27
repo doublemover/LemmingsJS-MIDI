@@ -816,5 +816,1135 @@
       "This is the focused game/history suite, not another complete Node suite.",
       "CI is pending; the previous full local checkpoint has 6266 passing and zero failures."
     ]
+  },
+  "latestVerifiedCiCheckpoint": {
+    "head": "b58e7ae159ac017a7c425652aced21492fc79b3a",
+    "job": 122112650821,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40481496326/job/122112650821",
+    "passed": 6266,
+    "failed": 0,
+    "allChecksGreen": true,
+    "coverage": {
+      "lines": 90.18,
+      "statements": 90.18,
+      "branches": 83.44,
+      "functions": 88.19
+    },
+    "excludesContinuations": [
+      264
+    ]
+  },
+  "continuation264": {
+    "date": "2026-10-27",
+    "parentRevision": "b58e7ae159ac017a7c425652aced21492fc79b3a",
+    "issues": [
+      1254,
+      901
+    ],
+    "scope": "Time-distributed independent cold replay targets and focused producer-semantic categories.",
+    "sourceFiles": [
+      {
+        "path": "scripts/HistoryReplayEvidence.js",
+        "sha256": "3aab5ebb8ebe4aa017a7c89b57bbff0753b819c7df496579c53b7a6982d199a1"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "8bfa281114a785abf6142d89be64ea9c252093e764917d94b4fa823ac6f3cb5a"
+      },
+      {
+        "path": "scripts/runTests.js",
+        "sha256": "215985f98d4c9c0cab78aa79597b03d41ea131cab7a4bc7ea0d25cbbdec39dad"
+      },
+      {
+        "path": "test/history-replay-evidence.test.js",
+        "sha256": "185e523214edc821bd00cd9767b57296080cfb4b36e3dd7bcdc6c43e7445bd26"
+      },
+      {
+        "path": "test/run-tests-script.test.js",
+        "sha256": "8918df813aafd4c9c13ceea8e590655d30fab32540bee03173928cd6f91e108e"
+      }
+    ],
+    "unit": {
+      "command": "npm test bench workflow",
+      "passed": 99,
+      "failed": 0,
+      "exitCode": 0,
+      "runtimeSeconds": 12.99,
+      "logSha256": "9b2471d9b1c045e83e15f42c24c760974ad6071d9f7412b871800414d15c1427"
+    },
+    "coldReplay": {
+      "command": "node scripts/bench-history-stress.js --url=http://127.0.0.1:8081/?e2e=1 --smoke --profile=smoke --duration=6000 --sample=500 --speeds=30,60 --requireColdCompaction=true --maxRuntime=30000",
+      "exitCode": 0,
+      "logSha256": "af3f542b16f301708d26072892210fa96d0c66678cdbb1771d46ff51217c1026",
+      "receipt": {
+        "schema": "lemmings-benchmark-result/v2",
+        "kind": "history",
+        "profile": "smoke",
+        "status": "completed",
+        "scenarioIds": [
+          "speed:30",
+          "speed:60"
+        ],
+        "units": {
+          "duration": "milliseconds",
+          "throughput": "ticks-per-second",
+          "historySpan": "ticks"
+        },
+        "samplePolicy": "all-observations; filtered summaries are diagnostic only"
+      },
+      "profile": "smoke",
+      "environment": {
+        "node": "v26.12.1",
+        "platform": "win32",
+        "architecture": "x64",
+        "cpuModel": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+        "logicalCpus": 16,
+        "systemMemoryBytes": 137345265664,
+        "browser": {
+          "engine": "chromium",
+          "version": "153.0.8010.12",
+          "headless": true
+        }
+      },
+      "targetSpanTicks": 6000,
+      "sampleMs": 500,
+      "seekGate": {
+        "seekSamples": 4,
+        "seekP95MsMax": 200,
+        "requireReplayParity": true,
+        "requireBoundedRetention": true,
+        "requireTargetSpan": false,
+        "requireColdCompaction": true
+      },
+      "results": [
+        {
+          "sampleCount": 13,
+          "speedFactor": 30,
+          "durationMs": 6218,
+          "samplingDurationMs": 6016,
+          "maxSpanTicks": 3003,
+          "targetSpanTicks": 6000,
+          "seekProbe": {
+            "status": "complete",
+            "evidence": "exact-forward-state-and-base64-terrain",
+            "startRestored": true,
+            "restoredTick": 3003,
+            "observations": [
+              {
+                "phase": "first-touch-cold",
+                "targetTick": 3,
+                "observedTick": 3,
+                "accepted": true,
+                "durationMs": 6.800000000745058,
+                "exactStateMatch": true,
+                "coldDecodes": 1,
+                "coldCacheHits": 2,
+                "coldDecodedBytes": 112224
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 1.7000000029802322,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 3,
+                "observedTick": 3,
+                "accepted": true,
+                "durationMs": 0.8000000007450581,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 3,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 1.6000000014901161,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "first-touch-cold",
+                "targetTick": 836,
+                "observedTick": 836,
+                "accepted": true,
+                "durationMs": 7.100000001490116,
+                "exactStateMatch": true,
+                "coldDecodes": 1,
+                "coldCacheHits": 47,
+                "coldDecodedBytes": 192307
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 1.5999999977648258,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 836,
+                "observedTick": 836,
+                "accepted": true,
+                "durationMs": 1.199999999254942,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 48,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 1.3999999985098839,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "already-warm",
+                "targetTick": 1636,
+                "observedTick": 1636,
+                "accepted": true,
+                "durationMs": 1.3999999985098839,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 0.8000000007450581,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 1636,
+                "observedTick": 1636,
+                "accepted": true,
+                "durationMs": 1,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 1,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "already-warm",
+                "targetTick": 2436,
+                "observedTick": 2436,
+                "accepted": true,
+                "durationMs": 0.8999999985098839,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 0.8999999985098839,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 2436,
+                "observedTick": 2436,
+                "accepted": true,
+                "durationMs": 1.199999999254942,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 3003,
+                "observedTick": 3003,
+                "accepted": true,
+                "durationMs": 0.9000000022351742,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              }
+            ],
+            "retainedOracleBytes": 30874986,
+            "maximumOracleBytes": 33554432,
+            "oracleSampling": "time-distributed-live-forward-checkpoints",
+            "checkpointTicks": [
+              3,
+              286,
+              836,
+              1369,
+              1636,
+              2169,
+              2436,
+              2969,
+              3003
+            ],
+            "minTick": 0,
+            "maxTick": 3002,
+            "startTick": 3003,
+            "deltaAvailable": true,
+            "hashMatch": true,
+            "count": 16,
+            "p50Ms": 1.199999999254942,
+            "p95Ms": 7.100000001490116,
+            "maxMs": 7.100000001490116,
+            "samplesMs": [
+              0.8000000007450581,
+              0.8000000007450581,
+              0.8999999985098839,
+              0.8999999985098839,
+              0.9000000022351742,
+              1,
+              1,
+              1.199999999254942,
+              1.199999999254942,
+              1.3999999985098839,
+              1.3999999985098839,
+              1.5999999977648258,
+              1.6000000014901161,
+              1.7000000029802322,
+              6.800000000745058,
+              7.100000001490116
+            ]
+          },
+          "history": {
+            "spanTicks": 3003,
+            "coldBlockCount": 3,
+            "coldBlockBytes": 455859,
+            "coldBlockDecodes": 0,
+            "coldBlockCacheHits": 0,
+            "retention": {
+              "enableHistoryCap": true,
+              "historyCapTicks": 24000,
+              "historyWarnTicks": 18000
+            }
+          },
+          "memory": {
+            "usedJSHeapSize": 157000000,
+            "totalJSHeapSize": 225000000,
+            "jsHeapSizeLimit": 3760000000
+          }
+        },
+        {
+          "sampleCount": 12,
+          "speedFactor": 60,
+          "durationMs": 6249,
+          "samplingDurationMs": 6030,
+          "maxSpanTicks": 6038,
+          "targetSpanTicks": 6000,
+          "seekProbe": {
+            "status": "complete",
+            "evidence": "exact-forward-state-and-base64-terrain",
+            "startRestored": true,
+            "restoredTick": 6038,
+            "observations": [
+              {
+                "phase": "first-touch-cold",
+                "targetTick": 39,
+                "observedTick": 39,
+                "accepted": true,
+                "durationMs": 5.300000000745058,
+                "exactStateMatch": true,
+                "coldDecodes": 1,
+                "coldCacheHits": 38,
+                "coldDecodedBytes": 112224
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 3.300000000745058,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 39,
+                "observedTick": 39,
+                "accepted": true,
+                "durationMs": 0.8000000007450581,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 39,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.7999999970197678,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "first-touch-cold",
+                "targetTick": 1239,
+                "observedTick": 1239,
+                "accepted": true,
+                "durationMs": 3.5,
+                "exactStateMatch": true,
+                "coldDecodes": 1,
+                "coldCacheHits": 38,
+                "coldDecodedBytes": 272034
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.9000000022351742,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 1239,
+                "observedTick": 1239,
+                "accepted": true,
+                "durationMs": 1.199999999254942,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 39,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.5,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "first-touch-cold",
+                "targetTick": 3005,
+                "observedTick": 3005,
+                "accepted": true,
+                "durationMs": 4.599999997764826,
+                "exactStateMatch": true,
+                "coldDecodes": 1,
+                "coldCacheHits": 4,
+                "coldDecodedBytes": 553649
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.699999999254942,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 3005,
+                "observedTick": 3005,
+                "accepted": true,
+                "durationMs": 0.9000000022351742,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 5,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.800000000745058,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "already-warm",
+                "targetTick": 4072,
+                "observedTick": 4072,
+                "accepted": true,
+                "durationMs": 1.7999999970197678,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.699999999254942,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "warm-repeat",
+                "targetTick": 4072,
+                "observedTick": 4072,
+                "accepted": true,
+                "durationMs": 1.800000000745058,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              },
+              {
+                "phase": "return",
+                "targetTick": 6038,
+                "observedTick": 6038,
+                "accepted": true,
+                "durationMs": 1.3999999985098839,
+                "exactStateMatch": true,
+                "coldDecodes": 0,
+                "coldCacheHits": 0,
+                "coldDecodedBytes": 0
+              }
+            ],
+            "retainedOracleBytes": 30971302,
+            "maximumOracleBytes": 33554432,
+            "oracleSampling": "time-distributed-live-forward-checkpoints",
+            "checkpointTicks": [
+              39,
+              589,
+              1239,
+              1939,
+              3005,
+              3539,
+              4072,
+              5122,
+              6038
+            ],
+            "minTick": 0,
+            "maxTick": 6037,
+            "startTick": 6038,
+            "deltaAvailable": true,
+            "hashMatch": true,
+            "count": 16,
+            "p50Ms": 1.7999999970197678,
+            "p95Ms": 5.300000000745058,
+            "maxMs": 5.300000000745058,
+            "samplesMs": [
+              0.8000000007450581,
+              0.9000000022351742,
+              1.199999999254942,
+              1.3999999985098839,
+              1.5,
+              1.699999999254942,
+              1.699999999254942,
+              1.7999999970197678,
+              1.7999999970197678,
+              1.800000000745058,
+              1.800000000745058,
+              1.9000000022351742,
+              3.300000000745058,
+              3.5,
+              4.599999997764826,
+              5.300000000745058
+            ]
+          },
+          "history": {
+            "spanTicks": 6038,
+            "coldBlockCount": 15,
+            "coldBlockBytes": 5890356,
+            "coldBlockDecodes": 0,
+            "coldBlockCacheHits": 0,
+            "retention": {
+              "enableHistoryCap": true,
+              "historyCapTicks": 24000,
+              "historyWarnTicks": 18000
+            }
+          },
+          "memory": {
+            "usedJSHeapSize": 157000000,
+            "totalJSHeapSize": 225000000,
+            "jsHeapSizeLimit": 3760000000
+          }
+        }
+      ],
+      "failures": []
+    },
+    "midiWork": {
+      "command": "node scripts/bench-hotpaths.js --smoke",
+      "exitCode": 0,
+      "logSha256": "2fa531ca4131075074026edf175dbea04eb90812b46be8d16416977edcc87590",
+      "rows": {
+        "midiRouter": {
+          "workload": "successful-fixed-work",
+          "warmup": {
+            "schema": "lemmings-benchmark-result/v2",
+            "source": "router",
+            "workload": "successful-fixed-work",
+            "clock": "deterministic-workload-ms",
+            "startMs": 0,
+            "attempted": 8400,
+            "admitted": 8400,
+            "rejected": 0,
+            "submittedNoteOns": 8400,
+            "submittedNoteOffs": 8400,
+            "rejectionReasons": {},
+            "endMs": 700700,
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "cpuElapsedMs": 288.0045
+          },
+          "repetitions": [
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 700700,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 1401400,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 181.7136
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 1401400,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 2102100,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 153.194
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 2102100,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 2802800,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 170.1601
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 2802800,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 3503500,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 127.7026
+            }
+          ],
+          "effectiveLimits": {
+            "maxMessages": 1000,
+            "maxBytes": 100000000
+          },
+          "transport": {
+            "endpointId": null,
+            "transport": "unknown-webmidi",
+            "protocol": "midi1",
+            "confidence": "conservative-default",
+            "requestedProtocol": "midi1",
+            "linkId": null,
+            "scope": "endpoint:default",
+            "endpointMaxMessagesPerSecond": 1000,
+            "endpointMaxBytesPerSecond": 100000000,
+            "linkMaxMessagesPerSecond": null,
+            "linkMaxBytesPerSecond": null,
+            "maxMessagesPerSecond": 1000,
+            "maxBytesPerSecond": 100000000,
+            "maxPending": 4096,
+            "queueHorizonMs": 60000
+          },
+          "finalCleanup": {
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "timers": 0
+          }
+        },
+        "midiScheduler": {
+          "workload": "successful-fixed-work",
+          "warmup": {
+            "schema": "lemmings-benchmark-result/v2",
+            "source": "scheduler",
+            "workload": "successful-fixed-work",
+            "clock": "deterministic-workload-ms",
+            "startMs": 0,
+            "attempted": 8400,
+            "admitted": 8400,
+            "rejected": 0,
+            "submittedNoteOns": 8400,
+            "submittedNoteOffs": 8400,
+            "rejectionReasons": {},
+            "endMs": 700700,
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "cpuElapsedMs": 86.1048
+          },
+          "repetitions": [
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 700700,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 1401400,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 70.3958
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 1401400,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 2102100,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 52.5619
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 2102100,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 2802800,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 50.9385
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "successful-fixed-work",
+              "clock": "deterministic-workload-ms",
+              "startMs": 2802800,
+              "attempted": 8400,
+              "admitted": 8400,
+              "rejected": 0,
+              "submittedNoteOns": 8400,
+              "submittedNoteOffs": 8400,
+              "rejectionReasons": {},
+              "endMs": 3503500,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 50.88
+            }
+          ],
+          "effectiveLimits": {
+            "maxMessages": 1000,
+            "maxBytes": 100000000
+          },
+          "transport": {
+            "endpointId": null,
+            "transport": "unknown-webmidi",
+            "protocol": "midi1",
+            "confidence": "conservative-default",
+            "requestedProtocol": "midi1",
+            "linkId": null,
+            "scope": "endpoint:default",
+            "endpointMaxMessagesPerSecond": 1000,
+            "endpointMaxBytesPerSecond": 100000000,
+            "linkMaxMessagesPerSecond": null,
+            "linkMaxBytesPerSecond": null,
+            "maxMessagesPerSecond": 1000,
+            "maxBytesPerSecond": 100000000,
+            "maxPending": 4096,
+            "queueHorizonMs": 60000
+          },
+          "finalCleanup": {
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "timers": 0
+          }
+        },
+        "midiRouterRejected": {
+          "workload": "saturated-rate-rejection",
+          "warmup": {
+            "schema": "lemmings-benchmark-result/v2",
+            "source": "router",
+            "workload": "saturated-rate-rejection",
+            "clock": "deterministic-workload-ms",
+            "startMs": 0,
+            "attempted": 8400,
+            "admitted": 0,
+            "rejected": 8400,
+            "submittedNoteOns": 0,
+            "submittedNoteOffs": 0,
+            "rejectionReasons": {
+              "count-limit": 8400
+            },
+            "endMs": 0,
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "cpuElapsedMs": 64.5946
+          },
+          "repetitions": [
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 54.8314
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 41.6429
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 36.1041
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "router",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 36.081
+            }
+          ],
+          "effectiveLimits": {
+            "maxMessages": 1000,
+            "maxBytes": 100000000
+          },
+          "transport": {
+            "endpointId": null,
+            "transport": "unknown-webmidi",
+            "protocol": "midi1",
+            "confidence": "conservative-default",
+            "requestedProtocol": "midi1",
+            "linkId": null,
+            "scope": "endpoint:default",
+            "endpointMaxMessagesPerSecond": 1000,
+            "endpointMaxBytesPerSecond": 100000000,
+            "linkMaxMessagesPerSecond": null,
+            "linkMaxBytesPerSecond": null,
+            "maxMessagesPerSecond": 1000,
+            "maxBytesPerSecond": 100000000,
+            "maxPending": 4096,
+            "queueHorizonMs": 60000
+          },
+          "finalCleanup": {
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "timers": 0
+          }
+        },
+        "midiSchedulerRejected": {
+          "workload": "saturated-rate-rejection",
+          "warmup": {
+            "schema": "lemmings-benchmark-result/v2",
+            "source": "scheduler",
+            "workload": "saturated-rate-rejection",
+            "clock": "deterministic-workload-ms",
+            "startMs": 0,
+            "attempted": 8400,
+            "admitted": 0,
+            "rejected": 8400,
+            "submittedNoteOns": 0,
+            "submittedNoteOffs": 0,
+            "rejectionReasons": {
+              "count-limit": 8400
+            },
+            "endMs": 0,
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "cpuElapsedMs": 18.77
+          },
+          "repetitions": [
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 17.8115
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 16.4834
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 13.6438
+            },
+            {
+              "schema": "lemmings-benchmark-result/v2",
+              "source": "scheduler",
+              "workload": "saturated-rate-rejection",
+              "clock": "deterministic-workload-ms",
+              "startMs": 0,
+              "attempted": 8400,
+              "admitted": 0,
+              "rejected": 8400,
+              "submittedNoteOns": 0,
+              "submittedNoteOffs": 0,
+              "rejectionReasons": {
+                "count-limit": 8400
+              },
+              "endMs": 0,
+              "activeVoices": 0,
+              "pendingOnsets": 0,
+              "scheduledOffs": 0,
+              "cpuElapsedMs": 13.3406
+            }
+          ],
+          "effectiveLimits": {
+            "maxMessages": 1000,
+            "maxBytes": 100000000
+          },
+          "transport": {
+            "endpointId": null,
+            "transport": "unknown-webmidi",
+            "protocol": "midi1",
+            "confidence": "conservative-default",
+            "requestedProtocol": "midi1",
+            "linkId": null,
+            "scope": "endpoint:default",
+            "endpointMaxMessagesPerSecond": 1000,
+            "endpointMaxBytesPerSecond": 100000000,
+            "linkMaxMessagesPerSecond": null,
+            "linkMaxBytesPerSecond": null,
+            "maxMessagesPerSecond": 1000,
+            "maxBytesPerSecond": 100000000,
+            "maxPending": 4096,
+            "queueHorizonMs": 60000
+          },
+          "finalCleanup": {
+            "activeVoices": 0,
+            "pendingOnsets": 0,
+            "scheduledOffs": 0,
+            "timers": 0
+          }
+        }
+      }
+    },
+    "staticChecks": [
+      "format",
+      "critical checkJs and runtime-global guards",
+      "undefined-call scan",
+      "branch whitespace"
+    ],
+    "qualificationLimits": [
+      "Actual cold/warm work is proved for this bounded smoke workload; long soak and native-device qualification remain separate.",
+      "Retained oracle bytes measure checkpoint payload, not whole-app peak memory.",
+      "New-head CI pending; b58e7ae1 is separately verified green."
+    ]
   }
 }

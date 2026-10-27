@@ -33,12 +33,22 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
     return { tick: game.timer.tickIndex, text, bytes: text.length * 2 };
   };
   const owner = {
-    capture(game) {
+    capture(game = api.getState()?.game) {
       if (disposed) throw new Error('Replay evidence is disposed.');
       const checkpoint = capture(game);
       if (checkpoints.at(-1)?.tick === checkpoint.tick) return;
-      while (checkpoints.length >= maximumCheckpoints || retainedBytes + checkpoint.bytes > maximumBytes) retainedBytes -= checkpoints.shift().bytes;
+      if (checkpoints.at(-1)?.tick > checkpoint.tick) throw new Error('Forward replay checkpoint moved backwards.');
+      const minimumTick = game?.history?.minTick;
+      while (checkpoints.length && Number.isSafeInteger(minimumTick) && checkpoints[0].tick < minimumTick) retainedBytes -= checkpoints.shift().bytes;
       checkpoints.push(checkpoint); retainedBytes += checkpoint.bytes;
+      while (checkpoints.length > maximumCheckpoints || retainedBytes > maximumBytes) {
+        let remove = 0, closestSpan = Infinity;
+        for (let index = 1; index < checkpoints.length - 1; index++) {
+          const span = checkpoints[index + 1].tick - checkpoints[index - 1].tick;
+          if (span < closestSpan) { closestSpan = span; remove = index; }
+        }
+        retainedBytes -= checkpoints.splice(remove, 1)[0].bytes;
+      }
     },
     probe() {
       const observations = [], seekMs = [];
@@ -72,7 +82,8 @@ export function installHistoryReplayEvidence({ samples = 4, maximumBytes = 32 * 
         }
         return { status: 'complete', evidence: 'exact-forward-state-and-base64-terrain', deltaAvailable: true, hashMatch: true,
           minTick: min, maxTick: max, startTick: start.tick, restoredTick: api.getState()?.game?.timer?.tickIndex,
-          startRestored: true, observations, seekMs, retainedOracleBytes: retainedBytes, maximumOracleBytes: maximumBytes };
+          startRestored: true, observations, seekMs, retainedOracleBytes: retainedBytes, maximumOracleBytes: maximumBytes,
+          oracleSampling: 'time-distributed-live-forward-checkpoints', checkpointTicks: checkpoints.map(point => point.tick) };
       } catch (error) {
         try { api.pause?.(); } catch {}
         return { status: 'failed', evidence: 'exact-forward-state-and-base64-terrain', deltaAvailable: checkpoints.length > 0,

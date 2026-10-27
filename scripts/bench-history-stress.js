@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBenchmarkReceipt } from './BenchmarkReceipt.js';
@@ -418,6 +419,8 @@ const run = async (config = createHistoryBenchConfig()) => {
           status: seekProbe?.status ?? 'unavailable', evidence: seekProbe?.evidence ?? null,
           startRestored: seekProbe?.startRestored === true, restoredTick: seekProbe?.restoredTick ?? null,
           observations: seekProbe?.observations || [], retainedOracleBytes: seekProbe?.retainedOracleBytes ?? 0,
+          maximumOracleBytes: seekProbe?.maximumOracleBytes ?? 0, oracleSampling: seekProbe?.oracleSampling ?? null,
+          checkpointTicks: seekProbe?.checkpointTicks || [],
           minTick: seekProbe?.minTick ?? 0,
           maxTick: seekProbe?.maxTick ?? 0,
           startTick: seekProbe?.startTick ?? 0,
@@ -445,6 +448,9 @@ const run = async (config = createHistoryBenchConfig()) => {
     console.log(JSON.stringify({
       receipt: createBenchmarkReceipt('history', requestedProfile, speeds.map(speed => `speed:${speed}`)),
       profile: requestedProfile,
+      environment: { node: process.version, platform: process.platform, architecture: process.arch,
+        cpuModel: os.cpus()[0]?.model ?? null, logicalCpus: os.availableParallelism(), systemMemoryBytes: os.totalmem(),
+        browser: { engine: 'chromium', version: browser.version(), headless } },
       targetSpanTicks: targetSpan,
       sampleMs,
       seekGate: {
