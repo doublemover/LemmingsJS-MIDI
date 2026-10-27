@@ -818,23 +818,37 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "98a66cba5916153823b033b66e38082d2467625a",
-    "job": 122339341551,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40546767098/job/122339341551",
-    "passed": 6384,
+    "head": "74067889ac12e579317a619ef7e631fa787c6e4e",
+    "job": 122391435791,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40561501288/job/122391435791",
+    "passed": 6408,
     "failed": 0,
-    "browserPassed": 43,
+    "browserPassed": 44,
+    "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.24,
-      "statements": 90.24,
-      "branches": 83.47,
+      "lines": 90.28,
+      "statements": 90.28,
+      "branches": 83.46,
       "functions": 88.21
     },
+    "minimumDesktopViewport": {
+      "width": 1920,
+      "height": 1080
+    },
     "excludesContinuations": [
-      278
+      280,
+      281,
+      282
     ],
-    "excludesLaterWork": true
+    "excludesLaterWork": true,
+    "masterCapture": {
+      "state": "Ready",
+      "timelineFrames": 56064,
+      "capturedFrames": 56064,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null
+    }
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -8308,7 +8322,8 @@
     "maintainedBrowserBoundaries": {
       "previous": 43,
       "expected": 44,
-      "observedInNewCI": false
+      "observedInNewCI": true,
+      "observed": 44
     },
     "source": [
       {
@@ -8563,7 +8578,7 @@
       }
     ],
     "limitations": [
-      "Full CI for this continuation is pending; the last fully green checkpoint remains 98a66cba, prior to the desktop baseline correction.",
+      "Full CI for 74067889 is green with 6,408 Node cases / 44 desktop browser boundaries and all gates. Later continuation 280 and onward is outside that checkpoint.",
       "The actual direct/stepped same-outlet fixture establishes controls and real crossings, not qualification of all two/three-branch production route templates, later musical differences, Stage/recorded cue replacement and seek/reload matrices. Issue #1232 remains open for those requirements.",
       "No external hardware, acoustic, long-session or disk durability claim."
     ]
@@ -8585,7 +8600,40 @@
     },
     "limitations": [
       "Full CI for this follow-through is pending. No additional route-template, hardware or listening qualification is claimed."
-    ]
+    ],
+    "fullCI": {
+      "head": "74067889ac12e579317a619ef7e631fa787c6e4e",
+      "job": 122391435791,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40561501288/job/122391435791",
+      "passed": 6408,
+      "failed": 0,
+      "browserPassed": 44,
+      "browserFailed": 0,
+      "allChecksGreen": true,
+      "coverage": {
+        "lines": 90.28,
+        "statements": 90.28,
+        "branches": 83.46,
+        "functions": 88.21
+      },
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "excludesContinuations": [
+        280,
+        281,
+        282
+      ],
+      "excludesLaterWork": true,
+      "masterCapture": {
+        "state": "Ready",
+        "timelineFrames": 56064,
+        "capturedFrames": 56064,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null
+      }
+    }
   },
   "continuation280": {
     "baseHead": "74067889ac12e579317a619ef7e631fa787c6e4e",
@@ -8702,9 +8750,23 @@
       "The production default cell uses a scale degree with note=null. The exact note-81 reproduction now explicitly commits its required note-60 starting cell before Add Lane."
     ],
     "limitations": [
-      "Full CI for this continuation is pending. The previous 74067889 run has passed static checks, 44 desktop browser boundaries, protocol and benchmark smoke and is still running coverage.",
+      "CI for 33a6e89e passes 44/45 browser boundaries then skips coverage after the deterministic tick-2 zone-alias hash mismatch; continuation 282 implements and exercises that correction. Prior desktop checkpoint 74067889 is fully green (6,408/44).",
       "These controlled retained-charge observations do not establish process heap/GC or native device performance. No external hardware or acoustic claim."
-    ]
+    ],
+    "fullCI": {
+      "head": "33a6e89e49c9a90052d83ffcde28ff51e5c7c43b",
+      "job": 122398477829,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40563496448/job/122398477829",
+      "browserPassed": 44,
+      "browserFailed": 1,
+      "failedSpec": "e2e/procgen-sound-world-isolation.spec.js",
+      "coverageRan": false,
+      "artifact": {
+        "id": 12761854145,
+        "sha256": "99bc0a778035d937726da1b3520074d35545587c164c178b7a6e3f9547a92463"
+      },
+      "diagnosis": "Source starts at tick 2. Physical batches and musical sound isolation are unchanged, but a restored immutable zone and a new cached copy have split object identity. Continuation 282 normalizes the source-bound zone value while retaining all meaningful content."
+    }
   },
   "continuation281": {
     "scope": "Apply the repository owner's explicit 1920x1080 desktop-only minimum to the remaining GitHub issue specifications.",
@@ -8729,5 +8791,189 @@
     "closureMeaning": "The two mobile-only proposals were closed as not planned, not as implemented or device-qualified. Desktop keyboard/IME, mouse/pointer cancellation, fullscreen/resize, lifecycle and source ownership remain in scope.",
     "sourcePolicy": "AGENTS.md and the shared desktop browser/capture baseline from fa6f39d2, with remaining testing-guidance follow-through in 74067889.",
     "validation": "Issue bodies and returned closed/not_planned states verified through the connected GitHub API; no new runtime change or test run for this issue-only scope sweep."
+  },
+  "continuation282": {
+    "baseHead": "96a6d9e7",
+    "scope": "Repair the deterministic nonzero-tick sound-isolation CI failure by giving exact immutable source terrain zones value identity in canonical physical hashes.",
+    "implemented": [
+      "Freeze generated zone records and their selected-group arrays. Physical placement/contacts/collision algorithms and source selections are unchanged.",
+      "Physics projection interns only exact recognized zone records with complete scalar/source revision/geometry and declared external asset group/pair bindings. Duplicate cache/restored copies share one canonical value. Mutable objects, unknown fields/node state, undeclared or foreign groups and malformed references retain strict behavior.",
+      "The production sound-isolation fixture now starts from at least tick 2, checks restored starting identity and retains complete bounded mismatch projections before assertions. It keeps the original 1,000-tick physics/source equality requirements and all six native sound changes."
+    ],
+    "validation": {
+      "nodePassed": 160,
+      "nodeFailed": 0,
+      "nodeSeconds": 17,
+      "browserPassed": 3,
+      "browserFailed": 0,
+      "browserReportedDuration": "1.1m",
+      "browserRepetitions": [
+        {
+          "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "difference": null,
+          "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "selections": [
+            "foundation.soft-triangle",
+            "forge.glass-rivet",
+            "material.timber",
+            "pluck.burrow-thumb",
+            "choir.hollow-ooh",
+            "spectrum.bubble-reed"
+          ],
+          "tickStart": 2,
+          "tickEnd": 1002,
+          "sameWorld": true,
+          "hardwareUnchanged": true,
+          "sourceOnlyFixture": false,
+          "acousticQualification": false
+        },
+        {
+          "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "difference": null,
+          "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "selections": [
+            "foundation.soft-triangle",
+            "forge.glass-rivet",
+            "material.timber",
+            "pluck.burrow-thumb",
+            "choir.hollow-ooh",
+            "spectrum.bubble-reed"
+          ],
+          "tickStart": 2,
+          "tickEnd": 1002,
+          "sameWorld": true,
+          "hardwareUnchanged": true,
+          "sourceOnlyFixture": false,
+          "acousticQualification": false
+        },
+        {
+          "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "difference": null,
+          "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "selections": [
+            "foundation.soft-triangle",
+            "forge.glass-rivet",
+            "material.timber",
+            "pluck.burrow-thumb",
+            "choir.hollow-ooh",
+            "spectrum.bubble-reed"
+          ],
+          "tickStart": 2,
+          "tickEnd": 1002,
+          "sameWorld": true,
+          "hardwareUnchanged": true,
+          "sourceOnlyFixture": false,
+          "acousticQualification": false
+        }
+      ],
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-owners-20261027.log",
+          "sha256": "f4fa0c8a69d58a1170d48d3c1e26b0baf2371e6ba2e0a2b9335942047409eea4",
+          "bytes": 15555
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-browser-20261027.log",
+          "sha256": "700b750f330edb6c5b83c5c92252af9fbef56d038d3e67342315a882915b47ea",
+          "bytes": 3812
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-format-final-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-types-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-undefined-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        },
+        "nonzeroDiagnostic": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-nonzero-source-20261027.log",
+          "sha256": "a7e09d9be1e3ea7d101b36fc593b4d04fa11a8d1b0f6ae9db8d2b97dbf23d50b",
+          "bytes": 4802
+        },
+        "stateDiagnostic": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog282-state-difference-20261027.log",
+          "sha256": "f2eb0431927c0f1193357ceb0c1b42eb5da7a8cd1d15e2836b7ec0f936fd1d34",
+          "bytes": 4843
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainZones.js",
+        "sha256": "fc8a23132fa6ed3faad8bfc63cb6e9a1a451800bef6a15bb914c6c76274c1e30",
+        "bytes": 4251
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
+        "sha256": "f38a112e35825e1c4633891942aae820845010d3b416866163f96aad5782d476",
+        "bytes": 12378
+      },
+      {
+        "path": "e2e/procgen-sound-world-isolation.spec.js",
+        "sha256": "2765d122306a127fecd40a1ac0924a25d19bf1288fa45fb9f84f7beb86e0c955",
+        "bytes": 8438
+      },
+      {
+        "path": "test/procgen-checkpoint-zone-provenance.test.js",
+        "sha256": "c1d80ae15cf824e3a4d991734ebf05bbe4e0c38923e9749d9711c61ad94048b7",
+        "bytes": 4351
+      },
+      {
+        "path": "test/procgen-terrain-zones.test.js",
+        "sha256": "b35f17165ea2d5600f73580333d0d7395c625afcfc007ed57471df4a71cbd817",
+        "bytes": 4641
+      }
+    ],
+    "diagnosis": {
+      "failedCIHead": "33a6e89e49c9a90052d83ffcde28ff51e5c7c43b",
+      "startTick": 2,
+      "physicalTraceUnchanged": true,
+      "controlProjectedNodes": 1352,
+      "restoredProjectedNodes": 1354,
+      "cause": "Restored hazards/chunk descriptors retained a decoded zone while future chunks referenced the equal zone from a fresh zone-planner cache. A second zone/group-array pair changed graph sharing, with byte-identical zone values and exact physical batch hashes.",
+      "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+      "failedChangedHash": "1b3d82307bccbe815cafe00b4be47eb62e046096afd79c7acb3c7393e2bb5af6",
+      "correctedChangedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+      "traceHash": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178"
+    },
+    "limitations": [
+      "Full CI for this correction is pending. The latest fully green desktop checkpoint is 74067889, preceding continuation 280.",
+      "Only exact source-bound immutable zone shapes normalize by value. Other mutable object identities and unknown source bindings remain significant.",
+      "No external hardware or listening qualification is claimed."
+    ]
   }
 }

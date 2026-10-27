@@ -2,6 +2,21 @@ import { CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs } from './Procgen
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 
 const PRESENTATION_WORLD_KEYS = new Set(['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
+const ZONE_KEYS = new Set(['id', 'index', 'start', 'end', 'width', 'maximumAuthoredWidth', 'descriptorId', 'sourceRevision', 'pack', 'groundSet', 'themeId', 'anchorPair', 'groups']);
+const sourceAsset = value => value && Object.keys(value).length === 1 && typeof value.external === 'string' && /^asset\/\d+\/(sourceDescriptor|sourceGroups|wideSourceGroups)\//.test(value.external);
+const terrainZoneKey = (node, nodes) => {
+  const props = node?.props;
+  if (node?.type !== 'Object' || Object.keys(node).length !== 2 || !props?.descriptorId || !props.sourceRevision || Object.keys(props).length !== ZONE_KEYS.size ||
+      Object.keys(props).some(key => !ZONE_KEYS.has(key)) || typeof props.id !== 'string' || !/^[a-f0-9]{64}$/.test(props.sourceRevision) ||
+      !Number.isSafeInteger(props.index) || props.index < 0 || !Number.isSafeInteger(props.width) || props.width < 1 ||
+      props.start !== props.index * props.width || props.end !== props.start + props.width || !Number.isSafeInteger(props.maximumAuthoredWidth) || props.maximumAuthoredWidth < props.width ||
+      props.anchorPair !== null && !sourceAsset(props.anchorPair)) return null;
+  if (!props.groups || Object.keys(props.groups).length !== 1 || !Number.isSafeInteger(props.groups.ref) || props.groups.ref < 0 || props.groups.ref >= nodes.length) return null;
+  const groups = nodes[props.groups?.ref];
+  if (groups?.type !== 'Array' || Object.keys(groups).length !== 3 || Object.keys(groups.props || {}).length || !Array.isArray(groups.values) || groups.values.length > 4 || !groups.values.every(sourceAsset)) return null;
+  for (const [key, value] of Object.entries(props)) if (!['groups', 'anchorPair'].includes(key) && value !== null && !['number', 'string'].includes(typeof value)) return null;
+  return canonicalJournalText({ ...props, groups: groups.values }).text;
+};
 const equal = (left, right) => canonicalJournalText(left).text === canonicalJournalText(right).text;
 const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procgen-workstation-2' } = {}) => {
   const reasons = [];
@@ -22,7 +37,7 @@ const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procge
 
 const projectProcgenPhysicsCheckpoint = saved => {
   if (inspectProcgenCheckpoint(saved).continuation === 'unsupported') throw journalError('checkpoint-incompatible', 'Cannot project an unsupported checkpoint.');
-  const sourceNodes = saved.graph.nodes, projected = [], seen = new Map();
+  const sourceNodes = saved.graph.nodes, projected = [], seen = new Map(), zones = new Map();
   const world = saved.graph.owners.find(owner => owner.name === 'world');
   const statsNode = world.props.stats?.ref;
   const terrainEdits = owner => {
@@ -60,9 +75,13 @@ const projectProcgenPhysicsCheckpoint = saved => {
     if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'ref')) return value;
     if (!Number.isSafeInteger(value.ref) || value.ref < 0 || value.ref >= sourceNodes.length) throw journalError('checkpoint-incompatible', 'Invalid physical checkpoint reference.');
     if (seen.has(value.ref)) return { ref: seen.get(value.ref) };
-    const oldIndex = value.ref, nextIndex = projected.length;
+    const oldIndex = value.ref, source = sourceNodes[oldIndex], zoneKey = terrainZoneKey(source, sourceNodes);
+    // Source-bound zones are immutable values; cache eviction or restore may split their JS identity.
+    if (zoneKey && zones.has(zoneKey)) { const index = zones.get(zoneKey); seen.set(oldIndex, index); return { ref: index }; }
+    const nextIndex = projected.length;
+    if (zoneKey) zones.set(zoneKey, nextIndex);
     seen.set(oldIndex, nextIndex); projected.push(null);
-    const source = sourceNodes[oldIndex], entry = {};
+    const entry = {};
     for (const key of Object.keys(source).sort()) {
       if (key === 'props') entry.props = props(source.props, oldIndex === statsNode ? new Set(['groundQueries']) : null);
       else if (key === 'values') entry.values = source.values.map(slot);

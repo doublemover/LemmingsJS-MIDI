@@ -7133,3 +7133,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   #1082, #1085 and #1203; #1232 already carries the desktop correction. Desktop
   keyboard/IME, mouse/pointer cancellation, fullscreen/resize, accessibility,
   lifecycle and source-ownership requirements remain. 231 issues remain open.
+
+### Continuation 282 — canonical zone value identity after nonzero restore
+
+- Full desktop CI for 74067889 passes **6,408 Node cases / 44 browser boundaries**,
+  every static/protocol/benchmark/policy/dependency check, and **90.28% lines and
+  statements / 83.46% branches / 88.21% functions**. Master capture is Ready with
+  56,064 acknowledged frames. That checkpoint precedes continuation 280.
+- CI for 33a6e89e passes 44/45 boundaries, then stops before coverage. The saved
+  trace reproduces the failure exactly from tick 2: all physical batches match,
+  but restored and newly planned terrain descriptors contain two equal source
+  zones rather than one shared JS object. The physical projection consequently
+  retained 1,354 nodes instead of 1,352 despite identical immutable zone values.
+- Generated zones/group arrays are now frozen. Canonical physics projection
+  interns only complete recognized zones with exact source/geometry and declared
+  external asset bindings. Mutable state, unknown fields, changed geometry/source
+  groups/anchors and malformed references remain significant or rejected. No
+  physics algorithm, admission threshold or equality assertion is weakened.
+- One grouped run passes **160 Node cases / three real native sound-isolation
+  repetitions**. Each starts at tick 2, restores the same initial hash, performs
+  six native sound changes across 1,000 real ticks and retains the original
+  control hash and byte-identical physical trace. Failure attachments now retain
+  bounded actual state differences before assertions. Formatting, types,
+  undefined calls, provenance and whitespace pass; new full CI remains pending.

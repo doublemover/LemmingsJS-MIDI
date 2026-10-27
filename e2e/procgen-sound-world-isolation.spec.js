@@ -15,15 +15,18 @@ test('six pinned native sounds preserve the actual 1000-tick world and causal ev
   await ready(page); await page.locator('#procgenListen').click();
   const result = await page.evaluate(async () => {
     const root = new URL('./', location.href), { captureProcgenCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpoint.js', root)),
-      { hashProcgenPhysicsCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpointProvenance.js', root)),
+      { hashProcgenPhysicsCheckpoint, projectProcgenPhysicsCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpointProvenance.js', root)),
       { hashJournalData } = await import(new URL('js/app/procgen/workstation/CausalJournalCanonical.js', root));
-    const studio = window.__PROCGEN_STUDIO__, initial = studio.capture('Sound isolation fixture');
+    const studio = window.__PROCGEN_STUDIO__;
+    while (window.__PROCGEN_LANES__.world.tickIndex < 2) window.__PROCGEN_LANES__.world.step();
+    const initial = studio.capture('Sound isolation fixture');
     if (studio.getProject().procgen.lanes.some(lane => lane.mode !== 'physical' || lane.patterns.length)) throw new Error('Legacy pattern path must be disabled.');
-    const trace = [], control = window.__PROCGEN_LANES__.world, record = batch => trace.push(batch);
+    const trace = [], control = window.__PROCGEN_LANES__.world, record = batch => trace.push(batch), initialHash = await hashProcgenPhysicsCheckpoint(initial.world);
     control.soundEvents.onBatch.on(record); for (let tick = 0; tick < 1000; tick++) control.step(tick * 16); control.soundEvents.onBatch.off(record);
-    const controlHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(control)), controlTrace = await hashJournalData(trace, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); trace.length = 0;
+    const controlCheckpoint = captureProcgenCheckpoint(control), controlHash = await hashProcgenPhysicsCheckpoint(controlCheckpoint), controlTrace = await hashJournalData(trace, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); trace.length = 0;
     await studio.loadSession(initial); window.__PROCGEN_LANES__.pause();
     const world = window.__PROCGEN_LANES__.world, tickStart = world.tickIndex, projectBefore = studio.getProject(), ids = ['foundation.soft-triangle', 'forge.glass-rivet', 'material.timber', 'pluck.burrow-thumb', 'choir.hollow-ooh', 'spectrum.bubble-reed'];
+    const restoredHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
     world.soundEvents.onBatch.on(record); const selections = [];
     for (let tick = 0; tick < 1000; tick++) {
       if (tick % 150 === 0 && tick < 900) {
@@ -34,15 +37,29 @@ test('six pinned native sounds preserve the actual 1000-tick world and causal ev
       }
       world.step(tick * 16);
     }
-    world.soundEvents.onBatch.off(record); const changedHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world)), changedTrace = await hashJournalData(trace, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+    world.soundEvents.onBatch.off(record); const changedCheckpoint = captureProcgenCheckpoint(world), changedHash = await hashProcgenPhysicsCheckpoint(changedCheckpoint), changedTrace = await hashJournalData(trace, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
     await studio.handlers.undo(); const undoHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
-    return { controlHash, changedHash, controlTrace, changedTrace, undoHash, selections, tickStart, tickEnd: world.tickIndex, sameWorld: world === window.__PROCGEN_LANES__.world,
+    const difference = (left, right) => {
+      const pending = [{ left, right, path: '$' }]; let visits = 0;
+      while (pending.length && visits++ < 100000) {
+        const pair = pending.pop(); if (Object.is(pair.left, pair.right)) continue;
+        if (!pair.left || !pair.right || typeof pair.left !== 'object' || typeof pair.right !== 'object') return pair;
+        const a = Object.keys(pair.left), b = Object.keys(pair.right); if (!Array.isArray(pair.left) && a.length !== b.length) return { path: pair.path, leftKeys: a.length, rightKeys: b.length };
+        for (let index = a.length - 1; index >= 0; index--) { const key = a[index]; if (!Object.hasOwn(pair.right, key)) return { path: pair.path + '.' + key, missing: 'right' }; pending.push({ left: pair.left[key], right: pair.right[key], path: pair.path + '.' + key }); }
+      }
+      return pending.length ? { unknown: 'diagnostic traversal budget' } : null;
+    };
+    const mismatchStates = changedHash === controlHash ? null : { control: projectProcgenPhysicsCheckpoint(controlCheckpoint), changed: projectProcgenPhysicsCheckpoint(changedCheckpoint) };
+    return { initialHash, restoredHash, mismatchStates, difference: mismatchStates ? difference(mismatchStates.control, mismatchStates.changed) : null,
+      controlHash, changedHash, controlTrace, changedTrace, undoHash, selections, tickStart, tickEnd: world.tickIndex, sameWorld: world === window.__PROCGEN_LANES__.world,
       hardwareUnchanged: ['channel', 'externalProgram', 'externalPercussion', 'outputId'].every(key => studio.getProject().procgen.lanes[0][key] === projectBefore.procgen.lanes[0][key]),
       sourceOnlyFixture: false, acousticQualification: false };
   });
+  await testInfo.attach('sound-world-isolation.json', { body: JSON.stringify(result), contentType: 'application/json' });
+  console.info('SOUND_WORLD_ISOLATION ' + JSON.stringify({ ...result, mismatchStates: undefined }));
+  expect(result.restoredHash).toBe(result.initialHash);
   expect(result.changedHash).toBe(result.controlHash); expect(result.changedTrace).toBe(result.controlTrace); expect(result.undoHash).toBe(result.changedHash);
   expect(result.selections).toHaveLength(6); expect(new Set(result.selections).size).toBe(6); expect(result.sameWorld).toBe(true); expect(result.hardwareUnchanged).toBe(true); expect(result.tickEnd - result.tickStart).toBe(1000);
-  await testInfo.attach('sound-world-isolation.json', { body: JSON.stringify(result), contentType: 'application/json' });
 });
 
 test('hold preview restores on keyboard release and commits only through the explicit Apply command', async ({ page }) => {

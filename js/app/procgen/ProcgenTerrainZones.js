@@ -48,9 +48,9 @@ class ProcgenTerrainZonePlanner {
       const group = choose(related, mix(code ^ Math.imul(roleIndex + 1, 0x85ebca6b)));
       if (group) groups.push(group);
     }
-    zone = { id: this.descriptor.id + ':' + seed + ':' + index, index, start: index * width, end: (index + 1) * width, width,
+    zone = Object.freeze({ id: this.descriptor.id + ':' + seed + ':' + index, index, start: index * width, end: (index + 1) * width, width,
       maximumAuthoredWidth: this.widthLimit, descriptorId: this.descriptor.id, sourceRevision: this.descriptor.sourceRevision,
-      pack: this.descriptor.pack, groundSet: this.descriptor.groundSet, themeId: this.descriptor.themeId, anchorPair: pair, groups };
+      pack: this.descriptor.pack, groundSet: this.descriptor.groundSet, themeId: this.descriptor.themeId, anchorPair: pair, groups: Object.freeze(groups) });
     if (this.cache.size >= this.cacheLimit) this.cache.delete(this.cache.keys().next().value);
     this.cache.set(key, zone); return zone;
   }
