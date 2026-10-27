@@ -377,3 +377,63 @@ test('foreign pointer release cannot commit pattern painting and owner cancellat
   await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: window.workstationViewTest.pointerId })));
   await page.mouse.up(); expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
 });
+
+
+test('keyed inspector fields, rows and faders keep exact DOM identity through full renders and IME', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page); const name = page.getByLabel('Name', { exact: true }); await name.fill('Uncommitted lane');
+  await name.evaluate(element => { window.stableField = element; element.setSelectionRange(4, 7); element.dispatchEvent(new window.CompositionEvent('compositionstart', { bubbles: true })); });
+  await page.evaluate(() => { window.stableHeader = document.querySelector('.studio-lane-header'); window.stableFader = document.querySelector('.studio-lane-fader'); window.stableCell = document.querySelector('.studio-cell');
+    window.workstationViewTest.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { name: 'Changed elsewhere' } }); window.workstationViewTest.view.render(); });
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  expect(await name.evaluate(element => ({ same: element === window.stableField, value: element.value, caret: element.selectionStart,
+    header: window.stableHeader === document.querySelector('.studio-lane-header'), fader: window.stableFader === document.querySelector('.studio-lane-fader'), cell: window.stableCell === document.querySelector('.studio-cell') }))).toEqual({ same: true, value: 'Uncommitted lane', caret: 4, header: true, fader: true, cell: true });
+  await name.evaluate(element => { element.dispatchEvent(new window.CompositionEvent('compositionend', { bubbles: true })); element.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(await page.evaluate(() => window.workstationViewTest.actions.filter(action => action.type === 'procgen/lane' && action.laneId === 'lane-1'))).toHaveLength(1);
+});
+
+test('external edits retain an explicit draft conflict and support both named resolutions', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page); const name = page.getByLabel('Name', { exact: true }); await name.fill('My draft');
+  await page.evaluate(() => window.workstationViewTest.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'External value' } }));
+  await expect(name).toHaveValue('My draft'); await expect(name).toHaveAttribute('data-edit-conflict', 'true'); await name.dispatchEvent('change');
+  expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('External value');
+  await page.getByRole('button', { name: 'Use current value', exact: true }).click(); await expect(name).toHaveValue('External value'); await expect(name).toBeFocused();
+  await name.fill('Intentional overwrite'); await page.evaluate(() => window.workstationViewTest.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Later value' } }));
+  await page.getByRole('button', { name: 'Keep my edit', exact: true }).click(); expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].name)).toBe('Intentional overwrite');
+});
+
+test('removing an active schema field announces focus return and fences its retired callback', async ({ page }) => {
+  await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true }).click(); const condition = page.getByLabel('Step condition', { exact: true });
+  await condition.selectOption('event'); const every = page.getByLabel('Every', { exact: true }); await every.focus();
+  await every.evaluate(element => { window.removedField = element; });
+  await page.evaluate(() => window.workstationViewTest.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { condition: null } }));
+  await expect(every).toHaveCount(0); await expect(page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true })).toBeFocused();
+  const count = await page.evaluate(() => window.workstationViewTest.actions.length);
+  await page.evaluate(() => { window.removedField.value = '9'; window.removedField.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(count); await expect(page.locator('.studio-status')).toContainText('no longer available');
+});
+
+
+test('view replacement retires A before B borrows its canvas and late A callbacks cannot erase B', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page);
+  expect(await page.evaluate(async () => {
+    const f = window.workstationViewTest, first = f.view, canvas = document.getElementById('gameCanvas'), originalParent = document.body;
+    const baseFrame = () => {}, baseLayout = { original: true }, renderer = { resize() {}, onWorkstationFrame: baseFrame, workstationLayout: baseLayout };
+    f.runtime.lanes = { renderer }; first.render(); const oldFrame = renderer.onWorkstationFrame, oldInput = document.querySelector('[data-field-key="Lane:Name"] input');
+    const { createProcgenWorkstationView } = await import('/js/app/procgen/workstation/ProcgenWorkstationView.js');
+    let second; second = createProcgenWorkstationView({ document, window, getProject: f.getProject, getRuntime: () => f.runtime, state: { ...f.state }, handlers: f.handlers,
+      dispatch: action => { f.dispatch(action); second.render(); } }); second.render(); const secondFrame = renderer.onWorkstationFrame, secondRoot = document.getElementById('procgenStudio');
+    const before = f.actions.length; oldInput.value = 'Stale'; oldInput.dispatchEvent(new Event('change', { bubbles: true })); first.dispose(); oldFrame(20);
+    const live = secondRoot.isConnected && renderer.onWorkstationFrame === secondFrame && renderer.workstationLayout === second.getProjection(), unchanged = f.actions.length === before;
+    second.dispose(); second.dispose(); return { live, unchanged, detached: renderer.onWorkstationFrame === baseFrame && renderer.workstationLayout === baseLayout,
+      restored: canvas.parentElement === originalParent, roots: document.querySelectorAll('.procgen-studio').length };
+  })).toEqual({ live: true, unchanged: true, detached: true, restored: true, roots: 0 });
+});
+
+test('renderer replacement restores each previous attachment exactly once', async ({ page }) => {
+  await ready(page);
+  expect(await page.evaluate(() => {
+    const { view, runtime } = window.workstationViewTest, one = () => {}, two = () => {}, first = { resize() {}, onWorkstationFrame: one }, second = { resize() {}, onWorkstationFrame: two };
+    runtime.lanes = { renderer: first }; view.render(); runtime.lanes.renderer = second; view.render(); const released = first.onWorkstationFrame === one && first.workstationLayout == null;
+    view.dispose(); return { released, detached: second.onWorkstationFrame === two && second.workstationLayout == null };
+  })).toEqual({ released: true, detached: true });
+});

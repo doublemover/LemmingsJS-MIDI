@@ -118,3 +118,42 @@ test('custom desktop bindings publish together after neutral loading and remain 
     await expect(dialog).toBeVisible(); expect((await snapshot(page)).hash).toBe(before.hash);
   } finally { release(); }
 });
+
+
+test('production inspector retains exact text/IME and signed numeric drafts through unrelated edits, resize, help and Undo', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  const name = page.getByLabel('Name', { exact: true }); await name.fill('Composing lane');
+  await name.evaluate(element => { window.productionField = element; element.setSelectionRange(3, 6); element.dispatchEvent(new window.CompositionEvent('compositionstart', { bubbles: true })); });
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { name: 'Other lane edit' } }));
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  expect(await name.evaluate(element => ({ same: element === window.productionField, value: element.value, caret: element.selectionStart }))).toEqual({ same: true, value: 'Composing lane', caret: 3 });
+  await name.evaluate(element => { element.dispatchEvent(new window.CompositionEvent('compositionend', { bubbles: true })); element.dispatchEvent(new Event('change', { bubbles: true })); });
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name)).toBe('Composing lane');
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.undo()); await expect(name).toHaveValue('Lane 1');
+  const commands = await openCommands(page); await commands.getByRole('button', { name: 'Close', exact: true }).click();
+  const numeric = page.getByRole('textbox', { name: 'Pan numeric value', exact: true }); await numeric.fill('-0.25'); await numeric.evaluate(element => { window.productionNumeric = element; element.setSelectionRange(2, 2); });
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { gain: 0.7 } }));
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  expect(await numeric.evaluate(element => ({ same: element === window.productionNumeric, value: element.value }))).toEqual({ same: true, value: '-0.25' });
+});
+
+test('production external text conflicts require explicit intent and current canonical Undo', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  const name = page.getByLabel('Name', { exact: true }); await name.fill('Local draft');
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'External name' } }));
+  await expect(name).toHaveValue('Local draft'); await expect(name).toHaveAttribute('data-edit-conflict', 'true'); await name.dispatchEvent('change');
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name)).toBe('External name');
+  await page.getByRole('button', { name: 'Keep my edit', exact: true }).click(); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name)).toBe('Local draft');
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.undo()); await expect(name).toHaveValue('External name');
+});
+
+
+test('production numeric entry protects its draft from an external parameter change', async ({ page }) => {
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  const numeric = page.getByRole('textbox', { name: 'Pan numeric value', exact: true }); await numeric.fill('-25');
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { pan: 60 } }));
+  await expect(numeric).toHaveValue('-25'); await expect(numeric).toHaveAttribute('data-edit-conflict', 'true'); await numeric.press('Enter');
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].pan)).toBe(60);
+  await page.locator('.parameter-knob-text-conflict').getByRole('button', { name: 'Keep my edit', exact: true }).click();
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].pan)).toBe(-25);
+});

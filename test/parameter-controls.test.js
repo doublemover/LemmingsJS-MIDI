@@ -41,6 +41,23 @@ describe('typed parameter control transactions', () => {
     cap.dispatchEvent(event('pointerup', { pointerId: 1 })); expect(commits).to.have.length(1);
     expect(knob.inspect()).to.include({ authored: 0, draft: 0, gestureId: null }); knob.dispose();
   });
+  it('retains the authored gesture draft across unchanged state patches and cancels a real external change', () => {
+    const document = new TestDocument(), commits = [], cancellations = [];
+    const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value), onCancel: reason => cancellations.push(reason) });
+    const cap = knob.element.children[1]; cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); const before = knob.inspect();
+    knob.setState({ value: 0, effectiveValue: 30 }); expect(knob.inspect()).to.deep.equal(before);
+    cap.dispatchEvent(event('keyup', { key: 'ArrowUp' })); expect(commits).to.deep.equal([before.draft]);
+    cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ value: -300 });
+    expect(knob.inspect()).to.include({ authored: -300, draft: -300, gestureId: null }); expect(cancellations).to.include('external-edit'); knob.dispose();
+  });
+  it('preserves a numeric composition buffer and requires explicit conflict resolution', () => {
+    const document = new TestDocument(), commits = [];
+    const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value) });
+    const entry = knob.element.children[3]; entry.removeAttribute = name => entry.attributes.delete(name); document.activeElement = entry; entry.value = '-300'; entry.dispatchEvent(event('compositionstart')); entry.dispatchEvent(event('input'));
+    entry.dispatchEvent(event('change')); expect(commits).to.have.length(0); knob.setState({ value: 600 });
+    expect(entry.value).to.equal('-300'); expect(entry.dataset.editConflict).to.equal('true'); entry.dispatchEvent(event('keydown', { key: 'Enter' })); expect(commits).to.have.length(0);
+    entry.dispatchEvent(event('compositionend')); entry.dispatchEvent(event('keydown', { key: 'Escape' })); expect(entry.value).to.equal('600'); expect(entry.dataset.editConflict).to.equal(undefined); knob.dispose();
+  });
   it('returns momentary keyboard changes and always releases no-change pointer gestures', () => {
     const document = new TestDocument(), commits = [], previews = [], finishes = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, momentary: true,

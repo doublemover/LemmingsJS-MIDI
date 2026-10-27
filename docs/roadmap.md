@@ -7183,3 +7183,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   configuration, real Saved Projects/native controls, Stage protection, owned
   repeat, stale search and actual deep-editor handoff. Types, undefined calls,
   provenance, formatting and whitespace pass. New full CI remains pending.
+
+
+### Continuation 284 — keyed editing identity and explicit conflicts
+
+- Full CI at 0607eec4 is green: **6,446 Node cases / 48 desktop browser
+  boundaries**, every required check, **90.29% lines/statements, 83.53% branches,
+  88.22% functions**. Ready master capture acknowledges 56,064 frames with no
+  clock discontinuity. Closed #999 with this evidence; GitHub now has 229 open
+  issues. That checkpoint excludes this field/lifetime continuation.
+- Inspector fields, lane headers, pattern cells and faders reconcile through
+  entity keys and stable IDs. Current callbacks replace stale render closures;
+  text/IME buffers, caret and exact DOM identity survive unrelated project edits
+  and desktop resize. Retained parameter renderers avoid repeated observer and
+  gesture allocation. Persistent fader callbacks do not capture retired lanes.
+- Same-field external text/numeric edits expose explicit **Keep my edit / Use
+  current value** choices. Blur cannot implicitly overwrite or replace those
+  choices mid-click. Removed schema fields retire callbacks and announce focus
+  return to the named inspector tab. View revision/document/selection leases
+  reject stale sound-selector completions.
+- One canvas has one mounted view. Replacement retires A before B borrows it;
+  late form/frame callbacks or repeated A disposal cannot erase B. Renderer
+  replacement and final retirement restore their exact original attachments.
+- The grouped pass succeeds: **165 Node cases / 29 desktop browser cases**, one
+  opt-in benchmark skipped. Production cases use the populated application for
+  actual text/numeric conflicts, composition, caret, resize and canonical Undo.
+  Component cases additionally exercise exact header/fader/cell identity,
+  removed-field focus and A→B renderer/DOM retirement. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending;
+  broader global transport draft conflicts and real screen-reader smoke remain
+  separate #998 completion checks.

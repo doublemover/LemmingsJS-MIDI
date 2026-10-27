@@ -818,32 +818,32 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "43334e612115cb41319dba60e31c3bbac25732fa",
-    "job": 122410711557,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40566966525/job/122410711557",
-    "passed": 6422,
+    "head": "0607eec4afec44d70faff3633919493f2169aa7b",
+    "job": 122452689509,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40578904201/job/122452689509",
+    "passed": 6446,
     "failed": 0,
-    "browserPassed": 45,
+    "browserPassed": 48,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.28,
-      "statements": 90.28,
-      "branches": 83.49,
-      "functions": 88.21
+      "lines": 90.29,
+      "statements": 90.29,
+      "branches": 83.53,
+      "functions": 88.22
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      283
+      284
     ],
     "excludesLaterWork": true,
     "masterCapture": {
       "state": "Ready",
-      "timelineFrames": 108161,
-      "capturedFrames": 108161,
+      "timelineFrames": 56064,
+      "capturedFrames": 56064,
       "stopReason": "user-stop",
       "clockDiscontinuity": null
     }
@@ -9082,6 +9082,37 @@
           "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
           "bytes": 142
         }
+      },
+      "fullCI": {
+        "head": "0607eec4afec44d70faff3633919493f2169aa7b",
+        "job": 122452689509,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40578904201/job/122452689509",
+        "passed": 6446,
+        "failed": 0,
+        "browserPassed": 48,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.29,
+          "statements": 90.29,
+          "branches": 83.53,
+          "functions": 88.22
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          284
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "timelineFrames": 56064,
+          "capturedFrames": 56064,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        }
       }
     },
     "source": [
@@ -9157,8 +9188,152 @@
       }
     ],
     "limitations": [
-      "Current full CI remains pending until this continuation is committed and pushed. The latest fully green checkpoint is 43334e61 and excludes this keyboard work.",
+      "Full CI is green at 0607eec4: 6,446 Node cases, 48 desktop boundaries and all required checks. Issue #999 is closed completed with this evidence; subsequent keyed-field development is excluded.",
       "No native hardware, screen-reader or listening qualification is claimed. Desktop target minimum remains 1920x1080; no phone/tablet layout acceptance."
+    ]
+  },
+  "continuation284": {
+    "baseHead": "0607eec4afec44d70faff3633919493f2169aa7b",
+    "scope": "Stable keyed inspector/lane DOM and callback identity, explicit text/numeric external-edit conflicts and view/renderer replacement retirement.",
+    "implemented": [
+      "Keyed native field wrappers and entity-scoped IDs reconcile in place with current callbacks. Physical instrument IDs, automation curve IDs, visible lane IDs, pattern slots and step IDs prevent child-position target inference. Weak metadata and bounded visible control caches do not retain detached candidate trees.",
+      "Native text and IME buffers retain their exact node, caret and unsaved value through unrelated project updates and desktop resize. Same-field external changes remain visible as conflicts; explicit Keep my edit uses the current canonical callback, Use current value or Escape discards the draft. Blur does not replace resolution controls mid-click. Prior conflict controls and retired input callbacks are fenced.",
+      "Inspector knob/macro and visible lane-fader renderers are retained when their descriptor/selection identity is unchanged. Unchanged state updates preserve in-flight knob drafts; real external parameter changes cancel captured gestures explicitly. Numeric entry has its own IME guard and explicit same-value conflict resolution.",
+      "Removed schema/entity controls retire their handlers, move focus to the selected named inspector tab and announce the reason. Selection/document/parameter changes cannot inherit a child-index editing target. View snapshots carry current document identity, logical selection and a monotonic render revision for late sound-selector status admission.",
+      "A canvas has one mounted view owner. Mounting a replacement retires the previous view before borrowing the shared DOM. Old frame/form callbacks and repeated A disposal cannot erase B. Each renderer replacement/disposal restores its own previous layout/frame attachment. Persistent lane fader callbacks capture a lane ID without retaining an old immutable lane snapshot."
+    ],
+    "validation": {
+      "nodePassed": 165,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "1s",
+      "browserPassed": 29,
+      "browserFailed": 0,
+      "browserSkipped": 1,
+      "browserSkipReason": "Opt-in view latency benchmark; no benchmark pass is claimed.",
+      "browserReportedDuration": "43.5s",
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "productionBrowserCases": [
+        "Real populated workstation text composition, caret and exact field identity through unrelated lane edits, 1920x1080/2560x1440 resize, canonical commit and Undo.",
+        "Real Commands help handoff and signed intermediate numeric draft retained through unrelated updates and resize.",
+        "Real same-name external text conflict refuses implicit overwrite, explicit Keep my edit commits through current history and Undo returns the external accepted value.",
+        "Real knob numeric entry refuses implicit overwrite and explicitly commits its typed -25 against accepted external pan 60."
+      ],
+      "componentBrowserCases": [
+        "Exact field/header/fader/cell identity through full render, unrelated project edit, composition and resize.",
+        "Both named conflict resolutions, active schema field removal/focus announcement and retired callback rejection.",
+        "View A replacement by B, repeated late disposal of A, stale form/frame callbacks, B survival and exact final canvas/renderer baseline restoration.",
+        "Renderer r1 to r2 replacement restores both original attachments exactly once.",
+        "Existing view paging, routing, fullscreen, keyboard ownership, bounded 1024-lane projection, painting and modal guards remain green."
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-owners-final-20261027.log",
+          "sha256": "00ad9672876fe849a84d51a76590d6f60f0e68f2c6db323c5d2fec4dd7600795",
+          "bytes": 15808
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-browser-complete-20261027.log",
+          "sha256": "9d1b8ebb6886481d265d4a4d1835fa67b96cf77c7192964e1283e8b2d5faa6b8",
+          "bytes": 4890
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-format-publish-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-types-complete-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-undefined-complete-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog284-provenance-release-20261027.log",
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
+          "bytes": 142
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css\\procgen-workstation.css",
+        "sha256": "6e5d1e429917581359ab2b80ea00462fedb5b6fed4a751900894af8476ed309f",
+        "bytes": 31084
+      },
+      {
+        "path": "docs\\procgen-workstation.md",
+        "sha256": "91ca3a3f0de8503fae6ea8e832144dbf024cad867c28eb549ae60e9e69e73f32",
+        "bytes": 23498
+      },
+      {
+        "path": "e2e\\procgen-workstation-commands.spec.js",
+        "sha256": "1d466d4eb5ddb562ddc64eac7b393031bd8812383137db04e2d50fecc5b046c3",
+        "bytes": 16090
+      },
+      {
+        "path": "e2e\\procgen-workstation-view.spec.js",
+        "sha256": "462dd9a302236518a52e241eb3e0b6ada587a3a3f7145eccad37c99c0dc91711",
+        "bytes": 35382
+      },
+      {
+        "path": "js\\app\\controls\\KeyedControlTree.js",
+        "sha256": "b1c1f8e106d8ec60ccf350c0b413acfa652153c95db64214cd84ce4fe82d880d",
+        "bytes": 9671
+      },
+      {
+        "path": "js\\app\\controls\\ParameterKnob.js",
+        "sha256": "85cf12ac26473c13c601f2304ccf8468f0533db58c3246f3a001e18c7d539a36",
+        "bytes": 12839
+      },
+      {
+        "path": "js\\app\\procgen\\workstation\\ProcgenWorkstation.js",
+        "sha256": "501a0287b2efc8dc0500c4499163123c3df20bc85660d4dfc3f6df99b7d5b1a7",
+        "bytes": 182766
+      },
+      {
+        "path": "js\\app\\procgen\\workstation\\ProcgenWorkstationView.js",
+        "sha256": "f32051b42e1d5d7708ca518dee023acb88ef3ba034004c619cf8c727830e9739",
+        "bytes": 105254
+      },
+      {
+        "path": "test\\keyed-control-tree.test.js",
+        "sha256": "3d699884a76e9ee6d54ba70467fa35f051b4be5eae74b0ff0611a9389807469f",
+        "bytes": 6871
+      },
+      {
+        "path": "test\\parameter-controls.test.js",
+        "sha256": "ee86041b0c3d6da9413d3ac640435593adbee71deef593ad36e87c048c71eb76",
+        "bytes": 9911
+      }
+    ],
+    "repairEvidence": {
+      "firstBrowserBatch": {
+        "passed": 25,
+        "failed": 2,
+        "skipped": 1,
+        "cause": "Native blur emits another change before click. Rebuilding conflict buttons during that change invalidated the pending pointer target. Reuse the admitted same-value choice buttons; replace them only when the accepted value or conflict owner changes."
+      },
+      "fixtureRepair": "The new legacy TestDocument numeric-composition fixture supplies the native removeAttribute method missing from that test double; production DOM behavior was not weakened."
+    },
+    "limitations": [
+      "Full CI remains pending for this continuation; the fully green 0607eec4 checkpoint excludes these fields/lifetime changes.",
+      "Current fixtures verify inspector fields and visible lane control identity/conflicts. Broader global transport field conflict behavior and real screen-reader smoke remain separate completion checks for #998.",
+      "No external hardware, operating-system IME installation, assistive-device or listening certification is claimed. Browser composition fixtures dispatch native CompositionEvent sequences at the desktop minimum."
     ]
   }
 }

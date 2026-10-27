@@ -1,4 +1,7 @@
 @import url('./sound-content-library.css');
+.studio-field-conflict { padding: 8px; border: 1px solid #956618; background: #fff1cf; font-size: 12px; }
+.studio-field-conflict button { margin: 6px 6px 0 0; }
+[data-edit-conflict] { outline: 2px solid #956618; }
 .studio-command-palette { width: min(640px, calc(100vw - 64px)); max-height: calc(100vh - 64px); color: #253544; background: #edf2f6; }
 .studio-command-palette input { box-sizing: border-box; width: 100%; margin-bottom: 8px; }
 .studio-command-list { max-height: 55vh; overflow: auto; display: grid; gap: 4px; margin-bottom: 12px; }

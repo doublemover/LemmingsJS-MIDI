@@ -1875,7 +1875,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
-  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, canCommand, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => JSON.stringify([documentId, documentGeneration]), dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   let observedOutputRoute = outputRouteKey(legacy.local.getState());
   const unsubscribeOutputState = legacy.local.subscribe?.(state => {

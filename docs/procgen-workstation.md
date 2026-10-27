@@ -357,3 +357,18 @@ actions with no default shortcut. An explicitly configured binding remains
 available inside dialogs and Stage without nuking actors or committing a captured
 edit gesture; composition and keys already consumed by a native control retain
 priority.
+
+## Editing buffers and conflicts
+
+Inspector controls, visible lane headers, pattern cells and lane faders keep their
+logical identities across ordinary renders. Text and numeric entry buffers retain
+focus and caret while unrelated parameters or the desktop viewport change.
+If another edit changes the same value while you are typing, your draft stays
+visible. Choose **Keep my edit** to commit it against the current project or
+**Use current value** to discard it. Escape restores the current value. A
+conflicted draft is not committed implicitly by leaving the field.
+
+A field removed by a schema or selection change returns focus to the selected
+inspector tab and announces the reason. Replacing a view retires its subscriptions,
+controls and canvas attachment before the replacement mounts. A retired field or
+late callback cannot act on the replacement document or view.

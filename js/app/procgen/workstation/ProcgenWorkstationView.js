@@ -1,3 +1,4 @@
+import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
 import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
@@ -19,42 +20,59 @@ import { createMidiRouteDiagnostics } from './MidiRouteDiagnostics.js';
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
-const rendererLeases = new WeakMap();
+const rendererLeases = new WeakMap(), mountedViews = new WeakMap();
 
-function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
+function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
+  mountedViews.get(document.getElementById('gameCanvas'))?.dispose();
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
-  const listeners = [], parameterControls = [], laneMixControls = new Map();
-  let midiRouteView = null, midiRouteState = null;
+  const listeners = [], parameterControls = [], laneMixControls = new Map(), parameterCache = new Map();
+  let parameterScope = null, parameterSeen = null, viewRevision = 0;
+  let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
   const node = (tag, text, cls) => { const el = document.createElement(tag); if (text != null) el.textContent = text; if (cls) el.className = cls; return el; };
-  const button = (text, action, title = text) => { const el = node('button', text); el.type = 'button'; el.title = title; el.addEventListener('click', action); return el; };
+  const button = (text, action, title = text) => { const el = node('button', text); el.type = 'button'; el.title = title; el.dataset.controlKey = 'button:' + text; return controlTree.bind(el, { click: action }); };
   const select = (choices, value, changed, label) => {
     const el = node('select'); el.setAttribute('aria-label', label);
     for (const choice of choices) { const [id, text] = Array.isArray(choice) ? choice : [choice, choice]; const option = node('option', text); option.value = id; el.append(option); }
-    el.value = String(value); el.addEventListener('change', () => changed(el.value)); return el;
+    el.value = String(value); return controlTree.bind(el, { change: event => changed(event.currentTarget.value) });
   };
   const input = (value, changed, options = {}) => {
     const el = node('input'); el.type = options.type || 'number';
     for (const key of ['min', 'max', 'step', 'placeholder']) if (options[key] != null) el[key] = String(options[key]);
     if (el.type === 'checkbox') el.checked = !!value; else el.value = value ?? '';
-    let committed = el.type === 'checkbox' ? el.checked : el.value;
-    el.addEventListener('change', () => {
-      const raw = el.type === 'checkbox' ? el.checked : el.value;
-      if (raw === committed) return;
-      committed = raw;
-      changed(el.type === 'checkbox' ? el.checked : el.type === 'text' ? el.value : options.nullable && el.value === '' ? null : Number(el.value));
-    }); return el;
+    return controlTree.bind(el, { change: event => {
+      const current = event.currentTarget;
+      changed(current.type === 'checkbox' ? current.checked : current.type === 'text' ? current.value : options.nullable && current.value === '' ? null : Number(current.value));
+    } });
   };
+
   const macroControls = new Map(), macroModes = new Map();
   const parameter = (value, changed, descriptor, options = {}) => {
-    const laneId = state.laneId, tab = state.tab, source = procgenLane(getProject().procgen.lanes, laneId);
-    const control = createParameterKnob({ document, window, value, descriptor,
-      getIdentity: () => procgenLane(getProject().procgen.lanes, laneId) === source && state.laneId === laneId && state.tab === tab ? source : null,
-      commit: changed, ...options }); parameterControls.push(control); if (options.macroKey) macroControls.set(options.macroKey, control); return control.element;
+    const scope = parameterScope, identity = JSON.stringify([scope, descriptor, !!options.momentary, !!options.readOnly]), cacheKey = descriptor.id;
+    let entry = parameterCache.get(cacheKey);
+    if (entry && entry.identity !== identity) { entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(cacheKey); entry = null; }
+    if (!entry) {
+      entry = { identity, changed, options, token: {}, control: null };
+      const invoke = name => (...args) => entry.options[name]?.(...args);
+      entry.control = createParameterKnob({ document, window, value, descriptor, ...options,
+        getIdentity: () => !disposed && parameterScope === scope ? entry.token : null,
+        commit: (...args) => entry.changed(...args), preview: invoke('preview'), onFinish: invoke('onFinish'), onCancel: reason => {
+          if (reason === 'external-edit') status.textContent = 'The parameter changed outside this gesture. The gesture was canceled; its draft was not committed.';
+          entry.options.onCancel?.(reason);
+        } });
+      entry.control.element.__ownedControl = true; parameterCache.set(cacheKey, entry); parameterControls.push(entry.control);
+    } else { entry.control.setState({ value, isReadOnly: !!options.readOnly }); if (entry.control.inspect().gestureId == null) { entry.changed = changed; entry.options = options; } }
+    parameterSeen?.add(cacheKey); if (options.macroKey) macroControls.set(options.macroKey, entry.control);
+    return entry.control.element.isConnected ? controlTree.retain(entry.control.element) : entry.control.element;
   };
-  const labeled = (label, control, parent) => { control.dataset.fieldKey = state.tab + ':' + (control.dataset.parameterId || label); const wrap = node('label', null, 'studio-field'); wrap.append(node('span', label), control); parent.append(wrap); return control; };
+  const labeled = (label, control, parent) => {
+    const fieldKey = state.tab + ':' + (parent.dataset.controlKey ? parent.dataset.controlKey + ':' : '') + (control.__retainedControl?.dataset.parameterId || control.dataset.parameterId || label);
+    control.id = 'studio-field-' + encodeURIComponent(parameterScope + ':' + fieldKey);
+    control.dataset.fieldKey = fieldKey; const wrap = node('label', null, 'studio-field'); wrap.dataset.fieldKey = fieldKey;
+    wrap.append(node('span', label), control); parent.append(wrap); return control;
+  };
   const byId = id => document.getElementById(id);
   const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
   const presentationRoot = node('div', null, 'procgen-presentation-root'); presentationRoot.id = 'procgenPresentationRoot';
@@ -73,7 +91,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const fields = node('div', null, 'studio-inspector-fields'); fields.id = 'procgenInspectorFields';
   resize.setAttribute('aria-controls', fields.id); resize.setAttribute('aria-valuemin', '250'); resize.setAttribute('aria-valuemax', '480');
   resize.setAttribute('aria-valuenow', String(state.inspectorWidth));
-  inspector.append(resize, tabs, fields);
+  const conflictHost = node('div', null, 'studio-field-conflict'); conflictHost.hidden = true; conflictHost.setAttribute('role', 'status');
+  inspector.append(resize, tabs, conflictHost, fields);
   shell.append(lanes, stage, inspector); topbar.after(shell);
   const footer = node('footer', null, 'studio-footer'); footer.id = 'procgenStudioFooter'; shell.after(footer);
   const panel = byId('procgenPanel'), panelParent = panel?.parentNode, panelSibling = panel?.nextSibling;
@@ -83,20 +102,16 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
+  const controlTree = createKeyedControlTree({ document, conflictHost, onStatus: text => { status.textContent = text; }, focusFallback: () => tabs.querySelector('button[aria-pressed="true"]') });
   const cueStrip = node('div', null, 'studio-scene-cue'); cueStrip.setAttribute('aria-label', 'Prepared physical scene transition'); cueStrip.hidden = true;
   const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
   const cueGo = button('GO · stop and load', () => handlers.stageGo?.()); cueGo.disabled = true;
   cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
   let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
-  let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false, stageActive = false;
+  let attachedRenderer = null, disposed = false, superseded = false, stageActive = false;
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
-  on(fields, 'compositionstart', () => { composing = true; });
-  on(fields, 'compositionend', () => {
-    composing = false;
-    if (pendingInspectorRender) { pendingInspectorRender = false; window.setTimeout?.(() => { if (!disposed) render(); }, 0); }
-  });
   const detachRenderer = () => {
     const renderer = attachedRenderer; attachedRenderer = null;
     if (!renderer) return;
@@ -309,7 +324,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
-  const selectSound = (laneId, patch) => { renderInspector(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.'); Promise.resolve().then(() => handlers.selectSoundAlias(laneId, patch)).catch(error => { handlers.status?.(error.message + ' Keep the previous sound, enable local listening for worklet sources, or explicitly select the Soft triangle fallback.'); renderInspector(); }); };
+  const viewLease = () => Object.freeze({ revision: viewRevision, selectionKey: parameterScope, documentIdentity: getDocumentIdentity() });
+  const currentViewLease = lease => !disposed && lease.revision === viewRevision && lease.selectionKey === parameterScope && lease.documentIdentity === getDocumentIdentity();
+  const selectSound = (laneId, patch) => {
+    renderInspector(); const lease = viewLease(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.');
+    Promise.resolve().then(() => currentViewLease(lease) ? handlers.selectSoundAlias(laneId, patch) : null).catch(error => {
+      if (!currentViewLease(lease)) return;
+      handlers.status?.(error.message + ' Keep the previous sound, enable local listening for worklet sources, or explicitly select the Soft triangle fallback.'); renderInspector();
+    });
+  };
   const changeLane = patch => dispatch({ type: 'procgen/lane', laneId: selected().id, patch });
   const changePattern = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch }); };
   const changeStep = patch => { if (selected().mode === 'pattern') dispatch({ type: 'procgen/step', laneId: selected().id, slot: state.slot, index: state.step, patch }); };
@@ -321,29 +344,29 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
-    midiRouteView?.dispose();
-    midiRouteView = null;
-    for (const control of parameterControls.splice(0)) control.dispose(); macroControls.clear();
+    if (disposed) return;
+    const nextFields = node('div'), nextTabs = node('div'); macroControls.clear(); parameterSeen = new Set(); viewRevision++;
+    if (state.tab !== 'MIDI') { midiRouteView?.dispose(); midiRouteView = null; }
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
     state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
     const step = pattern?.steps[state.step];
     if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
-    tabs.replaceChildren();
-    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); tabs.append(el); }
-    fields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
+    parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]);
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); nextTabs.append(el); }
+    nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
-      labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), fields);
-      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => selectSound(lane.id, { family }), 'Sound collection'), fields);
-      labeled('Role', select(PROCGEN_ROLES, lane.role, role => selectSound(lane.id, { role }), 'Instrument role'), fields);
+      labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), nextFields);
+      labeled('Sound collection (legacy aliases)', select(PROCGEN_SOUND_COLLECTIONS.map(c => [c.id, c.name]), lane.family, family => selectSound(lane.id, { family }), 'Sound collection'), nextFields);
+      labeled('Role', select(PROCGEN_ROLES, lane.role, role => selectSound(lane.id, { role }), 'Instrument role'), nextFields);
       const collection = PROCGEN_SOUND_COLLECTIONS.find(c => c.id === lane.family).roles.find(r => r.id === lane.role);
-      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => selectSound(lane.id, { patch }), 'Sound patch'), fields);
-      fields.append(node('p', `World: ${lane.worldThemeId} · sound: ${lane.instrumentPatchId} · ${lane.linkedThemePresetId === lane.worldThemeId ? 'matching theme suggestion' : 'independent world'} · ${lane.soundChangePolicy === 'new-notes-only' ? 'new notes only; held voices retain their renderer' : 'held crossfade requires adapter support'}`, 'studio-hint'));
-      labeled('Patch change policy', select([['new-notes-only', 'New notes only'], ...(lane.soundChangePolicy === 'crossfade-held' ? [['crossfade-held', 'Held crossfade — unsupported by this adapter']] : [])], lane.soundChangePolicy, soundChangePolicy => changeLane({ soundChangePolicy }), 'Patch change policy'), fields);
-      fields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
-      const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; fields.append(matchingWorld);
-      if (lane.instrumentRef) fields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
-      if (lane.instrumentRef?.definition?.macros?.length) fields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
+      labeled('Patch', select(collection.patches.map(p => [p.id, p.name]), lane.patch, patch => selectSound(lane.id, { patch }), 'Sound patch'), nextFields);
+      nextFields.append(node('p', `World: ${lane.worldThemeId} · sound: ${lane.instrumentPatchId} · ${lane.linkedThemePresetId === lane.worldThemeId ? 'matching theme suggestion' : 'independent world'} · ${lane.soundChangePolicy === 'new-notes-only' ? 'new notes only; held voices retain their renderer' : 'held crossfade requires adapter support'}`, 'studio-hint'));
+      labeled('Patch change policy', select([['new-notes-only', 'New notes only'], ...(lane.soundChangePolicy === 'crossfade-held' ? [['crossfade-held', 'Held crossfade — unsupported by this adapter']] : [])], lane.soundChangePolicy, soundChangePolicy => changeLane({ soundChangePolicy }), 'Patch change policy'), nextFields);
+      nextFields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
+      const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; nextFields.append(matchingWorld);
+      if (lane.instrumentRef) nextFields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
+      if (lane.instrumentRef?.definition?.macros?.length) nextFields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
       const visibleMacroKeys = new Set((lane.instrumentRef?.definition?.macros || []).map(macro => JSON.stringify([lane.id, macro.id])));
       for (const key of macroModes.keys()) if (!visibleMacroKeys.has(key)) macroModes.delete(key);
       for (const macro of lane.instrumentRef?.definition?.macros || []) {
@@ -360,37 +383,37 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           handlers.previewMacroGesture(begin(), value, pressure); } catch (error) { cancel(); handlers.status?.(error.message); }
         }, onCancel: cancel, onFinish: cancel });
         control.title = macro.perceptualDirection; control.setAttribute('aria-label', macro.name + ' · next onset');
-        labeled(macro.name + ' · next onset', control, fields); fields.append(node('p', macro.perceptualDirection, 'studio-hint'));
-        labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), fields);
-        labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), fields);
-        fields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));
+        labeled(macro.name + ' · next onset', control, nextFields); nextFields.append(node('p', macro.perceptualDirection, 'studio-hint'));
+        labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), nextFields);
+        labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), nextFields);
+        nextFields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));
       }
       const variation = lane.instrumentRef?.definition?.variation;
       if (variation) {
         labeled('Identity amount · next onset', input(lane.instrumentControls?.variationAmount01 ?? variation.amount01,
-          variationAmount01 => changeLane({ instrumentControls: { ...lane.instrumentControls, variationAmount01 } }), { type: 'range', min: 0, max: 1, step: 0.01 }), fields);
-        fields.append(button('Reroll timbre', () => changeLane({ instrumentControls: { ...lane.instrumentControls,
+          variationAmount01 => changeLane({ instrumentControls: { ...lane.instrumentControls, variationAmount01 } }), { type: 'range', min: 0, max: 1, step: 0.01 }), nextFields);
+        nextFields.append(button('Reroll timbre', () => changeLane({ instrumentControls: { ...lane.instrumentControls,
           variationSeed: ((lane.instrumentControls?.variationSeed ?? variation.seed) + 1) | 0 } }), 'Change only the saved musical seed for future onsets'));
       }
-      fields.append(button('Sound library…', () => handlers.openSoundLibrary?.(), 'Import, audition, install and explicitly apply a saved instrument'));
-      fields.append(button('Shape foundry…', () => handlers.openShapeFoundry?.(), 'Prepare an original solid body, prelisten a selected strike site and apply its ordinary saved instrument'));
+      nextFields.append(button('Sound library…', () => handlers.openSoundLibrary?.(), 'Import, audition, install and explicitly apply a saved instrument'));
+      nextFields.append(button('Shape foundry…', () => handlers.openShapeFoundry?.(), 'Prepare an original solid body, prelisten a selected strike site and apply its ordinary saved instrument'));
       labeled('Mode', select([['physical', 'Physical causes'], ['pattern', 'Complementary pattern']], lane.mode, mode =>
         changeLane(mode === 'pattern' ? { mode, patternPurpose: 'Clocked support for physical events' } :
-          { mode, patternPurpose: null, patterns: [] }), 'Lane playback mode'), fields);
+          { mode, patternPurpose: null, patterns: [] }), 'Lane playback mode'), nextFields);
       if (pattern) {
-        labeled('Physical purpose', input(lane.patternPurpose || '', patternPurpose => changeLane({ patternPurpose }), { type: 'text' }), fields);
-        labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), fields);
-        labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), fields);
-      } else fields.append(node('p', 'This lane follows committed world causes. The Physical tab edits the live instrument mapping.', 'studio-hint'));
-      labeled('Level', parameter(lane.gain, gain => changeLane({ gain }), { id: 'lane-gain', name: 'Level', quantity: 'lane-gain', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
-      labeled('Game accent', parameter(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { id: 'event-accent', name: 'Game accent', quantity: 'event-velocity-multiplier', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), fields);
-      labeled('Pan', parameter(lane.pan, pan => changeLane({ pan }), { id: 'lane-pan', name: 'Pan', quantity: 'stereo-position', unit: 'pan units', min: -127, max: 127, step: 1, fineStep: 1, defaultValue: 0, detents: [0] }), fields);
+        labeled('Physical purpose', input(lane.patternPurpose || '', patternPurpose => changeLane({ patternPurpose }), { type: 'text' }), nextFields);
+        labeled('Pattern length', input(pattern.length, length => changePattern({ length }), { min: 1, max: 64 }), nextFields);
+        labeled('Playback rate', select([0.125, 0.25, 0.5, 1, 2, 4, 8].map(v => [v, v + '×']), pattern.rate, value => changePattern({ rate: Number(value) }), 'Lane playback rate'), nextFields);
+      } else nextFields.append(node('p', 'This lane follows committed world causes. The Physical tab edits the live instrument mapping.', 'studio-hint'));
+      labeled('Level', parameter(lane.gain, gain => changeLane({ gain }), { id: 'lane-gain', name: 'Level', quantity: 'lane-gain', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), nextFields);
+      labeled('Game accent', parameter(lane.eventAccent, eventAccent => changeLane({ eventAccent }), { id: 'event-accent', name: 'Game accent', quantity: 'event-velocity-multiplier', unit: '×', min: 0, max: 2, step: 0.01, defaultValue: 1 }), nextFields);
+      labeled('Pan', parameter(lane.pan, pan => changeLane({ pan }), { id: 'lane-pan', name: 'Pan', quantity: 'stereo-position', unit: 'pan units', min: -127, max: 127, step: 1, fineStep: 1, defaultValue: 0, detents: [0] }), nextFields);
       const events = node('fieldset', null, 'studio-event-mask'); events.append(node('legend', 'Game events'));
       for (const action of ['build', 'bash', 'mine', 'dig', 'fall', 'land', 'spawn']) labeled(action, input(lane.eventMask?.[action] !== false, enabled => changeLane({ eventMask: { ...lane.eventMask, [action]: enabled } }), { type: 'checkbox' }), events);
-      fields.append(events);
-      if (pattern) fields.append(button('Reset phrase to this sound', () => handlers.resetPattern?.()));
+      nextFields.append(events);
+      if (pattern) nextFields.append(button('Reset phrase to this sound', () => handlers.resetPattern?.()));
     } else if (state.tab === 'Physical') {
-      fields.append(node('p', 'Physical instruments use committed world facts from all actors. Pitch and velocity belong to the physical engine; no preview note is started here.', 'studio-hint'));
+      nextFields.append(node('p', 'Physical instruments use committed world facts from all actors. Pitch and velocity belong to the physical engine; no preview note is started here.', 'studio-hint'));
       const take = handlers.causalTakeState?.();
       if (take) {
         const controls = node('fieldset', null, 'studio-physical-take');
@@ -488,7 +511,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           if (take.physicalScoreParent) scoreList.append(node('p', `${take.physicalScoreParent.eventId} · parents ${take.physicalScoreParent.parentCauseIds.join(', ') || 'none recorded'} · command ${take.physicalScoreParent.commandId || 'none recorded'}`, 'studio-hint'));
           controls.append(scoreList);
         }
-        fields.append(controls);
+        nextFields.append(controls);
       }
       const graph = getProject().procgen.physicalGraph;
       const search = node('input'); search.type = 'search'; search.placeholder = 'Find a physical instrument';
@@ -511,7 +534,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         list.replaceChildren(node('p', `Showing ${visible.length} of ${matching.length} matching instruments${matching.length > visible.length ? ' · refine the search' : ''}.`, 'studio-hint'));
         for (const instrument of visible) {
           const group = node('fieldset', null, 'studio-physical-instrument');
-          group.append(node('legend', instrument.id));
+          group.dataset.controlKey = 'instrument:' + instrument.id; group.append(node('legend', instrument.id));
           labeled('Source · all actors', select(sourceChoices, instrument.sourceKind,
             sourceKind => changePhysicalInstrument(instrument.id, sourcePatch(instrument, sourceKind)), 'Physical source'), group);
           if (instrument.sourceKind === 'TerrainWorkCommitted') labeled('Work kind', input(instrument.operationKind || '',
@@ -542,71 +565,73 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           list.append(group);
         }
       };
-      search.addEventListener('input', () => { state.physicalSearch = search.value; renderPhysicalList(); });
-      fields.append(search, list); renderPhysicalList();
+      search.dataset.fieldKey = 'Physical:search'; search.id = 'studio-field-' + encodeURIComponent(parameterScope + ':Physical:search');
+      const searchChanged = event => { state.physicalSearch = event.currentTarget.value; render({ partial: true }); };
+      controlTree.bind(search, { change: searchChanged, input: searchChanged });
+      nextFields.append(search, list); renderPhysicalList();
     } else if (state.tab === 'Step' || state.tab === 'Chord') {
-      labeled('Trigger', input(step.enabled, enabled => changeStep({ enabled }), { type: 'checkbox' }), fields);
-      labeled('Scale degree', input(step.degree, degree => changeStep({ degree }), { min: -56, max: 56 }), fields);
-      labeled('Fixed MIDI note', input(step.note ?? '', note => changeStep({ note }), { min: 0, max: 127, nullable: true }), fields);
-      labeled('Velocity', input(step.velocity, velocity => changeStep({ velocity }), { min: 1, max: 127 }), fields);
-      labeled('Duration / beats', input(step.duration, duration => changeStep({ duration }), { min: 0.01, max: 32, step: 0.0625 }), fields);
-      labeled('Probability %', input(Math.round(step.probability * 100), value => changeStep({ probability: value / 100 }), { min: 0, max: 100 }), fields);
-      labeled('Chance counter', select(['event', 'pass', 'bar'], step.probabilityBasis, probabilityBasis => changeStep({ probabilityBasis }), 'Probability counter'), fields);
-      labeled('Condition', select(['none', 'event', 'pass', 'bar', 'terrain', 'action'], step.condition?.kind || 'none', kind => changeStep({ condition: kind === 'none' ? null : { kind, value: kind === 'terrain' ? 'ground' : kind === 'action' ? 'walk' : '', every: 2, offset: 0 } }), 'Step condition'), fields);
+      labeled('Trigger', input(step.enabled, enabled => changeStep({ enabled }), { type: 'checkbox' }), nextFields);
+      labeled('Scale degree', input(step.degree, degree => changeStep({ degree }), { min: -56, max: 56 }), nextFields);
+      labeled('Fixed MIDI note', input(step.note ?? '', note => changeStep({ note }), { min: 0, max: 127, nullable: true }), nextFields);
+      labeled('Velocity', input(step.velocity, velocity => changeStep({ velocity }), { min: 1, max: 127 }), nextFields);
+      labeled('Duration / beats', input(step.duration, duration => changeStep({ duration }), { min: 0.01, max: 32, step: 0.0625 }), nextFields);
+      labeled('Probability %', input(Math.round(step.probability * 100), value => changeStep({ probability: value / 100 }), { min: 0, max: 100 }), nextFields);
+      labeled('Chance counter', select(['event', 'pass', 'bar'], step.probabilityBasis, probabilityBasis => changeStep({ probabilityBasis }), 'Probability counter'), nextFields);
+      labeled('Condition', select(['none', 'event', 'pass', 'bar', 'terrain', 'action'], step.condition?.kind || 'none', kind => changeStep({ condition: kind === 'none' ? null : { kind, value: kind === 'terrain' ? 'ground' : kind === 'action' ? 'walk' : '', every: 2, offset: 0 } }), 'Step condition'), nextFields);
       if (step.condition) {
         if (['terrain', 'action'].includes(step.condition.kind)) {
           const choices = step.condition.kind === 'terrain' ? ['ground', 'gap', 'wall', 'steel', 'hazard'] : ['walk', 'build', 'bash', 'mine', 'dig', 'fall', 'jump', 'climb', 'float', 'block', 'idle'];
           if (step.condition.value && !choices.includes(step.condition.value)) choices.push(step.condition.value);
-          labeled('Match', select(choices, step.condition.value, value => changeStep({ condition: { ...step.condition, value } }), 'Observed condition match'), fields);
+          labeled('Match', select(choices, step.condition.value, value => changeStep({ condition: { ...step.condition, value } }), 'Observed condition match'), nextFields);
         }
-        else { labeled('Every', input(step.condition.every, every => changeStep({ condition: { ...step.condition, every } }), { min: 1, max: 64 }), fields); labeled('Offset', input(step.condition.offset, offset => changeStep({ condition: { ...step.condition, offset } }), { min: 0, max: 63 }), fields); }
+        else { labeled('Every', input(step.condition.every, every => changeStep({ condition: { ...step.condition, every } }), { min: 1, max: 64 }), nextFields); labeled('Offset', input(step.condition.offset, offset => changeStep({ condition: { ...step.condition, offset } }), { min: 0, max: 63 }), nextFields); }
       }
-      labeled('Repeats', input(step.repeats, repeats => changeStep({ repeats }), { min: 1, max: 8 }), fields);
-      for (const key of ['tie', 'hold']) labeled(key, input(step[key], value => changeStep({ [key]: value }), { type: 'checkbox' }), fields);
-      labeled('Chord', input(!!step.chord, value => changeStep({ chord: value ? { degrees: [0, 2, 4], inversion: 0, spread: 0 } : null }), { type: 'checkbox' }), fields);
+      labeled('Repeats', input(step.repeats, repeats => changeStep({ repeats }), { min: 1, max: 8 }), nextFields);
+      for (const key of ['tie', 'hold']) labeled(key, input(step[key], value => changeStep({ [key]: value }), { type: 'checkbox' }), nextFields);
+      labeled('Chord', input(!!step.chord, value => changeStep({ chord: value ? { degrees: [0, 2, 4], inversion: 0, spread: 0 } : null }), { type: 'checkbox' }), nextFields);
       if (step.chord) {
-        labeled('Chord degrees', input(step.chord.degrees.join(', '), value => changeStep({ chord: { ...step.chord, degrees: value.split(',').map(Number).filter(Number.isFinite) } }), { type: 'text' }), fields);
-        labeled('Inversion', input(step.chord.inversion, inversion => changeStep({ chord: { ...step.chord, inversion } }), { min: -7, max: 7 }), fields);
-        labeled('Spread / octaves', input(step.chord.spread, spread => changeStep({ chord: { ...step.chord, spread } }), { min: 0, max: 3 }), fields);
+        labeled('Chord degrees', input(step.chord.degrees.join(', '), value => changeStep({ chord: { ...step.chord, degrees: value.split(',').map(Number).filter(Number.isFinite) } }), { type: 'text' }), nextFields);
+        labeled('Inversion', input(step.chord.inversion, inversion => changeStep({ chord: { ...step.chord, inversion } }), { min: -7, max: 7 }), nextFields);
+        labeled('Spread / octaves', input(step.chord.spread, spread => changeStep({ chord: { ...step.chord, spread } }), { min: 0, max: 3 }), nextFields);
         const pitches = procgenStepNotes(step, resolveProcgenSound(lane.family, lane.role, lane.patch), getProject().global.scale).map(note => note % 12);
-        const keys = node('div', null, 'studio-keyboard'); for (let i = 0; i < 12; i++) { const key = node('i', NOTES[i]); key.className = [1, 3, 6, 8, 10].includes(i) ? 'black' : ''; if (pitches.includes(i)) key.classList.add('lit'); keys.append(key); } fields.append(keys);
+        const keys = node('div', null, 'studio-keyboard'); for (let i = 0; i < 12; i++) { const key = node('i', NOTES[i]); key.className = [1, 3, 6, 8, 10].includes(i) ? 'black' : ''; if (pitches.includes(i)) key.classList.add('lit'); keys.append(key); } nextFields.append(keys);
       }
     } else if (state.tab === 'MIDI') {
       const ports = handlers.devices?.() || { inputs: [], outputs: [] };
-      labeled('Input', select([['', 'None'], ...ports.inputs.map(p => [p.id, p.name || p.id])], state.inputId || '', id => handlers.input?.(id), 'MIDI input'), fields);
-      labeled('Lane output', select([['', 'Default output'], ...ports.outputs.map(p => [p.id, p.name || p.id])], lane.outputId || '', outputId => changeLane({ outputId: outputId || null }), 'Lane MIDI output'), fields);
-      midiRouteView = createMidiRouteDiagnostics({ document, onPolicy: policy => handlers.midiRoutePolicy?.(policy) });
-      fields.append(midiRouteView.element); refreshMidiRoute();
-      labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), fields);
-      labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), fields);
-      labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), fields);
-      labeled('Owned external program (zero based)', input(lane.externalProgram ?? '', externalProgram => changeLane({ externalProgram }), { min: 0, max: 127, nullable: true }), fields);
-      labeled('External percussion mapping', input(lane.externalPercussion, externalPercussion => changeLane({ externalPercussion }), { type: 'checkbox' }), fields);
-      for (const [key, title] of [['bankMSB', 'Bank MSB'], ['bankLSB', 'Bank LSB']]) labeled(title, input(lane[key] ?? '', value => changeLane({ [key]: value }), { min: 0, max: 127, nullable: true }), fields);
-      fields.append(button('Connect MIDI', () => handlers.connect?.()),
+      labeled('Input', select([['', 'None'], ...ports.inputs.map(p => [p.id, p.name || p.id])], state.inputId || '', id => handlers.input?.(id), 'MIDI input'), nextFields);
+      labeled('Lane output', select([['', 'Default output'], ...ports.outputs.map(p => [p.id, p.name || p.id])], lane.outputId || '', outputId => changeLane({ outputId: outputId || null }), 'Lane MIDI output'), nextFields);
+      midiRouteView ||= createMidiRouteDiagnostics({ document, onPolicy: policy => handlers.midiRoutePolicy?.(policy) });
+      midiRouteView.element.__ownedControl = true; nextFields.append(midiRouteView.element.isConnected ? controlTree.retain(midiRouteView.element) : midiRouteView.element);
+      labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), nextFields);
+      labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), nextFields);
+      labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), nextFields);
+      labeled('Owned external program (zero based)', input(lane.externalProgram ?? '', externalProgram => changeLane({ externalProgram }), { min: 0, max: 127, nullable: true }), nextFields);
+      labeled('External percussion mapping', input(lane.externalPercussion, externalPercussion => changeLane({ externalPercussion }), { type: 'checkbox' }), nextFields);
+      for (const [key, title] of [['bankMSB', 'Bank MSB'], ['bankLSB', 'Bank LSB']]) labeled(title, input(lane[key] ?? '', value => changeLane({ [key]: value }), { min: 0, max: 127, nullable: true }), nextFields);
+      nextFields.append(button('Connect MIDI', () => handlers.connect?.()),
         ...(pattern ? [button('Learn step note', () => handlers.learn?.())] : []),
         node('p', 'Clock and note routing are independent. Incoming clock is never echoed.', 'studio-hint'));
-      for (const [type, title, low, high] of [['sustain', 'Sustain', 0, 127], ['bend', 'Pitch bend', -8192, 8191], ['pressure', 'Pressure', 0, 127]]) labeled(title, input(0, value => handlers.expression?.({ type, value, channel: lane.channel, outputId: lane.outputId }), { type: 'range', min: low, max: high }), fields);
-      fields.append(node('output', state.lastMidi || 'No input received', 'studio-midi-monitor'));
-      fields.append(node('p', pattern ? (state.inputId ? `Input ready · recording targets ${lane.name}, phrase ${state.slot + 1}.` :
+      for (const [type, title, low, high] of [['sustain', 'Sustain', 0, 127], ['bend', 'Pitch bend', -8192, 8191], ['pressure', 'Pressure', 0, 127]]) labeled(title, input(0, value => handlers.expression?.({ type, value, channel: lane.channel, outputId: lane.outputId }), { type: 'range', min: low, max: high }), nextFields);
+      nextFields.append(node('output', state.lastMidi || 'No input received', 'studio-midi-monitor'));
+      nextFields.append(node('p', pattern ? (state.inputId ? `Input ready · recording targets ${lane.name}, phrase ${state.slot + 1}.` :
         'Connect and select a MIDI input to record notes or learn a step.') :
         'Physical instruments use committed world facts. MIDI input remains available for transport and capture.', 'studio-hint'));
     } else if (state.tab === 'World') {
-      fields.append(button('Reroll world', () => handlers.reroll?.()), button('Replay seed', () => handlers.replay?.()));
-      labeled('Seed', input(getRuntime()?.world?.seed || 0, seed => handlers.seed?.(seed), { min: 0, max: 4294967295 }), fields);
-      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { handlers.rebuild?.({ hazardSpacing: value }); }, { min: 80, max: 1024, step: 16 }), fields);
-      labeled('Minimum display row', input(state.minimumRow, value => { state.minimumRow = value; layout(); renderRows(); }, { min: 56, max: 220, step: 4 }), fields);
+      nextFields.append(button('Reroll world', () => handlers.reroll?.()), button('Replay seed', () => handlers.replay?.()));
+      labeled('Seed', input(getRuntime()?.world?.seed || 0, seed => handlers.seed?.(seed), { min: 0, max: 4294967295 }), nextFields);
+      labeled('Trap spacing / pixels', input(state.hazardSpacing, value => { handlers.rebuild?.({ hazardSpacing: value }); }, { min: 80, max: 1024, step: 16 }), nextFields);
+      labeled('Minimum display row', input(state.minimumRow, value => { state.minimumRow = value; layout(); renderRows(); }, { min: 56, max: 220, step: 4 }), nextFields);
       const observe = patch => { Object.assign(state, { observerMode: patch.mode ?? state.observerMode, observerLane: patch.laneId ?? state.observerLane, observerHold: patch.holdSeconds ?? state.observerHold }); handlers.observe?.(patch); handlers.preferences?.(); };
-      labeled('Observer', select([['overview', 'Overview'], ['follow', 'Follow lane'], ['director', 'Automatic director']], state.observerMode || 'overview', mode => observe({ mode }), 'Observer mode'), fields);
-      labeled('Follow lane', select(getProject().procgen.lanes.map(item => [item.id, item.name]), state.observerLane || lane.id, laneId => observe({ laneId }), 'Observer lane'), fields);
-      labeled('Director hold / seconds', input(state.observerHold || 8, holdSeconds => observe({ holdSeconds }), { min: 2, max: 60 }), fields);
-      fields.append(node('p', 'Scenery grows ahead through a dithered reveal. The world is shared; each lane keeps its own visual and musical character.', 'studio-hint'), button('Advanced world controls', () => byId('procgenTab')?.click()));
+      labeled('Observer', select([['overview', 'Overview'], ['follow', 'Follow lane'], ['director', 'Automatic director']], state.observerMode || 'overview', mode => observe({ mode }), 'Observer mode'), nextFields);
+      labeled('Follow lane', select(getProject().procgen.lanes.map(item => [item.id, item.name]), state.observerLane || lane.id, laneId => observe({ laneId }), 'Observer lane'), nextFields);
+      labeled('Director hold / seconds', input(state.observerHold || 8, holdSeconds => observe({ holdSeconds }), { min: 2, max: 60 }), nextFields);
+      nextFields.append(node('p', 'Scenery grows ahead through a dithered reveal. The world is shared; each lane keeps its own visual and musical character.', 'studio-hint'), button('Advanced world controls', () => byId('procgenTab')?.click()));
     } else {
-      fields.append(node('p', 'Controller curves repeat with musical beats or the observed lane frontier. Points are position:value pairs.', 'studio-hint'));
+      nextFields.append(node('p', 'Controller curves repeat with musical beats or the observed lane frontier. Points are position:value pairs.', 'studio-hint'));
       const curves = lane.ccAutomation || [];
       const update = (id, patch) => changeLane({ ccAutomation: curves.map(curve => curve.id === id ? { ...curve, ...patch } : curve) });
       for (const curve of curves) {
-        const group = node('fieldset', null, 'studio-automation-curve'); group.append(node('legend', `CC ${curve.controller}`));
+        const group = node('fieldset', null, 'studio-automation-curve'); group.dataset.controlKey = 'curve:' + curve.id; group.append(node('legend', `CC ${curve.controller}`));
         labeled('Enabled', input(curve.enabled, enabled => update(curve.id, { enabled }), { type: 'checkbox' }), group);
         labeled('Controller', input(curve.controller, controller => update(curve.id, { controller }), { min: 0, max: 127 }), group);
         labeled('Position', select([['beat', 'Beats'], ['distance', 'World pixels']], curve.axis, axis => update(curve.id, { axis }), 'Automation position'), group);
@@ -617,13 +642,20 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           if (points.some(pair => pair.length !== 2 || pair.some(number => !Number.isFinite(number)))) { status.textContent = 'Use points such as 0:32, 2:110, 4:32.'; return; }
           update(curve.id, { points: points.map(([beat, value]) => ({ beat, value })) });
         }, { type: 'text', placeholder: '0:32, 2:110, 4:32' }), group);
-        group.append(button('Remove curve', () => changeLane({ ccAutomation: curves.filter(item => item.id !== curve.id) }))); fields.append(group);
+        group.append(button('Remove curve', () => changeLane({ ccAutomation: curves.filter(item => item.id !== curve.id) }))); nextFields.append(group);
       }
-      if (curves.length < 16) fields.append(button('Add CC curve', () => { let index = 1; while (curves.some(curve => curve.id === `cc-${index}`)) index++; changeLane({ ccAutomation: [...curves, { id: `cc-${index}`, controller: 74, length: 4, points: [{ beat: 0, value: 32 }, { beat: 2, value: 100 }, { beat: 4, value: 32 }] }] }); }));
+      if (curves.length < 16) nextFields.append(button('Add CC curve', () => { let index = 1; while (curves.some(curve => curve.id === `cc-${index}`)) index++; changeLane({ ccAutomation: [...curves, { id: `cc-${index}`, controller: 74, length: 4, points: [{ beat: 0, value: 32 }, { beat: 2, value: 100 }, { beat: 4, value: 32 }] }] }); }));
       const automation = byId('procgenSpanControls') || byId('procgenSpanFields');
-      if (automation) fields.append(button('Open automation editor', () => { byId('procgenTab')?.click(); automation.scrollIntoView?.({ block: 'center' }); }));
-      fields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
+      if (automation) nextFields.append(button('Open automation editor', () => { byId('procgenTab')?.click(); automation.scrollIntoView?.({ block: 'center' }); }));
+      nextFields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
     }
+    controlTree.reconcile(tabs, nextTabs, parameterScope);
+    controlTree.reconcile(fields, nextFields, parameterScope);
+    for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
+      entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(id);
+    }
+    parameterSeen = null; refreshMidiRoute();
+
   }
   function layout(measured = null) {
     if (disposed) return;
@@ -654,19 +686,32 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     return changed || rendererChanged;
   }
+  const createLaneFader = (laneId, value, documentIdentity) => {
+    const token = {};
+    return createParameterKnob({ document, window, presentation: 'fader', value,
+      descriptor: { id: 'lane-fader:' + laneId, name: 'Level', quantity: 'lane-gain', unit: 'dB', min: 0, max: 2, step: 0.01, fineStep: 0.001, defaultValue: 1, detents: [1],
+        format: formatLaneGain, formatInput: value => value === 0 ? '-inf' : (20 * Math.log10(value)).toFixed(2), parse: parseLaneGain },
+      getIdentity: () => getDocumentIdentity() === documentIdentity && procgenLane(getProject().procgen.lanes, laneId) ? token : null,
+      onCancel: reason => { if (reason === 'external-edit') status.textContent = 'Lane level changed outside this gesture; its draft was canceled.'; }, commit: gain => dispatch({ type: 'procgen/lane', laneId, patch: { gain } }) });
+
+  };
   function renderRows({ laneIds = null } = {}) {
     if (!projection) return;
     queuedBeat = null; playheadSurface.invalidate();
-    if (!laneIds) { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); lanes.replaceChildren(); grid.replaceChildren(); }
-    const place = (parent, child) => { const previous = laneIds && [...parent.children].find(item => item.dataset.laneId === child.dataset.laneId); if (previous) previous.replaceWith(child); else parent.append(child); };
+    const nextLanes = node('div'), nextGrid = node('div'), visibleIds = new Set(), documentIdentity = getDocumentIdentity();
+    if (mixDocumentIdentity !== documentIdentity) { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); mixDocumentIdentity = documentIdentity; }
+    const place = (parent, child) => (parent === lanes ? nextLanes : nextGrid).append(child);
     const project = getProject();
     laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
     previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
     for (let row = 0; row < projection.count; row++) {
       const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
-      if (laneIds && !laneIds.includes(lane.id)) continue;
-      laneMixControls.get(lane.id)?.dispose(); laneMixControls.delete(lane.id);
-      const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
+      visibleIds.add(lane.id);
+      if (laneIds && !laneIds.includes(lane.id)) {
+        const previousHeader = [...lanes.children].find(item => item.dataset.laneId === lane.id), previousRow = [...grid.children].find(item => item.dataset.laneId === lane.id);
+        if (previousHeader && previousRow) { nextLanes.append(controlTree.retain(previousHeader)); nextGrid.append(controlTree.retain(previousRow)); continue; }
+      }
+      const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.dataset.controlKey = 'lane:' + lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1}  ${lane.family.toUpperCase()}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }); label.className = 'studio-lane-title';
       const role = node('span', lane.role, 'studio-role');
       const controls = node('div', null, 'studio-lane-mini');
@@ -674,15 +719,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const slots = node('div', null, 'studio-slots');
       if (pattern) for (let slot = 0; slot < 4; slot++) { const el = button(String(slot + 1), () => { state.laneId = lane.id; state.slot = slot; dispatch({ type: 'procgen/launch', laneId: lane.id, slot }); }, `Launch phrase ${slot + 1} on next bar`); el.setAttribute('aria-pressed', String(lane.activeSlot === slot)); el.classList.toggle('queued', lane.queuedSlot === slot); slots.append(el); }
       else slots.append(node('span', 'LIVE', 'studio-physical-badge'));
-      const fader = createParameterKnob({ document, window, presentation: 'fader', value: lane.gain,
-        descriptor: { id: 'lane-fader:' + lane.id, name: 'Level', quantity: 'lane-gain', unit: 'dB', min: 0, max: 2, step: 0.01, fineStep: 0.001, defaultValue: 1, detents: [1],
-          format: formatLaneGain, formatInput: value => value === 0 ? '-inf' : (20 * Math.log10(value)).toFixed(2), parse: parseLaneGain },
-        getIdentity: () => procgenLane(getProject().procgen.lanes, lane.id), commit: gain => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { gain } }) });
-      fader.element.classList.add('studio-lane-fader'); laneMixControls.set(lane.id, fader);
+      const fader = laneMixControls.get(lane.id) || createLaneFader(lane.id, lane.gain, documentIdentity);
+      fader.element.classList.add('studio-lane-fader'); fader.element.dataset.controlKey = 'fader:' + lane.id; fader.element.__ownedControl = true; laneMixControls.set(lane.id, fader);
+      fader.setState({ value: lane.gain, effectiveValue: handlers.laneMixView?.(lane.id)?.effectiveGain ?? null });
       const mixStatus = node('output', 'Signal unavailable', 'studio-lane-mix-status'); mixStatus.dataset.laneMixStatus = lane.id;
-      header.append(label, role, controls, slots, fader.element, mixStatus); place(lanes, header);
+      header.append(label, role, controls, slots, fader.element.isConnected ? controlTree.retain(fader.element) : fader.element, mixStatus); place(lanes, header);
       const mix = handlers.laneMixView?.(lane.id); if (mix) { fader.setState({ value: lane.gain, effectiveValue: mix.effectiveGain }); mixStatus.textContent = mix.outputState.replaceAll('-', ' '); mixStatus.title = 'Local signal unavailable · activity is semantic events, not dBFS'; }
-      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
+      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.controlKey = 'row:' + lane.id + ':' + displaySlot; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
       if (!pattern) {
@@ -698,9 +741,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[displaySlot]?.steps[index]?.chord ? 'Chord' : 'Step';
           if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
-        cell.className = 'studio-cell'; cell.dataset.index = index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
+        cell.className = 'studio-cell'; cell.dataset.index = index; cell.dataset.controlKey = 'step:' + index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
         cell.addEventListener('dblclick', () => {
-          if (state.tool !== 'select') return;
+          if (disposed || !cell.isConnected || state.tool !== 'select') return;
           const current = getProject().procgen.lanes.find(item => item.id === lane.id)?.patterns[displaySlot]?.steps[index];
           if (current) dispatch({ type: 'procgen/step', laneId: lane.id, slot: displaySlot, index, patch: { enabled: !current.enabled } });
         });
@@ -708,6 +751,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       }
       place(grid, sequence);
     }
+    const identity = 'rows:' + JSON.stringify(documentIdentity);
+    controlTree.reconcile(lanes, nextLanes, identity); controlTree.reconcile(grid, nextGrid, identity);
+    for (const [id, control] of laneMixControls) if (!visibleIds.has(id)) { control.dispose(); laneMixControls.delete(id); }
+
   }
   function frame(beat = state.beat || 0) {
     if (disposed || superseded) return;
@@ -729,45 +776,16 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function render({ partial = false } = {}) {
     if (disposed) return;
-    const active = document.activeElement;
-    const pathFrom = scope => {
-      const path = []; let node = active;
-      while (node && node !== scope) { const parent = node.parentElement; if (!parent) return null; path.unshift([...parent.children].indexOf(node)); node = parent; }
-      return node === scope ? path : null;
-    };
-    const fieldPath = fields.contains(active) ? pathFrom(fields) : null;
-    const header = active?.closest?.('.studio-lane-header'), row = active?.closest?.('.studio-sequence');
-    const focus = fieldPath ? { scope: fields, path: fieldPath, laneId: state.laneId, slot: state.slot, tab: state.tab } :
-      header ? { scope: 'lane', laneId: header.dataset.laneId, path: pathFrom(header) } :
-        row ? { scope: 'row', laneId: row.dataset.laneId, slot: row.dataset.slot, path: pathFrom(row) } :
-          tabs.contains(active) ? { scope: tabs, path: pathFrom(tabs) } : null;
-    if (focus && active?.tagName === 'INPUT' && ['text', 'number', 'search'].includes(active.type)) {
-      focus.value = active.value;
-      try { focus.selectionStart = active.selectionStart; focus.selectionEnd = active.selectionEnd; } catch { /* Number inputs have no caret. */ }
-    }
     selected(); handlers.reconcileSoundPreview?.(); root.value = String(getProject().global.scale.root);
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
     scale.value = matched || current.name;
     if (!partial) { layout(); renderRows(); }
-    if (composing && fieldPath) pendingInspectorRender = true;
-    else renderInspector();
+    renderInspector();
     records.setAttribute('aria-pressed', String(!!state.recording));
-    if (focus && !composing) {
-      const fieldFocus = focus.scope === fields;
-      if (fieldFocus && (focus.laneId !== state.laneId || focus.slot !== state.slot || focus.tab !== state.tab)) { focus.scope = tabs; focus.path = null; }
-      let scope = focus.scope;
-      if (scope === 'lane') scope = [...lanes.children].find(item => item.dataset.laneId === focus.laneId);
-      if (scope === 'row') scope = [...grid.children].find(item => item.dataset.laneId === focus.laneId && item.dataset.slot === focus.slot);
-      const target = focus.path?.reduce((node, index) => node?.children?.[index], scope);
-      if (target?.tagName === active?.tagName && (focus.value == null || target.type === active.type)) {
-        if (focus.value != null) target.value = focus.value;
-        target.focus?.({ preventScroll: true });
-        if (focus.selectionStart != null) try { target.setSelectionRange?.(focus.selectionStart, focus.selectionEnd); } catch { /* Number inputs have no caret. */ }
-      } else if (fieldFocus) tabs.querySelector?.('button[aria-pressed="true"]')?.focus?.({ preventScroll: true });
-    }
   }
+
   function patchStep(action) {
     if (disposed) return;
     const lane = procgenLane(getProject().procgen.lanes, action.laneId);
@@ -943,7 +961,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       }
       return handlers.openPhysicalScene?.();
     } });
-  return { render, patchStep, patchProject, layout, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
+  const api = { render, patchStep, patchProject, layout, viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -1006,10 +1024,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       midiRouteView?.dispose(); midiRouteView = null;
       if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+      if (mountedViews.get(canvas) === api) mountedViews.delete(canvas);
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
@@ -1024,5 +1043,6 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getProjection: () => projection,
     getFullscreenState: () => fullscreenSession.getState()
   };
+  mountedViews.set(canvas, api); return api;
 }
 export { createProcgenWorkstationView };
