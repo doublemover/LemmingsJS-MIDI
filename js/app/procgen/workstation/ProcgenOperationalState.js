@@ -20,6 +20,8 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
     selectedId ? 'selected' : output.discoveredOutputCount > 0 ? 'discovered' : 'undiscovered';
   const contextState = text(audio.contextState, 'unreported'), permission = text(output.midiPermission, 'unknown');
   const sensing = midi.inputLiveness || {}, pressure = midi.pressure || null, blockers = [];
+  const observationDomain = text(sensing.observationDomain, 'unreported'), lastTrafficTime = number(sensing.lastTrafficTime), reportedAt = number(transport.timestamp);
+  const evidenceAgeMs = observationDomain === 'performance-now' && lastTrafficTime !== null && reportedAt !== null && reportedAt >= lastTrafficTime ? reportedAt - lastTrafficTime : null;
   const add = (priority, code, message, action = null) => blockers.push({ priority, code, message, action });
   if (storage.error) add(110, 'storage-error', 'Project save failed. The current edits remain unsaved.', ['export', 'Prepare a backup file']);
   if (recovery.state === 'unavailable' || recovery.error) add(105, 'recovery-error', 'Recovery could not be saved. Keep the current project open and prepare a backup.', ['export', 'Prepare a backup file']);
@@ -32,7 +34,7 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (['expired', 'unavailable'].includes(sensing.mode) && midi.inputId) add(92, 'controller-observation', sensing.mode === 'expired' ?
     'Controller Active Sensing expired. Port connectivity and clock health are separate.' : 'Controller liveness is unavailable: ' + text(sensing.reason, 'the host cannot observe it') + '.', ['inspect-midi', 'Review controller input']);
   if (!hardware && audio.status === 'resource-limited') add(90, 'audio-budget', text(audio.message, 'Browser audio resources are unavailable. Stop another workload and retry.'), ['listen', 'Retry browser audio']);
-  else if (!hardware && (output.status === 'error' || audio.status === 'error')) add(88, 'audio-error', text(output.message || audio.message, 'Browser audio could not start.'), ['listen', 'Retry browser audio']);
+  else if (!hardware && (output.status === 'error' || audio.status === 'error') && !(contextState === 'suspended' && audio.status === 'interrupted')) add(88, 'audio-error', text(output.message || audio.message, 'Browser audio could not start.'), ['listen', 'Retry browser audio']);
   if (hardware && route?.configurationFailure || hardware && route?.activationFailure || hardware && route?.mpeReady === false) add(87, 'route-configuration',
     'MIDI setup is not admitted for ' + outputName + ': ' + text(route.configurationFailure || route.activationFailure, 'setup pending') + '.', ['inspect-midi', 'Review MIDI setup']);
   if (hardware && permission === 'denied') add(86, 'midi-permission-denied', 'MIDI permission was denied. Review browser permission before retrying.', ['discover', 'Retry MIDI discovery']);
@@ -53,7 +55,7 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (pressure?.throttled) add(60, 'output-thinning', 'Output is being thinned: ' + text(pressure.reason, 'the admitted event budget is full') + '.', ['inspect-midi', 'Review output pressure']);
   if (output.enabled && transport.playing === false && transport.clockSource !== 'external') add(45, 'transport-paused', 'Musical transport is stopped. The world and output enable state are separate.', ['play', 'Play musical transport']);
   if (!blockers.length && output.enabled && physical && !mix.patterns && physical.accepted === 0 && physical.rejected === 0 && physical.degraded === 0)
-    add(10, 'no-source-events', 'No eligible physical source event has been observed yet. No hidden test note is played.', ['lesson', 'Open an isolated lesson']);
+    add(10, 'no-source-events', 'No eligible physical source event has been observed yet. No hidden test note is played.', recovery.lessonAvailable === true ? ['lesson', 'Open an isolated lesson'] : ['inspect-physical', 'Review physical mappings']);
   blockers.sort((left, right) => right.priority - left.priority);
   const blocker = blockers[0] || { code: 'ready', message: output.enabled ? 'Output admission is enabled. Waiting between events is normal; acoustic delivery is unverified.' : 'Output state is unavailable.', action: null };
   let action = blocker.action;
@@ -66,7 +68,8 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
     localBackend: freeze({ state: hardware ? 'not-selected' : text(output.status, 'unreported'), enabled: !hardware && output.enabled === true }),
     noteOutput: freeze({ state: routeState, label: hardware ? outputName + ' · ' + routeState : 'Browser output ' + (output.enabled ? 'enabled' : 'off'), selectedId, activeId: output.enabled ? output.outputId || null : null, permission }),
     clockAuthority: freeze({ state: clockState, label: transport.clockSource === 'external' ? 'External clock · ' + clockState : 'Internal clock', inputId: midi.inputId || null, outputId: midi.clockOutputId || null }),
-    controller: freeze({ connected: midi.inputPortConnected ?? null, liveness: text(sensing.mode, 'unobserved'), evidence: text(sensing.evidence, 'no observation supplied'), bridge: 'not-reported' }),
+    controller: freeze({ connected: midi.inputPortConnected ?? null, liveness: text(sensing.mode, 'unobserved'), evidence: text(sensing.evidence, 'no observation supplied'),
+      observationDomain, connectionEpoch: number(sensing.connectionEpoch), lastTrafficTime, deadline: number(sensing.deadline), evidenceAgeMs, bridge: 'not-reported' }),
     pressure: freeze({ throttled: pressure?.throttled === true, reason: text(pressure?.reason), dropped: number(pressure?.dropped) }),
     blockedReason: freeze({ code: blocker.code, message: text(blocker.message), severity: blocker.priority >= 85 ? 'error' : blocker.priority >= 60 ? 'warning' : 'info' }),
     recoveryAction: freeze({ id: action?.[0] || 'none', label: action?.[1] || '', enabled: !!action }),

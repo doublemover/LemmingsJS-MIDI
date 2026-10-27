@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 
-const ready = async (page, suffix = '') => {
-  await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8' + suffix);
+test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
+const ready = async (page, suffix = '', root = '') => {
+  await page.goto(root + '/procgen.html?e2e=1&recipe=1&seed=42&lanes=8' + suffix);
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
 };
@@ -85,4 +88,58 @@ test('paused controller evidence refreshes independently of the activated note r
   await page.evaluate(() => window.__PROCGEN_STUDIO__.ports.configure({ activeSensingVisibility: 'observable' }));
   await expect(strip(page)).toContainText('liveness unobserved'); await expect(strip(page)).not.toHaveAttribute('data-state', 'controller-observation');
   expect((await metrics(page)).sent).toBe(before.sent);
+});
+
+test('a real suspended browser context updates paused status and requires explicit resume without MIDI access', { tag: '@boundary' }, async ({ page }) => {
+  await installWebMidiStub(page, { trackOutput: true });
+  await page.addInitScript(() => {
+    const NativeContext = window.AudioContext;
+    window.AudioContext = class extends NativeContext { constructor(...args) { super(...args); window.__OPERATIONAL_AUDIO_CONTEXT__ = this; } };
+  });
+  await ready(page); const before = await projectWorldState(page);
+  await page.locator('#procgenListen').click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
+  await page.evaluate(() => window.__OPERATIONAL_AUDIO_CONTEXT__.suspend()); await expect(strip(page)).toHaveAttribute('data-state', 'audio-suspended');
+  await expect(page.locator('#procgenListen')).toHaveText('Resume browser audio'); await page.locator('#procgenListen').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().audio.contextState)).toBe('running');
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
+  await page.locator('#procgenPanic').click(); expect(await projectWorldState(page)).toEqual(before); expect(await metrics(page)).toMatchObject({ requests: 0, sent: 0 });
+});
+
+test('external clock waiting and loss remain separate from note activation and require explicit MIDI restart', { tag: '@boundary' }, async ({ page }) => {
+  await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
+  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.input('pw-input-1'); studio.handlers.transport({ linked: false, clockSource: 'external' }); window.__WEBMIDI_STUB__.sendInput([0xfa]); });
+  await expect(strip(page)).toHaveAttribute('data-state', 'clock-waiting'); await expect(strip(page)).toHaveAttribute('data-clock-state', 'waiting');
+  await expect(strip(page)).toHaveAttribute('data-state', 'clock-lost'); await expect(strip(page)).toHaveAttribute('data-clock-state', 'clock-lost'); await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
+  await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xf8])); await expect(strip(page)).toHaveAttribute('data-state', 'clock-lost');
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(false);
+  await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xfa])); await expect(strip(page)).toHaveAttribute('data-state', 'clock-waiting');
+  await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xf8])); await expect(strip(page)).toHaveAttribute('data-clock-state', 'locked');
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
+  expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
+});
+
+test('a prepared silent physical scene names its lack of source events and opens an isolated lesson without loading or test notes', { tag: '@boundary' }, async ({ page }) => {
+  await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi', '/dist/browser');
+  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
+  await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page)).toContainText('No eligible physical source event');
+  await expect(strip(page)).toHaveAttribute('data-world-state', 'paused');
+  const before = await projectWorldState(page), output = await metrics(page);
+  await strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Learn physical music', exact: true })).toBeVisible();
+  expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
+  expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
+});
+
+test('source preview offers an available mapping review instead of an unverified isolated lesson', { tag: '@boundary' }, async ({ page }) => {
+  await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
+  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
+  await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true })).toHaveCount(0);
+  const before = await projectWorldState(page), output = await metrics(page); await strip(page).getByRole('button', { name: 'Review physical mappings', exact: true }).click();
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.state.tab)).toBe('Physical'); expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
 });

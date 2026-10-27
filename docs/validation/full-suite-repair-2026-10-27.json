@@ -818,36 +818,43 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "0607eec4afec44d70faff3633919493f2169aa7b",
-    "job": 122452689509,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40578904201/job/122452689509",
-    "passed": 6446,
+    "head": "cd22832b7975f2f46933f195831eab3dc8ac4dfb",
+    "job": 122511403658,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40595839122/job/122511403658",
+    "passed": 6500,
     "failed": 0,
-    "browserPassed": 48,
+    "browserPassed": 62,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.29,
-      "statements": 90.29,
-      "branches": 83.53,
-      "functions": 88.22
+      "lines": 90.28,
+      "statements": 90.28,
+      "branches": 83.52,
+      "functions": 88.16
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      284,
-      285,
-      286
+      287
     ],
     "excludesLaterWork": true,
     "masterCapture": {
-      "state": "Ready",
-      "timelineFrames": 56064,
-      "capturedFrames": 56064,
-      "stopReason": "user-stop",
-      "clockDiscontinuity": null
+      "state": "Partial",
+      "frames": 33408,
+      "capturedFrames": 33408,
+      "stopReason": "noncontiguous-render-clock",
+      "clockDiscontinuity": {
+        "actualFrame": 50816,
+        "expectedFrame": 50944,
+        "frames": 128
+      }
+    },
+    "log": {
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci286-green.log",
+      "sha256": "529111607af9c7e3eb84a670c83ec00a29f0adfaa55eebaff642d69597533f85",
+      "bytes": 1088466
     }
   },
   "continuation264": {
@@ -9828,6 +9835,217 @@
       "Current remote full CI is pending. The fully green 0607eec4 checkpoint excludes continuations 284/285/286. Browser results above retain their exact cohorts; a combined 62-case same-head pass is not claimed.",
       "Operational scope still needs broader independent clock/backend failure production journeys and supported overlay/busy-state coverage. Browser state/virtual-port evidence does not certify hardware, acoustic delivery, native bridge health or assistive devices.",
       "The original 150 Node failures remain cleared. The GitHub audit still has 229 open issues; this batch is progress on #1072 and follow-through for #998, not completion of the entire backlog."
+    ],
+    "publishedCiOutcome": {
+      "head": "cd22832b7975f2f46933f195831eab3dc8ac4dfb",
+      "job": 122511403658,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40595839122/job/122511403658",
+      "passed": 6500,
+      "failed": 0,
+      "browserPassed": 62,
+      "browserFailed": 0,
+      "allChecksGreen": true,
+      "coverage": {
+        "lines": 90.28,
+        "statements": 90.28,
+        "branches": 83.52,
+        "functions": 88.16
+      },
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "excludesContinuations": [
+        287
+      ],
+      "excludesLaterWork": true,
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 33408,
+        "capturedFrames": 33408,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 50816,
+          "expectedFrame": 50944,
+          "frames": 128
+        }
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci286-green.log",
+        "sha256": "529111607af9c7e3eb84a670c83ec00a29f0adfaa55eebaff642d69597533f85",
+        "bytes": 1088466
+      }
+    }
+  },
+  "continuation287": {
+    "baseHead": "cd22832b7975f2f46933f195831eab3dc8ac4dfb",
+    "scope": "Actual runtime pause, suspended context recovery, controller observation evidence and available isolated lessons.",
+    "implemented": [
+      "Read actual pause/activation/running/clock ownership from a frozen four-scalar runtime getter, without world/debug scans.",
+      "An interrupted suspended context offers explicit Resume. Genuine engine errors and resource denial preserve priority.",
+      "Controller evidence retains endpoint epoch, ingress domain and report-time observation age. Different domains or negative chronology retain unknown age.",
+      "Admit installed lesson recovery by verified application engine capability and confirmed metadata. Source preview offers mapping review. Opening lesson metadata never loads its setup or sends a test note."
+    ],
+    "validation": {
+      "nodePassed": 335,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "18s",
+      "browserPassed": 10,
+      "browserFailed": 0,
+      "browserReportedDuration": "55.9s",
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "productionJourneys": [
+        "Real AudioContext suspend/resume and Panic preserve project and paused physical hash without MIDI permission.",
+        "External clock waiting/loss preserves note activation. Timing Clock alone cannot restart; explicit Start then pulse locks the clock without test notes.",
+        "Built-app no-event recovery opens installed lesson metadata with the same project/world/hash and MIDI byte count. Actual runtime pause holds physics while transport continues.",
+        "Source preview offers available physical-mapping review with unchanged project/paused physical hash/bytes.",
+        "The same group retains named/reordered/same-name activation, denial, empty catalog, inactive removal, reconnect, modal Panic/drafts and sensing evidence."
+      ],
+      "repairEvidence": [
+        "Initial browser group passed 7/9, exposing generic-error priority over suspended context and unavailable lesson recovery in source preview.",
+        "Intermediate group passed 9/10, exposing UI pause projection that did not reflect the actual runtime hold. The authoritative getter fixes the same unchanged assertion."
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-node-publish-20261027.log",
+          "sha256": "bed69655dfad6fd39e99a22818d22a0e22d6c1ac852291865631e5b54fabe197",
+          "bytes": 31908
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-browser-publish-20261027.log",
+          "sha256": "cecedfa88313525eb7e6c0c7d1985570b203c49ab6f99a56efd43114ba34f70e",
+          "bytes": 2067
+        },
+        "firstBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-browser-20261027.log",
+          "sha256": "0af754e088c80132fb3dcb0564c7c2cb386949f8ffda23ccba9b000310bbc065",
+          "bytes": 10351
+        },
+        "intermediateBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-browser-ready-20261027.log",
+          "sha256": "abcc7a3f6c2fbd891ca62bfcc964d4ce505ed4e52cb613773a12740449a5ee19",
+          "bytes": 6405
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-format-publish-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "static": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog287-static-publish-20261027.log",
+          "sha256": "8aac3d488ff58802331d959f987c1df3ac6ee4743103c242b50319ee8f5844df",
+          "bytes": 371
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "sha256": "983c8fa7e2a000bfdae12ee0f0dd6894ec2f780e51caecfba26feee00f49505b",
+        "bytes": 26729
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "30ed42ca6aa3cc8df1e8ffe727b5a75e0e40e6d893aca797b993ca7b9db5deed",
+        "bytes": 532497
+      },
+      {
+        "path": "e2e/procgen-operational-status.spec.js",
+        "sha256": "970394b07992169425bab7db934fe09812c01657233c35cb61fe319709f40453",
+        "bytes": 15966
+      },
+      {
+        "path": "js/app/procgen/ProcgenLaneRuntime.js",
+        "sha256": "607f2bb8b438abd5c9f077dd53908a2eb41aac1d9c08292556261cec819892f4",
+        "bytes": 8265
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+        "sha256": "8def3b515c4f8002d1069caf3d5c4de9a25a525197ed8f1533d781f764410c1c",
+        "bytes": 12523
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalView.js",
+        "sha256": "4796fffeaa8a2ccf49c43ed032e8429206f4a625b887fb1a70e8ffb4d0c6cb8f",
+        "bytes": 7349
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "9bf3c9ebae7dd957da87ac296310da9fd012e27ed29b8caf95e2e1954b22519b",
+        "bytes": 187249
+      },
+      {
+        "path": "test/procgen-lane-renderer.test.js",
+        "sha256": "1f7a0a18eba5d38b51c0d7b665e0f3d1b485bd79f9d99ac03faf2fdcd424d33e",
+        "bytes": 12237
+      },
+      {
+        "path": "test/procgen-operational-state.test.js",
+        "sha256": "2f2212cfe585d19a39e8fc80d74a58619f94488a18a408aa0faad7567b1ee9e7",
+        "bytes": 9944
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "a889b3a3e09702e14393c0e44d4e98e0b12b45072031e3cb765b3de5f4291dd3",
+        "bytes": 93952
+      }
+    ],
+    "priorFullCi": {
+      "head": "cd22832b7975f2f46933f195831eab3dc8ac4dfb",
+      "job": 122511403658,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40595839122/job/122511403658",
+      "passed": 6500,
+      "failed": 0,
+      "browserPassed": 62,
+      "browserFailed": 0,
+      "allChecksGreen": true,
+      "coverage": {
+        "lines": 90.28,
+        "statements": 90.28,
+        "branches": 83.52,
+        "functions": 88.16
+      },
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "excludesContinuations": [
+        287
+      ],
+      "excludesLaterWork": true,
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 33408,
+        "capturedFrames": 33408,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 50816,
+          "expectedFrame": 50944,
+          "frames": 128
+        }
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci286-green.log",
+        "sha256": "529111607af9c7e3eb84a670c83ec00a29f0adfaa55eebaff642d69597533f85",
+        "bytes": 1088466
+      }
+    },
+    "limitations": [
+      "Current remote full CI is pending. The green cd22832b checkpoint excludes this continuation.",
+      "Prior green CI honestly retains Partial master capture after a 128-frame render-clock discontinuity; it is not Ready/contiguous capture evidence.",
+      "Virtual ports, browser state and deterministic physical hashes do not certify acoustic delivery, hardware, bridge health or assistive devices. Wider backlog work remains."
     ]
   }
 }

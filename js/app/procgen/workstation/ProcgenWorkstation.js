@@ -1,4 +1,5 @@
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
+import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { prepareSceneMacroAction } from './SceneMacroAction.js';
 import { performanceSceneHash } from './PerformanceScene.js';
 import { createPerformanceStageSession } from './PerformanceStageSession.js';
@@ -124,6 +125,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
   let startupCommitted = false, deferredPersist = false;
+  const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
+  let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
   const sessionIdentities = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
@@ -1235,7 +1238,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           preparePreview: typeof prepareInspectionWorld === 'function' && legacy.local.audio && resourceBudget ? rehearsal.createPerformanceSceneRehearsal({ audio: legacy.local.audio, prepareInspectionWorld, jobs: backgroundJobs, resourceBudget }) : null,
           beforeCommit: async ({ scene }) => editRevision === savedRevision || window.confirm?.('Replace this edited world with ' + scene.title + '? The prepared scene changes the world, sound and physical mappings, and starts paused. Save the current project first to keep it.' ) === true,
           onState: refreshSceneCue });
-        const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return; physicalLessonDefaultId = definitions[0]?.setupScene.id || null;
+        const definitions = await lessons.createInstalledPhysicalLessons(sceneCatalog); if (disposed) return; physicalLessonDefaultId = definitions[0]?.setupScene.id || null; operationalLessonAvailable = !!physicalLessonDefaultId; view?.refreshOperational?.();
         if (definitions.length) physicalLessonView = lessonView.createPhysicalLessonView({ document, window, definitions, cancelLoad: () => sceneLoader.cancel(), onStatus: status,
           loadScene: async (reference, { signal }) => {
             if (stageSession?.active()) throw new Error('Exit Stage before loading a lesson world.');
@@ -1405,14 +1408,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     displayScheduler: view?.displayScheduler, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
     getTravelMappings: () => { const lane = project.procgen.lanes.findIndex(value => value.id === selected().id); return (runtime()?.world.physicalAuthoring?.graph?.instruments || []).filter(value => { const a = value.articulation; return value.route === 'local' && (!value.sourceLanes || value.sourceLanes.includes(lane)) && (value.sourceKind === 'ContactSpanBegan' && value.causeKind === 'support' && value.contactTravel?.lifetimeScope === 'contactSpan' || value.sourceKind === 'MotionCommitted' && a?.sustain && a.lifetimeScope === 'actorJourney' && a.metric === 'axis-projection' && ['signedX', 'signedY'].includes(a.orientation) && a.phaseMode === 'direction-reversing'); }); }, onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status }); };
   const getOperationalSnapshot = () => {
-    const world = runtime()?.world, output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
+    const world = runtime()?.world, laneRuntime = runtime()?.lanes?.getOperationalState?.(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
     const identity = JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId || null, world?.generation, outputEpoch, midi.routeRevision,
       output.selectedOutputId || output.outputId || null, output.enabled, output.status, position.clockSource, position.clockStatus, state.laneId, !!currentStorageError(), recoveryState, !!stageSession?.active()]);
     return createProcgenOperationalSnapshot({ identity, simulation: { available: !!world, preparing: worldBusy || !world && !startupCommitted,
-      paused: legacy.isPaused?.() ?? !position.playing, requestedSpeed: legacy.settings.speed,
+      paused: laneRuntime?.paused ?? (world?.timer?.speedFactor === 0 || (legacy.isPaused?.() ?? !position.playing)), requestedSpeed: legacy.settings.speed,
       achievedTicksPerSecond: metrics && world && metrics.generation === world.generation ? metrics.achievedTicksPerSecond : null, measurementTime: metrics?.observedAt, tickDurationMs: world?.timer?.frameTime },
     transport: position, output, midi, physical: physicalPlayback?.operationalState?.() || null, lanes: project.procgen.lanes,
-    storage: { error: currentStorageError() }, recovery: { state: recoveryState, error: recoveryError }, stage: !!stageSession?.active() });
+    storage: { error: currentStorageError() }, recovery: { state: recoveryState, error: recoveryError, lessonAvailable: operationalLessonAvailable }, stage: !!stageSession?.active() });
   };
   const handlers = {
     operationalState: getOperationalSnapshot,

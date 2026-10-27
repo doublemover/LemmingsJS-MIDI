@@ -82,6 +82,17 @@ output owners. Pointer activation preserves the current text draft and does not
 submit its form. Output safety cancels a captured edit before release; it remains
 available while a dialog makes the outside toolbar inert.
 
+World pause status comes from the simulation runtime, including an actual hold
+while music continues. A suspended browser context offers explicit Resume rather
+than a generic engine-error action. Controller details retain the ingress epoch,
+observation domain and observation age at the last report; that evidence remains
+separate from external-clock waiting/loss and bridge health.
+
+An isolated lesson is offered only when its installed application capability is
+available. Source preview instead offers the existing physical-mapping review.
+Opening the lesson explains a cause without loading its setup or sending a test
+note; loading a setup remains a separate explicit action.
+
 The MIDI inspector connects devices, selects the input and a lane's note output,
 assigns its channel, and chooses a separate clock output. **MIDI Thru** starts off.
 Selecting external clock makes received MIDI the timing authority. Clock loss

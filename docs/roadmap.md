@@ -7292,3 +7292,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   production journeys remain explicit
   completion checks for #1072; no real device, acoustic or assistive-device
   certification is inferred. The minimum viewport remains 1920x1080 desktop.
+
+### Continuation 287 — actual pause, context recovery and isolated lessons
+
+- Full CI for cd22832b is green: **6,500 coverage cases / 62 desktop boundaries**,
+  all required checks, 90.28% lines/statements, 83.52% branches and 88.16%
+  functions. Its master capture honestly stops Partial after a 128-frame render
+  clock discontinuity, preserving 33,408 captured frames. This is not a Ready
+  recording claim and does not certify the later changes below.
+- The simulation runtime exposes a frozen four-scalar operational getter for
+  pause, activation, running and clock-driven ownership. The strip reads actual
+  pause authority instead of relying only on a UI flag or requested multiplier;
+  no full world/debug scan is introduced.
+- An interrupted suspended context now offers Resume browser audio. Actual
+  engine errors and resource denial keep their higher-priority explanations.
+  Controller details disclose ingress epoch, observation domain and report-time
+  evidence age. Different clock domains and negative chronology leave age unknown.
+- Installed lesson recovery is admitted only by the verified application engine
+  capability and confirmed metadata. Source preview offers physical-mapping
+  review. Metadata preparation neither loads a lesson world nor enables output.
+- **335 focused Node cases and all 10 browser journeys pass** after one grouped
+  correction pass. Production cases exercise real context suspend/resume, external
+  clock waiting/loss/explicit restart without note-route reactivation, a built-app
+  no-event lesson with identical project/paused physical hash and no test notes,
+  and a source-preview mapping fallback. Earlier named destination, denial,
+  reconnect, native dialog and sensing cases remain in the same passing group.
+  Types, undefined calls, provenance, formatting and whitespace pass. Current
+  full CI remains a separate check; no device, acoustic or assistive certification
+  is inferred from these browser and virtual-port observations.

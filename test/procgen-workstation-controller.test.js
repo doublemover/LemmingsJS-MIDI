@@ -95,6 +95,15 @@ describe('ProcGen workstation orchestration', () => {
       expect(current.blockedReason.code).to.equal('controller-observation'); expect(current.clockAuthority.state).to.equal('internal'); expect(current.transport.state).to.equal('stopped');
     } finally { await f.studio.dispose().completion; }
   });
+  it('reports an actual timer hold as a paused world even while musical play remains requested', async () => {
+    const f = setup();
+    try {
+      f.runtime.world.timer.speedFactor = 0; expect(f.legacy.isPaused()).to.equal(false);
+      expect(f.studio.getOperationalSnapshot().simulation.state).to.equal('paused');
+      f.runtime.world.timer.speedFactor = 3; expect(f.studio.getOperationalSnapshot().simulation.state).to.equal('running');
+      f.runtime.lanes.getOperationalState = () => ({ paused: true }); expect(f.studio.getOperationalSnapshot().simulation.state).to.equal('paused');
+    } finally { await f.studio.dispose().completion; }
+  });
   it('prepares a reviewed project checkpoint without requesting a download or enabling output', async () => {
     let releases = 0;
     const f = setup({ backgroundJobs: { async compute(options) {

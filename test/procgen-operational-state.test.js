@@ -4,7 +4,7 @@ import { createProcgenOperationalSnapshot } from '../js/app/procgen/workstation/
 const base = () => ({ identity: 'document:1', simulation: { available: true, preparing: false, paused: false, requestedSpeed: 3, achievedTicksPerSecond: 25, tickDurationMs: 60 },
   transport: { playing: true, clockSource: 'internal', clockStatus: 'internal', linked: true, bpm: 360, baseBpm: 120, gameSpeed: 3 },
   output: { selectedBackend: 'synth', enabled: true, status: 'live', audio: { status: 'ready', contextState: 'running', enabled: true } },
-  lanes: [{ id: 'lane-1', mode: 'physical', gain: 1 }], physical: { prepared: true, routingUnavailable: false, accepted: 1, rejected: 0, degraded: 0 }, midi: {} });
+  lanes: [{ id: 'lane-1', mode: 'physical', gain: 1 }], physical: { prepared: true, routingUnavailable: false, accepted: 1, rejected: 0, degraded: 0 }, midi: {}, recovery: { lessonAvailable: true } });
 const hardware = () => { const value = base(); value.output = { selectedBackend: 'midi', enabled: true, status: 'live', outputId: 'A', selectedOutputId: 'A', selectedOutputName: 'Keyboard', midiPermission: 'granted', discoveredOutputCount: 2 };
   value.midi = { outputRoutes: [{ outputId: 'A', name: 'Keyboard', active: true, available: true, authorized: true }], inputId: 'clock-input', clockOutputId: 'clock-output' }; return value; };
 
@@ -66,9 +66,22 @@ describe('read-only operational blocker and recovery policy', () => {
     const input = hardware(); Object.assign(input.output, { enabled: false, outputId: null, selectedOutputId: null, discoveredOutputCount: 0 });
     const result = createProcgenOperationalSnapshot(input); expect(result.blockedReason.code).to.equal('midi-no-destinations'); expect(result.recoveryAction.id).to.equal('discover'); expect(result.noteOutput.activeId).to.equal(null);
   });
+  it('keeps an interrupted suspended context distinct from an engine failure and avoids unavailable lesson recovery', () => {
+    const input = base(); input.output.status = 'error'; Object.assign(input.output.audio, { status: 'interrupted', contextState: 'suspended' });
+    expect(createProcgenOperationalSnapshot(input).blockedReason.code).to.equal('audio-suspended');
+    input.output.audio.status = 'error'; expect(createProcgenOperationalSnapshot(input).blockedReason.code).to.equal('audio-error');
+    const quiet = base(); quiet.physical.accepted = 0; quiet.recovery.lessonAvailable = false;
+    expect(createProcgenOperationalSnapshot(quiet).recoveryAction.id).to.equal('inspect-physical');
+  });
   it('keeps controller connectivity separate from liveness and turns Stage review into explicit exit', () => {
     const input = hardware(); input.midi.inputPortConnected = true; input.midi.inputLiveness = { mode: 'unobserved', evidence: 'no-active-sensing-observed' }; const result = createProcgenOperationalSnapshot(input);
     expect(result.controller).to.include({ connected: true, liveness: 'unobserved', bridge: 'not-reported' }); expect(result.blockedReason.code).to.equal('ready');
     input.stage = true; input.output.enabled = false; expect(createProcgenOperationalSnapshot(input).recoveryAction.id).to.equal('exit-stage');
+  });
+  it('compares observation age only within the authoritative monotonic domain and retains endpoint epoch', () => {
+    const input = hardware(); input.transport.timestamp = 1250; input.midi.inputLiveness = { observationDomain: 'performance-now', connectionEpoch: 3, lastTrafficTime: 1000, deadline: 1300, mode: 'armed' };
+    expect(createProcgenOperationalSnapshot(input).controller).to.include({ evidenceAgeMs: 250, connectionEpoch: 3, deadline: 1300, observationDomain: 'performance-now' });
+    input.midi.inputLiveness.observationDomain = 'native-ingress'; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
+    input.midi.inputLiveness.observationDomain = 'performance-now'; input.transport.timestamp = 500; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
   });
 });

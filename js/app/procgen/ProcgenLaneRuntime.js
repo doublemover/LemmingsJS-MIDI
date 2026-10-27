@@ -81,6 +81,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       renderer: { visibleActors: renderer.renderedActors, frameMs: renderer.lastFrameMs, cameraX: renderer.cameraX, cameraY: renderer.cameraY, scale: renderer.scale, rasterWidth: renderer.buffer.width, rasterHeight: renderer.buffer.height, terrainRebuilds: renderer.terrainRebuilds, terrainCacheHits: renderer.terrainCacheHits, frameCacheHits: renderer.frameCacheHits, actorCandidates: renderer.actorVisibility.candidates.length, actorIndexRebuilds: renderer.actorVisibility.rebuilds || 0, display: renderer.getDisplayState() } });
     return { view, game: world, world, renderer, getDebugState, activate,
       isActivated: () => activated && running,
+      getOperationalState: () => Object.freeze({ paused, activated, running, clockDriven }),
       setClockDriven(value) { clockDriven = !!value; clockTime = null; elapsed = 0; },
       pump(time) {
         if (!clockDriven || !running || !activated) return;
