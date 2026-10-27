@@ -17,6 +17,8 @@ export function describeMidiRoute({ midi = {}, output = {}, outputId = null, mpe
     state = 'off'; summary = 'MIDI note output is off. Connect the selected destination to start.';
   } else if (!id || !route) {
     state = 'unavailable'; summary = id ? 'Selected MIDI route is unavailable.' : 'No MIDI note destination selected.';
+  } else if (route.ownedVoiceAdmissionReady === false) {
+    state = 'rejected'; summary = 'MIDI note admission blocked: an owned release is unconfirmed.';
   } else if (failure) {
     state = 'rejected'; summary = `MIDI setup rejected: ${reasonText(failure)}.`;
     if (requestedFailure?.retained) details.push('The requested configuration was refused; the previous route configuration is retained.');

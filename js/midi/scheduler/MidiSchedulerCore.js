@@ -4,6 +4,7 @@ import { midiSchedulerChannelMethods } from './MidiSchedulerChannelMethods.js';
 import { midiSchedulerRateMethods } from './MidiSchedulerRateMethods.js';
 import { midiSchedulerSendMethods } from './MidiSchedulerSendMethods.js';
 import { MidiGamePhraseQueue } from './MidiGamePhraseQueue.js';
+import { ownedMidiVoiceMethods } from './OwnedMidiVoices.js';
 
 class MidiScheduler {
   constructor(config = {}) {
@@ -58,7 +59,8 @@ Object.assign(
   midiOutputObserverMethods,
   midiSchedulerChannelMethods,
   midiSchedulerRateMethods,
-  midiSchedulerSendMethods
+  midiSchedulerSendMethods,
+  ownedMidiVoiceMethods
 );
 
 export { MidiScheduler };

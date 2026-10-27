@@ -161,13 +161,15 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     clockStatus: transport?.getState?.().clockStatus ?? null, systemResetPolicy,
     noteOutputIds: [...noteOutputs.keys()], availableNoteOutputIds: [...noteOutputs.keys()],
     mpeZone: scheduler.config?.mpe?.enabled ? scheduler._mpeZonePlan || null : null,
-    authorizedNoteOutputIds: [...activeOutputs.keys()], activeNoteOutputIds: [...activeOutputs].filter(([id, route]) =>
-      !route.port.channels || scheduler.getOutputRouteState?.(id)?.mpeReady !== false).map(([id]) => id),
+    authorizedNoteOutputIds: [...activeOutputs.keys()], activeNoteOutputIds: [...activeOutputs].filter(([id, route]) => {
+      if (!route.port.channels) return true; const state = scheduler.getOutputRouteState?.(id);
+      return state?.mpeReady !== false && state?.ownedVoiceAdmissionReady !== false;
+    }).map(([id]) => id),
     routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
     outputRoutes: [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
       const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
       const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
-      const schedulerState = scheduler.getOutputRouteState?.(id), ready = schedulerState?.mpeReady !== false;
+      const schedulerState = scheduler.getOutputRouteState?.(id), ready = schedulerState?.mpeReady !== false && schedulerState?.ownedVoiceAdmissionReady !== false;
       return { ...schedulerState, outputId: id, name: port?.name || active?.port.name || null, selected, authorized: !!active, active: !!active && ready,
         activationFailure: activationFailures.get(id) ?? null,
         configurationFailure: lastConfigurationFailure?.outputIds.includes(id) ? lastConfigurationFailure.reason : null,
@@ -779,6 +781,34 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         return true;
       } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
     },
+    getRouteRevision: () => routeRevision,
+    getOutputActivity: () => {
+      let activeNotes = 0; for (const voice of scheduler._activeNotes?.values() || []) if (voice.hasStarted === true) activeNotes++;
+      return Object.freeze({ activeNotes, pendingNotes: scheduler._pendingNoteOns?.size || 0, ownedNotes: scheduler._activeNotes?.size || 0 });
+    },
+    getNoteRoute(outputId = null) {
+      const port = resolveOutput(outputId);
+      if (disposed || !port) return Object.freeze({ status: 'rejected', reason: 'note-route-unavailable' });
+      const route = scheduler.getOutputRouteState?.(port.id);
+      return Object.freeze({ ...route, outputId: port.id, status: 'accepted', ownedVoices: !!port.channels && typeof scheduler.beginOwnedVoice === 'function' });
+    },
+    beginOwnedVoice(spec, meta = {}, options = {}) {
+      const port = !disposed && !rawDispatchDepth && spec && resolveOutput(spec.outputId);
+      if (!port?.channels || typeof scheduler.beginOwnedVoice !== 'function') return Object.freeze({ status: 'rejected', reason: 'owned-note-backend-unavailable' });
+      const allowed = activeOutputs.get(String(port.id))?.intent.channels;
+      if (allowed) {
+        const plan = scheduler.config?.mpe?.enabled ? scheduler._mpeZonePlan : null;
+        if (plan ? !plan.ok || !allowed.includes(plan.managerChannel) || plan.memberChannels.some(channel => !allowed.includes(channel)) :
+          !allowed.includes(spec.channel ?? scheduler.config?.defaultChannel ?? 1)) return Object.freeze({ status: 'rejected', reason: 'owned-note-channel-scope' });
+      }
+      return scheduler.beginOwnedVoice({ ...spec, outputId: port.id }, meta, options);
+    },
+    inspectOwnedVoice(handle) { return scheduler.inspectOwnedVoice?.(handle) || Object.freeze({ status: 'rejected', reason: 'owned-note-backend-unavailable' }); },
+    updateOwnedVoice(handle, patch, options) {
+      if (disposed || rawDispatchDepth) return Object.freeze({ status: 'rejected', reason: 'owned-note-route-unavailable' });
+      return scheduler.updateOwnedVoice?.(handle, patch, options) || Object.freeze({ status: 'rejected', reason: 'owned-note-backend-unavailable' });
+    },
+    endOwnedVoice(handle, options) { return scheduler.endOwnedVoice?.(handle, options) || Object.freeze({ status: 'rejected', reason: 'owned-note-backend-unavailable' }); },
     sendNote(spec, meta = {}) {
       if (rawDispatchDepth || !spec || !Number.isFinite(spec.note)) return false;
       const timestamp = spec.timeMs ?? now();

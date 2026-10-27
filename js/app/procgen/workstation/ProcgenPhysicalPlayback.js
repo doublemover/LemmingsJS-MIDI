@@ -30,7 +30,9 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  initialMorphMechanism = null, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog } = {}) {
+  initialMorphMechanism = null, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
+  if (!Array.isArray(additionalOutputs) || additionalOutputs.length > 8 || additionalOutputs.some(output => !Array.isArray(output?.sinks) || typeof output.enabled !== 'function' || typeof output.observe !== 'function' || typeof output.dispose !== 'function')) throw new Error('Invalid physical output owners.');
+  const externalEnabled = () => additionalOutputs.some(output => { try { return output.enabled() === true; } catch { return false; } });
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
   const permitted = () => { try { return isPlaybackEnabled() === true; } catch { return false; } };
   const session = audio?.createSession?.('procgen-physical') || null;
@@ -51,7 +53,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
-  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, leaseFailures = 0;
+  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
   const effectCapture = createEffectPerformanceCapture({ owner: documentEpoch + ':effect-capture', streamId: effectStreamId, resourceBudget, getContext: () => audio?.getAudioContext?.(), getExecutionEpoch: () => executionEpoch, getAnchor: () => effectClockAnchor, isEnabled: isEffectCaptureEnabled, onReceipt });
@@ -98,12 +100,13 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         strike: { ...receipt.source, x01: receipt.command.x01, y01: receipt.command.y01, amplitude01: receipt.command.amplitude01, pulseMilliseconds: [4, 8, 12][receipt.command.pulseIndex], applicationEvidence: receipt.applicationEvidence } });
       else if (receipt.status === 'rejected' || receipt.stage === 'body-strike-applied' || receipt.stage === 'body-strike-ended' && receipt.reasonCode !== 0 || receipt.stage === 'body-source-owner-retired') onReceipt({ status: 'rejected', stage: 'effect-performance-capture', reason: 'finite-body-source-not-completely-observed', acousticReceipt: false });
     } }) : null; } catch (error) { try { onInstrumentState({ laneId: 'prepared-body', state: 'unavailable', code: error.code || error.message }); } catch {} }
+  const audioLatePolicy = createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() });
   const dispatcher = createCausalIntentDispatcher({
-    sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend }] : [])],
+    sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend }] : []), ...additionalOutputs.flatMap(output => output.sinks)],
     executionEpoch: () => executionEpoch,
-    toTargetFrame: scoreTime => permitted() && (!initialMorphMechanism || sceneMorph?.isPrepared()) ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
-    latePolicy: createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() }),
-    onReceipt: receipt => { if (Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else rejected++; onReceipt(receipt); }
+    toTargetFrame: (scoreTime, batch, intent, sink) => sink.toTargetFrame ? sink.toTargetFrame(scoreTime, batch, intent) : permitted() && (!initialMorphMechanism || sceneMorph?.isPrepared()) ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
+    latePolicy: context => context.sink.latePolicy ? context.sink.latePolicy(context) : audioLatePolicy(context),
+    onReceipt: receipt => { if ((!receipt.targetTimeDomain || receipt.targetTimeDomain === 'audio-sample-frames') && Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else if (receipt.status === 'degraded') degraded++; else rejected++; onReceipt(receipt); }
   });
   const captureEffect = effectCapture.capture;
   let unsubscribeEffectReceipts = null;
@@ -162,18 +165,28 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     catch (error) { try { setEffectBypass('tail', expected); } catch {} throw error; }
   };
   let engine;
-  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: () => ({ status: !prepared || routingUnavailable || initialMorphMechanism && !sceneMorph?.isPrepared() ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome: latestSinkOutcome }),
+  const activityOutput = () => {
+    const external = externalEnabled(); let lastSinkOutcome = latestSinkOutcome;
+    if (external) for (const output of additionalOutputs) { try { if (output.enabled()) { const receipt = output.lastOutcome?.(); if (receipt) lastSinkOutcome = { status: receipt.status, stage: receipt.stage, reason: receipt.reason || null }; } } catch { /* One output observer cannot affect the physical score. */ } }
+    return { status: external ? 'available' : !prepared || routingUnavailable || initialMorphMechanism && !sceneMorph?.isPrepared() ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome };
+  };
+  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: activityOutput,
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
     getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
-    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(receipts.map(receipt => [receipt.intentId, receipt.status]));
-      sceneMorph?.consume(intents, admissions); travelEffects.consume(intents, executionEpoch);
+    deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(), audioAdmissions = new Map();
+      for (const receipt of receipts) {
+        if (receipt.sinkId === 'physical-browser-audio') audioAdmissions.set(receipt.intentId, receipt.status);
+        if (!admissions.has(receipt.intentId) || ['accepted', 'degraded'].includes(receipt.status)) admissions.set(receipt.intentId, receipt.status);
+      }
+      sceneMorph?.consume(intents, audioAdmissions); travelEffects.consume(intents, executionEpoch);
       for (const command of bodyCommands) { if (surfaceBodies) surfaceBodies.consume(command, executionEpoch); else onReceipt({ status: 'rejected', stage: 'prepared-body-control', commandId: command.commandId, sourceEventIds: command.sourceEventIds, reason: 'prepared-surface-not-bound', acousticReceipt: false }); }
       for (const intent of intents) if (intent.kind === 'begin') { const lane = typeof intent.laneId === 'number' ? getLanes()[intent.laneId] : getLanes().find(lane => lane.id === intent.laneId); if (lane) laneMix.record(lane.id, now(), admissions.get(intent.intentId) || 'unavailable'); } return receipts; } });
   engine.prepareGraph(getGraph()).commit();
   } catch (error) { disposed = true; error.retirement = retirement.retire([
+    ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() })),
     { name: 'scene-morph-mechanism', run: () => sceneMorph?.dispose() }, { name: 'causal-observer-storage', run: () => engine?.dispose() }, { name: 'audio-state-subscription', run: () => unsubscribe?.() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
     { name: 'lane-instruments', run: () => laneInstruments?.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() }, { name: 'backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'session', run: () => session?.dispose?.() }
   ]); throw error; }
@@ -219,6 +232,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     executionEpoch = nextEpoch;
     arm();
     const score = position || scoreTimeline.map({ simTick: batch.tick });
+    for (const output of additionalOutputs) {
+      try { output.observe(score, { bpm, executionEpoch }); } catch { try { onInstrumentState({ laneId: 'external', state: 'unavailable', code: 'external-clock-unavailable' }); } catch {} }
+    }
     if (prepared && permitted() && session?.getState().enabled &&
         (!clock.isAnchored(executionEpoch, score.epoch, bpm) || anchoredEpoch !== score.epoch || anchoredBpm !== bpm)) {
       try {
@@ -264,18 +280,19 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       { name: 'playback-stop', run: stop }, { name: 'scene-morph-owner', run: () => sceneMorph?.dispose() }, { name: 'surface-body-binding-storage', run: () => surfaceBodies?.dispose() }, { name: 'motion-effect-owner', run: () => travelEffects.dispose() }, { name: 'dispatcher', run: () => dispatcher.dispose() },
       { name: 'causal-observer-storage', run: () => engine.dispose() }, { name: 'effect-receipt-subscription', run: () => unsubscribeEffectReceipts?.() }, { name: 'effect-capture', run: () => effectCapture.dispose() }, { name: 'body-source-backend', run: () => bodyBackend?.dispose() },
       { name: 'lane-instrument-preparation', run: () => laneInstruments?.dispose() },
-      { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() }
+      { name: 'instrument-backend', run: () => (backend || nativeBackend)?.dispose?.() }, { name: 'audio-session', run: () => session?.dispose?.() },
+      ...additionalOutputs.map((output, index) => ({ name: 'external-output-' + index, run: () => output.dispose() }))
     ]);
   };
   return { engine, processBatch, stop, dispose,
     effectSourceVoices: () => engine.activeVoiceView({ limit: 4096 }).filter(voice => session?.isSourceVoiceAvailable?.({ voiceId: voice.voiceId, generation: voice.generation })).slice(0, 64),
-    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: permitted() && !!session?.getState().enabled }),
+    isEffectSourceVoiceAvailable: member => session?.isSourceVoiceAvailable?.(member) || false, synchronizeLaneMix, travelEffectSources, prepareTravelEffect, prepareMorphEffect, clearTravelEffect: () => travelEffects.clear('performer-disarmed'), laneMixView: laneId => laneMix.view(laneId, { nowMs: now(), connected: externalEnabled() || permitted() && !!session?.getState().enabled }),
     bindPreparedSurface, preparedSurfaceDefinitions: () => getGraph().preparedSurfaces || [], preparedSurfaceBodies: () => { surfaceBodies?.prune(); return surfaceBodies?.state() || null; }, prepareEffectGraph, updateEffectGraph, setEffectBypass, inspectEffectGraph: options => session?.inspectEffectGraph?.(options) || null, ready: () => preparedPromise,
     instrumentTransitionCapabilities: () => Object.freeze({ defaultPolicy: 'new-notes-only', policies: Object.freeze(['new-notes-only']), unsupported: Object.freeze({ 'crossfade-held': 'No realized cross-renderer held-state transfer adapter is installed.' }) }),
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
-    diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: !!session?.getState().enabled, accepted, rejected,
+    diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected,
       preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
 }

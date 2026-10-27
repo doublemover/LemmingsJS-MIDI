@@ -8,6 +8,10 @@ import { withFakeClockAndPerformance } from '../support/timers.js';
 const snapshot = (route = {}, extra = {}) => ({ midi: { noteOutputId: 'zone', outputRoutes: [{ outputId: 'zone', name: 'Receiver', authorized: true, available: true, active: true, ...route }] }, output: { selectedBackend: 'midi', enabled: true }, ...extra });
 const mpe = { enabled: true, masterChannel: 1, memberChannels: [2], voicePolicy: 'reject' };
 describe('MIDI route configuration evidence', () => {
+  it('keeps an unconfirmed owned release visibly blocked without claiming the configured MPE zone failed', () => {
+    const result = describeMidiRoute(snapshot({ ownedVoiceAdmissionReady: false }));
+    expect(result.state).to.equal('rejected'); expect(result.summary).to.include('owned release is unconfirmed');
+  });
   it('shows actual manual and submitted-zone API evidence without implying receiver acknowledgement', () => {
     withFakeClockAndPerformance(() => {
       for (const configuration of ['manual', 'send-zone']) {

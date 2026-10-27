@@ -5507,5 +5507,162 @@
     "limits": [
       "Browser result qualifies the exercised ProcGen generation startup and offline reload; optional worklet/WASM/native receiver and complete scene conformance remain separate."
     ]
+  },
+  "continuation272": {
+    "date": "2026-10-27",
+    "parentRevision": "819678534103803532dd4d74060b7d5c00e1d824",
+    "scope": "Fan canonical physical intents into a real scheduler/MIDI adapter with independent performance clock, opaque owned gate handles, future expression, strict terminal ownership, representation-loss evidence and actual destination activation.",
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "sha256": "232a874cac2ca03c88885241ec4b7c8f0ddba85904b857d0d6147dcb3861f100"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalMidiSink.js",
+        "sha256": "97a6b9fa71271b4bc06c3243d887ebd539b940e3836fa2df90f7c8beb036c516"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalIntentDispatcher.js",
+        "sha256": "bf0aaea14f948efb722970cd609eb1ba20f50e3668b82229a7a122fc19801d7c"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "sha256": "5b7064e1b2473ef043e3f0610930d13d5a74093775b56cff568f03eb51c8b1e0"
+      },
+      {
+        "path": "js/app/procgen/workstation/MidiRouteDiagnostics.js",
+        "sha256": "288b48ebee02d430e5885773a21d8ade45bd2315987dd9a6c0b62e1a9cee74b3"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "sha256": "68b1a31ead8b9145620a9774b197c775021aafe6b8c2f63e0be49b78b61c3b39"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "0bab41c74459fa7e97649d140e6938d701da70b7668f03e92616e35f5de66629"
+      },
+      {
+        "path": "js/midi/scheduler/OwnedMidiVoices.js",
+        "sha256": "84e72080979fa72355eda87bda5a4fdae9c2aff07624d70ba3e482905c5ba26e"
+      },
+      {
+        "path": "js/midi/scheduler/MidiSchedulerCore.js",
+        "sha256": "dfa10753756623df9cbd2c6f9bc6e4e9349f3fe716775178dc1ba985ba2006fd"
+      },
+      {
+        "path": "js/midi/scheduler/MidiSchedulerSendMethods.js",
+        "sha256": "2de0ef0e47855d4b44e8b40cdba1ab88634815be72c038f493282a6dbf8a37a4"
+      },
+      {
+        "path": "js/midi/scheduler/MidiSchedulerChannelMethods.js",
+        "sha256": "97b67ae1030dcf132973560ab276c27c6ebfbc3620c525bdd714b04888d44431"
+      },
+      {
+        "path": "js/midi/scheduler/MidiOutputObserverMethods.js",
+        "sha256": "b663a3d285b3c636a1ce2ca1a728eb9d73403b45f9ff85d1a72586279e98a682"
+      },
+      {
+        "path": "test/midi/causal-midi-sink.test.js",
+        "sha256": "fd02feac1db1e3a71fad2696ecd67a2a68bd47b445b9b7c2f8d2ba5d78d2e7d3"
+      },
+      {
+        "path": "test/midi/midi-owned-voices.test.js",
+        "sha256": "7730a0c7b3b9b2c575a611df1e7d41c2f820a834ed73177d2ed8b9601d643097"
+      },
+      {
+        "path": "test/midi/midi-route-diagnostics.test.js",
+        "sha256": "5c5c28e7f617159d23a330d7a38e442839ee6af901a6241e4daaab3107d24b13"
+      },
+      {
+        "path": "test/midi/procgen-midi-output.test.js",
+        "sha256": "b05a3dbc69a78744476d5fff89dfb4dce6b2f933fdfbd9a86ad1e3a2ff20acf5"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "36bec1d8852cc8d7df2f11e4f2f4657915bb67d9a78de365a8a07f6ed6021045"
+      },
+      {
+        "path": "e2e/procgen-physical-midi.spec.js",
+        "sha256": "3f1035ad47174eff640b1c5b9bbc7aca9e96167b0ee10e46b9a829fa0c60689b"
+      },
+      {
+        "path": "package.json",
+        "sha256": "a5648012a1cd7fa6cc2efec28b70326ca07abbbebb9d1ae4ed3533b72b0e3a78"
+      }
+    ],
+    "previousFullCi": {
+      "head": "819678534103803532dd4d74060b7d5c00e1d824",
+      "job": 122167151831,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40497676274/job/122167151831",
+      "passed": 6312,
+      "browserBoundaries": 23,
+      "coverage": {
+        "lines": 90.19,
+        "branches": 83.48,
+        "functions": 88.19
+      }
+    },
+    "runs": [
+      {
+        "command": "npm test midi (first pass)",
+        "passed": 2421,
+        "failed": 2,
+        "scope": "New fixtures lacked program-change support and initial MPE setup capacity; terminal test also corrected to the actual 80ms one-shot frontier.",
+        "logSha256": "73a33ea38bda03876263c95941199efe02f6a5b6e31e4ad17d80e65d43992af9"
+      },
+      {
+        "command": "npm test midi",
+        "passed": 2424,
+        "failed": 0,
+        "runtimeSeconds": 53.15,
+        "logSha256": "99466991ddb06cf8869b41d7a79d82b8fa1b8886ea2865ed1a5998eb64880f3e"
+      },
+      {
+        "command": "Affected physical playback, causal dispatcher, workstation controller and MIDI recording/export owners",
+        "passed": 114,
+        "failed": 0,
+        "logSha256": "968211fed4b28f332e1f915ca51b0654171265176f93ef850575617b10f35a7e"
+      },
+      {
+        "command": "Canonical engine, take, checkpoint validation and leased actor projection compatibility",
+        "passed": 45,
+        "failed": 0,
+        "logSha256": "51360aee8e085d59d217e5ef257b3ca7bbba59e1068701d61b0c86115e80eb17"
+      },
+      {
+        "command": "Physical MIDI, project naming and installed online/offline startup browser batch",
+        "passed": 4,
+        "failed": 0,
+        "runtimeSeconds": 27.3,
+        "logSha256": "ffa0d832d1cf1cd6f759fcaedd645a9fc43b5ab328feaf684ec4f103d1863c49"
+      },
+      {
+        "command": "Final async receipt identity alignment: owned voice and MIDI sink regression batch",
+        "passed": 18,
+        "failed": 0,
+        "logSha256": "4038b8da2ab61c6122825573dbb9806297be6383bff27f37d956b3a635d47c61"
+      },
+      {
+        "command": "Final current-source default physical MIDI browser check",
+        "passed": 1,
+        "failed": 0,
+        "runtimeSeconds": 3,
+        "logSha256": "ed7eef19b0fc781083a038ce40253b6e754f74000a9e7fb3ea9c9c4ea22a2da6"
+      }
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs/runtime-global guards",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "MIDI device APIs are exercised through real adapters with controlled test outputs; no physical receiver or acoustic-heard claim.",
+      "MIDI1 quantization and unavailable per-note/travel/audio realization are explicit degraded outcomes. MPE isolates same-pitch gates.",
+      "Refused cleanup retains uncertain ownership and blocks further admission on that endpoint; no bend reset or channel reuse is assumed safe.",
+      "Later async receipt identity fields are covered by the final 18-case regression; broader MIDI/browser batch precedes that metadata-only alignment."
+    ],
+    "upstream": "Fetched origin; upstream master is fully contained (0 commits behind)."
   }
 }

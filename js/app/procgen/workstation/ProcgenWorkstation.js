@@ -37,6 +37,7 @@ import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
+import { createCausalMidiSink } from './CausalMidiSink.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
 import { createCausalTakeRecorder } from './CausalTake.js';
 import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLanePerformance } from './CausalPerformanceState.js';
@@ -894,15 +895,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
     const physicalDocumentEpoch = documentGeneration;
+    const onPhysicalReceipt = receipt => {
+      if (physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
+      physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
+      if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
+      if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
+      else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
+    };
+    const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
+      isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
     physicalPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+      additionalOutputs: [physicalMidi],
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
-      onReceipt: receipt => {
-        physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
-        if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
-        if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
-        else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
-      } });
+      onReceipt: onPhysicalReceipt });
     void physicalPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
@@ -1816,6 +1822,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, state });
+  const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
+  let observedOutputRoute = outputRouteKey(legacy.local.getState());
+  const unsubscribeOutputState = legacy.local.subscribe?.(state => {
+    if (disposed) return; const next = outputRouteKey(state || legacy.local.getState());
+    if (next !== observedOutputRoute) { observedOutputRoute = next; syncPorts(); }
+  });
+  if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);
   if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
     try {
       const conversion = convertLegacyProcgenWorkstationProject(saved.project, { strategy: 'physical-default' });
@@ -1888,9 +1901,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
-    getPlaybackState: () => ({ ...legacy.local.getState(), activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0, pressure: router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }),
+    getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
+      ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
+      pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },
     prepareSettings, bindRuntime, beforeRestart, stopCausalTake, adoptSceneRecipe, loadSession, capture, recover, dispatch, play, handlers, state, transport, ports, engine,
     getPhysicalAnalysis: () => physicalPlayback?.engine.physicalAnalysis() || null, getPhysicalDiagnostics: () => physicalPlayback?.engine.diagnostics() || null,
+    getPhysicalOutputDiagnostics: () => physicalPlayback?.diagnostics() || null,
     getPhysicalScoreClock: () => physicalScoreClock, getWorldInspector: () => worldInspector,
     get settings() { return legacy.settings; },
     dispose() {

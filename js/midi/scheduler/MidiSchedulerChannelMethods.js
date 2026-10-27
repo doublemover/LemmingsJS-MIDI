@@ -1,4 +1,5 @@
 import { selectLocalAudioVoice } from './LocalAudioVoiceBudget.js';
+import { finishOwnedMidiVoice, hasUncertainOwnedMidiOutput } from './OwnedMidiVoices.js';
 import { createMpeZonePlan } from './MpeZonePlan.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
@@ -182,6 +183,7 @@ const midiSchedulerChannelMethods = {
   getOutputRouteState(outputId = null) {
     const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
     return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',
+      ownedVoiceAdmissionReady: !hasUncertainOwnedMidiOutput(this, output),
       connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision,
       channelScope: this._outputChannelScopes.has(output) ? [...this._outputChannelScopes.get(output)] : null,
       budgetProfile: this.getTransportBudget(outputId),
@@ -534,14 +536,14 @@ const midiSchedulerChannelMethods = {
           ? [{ ...outputReleaseOptions, ...(output.supportsIndependentNoteGates ? { voiceToken: info.token, reason } : {}) }] : [];
         if (typeof channel.sendNoteOff === 'function' &&
             this._sendOutput(output, info.channel, 'sendNoteOff', [info.note, ...options], { ...info.captureMeta, scheduledMs: releaseOptions?.time ?? this._nowMs(), reason }) !== false) { sentMessages += 1; released = true; }
-        if (info.mpe) {
+        if (info.mpe && released) {
           if (typeof channel.sendPitchBend === 'function' &&
               this._sendOutput(output, info.channel, 'sendPitchBend', [0, ...(releaseOptions ? [{ time: releaseOptions.time }] : [])], info.captureMeta) !== false) {
             this._expressionState(output, info.channel).bend = 0;
             this._expressionState(output, info.channel).bindings.set('bend:bend', 0);
             sentMessages += 1;
           } else cleanupUncertain = true;
-        }
+        } else if (info.mpe) cleanupUncertain = true;
       }
     } catch (error) { this.lastOutputError = error?.message || String(error); cleanupUncertain = true; }
     finally { this._cleanupDepth--; }
@@ -558,6 +560,7 @@ const midiSchedulerChannelMethods = {
       connectionEpoch: info.connectionEpoch ?? null, routeRevision: info.routeRevision ?? null, reason,
       state: info.submitting ? 'uncertain' : info.hasStarted === false ? 'cancelled' : released && !cleanupUncertain ? 'release-submitted' : 'uncertain',
       evidence: info.submitting ? 'submission-in-progress' : info.hasStarted === false ? 'application-queue-removed' : released ? 'adapter-returned' : 'release-unconfirmed' });
+    finishOwnedMidiVoice(this, info.ownedAdmission, result);
     this._observe('voice-terminal', { ...info.captureMeta, ...result });
     return result;
   },

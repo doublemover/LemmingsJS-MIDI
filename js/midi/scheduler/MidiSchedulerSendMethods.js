@@ -1,6 +1,7 @@
 import { getLocalAudioNotePan } from './LocalAudioVoiceBudget.js';
 import { pendingReservationConflicts } from './VoiceReservationIntervals.js';
 import { transferGamePhraseVoiceKey } from './MidiGamePhraseQueue.js';
+import { OWNED_MIDI_ADMISSION, observeOwnedMidiSubmission, canSubmitOwnedMidiVoice, hasUncertainOwnedMidiOutput } from './OwnedMidiVoices.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
   canMeasurePerformance,
@@ -37,6 +38,7 @@ const midiSchedulerSendMethods = {
       const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
       const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
       if (!output) { releaseExternalShare(); return false; }
+      if (hasUncertainOwnedMidiOutput(this, output)) { releaseExternalShare(); this.recordThrottle('owned-output-retirement-unknown', this._nowMs(), meta); return false; }
       const routeLease = this._outputLeases.get(output), zoneRevision = this._mpeRevision;
 
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
@@ -92,6 +94,7 @@ const midiSchedulerSendMethods = {
       if (channelNumber != null) usedChannels.add(channelNumber);
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
+      if (spec[OWNED_MIDI_ADMISSION]) spec[OWNED_MIDI_ADMISSION].token = token;
       admissionToken = token;
       reservationClaimed = this._claimReservation(meta.reservationId, token,
         Math.max(1, (meta.reservationPartCount ?? 1) - (meta.reservationPartIndex ?? 0)), outputId);
@@ -109,6 +112,7 @@ const midiSchedulerSendMethods = {
         return false;
       }
       this._activeNotes.set(token, {
+        ownedAdmission: spec[OWNED_MIDI_ADMISSION] || null,
         channel: channelNumber,
         note: spec.note,
         startedAt,
@@ -237,7 +241,9 @@ const midiSchedulerSendMethods = {
               }
             }
           }
+          if (!canSubmitOwnedMidiVoice(this, active.ownedAdmission)) { dispatchFailed = true; this._stopActiveNoteToken(token, 'owned-onset-guard-rejected'); return; }
           for (const control of expression.controls) {
+            if (!canSubmitOwnedMidiVoice(this, active.ownedAdmission)) { dispatchFailed = true; this._stopActiveNoteToken(token, 'owned-onset-guard-rejected'); return; }
             if (!ownsVoice()) { dispatchFailed = true; return; }
             const method = control.type === 'program' ? 'sendProgramChange' : control.type === 'bend' ? 'sendPitchBend' : 'sendControlChange';
             const args = control.type === 'cc' ? [control.cc, control.value, { time: sendTimeMs }] : [control.value, { time: sendTimeMs }];
@@ -265,6 +271,7 @@ const midiSchedulerSendMethods = {
           }
 
           if (!ownsVoice()) { dispatchFailed = true; return; }
+          if (!canSubmitOwnedMidiVoice(this, active.ownedAdmission)) { dispatchFailed = true; this._stopActiveNoteToken(token, 'owned-onset-guard-rejected'); return; }
           if (typeof output.channels?.[channelNumber]?.sendNoteOn !== 'function') {
             dispatchFailed = true;
             this.recordThrottle('onset-unsupported', this._nowMs(), captureMeta);
@@ -307,6 +314,8 @@ const midiSchedulerSendMethods = {
               this._stopActiveNoteToken(victim, 'reservation-superseded-at-onset');
             }
           }
+          observeOwnedMidiSubmission(this, active.ownedAdmission, { status: 'accepted', stage: 'submitted', token, outputId,
+            channel: channelNumber, intendedMs: sendTimeMs, submittedAtMs: this._nowMs(), acceptedMessages: submission.acceptedMessages });
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
             type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId
           };
@@ -414,7 +423,7 @@ const midiSchedulerSendMethods = {
     const now = this._nowMs();
     while (this._noteOffs.length && this._noteOffs[0].timeMs <= now) {
       const entry = this._noteOffs.shift();
-      this._stopActiveNoteToken(entry.token, 'duration-ended', { rawRelease: entry.releaseVelocity, time: entry.timeMs, dispatchedAtMs: now });
+      this._stopActiveNoteToken(entry.token, entry.reason || 'duration-ended', { rawRelease: entry.releaseVelocity, time: entry.timeMs, dispatchedAtMs: now });
     }
     this._armNoteOffTimer();
   },

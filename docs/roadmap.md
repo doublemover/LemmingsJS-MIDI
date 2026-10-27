@@ -6859,3 +6859,30 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Formatting, critical types, undefined calls, whitespace and runtime provenance
   pass. Optional worklet/WASM, receiver and complete scene conformance remain
   separate from this executed startup/offline-reload result.
+
+### Continuation 272 — physical-first semantic MIDI realization
+
+- Canonical physical intents now reach the selected MIDI destination through the
+  existing scheduler, with an independent performance clock and matching intent,
+  voice, sink and execution identities across admission and actual submission.
+  Browser audio and MIDI retain separate clocks and execution-lease requirements;
+  hardware timestamps cannot become audio-frame capture anchors.
+- Opaque voice handles own held/future attacks, bounded rate-reserved expression
+  and exact terminal frontiers. MPE keeps equal-pitch actors separate. Ordinary
+  same-pitch collisions are refused; MIDI1 quantization and unavailable expression
+  or audio-specific travel are explicit losses. Refused cleanup preserves unknown
+  ownership, blocks new endpoint admission and never resets its bend or reuses it.
+- MIDI activation notifications bind routes only after connection completes.
+  Subscribers are bounded and isolated, and repeated unrelated audio state does
+  not rescan routes. Live output statistics separate queued and submitted notes;
+  route diagnostics expose unconfirmed owned releases.
+- **2,424 MIDI cases**, **114 ownership/controller cases**, **45 canonical take,
+  checkpoint and projection cases**, and all **four related browser scenarios**
+  pass. The real default physical scene sends actual API bytes with no pattern
+  cells or AudioContext, records source identities, and clears owned gates on
+  Stop/Panic/disconnect. Final receipt alignment passes 18 cases and the current
+  source browser check passes. Static/provenance checks pass; origin/master is
+  fully contained. Physical receiver/acoustic conformance remains separate.
+- The preceding 81967853 full CI checkpoint is green with **6,312 passing** and
+  **23 browser boundaries**. This later implementation has its own executed
+  results above; its full CI remains pending until pushed.

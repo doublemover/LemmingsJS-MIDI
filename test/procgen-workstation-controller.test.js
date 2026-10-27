@@ -18,7 +18,7 @@ function target() {
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
 function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
-  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog } = {}) {
+  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -39,7 +39,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   const legacy = { settings: { seed: 7, speed: 1, laneCount, ...startupSettings }, getProject: () => project, setProject(value) { project = value; for (const listener of projectListeners) listener(value); },
     subscribeProject(listener) { projectListeners.add(listener); return () => projectListeners.delete(listener); },
     setPaused(value) { paused = value; }, isPaused: () => paused, setSpeed(value) { this.settings.speed = value; },
-    local: { audio, getState: () => ({ enabled, selectedBackend: backend, outputId }) } };
+    local: { audio, getState: () => ({ enabled, selectedBackend: backend, outputId }), ...(outputSubscribe ? { subscribe: outputSubscribe } : {}) } };
   let viewProps;
   const view = { requestProjectName: async () => window.prompt(), render() {}, renderInspector() {}, transport() {}, recording() {}, status: value => statuses.push(value), storage: value => storageReceipts.push(value),
     exportState: (artifact, delivery) => exportStates.push({ artifact, delivery }), showProjects() {}, dispose() { this.disposed = true; } };
@@ -58,6 +58,14 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('authorizes the selected physical note route after asynchronous MIDI activation and retires its subscription', async () => {
+    let notify, retired = 0;
+    const output = { id: 'physical-state-route', state: 'connected', channels: { 1: { sendControlChange() {}, sendNoteOn() {}, sendNoteOff() {} } } };
+    const f = setup({ backend: 'midi', outputId: output.id, webMidi: { outputs: [output], inputs: [] }, outputSubscribe: listener => { notify = listener; return () => retired++; } });
+    f.studio.bindRuntime(); expect(f.studio.ports.getNoteRoute().status).to.equal('rejected');
+    f.enable(); notify(); expect(f.studio.ports.getNoteRoute()).to.include({ status: 'accepted', outputId: output.id, ownedVoices: true });
+    await f.studio.dispose().completion; expect(retired).to.equal(1); notify(); expect(f.studio.ports.getNoteRoute().status).to.equal('rejected');
+  });
   it('records explicit MPE policy changes in the project and restores them through undo', async () => {
     const f = setup(); f.studio.bindRuntime(); const world = f.runtime.world;
     f.studio.dispatch({ type: 'procgen/global', patch: { mpe: { enabled: true, masterChannel: 1, memberChannels: [2], voicePolicy: 'reject', configuration: 'manual' } } });

@@ -10,6 +10,7 @@ const submittedMidiBytes = (method, channel, args) => {
   if (method === 'sendControlChange') return [0xb0 | status, midiByte(a), midiByte(b)];
   if (method === 'sendAllNotesOff') return [0xb0 | status, 123, 0];
   if (method === 'sendProgramChange') return [0xc0 | status, midiByte(a)];
+  if (method === 'sendChannelAftertouch') return [0xd0 | status, midiByte(b?.rawValue ? a : Number(a) * 127)];
   if (method === 'sendPitchBend') {
     const bend = Math.round((Math.max(-1, Math.min(1, Number(a) || 0)) + 1) * 16383 / 2);
     return [0xe0 | status, bend & 127, bend >> 7];

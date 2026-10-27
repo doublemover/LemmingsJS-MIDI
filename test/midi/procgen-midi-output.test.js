@@ -24,6 +24,15 @@ const fixture = (backend = 'midi') => {
   return { output, webMidi, local, calls, secondCalls, config, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
 };
 describe('procgen selected audible destination', () => {
+  it('publishes completed MIDI activation to bounded subscribers and isolates a failed consumer', async () => {
+    const f = fixture(), states = [];
+    const remove = f.output.subscribe(state => states.push(state)); f.output.subscribe(() => { throw new Error('Detached presentation'); });
+    try {
+      expect(await f.output.start()).to.equal(true); expect(states.at(-1)).to.include({ selectedBackend: 'midi', enabled: true, status: 'live', outputId: 'first' });
+      expect(Object.isFrozen(states.at(-1))).to.equal(true); expect(f.webMidi.requests).to.equal(1);
+      remove(); const count = states.length; f.output.stop(); expect(states).to.have.length(count);
+    } finally { f.output.dispose(); }
+  });
   it('retains held gates, unsounded phrases and sent history for span/tension edits, with deliberate source-tail cancellation', async () => {
     await withFakeClockAndPerformance(async clock => {
       const f = fixture(), source = f.config.sfx[SoundEffectIds.SPAWN];

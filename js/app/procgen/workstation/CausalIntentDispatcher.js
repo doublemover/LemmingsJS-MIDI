@@ -17,7 +17,8 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
   if (typeof toTargetFrame !== 'function' || typeof executionEpoch !== 'function' ||
       (latePolicy != null && typeof latePolicy !== 'function') ||
       !Array.isArray(sinks) || sinks.some(sink => typeof sink?.id !== 'string' || !sink.id ||
-        typeof sink.route !== 'string' || !sink.route || !sink.backend)) throw new Error('Invalid causal intent dispatch configuration.');
+        typeof sink.route !== 'string' || !sink.route || !sink.backend || sink.enabled != null && typeof sink.enabled !== 'function' ||
+        sink.timeDomain != null && (typeof sink.timeDomain !== 'string' || !sink.timeDomain || sink.timeDomain.length > 64))) throw new Error('Invalid causal intent dispatch configuration.');
   const routes = new Map(), ids = new Set();
   for (const sink of sinks) {
     if (ids.has(sink.id)) throw new Error('Duplicate causal output sink.');
@@ -67,9 +68,11 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     for (const intent of intents) {
       const targets = routes.get(intent?.route) || [null];
       for (const sink of targets) {
+        if (sink?.enabled) { let enabled = false; try { enabled = sink.enabled() === true; } catch {} if (!enabled) continue; }
         const base = { intentId: intent?.intentId ?? null, batchId: batch.batchId, generation: intent?.generation ?? null,
           voiceId: intent?.voiceId ?? null, sourceEventIds: Object.freeze(Array.isArray(intent?.sourceEventIds) ? [...intent.sourceEventIds] : []),
-          sinkId: sink?.id ?? intent?.route ?? null, executionEpoch: epoch };
+          sinkId: sink?.id ?? intent?.route ?? null, executionEpoch: epoch,
+          ...(sink?.timeDomain ? { targetTimeDomain: sink.timeDomain } : {}) };
         if (!epoch) { receipts.push(record({ ...base, status: 'rejected', stage: 'none', reason: 'execution-epoch-unavailable' })); continue; }
         if (intent?.version !== 1 || intent.generation !== batch.generation || typeof intent.intentId !== 'string' || !intent.intentId ||
             typeof intent.voiceId !== 'string' || !intent.voiceId || !Array.isArray(intent.sourceEventIds)) {
@@ -108,17 +111,20 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
             : { status: 'accepted', stage: 'semantic-observation', outputRequested: false, reason: 'no-continuous-binding' };
           else if (intent.kind === 'update') outcome = intent.expression && Object.getPrototypeOf(intent.expression) === Object.prototype && Object.keys(intent.expression).length === 0 && intent.articulationState
             ? { status: 'accepted', stage: 'semantic-observation', outputRequested: false }
-            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution, intent.articulationState?.slewSeconds);
+            : sink.backend.update(intent.voiceId, intent.expression, frame, identity.execution, intent.articulationState?.slewSeconds, intent);
           else if (intent.kind === 'end') outcome = sink.backend.end(intent.voiceId, intent.terminationReason === 'one-shot'
             ? { mode: 'one-shot', tailSeconds: physicalDuration == null ? oneShotTailSeconds : Math.min(4, Math.max(0, physicalDuration)), seconds: releaseSeconds, ...(physicalDuration != null ? { durationSource: 'physical-interval' } : {}) }
-            : { seconds: intent.voiceTransition?.kind === 'crossfade' ? intent.voiceTransition.seconds : releaseSeconds, ...(intent.voiceTransition ? { transitionPolicy: 'crossfade' } : {}) }, frame, identity.execution);
+            : { seconds: intent.voiceTransition?.kind === 'crossfade' ? intent.voiceTransition.seconds : releaseSeconds, ...(intent.voiceTransition ? { transitionPolicy: 'crossfade' } : {}) }, frame, identity.execution, intent);
           else outcome = { status: 'rejected', reason: 'unsupported-intent-kind' };
         } catch { outcome = { status: 'rejected', reason: 'sink-exception' }; }
+        if (outcome?.losses != null && (!Array.isArray(outcome.losses) || outcome.losses.length > 32)) outcome = { status: 'rejected', reason: 'invalid-sink-loss-receipt' };
+        const losses = durationLoss || outcome?.losses?.length ? Object.freeze([...(durationLoss ? [durationLoss] : []), ...(outcome?.losses || [])].map(loss => Object.freeze({ ...loss }))) : null;
         const status = ['accepted', 'rejected', 'degraded'].includes(outcome?.status) ? outcome.status : 'rejected';
         const selectedSource = intent.kind === 'begin' && status === 'accepted' ? retainSampleSelectionReceipt(outcome) : null;
         receipts.push(record({ ...base, status, stage: status === 'rejected' ? 'none' : outcome.stage || 'accepted',
           reason: status === 'accepted' ? null : outcome?.reason || 'invalid-sink-receipt', targetFrame: frame,
-          sourceTargetFrame, repair, ...(durationLoss ? { losses: Object.freeze([durationLoss]) } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.bodyStrike ? { bodyStrike: outcome.bodyStrike } : {}), ...(outcome?.circularTravel ? { circularTravel: outcome.circularTravel } : {}), ...(outcome?.frictionTravel ? { frictionTravel: outcome.frictionTravel } : {}), ...(outcome?.textureTravel ? { textureTravel: outcome.textureTravel } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
+          sourceTargetFrame, repair, ...(losses ? { losses } : {}), ...(typeof outcome?.outputId === 'string' ? { outputId: outcome.outputId } : {}),
+          ...(Number.isInteger(outcome?.channel) ? { channel: outcome.channel } : {}), ...(selectedSource ? { selectedSource } : {}), ...(outcome?.bodyStrike ? { bodyStrike: outcome.bodyStrike } : {}), ...(outcome?.circularTravel ? { circularTravel: outcome.circularTravel } : {}), ...(outcome?.frictionTravel ? { frictionTravel: outcome.frictionTravel } : {}), ...(outcome?.textureTravel ? { textureTravel: outcome.textureTravel } : {}), ...(outcome?.sampleTraversal ? { sampleTraversal: outcome.sampleTraversal } : {}), ...(outcome?.outputRequested === false ? { outputRequested: false } : {}) }));
       }
     }
     return Object.freeze(receipts);
@@ -138,6 +144,7 @@ const createCausalIntentDispatcher = ({ sinks = [], toTargetFrame, executionEpoc
     if (disposed || !Number.isSafeInteger(untilFrame) || untilFrame < 0) return Object.freeze({ status: 'rejected', reason: 'invalid-execution-lease' });
     const outcomes = [];
     for (const sink of sinks) {
+      if (sink.executionLease === false) continue;
       try { const identity = executionFor(sink, epoch, generation); outcomes.push(identity.execution && sink.backend.renewExecutionLease ?
         sink.backend.renewExecutionLease(generation, identity.execution, untilFrame) : { status: 'rejected', reason: identity.reason || 'sink-lease-unavailable' }); }
       catch { outcomes.push({ status: 'rejected', reason: 'sink-lease-failed' }); }

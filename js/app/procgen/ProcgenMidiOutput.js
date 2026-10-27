@@ -14,6 +14,7 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
   let router = null, attached = null, capture = null, generation = 0, disposed = false;
   let configKey = null, audibleKey = null;
   let status = 'off', message = 'MIDI output is off.';
+  const stateListeners = new Set();
   const devices = () => Array.from(getWebMidi()?.outputs || []).filter(port => port.state !== 'disconnected');
   const failureMessage = error => 'MIDI output failed: ' + error + '. Check the device and connect again.';
   const getState = () => {
@@ -26,7 +27,12 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
       backend: error ? 'midi-output-error' : ['live', 'suspended'].includes(status) ? 'web-midi' : 'no-active-output',
       outputId: output?.id || null, outputName: output?.name || null, audio: local.audio.getState() };
   };
-  const report = (next, text) => { status = next; message = text; onStateChange(getState()); };
+  const notifyState = () => {
+    const state = Object.freeze(getState());
+    try { onStateChange(state); } catch { /* Presentation cannot retain a MIDI connection. */ }
+    for (const listener of [...stateListeners]) { try { listener(state); } catch { /* Subscribers cannot block route ownership. */ } }
+  };
+  const report = (next, text) => { status = next; message = text; notifyState(); };
   const detach = () => { if (attached?.midiPreviewRouter === router) attached.setMidiPreviewRouter(null); router?.dispose(); router = null; attached = null; configKey = null; audibleKey = null; };
   const stop = () => { generation++; detach(); output = null; local.stop(); report('off', selected === 'midi' ? 'MIDI output is off.' : 'Browser preview is off.'); };
   // Called by the existing metrics cadence; status reads themselves never mutate playback.
@@ -91,7 +97,8 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
   const disconnected = () => refreshDevices();
   getWebMidi()?.addListener?.('disconnected', disconnected);
   return { audio: local.audio, start, stop, panic: stop, getState, syncStatus, suspendGame, resumeGame, refreshDevices,
-    localStateChanged: () => { if (selected === 'synth') onStateChange(getState()); },
+    localStateChanged: () => { if (selected === 'synth') notifyState(); },
+    subscribe(listener) { if (disposed || typeof listener !== 'function') return () => {}; if (!stateListeners.has(listener) && stateListeners.size >= 32) throw new Error('Output state subscription capacity exceeded.'); stateListeners.add(listener); return () => stateListeners.delete(listener); },
     setBackend(value) { const next = value === 'midi' ? 'midi' : 'synth'; if (next !== selected) { stop(); selected = next; report('off', next === 'midi' ? 'MIDI output is off. Connect to start.' : 'Browser preview is off.'); } },
     setOutputId(id) { if (id === outputId) return; stop(); outputId = id || null; report('off', 'MIDI device selected. Connect to start.'); },
     setCapture(value) { capture = value; local.setCapture(value); router?.setCapture(value); },
@@ -104,7 +111,7 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
       if (nextAudible !== audibleKey) router.scheduler.allNotesOff({ preserveRateHistory: true });
       router.setMapping(config); configKey = nextKey; audibleKey = nextAudible; return true;
     },
-    dispose() { disposed = true; stop(); getWebMidi()?.removeListener?.('disconnected', disconnected); return local.dispose(); }
+    dispose() { disposed = true; stop(); stateListeners.clear(); getWebMidi()?.removeListener?.('disconnected', disconnected); return local.dispose(); }
   };
 };
 export { createProcgenMidiOutput };
