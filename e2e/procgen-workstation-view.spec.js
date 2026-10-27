@@ -23,6 +23,36 @@ const ready = async (page, count = 8, steps = 16) => {
   }, { count, steps });
 };
 
+test('MIDI route diagnostics update inline without losing selector focus or silently choosing fallback @boundary', async ({ page }) => {
+  await ready(page, 1);
+  await page.evaluate(() => {
+    const f = window.workstationViewTest;
+    f.route = { outputId: 'zone', name: 'Test receiver', authorized: true, active: true, available: true, mpeReady: true,
+      mpeEvidence: 'manual-zone-api-accepted', mpeZone: { zone: 'lower', managerChannel: 1, memberChannels: [2, 3], reservedChannels: [10], memberRange: { semitones: 48, cents: 0 }, managerRange: { semitones: 2, cents: 0 }, voicePolicy: 'reject' } };
+    f.handlers.devices = () => ({ inputs: [], outputs: [{ id: 'zone', name: 'Test receiver' }] });
+    f.handlers.midiRouteState = () => ({ noteOutputId: 'zone', outputRoutes: [f.route] });
+    f.handlers.outputState = () => ({ selectedBackend: 'midi', enabled: true });
+    f.handlers.midiRoutePolicy = value => f.calls.push({ name: 'policy', value });
+    f.dispatch({ type: 'procgen/global', patch: { mpe: { enabled: true, voicePolicy: 'reject' } } });
+    f.state.tab = 'MIDI'; f.view.render(); window.routeSelector = document.querySelector('[aria-label="Lane MIDI output"]');
+  });
+  const diagnostics = page.getByRole('region', { name: 'MIDI route diagnostics' });
+  await expect(diagnostics).toContainText('Manual zone assumed'); await expect(diagnostics).toContainText('receiver unverified');
+  await expect(diagnostics).toContainText('reserved channels 10');
+  const selector = page.getByRole('combobox', { name: 'Lane MIDI output' }); await selector.focus();
+  await page.evaluate(() => {
+    const f = window.workstationViewTest; f.route = { ...f.route, mpeReady: false, active: false, mpeFailure: 'empty-mpe-zone', mpeEvidence: null };
+    f.view.recording(false, f.handlers.midiRouteState());
+  });
+  await expect(diagnostics).toContainText('MIDI setup rejected: empty mpe zone'); await expect(selector).toBeFocused();
+  expect(await page.evaluate(() => window.routeSelector === document.querySelector('[aria-label="Lane MIDI output"]'))).toBe(true);
+  expect(await page.evaluate(() => window.workstationViewTest.calls)).toEqual([]);
+  await diagnostics.getByRole('button', { name: 'Use shared MIDI 1 expression', exact: true }).click();
+  expect(await page.evaluate(() => window.workstationViewTest.calls)).toEqual([{ name: 'policy', value: 'shared' }]);
+  await page.evaluate(() => { const f = window.workstationViewTest, stale = [...document.querySelectorAll('.studio-midi-route button')].find(button => button.textContent === 'Steal oldest member'); f.view.dispose(); stale.click(); });
+  expect(await page.evaluate(() => window.workstationViewTest.calls)).toHaveLength(1);
+});
+
 test('musical header agrees with real phrase launches in canonical non-4/4 meters @boundary', async ({ page }) => {
   await ready(page, 1);
   const results = await page.evaluate(async () => {
@@ -37,6 +67,13 @@ test('musical header agrees with real phrase launches in canonical non-4/4 meter
       engine.onBeat({ beat: 0.25, timestamp: 125, bpm: 120 });
       engine.onBeat({ beat: boundary, timestamp: boundary * 500, bpm: 120 });
       f.view.transport({ beat: boundary, bpm: 90, clockSource: 'external', clockStatus: 'locked', linked: true, speedMode: 'bpm' });
+      await new Promise(resolve => {
+        const observe = () => {
+          if (document.querySelector('.studio-clock-status').title.startsWith(`${beats}/${unit} ·`) &&
+              document.querySelector('.studio-clock-source-status').textContent === 'MIDI clock · locked') resolve();
+          else requestAnimationFrame(observe);
+        }; observe();
+      });
       results.push({ meter: `${beats}/${unit}`, origin: engine.getLanePosition('lane-1').origin, boundary,
         label: document.querySelector('.studio-clock-status').textContent, health: document.querySelector('.studio-clock-source-status').textContent });
     }

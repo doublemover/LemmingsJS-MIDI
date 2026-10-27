@@ -1541,7 +1541,22 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     reconcileSoundPreview: () => { macroGestures.reconcile(); return soundTransactions.reconcile(); }, cancelSoundPreview: () => soundTransactions.cancel(), soundSelectionState: () => soundTransactions.diagnostics(),
     status, preferences: persist, presentationGeneration: () => documentGeneration,
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
-    devices, engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
+    devices, midiRouteState: () => ports.getState(), outputState: () => legacy.local.getState(),
+    midiRoutePolicy: safe(policy => {
+      if (policy === 'local') {
+        const selector = document.getElementById('procgenOutput');
+        if (!selector) throw new Error('Browser preview selection is unavailable.');
+        selector.value = 'synth'; selector.dispatchEvent(new window.Event('change', { bubbles: true }));
+        syncPorts(); view.renderInspector(); persist(); status('Browser preview selected. Press Listen locally to start.'); return;
+      }
+      const mpe = { ...project.global.mpe };
+      if (policy === 'shared') mpe.enabled = false;
+      else if (['reject', 'steal-oldest'].includes(policy)) mpe.voicePolicy = policy;
+      else if (['manual', 'send-zone'].includes(policy)) mpe.configuration = policy;
+      else throw new Error('Unknown MIDI expression policy.');
+      dispatch({ type: 'procgen/global', patch: { mpe } });
+    }),
+    engineState: () => engine.getState(), playhead: id => engine.getLanePosition?.(id),
     rearmPhysicalMusic: safe(() => {
       if (disposed || worldBusy || causalTake || causalTakeStart) throw new Error('Stop recording and finish world operations before discarding unknown held state.');
       physicalPlayback?.engine.rearm({ discardUnknownHeldState: true });

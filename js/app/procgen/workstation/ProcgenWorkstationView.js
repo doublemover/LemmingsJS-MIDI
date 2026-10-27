@@ -12,6 +12,7 @@ import { createInstrumentDisplayScheduler } from '../../resources/InstrumentDisp
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { createPerformanceSceneControlView } from './PerformanceSceneControlView.js';
 import { readSceneMacroControl } from './SceneMacroAction.js';
+import { createMidiRouteDiagnostics } from './MidiRouteDiagnostics.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
@@ -21,6 +22,7 @@ const rendererLeases = new WeakMap();
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
   const listeners = [], parameterControls = [], laneMixControls = new Map();
+  let midiRouteView = null, midiRouteState = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
@@ -310,6 +312,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } catch (error) { handlers.status?.(error.message); renderInspector(); }
   };
   function renderInspector() {
+    midiRouteView?.dispose();
+    midiRouteView = null;
     for (const control of parameterControls.splice(0)) control.dispose(); macroControls.clear();
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
@@ -562,6 +566,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const ports = handlers.devices?.() || { inputs: [], outputs: [] };
       labeled('Input', select([['', 'None'], ...ports.inputs.map(p => [p.id, p.name || p.id])], state.inputId || '', id => handlers.input?.(id), 'MIDI input'), fields);
       labeled('Lane output', select([['', 'Default output'], ...ports.outputs.map(p => [p.id, p.name || p.id])], lane.outputId || '', outputId => changeLane({ outputId: outputId || null }), 'Lane MIDI output'), fields);
+      midiRouteView = createMidiRouteDiagnostics({ document, onPolicy: policy => handlers.midiRoutePolicy?.(policy) });
+      fields.append(midiRouteView.element); refreshMidiRoute();
       labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), fields);
       labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), fields);
       labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), fields);
@@ -838,8 +844,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
   } });
   const macroSurface = displayScheduler.register({ id: 'workstation-macro-pickup', element: fields, intervalMs: 50, write: refreshMacroState });
+  function refreshMidiRoute() {
+    if (!midiRouteView) return;
+    const lane = procgenLane(getProject().procgen.lanes, state.laneId);
+    midiRouteView.update({ midi: midiRouteState || handlers.midiRouteState?.() || {}, output: handlers.outputState?.() || {}, outputId: lane?.outputId, mpe: getProject().global?.mpe || {} });
+  }
   const midiSurface = displayScheduler.register({ id: 'workstation-midi', element: fields, intervalMs: 50, write: () => {
     const monitor = fields.querySelector('.studio-midi-monitor'); if (monitor && monitor.textContent !== state.lastMidi) monitor.textContent = state.lastMidi;
+    refreshMidiRoute();
   } });
   const paintTransport = position => {
     if (!position || disposed) return;
@@ -943,6 +955,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {
+      if (midiState) { midiRouteState = midiState; midiSurface.invalidate(); }
       state.recording = !!value;
       records.setAttribute('aria-pressed', String(value));
       const partial = midiState?.recordingComplete === false;
@@ -954,6 +967,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     },
     midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
+      midiRouteView?.dispose(); midiRouteView = null;
       if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
       return retirement.retire([

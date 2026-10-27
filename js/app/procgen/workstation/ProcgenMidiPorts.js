@@ -160,6 +160,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     inputLiveness: { sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', activeSensingVisibility, ...inputLiveness },
     clockStatus: transport?.getState?.().clockStatus ?? null, systemResetPolicy,
     noteOutputIds: [...noteOutputs.keys()], availableNoteOutputIds: [...noteOutputs.keys()],
+    mpeZone: scheduler.config?.mpe?.enabled ? scheduler._mpeZonePlan || null : null,
     authorizedNoteOutputIds: [...activeOutputs.keys()], activeNoteOutputIds: [...activeOutputs].filter(([id, route]) =>
       !route.port.channels || scheduler.getOutputRouteState?.(id)?.mpeReady !== false).map(([id]) => id),
     routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,

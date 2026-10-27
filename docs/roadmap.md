@@ -6793,3 +6793,18 @@ export-budget acknowledgments still prevent a false complete receipt.
   **13 browser boundaries pass** (42.7s), and static/provenance checks pass.
   Parent 9d0ce9ad completed full CI with **6,284 passing** and clean browser,
   policy and dependency gates. Supported long-soak qualification remains separate.
+
+### Continuation 268 — inline MPE route evidence and explicit alternatives
+
+- The lane output selector now shows the actual manager/member/reserved channels,
+  pitch ranges, setup refusals, retained previous configurations and exhaustion
+  policy. Empty/invalid zones remain visible before a destination is connected.
+- Manual assumptions and submitted zone messages explicitly remain receiver
+  unverified. Shared MIDI 1 expression, browser preview, voice rejection/stealing
+  and manual/submitted setup are explicit choices; project policies participate
+  in Undo. No automatic master/shared-channel fallback is introduced.
+- Display updates retain the selector and its focus; retired controls cannot
+  publish edits. The maintained CI boundary list includes workstation views.
+  The musical-header fixture now observes the completed deferred display write.
+- **120 MPE/controller/MIDI-owner cases** and all **20 browser boundaries** pass.
+  The receipt retains earlier batch failures and their focused follow-through.

@@ -2518,5 +2518,77 @@
         "functions": 88.19
       }
     }
+  },
+  "continuation268": {
+    "date": "2026-10-27",
+    "parentRevision": "fc173a189477b736ba39428692f84d5a34f65846",
+    "scope": "Inline actual MPE route evidence, reserved channels, refusal and retained-configuration diagnostics; explicit saved voice/setup/shared policies and browser preview selection.",
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/MidiRouteDiagnostics.js",
+        "sha256": "6798c99de083589844373cbde5f2a8b53813ee39add88ef60758d6dc996c6467"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "sha256": "4faec03cbd41d7b53aef34cde7fa22c9c2f8eba21337f62b3c4dbadd149233be"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "1f8885af9b13aaf5078bfa39a1632582c257698d83638c403fbbea106c77d50f"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "dce65a72b3c98d6d065d39f1e5d9e8094458cec5daae41c8f9db51ca53e7dc4f"
+      },
+      {
+        "path": "test/midi/midi-route-diagnostics.test.js",
+        "sha256": "e17ef1a2a0be4b1787ecc687802335b95d226e899e55fde3c1c709cccc9e6ac6"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "d875323689f6cbef97e228acf7e34c56673acac249157d300526f73e5fbd7b69"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "sha256": "d127a19ff8c5022b54c241df6363858a5630b2a6053e5e78266d828b911a414e"
+      },
+      {
+        "path": "package.json",
+        "sha256": "67994de3554c994d6a5c68989112dd0b56a2f414cf35f23cd296b34183e79598"
+      }
+    ],
+    "runs": [
+      {
+        "command": "Combined MIDI/procgen/bench/workflow before follow-through",
+        "passed": 3925,
+        "failed": 1,
+        "reason": "New diagnostic wording assertion",
+        "logSha256": "050270e0847f6fab77503148f91fa852f744af018f2cb142c236fbb1650adc6d"
+      },
+      {
+        "command": "Combined MIDI/bench/workflow before follow-through",
+        "passed": 2515,
+        "failed": 2,
+        "reason": "No-port route guard and new gate fixture invocation",
+        "logSha256": "41e1d2788246f4549907ccae292a56fd636763344cceaf52a2942a6630344928"
+      },
+      {
+        "command": "Actual MPE plan, route diagnostics, workstation controller and MIDI recording/export owners",
+        "passed": 120,
+        "failed": 0,
+        "logSha256": "0ec2a5516c76da83ee54afb82c58df1c3dba6b6c24b98d1d7e8e9f86905e235b"
+      },
+      {
+        "command": "npm run test-e2e:boundaries",
+        "passed": 20,
+        "failed": 0,
+        "runtimeSeconds": 108,
+        "logSha256": "bd2b4e0719c3c94cc317f6e4d3a0c5a96c4201f565d7f0fad66dba824b095356"
+      }
+    ],
+    "limits": [
+      "API-accepted zone setup remains receiver-unverified; manual receiver configuration is labelled assumed.",
+      "Physical MIDI receiver conformance is not claimed."
+    ]
   }
 }

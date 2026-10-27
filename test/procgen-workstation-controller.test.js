@@ -58,6 +58,22 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('records explicit MPE policy changes in the project and restores them through undo', async () => {
+    const f = setup(); f.studio.bindRuntime(); const world = f.runtime.world;
+    f.studio.dispatch({ type: 'procgen/global', patch: { mpe: { enabled: true, masterChannel: 1, memberChannels: [2], voicePolicy: 'reject', configuration: 'manual' } } });
+    f.studio.handlers.midiRoutePolicy('steal-oldest');
+    expect(f.studio.getProject().global.mpe).to.include({ enabled: true, voicePolicy: 'steal-oldest' });
+    f.studio.handlers.midiRoutePolicy('send-zone'); expect(f.studio.getProject().global.mpe.configuration).to.equal('send-zone');
+    f.studio.handlers.midiRoutePolicy('shared'); expect(f.studio.getProject().global.mpe.enabled).to.equal(false);
+    await f.studio.handlers.undo(); expect(f.studio.getProject().global.mpe).to.include({ enabled: true, configuration: 'send-zone' });
+    await f.studio.handlers.undo(); expect(f.studio.getProject().global.mpe.configuration).to.equal('manual');
+    await f.studio.handlers.undo(); expect(f.studio.getProject().global.mpe.voicePolicy).to.equal('reject');
+    const project = f.studio.getProject(); f.studio.handlers.midiRoutePolicy('automatic-master');
+    expect(f.studio.getProject()).to.equal(project); expect(f.statuses.at(-1)).to.include('Unknown MIDI expression policy');
+    expect(f.runtime.world).to.equal(world); expect(f.restarts).to.have.length(0);
+    expect(f.studio.handlers.midiRouteState()).to.have.property('outputRoutes');
+    expect(f.studio.handlers.outputState().selectedBackend).to.equal('synth'); await f.studio.dispose().completion;
+  });
   it('preserves a real 1000-tick physical trace across six prepared renderer changes with the pattern path disabled', async function() {
     this.timeout(60000); const masks = await loadProcgenMasks(), { candidates, descriptors } = await nativeSoundCandidates();
     const create = () => setup({ physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, seed: 7, laneCount: 1, assists: false, maxActors: 64 }),
