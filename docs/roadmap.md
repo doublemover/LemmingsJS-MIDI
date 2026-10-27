@@ -7320,3 +7320,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   Types, undefined calls, provenance, formatting and whitespace pass. Current
   full CI remains a separate check; no device, acoustic or assistive certification
   is inferred from these browser and virtual-port observations.
+
+### Continuation 288 — startup preparation and explicit failure recovery
+
+- Initial world preparation and failure are separate operational states. The
+  bootstrap reports its failure after installing the existing Start fresh owner;
+  the strip offers that exact action only while it exists. Output activation stays
+  disabled and Panic remains reachable. A failed unpublished world cannot enter
+  Stage. Failure text and recovery identity are bounded and source-bound.
+- Successful world publication clears the initial failure. Late startup errors
+  cannot relabel an already committed world; a stale recovery callback cannot
+  navigate after that publication. No second startup pipeline or output fallback
+  is introduced.
+- **173 focused Node cases / 12 desktop browser boundaries pass** in the grouped
+  run, plus types, undefined calls, provenance, formatting and whitespace. The new
+  production case holds a real MAIN.DAT request: preparation remains visible,
+  Listen is disabled and Panic works. HTTP 503 produces the exact world-failed
+  state; Panic preserves it and sends zero MIDI bytes. Existing Start fresh then
+  opens a valid fresh world. The malformed-recipe recovery boundary also passes.
+- The latest fully green checkpoint remains cd22832b (6,500 coverage cases / 62
+  desktop boundaries); later full CI is tracked separately. Its acknowledged
+  Partial master recording remains explicit. This follow-through completes the
+  implemented #1072 startup/busy-state journey without claiming device, acoustic
+  or assistive-device certification.

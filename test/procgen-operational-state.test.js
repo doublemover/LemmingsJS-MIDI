@@ -26,6 +26,7 @@ describe('read-only operational blocker and recovery policy', () => {
     expect(cases).to.equal(16);
   });
   const cases = [
+    ['world-failed', value => { value.simulation.failure = 'Asset unavailable'; value.simulation.canStartFresh = true; }, 'startup-fresh'],
     ['world-preparing', value => { value.simulation.preparing = true; }, 'none'],
     ['audio-off', value => { value.output.enabled = false; value.output.status = 'off'; }, 'listen'],
     ['audio-suspended', value => { value.output.enabled = false; value.output.audio.contextState = 'suspended'; }, 'listen'],
@@ -83,5 +84,10 @@ describe('read-only operational blocker and recovery policy', () => {
     expect(createProcgenOperationalSnapshot(input).controller).to.include({ evidenceAgeMs: 250, connectionEpoch: 3, deadline: 1300, observationDomain: 'performance-now' });
     input.midi.inputLiveness.observationDomain = 'native-ingress'; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
     input.midi.inputLiveness.observationDomain = 'performance-now'; input.transport.timestamp = 500; expect(createProcgenOperationalSnapshot(input).controller.evidenceAgeMs).to.equal(null);
+  });
+  it('retains a failed startup blocker without advertising an unavailable recovery or enabling output', () => {
+    const input = base(); Object.assign(input.simulation, { failure: 'Asset unavailable', preparing: true, canStartFresh: false });
+    const result = createProcgenOperationalSnapshot(input); expect(result.simulation.state).to.equal('failed'); expect(result.blockedReason.code).to.equal('world-failed');
+    expect(result.recoveryAction.id).to.equal('none'); expect(result.nativeOutputActionAllowed).to.equal(false);
   });
 });

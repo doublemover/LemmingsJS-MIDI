@@ -124,7 +124,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let acceptedWorldSettings = { ...legacy.settings, hazardSpacing: legacy.settings.hazardSpacing ?? state.hazardSpacing };
   state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
-  let startupCommitted = false, deferredPersist = false;
+  let startupCommitted = false, deferredPersist = false, startupFailure = null;
   const operationalExecution = getActiveExecutionIdentity('browser-native-audio');
   let operationalLessonAvailable = operationalExecution.activeExecution === 'bound' && ['worklet-sine', 'worklet-pluck'].every(id => operationalExecution.instrumentArtifacts?.some(artifact => artifact.engineId === id));
   let view = null, disposed = false, boundRuntime = null, boundSession = null, unhookRouter = null, unhookWorld = null;
@@ -1031,7 +1031,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
       savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
     }
-    startupCommitted = true;
+    startupCommitted = true; startupFailure = null;
     persist(); return next;
   };
   const snapshotSession = (name, { recovery = false } = {}) => {
@@ -1410,12 +1410,17 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const getOperationalSnapshot = () => {
     const world = runtime()?.world, laneRuntime = runtime()?.lanes?.getOperationalState?.(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState(), position = transport.getState(), metrics = legacy.getOperationalMetrics?.();
     const identity = JSON.stringify([documentGeneration, projectRevision, editRevision, world?.worldId || null, world?.generation, outputEpoch, midi.routeRevision,
-      output.selectedOutputId || output.outputId || null, output.enabled, output.status, position.clockSource, position.clockStatus, state.laneId, !!currentStorageError(), recoveryState, !!stageSession?.active()]);
-    return createProcgenOperationalSnapshot({ identity, simulation: { available: !!world, preparing: worldBusy || !world && !startupCommitted,
+      output.selectedOutputId || output.outputId || null, output.enabled, output.status, position.clockSource, position.clockStatus, state.laneId, !!currentStorageError(), recoveryState, !!stageSession?.active(), startupFailure]);
+    return createProcgenOperationalSnapshot({ identity, simulation: { available: !!world && !startupFailure, preparing: !startupFailure && (worldBusy || !world && !startupCommitted), failure: startupFailure,
+      canStartFresh: !!document.getElementById('procgenStartupFresh'),
       paused: laneRuntime?.paused ?? (world?.timer?.speedFactor === 0 || (legacy.isPaused?.() ?? !position.playing)), requestedSpeed: legacy.settings.speed,
       achievedTicksPerSecond: metrics && world && metrics.generation === world.generation ? metrics.achievedTicksPerSecond : null, measurementTime: metrics?.observedAt, tickDurationMs: world?.timer?.frameTime },
     transport: position, output, midi, physical: physicalPlayback?.operationalState?.() || null, lanes: project.procgen.lanes,
     storage: { error: currentStorageError() }, recovery: { state: recoveryState, error: recoveryError, lessonAvailable: operationalLessonAvailable }, stage: !!stageSession?.active() });
+  };
+  const reportStartupFailure = error => {
+    if (disposed || startupCommitted) return false;
+    startupFailure = String(error?.message || 'The initial world could not be prepared.').slice(0, 200); view?.refreshOperational?.(); return true;
   };
   const handlers = {
     operationalState: getOperationalSnapshot,
@@ -1427,6 +1432,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (action === 'export') return handlers.export();
       if (action === 'play') return handlers.stagePlay();
       if (action === 'exit-stage') return handlers.stageExit();
+      if (action === 'startup-fresh') { const control = document.getElementById('procgenStartupFresh'); if (!control) return false; control.click(); return true; }
       if (action === 'review-output' || action === 'review-backend') {
         const control = document.getElementById(action === 'review-output' ? 'procgenMidiDevice' : 'procgenOutput'); control?.focus?.({ preventScroll: true }); return !!control;
       }
@@ -1688,7 +1694,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return transport.getState();
     },
     stage: safe(async () => {
-      stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && legacy.local.getState().status !== 'starting' && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
+      stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && !startupFailure && !!runtime()?.world && legacy.local.getState().status !== 'starting' && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
         getIdentity: () => JSON.stringify([documentGeneration, projectRevision]), setPresentation: value => view?.stageMode?.(value), getCandidate: () => sceneLoader?.state(),
         applyCandidate: () => sceneLoader.apply(), cancelCandidate: () => sceneLoader?.cancel(), onStatus: status });
       const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); legacy.refreshShortcutHints?.(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
@@ -1998,7 +2004,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       durableTick: durableRecoveryTick, durableGeneration: durableRecoveryGeneration, error: recoveryError, retirement: recoveryRetirement, lastCommit: lastRecoveryCommit, journal: getProcgenRecoveryJournal(runtime()?.world)?.stats() || null, storage: storage.getState?.().recoveryPages || null }),
     getStartupPlan: () => ({ ...startupPlan, project: clone(startupPlan.project) }), getLaneAssignments: () => project.procgen.lanes.map(lane => lane.worldThemeId),
     laneMixView: laneId => physicalPlayback?.laneMixView(laneId),
-    getOperationalSnapshot,
+    getOperationalSnapshot, reportStartupFailure,
     getPlaybackState: () => { const output = legacy.local.getState(); return { ...output,
       ...(output.selectedBackend === 'midi' ? ports.getOutputActivity() : { activeNotes: router()?.scheduler?._activeNotes?.size || 0, pendingNotes: router()?.scheduler?._pendingNoteOns?.size || 0 }),
       pressure: output.selectedBackend === 'midi' ? ports.getState().pressure : router()?.scheduler?.getOutputPressure?.() || ports.getState().pressure }; },

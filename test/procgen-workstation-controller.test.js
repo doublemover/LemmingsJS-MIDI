@@ -60,6 +60,16 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('binds failed initial-world recovery to the existing Start fresh owner and ignores failure after successful publication', async () => {
+    const f = setup(); let starts = 0;
+    try {
+      f.elements.set('procgenStartupFresh', { click() { starts++; } }); expect(f.studio.reportStartupFailure(new Error('Asset unavailable'))).to.equal(true);
+      const failed = f.studio.getOperationalSnapshot(); expect(failed.simulation.state).to.equal('failed'); expect(failed.recoveryAction.id).to.equal('startup-fresh');
+      expect(await f.studio.handlers.recoverOperational('startup-fresh', failed.identity)).to.equal(true); expect(starts).to.equal(1);
+      f.studio.bindRuntime(); expect(f.studio.getOperationalSnapshot().simulation.state).not.to.equal('failed'); expect(f.studio.reportStartupFailure(new Error('late'))).to.equal(false);
+      expect(await f.studio.handlers.recoverOperational('startup-fresh', failed.identity)).to.equal(false); expect(starts).to.equal(1);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('keeps UI edit ownership through the first durable Save and advances it only on logical document replacement', async () => {
     const f = setup({ storageOverride: { async saveDocument(id, revision) { return { id, revision: revision + 1 }; }, close() {} } });
     try {

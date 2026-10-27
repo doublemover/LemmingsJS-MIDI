@@ -143,3 +143,22 @@ test('source preview offers an available mapping review instead of an unverified
   const before = await projectWorldState(page), output = await metrics(page); await strip(page).getByRole('button', { name: 'Review physical mappings', exact: true }).click();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.state.tab)).toBe('Physical'); expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
 });
+
+test('real asset preparation keeps Panic reachable, reports initial-world failure and recovers through Start fresh', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); await installWebMidiStub(page, { trackOutput: true });
+  let release, requests = 0; const gate = new Promise(resolve => { release = resolve; });
+  const failAsset = async route => { requests++; await gate; await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Controlled unavailable world asset' }); };
+  await page.route('**/MAIN.DAT*', failAsset);
+  try {
+    await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8', { waitUntil: 'commit' }); await expect.poll(() => requests).toBeGreaterThan(0);
+    await expect(strip(page)).toHaveAttribute('data-world-state', 'preparing'); await expect(page.locator('#procgenListen')).toBeDisabled(); await expect(page.locator('#procgenPanic')).toBeVisible();
+    await page.locator('#procgenPanic').click(); await expect(strip(page)).toHaveAttribute('data-world-state', 'preparing');
+    release(); await expect(strip(page)).toHaveAttribute('data-state', 'world-failed'); await expect(strip(page)).toContainText('World preparation failed');
+    await expect(page.locator('#procgenListen')).toBeDisabled(); await page.locator('#procgenPanic').click(); await expect(strip(page)).toHaveAttribute('data-state', 'world-failed');
+    expect(await metrics(page)).toMatchObject({ requests: 0, sent: 0 }); await page.unroute('**/MAIN.DAT*', failAsset);
+    await strip(page).getByRole('button', { name: 'Start fresh session', exact: true }).click();
+    await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+    expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getStartupPlan().mode)).toBe('fresh'); await expect(strip(page)).not.toHaveAttribute('data-world-state', 'failed');
+    expect(await metrics(page)).toMatchObject({ requests: 0, sent: 0 });
+  } finally { release(); }
+});

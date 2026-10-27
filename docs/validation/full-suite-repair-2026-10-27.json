@@ -837,7 +837,8 @@
       "height": 1080
     },
     "excludesContinuations": [
-      287
+      287,
+      288
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -10046,6 +10047,107 @@
       "Current remote full CI is pending. The green cd22832b checkpoint excludes this continuation.",
       "Prior green CI honestly retains Partial master capture after a 128-frame render-clock discontinuity; it is not Ready/contiguous capture evidence.",
       "Virtual ports, browser state and deterministic physical hashes do not certify acoustic delivery, hardware, bridge health or assistive devices. Wider backlog work remains."
+    ]
+  },
+  "continuation288": {
+    "baseHead": "7e48e8e8a6be35814982b4eea43722628941dde2",
+    "scope": "Exact initial-world preparation/failure status and canonical fresh-session recovery with Panic available.",
+    "implemented": [
+      "Bootstrap reports initial failure after mounting its existing Start fresh owner. The snapshot distinguishes preparing/failed and enables only that current recovery action.",
+      "Bounded failure text participates in source identity. Failure blocks output activation and Stage entry while retaining the canonical Panic action.",
+      "Successful publication clears the initial failure; late error reports cannot relabel a committed world. Stale recovery actions cannot navigate after publication."
+    ],
+    "validation": {
+      "nodePassed": 173,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "2s",
+      "browserPassed": 12,
+      "browserFailed": 0,
+      "browserReportedDuration": "1.0m",
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "productionCase": "Hold an actual MAIN.DAT fetch and verify preparing, disabled Listen and reachable Panic. Fulfill HTTP 503; require world-failed and current fresh recovery. Panic preserves the failure and sends no MIDI bytes. Unblock assets and invoke the existing fresh owner; a valid fresh world loads without MIDI access.",
+      "retainedCases": "The same group retains all 10 operational journeys and the malformed-recipe/source-preserving fresh recovery boundary.",
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog288-node-20261027.log",
+          "sha256": "943eeda7e538f54e551d509f6138b568cc66a4148aae588bbcd86817a87b71d1",
+          "bytes": 16092
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog288-browser-20261027.log",
+          "sha256": "210ca0b481a76dcf3fa4158b24a735738678dab771426a85a4a92f791bbb2d08",
+          "bytes": 2390
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog288-format-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "static": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog288-static-20261027.log",
+          "sha256": "8aac3d488ff58802331d959f987c1df3ac6ee4743103c242b50319ee8f5844df",
+          "bytes": 371
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "sha256": "256e6119b72f3eebe2de6edb3fd9cd7a9e86a847a3409fbdfabe52bd79d8a11d",
+        "bytes": 27012
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "502183b981bf4c8160449102f30de9197dd04ab53fd8fff42bbc8181011b4f64",
+        "bytes": 534061
+      },
+      {
+        "path": "e2e/procgen-operational-status.spec.js",
+        "sha256": "1a50dff21cce4303afc75dea5ecc815bd7f90a5b3b5793c93795d9fde81cf158",
+        "bytes": 17949
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+        "sha256": "eab3dd01d470846c30e6f96232a8bb8a8c797dfa7f26da8532fc0cc0a584e75e",
+        "bytes": 12835
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "5b9f20a47ba26044478bb3a2eae7896395a0206ecac53e4ab3c27724eeb1c1ec",
+        "bytes": 187921
+      },
+      {
+        "path": "js/app/procgenBoot.js",
+        "sha256": "75f7964c6d1685b228a9cbfea8cc2f3433ec0f39cfbdc6ecb3e15a8c4be4226e",
+        "bytes": 39905
+      },
+      {
+        "path": "test/procgen-operational-state.test.js",
+        "sha256": "beb1b0359f71c5b9dd2a0f5be3bc68973f0f9a3b50ece3fd828a5d086ed2742d",
+        "bytes": 10619
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "d185367c44d97af0a0ce44cb61251ff389165e70d2c3be49d14fd6c08ca03630",
+        "bytes": 94987
+      }
+    ],
+    "limitations": [
+      "Current full CI is pending. The latest green cd22832b checkpoint excludes continuations 287/288.",
+      "The retained earlier Partial master capture is not Ready/contiguous recording evidence. Browser and virtual-port results do not certify hardware, acoustic delivery or assistive devices.",
+      "This completes the implemented startup/busy-state portion of #1072; the wider backlog remains open."
     ]
   }
 }

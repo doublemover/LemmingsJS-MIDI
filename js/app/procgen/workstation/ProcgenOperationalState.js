@@ -14,7 +14,7 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (typeof identity !== 'string' || identity.length > 1024) throw new Error('Invalid operational source identity.');
   const mix = laneSummary(lanes), hardware = output.selectedBackend === 'midi', audio = output.audio || {}, selectedId = output.selectedOutputId || output.outputId || null;
   const route = midi.outputRoutes?.find(route => route.outputId === selectedId), outputName = text(route?.name || output.outputName || output.selectedOutputName || selectedId, 'No destination selected');
-  const simulationState = simulation.preparing ? 'preparing' : !simulation.available ? 'unavailable' : simulation.paused ? 'paused' : 'running';
+  const simulationState = simulation.failure ? 'failed' : simulation.preparing ? 'preparing' : !simulation.available ? 'unavailable' : simulation.paused ? 'paused' : 'running';
   const clockState = transport.clockSource === 'external' ? transport.clockStatus || 'waiting' : 'internal';
   const routeState = !hardware ? 'not-selected' : output.enabled && route?.active ? 'active' : output.status === 'starting' ? 'preparing' : selectedId && (route?.available === false || output.failureKind === 'destination-missing') ? 'lost' :
     selectedId ? 'selected' : output.discoveredOutputCount > 0 ? 'discovered' : 'undiscovered';
@@ -27,6 +27,7 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (recovery.state === 'unavailable' || recovery.error) add(105, 'recovery-error', 'Recovery could not be saved. Keep the current project open and prepare a backup.', ['export', 'Prepare a backup file']);
   if (hardware && route?.ownedVoiceAdmissionReady === false) add(103, 'owned-cleanup-unconfirmed', 'MIDI note admission is blocked: an owned release is unconfirmed.', ['inspect-midi', 'Review MIDI route']);
   if (clockState === 'lost' || transport.reason === 'clock-lost') add(100, 'clock-lost', 'External clock was lost. Transport remains stopped until an explicit Start or Continue.', ['inspect-clock', 'Review clock input']);
+  if (simulationState === 'failed') add(99, 'world-failed', 'World preparation failed: ' + text(simulation.failure, 'The initial world is unavailable.'), simulation.canStartFresh ? ['startup-fresh', 'Start fresh session'] : null);
   if (routeState === 'lost') add(98, 'output-lost', 'The selected MIDI destination is unavailable: ' + outputName + '.', ['review-output', 'Review MIDI destination']);
   if (hardware && output.failureKind === 'api-send') add(96, 'midi-api-error', text(output.message, 'The MIDI output API rejected a send. Acoustic delivery is unverified.'), ['inspect-midi', 'Review MIDI output']);
   if (hardware && output.failureKind === 'permission-revoked') add(96, 'midi-permission-revoked', 'MIDI access was revoked. Discover again before explicitly reactivating the reviewed destination.', ['discover', 'Discover MIDI outputs']);
@@ -59,8 +60,8 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   blockers.sort((left, right) => right.priority - left.priority);
   const blocker = blockers[0] || { code: 'ready', message: output.enabled ? 'Output admission is enabled. Waiting between events is normal; acoustic delivery is unverified.' : 'Output state is unavailable.', action: null };
   let action = blocker.action;
-  if (stage && action && ['inspect-midi', 'inspect-clock', 'review-output', 'review-backend', 'inspect-physical', 'inspect-mix', 'lesson', 'activate', 'export'].includes(action[0])) action = ['exit-stage', 'Exit Stage to review'];
-  return freeze({ version: 1, identity, stage, nativeOutputActionAllowed: (!simulation.preparing || output.enabled) && (!hardware || permission !== 'unavailable') && (!stage || !hardware || output.enabled || !selectedId || action?.[0] === 'discover'),
+  if (stage && action && ['inspect-midi', 'inspect-clock', 'review-output', 'review-backend', 'inspect-physical', 'inspect-mix', 'lesson', 'activate', 'export', 'startup-fresh'].includes(action[0])) action = ['exit-stage', 'Exit Stage to review'];
+  return freeze({ version: 1, identity, stage, nativeOutputActionAllowed: simulationState !== 'failed' && (!simulation.preparing || output.enabled) && (!hardware || permission !== 'unavailable') && (!stage || !hardware || output.enabled || !selectedId || action?.[0] === 'discover'),
     simulation: freeze({ state: simulationState, label: simulationState === 'preparing' ? 'World preparing' : simulationState === 'unavailable' ? 'World unavailable' : 'World ' + simulationState,
       requestedSpeed: number(simulation.requestedSpeed), achievedTicksPerSecond: number(simulation.achievedTicksPerSecond), tickDurationMs: number(simulation.tickDurationMs), measurementTime: number(simulation.measurementTime) }),
     transport: freeze({ state: transport.playing ? 'playing' : 'stopped', label: 'Music ' + (transport.playing ? 'playing' : 'stopped'), linked: transport.linked === true, bpm: number(transport.bpm), baseBpm: number(transport.baseBpm), gameSpeed: number(transport.gameSpeed), clockSource: text(transport.clockSource, 'unreported') }),

@@ -177,7 +177,7 @@ const installProcgenBootListeners = () => {
     document.getElementById('procgenStartupError')?.remove();
     const panel = document.createElement('section'); panel.id = 'procgenStartupError'; panel.className = 'procgen-startup-error'; panel.setAttribute('role', 'alert');
     const title = document.createElement('h2'); title.textContent = 'Could not open this session';
-    panel.append(title, status, fresh); document.body.appendChild(panel); fresh.focus();
+    panel.append(title, status, fresh); document.body.appendChild(panel); procgenStudio?.reportStartupFailure?.(error); fresh.focus();
   };
   const boot = async () => {
     const controller = new AbortController(); startupController?.abort(); startupController = controller;

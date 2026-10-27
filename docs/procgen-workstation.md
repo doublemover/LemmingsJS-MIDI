@@ -93,6 +93,11 @@ available. Source preview instead offers the existing physical-mapping review.
 Opening the lesson explains a cause without loading its setup or sending a test
 note; loading a setup remains a separate explicit action.
 
+While the initial world prepares, output activation waits and Panic remains
+reachable. An initial preparation failure has its own visible reason and offers
+the existing **Start fresh session** action. A late startup error cannot replace
+the state of a successfully published world.
+
 The MIDI inspector connects devices, selects the input and a lane's note output,
 assigns its channel, and chooses a separate clock output. **MIDI Thru** starts off.
 Selecting external clock makes received MIDI the timing authority. Clock loss
