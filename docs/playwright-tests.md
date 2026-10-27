@@ -143,7 +143,7 @@ they are not a replacement for behavior tests.
 
 | Surface | Command | Expected use |
 | --- | --- | --- |
-| MIDI desktop/tablet/mobile | `npm run capture:e2e:midi -- --viewport=desktop --json`; repeat for `tablet` and `mobile` | Verify setup, track mixer, source browser, clip editor, inspector, diagnostics, and import/export states after MIDI polish changes. |
+| MIDI desktop 1080p/QHD/UHD | `npm run capture:e2e:midi -- --viewport=desktop --json`; repeat for `qhd` and `uhd` | Verify setup, track mixer, source browser, clip editor, inspector, diagnostics, and import/export states after MIDI polish changes. |
 | Editor desktop | `npm run capture:e2e:editor -- --viewport=desktop --json` | Verify editor shell, palette, canvas, inspector, validation, import/export, and playtest states after editor changes. |
 | Procgen desktop | `npm run capture:e2e:procgen -- --viewport=desktop --json` | Verify the selected theme, generated frontier, newest pieces, debug panels, and camera readability after procgen changes. |
 | Solver advisory surfaces | `npm run capture:e2e:editor -- --viewport=desktop --target="validation-warnings,validation-inspector-with-warnings" --json` | Verify user-visible solver/editor advisory warnings and compact failure text after advisory surface changes. |

@@ -8567,5 +8567,24 @@
       "The actual direct/stepped same-outlet fixture establishes controls and real crossings, not qualification of all two/three-branch production route templates, later musical differences, Stage/recorded cue replacement and seek/reload matrices. Issue #1232 remains open for those requirements.",
       "No external hardware, acoustic, long-session or disk durability claim."
     ]
+  },
+  "continuation279": {
+    "baseHead": "fa6f39d2c0e52d68c167ba18a209db61b434e6a5",
+    "scope": "Refresh the canonical renderer before handing an observed junction actor to the existing world inspector; align remaining active testing guides with the 1920x1080 desktop minimum.",
+    "validation": {
+      "browserPassed": 2,
+      "browserFailed": 0,
+      "durationSeconds": 8.1,
+      "handoff": "Real production crossing selects the exact observed actor in the existing world inspector, closes switchyard controls and releases the overlay.",
+      "formatExit": 0,
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog279-browser-20261027.log",
+        "sha256": "c28e2523e018f25a5796ff230ce8503c9c0c52ec6e8ff88ce51a683f7acda0c2",
+        "bytes": 556
+      }
+    },
+    "limitations": [
+      "Full CI for this follow-through is pending. No additional route-template, hardware or listening qualification is claimed."
+    ]
   }
 }

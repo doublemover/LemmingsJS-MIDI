@@ -70,7 +70,9 @@ test('world levers distinguish pending, applied and observed routes without chan
   await dock.locator('ol details summary').first().click();
   await expect(dock.getByRole('list', { name: 'Observed junction crossings' })).toContainText('Committed movement');
   await page.screenshot({ path: test.info().outputPath('switchyard-wide.png') });
-  await dock.getByRole('button', { name: 'Close switchyard', exact: true }).click(); await expect(dock).toBeHidden(); await expect(page.locator('.studio-junction-layer')).toBeHidden();
+  await dock.getByRole('button', { name: 'Inspect actor', exact: true }).first().click(); await expect(dock).toBeHidden(); await expect(page.locator('.studio-junction-layer')).toBeHidden();
+  const inspected = await page.evaluate(() => ({ selection: window.__PROCGEN_STUDIO__.getWorldInspector().getState().selection, actorId: window.junctionFixture.actorId }));
+  expect(inspected.selection).toMatchObject({ actorId: inspected.actorId, kind: 'actor' });
 });
 
 test('desktop switchyard cancels mouse and definition gestures', async ({ page }) => {
