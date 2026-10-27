@@ -1,5 +1,6 @@
 import { RECEIPT_WIDTH, BEGIN, UPDATE, END, REJECTED, FAULTED } from './worklet/OwnedSineProcessor.js';
-import { verifyOwnedPcmPayload, verifyOwnedPcmSetPayload } from '../resources/OwnedPcmVerification.js';
+import { verifyOwnedPcmPayload } from '../resources/OwnedPcmVerification.js';
+import { verifyOwnedPcmSetPayload } from '../resources/OwnedPcmSetVerification.js';
 import { getOwnedSourceProfile } from './OwnedSourceProfiles.js';
 import { ownedSourceSeed } from './OwnedSourceSeed.js';
 import { compileInstrumentPerformance } from '../../midi/content/InstrumentPerformance.js';
