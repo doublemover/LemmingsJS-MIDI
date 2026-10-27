@@ -461,5 +461,64 @@
       "provenance 10 components / 340 files",
       "complete branch whitespace against origin/master"
     ]
+  },
+  "smokeFollowup": {
+    "scope": "History benchmark endpoint sampling after the 6203-test head; existing workload targets and performance gates remain unchanged.",
+    "unit": {
+      "passed": 14,
+      "failed": 0,
+      "command": "npx mocha test/bench-history-stress.test.js test/bench-smoke.test.js"
+    },
+    "mcp": {
+      "command": "node scripts/mcp-smoke.js",
+      "result": "pass",
+      "origin": "Owned ephemeral HTTP loopback server"
+    },
+    "benchmark": {
+      "command": "node scripts/bench-smoke.js",
+      "origin": "Owned ephemeral HTTP loopback server",
+      "result": {
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 29134,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9141,
+          "benchHistoryStress": 14117,
+          "benchHotpaths": 5875
+        },
+        "metrics": {
+          "perfP95Frame": 7.5,
+          "perfP50Tps": 166.66666666666666,
+          "historyRatio": 0.5008333333333334,
+          "antsAvgMs": 11.86,
+          "tileCompositionAvgMs": 2.23,
+          "overlayPlaneAvgMs": 10.49,
+          "scaledBlitAvgMs": 25.88
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5008333333333334
+          },
+          {
+            "speed": 60,
+            "ratio": 0.9996666666666667
+          }
+        ]
+      },
+      "logSha256": "a99acb1b28bcfe199639073ac2c58961d3d19219ad53b6b6aec3d2dc98722065"
+    }
   }
 }

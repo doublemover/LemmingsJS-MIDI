@@ -6623,3 +6623,8 @@ export-budget acknowledgments still prevent a false complete receipt.
   palettes. The clip inspector preserves equivalent typed pitch spelling while
   focused and still displays external note changes. All 45 focused Node cases
   and all 13 browser boundary cases pass (43.4 seconds for the browser batch).
+
+- Final smoke follow-through: MCP protocol smoke passes. History sampling now
+  observes the complete final interval and records sampling duration separately
+  from seek-probe time. All 14 benchmark helper/gate cases and the complete
+  benchmark smoke batch pass with unchanged workload targets and thresholds.

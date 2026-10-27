@@ -249,6 +249,20 @@ const summarizeTimings = (timingsMs) => {
   };
 };
 
+const sampleHistoryWindow = async ({ durationMs, sampleMs, targetSpan, readHistory, assertBudget = () => {}, now = Date.now, wait = sleep }) => {
+  const start = now();
+  let maxSpan = 0, lastHistory = null, sampleCount = 0;
+  while (true) {
+    assertBudget();
+    lastHistory = await readHistory() || null;
+    sampleCount++;
+    maxSpan = Math.max(maxSpan, lastHistory?.spanTicks || 0);
+    const elapsedMs = now() - start;
+    if (maxSpan >= targetSpan || elapsedMs >= durationMs) return { maxSpan, lastHistory, sampleCount, elapsedMs };
+    await wait(Math.min(sampleMs, durationMs - elapsedMs));
+  }
+};
+
 /**
  * @param {{
  *   baseUrl: string,
@@ -326,24 +340,15 @@ const run = async (config = createHistoryBenchConfig()) => {
       await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
 
       const start = Date.now();
-      let spanTicks = 0;
-      let maxSpan = 0;
-      let lastHistory = null;
-      let sampleCount = 0;
-      while (Date.now() - start < durationMs) {
-        assertRuntimeBudget(`speed=${speed} sampling`);
-        const history = await withTimeout(
+      const { maxSpan, lastHistory, sampleCount, elapsedMs: samplingDurationMs } = await sampleHistoryWindow({
+        durationMs, sampleMs, targetSpan,
+        assertBudget: () => assertRuntimeBudget(`speed=${speed} sampling`),
+        readHistory: () => withTimeout(
           page.evaluate(() => window.__E2E__?.getState?.()?.game?.history || null),
           opTimeoutMs,
           'readHistoryState'
-        );
-        lastHistory = history || null;
-        sampleCount++;
-        spanTicks = history?.spanTicks || 0;
-        if (spanTicks > maxSpan) maxSpan = spanTicks;
-        if (spanTicks >= targetSpan) break;
-        await sleep(sampleMs);
-      }
+        )
+      });
 
       if (requireTargetSpan && maxSpan < targetSpan) {
         failures.push(
@@ -466,6 +471,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         sampleCount,
         speedFactor: speed,
         durationMs: Date.now() - start,
+        samplingDurationMs,
         maxSpanTicks: maxSpan,
         targetSpanTicks: targetSpan,
         seekProbe: {
@@ -542,6 +548,7 @@ export {
   parseArgs,
   parseSpeedList,
   run,
+  sampleHistoryWindow,
   summarizeTimings,
   toBoolean,
   toPositiveNumber

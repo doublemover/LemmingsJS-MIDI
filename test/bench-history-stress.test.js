@@ -5,12 +5,35 @@ import {
   DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
+  sampleHistoryWindow,
   summarizeTimings,
   toBoolean,
   toPositiveNumber
 } from '../scripts/bench-history-stress.js';
 
 describe('bench-history-stress helpers', function () {
+  it('includes the terminal history observation and clamps the last sampling interval', async function () {
+    let time = 0;
+    const reads = [], waits = [];
+    const result = await sampleHistoryWindow({ durationMs: 1100, sampleMs: 500, targetSpan: 6000,
+      now: () => time, wait: async ms => { waits.push(ms); time += ms; },
+      readHistory: async () => { reads.push(time); return { spanTicks: time * 5 }; } });
+    expect(reads).to.deep.equal([0, 500, 1000, 1100]);
+    expect(waits).to.deep.equal([500, 500, 100]);
+    expect(result).to.deep.equal({ maxSpan: 5500, lastHistory: { spanTicks: 5500 }, sampleCount: 4, elapsedMs: 1100 });
+  });
+
+  it('stops at the actual target and propagates a failed terminal observation', async function () {
+    let time = 0;
+    const options = { durationMs: 1000, sampleMs: 500, targetSpan: 10, now: () => time, wait: async ms => { time += ms; } };
+    expect((await sampleHistoryWindow({ ...options, readHistory: async () => ({ spanTicks: time / 50 }) })).elapsedMs).to.equal(500);
+    time = 0;
+    let failure;
+    try {
+      await sampleHistoryWindow({ ...options, targetSpan: 6000, readHistory: async () => { if (time >= 1000) throw new Error('terminal unavailable'); return { spanTicks: 0 }; } });
+    } catch (error) { failure = error; }
+    expect(failure?.message).to.equal('terminal unavailable');
+  });
   it('parses args and number helpers safely', function () {
     const args = parseArgs(['--profile=soak', '--smoke']);
     expect(args.get('profile')).to.equal('soak');
