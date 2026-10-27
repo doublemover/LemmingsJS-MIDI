@@ -18,6 +18,7 @@ const TIMER_LOOP_DEVTOOLS = Object.freeze({
   color: 'primary',
   tooltipText: 'loop'
 });
+const MAX_FORWARD_TICKS_PER_FRAME = 120;
 
 class GameTimer {
   #speedFactor;
@@ -34,6 +35,8 @@ class GameTimer {
   #catchupBaseSpeed;
   #visHandler;
   #timeTravel;
+  #pendingCatchupTicks;
+  #runToken;
   #windowRef;
   #documentRef;
   #performanceRef;
@@ -52,7 +55,7 @@ class GameTimer {
     this.#lastTime = 0;
     this.#lastGameSecond = 0;
     this.#tickIndex = 0;
-    this.#loopBound = this.#loop.bind(this);
+    this.#loopBound = null;
     this.onGameTick = new EventHandler();
     this.eachGameSecond = new EventHandler();
     this.onBeforeGameTick = new EventHandler();
@@ -62,6 +65,8 @@ class GameTimer {
     this.#catchupSlow = false;
     this.#catchupBaseSpeed = 1;
     this.#timeTravel = null;
+    this.#pendingCatchupTicks = 0;
+    this.#runToken = null;
     this.#visHandler = () => {
       const app = getApp();
       const skip = app?.bench || app?.bench2 || app?.benchReverse || app?.benchSequence;
@@ -96,6 +101,8 @@ class GameTimer {
   getTimeTravelController() { return this.#timeTravel; }
 
   get tickIndex() { return this.#tickIndex; }
+  get maxTicksPerFrame() { return MAX_FORWARD_TICKS_PER_FRAME; }
+  get pendingCatchupTicks() { return this.#pendingCatchupTicks; }
   get counterExhausted() { return this.#tickIndex >= COUNTER_LIMIT - 1; }
   set tickIndex(v) {
     const next = Math.max(0, Math.trunc(Number(v) || 0));
@@ -155,6 +162,9 @@ class GameTimer {
   continue() {
     if (this.counterExhausted) return false;
     if (this.isRunning()) return true;
+    const runToken = {}; this.#runToken = runToken;
+    this.#loopBound = now => this.#loop(now, runToken);
+    this.#pendingCatchupTicks = 0;
     this.#lastTime = this.#now();
     this.#running = true;
     if (!this.#scheduleFrame()) {
@@ -176,6 +186,8 @@ class GameTimer {
   }
 
   suspend() {
+    this.#runToken = null;
+    this.#pendingCatchupTicks = 0;
     if (this.#rafId != null) {
       this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
       this.#rafId = null;
@@ -214,8 +226,8 @@ class GameTimer {
     return true;
   }
 
-  #loop(now) {
-    if (!this.isRunning()) return;
+  #loop(now, runToken) {
+    if (!this.isRunning() || this.#runToken !== runToken) return;
     const app = getApp();
     const bench = app?.bench === true;
     const bench2 = app?.bench2 === true;
@@ -235,28 +247,31 @@ class GameTimer {
       this.#rafId = null;
       const frameTime = this.#frameTime;
       if (app) app.tps = 1000 / frameTime;
-      let delta = now - this.#lastTime;
-      if (delta >= frameTime) {
-        const steps = Math.floor(delta / frameTime);
+      const delta = now - this.#lastTime;
+      if (delta >= frameTime || this.#pendingCatchupTicks > 0) {
+        const elapsedSteps = Math.max(0, Math.floor(delta / frameTime));
+        const requestedSteps = this.#pendingCatchupTicks + elapsedSteps;
+        const steps = Math.min(requestedSteps, MAX_FORWARD_TICKS_PER_FRAME);
+        this.#pendingCatchupTicks = requestedSteps - steps;
+        this.#lastTime += elapsedSteps * frameTime;
         if (bench || benchReverse || benchSequence) {
-          this.#benchSpeedAdjust(steps, app);
+          this.#benchSpeedAdjust(requestedSteps, app, steps);
         }
         if (bench2) {
-          if (steps > 1) this.#catchupSpeedAdjust(steps, app);
+          if (requestedSteps > 1) this.#catchupSpeedAdjust(requestedSteps, app);
           else this.#restoreSpeed();
         }
-        delta -= steps * frameTime;
-        this.#lastTime = now - delta;
         const beforeTick = this.onBeforeGameTick;
         const onTick = this.onGameTick;
-        for (let i = 0; i < steps && this.#running; ++i) {
+        for (let i = 0; i < steps && this.#running && this.#runToken === runToken; ++i) {
           if (this.counterExhausted) { this.suspend(); return; }
           if (beforeTick) beforeTick.trigger(this.#tickIndex);
           this.#incrementTickIndex();
           this.#emitGameSecondIfChanged();
           if (onTick) onTick.trigger();
         }
-      }
+      } else this.#pendingCatchupTicks = 0;
+      if (this.#runToken !== runToken) return;
       if (this.counterExhausted) this.suspend();
       if (!this.#running) return;
       if (!this.#scheduleFrame()) {
@@ -273,7 +288,7 @@ class GameTimer {
     }
   }
 
-  #benchSpeedAdjust(steps, appRef = null) {
+  #benchSpeedAdjust(steps, appRef = null, admittedSteps = steps) {
     // dynamically adjust speed based on how far we fall behind
     // slowThreshold and recoverThreshold scale with the current speedFactor.
     // Below speedFactor 6 the values grow too large; use speedFactor * 1.5 so
@@ -294,7 +309,7 @@ class GameTimer {
     if (steps <= recoverThreshold / 2) this.#stableTicks += 1;
 
     if (this.benchStartupFrames > 0) {
-      this.benchStartupFrames -= steps;
+      this.benchStartupFrames -= admittedSteps;
     }
 
     if (this.benchStartupFrames <= 0) {

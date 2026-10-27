@@ -225,6 +225,28 @@ const buildUrl = (raw) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const prepareHistoryBenchmarkRetention = ({ targetSpan, requireTargetSpan = true, requireBoundedRetention = true }, scope = globalThis) => {
+  const api = scope.__E2E__;
+  if (!Number.isSafeInteger(targetSpan) || targetSpan < 1 || targetSpan > 100000 || typeof api?.pause !== 'function') {
+    throw new Error('History benchmark target or paused owner is unavailable.');
+  }
+  api.pause();
+  if (api.getState()?.game?.timer?.running !== false) throw new Error('History benchmark retention requires a paused clock.');
+  const before = api.getState()?.game?.history?.retention;
+  if (!before) throw new Error('History retention policy is unavailable.');
+  const needsChange = requireBoundedRetention && !before.enableHistoryCap ||
+    requireTargetSpan && before.enableHistoryCap && before.historyCapTicks < targetSpan;
+  if (needsChange) {
+    const cap = Math.max(targetSpan, Number.isSafeInteger(before.historyCapTicks) ? before.historyCapTicks : 0);
+    if (typeof api.setHistoryRetention !== 'function' || !api.setHistoryRetention({ enableHistoryCap: true,
+      historyCapTicks: cap, historyWarnTicks: Math.floor(cap * 0.9) })) throw new Error('Required bounded history retention was refused.');
+  }
+  const applied = api.getState()?.game?.history?.retention;
+  if (!applied || requireBoundedRetention && (!applied.enableHistoryCap || !Number.isSafeInteger(applied.historyCapTicks) || applied.historyCapTicks < 1) ||
+      requireTargetSpan && applied.enableHistoryCap && applied.historyCapTicks < targetSpan) throw new Error('Required history retention was not applied.');
+  return { targetSpan, changed: !!needsChange, before: { ...before }, applied: { ...applied }, maximumRequestedCapTicks: 100000 };
+};
+
 const percentile = (sorted, p) => {
   if (!sorted.length) return 0;
   const clamped = Math.min(1, Math.max(0, p));
@@ -349,6 +371,8 @@ const run = async (config = createHistoryBenchConfig()) => {
         'waitForGameReady'
       );
       await withTimeout(page.evaluate((value) => window.__E2E__.setSpeed(value), speed), opTimeoutMs, 'setSpeed');
+      const retentionPreparation = await withTimeout(page.evaluate(prepareHistoryBenchmarkRetention,
+        { targetSpan, requireTargetSpan, requireBoundedRetention }), opTimeoutMs, 'prepareHistoryRetention');
       await withTimeout(page.evaluate(installHistoryReplayEvidence, { samples: seekSamples }), opTimeoutMs, 'prepareIndependentReplayOracle');
       await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
 
@@ -413,6 +437,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         speedFactor: speed,
         durationMs: Date.now() - start,
         samplingDurationMs,
+        retentionPreparation,
         maxSpanTicks: maxSpan,
         targetSpanTicks: targetSpan,
         seekProbe: {
@@ -495,6 +520,7 @@ export {
   DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
+  prepareHistoryBenchmarkRetention,
   run,
   readHistoryAfterFrame,
   sampleHistoryWindow,

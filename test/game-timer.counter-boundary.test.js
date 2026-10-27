@@ -21,6 +21,49 @@ const fixture = () => {
 };
 
 describe('finite GameTimer counter boundary', () => {
+  it('bounds a delayed animation frame and drains every deferred tick at unchanged speed', () => {
+    const f = fixture(), before = [], after = [], budget = f.timer.maxTicksPerFrame;
+    f.timer.onBeforeGameTick.on(tick => before.push(tick)); f.timer.onGameTick.on(() => after.push(f.timer.tickIndex));
+    f.timer.continue(); const end = (budget + 17) * f.timer.frameTime; f.frame(end);
+    expect(f.timer.tickIndex).to.equal(budget); expect(f.timer.pendingCatchupTicks).to.equal(17);
+    f.frame(end); expect(f.timer.tickIndex).to.equal(budget + 17); expect(f.timer.pendingCatchupTicks).to.equal(0);
+    expect(before).to.deep.equal(Array.from({ length: budget + 17 }, (_, index) => index));
+    expect(after).to.deep.equal(Array.from({ length: budget + 17 }, (_, index) => index + 1));
+    f.frame(end); expect(f.timer.tickIndex).to.equal(budget + 17); f.timer.stop();
+  });
+  it('does not credit deferred ticks to the admitted benchmark startup budget', () => withGlobalLemmings({ bench: true }, () => {
+    const f = fixture(), budget = f.timer.maxTicksPerFrame; f.timer.benchStartupFrames = 1000;
+    f.timer.continue(); f.frame((budget + 500) * f.timer.frameTime);
+    expect(f.timer.tickIndex).to.equal(budget); expect(f.timer.benchStartupFrames).to.equal(1000 - budget);
+    expect(f.timer.pendingCatchupTicks).to.equal(500); f.timer.stop();
+  }));
+  it('retains admitted tick debt when the benchmark controller changes its future speed', () => withGlobalLemmings({ bench: true }, () => {
+    const f = fixture(), requested = f.timer.maxTicksPerFrame + 500; f.timer.speedFactor = 10;
+    f.timer.continue(); const end = requested * f.timer.frameTime; f.frame(end);
+    expect(f.timer.speedFactor).to.be.lessThan(10); expect(f.timer.pendingCatchupTicks).to.equal(500);
+    for (let index = 0; index < 6; index++) f.frame(end);
+    expect(f.timer.tickIndex).to.equal(requested); expect(f.timer.pendingCatchupTicks).to.equal(0); f.timer.stop();
+  }));
+  it('clears wall-time catch-up debt on deliberate pause and reanchors a resumed clock', () => {
+    const f = fixture(), budget = f.timer.maxTicksPerFrame; f.timer.continue();
+    const end = (budget + 17) * f.timer.frameTime; f.frame(end); f.timer.suspend();
+    expect(f.timer.pendingCatchupTicks).to.equal(0); f.timer.continue(); f.frame(end);
+    expect(f.timer.tickIndex).to.equal(budget); f.timer.stop();
+  });
+  it('retires the old frame when a tick callback reanchors the running clock', () => {
+    const f = fixture(); let callbacks = 0;
+    f.timer.onGameTick.on(() => { if (++callbacks === 1) f.timer.speedFactor = 2; });
+    f.timer.continue(); f.frame(600);
+    expect(f.timer.tickIndex).to.equal(1); expect(f.frames.size).to.equal(1);
+    expect(f.timer.pendingCatchupTicks).to.equal(0); f.frame(630);
+    expect(f.timer.tickIndex).to.equal(2); expect(callbacks).to.equal(2); expect(f.frames.size).to.equal(1); f.timer.stop();
+  });
+  it('ignores a canceled prior-run frame without canceling or advancing its replacement clock', () => {
+    const f = fixture(); f.timer.continue(); const stale = f.frames.values().next().value;
+    f.timer.suspend(); f.timer.continue(); f.frame(60); stale(6000);
+    expect(f.timer.tickIndex).to.equal(1); expect(f.frames.size).to.equal(1);
+    expect(f.timer.pendingCatchupTicks).to.equal(0); f.timer.stop();
+  });
   it('refuses invalid horizon assignments without changing time, seconds or remaining allowance', () => withGlobalLemmings({ endless: false }, () => {
     const { timer } = fixture(); timer.tickIndex = COUNTER_LIMIT - 2; const seen = [];
     timer.eachGameSecond.on(second => seen.push(second)); const before = timer.getGameTime();

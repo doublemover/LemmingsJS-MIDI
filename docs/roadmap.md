@@ -6776,3 +6776,20 @@ export-budget acknowledgments still prevent a false complete receipt.
   and the formerly flaky boundary passes **10 consecutive runs** (59.8s).
   Formatting, shared guards, undefined calls, whitespace and provenance pass.
   The receipt preserves the failed CI scope separately from these executed fixes.
+
+### Continuation 267 — bounded forward catch-up and truthful soak retention
+
+- History qualification pauses the canonical owner, requests the required bounded
+  cap and verifies the applied policy before sampling. A 60,000-tick target cannot
+  silently run against the default 24,000-tick endless cap.
+- Forward clock frames admit at most 120 ticks and preserve integer tick debt
+  across internal speed adaptation. Pause/resume reanchors the clock; retired
+  callbacks cannot advance or cancel a newer run. Startup credits admitted work.
+- The original 30,000-tick probe timed out before this repair. Its retest reached
+  **30,103 ticks**, produced **109 cold blocks**, decoded four cold targets with
+  exact independent state/terrain parity, restored the start and passed the
+  **13.4ms seek p95** gate.
+- **3,431 combined game/MIDI/benchmark/workflow cases pass** (49.54s), all
+  **13 browser boundaries pass** (42.7s), and static/provenance checks pass.
+  Parent 9d0ce9ad completed full CI with **6,284 passing** and clean browser,
+  policy and dependency gates. Supported long-soak qualification remains separate.

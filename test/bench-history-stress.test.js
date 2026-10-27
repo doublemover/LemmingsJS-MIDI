@@ -5,14 +5,61 @@ import {
   DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
+  prepareHistoryBenchmarkRetention,
   readHistoryAfterFrame,
   sampleHistoryWindow,
   summarizeTimings,
   toBoolean,
   toPositiveNumber
 } from '../scripts/bench-history-stress.js';
+import { setHistoryRetention } from '../js/app/e2e/E2EGameControls.js';
+import { TimeTravelController } from '../js/game/TimeTravelController.js';
+import { createHistoryFixture } from './support/history-fixtures.js';
+
+const retentionFixture = () => {
+  const f = createHistoryFixture(); let running = true, requests = 0;
+  f.timer.isRunning = () => running; f.game.timeTravel = new TimeTravelController(f.game, f.history);
+  const view = { game: f.game }, scope = { __E2E__: {
+    pause() { running = false; return true; },
+    getState: () => ({ game: { timer: { running }, history: f.history.getHistoryStats() } }),
+    setHistoryRetention(policy) { requests++; return setHistoryRetention(view, policy); }
+  } };
+  return { ...f, view, scope, requests: () => requests, running: () => running };
+};
 
 describe('bench-history-stress helpers', function () {
+  it('prepares an actually applied bounded cap for the declared target through the paused history owner', () => {
+    const f = retentionFixture(), result = prepareHistoryBenchmarkRetention({ targetSpan: 60000 }, f.scope);
+    expect(result).to.include({ changed: true, targetSpan: 60000 });
+    expect(result.before.historyCapTicks).to.equal(20000); expect(result.applied.historyCapTicks).to.equal(60000);
+    expect(f.history.options.enableHistoryCap).to.equal(true); expect(f.history.options.historyCapTicks).to.equal(60000);
+    expect(f.game.timeTravel.getHistoryRetention().historyCapTicks).to.equal(60000);
+    expect(f.running()).to.equal(false); expect(f.requests()).to.equal(1); f.history.detach();
+  });
+  it('keeps an adequate bounded smoke policy without requesting a larger owner reservation', () => {
+    const f = retentionFixture(), result = prepareHistoryBenchmarkRetention({ targetSpan: 6000, requireTargetSpan: false }, f.scope);
+    expect(result.changed).to.equal(false); expect(result.applied.historyCapTicks).to.equal(20000);
+    expect(f.requests()).to.equal(0); f.history.detach();
+  });
+  it('rejects a claimed retention change that the actual history owner did not apply', () => {
+    const f = retentionFixture(); f.scope.__E2E__.setHistoryRetention = policy => ({ ...policy });
+    expect(() => prepareHistoryBenchmarkRetention({ targetSpan: 60000 }, f.scope)).to.throw('not applied');
+    expect(f.history.options.historyCapTicks).to.equal(20000); f.history.detach();
+  });
+  it('refuses unsupported targets before pausing or changing the active owner', () => {
+    const f = retentionFixture();
+    for (const targetSpan of [0, 1.5, 100001, Infinity]) expect(() => prepareHistoryBenchmarkRetention({ targetSpan }, f.scope)).to.throw('target');
+    expect(f.running()).to.equal(true); expect(f.requests()).to.equal(0); f.history.detach();
+  });
+  it('keeps the E2E setter bounded, paused and limited to retention fields', () => {
+    const f = retentionFixture(), policy = { enableHistoryCap: true, historyCapTicks: 60000, historyWarnTicks: 54000 };
+    expect(setHistoryRetention(f.view, policy)).to.equal(false); f.scope.__E2E__.pause();
+    for (const patch of [{ enableHistoryCap: false }, { historyCapTicks: 100001 }, { historyWarnTicks: 60001 }, { preserveFutureHistory: false }]) {
+      expect(setHistoryRetention(f.view, { ...policy, ...patch })).to.equal(false);
+    }
+    f.game.timeTravel._reverseActive = true; expect(setHistoryRetention(f.view, policy)).to.equal(false);
+    expect(f.history.options.historyCapTicks).to.equal(20000); f.history.detach();
+  });
   it('observes history after the scheduled game frame rather than its stale prior state', async function () {
     let frame, reads = 0, history = { spanTicks: 2997 };
     const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => { frame = callback; },

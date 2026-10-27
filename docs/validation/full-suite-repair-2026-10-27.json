@@ -2118,5 +2118,405 @@
       "This targeted follow-through does not claim another full Node/coverage run.",
       "CI on the next pushed head remains pending."
     ]
+  },
+  "continuation267": {
+    "date": "2026-10-27",
+    "parentRevision": "9d0ce9ad8263a90b8ba280431165105a35063d8f",
+    "scope": "Bound forward clock catch-up and verify canonical bounded retention before qualification.",
+    "runs": [
+      {
+        "command": "npm test game midi bench workflow",
+        "passed": 3431,
+        "failed": 0,
+        "runtimeSeconds": 49.54,
+        "logSha256": "dc82071da645ef63dfe4196db86f45091c17b50a3b0a793e0c60b7e98c4af82a"
+      },
+      {
+        "command": "npm run test-e2e:boundaries",
+        "passed": 13,
+        "failed": 0,
+        "runtimeSeconds": 42.7,
+        "logSha256": "2e165e23c7e4477c81c7fd41b4b04b57d5dfd2da09f6449f5ae60c6f14077f89"
+      },
+      {
+        "command": "30000-tick required-cold capacity probe before timer repair",
+        "exitCode": 1,
+        "error": "readHistoryState timed out after 30000ms",
+        "logSha256": "ca224394d87796279532f7ebe3610f4703db7a56c98f325f47c06272e37e9b16"
+      },
+      {
+        "command": "30000-tick required-cold capacity probe after timer repair",
+        "exitCode": 0,
+        "logSha256": "4ae1421de3b78b25f999668a9292ab741cc1d93c92eba59075cb1aba612c0707",
+        "actual": {
+          "receipt": {
+            "schema": "lemmings-benchmark-result/v2",
+            "kind": "history",
+            "profile": "smoke",
+            "status": "completed",
+            "scenarioIds": [
+              "speed:120"
+            ],
+            "units": {
+              "duration": "milliseconds",
+              "throughput": "ticks-per-second",
+              "historySpan": "ticks"
+            },
+            "samplePolicy": "all-observations; filtered summaries are diagnostic only"
+          },
+          "profile": "smoke",
+          "environment": {
+            "node": "v26.12.1",
+            "platform": "win32",
+            "architecture": "x64",
+            "cpuModel": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+            "logicalCpus": 16,
+            "systemMemoryBytes": 137345265664,
+            "browser": {
+              "engine": "chromium",
+              "version": "153.0.8010.12",
+              "headless": true
+            }
+          },
+          "targetSpanTicks": 30000,
+          "sampleMs": 500,
+          "seekGate": {
+            "seekSamples": 4,
+            "seekP95MsMax": 200,
+            "requireReplayParity": true,
+            "requireBoundedRetention": true,
+            "requireTargetSpan": true,
+            "requireColdCompaction": true
+          },
+          "results": [
+            {
+              "sampleCount": 41,
+              "speedFactor": 120,
+              "durationMs": 27693,
+              "samplingDurationMs": 27424,
+              "retentionPreparation": {
+                "targetSpan": 30000,
+                "changed": true,
+                "before": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 24000,
+                  "historyWarnTicks": 18000
+                },
+                "applied": {
+                  "preserveFutureHistory": true,
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 30000,
+                  "historyWarnTicks": 27000
+                },
+                "maximumRequestedCapTicks": 100000
+              },
+              "maxSpanTicks": 30103,
+              "targetSpanTicks": 30000,
+              "seekProbe": {
+                "status": "complete",
+                "evidence": "exact-forward-state-and-base64-terrain",
+                "startRestored": true,
+                "restoredTick": 30103,
+                "observations": [
+                  {
+                    "phase": "first-touch-cold",
+                    "targetTick": 23,
+                    "observedTick": 23,
+                    "accepted": true,
+                    "durationMs": 9,
+                    "exactStateMatch": true,
+                    "coldDecodes": 1,
+                    "coldCacheHits": 22,
+                    "coldDecodedBytes": 112224
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 13.400000002235174,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "warm-repeat",
+                    "targetTick": 23,
+                    "observedTick": 23,
+                    "accepted": true,
+                    "durationMs": 0.8999999985098839,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 23,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 7.899999998509884,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "first-touch-cold",
+                    "targetTick": 8623,
+                    "observedTick": 8623,
+                    "accepted": true,
+                    "durationMs": 10.099999997764826,
+                    "exactStateMatch": true,
+                    "coldDecodes": 1,
+                    "coldCacheHits": 102,
+                    "coldDecodedBytes": 1436377
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 7,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "warm-repeat",
+                    "targetTick": 8623,
+                    "observedTick": 8623,
+                    "accepted": true,
+                    "durationMs": 2.400000002235174,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 103,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 4.899999998509884,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "first-touch-cold",
+                    "targetTick": 14503,
+                    "observedTick": 14503,
+                    "accepted": true,
+                    "durationMs": 9,
+                    "exactStateMatch": true,
+                    "coldDecodes": 1,
+                    "coldCacheHits": 102,
+                    "coldDecodedBytes": 2359221
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 5,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "warm-repeat",
+                    "targetTick": 14503,
+                    "observedTick": 14503,
+                    "accepted": true,
+                    "durationMs": 2.899999998509884,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 103,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 5,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "first-touch-cold",
+                    "targetTick": 20983,
+                    "observedTick": 20983,
+                    "accepted": true,
+                    "durationMs": 10.700000002980232,
+                    "exactStateMatch": true,
+                    "coldDecodes": 1,
+                    "coldCacheHits": 102,
+                    "coldDecodedBytes": 3361729
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 5.600000001490116,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "warm-repeat",
+                    "targetTick": 20983,
+                    "observedTick": 20983,
+                    "accepted": true,
+                    "durationMs": 3.600000001490116,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 103,
+                    "coldDecodedBytes": 0
+                  },
+                  {
+                    "phase": "return",
+                    "targetTick": 30103,
+                    "observedTick": 30103,
+                    "accepted": true,
+                    "durationMs": 4.899999998509884,
+                    "exactStateMatch": true,
+                    "coldDecodes": 0,
+                    "coldCacheHits": 0,
+                    "coldDecodedBytes": 0
+                  }
+                ],
+                "retainedOracleBytes": 31921220,
+                "maximumOracleBytes": 33554432,
+                "oracleSampling": "time-distributed-live-forward-checkpoints",
+                "checkpointTicks": [
+                  23,
+                  4903,
+                  8623,
+                  12103,
+                  14503,
+                  17503,
+                  20983,
+                  25303,
+                  30103
+                ],
+                "minTick": 0,
+                "maxTick": 30102,
+                "startTick": 30103,
+                "deltaAvailable": true,
+                "hashMatch": true,
+                "count": 16,
+                "p50Ms": 5.600000001490116,
+                "p95Ms": 13.400000002235174,
+                "maxMs": 13.400000002235174,
+                "samplesMs": [
+                  0.8999999985098839,
+                  2.400000002235174,
+                  2.899999998509884,
+                  3.600000001490116,
+                  4.899999998509884,
+                  4.899999998509884,
+                  5,
+                  5,
+                  5.600000001490116,
+                  7,
+                  7.899999998509884,
+                  9,
+                  9,
+                  10.099999997764826,
+                  10.700000002980232,
+                  13.400000002235174
+                ]
+              },
+              "history": {
+                "spanTicks": 30103,
+                "coldBlockCount": 109,
+                "coldBlockBytes": 248351069,
+                "coldBlockDecodes": 0,
+                "coldBlockCacheHits": 0,
+                "retention": {
+                  "enableHistoryCap": true,
+                  "historyCapTicks": 30000,
+                  "historyWarnTicks": 27000
+                }
+              },
+              "memory": {
+                "usedJSHeapSize": 624000000,
+                "totalJSHeapSize": 703000000,
+                "jsHeapSizeLimit": 3760000000
+              }
+            }
+          ],
+          "failures": []
+        }
+      }
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs/runtime-global guards",
+      "undefined-call scan",
+      "branch whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "30000-tick capacity run does not qualify supported 60000-tick soak."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/e2e/E2EGameControls.js",
+        "sha256": "4fba3d52b60ca5c1dc9a29f99f8b935ac33e739a5d5b51b09391c22c7e7672b5"
+      },
+      {
+        "path": "js/app/e2e/E2EStateSerialization.js",
+        "sha256": "3709dacf85f790dd151c66ee4bb7fad6e6c7718c5279f1c38a6dc863dddc1ee3"
+      },
+      {
+        "path": "js/app/e2eHarness.js",
+        "sha256": "4906d401c391896dfa7a45738151dfbbeb710470e7ae4f96038e69e6d914f09a"
+      },
+      {
+        "path": "js/game/GameTimer.js",
+        "sha256": "ee7f823b9f2fb772ca173273296e54a548ab115596bb112f8f96db557fb3d97e"
+      },
+      {
+        "path": "scripts/BrowserWorkObservation.js",
+        "sha256": "34d73a3135bd424b90dd2d8ef1a94cffc1a25070ea03a8d0c6d0916e026ff54c"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "fe7a6160167a1bb3989597798ce78f6db66f28d4645b2efa3954c0e16537b898"
+      },
+      {
+        "path": "test/bench-history-stress.test.js",
+        "sha256": "c845b5c368636ffbc8adb85070bd75529f49ea3b69ef5279b57c391077a655f8"
+      },
+      {
+        "path": "test/game-timer.counter-boundary.test.js",
+        "sha256": "cee5ab82c92856a40f32a02aab14e377c99fa253bd16c443c0aa492e15dd945e"
+      }
+    ],
+    "previousCheckpoint": {
+      "head": "9d0ce9ad8263a90b8ba280431165105a35063d8f",
+      "job": 122134606132,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40488019913/job/122134606132",
+      "passed": 6284,
+      "failed": 0,
+      "browserBoundaries": 13,
+      "coverage": {
+        "lines": 90.19,
+        "branches": 83.46,
+        "functions": 88.19
+      }
+    }
   }
 }

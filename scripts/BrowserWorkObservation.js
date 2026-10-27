@@ -33,6 +33,7 @@ export function installBrowserWorkObservation(scope = globalThis) {
       ready: state?.ready === true, activeActors: game?.lemmingManager?.activeCount,
       entrances: game?.level?.entrances?.length, reverse: game?.timeTravel?.isReversing === true,
       targetFrameMs: timer?.frameTime, targetTps: timer?.tps, speedFactor: timer?.speedFactor,
+      maxTicksPerFrame: timer?.maxTicksPerFrame, pendingCatchupTicks: timer?.pendingCatchupTicks,
       bench: { active: metrics?.active === true, mode: metrics?.mode, benchMaxSpeed: metrics?.benchMaxSpeed } };
   };
   let previous = snapshot();
