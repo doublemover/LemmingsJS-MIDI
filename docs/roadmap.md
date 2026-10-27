@@ -7062,7 +7062,7 @@ export-budget acknowledgments still prevent a false complete receipt.
   88.21% functions**. Its capture boundary produces a Ready, acknowledged
   54,144-frame WAV. The remaining GitHub backlog still needs its own work.
 
-### Continuation 278 � desktop switchyard and qualified walking observations
+### Continuation 278 — desktop switchyard and qualified walking observations
 
 - The supported minimum is 1920x1080 desktop. Browser fixtures now share that
   baseline and test larger 2560x1440 and 3840x2160 desktop resolutions. Phone,
@@ -7091,3 +7091,13 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #1232 still needs the full branching-route/musical-difference, Stage/cue and
   seek/reload qualification matrix. The receipt preserves the fixture/source-path
   fixes and the explicit correction from out-of-scope phone validation.
+
+### Continuation 279 — desktop guidance and observed-actor handoff
+
+- Remaining active testing guides now specify desktop 1920x1080 minimum and
+  QHD/UHD capture options; old mobile/orientation directions are removed.
+- The switchyard refreshes its owned renderer before handing a real observed
+  actor to the existing world inspector and explicitly revealing that actor.
+  Both production desktop switchyard cases pass, including exact actor selection,
+  overlay retirement and mouse/native keyboard cancellation. Formatting passes.
+  This is a scoped follow-through; full CI remains separate.
