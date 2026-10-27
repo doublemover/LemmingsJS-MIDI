@@ -6914,3 +6914,38 @@ export-budget acknowledgments still prevent a false complete receipt.
   is fixed and the complete related browser batch passes. New paging scenarios
   are included in the maintained CI boundary list. Full CI for this later batch
   will be verified after push; the green 44b773da checkpoint remains distinct.
+
+### Continuation 274 — checkpoint admission, deep capture and completed-frame evidence
+
+- Checkpoint admission rejects method-shadowing class properties, redirected
+  executable resource bindings, array element/length overrides, invalid trigger
+  cooldowns, mismatched lane-array types/lengths, nonfinite frontier/actor
+  positions, duplicate actor IDs and invalid active-actor references before
+  allocating imported class instances or publishing owners. Signed zero remains
+  lossless. Active actors retain their original runtime binding.
+- Capture now drives child encoders iteratively while retaining depth-first wire
+  order. A 5,001-node imported chain can be captured and restored again; a
+  6,001-node capture cancels cooperatively and recaptures under its paused owner.
+  Cycles and shared identity remain intact. Typed-array decode fills its admitted
+  allocation directly, removing the intermediate full-size mapped array.
+- Exact comparisons with the previous production codec at 0/300/1,200 ticks
+  preserve every serialized byte. Ten samples per implementation/scenario record
+  local timing distributions in the receipt; this is compatibility evidence, not
+  a universal speedup claim.
+- **124 checkpoint/storage/controller cases** and **eight related browser
+  boundaries** pass. A valid control project opens, then **28 malformed imports**
+  are refused through the real file/worker/candidate path while preserving the
+  live world, checkpoint, project, identity, history, configured routes and saved
+  bytes. Oversize refusal performs no read. The slowest controlled refusal is
+  1,025.4 ms on this host; these fixtures do not claim maximal-project peak-memory
+  or exhaustive seeded lifecycle qualification. Issue #987 remains open for
+  those broader bounds and counter/workload evidence.
+- CI at 32541f0c passes **all 29 browser boundaries**, static, policy, dependency
+  and HTTPS MCP gates, then refuses a history smoke ratio of 0.499333 against the
+  unchanged 0.5 minimum; coverage does not run after that failure. The history
+  observer could run before the timer in the same RAF cohort. It now joins a
+  completed cohort before sampling, with a deterministic reversed-registration
+  regression. **29 benchmark cases** and the actual complete smoke batch pass:
+  history ratios **0.503667 / 1.005667**, 100 ms frame p95 and 101.58 median ticks/s.
+  Thresholds and workloads remain unchanged. Full CI for the combined later
+  implementation must be checked after push.

@@ -9,6 +9,7 @@ import { Animation } from '../../../render/Animation.js';
 import { MapObject } from '../../../level/MapObject.js';
 import { validatePhysicalEventIdentity } from '../ProcgenSoundEventBus.js';
 import { PROCGEN_TRIGGER_INDEX_FIELDS } from '../ProcgenTriggerManager.js';
+import { COUNTER_LIMIT } from '../../../core/constants.js';
 
 const VERSION = 2;
 const CHECKPOINT_COMPONENT_CODECS = Object.freeze({ worldGraph: 2, physicalIdentity: 1, clock: 1,
@@ -22,9 +23,12 @@ const validateCheckpointCodecs = saved => {
 };
 const OMIT = new Set(['_physicalWorkBounds', 'log', 'gameResources', 'render', 'characterParticles', '_collisionSlots', '_collisionIndices', '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editCache', '_editIndices', '_edgeWallCache', 'challengeCache']);
 const TYPES = { Uint8Array, Uint8ClampedArray, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array };
+const NODE_PROTOTYPES = { Object: Object.prototype, Array: Array.prototype, Map: Map.prototype, Set: Set.prototype,
+  Lemming: Lemming.prototype, Trigger: Trigger.prototype, Animation: Animation.prototype, MapObject: MapObject.prototype };
 const INTEGER_VIEW_RANGES = { Uint8Array: [0, 255], Uint8ClampedArray: [0, 255], Int8Array: [-128, 127],
   Uint16Array: [0, 65535], Int16Array: [-32768, 32767], Uint32Array: [0, 4294967295], Int32Array: [-2147483648, 2147483647] };
 const encodeNumber = value => Object.is(value, -0) ? { special: '-0' } : Number.isFinite(value) ? value : { special: String(value) };
+const finiteEncodedNumber = value => Number.isFinite(value) || value?.special === '-0';
 const decodeNumber = value => {
   if (typeof value === 'number') return value;
   if (value.special === '-0') return -0;
@@ -93,7 +97,7 @@ function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
   const bound = yield* bindingSteps(world), nodes = [], seen = new Map(); let estimatedBytes = 1024;
   const props = function*(value, extra = new Set(), array = false) {
     const output = {};
-    for (const key of Object.keys(value)) if (!forbidden(key) && !OMIT.has(key) && !extra.has(key) && !(array && /^\d+$/.test(key)) && typeof value[key] !== 'function') output[key] = yield* encode(value[key]);
+    for (const key of Object.keys(value)) if (!forbidden(key) && !OMIT.has(key) && !extra.has(key) && !(array && /^\d+$/.test(key)) && typeof value[key] !== 'function') output[key] = yield encode(value[key]);
     return output;
   };
   const encode = function*(value) {
@@ -111,16 +115,16 @@ function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
       const values = []; for (const number of value) { values.push(encodeNumber(number)); estimatedBytes += 32; if (estimatedBytes > maxBytes) throw new Error('Checkpoint capture graph exceeds its byte bound.'); yield; }
       entry = { type: value.constructor.name, values };
     } else if (value instanceof Map) {
-      const entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entries.push([yield* encode(key), yield* encode(child)]);
+      const entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entries.push([yield encode(key), yield encode(child)]);
       entry = { type: 'Map', entries };
     } else if (value instanceof Set) {
-      const values = []; for (const child of value) values.push(yield* encode(child)); entry = { type: 'Set', values };
-    } else if (value instanceof MapObject) entry = { type: 'MapObject', props: yield* props(value), image: yield* encode(value.animation.objectImg) };
+      const values = []; for (const child of value) values.push(yield encode(child)); entry = { type: 'Set', values };
+    } else if (value instanceof MapObject) entry = { type: 'MapObject', props: yield* props(value), image: yield encode(value.animation.objectImg) };
     else if (value instanceof Animation) entry = { type: 'Animation', props: yield* props(value, new Set(['frames', '_lastFrame', 'frameCount'])), lastFrameIndex: value.frames.indexOf(value._lastFrame) };
     else if (value instanceof Trigger) entry = { type: 'Trigger', props: yield* props(value), disabledUntilTick: value.disabledUntilTick };
     else if (value instanceof Lemming) entry = { type: 'Lemming', props: yield* props(value) };
     else if (Array.isArray(value)) {
-      const values = []; for (const child of value) values.push(yield* encode(child)); entry = { type: 'Array', values, props: yield* props(value, new Set(), true) };
+      const values = []; for (const child of value) values.push(yield encode(child)); entry = { type: 'Array', values, props: yield* props(value, new Set(), true) };
     } else {
       if (![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw new Error('Unsupported checkpoint state: ' + value.constructor?.name);
       entry = { type: 'Object', props: yield* props(value) };
@@ -128,10 +132,20 @@ function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
     nodes[index] = entry; return { ref: index };
   };
   const owners = [];
-  for (const [name, value] of bound.owners) {
-    const entry = { name, props: yield* props(value, new Set(name === 'triggerManager' ? PROCGEN_TRIGGER_INDEX_FIELDS : [])) };
-    if (value instanceof Map) { entry.entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entry.entries.push([yield* encode(key), yield* encode(child)]); }
-    owners.push(entry);
+  const captureOwners = function*() {
+    for (const [name, value] of bound.owners) {
+      const entry = { name, props: yield* props(value, new Set(name === 'triggerManager' ? PROCGEN_TRIGGER_INDEX_FIELDS : [])) };
+      if (value instanceof Map) { entry.entries = []; for (const [key, child] of Map.prototype.entries.call(value)) entry.entries.push([yield encode(key), yield encode(child)]); }
+      owners.push(entry);
+    }
+  };
+  // Preserve depth-first wire order without nesting child generator call stacks.
+  const pending = [captureOwners()]; let result;
+  while (pending.length) {
+    const step = pending[pending.length - 1].next(result); result = undefined;
+    if (step.done) { pending.pop(); result = step.value; }
+    else if (step.value) pending.push(step.value);
+    else yield;
   }
   return { nodes, owners, estimatedBytes };
 }
@@ -219,9 +233,24 @@ function validateCheckpointGraph(graph, bound, version) {
       if (!Array.isArray(entry.values)) throw new Error('Invalid checkpoint collection.');
       for (const value of entry.values) slot(value);
     } else if (!['Object', 'Lemming', 'Trigger', 'Animation', 'MapObject'].includes(type)) throw new Error('Unknown checkpoint node type.');
-    if (entry.props != null) props(entry.props);
+    if (entry.props != null) {
+      props(entry.props);
+      if (Object.hasOwn(TYPES, type)) throw new Error('Checkpoint typed arrays cannot redefine properties.');
+      for (const key of Object.keys(entry.props)) {
+        safeProperty(NODE_PROTOTYPES[type], key);
+        if (type === 'Array' && (key === 'length' || /^(0|[1-9][0-9]*)$/.test(key))) throw new Error('Checkpoint array properties cannot replace its elements or length.');
+        if (type === 'Animation' && ['frames', '_lastFrame', 'frameCount'].includes(key)) throw new Error('Checkpoint animation frames must use their original resource binding.');
+      }
+      if (['Lemming', 'Trigger'].includes(type) && Object.hasOwn(entry.props, 'runtime') && entry.props.runtime !== null &&
+          (entry.props.runtime?.external !== 'runtime' || !bound.names.has('runtime'))) throw new Error('Checkpoint runtime must use its original resource binding.');
+      if (type === 'Lemming') for (const key of ['action', 'countdownAction']) {
+        const action = entry.props[key];
+        if (action != null && action !== 0 && (typeof action?.external !== 'string' || !action.external.startsWith('action/'))) throw new Error('Checkpoint actor action must use its original resource binding.');
+      }
+    }
     if (type === 'MapObject') slot(entry.image);
     if (type === 'Animation' && (!Number.isSafeInteger(entry.lastFrameIndex) || entry.lastFrameIndex < -1)) throw new Error('Invalid checkpoint animation.');
+    if (type === 'Trigger' && (!Number.isSafeInteger(entry.disabledUntilTick) || entry.disabledUntilTick < 0 || entry.disabledUntilTick > COUNTER_LIMIT)) throw new Error('Invalid checkpoint trigger cooldown.');
     if (bytes + slots * 24 + stringUnits * 2 > MAX_GRAPH_BYTES) throw new Error('Checkpoint memory budget exceeded.');
   }
   const names = new Set();
@@ -232,6 +261,8 @@ function validateCheckpointGraph(graph, bound, version) {
     for (const key of Object.keys(owner.props)) {
       safeProperty(target, key);
       if (!Object.hasOwn(target, key) && !LAZY_OWNER_KEYS.get(owner.name)?.has(key)) throw new Error('Checkpoint owner property is not part of this runtime: ' + owner.name.slice(0, 80) + '/' + key.slice(0, 80));
+      const binding = bound.objects.get(target[key]);
+      if (binding && owner.props[key]?.external !== binding) throw new Error('Checkpoint owner resource binding changed: ' + owner.name.slice(0, 80) + '/' + key.slice(0, 80));
     }
     if (owner.entries != null) {
       if (!(bound.owners.get(owner.name) instanceof Map) || !Array.isArray(owner.entries)) throw new Error('Invalid checkpoint owner collection.');
@@ -259,11 +290,37 @@ function restoreProcgenCheckpoint(world, saved) {
   const worldProps = owners.find(entry => entry.name === 'world').props;
   if (worldProps.seed !== saved.seed || worldProps.laneCount !== saved.laneCount || worldProps.laneHeight !== saved.laneHeight ||
       !Number.isSafeInteger(worldProps.tickIndex) || worldProps.tickIndex < 0 || worldProps.tickIndex >= Number.MAX_SAFE_INTEGER) throw new Error('Checkpoint world envelope does not match its graph.');
+  for (const field of ['laneSeeds', 'frontiers', 'generatedThrough', 'terrainActivityTicks', 'pendingTerrainWork', '_effectiveTerrainWork',
+    '_manualNukeLanes', '_spawnPhaseRanks', '_spawnPhases', '_laneAdmissionCohorts', '_edgeWallRevisions']) {
+    if (!Object.hasOwn(world, field)) continue;
+    const entry = nodes[worldProps[field]?.ref];
+    if (entry?.type !== world[field]?.constructor?.name || !Array.isArray(entry.values) || entry.values.length !== saved.laneCount ||
+        ['frontiers', 'generatedThrough'].includes(field) && entry.values.some(value => !finiteEncodedNumber(value))) throw new Error('Invalid checkpoint lane array: ' + field);
+  }
   if (!Number.isSafeInteger(worldProps.nextActorId) || worldProps.nextActorId < 0 || worldProps.nextActorId >= Number.MAX_SAFE_INTEGER ||
       nodes.some(entry => entry.type === 'Lemming' && (!Number.isSafeInteger(entry.props?.id) || entry.props.id < 0 || entry.props.id >= worldProps.nextActorId)))
     throw new Error('Checkpoint actor identity frontier is invalid or exhausted.');
+  const actorIds = new Set();
+  for (const entry of nodes) if (entry.type === 'Lemming') {
+    if (actorIds.has(entry.props.id)) throw new Error('Checkpoint actor identities must be unique.');
+    actorIds.add(entry.props.id);
+    if (!finiteEncodedNumber(entry.props.x) || !finiteEncodedNumber(entry.props.y) || entry.props.laneIndex != null &&
+        (!Number.isInteger(entry.props.laneIndex) || entry.props.laneIndex < 0 || entry.props.laneIndex >= saved.laneCount)) throw new Error('Invalid checkpoint actor position or lane.');
+  }
+  const actorList = nodes[worldProps.actors?.ref], activeActorIds = new Set();
+  if (actorList?.type !== 'Array') throw new Error('Checkpoint active actors must be an actor array.');
+  for (const value of actorList.values) {
+    const actor = nodes[value?.ref];
+    if (actor?.type !== 'Lemming' || activeActorIds.has(actor.props.id)) throw new Error('Checkpoint active actors contain invalid or repeated identities.');
+    if (bound.names.has('runtime') && actor.props.runtime?.external !== 'runtime') throw new Error('Checkpoint active actor runtime binding changed.');
+    activeActorIds.add(actor.props.id);
+  }
   const values = nodes.map(entry => {
-    if (Object.hasOwn(TYPES, entry.type)) return new TYPES[entry.type](entry.values.map(decodeNumber));
+    if (Object.hasOwn(TYPES, entry.type)) {
+      const result = new TYPES[entry.type](entry.values.length);
+      for (let index = 0; index < result.length; index++) result[index] = decodeNumber(entry.values[index]);
+      return result;
+    }
     if (entry.type === 'Map') return new Map();
     if (entry.type === 'Set') return new Set();
     if (entry.type === 'Array') return [];

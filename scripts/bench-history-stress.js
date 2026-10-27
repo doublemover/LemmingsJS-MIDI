@@ -274,13 +274,14 @@ const summarizeTimings = (timingsMs) => {
 };
 
 const readHistoryAfterFrame = (scope = globalThis) => new Promise((resolve, reject) => {
-  scope.requestAnimationFrame(async () => {
+  // The first callback can precede the timer in the same RAF cohort.
+  scope.requestAnimationFrame(() => scope.requestAnimationFrame(async () => {
     try {
       const game = scope.__E2E__?.getState?.()?.game;
       await scope.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__?.capture(game);
       resolve(game?.history || null);
     } catch (error) { reject(error); }
-  });
+  }));
 });
 
 const sampleHistoryWindow = async ({ durationMs, sampleMs, targetSpan, readHistory, assertBudget = () => {}, now = Date.now, wait = sleep }) => {

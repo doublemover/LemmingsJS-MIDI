@@ -5830,5 +5830,578 @@
       "Full CI at the parent is green; this later batch has focused execution pending its own pushed CI."
     ],
     "upstream": "Fetched origin; master is fully contained (0 commits behind)."
+  },
+  "continuation274": {
+    "date": "2026-10-27",
+    "parentRevision": "32541f0c6ea279cb9ec26614d4cf5deb8522a87d",
+    "scope": "Pre-allocation checkpoint admission for class methods, executable resource aliases, lane arrays and actor identity/positions; iterative deep capture preserving previous wire order; actual malformed-file transaction proof; completed-RAF-cohort benchmark repair.",
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenCheckpoint.js",
+        "sha256": "163c0387df431eb016dff1862951d36713f14d70bac72f789abc1e40bd905bf9"
+      },
+      {
+        "path": "test/procgen-checkpoint-validation.test.js",
+        "sha256": "815c13a7e3e7d479858311e8f1ded4857ccf06970471094142e5da53c8f83894"
+      },
+      {
+        "path": "e2e/procgen-import-admission.spec.js",
+        "sha256": "35fb9a7b7646295c0b931efaf6ba1d2a8efe2a06dac6fc61c61f4784a536280e"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "ee0a1b75e908c3513e93aa9cfbd2ffc4d9024a3335a50023e961c26da526d1ae"
+      },
+      {
+        "path": "test/bench-history-stress.test.js",
+        "sha256": "de2c71ef20fb679e9eaecfba804f626646d0ce7c9078b588fcab529655de8815"
+      },
+      {
+        "path": "package.json",
+        "sha256": "95c8e7297db6404cdf52d08bba6bcedc2bb170e0b34372b28a3a5657d8c9c4a1"
+      }
+    ],
+    "previousFullCi": {
+      "head": "44b773dac5d57a8433051a3966a847a1279f6c5a",
+      "job": 122197047711,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40506505778/job/122197047711",
+      "passed": 6333,
+      "browserBoundaries": 24,
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.46,
+        "functions": 88.19
+      },
+      "allGatesGreen": true
+    },
+    "parentCi": {
+      "head": "32541f0c6ea279cb9ec26614d4cf5deb8522a87d",
+      "job": 122212810045,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40511067560/job/122212810045",
+      "conclusion": "failure",
+      "browserBoundaries": {
+        "passed": 29,
+        "failed": 0
+      },
+      "staticPolicyDependencyAndHttpsMcp": "pass",
+      "failure": "history.speed:30.spanRatio 0.49933333333333335 < 0.5",
+      "coverage": "skipped after benchmark refusal",
+      "repair": "Observer now samples after one complete RAF cohort even when registered before the timer; target, duration and ratio gate unchanged."
+    },
+    "attempts": [
+      {
+        "kind": "initial-owner-batch",
+        "passed": 118,
+        "failed": 3,
+        "reason": "Extended minimal world fixture omitted real nonenumerable authority/default state; a method-shadow probe named a nonexistent actor method. Corrected fixtures and removed a raw-order assertion on hand-appended graph nodes; real-world codec parity is measured separately.",
+        "logSha256": "89a0e8502bbd2f840612024b364c1c76f08013d2fc9c21ee935e70d919886ef0"
+      },
+      {
+        "kind": "initial-browser",
+        "passed": 7,
+        "failed": 1,
+        "reason": "Compared diagnostic cleanup counters as route identity. Narrowed route equality to configured input/output, authorization, activation and MPE state; all live state assertions remained strict.",
+        "logSha256": "809158b6f75455a743128ccb8d0cd17f5859d7d7f0bdfd0d9cdce63bf97bcd7a"
+      },
+      {
+        "kind": "final-owner-batch",
+        "passed": 124,
+        "failed": 0,
+        "runtimeSeconds": 11,
+        "logSha256": "b38d0b73c522a18f19c1a2b593d9ecf9022978b6bb0e8e783f3a6c1845824992"
+      },
+      {
+        "kind": "final-browser-batch",
+        "passed": 8,
+        "failed": 0,
+        "runtimeSeconds": 37.5,
+        "negativeImportCases": 28,
+        "logSha256": "6b1bc1534001839e9a58bce2e31167878bba7a31b3fc5991a13b79da87ff1261"
+      },
+      {
+        "kind": "benchmark-helpers",
+        "passed": 29,
+        "failed": 0,
+        "runtimeMs": 33,
+        "logSha256": "3b9340737fbc6166967f7dbc964b24a606ad7ec94492cc7fd93b33325606df80"
+      },
+      {
+        "kind": "actual-complete-smoke",
+        "exitCode": 0,
+        "logSha256": "6002a2f0e3c5f8d8040625a38e9a4694b67ac6dd3ea8e07c446cd1d99cc88895"
+      }
+    ],
+    "actualImportAdmission": {
+      "controlAccepted": true,
+      "outcomes": [
+        {
+          "name": "null-node",
+          "accepted": false,
+          "durationMs": 1025.3999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint node."
+        },
+        {
+          "name": "unknown-tag",
+          "accepted": false,
+          "durationMs": 985.3000000044703,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Unknown checkpoint node type."
+        },
+        {
+          "name": "unknown-owner",
+          "accepted": false,
+          "durationMs": 991.8999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint owner."
+        },
+        {
+          "name": "duplicate-owner",
+          "accepted": false,
+          "durationMs": 916.8999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint graph."
+        },
+        {
+          "name": "missing-owner",
+          "accepted": false,
+          "durationMs": 901.6000000014901,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner or memory budget mismatch."
+        },
+        {
+          "name": "invalid-reference",
+          "accepted": false,
+          "durationMs": 850.1000000014901,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint reference."
+        },
+        {
+          "name": "unknown-external",
+          "accepted": false,
+          "durationMs": 895.5,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Missing checkpoint resource."
+        },
+        {
+          "name": "method-shadow",
+          "accepted": false,
+          "durationMs": 848.7000000029802,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint property would shadow a runtime method."
+        },
+        {
+          "name": "unknown-owner-property",
+          "accepted": false,
+          "durationMs": 686.8000000044703,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner property is not part of this runtime: world/qualificationUnknownField"
+        },
+        {
+          "name": "owner-timer-resource",
+          "accepted": false,
+          "durationMs": 833.9000000059605,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner resource binding changed: world/timer"
+        },
+        {
+          "name": "owner-stall-resource",
+          "accepted": false,
+          "durationMs": 835.8999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner resource binding changed: world/stall"
+        },
+        {
+          "name": "owner-trigger-resource",
+          "accepted": false,
+          "durationMs": 771.8999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner resource binding changed: world/triggerManager"
+        },
+        {
+          "name": "owner-runtime-resource",
+          "accepted": false,
+          "durationMs": 714.6000000014901,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint owner resource binding changed: world/runtime"
+        },
+        {
+          "name": "scalar-typed-array",
+          "accepted": false,
+          "durationMs": 690.3999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint typed-array payload."
+        },
+        {
+          "name": "array-shape",
+          "accepted": false,
+          "durationMs": 682,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint array properties cannot replace its elements or length."
+        },
+        {
+          "name": "lane-envelope",
+          "accepted": false,
+          "durationMs": 688,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint world envelope does not match its graph."
+        },
+        {
+          "name": "lane-array-length",
+          "accepted": false,
+          "durationMs": 674.2999999970198,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint lane array: laneSeeds"
+        },
+        {
+          "name": "lane-array-type",
+          "accepted": false,
+          "durationMs": 718.2999999970198,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint lane array: laneSeeds"
+        },
+        {
+          "name": "nonfinite-frontier",
+          "accepted": false,
+          "durationMs": 702.3999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid checkpoint lane array: frontiers"
+        },
+        {
+          "name": "exhausted-tick",
+          "accepted": false,
+          "durationMs": 671.3000000044703,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint world envelope does not match its graph."
+        },
+        {
+          "name": "exhausted-actor",
+          "accepted": false,
+          "durationMs": 683.1000000014901,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint actor identity frontier is invalid or exhausted."
+        },
+        {
+          "name": "actor-frontier",
+          "accepted": false,
+          "durationMs": 722.1999999955297,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint actor identity frontier is invalid or exhausted."
+        },
+        {
+          "name": "actor-method-shadow",
+          "accepted": false,
+          "durationMs": 695.7999999970198,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint property would shadow a runtime method."
+        },
+        {
+          "name": "actor-runtime",
+          "accepted": false,
+          "durationMs": 678.3999999985099,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint runtime must use its original resource binding."
+        },
+        {
+          "name": "actor-null-runtime",
+          "accepted": false,
+          "durationMs": 713.5999999940395,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint active actor runtime binding changed."
+        },
+        {
+          "name": "actor-action",
+          "accepted": false,
+          "durationMs": 681.1000000014901,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint actor action must use its original resource binding."
+        },
+        {
+          "name": "duplicate-actor",
+          "accepted": false,
+          "durationMs": 682.7000000029802,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Checkpoint actor identities must be unique."
+        },
+        {
+          "name": "exhausted-causal-sequence",
+          "accepted": false,
+          "durationMs": 674.8000000044703,
+          "sameWorld": true,
+          "sameProject": true,
+          "sameDocument": true,
+          "sameCheckpoint": true,
+          "sameHistory": true,
+          "sameRoute": true,
+          "boundedError": true,
+          "status": "Invalid physical event identity checkpoint."
+        }
+      ],
+      "oversized": false,
+      "reads": 0,
+      "sameStored": true
+    },
+    "previousCodecWireParity": {
+      "schema": "checkpoint-iterative-capture-parity/v1",
+      "comparisonRevision": "32541f0c",
+      "samplesPerImplementationPerScenario": 10,
+      "results": [
+        {
+          "ticks": 0,
+          "actors": 0,
+          "nodes": 124,
+          "encodedBytes": 19626,
+          "sha256": "9793f74f2fabd88363989377bb744d649783424a5080e769f0f33636d8d49df7",
+          "exactPreviousWireParity": true,
+          "previousMedianMs": 5.760200000000054,
+          "currentMedianMs": 5.864300000000071,
+          "previousP95Ms": 6.254199999999969,
+          "currentP95Ms": 7.422700000000077
+        },
+        {
+          "ticks": 300,
+          "actors": 10,
+          "nodes": 291,
+          "encodedBytes": 51987,
+          "sha256": "d01efb55f5f2c2d9463c87cdebd4b3523d1119c797d2ad7936e1bdc8bf7e1a8c",
+          "exactPreviousWireParity": true,
+          "previousMedianMs": 6.531199999999899,
+          "currentMedianMs": 6.1684999999999945,
+          "previousP95Ms": 7.295900000000074,
+          "currentP95Ms": 7.136400000000094
+        },
+        {
+          "ticks": 1200,
+          "actors": 26,
+          "nodes": 2204,
+          "encodedBytes": 399363,
+          "sha256": "b3d3cac63165d9ba2837e221312ad3f2d520839faad41cfdb9fde1dda430086b",
+          "exactPreviousWireParity": true,
+          "previousMedianMs": 12.061300000000074,
+          "currentMedianMs": 10.87559999999985,
+          "previousP95Ms": 17.1721,
+          "currentP95Ms": 12.856800000000021
+        }
+      ]
+    },
+    "actualSmoke": {
+      "ok": true,
+      "profile": "smoke",
+      "totalDurationMs": 26446,
+      "thresholds": {
+        "perfP95FrameMsMax": 250,
+        "perfP50TpsMin": 15,
+        "historySpanRatioMin": 0.5,
+        "antsAvgMsMax": 250,
+        "tileCompositionAvgMsMax": 250,
+        "overlayPlaneAvgMsMax": 250,
+        "scaledBlitAvgMsMax": 250
+      },
+      "durationsMs": {
+        "benchPerformance": 8997,
+        "benchHistoryStress": 14406,
+        "benchHotpaths": 3038
+      },
+      "metrics": {
+        "perfP95Frame": 100,
+        "perfP50Tps": 101.5780881544457,
+        "historyRatio": 0.5036666666666667,
+        "antsAvgMs": 12.5,
+        "tileCompositionAvgMs": 2.23,
+        "overlayPlaneAvgMs": 10.45,
+        "scaledBlitAvgMs": 25.81
+      },
+      "failures": [],
+      "diagnostics": [],
+      "measurementValid": true,
+      "scenarios": [
+        {
+          "speed": 30,
+          "ratio": 0.5036666666666667
+        },
+        {
+          "speed": 60,
+          "ratio": 1.0056666666666667
+        }
+      ]
+    },
+    "staticChecks": [
+      "npm run format",
+      "critical checkJs types",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "Controlled generated two-lane project and named malformed cases; not exhaustive schema fuzz or maximum supported project qualification.",
+      "Resource budget refusal and cooperative cancellation are covered; aggregate real-browser worker/main peak memory at declared maximal project sizes remains unmeasured.",
+      "Counter-max refusals are covered; full checked-successor and generated interleaving qualification remain open in their issues.",
+      "Local timing observations compare 10 samples per implementation/scenario and do not establish a universal speedup.",
+      "Current full CI must be verified after push; latest complete green checkpoint remains 44b773da."
+    ],
+    "upstream": "Fetched origin/master; fully contained (0 behind)."
   }
 }

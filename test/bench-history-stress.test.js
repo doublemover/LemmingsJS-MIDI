@@ -65,6 +65,7 @@ describe('bench-history-stress helpers', function () {
     const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => { frame = callback; },
       __E2E__: { getState: () => { reads++; return { game: { history } }; } } });
     expect(reads).to.equal(0);
+    frame(); expect(reads).to.equal(0);
     history = { spanTicks: 3004 };
     frame();
     expect(await observation).to.equal(history);
@@ -76,8 +77,18 @@ describe('bench-history-stress helpers', function () {
     const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => { frame = callback; },
       __E2E__: { getState: () => ({ game: { history: { spanTicks: 60000 } } }) },
       __LEMMINGS_HISTORY_REPLAY_EVIDENCE__: { capture: () => hash } }).then(value => { completed = true; return value; });
-    frame(); await Promise.resolve(); expect(completed).to.equal(false);
+    frame(); frame(); await Promise.resolve(); expect(completed).to.equal(false);
     finishHash(); expect(await observation).to.deep.equal({ spanTicks: 60000 });
+  });
+  it('joins the completed timer cohort even when the probe was registered before the timer callback', async function () {
+    const callbacks = []; let spanTicks = 2996, reads = 0;
+    const observation = readHistoryAfterFrame({ requestAnimationFrame: callback => callbacks.push(callback),
+      __E2E__: { getState() { reads++; return { game: { history: { spanTicks } } }; } } });
+    callbacks.push(() => { spanTicks = 3004; });
+    for (const callback of callbacks.splice(0)) callback();
+    expect(reads).to.equal(0);
+    for (const callback of callbacks.splice(0)) callback();
+    expect(await observation).to.deep.equal({ spanTicks: 3004 }); expect(reads).to.equal(1);
   });
   it('includes the terminal history observation and clamps the last sampling interval', async function () {
     let time = 0;
