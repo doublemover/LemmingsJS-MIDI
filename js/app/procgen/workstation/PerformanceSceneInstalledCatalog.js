@@ -22,7 +22,7 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map();
+  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map(), preparedNurseries = new Map(); let nurseryPending = false;
   if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
   const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
   const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
@@ -158,6 +158,15 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor?.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
     getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
+    async addNurseryStrike(reference, { signal: requestSignal } = {}) {
+      requestSignal?.throwIfAborted(); const key = await hashData(reference, { maxBytes: 65536, maxNodes: 8192 }); requestSignal?.throwIfAborted();
+      if (preparedNurseries.has(key)) return preparedNurseries.get(key);
+      if (nurseryPending || preparedNurseries.size >= 8) throw new Error('The Nursery catalog admits one preparation at a time and at most eight distinct prepared strike scores.');
+      nurseryPending = true;
+      try {
+        const item = await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, sampleDescriptor: catalog.descriptors.find(value => value.engineId === 'worklet-sample'), strikeReference: reference, signal: requestSignal }); requestSignal?.throwIfAborted(); await registerAuthoredScores([item]); const row = registry.findSupported({ id: item.scene.id }); preparedNurseries.set(key, row); requestSignal?.throwIfAborted(); return row;
+      } finally { nurseryPending = false; }
+    },
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },
     getRecipe(scene) { const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },
     async origin(scene, variants = []) { return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); } });

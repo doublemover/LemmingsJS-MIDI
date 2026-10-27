@@ -1,7 +1,7 @@
 import { inspectSceneStationRehearsal } from './SceneStationPolicy.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onStatus = () => {} } = {}) {
+export function createPerformanceSceneBrowser({ document, window, registry, loader, unavailableReason = null, getLiveScene = () => null, onSavedTakes = () => {}, keepPreparedOnClose = () => false, canTeachScene = () => false, onLesson = null, onCreateNursery = null, onStatus = () => {} } = {}) {
   if (!document?.createElement || !registry?.page || !loader?.select || !loader?.state) throw new TypeError('The scene browser requires metadata pages and the existing candidate owner.');
   const listeners = [], rowListeners = [], retirement = createProcgenRetirementScope(); let disposed = false, selection = null, selectedManifest = null, page = null, offset = 0, opener = null, busy = false;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
@@ -54,6 +54,10 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   };
   const previous = button(paging, 'Previous scores', () => { offset = Math.max(0, offset - 24); renderPage(); });
   const pageLabel = node('output'); paging.append(pageLabel); const next = button(paging, 'Next scores', () => { if (page.nextOffset !== null) { offset = page.nextOffset; renderPage(); } });
+  const nursery = typeof onCreateNursery === 'function' ? button(actions, 'Nursery · use selected finite body graft', run(async () => {
+    await loader.cancel(); const row = await onCreateNursery(); if (disposed || !row) return;
+    search.value = 'Instrument Nursery'; mechanism.value = density.value = lesson.value = ''; offset = 0; choose(row); renderPage(); say('Three-route Nursery selected. Prepare verifies its exact source material; Load fresh remains a separate paused replacement.');
+  })) : null;
   const prepare = button(actions, 'Prepare fresh', run(async () => { if (!selectedManifest) return; loader.select(selectedManifest); const result = await loader.prepare(); say(result.status === 'ready' ? 'Candidate ready. Inspect the changed scope, then use Load fresh.' : 'Required source or capabilities are unavailable. The live world remains active.'); }));
   const load = button(actions, 'Load fresh · stopped replacement', run(async () => { const result = await loader.apply(); say(result.status === 'committed' ? 'Scene loaded paused. Enable local audio explicitly, then perform a real physical intervention.' : 'Scene replacement canceled.'); }));
   const rehearse = button(actions, 'Rehearse locally', run(() => loader.rehearse())); rehearse.disabled = true; rehearse.title = 'Enable browser audio and select a Prelisten route first. This creates a new private physical phrase, not a recording of CURRENT.';
@@ -68,6 +72,7 @@ export function createPerformanceSceneBrowser({ document, window, registry, load
   listen(rows, 'keydown', event => { if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || !page?.rows.length) return; event.preventDefault(); const at = page.rows.findIndex(chosen), index = event.key === 'Home' ? 0 : event.key === 'End' ? page.rows.length - 1 : Math.max(0, Math.min(page.rows.length - 1, at + (event.key === 'ArrowDown' ? 1 : -1))); choose(page.rows[index]); rows.children[index]?.focus(); });
   function refresh() {
     if (disposed) return; const state = loader.state(), active = getLiveScene(); live.textContent = 'LIVE · ' + (active?.title || 'Current physical world');
+    if (nursery) nursery.disabled = busy || state.retirementUnknown || state.disposed;
     if (learn) learn.disabled = busy || !selectedManifest || !canTeachScene(selectedManifest);
     prepare.disabled = busy || !selectedManifest || state.retirementUnknown || state.disposed; load.disabled = busy || !state.prepared || state.phase !== 'ready' || !state.canApply;
     rehearse.disabled = busy || !state.previewAvailable || !state.canApply || !!state.preview; stationRehearsal.hidden = !inspectSceneStationRehearsal(selectedManifest).available; stationRehearsal.disabled = rehearse.disabled || stationRehearsal.hidden; stopRehearsal.disabled = !state.preview;

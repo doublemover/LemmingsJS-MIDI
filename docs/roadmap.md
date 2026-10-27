@@ -6496,3 +6496,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   source-rate scene admission, paused commit and ordered retirement cases.
   Formatting, seven-file syntax/import checks, critical types, diff whitespace and
   static provenance pass (10 components / 337 files). No runtime or audio tests ran.
+
+### Continuation 257 — selected finite strike in three-route Nursery (#1216, #1233)
+
+- Added three-route Nursery assembly around an exact saved finite sample/FM graft.
+  The reference's engine/artifact/schema, definition, fixed-rate forward map,
+  finite calibration and four onset macros are checked before assembly. The
+  selected source/body and ancestry remain intact; only an actual safe non-spawn
+  landing excites the third route. Missing or terminal landings create no hit.
+- Scene identity includes the complete selected immutable reference, including
+  its pack/ancestry identity. Each score owns three finite entrants, the original
+  travel and sealed-air routes, exact asset requirements and the full voice bound.
+  Metadata assembly is separate from source-byte/PCM admission during Prepare.
+- Connected a compact scene-browser action to the selected saved lane graft.
+  Assembly selects an inspectable candidate without preparing or publishing a
+  world; Prepare and paused Load remain explicit actions. Document/selection
+  changes fence late results, unavailable sources retain the current selection,
+  and one-at-a-time/eight-distinct-score admission bounds dynamic catalog work.
+- Authored unrun actual finite FM/wood recipe preservation, artifact/map/domain
+  refusal, identity/capacity/cancellation, three-actor landing/empty-world traces
+  and browser publication/disposal cases. Sampled private rehearsal, actual PCM
+  comparison, geometry, device cost and listening evidence remain pending.
+  Formatting, six-file syntax/import checks, critical types and static provenance
+  pass. Fetch confirms no missing master commits (386 ahead / 0 behind before this
+  commit). No runtime, DSP, browser or full-suite tests ran.
