@@ -6426,3 +6426,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   Formatting, five-file syntax/import checks, critical types and static provenance
   pass (268 worker modules; 10 components / 337 source files). No WASM compilation,
   instantiation, DSP, browser, listening or full-suite tests ran.
+
+### Continuation 254 — bounded buffered stretch history (#1186, #1138)
+
+- Added an explicit zero-new-input buffered output operation to both direct and
+  initial-image core owners. A successful seek admits one history window;
+  processing, flush, reset or a changed pitch consumes/invalidates it. An unused
+  buffered API leaves existing finite-bake diagnostics and identities unchanged.
+- Added a private prepared-PCM history owner bound to the original asset/region,
+  original and output clocks, complete core configuration/artifacts and separate
+  input/output latency reports. It copies and hashes both planes under an explicit
+  peak reservation, reads only selected prepared material with zero boundaries,
+  and invokes pitch/seek/buffered output with fixed history storage. Source timing,
+  automation publication, loop reconstruction and producer retirement remain with
+  the eventual voice owner; this does not install or qualify a live warp voice.
+- Authored unrun coordinate/cross-rate rounding, source-copy isolation, history
+  consumption, stale reset/pitch, direct/restored buffered equality, hash/clock/
+  artifact rejection, cancellation and fault/lifetime cases. Formatting, five-file
+  syntax/import checks, critical types and diff whitespace pass. No WASM, DSP,
+  browser, listening or full-suite tests ran.

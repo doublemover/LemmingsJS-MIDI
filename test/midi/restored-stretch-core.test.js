@@ -17,6 +17,18 @@ describe('sealed initial stretch image restoration (authored unrun; no listening
     original = await prepareOwnedStretchCore(bytes, { captureInitialImage: true, estimatedPeakBytes: 192 * 1048576, yieldControl: async () => {} }); raw = { ...original.getInitialImage(), applicationBuildId: build }; material = await sealStretchImageMaterial(raw, options);
   });
   after(() => { material?.dispose(); original?.dispose(); });
+  it('matches direct and restored buffered seek/output history and refuses stale or multiply consumed windows', async () => {
+    const direct = await prepareOwnedStretchCore(bytes, { captureInitialImage: true, estimatedPeakBytes: options.estimatedPeakBytes, yieldControl: async () => {} }), restored = instantiateStretchInitialImage(material, options), count = direct.configuration.inputLatencyFrames + direct.configuration.outputLatencyFrames, left = new Float32Array(count), right = new Float32Array(count), a = [new Float32Array(128), new Float32Array(128)], b = [new Float32Array(128), new Float32Array(128)];
+    try {
+      expect(() => direct.processBuffered(a[0], a[1], 0, 128)).to.throw('unconsumed'); expect(() => restored.processBuffered(b[0], b[1], 0, 128)).to.throw('unconsumed');
+      for (let block = 0; block < 27; block++) {
+        const rate = [0.75, 1, 1.5][block % 3], pitch = [0.5, 1, 2][Math.floor(block / 3) % 3];
+        for (let frame = 0; frame < count; frame++) { left[frame] = Math.sin((frame + block * 128 * rate) * 0.031) * 0.2; right[frame] = Math.sin((frame + block * 128 * rate) * 0.047) * 0.1; }
+        direct.setPitch(pitch); restored.setPitch(pitch); direct.seek(left, right, 0, count, rate); restored.seek(left, right, 0, count, rate); direct.processBuffered(a[0], a[1], 0, 128); restored.processBuffered(b[0], b[1], 0, 128); expect(b).to.deep.equal(a); expect(() => restored.processBuffered(b[0], b[1], 0, 128)).to.throw('unconsumed');
+      }
+      for (const core of [direct, restored]) { core.seek(left, right, 0, count, 1); core.resetSpectralHistory(); expect(() => core.processBuffered(a[0], a[1], 0, 128)).to.throw('unconsumed'); core.seek(left, right, 0, count, 1); core.setPitch(0.5); expect(() => core.processBuffered(a[0], a[1], 0, 128)).to.throw('unconsumed'); expect(core.diagnostics()).to.include({ bufferedBlocks: 27, bufferedHistoryReady: false }); }
+    } finally { direct.dispose(); restored.dispose(); }
+  });
   it('restores the primed source without constructors/configuration and matches its subsequent matrix/control history in one runtime', () => {
     const restored = instantiateStretchInitialImage(material, options), left = new Float32Array(192), right = new Float32Array(192), a = [new Float32Array(128), new Float32Array(128)], b = [new Float32Array(128), new Float32Array(128)]; let sourceFrame = 0;
     try {
