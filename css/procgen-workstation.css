@@ -1,4 +1,9 @@
 @import url('./sound-content-library.css');
+.studio-command-palette { width: min(640px, calc(100vw - 64px)); max-height: calc(100vh - 64px); color: #253544; background: #edf2f6; }
+.studio-command-palette input { box-sizing: border-box; width: 100%; margin-bottom: 8px; }
+.studio-command-list { max-height: 55vh; overflow: auto; display: grid; gap: 4px; margin-bottom: 12px; }
+.studio-command-list button { display: flex; justify-content: space-between; align-items: center; gap: 18px; width: 100%; min-height: 32px; text-align: left; }
+.studio-command-list kbd { white-space: nowrap; font: 11px system-ui; }
 
 .studio-junction-controls { margin: 12px 0; padding: 12px; border-top: 1px solid #8da0ac; font-size: 12px; }
 .studio-junction-controls h2 { margin-bottom: 8px; }

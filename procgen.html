@@ -21,19 +21,19 @@
     <span class="procgen-section-label">Run</span>
       <div class="procgen-speed-control" role="group" aria-label="Game speed">
         <span>Speed</span><div class="procgen-speed-segments">
-          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed (-); Shift for five steps"><span class="visually-hidden">Decrease</span></button>
+          <button id="procgenSpeedDown" type="button" aria-label="Decrease game speed" title="Decrease speed"><span class="visually-hidden">Decrease</span></button>
           <output id="procgenSpeedReadout" aria-hidden="true"></output>
-          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed (+); Shift for five steps"><span class="visually-hidden">Increase</span></button>
+          <button id="procgenSpeedUp" type="button" aria-label="Increase game speed" title="Increase speed"><span class="visually-hidden">Increase</span></button>
         </div><input id="procgenSpeed" type="number" min="0.1" step="0.1" value="3" aria-label="Exact game speed" title="Game speed multiplier">
       </div>
-    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play (Space)">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick (])">Step</button></div>
+    <div class="procgen-button-group"><button id="procgenPause" type="button" aria-pressed="false" title="Pause or play">Pause</button><button id="procgenStep" type="button" title="Pause and advance one tick">Step</button></div>
     <div class="procgen-button-group"><button id="procgenZoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button><button id="procgenFollow" type="button" title="Follow the leading living lemming">Follow</button><button id="procgenZoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button></div>
     </div>
     <div class="procgen-control-section procgen-world-controls" role="group" aria-label="World generation">
     <span class="procgen-section-label">World</span>
     <details id="procgenSeedControls" class="procgen-advanced"><summary title="Generation seed and restart options">Seed</summary><div class="procgen-seed-controls">
     <label class="procgen-seed-field">Seed <input id="procgenSeed" type="text" value="" aria-label="Generation seed" title="Numbers or words; Enter or Regenerate applies this seed"></label>
-    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed (Backspace)">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
+    <div class="procgen-button-group"><button id="procgenRestart" type="button" title="Regenerate the same seed">Regenerate</button><button id="procgenNewSeed" type="button" title="Choose a new seed and generate">New seed</button></div>
     </div></details>
     <label title="Changing the lane count regenerates the run">Lanes <input id="procgenLanes" type="number" min="1" max="1024" step="1" value="8"></label>
     <label>Lane height <input id="procgenLaneHeight" type="number" min="96" max="256" step="8" value="144" title="Physical pixels per lane; regenerates this run"></label>

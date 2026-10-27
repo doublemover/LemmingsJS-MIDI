@@ -1,3 +1,5 @@
+import { getProcgenCommandDispatcher } from '../js/app/controls/ProcgenCommandDispatcher.js';
+import { DEFAULT_KEYBINDINGS } from '../js/input/KeybindingRegistry.js';
 import { expect } from 'chai';
 import fs from 'node:fs';
 import * as cheerio from 'cheerio';
@@ -8,8 +10,9 @@ import { normalizeSeed } from '../js/core/seededRandom.js';
 import { createProcgenUiController } from '../js/app/procgen/ProcgenUiController.js';
 import { TestDocument, createTestWindow } from './helpers/test-dom.js';
 import { registerElement } from './support/dom-fixtures.js';
-const fixture = (search = '', storedLanes = null, preferences = {}, restartResult = null) => {
+const fixture = (search = '', storedLanes = null, preferences = {}, restartResult = null, fetchBindings = null) => {
   const document = new TestDocument(), window = createTestWindow(document);
+  if (fetchBindings) window.fetch = fetchBindings;
   if (storedLanes != null) window.localStorage.setItem('lemmings.procgen.lanes.v1', JSON.stringify(storedLanes));
   for (const [key, value] of Object.entries(preferences)) window.localStorage.setItem(key, JSON.stringify(value));
   window.location = { search, href: `https://example.test/procgen.html${search}` };
@@ -21,7 +24,7 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   }
   for (const [tag, ids] of [['div', ['procgenDrawer', 'procgenPanel', 'procgenSpanList']], ['details', ['procgenHelpFields']], ['canvas', ['gameCanvas']], ['button', ['procgenTab', 'procgenHelp', 'procgenRestart', 'procgenListen', 'procgenSpeedDown', 'procgenSpeedUp', 'procgenShare', 'procgenNewSeed', 'procgenPause', 'procgenStep', 'procgenFollow', 'procgenZoomIn', 'procgenZoomOut', 'procgenPanic', 'procgenCctvPin', 'procgenCctvClear', 'procgenSpanAdd', 'procgenSpanPresetApply', 'procgenSpanUndo', 'procgenSpanRedo']],
     ['select', ['procgenMusicRecipe', 'procgenPreset', 'procgenPack', 'procgenSpeed', 'procgenCctvMode', 'procgenSpanDomain', 'procgenSpanTarget', 'procgenSpanPreset']], ['input', ['procgenLanes', 'procgenPhrases', 'procgenSeed', 'procgenMasterVolume', 'procgenCctvLane', 'procgenWorkerBashers', 'procgenWorkerDiggers', 'procgenWorkerBuilders', 'procgenLaneHeight', 'procgenCctvEnabled', 'procgenScoutsEvery', 'procgenScoutDelay', 'procgenSpawnSpread', 'procgenSpawnPriority', 'procgenSpanEdit', 'procgenSpanVisible']],
-    ['p', ['procgenMusicStatus', 'procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
+    ['p', ['procgenShortcutHelp', 'procgenMusicStatus', 'procgenMasterVolumeValue', 'procgenPresetDescription', 'procgenAudioStatus', 'procgenRunStatus', 'procgenMetrics', 'procgenStallStatus', 'procgenAliveCount', 'procgenDistance', 'procgenBest', 'procgenCctvStatus', 'procgenNukeStatus', 'procgenOutputPressure', 'procgenSpanPresetStatus', 'procgenSpanHistoryStatus']]]) {
     for (const id of ids) { const el = registerElement(document, tag, id); el.removeEventListener = (event, callback) => el.listeners.set(event, (el.listeners.get(event) || []).filter(fn => fn !== callback)); }
   }
   let restarts = 0;
@@ -30,6 +33,25 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('keeps titles neutral while custom bindings load and generates help from the admitted registry', async () => {
+    let resolve; const pending = new Promise(done => { resolve = done; }), f = fixture('', null, {}, null, () => pending);
+    const calls = []; f.runtime.lanes = { renderer: { camera: { getState: () => ({ scale: 1 }), setZoom: value => calls.push(value) } } };
+    const press = code => f.window.dispatchEvent({ type: 'keydown', key: code.slice(3).toLowerCase(), code, preventDefault() {} });
+    try {
+      expect(f.el('procgenZoomIn').title).to.equal('Zoom in'); expect(f.el('procgenShortcutHelp').textContent).to.include('shortcuts are loading');
+      press('KeyZ'); expect(calls).to.have.length(0); resolve({ ok: true, json: async () => ({ bindings: { zoomIn: ['KeyG'], zoomOut: ['KeyH'] } }) });
+      await new Promise(done => setImmediate(done)); expect(f.el('procgenZoomIn').title).to.equal('Zoom in (G)'); expect(f.el('procgenZoomOut').title).to.equal('Zoom out (H)');
+      press('KeyZ'); press('KeyG'); press('KeyH'); expect(calls).to.deep.equal([1.1, 1 / 1.1]);
+      f.ui.setPhysicalControlOwner({ canShortcut: action => action !== 'zoomIn' }); expect(f.el('procgenZoomIn').title).to.equal('Zoom in');
+      f.el('procgenHelp').dispatchEvent({ type: 'click' }); expect(f.el('procgenShortcutHelp').textContent).to.include('Zoom world in: unavailable here');
+    } finally { f.ui.dispose(); }
+  });
+  it('does not publish a late configuration after its controller is disposed', async () => {
+    let resolve; const pending = new Promise(done => { resolve = done; }), f = fixture('', null, {}, null, () => pending), dispatcher = getProcgenCommandDispatcher(f);
+    f.ui.dispose(); const revision = dispatcher.bindingState().revision;
+    resolve({ ok: true, json: async () => ({ bindings: { zoomIn: ['KeyG'] } }) }); await new Promise(done => setImmediate(done));
+    expect(dispatcher.bindingState().revision).to.equal(revision); expect(dispatcher.inspect()).to.include({ installed: false, groups: 0 });
+  });
   it('leaves Escape to an open modal without closing its originating drawer', () => {
     const f = fixture(); f.el('procgenTab').dispatchEvent({ type: 'click', detail: 1 });
     f.document.dispatchEvent({ type: 'keydown', key: 'Escape', composedPath: () => [{ tagName: 'DIALOG', open: true }] });
@@ -330,6 +352,36 @@ describe('compact procgen drawer', () => {
     expect(f.el('procgenDistance').textContent).to.equal('3,400 px');
     expect(f.el('procgenMetrics').textContent).to.include('1,024 alive'); expect(f.el('procgenMetrics').textContent).to.include('admission paused');
     f.ui.dispose(); f.el('procgenRestart').dispatchEvent({ type: 'click' }); expect(f.restarts).to.equal(0);
+  });
+  it('routes every declared world shortcut alias to zero or one command in each input context', () => {
+    const f = fixture(), camera = { pan() {}, setZoom() {}, getState: () => ({ scale: 3 }), followFrontier() {} };
+    f.runtime.world = { generation: 1, laneCount: 1, laneHeight: 96, actors: [], timer: f.timer, step() {}, nukeAll() {} };
+    f.runtime.lanes = { renderer: { camera }, pause() {}, resume() {}, step() {} };
+    const dispatcher = getProcgenCommandDispatcher(f), contexts = ['canvas', 'button', 'range', 'text', 'modal', 'composition', 'consumed']; let aliases = 0, assertions = 0;
+    const customBindings = Object.fromEntries(dispatcher.list().map((command, index) => [command.id, ['Ctrl+Alt+F' + (index + 1)]]));
+    try {
+      for (const custom of [false, true]) {
+        dispatcher.setBindings(custom ? { bindings: customBindings } : null);
+        for (const command of dispatcher.list()) {
+          const action = command.id.slice('world.'.length), bindings = custom ? customBindings[command.id] : action === 'followFrontier' ? ['KeyF'] : action === 'toggleShortcutOverlay' ? ['F1', 'Shift+Slash'] : action === 'cancelTools' ? ['Escape'] : DEFAULT_KEYBINDINGS.bindings[action];
+          for (const binding of bindings || []) {
+            aliases++; const parts = binding.split('+'), code = parts.at(-1), key = code === 'Space' ? ' ' : code;
+            for (const context of contexts) {
+              let prevented = 0, stopped = 0; const target = { tagName: context === 'button' ? 'BUTTON' : ['range', 'text'].includes(context) ? 'INPUT' : 'CANVAS', type: context === 'range' ? 'range' : 'text' };
+              const event = { key, code, shiftKey: parts.includes('Shift'), ctrlKey: parts.includes('Ctrl'), altKey: parts.includes('Alt'), metaKey: parts.includes('Meta'),
+                target, isComposing: context === 'composition', defaultPrevented: context === 'consumed',
+                composedPath: () => context === 'modal' ? [target, { tagName: 'DIALOG', open: true }] : [target], preventDefault() { prevented++; }, stopImmediatePropagation() { stopped++; } };
+              const native = context === 'button' && code === 'Space' || context === 'range' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code);
+              const blocked = ['text', 'modal', 'composition', 'consumed'].includes(context) || native;
+              const result = dispatcher.dispatch(event), label = binding + ' in ' + context; assertions++;
+              expect(result.status, label).to.equal(blocked ? 'owned-input' : 'executed');
+              expect(prevented, label).to.equal(blocked ? 0 : 1); expect(stopped, label).to.equal(blocked ? 0 : 1); if (!blocked) expect(result.id, label).to.equal(command.id);
+            }
+          }
+        }
+      }
+      console.info('Desktop world shortcut matrix: ' + JSON.stringify({ profiles: 2, aliases, contexts: contexts.length, assertions }));
+    } finally { f.ui.dispose(); }
   });
   it('restores camera, speed, pause, step and restart keys without stealing form input', () => {
     const f = fixture();

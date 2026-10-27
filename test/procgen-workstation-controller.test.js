@@ -110,6 +110,19 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.calls).to.have.length(2);
     await f.studio.dispose().completion;
   });
+  it('projects command readiness from canonical history and Stage policy without status side effects', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    try {
+      expect(f.viewProps.canCommand('undo')).to.equal(false); expect(f.viewProps.canCommand('redo')).to.equal(false);
+      expect(f.viewProps.canCommand('copy')).to.equal(true); expect(f.viewProps.canCommand('paste')).to.equal(false); f.studio.handlers.copy(); expect(f.viewProps.canCommand('paste')).to.equal(true);
+      f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.5 } }); expect(f.viewProps.canCommand('undo')).to.equal(true);
+      await f.studio.handlers.stage(); const messages = f.statuses.length;
+      expect(f.viewProps.canCommand('undo')).to.equal(false); expect(f.viewProps.canCommand('import')).to.equal(false); expect(f.viewProps.canCommand('panicOutput')).to.equal(true);
+      expect(f.physicalOwner.canShortcut('restartLevel')).to.equal(false); expect(f.physicalOwner.canShortcut('nuke')).to.equal(false); expect(f.physicalOwner.canShortcut('nukeInstant')).to.equal(false); expect(f.physicalOwner.nuke(null)).to.equal(false); expect(f.physicalOwner.canShortcut('togglePause')).to.equal(true);
+      expect(f.statuses).to.have.length(messages); await f.studio.handlers.stageExit(); expect(f.viewProps.canCommand('undo')).to.equal(true);
+      await f.studio.handlers.undo(); expect(f.viewProps.canCommand('redo')).to.equal(true);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('renders canonical Redo when its stored change has no current reducer action', async () => {
     const f = setup(); f.studio.bindRuntime(); let renders = 0; const patches = [];
     f.view.render = () => { renders++; }; f.view.patchProject = action => { patches.push(action); };

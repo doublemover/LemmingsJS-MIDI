@@ -7156,3 +7156,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   control hash and byte-identical physical trace. Failure attachments now retain
   bounded actual state differences before assertions. Formatting, types,
   undefined calls, provenance and whitespace pass; new full CI remains pending.
+
+
+### Continuation 283 — shared configured desktop commands
+
+- Full CI at 43334e61 is green: **6,422 Node cases / 45 desktop browser
+  boundaries**, every required check, **90.28% lines/statements, 83.49% branches,
+  88.21% functions**. Ready master capture acknowledges 108,161 frames with no
+  clock discontinuity. Closed #984 after this checkpoint and its concurrent
+  history matrix; 230 issues remain open.
+- World controls and workstation history/pattern actions now share one configured
+  command dispatcher. Native/ARIA/text/modal/composition ownership precedes world
+  aliases; held keys carry source, selection and binding revisions. Destructive
+  commands never repeat. Captured gestures cancel only for explicit transitions.
+- Commands search is keyboard accessible, source bound and limited to 48 visible
+  entries; disabled actions remain visible. Stale targets and detached controls
+  cannot execute. Deep editors receive one modal after the search closes. Shared
+  custom bindings generate platform labels, neutral loading titles and Help.
+- Stage now rejects legacy world nuke at its canonical owner. Separate musical
+  Panic/Stop commands have no default binding and can be explicitly configured
+  for emergency use inside dialogs without publishing a gesture draft or nuke.
+- The grouped pass succeeds: **181 Node cases / 21 desktop browser cases**, one
+  opt-in benchmark skipped. The world alias matrix covers 47 aliases across two
+  profiles and seven ownership contexts (329 zero-or-one assertions). Production
+  browser cases use a populated eight-lane world and verify delayed custom
+  configuration, real Saved Projects/native controls, Stage protection, owned
+  repeat, stale search and actual deep-editor handoff. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending.

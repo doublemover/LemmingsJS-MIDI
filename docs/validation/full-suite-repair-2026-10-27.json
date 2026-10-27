@@ -818,18 +818,18 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "74067889ac12e579317a619ef7e631fa787c6e4e",
-    "job": 122391435791,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40561501288/job/122391435791",
-    "passed": 6408,
+    "head": "43334e612115cb41319dba60e31c3bbac25732fa",
+    "job": 122410711557,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40566966525/job/122410711557",
+    "passed": 6422,
     "failed": 0,
-    "browserPassed": 44,
+    "browserPassed": 45,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
       "lines": 90.28,
       "statements": 90.28,
-      "branches": 83.46,
+      "branches": 83.49,
       "functions": 88.21
     },
     "minimumDesktopViewport": {
@@ -837,15 +837,13 @@
       "height": 1080
     },
     "excludesContinuations": [
-      280,
-      281,
-      282
+      283
     ],
     "excludesLaterWork": true,
     "masterCapture": {
       "state": "Ready",
-      "timelineFrames": 56064,
-      "capturedFrames": 56064,
+      "timelineFrames": 108161,
+      "capturedFrames": 108161,
       "stopReason": "user-stop",
       "clockDiscontinuity": null
     }
@@ -8929,6 +8927,37 @@
           "sha256": "f2eb0431927c0f1193357ceb0c1b42eb5da7a8cd1d15e2836b7ec0f936fd1d34",
           "bytes": 4843
         }
+      },
+      "fullCI": {
+        "head": "43334e612115cb41319dba60e31c3bbac25732fa",
+        "job": 122410711557,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40566966525/job/122410711557",
+        "passed": 6422,
+        "failed": 0,
+        "browserPassed": 45,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.28,
+          "statements": 90.28,
+          "branches": 83.49,
+          "functions": 88.21
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          283
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "timelineFrames": 108161,
+          "capturedFrames": 108161,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        }
       }
     },
     "source": [
@@ -8971,9 +9000,165 @@
       "traceHash": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178"
     },
     "limitations": [
-      "Full CI for this correction is pending. The latest fully green desktop checkpoint is 74067889, preceding continuation 280.",
+      "Full CI for this correction is green at 43334e61: 6,422 Node cases, 45 desktop browser boundaries and every required check. Later keyboard registry work is excluded.",
       "Only exact source-bound immutable zone shapes normalize by value. Other mutable object identities and unknown source bindings remain significant.",
       "No external hardware or listening qualification is claimed."
+    ]
+  },
+  "continuation283": {
+    "baseHead": "43334e612115cb41319dba60e31c3bbac25732fa",
+    "scope": "One configured desktop command registry for world/workstation input, source-bound command search, truthful loading/help and canonical Stage nuke protection.",
+    "implemented": [
+      "One window keydown dispatcher shared by world, pattern/history and separate output contexts; composed-path native/ARIA/text/modal ownership, full composition-session and consumed-event guards, captured-gesture priority and explicit tool cancellation.",
+      "Bounded immutable shared keybinding profile with legacy action aliases, exact command-ID overrides, neutral pending hints, platform modifier labels and binding-revision invalidation. Configuration changes release held keys and stale borrowed entries.",
+      "Repeatable navigation follows only its own source/selection advances; destructive/history actions do not repeat. Weak source tokens fence retired world/project/generation callbacks without retaining whole retired sources.",
+      "Lazy keyboard-accessible Commands search retains disabled actions, limits visible rows to 48, closes before deep editor handoff and rejects stale targets or detached callbacks. Registration limits 96 total /64 per group, 16 held keys and eight config observers.",
+      "Pure command availability projects canonical history, clipboard and Stage policy without status mutations. The physical owner refuses world nuke/restart in Stage. Panic/Stop have separate unbound-by-default musical-output commands; explicitly configured emergency bindings remain usable in dialogs/Stage without committing gesture drafts or nuking actors.",
+      "World control titles and Help use the admitted shared configuration; initial HTML and unresolved bindings stay neutral. Removed the hardcoded Z/X/F runtime hint, and refreshed hints on runtime and Stage changes. CSS imports remain before style rules."
+    ],
+    "validation": {
+      "nodePassed": 181,
+      "nodeFailed": 0,
+      "nodeSeconds": 2,
+      "shortcutMatrix": {
+        "profiles": 2,
+        "aliases": 47,
+        "contexts": 7,
+        "assertions": 329
+      },
+      "browserPassed": 21,
+      "browserFailed": 0,
+      "browserSkipped": 1,
+      "browserSkipReason": "Opt-in view latency benchmark; no benchmark pass is claimed.",
+      "browserReportedDuration": "29.1s",
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "productionBrowserCases": [
+        "Actual populated 8-lane world stays byte-identical through native buttons, Saved Projects Close, nested details Space, modal Shift+T, composition and reserved browser modifiers.",
+        "Owned held step navigation, unrelated project revision invalidation, nonrepeated Undo, Copy/Paste and canonical Undo.",
+        "Stale selected command rejected; detached callbacks cannot act after close/reopen; one-modal handoff into the actual Sound library.",
+        "Stage rejects world nuke and restart while permitting output Panic and capture.",
+        "Delayed real keybindings.json keeps titles neutral; custom G/H and pattern L bindings and labels publish together; old aliases stop; configured F8 Panic works inside modal search without physical changes.",
+        "Existing view fixture cases include separator ownership, focused buffer/caret, fullscreen root, bounded 1024-lane views, renderer detachment, paging, naming and pointer cancellation."
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-owners-release-20261027.log",
+          "sha256": "b0d252667ac1becc001f87eb61fb311efbcbbfcf86d346553ea2706d0730028c",
+          "bytes": 16638
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-browser-release-20261027.log",
+          "sha256": "ddf03d119891ee650ecfcba362e368bb01d4958302801e51ea90d6ed3bd933d5",
+          "bytes": 3616
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-format-release-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-types-config-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-undefined-config-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog283-provenance-release-20261027.log",
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
+          "bytes": 142
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css\\procgen-workstation.css",
+        "sha256": "b400c37b3928d53fac9736e10b4157be4f3b9a76ffeecada9920f140abdfa191",
+        "bytes": 30870
+      },
+      {
+        "path": "docs\\procgen-workstation.md",
+        "sha256": "554ebc9d6882a1fdccea6d958b384af35ca3ce175c2d7741d694ff8f84ce7abc",
+        "bytes": 22621
+      },
+      {
+        "path": "e2e\\procgen-workstation-commands.spec.js",
+        "sha256": "90f09ab54451086e8c8a67e0687fd54e2ff6af5d4c2dbac36ed0c5043e1f95e4",
+        "bytes": 11839
+      },
+      {
+        "path": "js\\app\\controls\\ParameterKnob.js",
+        "sha256": "87c8af21f650d969a00dcc36dceacf296b72f0ea7c1af1986a4ec41d5728a6b5",
+        "bytes": 10765
+      },
+      {
+        "path": "js\\app\\controls\\ProcgenCommandDispatcher.js",
+        "sha256": "67e033da9b02bfcdfa1a3e39cbbdb529daaaa08b468d69b2831f235d930cb4b9",
+        "bytes": 14505
+      },
+      {
+        "path": "js\\app\\controls\\ProcgenCommandPalette.js",
+        "sha256": "72de0e51ad7a514fc8b516f27606394456896a382bf13085fbfe4bfe41d6d08a",
+        "bytes": 3859
+      },
+      {
+        "path": "js\\app\\procgen\\ProcgenUiController.js",
+        "sha256": "99e587472ba73e61f67d304311dabf106867a82b44a853202202b63fd35ce325",
+        "bytes": 46077
+      },
+      {
+        "path": "js\\app\\procgen\\workstation\\ProcgenWorkstation.js",
+        "sha256": "5a39f32d2ee7f99d396ecd11efd1358d1912496e8659406b8e70bd96950a1660",
+        "bytes": 182689
+      },
+      {
+        "path": "js\\app\\procgen\\workstation\\ProcgenWorkstationView.js",
+        "sha256": "2db80f03b958c471be17304cd5b003198a1ce25555351385bbc7c622ace1497e",
+        "bytes": 102436
+      },
+      {
+        "path": "package.json",
+        "sha256": "fc7313b37d4d62b754dbb54d84b79201a45c86802515ff736c1df94cb80cce80",
+        "bytes": 8706
+      },
+      {
+        "path": "procgen.html",
+        "sha256": "6c9799b80a1b6a23d9c1e07fb8d9d59b69171b3b0452990827dff6ab6d7114d8",
+        "bytes": 18415
+      },
+      {
+        "path": "test\\procgen-command-dispatcher.test.js",
+        "sha256": "2b35e92fc535816d4752e0579fef8c9605e2216692d71a48b7d046f5dbd62b87",
+        "bytes": 18557
+      },
+      {
+        "path": "test\\procgen-ui.test.js",
+        "sha256": "0394e4db17231a115bbac397ef0782a2b6f2ff262eb2d5f114b8b7068544a8aa",
+        "bytes": 48118
+      },
+      {
+        "path": "test\\procgen-workstation-controller.test.js",
+        "sha256": "be0f2795a5dfa9543a4eab659806929156dc624aa0cc23957ffd9faa497ef1ea",
+        "bytes": 89857
+      }
+    ],
+    "limitations": [
+      "Current full CI remains pending until this continuation is committed and pushed. The latest fully green checkpoint is 43334e61 and excludes this keyboard work.",
+      "No native hardware, screen-reader or listening qualification is claimed. Desktop target minimum remains 1920x1080; no phone/tablet layout acceptance."
     ]
   }
 }

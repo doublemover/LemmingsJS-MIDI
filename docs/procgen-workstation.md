@@ -22,9 +22,9 @@ controls. Global key and scale are in the transport header.
 
 Use **Complementary pattern** only when you want an authored clocked layer.
 Each such lane records its physical purpose and has four phrase slots. Draw and
-Erase edit cells; double-click toggles a trigger. Arrow keys move step
-selection, Delete clears a step, and Ctrl/Cmd+C, V, Z and Shift+Z copy, paste,
-undo, and redo phrase edits. A fixed MIDI note overrides a step's scale degree;
+Erase edit cells; double-click toggles a trigger. With pattern focus, the default
+arrow keys move step selection, Delete clears a step, and Ctrl/Cmd+C, V, Z and
+Shift+Z copy, paste, undo, and redo phrase edits. A fixed MIDI note overrides a step's scale degree;
 leave it empty to follow the global key. Drums use General MIDI drum notes.
 
 For a complementary lane, phrase buttons queue playback for the next bar.
@@ -326,3 +326,34 @@ source-profile error. Source and worker-result release wait for world/renderer
 reader retirement; unresolved retirement keeps the resource reservation owned.
 Runtime, visual, playability and recovery qualification for this source remains
 pending with the development batch.
+
+## Desktop commands and bindings
+
+The minimum viewport is 1920×1080. Open **View actions → Commands…** with the
+keyboard or pointer to search available actions and inspect their configured
+shortcuts. Unavailable actions stay visible and disabled. A command captures the
+current source and selection; reopen the search after those change. Executing a
+deep editor command closes the search before opening the editor.
+
+`keybindings.json` configures the shared registry. Existing world action names
+such as `zoomIn` remain supported; `world.zoomIn` takes precedence when both are
+specified. Workstation actions use command IDs: `workstation.undo`,
+`workstation.redo`, `workstation.copy`, `workstation.paste`, `pattern.clearStep`,
+`pattern.previousStep` and `pattern.nextStep`. For example:
+
+```json
+{"version":1,"bindings":{"zoomIn":["KeyG"],"pattern.nextStep":["KeyL"]}}
+```
+
+Use an empty array to remove a binding. Titles remain neutral while configuration
+loads; Help and Commands use the active registry and platform modifier names.
+Native controls own their activation and navigation keys. Text, modal dialogs and
+IME composition do not dispatch world or pattern commands. Held repeatable keys
+stop when their source, selection, binding revision or window focus changes.
+
+Stage mode rejects world restart and nuke commands at the canonical owner.
+`workstation.panicOutput` and `workstation.stopOutput` are separate musical output
+actions with no default shortcut. An explicitly configured binding remains
+available inside dialogs and Stage without nuking actors or committing a captured
+edit gesture; composition and keys already consumed by a native control retain
+priority.

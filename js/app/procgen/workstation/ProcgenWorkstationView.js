@@ -1,3 +1,5 @@
+import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
+import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
 import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
 import { procgenLane } from './ProcgenProjectIndex.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
@@ -19,7 +21,7 @@ const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], D
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
 const rendererLeases = new WeakMap();
 
-function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, state = {} }) {
+function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
   const listeners = [], parameterControls = [], laneMixControls = new Map();
   let midiRouteView = null, midiRouteState = null;
@@ -87,7 +89,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
   let projection, dragging = null, stroke = null, suppressClickUntil = 0, layoutKey = null, queuedBeat = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
-  let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false;
+  let attachedRenderer = null, disposed = false, superseded = false, composing = false, pendingInspectorRender = false, stageActive = false;
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
   on(fields, 'compositionstart', () => { composing = true; });
@@ -837,7 +839,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   });
   for (const type of ['pointercancel', 'lostpointercapture']) on(window, type, event => { if (stroke?.lease.owns(event)) stroke.lease.cancel(type); });
   on(window, 'blur', () => stroke?.lease.cancel('blur'));
-  on(document, 'keydown', event => { if (event.key === 'Escape') stroke?.lease.cancel('escape'); });
+  on(document, 'keydown', event => { if (event.key === 'Escape' && stroke) { event.preventDefault(); event.stopPropagation(); stroke.lease.cancel('escape'); } });
   const layoutSurface = displayScheduler.register({ id: 'workstation-layout', element: stage, intervalMs: 0,
     read: () => ({ width: stage.clientWidth, height: stage.clientHeight }), write: measured => { if (layout(measured)) renderRows(); },
     onError: message => { displayStatus.textContent = message; } });
@@ -873,17 +875,40 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const transportSurface = displayScheduler.register({ id: 'workstation-transport', element: transport, intervalMs: 50, write: (_measured, packet) => paintTransport(packet.value) });
   const resizeObserver = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(() => layoutSurface.invalidate()) : null;
   resizeObserver?.observe(stage); on(window, 'resize', () => layoutSurface.invalidate());
-  on(window, 'keydown', event => {
-    if (event.defaultPrevented || event.isComposing || event.key === 'Dead' || projectList.open || document.querySelector?.('dialog[open]') ||
-        event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'SUMMARY', 'A'].includes(event.target?.tagName) ||
-        ['separator', 'slider', 'tab', 'menuitem'].includes(event.target?.getAttribute?.('role'))) return;
-    const modifier = event.ctrlKey || event.metaKey, key = event.key.toLowerCase();
-    const action = modifier ? key === 'c' ? 'copy' : key === 'v' ? 'paste' : key === 'z' ? event.shiftKey ? 'redo' : 'undo' : key === 'y' ? 'redo' : null : null;
-    if (action) { event.preventDefault(); handlers[action]?.(); return; }
-    if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); changeStep({ enabled: false }); }
-    else if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && selected().mode === 'pattern') { event.preventDefault(); const length = selected().patterns[state.slot].length; state.step = (state.step + (event.key === 'ArrowLeft' ? length - 1 : 1)) % length; state.tab = 'Step'; render(); }
-  });
-  let stageActive = false, stageFocus = null; const stageHidden = new Map();
+  const commandDispatcher = getProcgenCommandDispatcher({ document, window });
+  const commandContext = () => { const world = getRuntime?.()?.world; return { project: new WeakRef(getProject()), laneId: state.laneId, slot: state.slot, step: state.step, tab: state.tab,
+    world: world ? new WeakRef(world) : null, generation: world?.generation }; };
+  const commandCurrent = context => !disposed && context.project.deref() === getProject() && context.laneId === state.laneId && context.slot === state.slot &&
+    context.step === state.step && context.tab === state.tab && (!context.world || context.world.deref() !== undefined) && context.world?.deref() === (getRuntime?.()?.world || undefined) && context.generation === getRuntime?.()?.world?.generation;
+  const patternReady = () => !stageActive && selected().mode === 'pattern' && !!selected().patterns[state.slot]?.steps[state.step];
+  const bindingDefaults = { undo: ['Ctrl+KeyZ', 'Meta+KeyZ'], redo: ['Ctrl+Shift+KeyZ', 'Meta+Shift+KeyZ', 'Ctrl+KeyY', 'Meta+KeyY'],
+    copy: ['Ctrl+KeyC', 'Meta+KeyC'], paste: ['Ctrl+KeyV', 'Meta+KeyV'] };
+  const commands = ['undo', 'redo', 'copy', 'paste'].map(action => ({ id: 'workstation.' + action, label: ({ undo: 'Undo the last edit', redo: 'Redo the last edit', copy: 'Copy the selected pattern', paste: 'Paste into the selected pattern' })[action],
+    contexts: [action === 'undo' || action === 'redo' ? 'project-history' : 'optional-pattern'], bindings: bindingDefaults[action],
+    enabled: () => canCommand(action) && (['undo', 'redo'].includes(action) || patternReady()), execute: () => handlers[action]?.() }));
+  commands.push({ id: 'pattern.clearStep', label: 'Clear the selected step', contexts: ['optional-pattern'], bindings: ['Delete', 'Backspace'],
+    enabled: () => patternReady() && state.tab === 'Step', execute: () => changeStep({ enabled: false }) });
+  for (const [key, direction] of [['ArrowLeft', -1], ['ArrowRight', 1]]) commands.push({ id: 'pattern.' + (direction < 0 ? 'previousStep' : 'nextStep'),
+    label: direction < 0 ? 'Select the previous step' : 'Select the next step', contexts: ['optional-pattern'], bindings: [key], repeat: true, enabled: patternReady,
+    execute: () => { const length = selected().patterns[state.slot].length; state.step = (state.step + length + direction) % length; state.tab = 'Step'; render(); } });
+  for (const [action, label] of [['openSoundLibrary', 'Open the sound library'], ['openShapeFoundry', 'Open Shape Foundry'],
+    ['openPhysicalAuthoring', 'Open physical authoring'], ['openPhysicalJunctions', 'Inspect physical junctions'], ['openPhysicalScene', 'Open physical scene and cargo authoring'],
+    ['openMasterCapture', 'Record the browser master'], ['openPrelistenMonitor', 'Open Prelisten routing'], ['save', 'Save the current project'], ['load', 'Open a saved project'], ['export', 'Prepare a performance file']]) {
+    commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => handlers[action]?.() });
+  }
+  commands.push({ id: 'workstation.import', label: 'Import a performance file', contexts: ['project'], enabled: () => canCommand('import'), execute: () => importInput.click() });
+  const commandRegistration = commandDispatcher.register({ commands, priority: 100, getContext: commandContext, isCurrent: commandCurrent,
+    accepts: (_event, input) => !projectList.open && (!input.interactive || input.path.some(target => target?.classList?.contains('studio-cell'))) && !input.path.some(target => target?.id === 'gameCanvas'),
+    onError: error => { status.textContent = error.message; } });
+  const outputCommandRegistration = commandDispatcher.register({ priority: 200, isCurrent: () => !disposed,
+    commands: [['panicOutput', 'Panic: release musical output'], ['stopOutput', 'Stop musical output']].map(([action, label]) => ({
+      id: 'workstation.' + action, label, contexts: ['musical-output'], bindings: [], emergency: true,
+      enabled: () => canCommand(action), execute: () => handlers[action]?.() })), onError: error => { status.textContent = error.message; } });
+  const commandPalette = createProcgenCommandPalette({ document, dispatcher: commandDispatcher, getScopeLabel: () => 'Selected lane: ' + (selected().name || selected().id),
+    onStatus: message => { status.textContent = message; } });
+  fullscreenMenu.append(button('Commands…', () => commandPalette.open(), 'Find a desktop action and inspect its actual shortcuts'));
+
+  let stageFocus = null; const stageHidden = new Map();
   const setStageMode = enabled => {
     if (stageActive === !!enabled || disposed) return; stageActive = !!enabled;
     shell.dataset.stageMode = String(stageActive); presentationRoot.dataset.stageMode = String(stageActive); cueStrip.hidden = !stageActive;
@@ -984,7 +1009,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },

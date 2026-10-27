@@ -1653,9 +1653,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       stageSession ||= createPerformanceStageSession({ canEnter: () => !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !soundTransactions.diagnostics().active && !macroGestures.diagnostics().active && !document.querySelector?.('dialog[open]'),
         getIdentity: () => JSON.stringify([documentGeneration, projectRevision]), setPresentation: value => view?.stageMode?.(value), getCandidate: () => sceneLoader?.state(),
         applyCandidate: () => sceneLoader.apply(), cancelCandidate: () => sceneLoader?.cancel(), onStatus: status });
-      const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
+      const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); legacy.refreshShortcutHints?.(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
     }),
-    stageExit: safe(() => stageSession?.exit()), stageGo: safe(() => stageSession?.go()),
+    stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
     stagePlay: () => play(), stagePause() { transport.pause(); recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false }); },
     panicOutput() { soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
     scenes: safe(openPerformanceScenes),
@@ -1861,11 +1861,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       persist();
     }
   };
+  const canCommand = (name, args = []) => {
+    if (disposed || typeof handlers[name] !== 'function' || stageSession && !stageSession.permitsCommand(name, args)) return false;
+    if (name === 'copy' || name === 'paste') return !!selected().patterns?.[state.slot] && (name === 'copy' || !!clipboard);
+    if (name === 'undo' || name === 'redo') {
+      const stack = name === 'undo' ? undo : redo;
+      return !pendingHistory && !worldBusy && !physicalAuthoringAbort && stack.length > 0 &&
+        (!physicalHistory.get(stack.at(-1)) || !(causalTake || causalTakeStart || causalTakeStop));
+    }
+    return true;
+  };
   for (const [name, action] of Object.entries(handlers)) if (typeof action === 'function') handlers[name] = (...args) => {
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
-  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   let observedOutputRoute = outputRouteKey(legacy.local.getState());
   const unsubscribeOutputState = legacy.local.subscribe?.(state => {
@@ -1919,13 +1929,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
   listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
   let interventionSerial = 0;
+  const canWorldShortcut = action => !disposed && (action === 'restartLevel' ? !stageSession?.active() :
+    action === 'nuke' || action === 'nukeInstant' ? !stageSession?.active() && !!runtime()?.world && !worldBusy && !causalTakeStart && !causalTakeStop : true);
   const releasePhysicalControls = legacy.setPhysicalControlOwner?.({
-    getRecipeSpeed: () => transport.getState().gameSpeed,
+    getRecipeSpeed: () => transport.getState().gameSpeed, canShortcut: canWorldShortcut,
     getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),
     canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue,
     speed(value) { configureTransport({ gameSpeed: value }); legacy.setSpeed(value, { owned: true }); lastLegacySpeed = legacy.settings.speed; persist(); refreshSceneCue(); return value; },
     nuke(laneId) {
-      const world = runtime()?.world; if (!world || worldBusy || causalTakeStart || causalTakeStop) return false;
+      const world = runtime()?.world; if (!canWorldShortcut('nuke')) return false;
       const command = { id: `manual-nuke:${world.generation}:${world.tickIndex}:${++interventionSerial}`, kind: laneId == null ? 'nuke-all' : 'nuke-lane',
         origin: 'manual', target: { generation: world.generation, ...(laneId == null ? {} : { laneId }) }, applyAtTick: world.tickIndex + 1 };
       const proposal = world.prepareIntervention(command);

@@ -60,7 +60,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   for (const name of ['pointercancel', 'lostpointercapture']) on(cap, name, event => { if (gesture?.lease.owns(event)) gesture.lease.cancel(name); });
   const keys = new Set(['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'Home', 'End', 'PageUp', 'PageDown']);
   on(cap, 'keydown', event => {
-    if (event.key === 'Escape') { gesture?.lease.cancel('escape'); return; }
+    if (event.key === 'Escape') { if (gesture) { event.preventDefault(); event.stopPropagation(); gesture.lease.cancel('escape'); } return; }
     if (!keys.has(event.key) || !begin(event)) return; event.preventDefault(); event.stopPropagation();
     const delta = (event.shiftKey ? descriptor.fineStep : descriptor.step) * (event.key.startsWith('Page') ? 10 : 1);
     change(event.key === 'Home' ? descriptor.min : event.key === 'End' ? descriptor.max : draft + (['ArrowDown', 'ArrowLeft', 'PageDown'].includes(event.key) ? -delta : delta), event);
