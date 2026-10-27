@@ -157,3 +157,64 @@ test('production numeric entry protects its draft from an external parameter cha
   await page.locator('.parameter-knob-text-conflict').getByRole('button', { name: 'Keep my edit', exact: true }).click();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].pan)).toBe(-25);
 });
+
+
+test('global tempo drafts keep focus and require explicit resolution after canonical tempo changes', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); await ready(page); await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ speedMode: 'bpm', linked: false, bpm: 120, baseBpm: 120 }));
+  const bpm = page.getByRole('spinbutton', { name: 'BPM', exact: true }); await expect(bpm).toHaveValue('120'); await bpm.fill('123.45');
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { gain: 0.65 } })); await page.setViewportSize({ width: 2560, height: 1440 });
+  await expect(bpm).toHaveValue('123.45'); await expect(bpm).toBeFocused();
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ bpm: 180, baseBpm: 180 })); await expect(bpm).toHaveAttribute('data-edit-conflict', 'true');
+  await bpm.press('Enter'); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().bpm)).toBe(180);
+  await page.getByRole('button', { name: 'Use current value', exact: true }).click(); await expect(bpm).toHaveValue('180');
+  await bpm.fill('160.5'); await bpm.press('Enter'); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().bpm)).toBe(160.5);
+});
+
+test('empty and out-of-range numeric entry never becomes a canonical zero and native transport toggles remain current', async ({ page }) => {
+  test.setTimeout(90000); await ready(page); await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ speedMode: 'bpm', linked: false, bpm: 120, baseBpm: 120 }));
+  const bpm = page.getByRole('spinbutton', { name: 'BPM', exact: true }); await expect(bpm).toHaveValue('120');
+  for (const value of ['', '0', '401']) { await bpm.fill(value); await bpm.press('Enter'); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().bpm)).toBe(120); await expect(bpm).toHaveAttribute('aria-invalid', 'true'); }
+  await bpm.press('Escape'); await expect(bpm).toHaveValue('120');
+  const linked = page.getByRole('checkbox', { name: 'Link world', exact: true }); await expect(linked).not.toBeChecked(); await linked.check();
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ linked: false })); await expect(linked).not.toBeChecked(); await linked.check();
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
+  await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true }).click();
+  const note = page.getByLabel('Fixed MIDI note', { exact: true }); await note.fill('0'); await note.press('Enter'); expect((await snapshot(page)).step.note).toBe(0);
+  await note.fill(''); await note.press('Enter'); expect((await snapshot(page)).step.note).toBe(null);
+});
+
+
+for (const dpr of [1, 2]) test.describe('desktop knob precision at DPR ' + dpr, () => {
+  test.use({ deviceScaleFactor: dpr });
+  test('sixty captured pointer samples publish one edit without replacing lane DOM and lane reassignment cancels the next draft', { tag: '@boundary' }, async ({ page }) => {
+    test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+    if (dpr === 1) { await page.getByRole('separator', { name: 'Resize inspector' }).focus(); for (let index = 0; index < 4; index++) await page.keyboard.press('ArrowRight'); }
+    const cap = page.getByRole('slider', { name: 'Pan', exact: true }); await cap.scrollIntoViewIfNeeded(); const bounds = await cap.boundingBox();
+    const geometry = await cap.evaluate(element => {
+      const root = element.closest('.parameter-knob'), panel = element.closest('.studio-inspector').getBoundingClientRect(), cap = element.getBoundingClientRect();
+      const controls = [...root.querySelectorAll('button,input')].map(control => control.getBoundingClientRect()).filter(rect => rect.width > 0);
+      return { width: cap.width, height: cap.height, radius: window.getComputedStyle(element).borderRadius,
+        contained: controls.every(rect => rect.left >= panel.left && rect.right <= panel.right), inspectorWidth: panel.width };
+    });
+    expect(geometry).toMatchObject({ width: 44, height: 44, radius: '50%', contained: true });
+    const before = await snapshot(page), revision = await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision);
+    await page.evaluate(() => { window.pointerHeader = document.querySelector('.studio-lane-header'); window.pointerCell = document.querySelector('.studio-cell'); window.pointerMutations = 0;
+      window.pointerObserver = new MutationObserver(records => { window.pointerMutations += records.filter(record => record.type === 'childList').length; }); window.pointerObserver.observe(document.querySelector('.studio-lane-headers'), { childList: true, subtree: true }); });
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down();
+    for (let sample = 1; sample <= 60; sample++) await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - sample);
+    await page.mouse.move(1950, bounds.y + bounds.height / 2 - 60); await page.mouse.up();
+    await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision)).toBe(revision + 1);
+    const after = await snapshot(page), evidence = await page.evaluate(() => { window.pointerObserver.disconnect(); return { header: window.pointerHeader === document.querySelector('.studio-lane-header'),
+      cell: window.pointerCell === document.querySelector('.studio-cell'), childListMutations: window.pointerMutations, dpr: window.devicePixelRatio, viewport: [window.innerWidth, window.innerHeight] }; });
+    expect(after.hash).toBe(before.hash); expect(evidence).toMatchObject({ header: true, cell: true, childListMutations: 0, dpr, viewport: [1920, 1080] });
+    await test.info().attach('desktop-knob-gesture', { body: JSON.stringify({ ...evidence, geometry, pointerSamples: 60, canonicalCommits: 1, physicalHashUnchanged: true }), contentType: 'application/json' });
+    if (dpr === 1) await page.screenshot({ path: test.info().outputPath('desktop-parameter-controls.png') });
+    await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.undo()); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].pan)).toBe(0);
+    const next = await cap.boundingBox(), checkpoint = await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision);
+    await page.mouse.move(next.x + next.width / 2, next.y + next.height / 2); await page.mouse.down(); await page.mouse.move(next.x + next.width / 2, next.y + next.height / 2 - 20);
+    await page.evaluate(() => document.querySelectorAll('.studio-lane-title')[1].click()); await page.mouse.up();
+    expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getDocumentState().editRevision)).toBe(checkpoint);
+    expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.state.laneId)).toBe('lane-2');
+  });
+});

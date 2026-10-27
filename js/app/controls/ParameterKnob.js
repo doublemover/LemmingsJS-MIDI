@@ -9,7 +9,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const root = node('div', 'parameter-knob'), cap = node('button', 'parameter-knob-cap'), indicator = node('span', 'parameter-knob-indicator');
   const label = node('span', 'parameter-knob-label', descriptor.name), output = node('output', 'parameter-knob-value'), entry = node('input', 'parameter-knob-number');
   const effective = node('span', 'parameter-knob-effective'), pickup = node('span', 'parameter-knob-pickup'), error = node('output', 'parameter-knob-error'), textConflict = node('div', 'parameter-knob-text-conflict');
-  textConflict.hidden = true;
+  textConflict.hidden = true; const actionButtons = [], conflictButtons = new Map();
   root.dataset.presentation = presentation;
   effective.hidden = pickup.hidden = true; cap.type = 'button'; cap.setAttribute('role', 'slider'); cap.setAttribute('aria-label', descriptor.name); cap.setAttribute('aria-orientation', 'vertical');
   cap.setAttribute('aria-valuemin', String(descriptor.min)); cap.setAttribute('aria-valuemax', String(descriptor.max));
@@ -18,11 +18,15 @@ export function createParameterKnob({ document, window = document.defaultView, d
   let authored = value == null ? null : quantizeParameter(descriptor, value, true), draft = authored, gesture = null, disposed = false, wheelTimer = null, entryDirty = false, entryConflict = false, entryComposing = false;
   const on = (target, type, fn, options) => { target?.addEventListener?.(type, fn, options); listeners.push(() => target?.removeEventListener?.(type, fn, options)); };
   const paint = () => {
-    const text = formatParameterValue(descriptor, draft); output.textContent = text; cap.setAttribute('aria-valuetext', text);
+    const text = formatParameterValue(descriptor, draft); if (output.textContent !== text) output.textContent = text; cap.setAttribute('aria-valuetext', text);
     if (draft == null) { cap.removeAttribute?.('aria-valuenow'); root.dataset.unknown = 'true'; }
     else { cap.setAttribute('aria-valuenow', String(draft)); delete root.dataset.unknown; indicator.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, draft) * 270}deg)`; if (presentation === 'fader') indicator.style.top = `${(1 - parameterUnitPosition(descriptor, draft)) * 90}%`; }
     if (document.activeElement !== entry && !entryDirty && !entryConflict) entry.value = draft == null ? '' : descriptor.formatInput ? descriptor.formatInput(draft) : String(draft);
-    cap.disabled = readOnly || pending || entryConflict; entry.disabled = readOnly || pending; root.dataset.pending = String(pending);
+    const movingFocus = document.activeElement === cap || actionButtons.includes(document.activeElement);
+    cap.disabled = readOnly || pending || entryConflict; entry.readOnly = readOnly || pending; cap.setAttribute('aria-readonly', String(readOnly)); root.setAttribute('aria-busy', String(pending));
+    for (const button of actionButtons) button.disabled = readOnly || pending || entryConflict;
+    const keep = conflictButtons.get(true); if (keep) keep.disabled = readOnly || pending;
+    if (movingFocus && cap.disabled) entry.focus?.({ preventScroll: true }); root.dataset.pending = String(pending);
   };
   const cancel = reason => {
     const previous = gesture; gesture = null; if (wheelTimer != null) window?.clearTimeout?.(wheelTimer); wheelTimer = null;
@@ -73,12 +77,12 @@ export function createParameterKnob({ document, window = document.defaultView, d
     if (wheelTimer != null) window?.clearTimeout?.(wheelTimer); wheelTimer = window?.setTimeout?.(() => finish(null), 180);
   }, { passive: false });
   const action = (text, operation) => { const button = node('button', 'parameter-knob-action', text); button.type = 'button'; button.setAttribute('aria-label', text + ' ' + descriptor.name);
-    on(button, 'click', () => { if (begin(null)) { change(operation(), null); finish(null); } }); root.append(button); return button; };
+    on(button, 'click', () => { if (begin(null)) { change(operation(), null); finish(null); } }); root.append(button); actionButtons.push(button); return button; };
   action('−', () => draft - descriptor.step); action('+', () => draft + descriptor.step); action('Reset', () => descriptor.defaultValue); root.append(error);
   const acceptedText = () => authored == null ? '' : descriptor.formatInput ? descriptor.formatInput(authored) : String(authored);
   const showTextConflict = () => {
     entryConflict = true; entry.dataset.editConflict = 'true'; entry.setAttribute('aria-invalid', 'true'); textConflict.hidden = false;
-    error.textContent = 'This value changed while you were typing. Keep your edit or use the current value.'; paint();
+    error.textContent = 'This control changed while you were typing. Keep your edit or use the current value.'; paint();
   };
   const clearTextConflict = () => { entryConflict = false; textConflict.hidden = true; delete entry.dataset.editConflict; entry.removeAttribute('aria-invalid'); error.textContent = ''; };
   const acceptText = () => {
@@ -94,8 +98,8 @@ export function createParameterKnob({ document, window = document.defaultView, d
   };
   for (const [label, keep] of [['Keep my edit', true], ['Use current value', false]]) {
     const button = node('button', 'parameter-knob-action', label); button.type = 'button';
-    on(button, 'click', () => { if (disposed || !entryConflict) return; clearTextConflict(); if (keep) acceptText(); else { entryDirty = false; entry.value = acceptedText(); paint(); } entry.focus?.({ preventScroll: true }); });
-    textConflict.append(button);
+    on(button, 'click', () => { if (disposed || !entryConflict || keep && (readOnly || pending)) return; clearTextConflict(); if (keep) acceptText(); else { entryDirty = false; entry.value = acceptedText(); paint(); } entry.focus?.({ preventScroll: true }); });
+    textConflict.append(button); conflictButtons.set(keep, button);
   }
   root.append(textConflict);
   on(entry, 'compositionstart', () => { entryComposing = true; });
@@ -112,6 +116,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const observer = typeof window?.MutationObserver === 'function' ? new window.MutationObserver(() => { if (!root.isConnected) gesture?.lease.cancel('removed'); }) : null;
   observer?.observe(document.documentElement, { childList: true, subtree: true }); paint();
   const observations = ({ effectiveValue = null, pickupValue = null } = {}) => {
+    if (disposed) return;
     for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) {
       mark.hidden = !Number.isFinite(position);
       if (!mark.hidden) { mark.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, position) * 270}deg)`;
@@ -120,8 +125,10 @@ export function createParameterKnob({ document, window = document.defaultView, d
   };
   return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null }),
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
-      const incoming = next == null ? null : quantizeParameter(descriptor, next, true), conflict = entryDirty && incoming !== authored;
-      if (gesture && (getIdentity() !== gesture.lease.identity || incoming !== authored)) gesture.lease.cancel('external-edit');
+      if (disposed) return;
+      const incoming = next == null ? null : quantizeParameter(descriptor, next, true), unavailable = isReadOnly && !readOnly || isPending && !pending, conflict = entryDirty && (incoming !== authored || unavailable);
+      if (gesture && (getIdentity() !== gesture.lease.identity || incoming !== authored || unavailable)) gesture.lease.cancel(unavailable ? 'unavailable' : 'external-edit');
+      if (unavailable) entryComposing = false;
       readOnly = isReadOnly; pending = isPending; authored = incoming;
       if (!gesture) draft = authored;
       observations({ effectiveValue, pickupValue });

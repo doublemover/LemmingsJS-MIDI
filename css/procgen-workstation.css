@@ -223,7 +223,7 @@ body.procgen-workstation {
 /* Typed, fixed-center physical controls. No image dependency or animation clock. */
 .parameter-knob { display:grid; grid-template-columns:44px minmax(5rem,1fr) repeat(3,minmax(2rem,auto)); gap:4px; align-items:center; }
 .parameter-knob-label { grid-column:1/-1; font-size:.8rem; }
-.parameter-knob-cap { position:relative; width:44px; height:44px; padding:6px; border-radius:50%; touch-action:none; background:radial-gradient(circle at 38% 28%,#dbe5e9,#8b9aa5 70%); box-shadow:0 2px 3px #0008,inset 0 0 0 3px #253440; }
+.parameter-knob > .parameter-knob-cap { position:relative; width:44px; height:44px; padding:6px; border-radius:50%; touch-action:none; background:radial-gradient(circle at 38% 28%,#dbe5e9,#8b9aa5 70%); box-shadow:0 2px 3px #0008,inset 0 0 0 3px #253440; }
 .parameter-knob-indicator,.parameter-knob-effective,.parameter-knob-pickup { position:absolute; inset:8px; border-radius:50%; transform-origin:center; pointer-events:none; }
 .parameter-knob-indicator::before { content:''; position:absolute; left:calc(50% - 1px); top:0; width:2px; height:10px; background:#07121c; }
 .parameter-knob-effective { inset:2px; border-top:2px solid #087cc2; }
@@ -233,7 +233,7 @@ body.procgen-workstation {
 .parameter-knob-error { grid-column:1/-1; color:#9c2424; }
 .parameter-knob[data-unknown=true] .parameter-knob-indicator { visibility:hidden; }
 .parameter-knob-action { min-width:32px; min-height:32px; }
-@media (prefers-contrast:more) { .parameter-knob-cap { box-shadow:none; border:2px solid currentColor; } .parameter-knob-indicator::before { width:3px; background:currentColor; } }
+@media (prefers-contrast:more) { .parameter-knob > .parameter-knob-cap { box-shadow:none; border:2px solid currentColor; } .parameter-knob-indicator::before { width:3px; background:currentColor; } }
 @media (pointer:coarse) { .parameter-knob-action { min-width:44px; min-height:44px; } }
 
 /* One gesture owner drives rotary and vertical controls; marks never move the handle. */
@@ -340,3 +340,9 @@ body.procgen-workstation {
 .studio-morph-signatures input[type="number"] { width: 7rem; }
 .studio-morph-signatures td { min-width: 8rem; vertical-align: top; }
 .studio-morph-signatures th { overflow-wrap: anywhere; }
+
+.studio-parameter-field { display: block; }
+.studio-parameter-field .parameter-knob { grid-template-columns:44px minmax(0,1fr) repeat(3,minmax(28px,auto)); min-width:0; }
+.studio-parameter-field .parameter-knob-value { min-width:0; }
+.studio-parameter-field .parameter-knob-number { box-sizing:border-box; min-width:0; }
+.parameter-knob-text-conflict:not([hidden]) { display:flex; grid-column:1/-1; gap:6px; flex-wrap:wrap; }

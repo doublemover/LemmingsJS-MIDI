@@ -64,8 +64,13 @@ test('world levers distinguish pending, applied and observed routes without chan
     for (let tick = 0; tick < 90; tick++) world.step(); window.__PROCGEN_LANES__.renderer.render(true);
   });
   await expect(dock).toContainText(/\b[1-9]\d* observed inlet-to-outlet/); await expect(page.locator('.studio-junction-layer svg')).toBeVisible();
-  const stroke = await page.locator('.junction-observed').first().evaluate(element => { const length = element.getTotalLength(), style = window.getComputedStyle(element); return {
-    length, width: parseFloat(style.strokeWidth), color: style.stroke, hit: element.isPointInStroke(element.getPointAtLength(length / 2)) }; });
+  const stroke = await page.evaluate(() => {
+    const element = document.querySelector('.junction-observed');
+    if (!element?.isConnected) throw new Error('The current observed junction path is not attached.');
+    const length = element.getTotalLength(), style = window.getComputedStyle(element);
+    return { length, width: parseFloat(style.strokeWidth), color: style.stroke, hit: element.isPointInStroke(element.getPointAtLength(length / 2)), connected: element.isConnected };
+  });
+  expect(stroke.connected).toBe(true);
   expect(stroke.length).toBeGreaterThan(0); expect(stroke.width).toBeGreaterThan(0); expect(stroke.color).not.toBe('none'); expect(stroke.hit).toBe(true);
   await dock.locator('ol details summary').first().click();
   await expect(dock.getByRole('list', { name: 'Observed junction crossings' })).toContainText('Committed movement');

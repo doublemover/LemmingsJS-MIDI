@@ -58,6 +58,15 @@ describe('typed parameter control transactions', () => {
     expect(entry.value).to.equal('-300'); expect(entry.dataset.editConflict).to.equal('true'); entry.dispatchEvent(event('keydown', { key: 'Enter' })); expect(commits).to.have.length(0);
     entry.dispatchEvent(event('compositionend')); entry.dispatchEvent(event('keydown', { key: 'Escape' })); expect(entry.value).to.equal('600'); expect(entry.dataset.editConflict).to.equal(undefined); knob.dispose();
   });
+  it('cancels a captured gesture when its descriptor becomes pending or read-only', () => {
+    const document = new TestDocument(), commits = [], cancellations = [];
+    const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, commit: value => commits.push(value), onCancel: reason => cancellations.push(reason) });
+    const cap = knob.element.children[1], entry = knob.element.children[3];
+    cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ isPending: true }); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
+    expect(commits).to.have.length(0); expect(cancellations).to.include('unavailable'); expect(knob.inspect().gestureId).to.equal(null); expect(entry.readOnly).to.equal(true);
+    knob.setState({ isPending: false }); cap.dispatchEvent(event('keydown', { key: 'ArrowUp' })); knob.setState({ isReadOnly: true }); cap.dispatchEvent(event('keyup', { key: 'ArrowUp' }));
+    expect(commits).to.have.length(0); expect(entry.readOnly).to.equal(true); knob.dispose();
+  });
   it('returns momentary keyboard changes and always releases no-change pointer gestures', () => {
     const document = new TestDocument(), commits = [], previews = [], finishes = [];
     const knob = createParameterKnob({ document, window: {}, descriptor, value: 0, momentary: true,

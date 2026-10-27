@@ -7213,3 +7213,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   provenance, formatting and whitespace pass. New full CI remains pending;
   broader global transport draft conflicts and real screen-reader smoke remain
   separate #998 completion checks.
+
+
+### Continuation 285 — global drafts and desktop parameter geometry
+
+- Global transport values now update their admitted field baselines. BPM preserves
+  focused drafts and exposes same-field conflicts; document identity fences
+  edits before repaint and discards retired document drafts. Enter commits once,
+  Escape restores, and empty/nonfinite/out-of-range numeric values stay invalid.
+  Nullable MIDI notes preserve the distinction between explicit clear and zero.
+- Pending/read-only knob changes cancel captured gestures, retain focusable
+  read-only values, mark actual authority and disable mutation actions. Unchanged
+  fader text no longer rewrites a lane node. Tab strips survive normal selection
+  changes without a false removed-control announcement.
+- Actual 1080p visual review found clipped action controls and shared button rules
+  overriding circular caps. One labeled control group now uses the full inspector
+  width. Both tested desktop DPRs retain a 44x44 CSS-pixel circular target and
+  visible decrement/increment/Reset controls at 250px/304px inspector widths.
+- CI for 85195110 passes 52/53 browser boundaries, then stops before coverage on
+  NaN computed style from a junction element handle. Retained artifact 12771155329
+  has SHA-256 399504470ac7ba2cf3de375caca7c2b100f5d1fc2bdc71347dd8fd1139031178.
+  The boundary now queries the current connected path and measures it in one
+  synchronous browser task, retaining every geometry/physics assertion.
+- The grouped pass succeeds: **190 Node cases / 35 desktop browser cases**, one
+  opt-in benchmark skipped. At each DPR, 60 real pointer samples and an outside
+  viewport release publish one edit with zero lane child replacements and the
+  same paused physical hash. Reassigning the lane cancels the next draft with no
+  commit. Final 1920x1080 geometry was visually reviewed. Types, undefined calls,
+  provenance, formatting and whitespace pass. New full CI remains pending;
+  #994 hardware/relative-baseline/assistive-device and #998 real desktop
+  screen-reader qualification remain explicit.

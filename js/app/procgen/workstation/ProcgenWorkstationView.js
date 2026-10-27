@@ -36,21 +36,28 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const select = (choices, value, changed, label) => {
     const el = node('select'); el.setAttribute('aria-label', label);
     for (const choice of choices) { const [id, text] = Array.isArray(choice) ? choice : [choice, choice]; const option = node('option', text); option.value = id; el.append(option); }
-    el.value = String(value); return controlTree.bind(el, { change: event => changed(event.currentTarget.value) });
+    el.value = String(value); return controlTree.bind(el, { getIdentity: getDocumentIdentity, change: event => changed(event.currentTarget.value) });
   };
   const input = (value, changed, options = {}) => {
     const el = node('input'); el.type = options.type || 'number';
     for (const key of ['min', 'max', 'step', 'placeholder']) if (options[key] != null) el[key] = String(options[key]);
     if (el.type === 'checkbox') el.checked = !!value; else el.value = value ?? '';
-    return controlTree.bind(el, { change: event => {
+    return controlTree.bind(el, { getIdentity: getDocumentIdentity, change: event => {
       const current = event.currentTarget;
-      changed(current.type === 'checkbox' ? current.checked : current.type === 'text' ? current.value : options.nullable && current.value === '' ? null : Number(current.value));
+      if (current.type === 'checkbox') return changed(current.checked);
+      if (current.type === 'text') return changed(current.value);
+      const empty = !current.value.trim(), value = empty && options.nullable ? null : Number(current.value);
+      if (value !== null && (empty || !Number.isFinite(value) || options.min != null && value < options.min || options.max != null && value > options.max)) {
+        current.setAttribute('aria-invalid', 'true'); status.textContent = empty ? 'Enter a value; an empty field is not zero.' :
+          `Enter a finite value${options.min == null ? '' : ' from ' + options.min}${options.max == null ? '' : ' through ' + options.max}.`; return false;
+      }
+      current.removeAttribute('aria-invalid'); return changed(value);
     } });
   };
 
   const macroControls = new Map(), macroModes = new Map();
   const parameter = (value, changed, descriptor, options = {}) => {
-    const scope = parameterScope, identity = JSON.stringify([scope, descriptor, !!options.momentary, !!options.readOnly]), cacheKey = descriptor.id;
+    const scope = parameterScope, identity = JSON.stringify([scope, descriptor, !!options.momentary]), cacheKey = descriptor.id;
     let entry = parameterCache.get(cacheKey);
     if (entry && entry.identity !== identity) { entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(cacheKey); entry = null; }
     if (!entry) {
@@ -59,19 +66,22 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       entry.control = createParameterKnob({ document, window, value, descriptor, ...options,
         getIdentity: () => !disposed && parameterScope === scope ? entry.token : null,
         commit: (...args) => entry.changed(...args), preview: invoke('preview'), onFinish: invoke('onFinish'), onCancel: reason => {
-          if (reason === 'external-edit') status.textContent = 'The parameter changed outside this gesture. The gesture was canceled; its draft was not committed.';
+          if (reason === 'external-edit' || reason === 'unavailable') status.textContent = 'The parameter changed or became unavailable. The gesture was canceled; its draft was not committed.';
           entry.options.onCancel?.(reason);
         } });
       entry.control.element.__ownedControl = true; parameterCache.set(cacheKey, entry); parameterControls.push(entry.control);
-    } else { entry.control.setState({ value, isReadOnly: !!options.readOnly }); if (entry.control.inspect().gestureId == null) { entry.changed = changed; entry.options = options; } }
+    } else { entry.control.setState({ value, isReadOnly: !!options.readOnly, isPending: !!options.pending }); if (entry.control.inspect().gestureId == null) { entry.changed = changed; entry.options = options; } }
     parameterSeen?.add(cacheKey); if (options.macroKey) macroControls.set(options.macroKey, entry.control);
     return entry.control.element.isConnected ? controlTree.retain(entry.control.element) : entry.control.element;
   };
   const labeled = (label, control, parent) => {
     const fieldKey = state.tab + ':' + (parent.dataset.controlKey ? parent.dataset.controlKey + ':' : '') + (control.__retainedControl?.dataset.parameterId || control.dataset.parameterId || label);
     control.id = 'studio-field-' + encodeURIComponent(parameterScope + ':' + fieldKey);
-    control.dataset.fieldKey = fieldKey; const wrap = node('label', null, 'studio-field'); wrap.dataset.fieldKey = fieldKey;
-    wrap.append(node('span', label), control); parent.append(wrap); return control;
+    const parameterField = !!(control.__retainedControl?.dataset.parameterId || control.dataset.parameterId);
+    control.dataset.fieldKey = fieldKey; const wrap = node(parameterField ? 'div' : 'label', null, parameterField ? 'studio-field studio-parameter-field' : 'studio-field'); wrap.dataset.fieldKey = fieldKey;
+    if (parameterField) { wrap.setAttribute('role', 'group'); wrap.setAttribute('aria-label', label); wrap.append(control); }
+    else wrap.append(node('span', label), control);
+    parent.append(wrap); return control;
   };
   const byId = id => document.getElementById(id);
   const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
@@ -649,7 +659,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (automation) nextFields.append(button('Open automation editor', () => { byId('procgenTab')?.click(); automation.scrollIntoView?.({ block: 'center' }); }));
       nextFields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
     }
-    controlTree.reconcile(tabs, nextTabs, parameterScope);
+    controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
       entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(id);
@@ -776,11 +786,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function render({ partial = false } = {}) {
     if (disposed) return;
-    selected(); handlers.reconcileSoundPreview?.(); root.value = String(getProject().global.scale.root);
+    selected(); handlers.reconcileSoundPreview?.(); controlTree.update(layoutMode, state.layout, { identity: getDocumentIdentity() }); controlTree.update(root, String(getProject().global.scale.root), { identity: getDocumentIdentity() });
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
-    scale.value = matched || current.name;
+    controlTree.update(scale, matched || current.name, { identity: getDocumentIdentity() });
     if (!partial) { layout(); renderRows(); }
     renderInspector();
     records.setAttribute('aria-pressed', String(!!state.recording));
@@ -881,14 +891,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     refreshMidiRoute();
   } });
   const paintTransport = position => {
-    if (!position || disposed) return;
-    if (document.activeElement !== bpm) bpm.value = String(Math.round(position.bpm * 100) / 100);
+    if (!position || disposed || position.documentIdentity !== getDocumentIdentity()) return;
     bpm.disabled = position.clockSource === 'external';
+    controlTree.update(bpm, String(Math.round(position.bpm * 100) / 100), { identity: getDocumentIdentity() });
     const meter = quarterMeterPosition(position.beat, getProject().transport?.timeSignature);
     const text = meter ? `${meter.bar} : ${meter.beat}` : '—'; if (clockStatus.textContent !== text) clockStatus.textContent = text;
     clockStatus.title = meter ? `${meter.beats}/${meter.unit} · bar : denominator-note beat · ${position.beat} quarters` : 'Musical position unavailable';
     clockHealth.textContent = position.clockSource === 'external' ? `MIDI clock · ${position.clockStatus}` : 'Internal clock';
-    linked.checked = position.linked; speedMode.value = position.speedMode; clock.value = position.clockSource;
+    for (const [control, value] of [[linked, position.linked], [speedMode, position.speedMode], [clock, position.clockSource]]) controlTree.update(control, value, { identity: getDocumentIdentity() });
   };
   const transportSurface = displayScheduler.register({ id: 'workstation-transport', element: transport, intervalMs: 50, write: (_measured, packet) => paintTransport(packet.value) });
   const resizeObserver = typeof window.ResizeObserver === 'function' ? new window.ResizeObserver(() => layoutSurface.invalidate()) : null;
@@ -1005,7 +1015,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     launched: () => renderRows(),
     transport(position) {
       state.beat = position.beat;
-      transportSurface.publish(Object.freeze({ beat: position.beat, bpm: position.bpm, clockSource: position.clockSource,
+      transportSurface.publish(Object.freeze({ documentIdentity: getDocumentIdentity(), beat: position.beat, bpm: position.bpm, clockSource: position.clockSource,
         clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {

@@ -56,6 +56,28 @@ describe('keyed field identity and external editing conflicts', () => {
     const select = value => { const el = document.createElement('select'); el.dataset.fieldKey = 'choice'; for (const item of ['one', 'two']) { const option = document.createElement('option'); option.value = option.textContent = item; el.append(option); } el.value = value; tree.bind(el, { change: event => calls.push(event.currentTarget.value) }); return el; };
     render([select('one')]); const original = root.firstChild; render([select('two')]); expect(root.firstChild).to.equal(original); expect(original.value).to.equal('two');
   });
+  it('projects global live values without losing a draft and fences a changed document before its next paint', () => {
+    let documentId = 'one'; const input = document.createElement('input'); input.type = 'text'; input.value = '120'; root.append(input);
+    tree.bind(input, { getIdentity: () => documentId, change: event => calls.push(event.currentTarget.value) });
+    tree.update(input, '120', { identity: documentId }); edit(input, '123.45'); tree.update(input, '120', { identity: documentId }); expect(input.value).to.equal('123.45');
+    tree.update(input, '180', { identity: documentId }); expect(input.dataset.editConflict).to.equal('true');
+    input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', cancelable: true })); expect(calls).to.have.length(0);
+    host.querySelector('[data-resolution=current]').click(); expect(input.value).to.equal('180');
+    edit(input, '200'); documentId = 'two'; input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', cancelable: true })); expect(calls).to.have.length(0);
+    tree.update(input, '240', { identity: documentId }); expect(input.value).to.equal('240'); expect(input.dataset.editConflict).to.equal(undefined);
+  });
+  it('keeps native projected checkbox values and disables rejected authority without blocking discard', () => {
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.checked = true; root.append(checkbox); tree.bind(checkbox, { change: event => calls.push(event.currentTarget.checked) });
+    tree.update(checkbox, false); checkbox.checked = true; checkbox.dispatchEvent(new dom.window.Event('change')); expect(calls).to.deep.equal([true]);
+    render([field('tempo', '120')]); const input = root.querySelector('input'); edit(input, '180'); input.disabled = true; tree.update(input, '120');
+    expect(host.querySelector('[data-resolution=keep]').disabled).to.equal(true); host.querySelector('[data-resolution=current]').click(); expect(input.value).to.equal('120');
+  });
+  it('commits Enter once, keeps rejected drafts editable and restores the accepted value on Escape', () => {
+    render([field('tempo', '120', value => { calls.push(value); return value !== ''; })]); const input = root.querySelector('input'); edit(input, '');
+    input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', cancelable: true })); tree.update(input, '120'); expect(input.value).to.equal('');
+    input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', cancelable: true })); expect(input.value).to.equal('120');
+    edit(input, '180'); input.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', cancelable: true })); input.dispatchEvent(new dom.window.Event('change')); expect(calls).to.deep.equal(['', '180']);
+  });
   it('retires all callbacks and resolutions idempotently', () => {
     render([field('name', 'Original')]); const input = root.querySelector('input'); edit(input, 'Draft'); render([field('name', 'External')]); const keep = host.querySelector('button');
     tree.dispose(); tree.dispose(); input.dispatchEvent(new dom.window.Event('change')); keep.click(); expect(calls).to.have.length(0);

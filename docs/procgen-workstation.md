@@ -372,3 +372,16 @@ A field removed by a schema or selection change returns focus to the selected
 inspector tab and announces the reason. Replacing a view retires its subscriptions,
 controls and canvas attachment before the replacement mounts. A retired field or
 late callback cannot act on the replacement document or view.
+
+Global transport fields use the same buffer and conflict rules. Enter commits a
+valid entry once; Escape restores the latest accepted value. Empty and nonfinite
+numeric fields are rejected, and bounded fields reject out-of-range values.
+A nullable fixed MIDI note can still be cleared explicitly, and note zero remains
+an ordinary valid note. A document replacement discards the previous document's
+transport draft before admitting another edit.
+
+Pending or read-only parameter controls cancel active gestures, disable mutation
+actions and preserve a focusable read-only numeric value. Their two states remain
+distinct in the accessibility tree. At desktop DPR 1 and 2, the rotary cap retains
+a 44px interaction region; decrement, increment and Reset remain inside the
+supported inspector widths.

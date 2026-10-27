@@ -837,7 +837,8 @@
       "height": 1080
     },
     "excludesContinuations": [
-      284
+      284,
+      285
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -9267,6 +9268,20 @@
           "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
           "bytes": 142
         }
+      },
+      "fullCIFailure": {
+        "head": "85195110f261d96dcf239305301055b5adb67863",
+        "job": 122465091911,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40582439508/job/122465091911",
+        "browserPassed": 52,
+        "browserFailed": 1,
+        "failedBoundary": "physical-junction-controls: observed stroke computed style returned NaN through a resolved element handle.",
+        "coverageSkipped": true,
+        "artifact": {
+          "id": 12771155329,
+          "sha256": "399504470ac7ba2cf3de375caca7c2b100f5d1fc2bdc71347dd8fd1139031178",
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci284-boundary.zip"
+        }
       }
     },
     "source": [
@@ -9331,9 +9346,187 @@
       "fixtureRepair": "The new legacy TestDocument numeric-composition fixture supplies the native removeAttribute method missing from that test double; production DOM behavior was not weakened."
     },
     "limitations": [
-      "Full CI remains pending for this continuation; the fully green 0607eec4 checkpoint excludes these fields/lifetime changes.",
+      "Full CI at 85195110 passed 52/53 desktop boundaries, then stopped before coverage on a junction computed-style NaN measurement. Continuation 285 measures the current connected path in one browser task without weakening geometry/physics assertions; its full CI remains pending.",
       "Current fixtures verify inspector fields and visible lane control identity/conflicts. Broader global transport field conflict behavior and real screen-reader smoke remain separate completion checks for #998.",
       "No external hardware, operating-system IME installation, assistive-device or listening certification is claimed. Browser composition fixtures dispatch native CompositionEvent sequences at the desktop minimum."
+    ]
+  },
+  "continuation285": {
+    "baseHead": "85195110f261d96dcf239305301055b5adb67863",
+    "scope": "Source-bound global transport buffers, explicit finite numeric entry, pending/read-only knob retirement, desktop control geometry and coherent junction-style measurement.",
+    "implemented": [
+      "Global BPM/key/scale/link/speed/clock projections update the shared field owner instead of silently bypassing its accepted baseline. Current document identity fences changes before the next display paint; replacing a document discards the old draft without reporting a false conflict. Queued transport display packets carry document identity.",
+      "Native entry commits once on Enter and restores accepted state on Escape, preserving full IME sessions. Empty, nonfinite and out-of-range numbers remain invalid drafts rather than becoming zero or silently clamping. Explicit nullable note clearing and exact MIDI note zero remain distinct.",
+      "BPM same-field updates use explicit conflict choices. Disabled/read-only authority prevents Keep my edit while retaining discard. Projected checkbox/select baselines stay current, so a later native toggle back to an earlier value still reaches its canonical owner.",
+      "Pending/read-only parameter transitions cancel captured gestures without publication, keep a focusable read-only numeric value, mark slider read-only and owner busy state, and disable mutating controls. Retained widgets update authority rather than rebuilding. Retired parameter state/observation callbacks are ignored.",
+      "Avoid rewriting an unchanged fader output text node. Preserve tab-strip nodes across ordinary tab/step/selection changes instead of issuing a false removed-control announcement.",
+      "Use one semantic labeled knob group, a correctly scoped circular-cap rule and full inspector width for value/numeric/decrement/increment/Reset geometry. Conflict choices span the control group. Desktop DPR 1/2 fixtures enforce a fixed 44x44 cap and contained actions at 250px/304px inspector widths with a 1920x1080 viewport.",
+      "The junction browser boundary queries and measures the current attached observed SVG path within one synchronous page task. It still requires positive path length/stroke width, visible stroke color, point-in-stroke membership and identical paused physical hashes. No default style, numeric fallback or relaxed comparison is introduced."
+    ],
+    "validation": {
+      "nodePassed": 190,
+      "nodeFailed": 0,
+      "nodeSeconds": 2,
+      "browserPassed": 35,
+      "browserFailed": 0,
+      "browserSkipped": 1,
+      "browserSkipReason": "Opt-in view latency benchmark; no benchmark pass is claimed.",
+      "browserReportedDuration": "1.1m",
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "desktopPointerMatrix": [
+        {
+          "dpr": 1,
+          "inspectorWidth": 250,
+          "pointerSamples": 60,
+          "canonicalCommits": 1,
+          "laneChildListMutations": 0,
+          "headerAndCellIdentityPreserved": true,
+          "physicalHashUnchanged": true,
+          "outsideViewportRelease": true,
+          "reassignmentDraftCommits": 0,
+          "capCssWidth": 44,
+          "capCssHeight": 44,
+          "capBorderRadius": "50%",
+          "allActionsContained": true
+        },
+        {
+          "dpr": 2,
+          "inspectorWidth": 304,
+          "pointerSamples": 60,
+          "canonicalCommits": 1,
+          "laneChildListMutations": 0,
+          "headerAndCellIdentityPreserved": true,
+          "physicalHashUnchanged": true,
+          "outsideViewportRelease": true,
+          "reassignmentDraftCommits": 0,
+          "capCssWidth": 44,
+          "capCssHeight": 44,
+          "capBorderRadius": "50%",
+          "allActionsContained": true
+        }
+      ],
+      "productionCases": [
+        "Global tempo retains focused 123.45 draft through unrelated lane edit and 2560x1440 resize; external accepted 180 requires explicit resolution; Enter publishes valid 160.5 once in canonical BPM mode.",
+        "Empty, zero and 401 BPM leave accepted 120 unchanged; Escape restores it. Projected Link world false then native true remains effective on repeated external/native cycles.",
+        "Fixed MIDI note zero remains zero; explicit clearing publishes null.",
+        "Existing production field/IME/search/Stage/repeat/Undo and junction paths remain green."
+      ],
+      "visualReview": "Reviewed the actual 1920x1080 DPR1 screenshot at the 250px inspector width after geometry repair. One circular cap and readable labels/values; decrement/increment/Reset are visible and contained. This is a browser visual check, not a device/AT certification.",
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-owners-publish-20261027.log",
+          "sha256": "bcf52dfd504530d1f403d4fce7a8dd2d409c67cd710ef4a153667b7d41f659c6",
+          "bytes": 18038
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-browser-publish-20261027.log",
+          "sha256": "13709f99cd0bdd8f215aa107ce3f0dec4678405bd80f43800b71e36a0c96beff",
+          "bytes": 5994
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-format-sealed-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-types-publish-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-undefined-publish-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog285-provenance-publish-20261027.log",
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
+          "bytes": 142
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css\\procgen-workstation.css",
+        "sha256": "e85e101e995c296cac4ef1be183a847038f505b0a1f77f1ce1bf776560ff59c3",
+        "bytes": 31547
+      },
+      {
+        "path": "docs\\procgen-workstation.md",
+        "sha256": "8d699930155a3b41e988c68007541f0e4bf8c2bdb4e424d8f8131c43210044cc",
+        "bytes": 24296
+      },
+      {
+        "path": "e2e\\physical-junction-controls.spec.js",
+        "sha256": "36498844ca6b4db1c05cae4d72afa2a091d11fde7dfd60e46d25d095fadf7930",
+        "bytes": 9729
+      },
+      {
+        "path": "e2e\\procgen-workstation-commands.spec.js",
+        "sha256": "5367b89928e4c26f70b3d671d32764bbd7b1f2569dd7adb8997cf3a7f18b24af",
+        "bytes": 23314
+      },
+      {
+        "path": "js\\app\\controls\\KeyedControlTree.js",
+        "sha256": "13e49971ec1563c431b2cfc0c67c26d88ed6dcfdc29ab18986f37bc2037f9dc6",
+        "bytes": 11794
+      },
+      {
+        "path": "js\\app\\controls\\ParameterKnob.js",
+        "sha256": "b4278f1097a6d6690135d009953d483bb9c3936cd269bb36557536b0afb9d960",
+        "bytes": 13724
+      },
+      {
+        "path": "js\\app\\procgen\\workstation\\ProcgenWorkstationView.js",
+        "sha256": "3f476900846f627249ea17b700c6001d98b2060110d3e508ab77fb4d4aa3e1bc",
+        "bytes": 106707
+      },
+      {
+        "path": "test\\keyed-control-tree.test.js",
+        "sha256": "d2c759b171435dfeb68b60ead368ee59d2d5887240723918560fd7755412f599",
+        "bytes": 9682
+      },
+      {
+        "path": "test\\parameter-controls.test.js",
+        "sha256": "0af8d95851d6f19812e08979a383aa93141f80a3753e7460c39ac3a8c38b6417",
+        "bytes": 10944
+      }
+    ],
+    "ciRepair": {
+      "head": "85195110f261d96dcf239305301055b5adb67863",
+      "job": 122465091911,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40582439508/job/122465091911",
+      "browserPassed": 52,
+      "browserFailed": 1,
+      "failedBoundary": "physical-junction-controls: observed stroke computed style returned NaN through a resolved element handle.",
+      "coverageSkipped": true,
+      "artifact": {
+        "id": 12771155329,
+        "sha256": "399504470ac7ba2cf3de375caca7c2b100f5d1fc2bdc71347dd8fd1139031178",
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci284-boundary.zip"
+      }
+    },
+    "repairEvidence": [
+      "The initial new-document field unit exposed a false draft comparison after identity reset; the accepted baseline now updates before comparing the freshly written document value.",
+      "Both initial DPR fixtures detected exactly one unnecessary lane text-node mutation while retaining header/cell identity. Knob paint now changes output.textContent only when its displayed text changes. The zero-mutation assertion remains.",
+      "The initial 1080p visual review exposed clipped controls and shared-button CSS overriding the cap. The final geometry fixtures assert every action is contained and the cap is circular at both tested desktop DPRs.",
+      "Junction CI evidence establishes NaN computed style after handle resolution; detached-node timing is the inferred cause. The correction takes a coherent connected-node measurement and retains all original geometry/physics requirements."
+    ],
+    "limitations": [
+      "Full CI for this continuation remains pending. The latest fully green checkpoint is 0607eec4 and excludes continuations 284/285.",
+      "The pointer fixtures use 60 actual browser samples; they do not claim a measured 60Hz wall-clock rate, audio-node allocation profile or hardware/assistive-device qualification.",
+      "Remaining #994 relative hardware/baseline/report and actual desktop assistive-device matrix is not claimed complete. #998 still needs current full CI and real desktop screen-reader smoke."
     ]
   }
 }
