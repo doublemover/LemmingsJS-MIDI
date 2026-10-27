@@ -31,16 +31,16 @@ const createProfile = ({ id, width, voices, fields, parameters = null, buildId, 
     ...(rateLimit ? { supportedSampleRates: Object.freeze([44100, 48000, 96000]) } : {}) });
   return Object.freeze({ id, width, voices, fields, parameters: parameters ? Object.freeze(Object.values(parameters)) : null, seedDomain, runtime,
     minHz, maxHz, bendCents, heapEstimate, sourceBytes(options = {}) {
-      if (!options || Object.getPrototypeOf(options) !== Object.prototype || Object.keys(options).some(key => !['sampleRate', 'voices', 'pcm'].includes(key))) throw new TypeError('Owned source footprint requires named rate, voice capacity and PCM fields.');
-      const { sampleRate, voices: requestedCapacity = voices, pcm = null } = options;
-      const capacity = requiresPCMSet ? voices : requestedCapacity;
+      if (!options || Object.getPrototypeOf(options) !== Object.prototype || Object.keys(options).some(key => !['sampleRate', 'voices', 'pcm', ...(id === 'worklet-sample' ? ['sampleZones'] : [])].includes(key))) throw new TypeError('Owned source footprint requires named rate, voice capacity and PCM fields.');
+      const { sampleRate, voices: requestedCapacity = voices, pcm = null, sampleZones = undefined } = options;
+      const capacity = requestedCapacity;
       if (!Number.isSafeInteger(sampleRate) || !finite(sampleRate, 8000, 384000) || rateLimit && ![44100, 48000, 96000].includes(sampleRate) ||
           !Number.isSafeInteger(requestedCapacity) || requestedCapacity < 1 || requestedCapacity > voices) throw new RangeError('Invalid owned source footprint rate or voice capacity.');
       if (requiresPCMSet ? !validOwnedPcmSetDescriptor(pcm) : requiresPCM ? !pcm || pcm.schema !== 'lemmings-owned-pcm-bank/v1' || !Number.isSafeInteger(pcm.frames) || pcm.frames < 1 || ![1, 2].includes(pcm.channels) ||
           !Number.isSafeInteger(pcm.sampleRate) || !finite(pcm.sampleRate, 8000, 192000) || !Number.isSafeInteger(pcm.bytes) || pcm.bytes !== pcm.frames * pcm.channels * 4 || pcm.bytes > 16 * 1048576 : pcm != null)
         throw new TypeError('Owned source footprint PCM does not match this source profile.');
-      return storageBytes(sampleRate, capacity) + (requiresPCM ? pcm.bytes : 0);
-    }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-maximum-configuration-v1' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId, auxiliaryBankIds,
+      return storageBytes(sampleRate, capacity, sampleZones) + (requiresPCM ? pcm.bytes : 0);
+    }, footprintContract: requiresPCMSet ? 'named-rate-voice-pcm-set-per-instance-v2' : 'named-rate-voice-pcm-v1', cost, acceptsParameters, acceptsOnset, beginFields, liveIds, damping, requiresPCM, requiresPCMSet, bankId, auxiliaryBankIds,
     controlReferenceRender, travelPlanner, travelReceiptKey, travelDomain, travelPolicy, restoration, extended: parameters !== null, perVoiceTimbre: slots.length > 0, offlineRender: controlReferenceRender,
     writeUpdate(expression, voice, values) {
       if (!acceptsExpression(expression, voice)) return null;
@@ -87,7 +87,7 @@ const profiles = Object.freeze({
     expressions: [['position01', 8, 19], ['densityHz', 16, 20], ['grainMilliseconds', 32, 21], ['spread01', 64, 23], ['freezePosition', 128, 26], ['activity01', 256, 28], ['tone01', 512, 32]],
     beginFields: (p, seed, pcm) => ({ 18: seed, 19: p.position01, 20: p.densityHz, 21: p.grainMilliseconds, 22: p.pitchRatio, 23: p.spread01, 24: 0, 25: pcm.banks[0].sourceFrames, 26: p.freezePosition, 27: 0, 28: p.activity01, 29: 0, 30: p.reverse, 31: p.rootHz, 32: p.tone01, 34: p.transientGain01, 35: p.sustainedGain01, 36: p.residualGain01, 37: p.residualT60Seconds }) }),
   'worklet-sample': createProfile({ id: 'worklet-sample', controlReferenceRender: true, width: SAMPLE_LAYOUT.width, voices: SAMPLE_LAYOUT.voices, fields: NATIVE_OWNED_SAMPLE_FIELDS, parameters: NATIVE_OWNED_SAMPLE_PARAMETERS,
-    buildId: 'owned-sample-v6-motion-body', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
+    buildId: 'owned-sample-v7-bounded-voice-capacity', abi: 'owned-sample-f64-command-v2', workletUrl: new URL('./worklet/OwnedSampleProcessor.js', import.meta.url).href,
     rateLimit: true, requiresPCM: true, requiresPCMSet: true, bankId: 'sample-read-v1', storageBytes: sampleSourceBytes, heapEstimate: SAMPLE_SOURCE_HEAP_ESTIMATE,
     cost: parameters => 32 + (parameters.graftModeCount || 0) * 2, minHz: 0.1, maxHz: 20000, bendCents: 4800, minimumControlSeconds: 0.008,
     acceptsExpression: (expression, voice) => !voice.sourceValues?.graftModeCount || expression.pitchOffsetCents == null || expression.pitchOffsetCents === 0,

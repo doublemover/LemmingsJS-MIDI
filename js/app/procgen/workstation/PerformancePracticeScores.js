@@ -34,7 +34,7 @@ export async function createAdditionalPracticeScores({ sourceHash, reference }) 
     if (work) graph.instruments = laneIds.flatMap(laneId => ['build', 'mine'].map((operationKind, index) => ({ id: 'practice-' + operationKind + '-' + laneId, sourceLanes: [laneId], sourceKind: 'TerrainWorkCommitted', operationKind, workChangePolicy: 'solid', changedOnly: true, pitchCents: 4800 + index * 700, velocity01: 0.6, role: 'tool-contact', route: 'local' })));
     else {
       const pickupId = path ? 'practice-arrival' : 'practice-field', geometry = path ? { kind: 'segment', points: [{ x: 224, y: 0 }, { x: 224, y: 96 }] } : { kind: 'band', bounds: { x1: 96, x2: 208, y1: 0, y2: laneCount * 96 } };
-      graph.pickups = [{ id: pickupId, revision: 1, worldAnchor: 'world', geometry, laneScope: laneIds, trigger: path ? 'cross' : 'occupancy', directionPolicy: 'positive', hysteresis: 0, pitchMap: { mode: 'fixed', baseCents: 5700 } }];
+      graph.pickups = [{ id: pickupId, revision: 1, worldAnchor: 'world', geometry, laneScope: laneIds, trigger: path ? 'cross' : 'occupancy', directionPolicy: path ? 'positive' : 'either', hysteresis: 0, pitchMap: { mode: 'fixed', baseCents: 5700 } }];
       graph.instruments = laneIds.map(laneId => ({ id: 'practice-' + (path ? 'arrival' : 'harmony') + '-' + laneId, pickupId, sourceLanes: [laneId], sourceKind: 'PickupCrossing', pitchCents: 5700, velocity01: 0.55, role: path ? 'arrival' : 'formation', route: 'local', ...(path ? {} : { formationId: 'practice-formation', harmonicFields: true }) }));
       if (!path) {
         graph.ensembles = [{ id: 'practice-flock', selector: { kind: 'region', bounds: { x1: 0, x2: 224, y1: 0, y2: 288 } }, membershipMode: 'dynamic', maximumMembers: 6, overlapPolicy: 'allow' }];

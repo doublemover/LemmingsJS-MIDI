@@ -1,4 +1,5 @@
 import { sharedContentJobsFor } from '../resources/SharedContentJobs.js';
+import { verifyDrumKitDecodedSources } from '../../midi/content/DrumKitDefinition.js';
 import { getProceduralSoundMaterial } from '../../midi/content/ProceduralSoundMaterial.js';
 import { createAudioAssetLoader } from './AudioAssetLoader.js';
 import { validateAudioAssetRef, DECODER_VERSION } from './AudioAssetRef.js';
@@ -188,6 +189,7 @@ export function createSoundMaterialProvider({ getContext, resourceBudget = null,
           assets.push(await loader.acquire(assetRef, { owner, generation, signal: operation.controller.signal, isCurrent: operation.current,
             decodeProfile: decodeProfile || (sourcePcm ? 'source-pcm' : 'native-context'), decodeContext, joinCancellation })); operation.check();
         }
+        if (reference?.drumKit) verifyDrumKitDecodedSources(reference.drumKit.definition, assets);
         releaseSource();
         const captured = Object.freeze([...assets]), loan = Object.freeze({ assets: captured, availableHashes: Object.freeze([...new Set([...closure, ...playbackHashes])]),
           verification: Object.freeze({ policy: 'verify-entire-dependency-byte-closure;decode-only-declared-playback-samples', dataOnlyHashes: Object.freeze(dataOnlyHashes), playbackSampleHashes: Object.freeze([...playbackHashes]) }),

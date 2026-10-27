@@ -99,7 +99,7 @@ describe('mapped shared-surface preparation ownership', () => {
     const a = createPreparedSurfaceMapping(), b = createPreparedSurfaceMapping(); a.configure([surface()]); b.configure([surface()]);
     a.consume(batch(1, [fact(1, 'ContactSpanBegan')]), { scoreTimeFor }); const cut = a.snapshot(); b.restore(cut);
     const next = batch(2, [fact(2, 'ContactSpanUpdated', { anchor: { x: 70, y: 50 } })]); expect(a.consume(next, { scoreTimeFor })).to.deep.equal(b.consume(next, { scoreTimeFor }));
-    const other = surface(); other.surfaceMap.revision = 2; b.configure([other]); expect(() => b.restore(cut)).to.throw('Incompatible');
+    const other = surface(); other.revision++; other.surfaceMap.revision = 2; b.configure([other]); expect(() => b.restore(cut)).to.throw('Incompatible');
   });
   it('keeps a rearmed empty mapping cut at the same physical frontier', () => {
     const graph = { version: 1, revision: 1, instruments: [], preparedSurfaces: [surface()] }, a = createCausalMusicEngine({ getGraph: () => graph }), b = createCausalMusicEngine({ getGraph: () => graph });

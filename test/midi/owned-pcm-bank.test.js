@@ -1,3 +1,4 @@
+import { validOwnedPcmPlanes } from '../../js/midi/content/OwnedPcmFormat.js';
 import { expect } from 'chai';
 import { prepareOwnedPcmBank } from '../../js/app/midi-ui/OwnedPcmBank.js';
 import { createAudioResourceLeases } from '../../js/app/midi-ui/AudioResourceLeases.js';
@@ -47,5 +48,18 @@ describe('owned immutable PCM bank preparation', () => {
     const input = source(20000), resources = createAudioResourceLeases(); let time = 0, failure;
     try { await prepareOwnedPcmBank(input.pin, { resources, owner: 'deadline', now: () => time, maxPrepareMs: 10, yieldTask: async () => { time = 10; } }); } catch (error) { failure = error; }
     expect(failure.message).to.include('deadline'); expect(resources.diagnostics().reservations).to.equal(0); expect(input.state.releases).to.equal(1);
+  });
+});
+
+describe('private PCM plane ownership layout', () => {
+  it('admits packed and independent stereo planes while rejecting overlap, hidden bytes and another bank', () => {
+    const descriptor = { frames: 4, channels: 2, bytes: 32 }, buffer = new ArrayBuffer(32);
+    const packed = [new Float32Array(buffer, 0, 4), new Float32Array(buffer, 16, 4)];
+    expect(validOwnedPcmPlanes(packed, descriptor)).to.equal(true);
+    expect(validOwnedPcmPlanes([new Float32Array(4), new Float32Array(4)], descriptor)).to.equal(true);
+    expect(validOwnedPcmPlanes([packed[0], packed[0]], descriptor)).to.equal(false);
+    expect(validOwnedPcmPlanes(packed, descriptor, new Set([buffer]))).to.equal(false);
+    const oversized = new ArrayBuffer(64);
+    expect(validOwnedPcmPlanes([new Float32Array(oversized, 0, 4), new Float32Array(oversized, 16, 4)], descriptor)).to.equal(false);
   });
 });

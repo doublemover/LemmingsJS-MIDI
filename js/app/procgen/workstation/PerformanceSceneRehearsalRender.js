@@ -1,3 +1,4 @@
+import { createCausalRenderTiming } from '../../midi-ui/CausalRenderTiming.js';
 import { inspectSceneStationRehearsal, sceneStationRehearsalReceipt } from './SceneStationPolicy.js';
 import { prepareSceneRehearsalLane, sceneOwnedMaterialReceipt } from './SceneRehearsalLane.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from '../../midi-ui/NativeOfflineProfile.js';
@@ -81,12 +82,12 @@ export async function renderPerformanceSceneRehearsal(input, { descriptors, buil
   if (bodyModel) {
     const mechanism = bodyRecipe.initialMorphMechanism, begin = source.intents.find(intent => intent.kind === 'begin' && intent.mappingId === mechanism.instrumentId);
     if (!begin) throw failure('A shared-body rehearsal needs its actual complete matching journey source; no synthetic onset is inserted.');
-    const controls = []; let lastFrame = -1, lastValue = null, ended = false;
+    const controls = [], controlTiming = createCausalRenderTiming({ boundary: { state: { sourceTimeMs: source.sourceTimeMs } }, finalBoundaryState: { sourceTimeMs: source.sourceTimeMs + source.durationSeconds * 1000 } }, rate); let lastFrame = -1, lastValue = null, ended = false;
     for (const intent of source.intents) {
       if (intent.voiceId !== begin.voiceId || intent.generation !== begin.generation || intent.mappingId !== begin.mappingId) continue;
       if (ended) throw failure('The bound journey contains a control after its source end.');
-      if (!Number.isFinite(intent.scoreTime) || intent.scoreTime < source.sourceTimeMs || intent.scoreTime > source.sourceTimeMs + source.durationSeconds * 1000) throw failure('A body control lies outside the captured source clock.');
-      const frame = Math.round((intent.scoreTime - source.sourceTimeMs) * rate / 1000); if (frame < lastFrame) throw failure('The body route is not in canonical source order.'); lastFrame = frame;
+      if (!Number.isFinite(intent.scoreTime?.sourceTimeMs) || intent.scoreTime.sourceTimeMs < source.sourceTimeMs || intent.scoreTime.sourceTimeMs > source.sourceTimeMs + source.durationSeconds * 1000) throw failure('A body control lies outside the captured source clock.');
+      const frame = controlTiming.frameFor(intent); if (frame > Math.ceil(source.durationSeconds * rate)) throw failure('A body control lies outside the captured source clock.'); if (frame < lastFrame) throw failure('The body route is not in canonical source order.'); lastFrame = frame;
       if (intent.kind === 'end') { ended = true; continue; }
       const distance = intent.articulationState?.signedDistancePixels; if (!Number.isFinite(distance)) continue;
       const value = Math.fround(travelColorationValue(bodyModel.control, distance)); if (value === lastValue) continue; lastValue = value;

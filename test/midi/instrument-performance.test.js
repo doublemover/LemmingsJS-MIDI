@@ -12,7 +12,7 @@ describe('typed effective onset controls', () => {
   it('takes world height only from the completed position and excludes camera or substitute payload coordinates', () => {
     const cause = captureInstrumentCause({ kind: 'MotionCommitted', eventId: 'motion:height', positionAfter: { x: 4, y: 27.5 }, cameraY: 900,
       physicalPayload: { displacementPixels: 3, positionYWorldPixels: 999 } });
-    expect(cause.values).to.deep.equal({ displacementPixels: { value: 3, unit: 'world-pixel' }, positionYWorldPixels: { value: 27.5, unit: 'world-pixel' } });
+    expect(cause.values).to.deep.equal({ displacementPixels: { value: 3, unit: 'world-pixel' }, positionXWorldPixels: { value: 4, unit: 'world-pixel' }, positionYWorldPixels: { value: 27.5, unit: 'world-pixel' } });
     expect(captureInstrumentCause({ kind: 'MotionCommitted', eventId: 'missing', physicalPayload: { positionYWorldPixels: 999 } }).values).to.deep.equal({});
   });
   it('recomputes continuous observations from the onset baseline with stable cross-source composition and no cumulative drift', () => {

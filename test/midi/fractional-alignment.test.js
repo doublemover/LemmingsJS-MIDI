@@ -31,7 +31,7 @@ describe('owned fixed fractional graph alignment (deferred qualification)', () =
   });
   it('admits exact alignment storage and binds used algorithm revisions into the graph identity', async () => {
     const graph = createQuarryTape(), plan = prepareEffectGraphRevision(graph); expect(plan.alignmentStateBytes).to.equal((17 + 2) * 8);
-    expect(plan.processingRevisions).to.include({ delay: 'bounded-linear-delay-v2', nonlinear: 'polyphase-cubic-fold-adaa1-v1', alignment: 'fixed-linear-fractional-delay-v1' });
+    expect(plan.processingRevisions).to.include({ delay: 'bounded-fractional-delay-v3-lagrange', nonlinear: 'polyphase-cubic-fold-adaa1-v1', alignment: 'fixed-linear-fractional-delay-v1' });
     expect(await effectGraphHash({ ...plan, processingRevisions: { ...plan.processingRevisions, alignment: 'fixture-other' } })).not.to.equal(await effectGraphHash(plan));
     expect(() => prepareEffectGraphRevision(graph, { maxStateBytes: plan.stateBytes - 1 })).to.throw('storage');
   });

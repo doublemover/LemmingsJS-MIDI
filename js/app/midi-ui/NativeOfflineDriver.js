@@ -224,7 +224,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
           source: 'shared-native-source-hard-teardown', futureFixtureEvents: 'explicitly-suppressed-after-panic', livePanicControlDelivery: 'separate-conformance-required' };
       }
       const horizon = Math.min(frames, panicFrame != null && frontier < panicFrame ? panicFrame : Infinity, frontier + Math.max(quantum, Math.floor(sampleRate / 2 / quantum) * quantum));
-      const dense = events[Math.min(events.length - 1, cursor + 31)];
+      const dense = events[cursor + 31];
       const next = dense ? Math.min(horizon, Math.max(frontier + quantum, Math.ceil((dense.frame + 1) / quantum) * quantum)) : horizon;
       schedule(Math.min(next, frames)); batches++;
       if (next < frames) {
@@ -269,7 +269,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
       { name: 'native-source-buffer', run: () => { if (sourceStarted) sourceNode.stop(); if (sourceNode) sourceNode.buffer = null; sourceBuffer = null; } }
     ]); await receipt.completion;
     if (receipt.outcome !== 'complete') {
-      const error = failure('native-retirement-unknown', 'Native offline resources remain reserved.', { cause: originalError, retirement: receipt });
+      const error = failure('native-retirement-unknown', 'Native offline resources remain reserved: ' + receipt.resources.filter(resource => resource.status !== 'completed').map(resource => resource.name + ': ' + (resource.error || resource.status)).join('; '), { cause: originalError, retirement: receipt });
       error.retainedNative = { context, host, backend, sources, stemPins, effects, sourceNode, sourceBuffer, sourcePcm, nodes: nodes.slice(), rendered, nativeWork };
       pcmLease?.retainUnknown(error); graphLease?.retainUnknown(error); inputLease?.retainUnknown(error); execution?.retainUnknown(error); retirementExecution?.retainUnknown(error); originalError = error;
     } else {

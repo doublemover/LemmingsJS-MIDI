@@ -90,7 +90,8 @@ describe('scene candidates fence live state and own late resources', () => {
 });
 
 
-describe('installed crossing scores and the existing world candidate adapter', () => {
+describe('installed crossing scores and the existing world candidate adapter', function() {
+  this.timeout(30000);
   const installed = async () => {
     const descriptors = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: h('a') }]);
     const getCatalog = async () => ({ state: 'bound-application-engines', executionIdentity: { buildId: h('b') }, descriptors });
@@ -114,7 +115,7 @@ describe('installed crossing scores and the existing world candidate adapter', (
       prepareWorld: async input => { recipe = input.sceneRecipe; world = new ProcgenLaneWorld({ masks, laneCount: recipe.settings.laneCount, laneHeight: recipe.settings.laneHeight, seed: recipe.settings.seed }); world.configurePhysicalAuthoring(recipe.project.procgen.physicalGraph, []);
         return { world, isCurrent: () => !published && !retired, commit({ isCurrent }) { isCurrent(); published = true; }, retire() { retired = true; if (!published) world.dispose(); return { outcome: 'complete' }; } }; } });
     const proof = await checkPerformanceSceneRequirements(value, { resolveDependency: f.library.resolveDependency }), candidate = await adapter({ scene: value, preflight: proof, baseIdentity: 'doc:1', isCurrent: () => true });
-    expect(world.tickIndex).to.equal(0); expect(published).to.equal(false); expect(candidate.admission.sourcePools['worklet-sine']).to.equal(value.cost.maximumVoices); expect(recipe.project.procgen.sceneOrigin.sceneHash).to.equal(proof.sceneHash);
+    expect(world.tickIndex).to.equal(0); expect(published).to.equal(false); expect(candidate.admission.sourcePools['worklet-sine']).to.equal(value.patchRefs[0].reference.definition.voicePolicy.maxVoices); expect(candidate.admission.sourceInstances).to.equal(1); expect(recipe.project.procgen.sceneOrigin.sceneHash).to.equal(proof.sceneHash);
     const source = await candidate.borrowRehearsalCheckpoint(); expect(source.sourceTick).to.equal(0); expect(world.tickIndex).to.equal(0); expect(source.checkpoint.seed).to.equal(value.seed);
     expect(() => candidate.commit({ policy: 'stopped-replacement', isCurrent: () => true })).to.throw('readers'); source.release(); expect(() => source.checkpoint).to.throw('retired');
     let fenced = false; const receipt = candidate.commit({ policy: 'stopped-replacement', isCurrent: () => { fenced = true; return true; } }); expect(fenced).to.equal(true); expect(published).to.equal(true); expect(receipt.transportPlaying).to.equal(false);

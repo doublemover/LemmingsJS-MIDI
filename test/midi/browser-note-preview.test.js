@@ -1707,7 +1707,7 @@ describe('owner Stop retires autonomous creative effects', () => {
     await stopped.enable(); await continuing.enable();
     stopped.output.channels[1].sendNoteOn(60, { rawAttack: 100 }); continuing.output.channels[1].sendNoteOn(64, { rawAttack: 100 });
     const stoppedId = stopped.getState().ownerId, continuingId = continuing.getState().ownerId, channel = [...preview._channels.values()].find(value => value.owner === stoppedId), release = deferred(), scope = createProcgenRetirementScope(); let disposed = 0;
-    channel.effects = { dispose() { disposed++; return scope.retire([{ name: 'latched-body-producer', run: () => release.promise }]); } };
+    channel.effects = { panic() {}, dispose() { disposed++; return scope.retire([{ name: 'latched-body-producer', run: () => release.promise }]); } };
     const receipt = stopped.stop(); expect(receipt.outcome).to.equal('pending'); expect(disposed).to.equal(1); expect([...preview._voices].some(voice => voice.owner === continuingId)).to.equal(true);
     const enabling = stopped.enable(); await Promise.resolve(); expect(stopped.getState().enabled).to.equal(false);
     release.resolve(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(await enabling).to.equal(true); expect(channel.effects).to.equal(null);

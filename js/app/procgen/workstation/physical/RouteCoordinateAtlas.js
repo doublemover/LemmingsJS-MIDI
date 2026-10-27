@@ -111,7 +111,7 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
     }
     lastObservations = observations.map(freeze); return Object.freeze(lastObservations);
   };
-  const coordinate = (actorId, routeId) => { const state = trackers.get(key(routeId, actorId)); return state ? freeze({ ...copy(state), status: state.observationTick === currentTick ? state.status : 'stale', metric: 'qualified-route-arc-pixels' }) : null; };
+  const coordinate = (actorId, routeId) => { const state = trackers.get(key(routeId, actorId)); return state ? freeze({ ...copy(state), status: state.status !== 'qualified' || state.observationTick === currentTick ? state.status : 'stale', metric: 'qualified-route-arc-pixels' }) : null; };
   const neighbors = routeId => {
     const groups = new Map(); for (const state of trackers.values()) if (state.routeId === routeId && state.status === 'qualified' && state.observationTick === currentTick) {
       const id = `${state.branchId}:${state.direction}`; if (!groups.has(id)) groups.set(id, []); groups.get(id).push(state); }

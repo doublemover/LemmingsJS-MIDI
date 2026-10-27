@@ -260,6 +260,7 @@
         "js/app/resources/BackgroundSnapshotPages.js",
         "js/app/resources/BackgroundTaskYield.js",
         "js/app/resources/BackgroundWorkerAdmission.js",
+        "js/app/resources/CircuitWorkshopBuilder.js",
         "js/app/resources/FiniteFmExcitation.js",
         "js/app/resources/GroundAssetDecode.js",
         "js/app/resources/GroundAssetRegistry.js",
@@ -303,7 +304,9 @@
         "js/level/ObjectImageInfo.js",
         "js/midi/content/AllpassNotchProfile.js",
         "js/midi/content/BufferedWarpPlan.js",
+        "js/midi/content/CircuitWorkshopProfile.js",
         "js/midi/content/CircularSpectrum.js",
+        "js/midi/content/DrumKitDefinition.js",
         "js/midi/content/DubQuarryRack.js",
         "js/midi/content/EffectGraphRevision.js",
         "js/midi/content/EffectPerformance.js",
@@ -379,8 +382,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 268,
-      "sha256": "e478a9a879c985b195d8a892f898a394b6c63a4e22636ec337f396e04f6dc503"
+      "fileCount": 271,
+      "sha256": "74194fe807ca770680ab1db6a7509efdf26ba06aaf36fbc0840f4c92f0c5553a"
     },
     {
       "id": "lemmings-timing-worker-source",

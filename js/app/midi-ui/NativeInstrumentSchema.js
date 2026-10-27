@@ -1,3 +1,4 @@
+import { SAMPLE_LAYOUT } from './OwnedSourceLayout.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
 import { getActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 import { validateEngineDescriptor } from '../../midi/content/InstrumentPatchV2.js';
@@ -107,7 +108,7 @@ export async function describeNativeInstrumentEngines(artifacts) {
   for (const [engineId, parameters] of Object.entries(schemas)) {
     const engineCapabilities = capabilities(engineId), artifactHash = artifacts.find(artifact => artifact.engineId === engineId && artifact.engineVersion === 1)?.artifactHash;
     if (!artifactHash) continue;
-    const maximumVoices = ['worklet-seed-layers', 'worklet-sample', 'worklet-friction', 'worklet-wind'].includes(engineId) ? 2 : ['worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-texture'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
+    const maximumVoices = engineId === 'worklet-sample' ? SAMPLE_LAYOUT.voices : ['worklet-seed-layers', 'worklet-friction', 'worklet-wind'].includes(engineId) ? 2 : ['worklet-choir', 'worklet-spectrum', 'worklet-granular', 'worklet-texture'].includes(engineId) ? 8 : ['native-modal', 'worklet-pluck'].includes(engineId) ? 16 : engineId === 'native-fm' ? 32 : 64, voicePolicies = ['reject'];
     const parameterSchemaHash = await hashData({ version: 1, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies });
     descriptors.push(validateEngineDescriptor({ engineId, engineVersion: 1, artifactHash, parameterSchemaHash, parameters, capabilities: engineCapabilities, maximumVoices, voicePolicies }));
   }

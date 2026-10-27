@@ -1,3 +1,4 @@
+import { validOwnedPcmPlanes } from '../../../midi/content/OwnedPcmFormat.js';
 import { OwnedSineKernel, OwnedSineProcessor } from './OwnedSineProcessor.js';
 import { OwnedGranularSource } from './OwnedGranularProcessor.js';
 import { OwnedSampleReader } from './OwnedSampleReader.js';
@@ -24,7 +25,7 @@ export class OwnedSeedLayerSource {
     if (!Array.isArray(pcm.banks) || pcm.banks.length !== 3) fail('The three complete component banks are unavailable.');
     this.pcm = pcm.banks.map((bank, index) => {
       const expected = this.descriptor.banks[index];
-      if (canonicalDataText(bank.descriptor).text !== canonicalDataText(expected).text || !Array.isArray(bank.planes) || bank.planes.length !== 2 || bank.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.byteOffset !== 0 || plane.byteLength !== plane.buffer.byteLength || plane.length !== expected.frames || buffers.has(plane.buffer))) fail('Private component planes differ from the exact aligned PCM inventory.');
+      if (canonicalDataText(bank.descriptor).text !== canonicalDataText(expected).text || !validOwnedPcmPlanes(bank.planes, expected, buffers)) fail('Private component planes differ from the exact aligned PCM inventory.');
       for (const plane of bank.planes) buffers.add(plane.buffer); return Object.freeze([...bank.planes]);
     });
     this.reader = new OwnedSampleReader(sourceBank); this.bank = this.reader.bank;

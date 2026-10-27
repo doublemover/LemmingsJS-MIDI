@@ -1,11 +1,11 @@
 // Serialized by Playwright into an isolated immutable-build browser context.
 export async function runResourceRecoveryBrowserScenario({ laneCount, dpr, buildId, fixtures, origin }) {
   const studio = window.__PROCGEN_STUDIO__, initial = window.__PROCGEN_LANES__, budget = initial.renderer.resources.budgetAdapter;
-  const { getActiveExecutionIdentity } = await import('./js/runtime/ActiveExecutionIdentity.js');
-  const { createProcgenPattern } = await import('./js/app/procgen/workstation/ProcgenWorkstationProject.js');
-  const { prepareProcgenRecoveryJournal } = await import('./js/app/procgen/workstation/ProcgenRecoveryCapture.js');
-  const { createAudioAssetLoader } = await import('./js/app/midi-ui/AudioAssetLoader.js');
-  const { backgroundWorkerAdmission } = await import('./js/app/resources/BackgroundWorkerAdmission.js');
+  const { getActiveExecutionIdentity } = await import(new URL('./js/runtime/ActiveExecutionIdentity.js', window.location.href).href);
+  const { createProcgenPattern } = await import(new URL('./js/app/procgen/workstation/ProcgenWorkstationProject.js', window.location.href).href);
+  const { prepareProcgenRecoveryJournal } = await import(new URL('./js/app/procgen/workstation/ProcgenRecoveryCapture.js', window.location.href).href);
+  const { createAudioAssetLoader } = await import(new URL('./js/app/midi-ui/AudioAssetLoader.js', window.location.href).href);
+  const { backgroundWorkerAdmission } = await import(new URL('./js/app/resources/BackgroundWorkerAdmission.js', window.location.href).href);
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms)), report = { laneCount, dpr, executionIdentity: getActiveExecutionIdentity(), observedLaneCount: initial.world.laneCount,
     observedDpr: window.devicePixelRatio, samples: { schedulingLatenessMs: [], clickPaintMs: [], frameGapMs: [] }, writes: [], pressure: null, candidate: null, sampleOverflow: false,
     nativeEstimates: 'Resource category cost factors include declared headroom, not measured browser/GPU/AudioBuffer heap.', contextLoss: 'synthetic lifecycle event; not native driver loss' };

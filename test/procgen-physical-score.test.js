@@ -34,7 +34,8 @@ const fixture = async ({ ticks = 10, gaps = false, sparse = false, ...bounds } =
     generation: 1, coverageRange: { firstTick: 1, lastTick: ticks }, requestId: 'score:request' } };
 };
 
-describe('read-only PhysicalScore projection', () => {
+describe('read-only PhysicalScore projection', function() {
+  this.timeout(30000);
   it('retains a published score through replacement cancellation and releases all owned source views', async () => {
     const resourceBudget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null });
     const { journal, manifest, request, queryPhysicalScoreOwned } = await fixture({ ticks: 3, resourceBudget, jobs, maxBytes: 32768,

@@ -224,7 +224,7 @@ describe('procgenBoot helpers', function () {
     const receipt = procgenBoot.disposeProcgenRuntime();
     expect(procgenBoot.disposeProcgenRuntime()).to.equal(receipt);
     expect(calls).to.deep.equal(['focusBlur', 'lanes', 'controller', 'stageAdapter', 'game', 'view']);
-    expect(receipt.resources.find(resource => resource.name === 'focus-blur-listener')).to.include({ status: 'failed', error: 'detach failed' });
+    expect(receipt.resources.find(resource => resource.name === 'runtime-readers').retirement.resources.find(resource => resource.name === 'focus-blur-listener')).to.include({ status: 'failed', error: 'detach failed' });
   });
 
   it('installs and disposes procgen boot listeners', function () {

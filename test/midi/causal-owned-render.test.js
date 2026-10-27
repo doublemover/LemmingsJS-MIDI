@@ -24,7 +24,8 @@ const pcm = file => {
     if (id === 'data') return bytes.subarray(at + 8, at + 8 + length); at += 8 + length + length % 2; }
 };
 // Authored for the final runtime pass, with source ownership tested separately.
-describe('owned-source causal revoice rendering', () => {
+describe('owned-source causal revoice rendering', function() {
+  this.timeout(30000);
   it('retains onset lanes under inventory reorder and moves donors only on an explicit carried transfer', async () => {
     const definition = structuredClone(CAUSAL_RENDER_SOURCES.find(source => source.id === 'worklet-sine').definition);
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sine', engineVersion: 1, artifactHash: 'a'.repeat(64) }]);

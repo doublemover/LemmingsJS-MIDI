@@ -11,7 +11,8 @@ import { OwnedSineKernel, OwnedSineProcessor, BEGIN, ENDED, WIDTH, RECEIPT_WIDTH
 
 const member = (voiceId, generation = 1) => ({ voiceId, generation });
 const node = () => ({ connections: new Set(), gain: { setValueAtTime() {} }, connect(value) { this.connections.add(value); }, disconnect(value) { if (value) this.connections.delete(value); else this.connections.clear(); } });
-const setup = () => { const context = { createGain: node, state: 'running' }, resources = createAudioResourceLeases(), registry = createLiveLaneSourceBuses({ context, resources, owner: 'selected-owner', generation: 1, isCurrent: () => true }); registry.declare(['same-lane']);
+const reaches = (source, destination, seen = new Set()) => source === destination || !seen.has(source) && (seen.add(source), [...(source.connections || [])].some(next => reaches(next, destination, seen)));
+const setup = () => { const context = { createGain: node, state: 'running', sampleRate: 48000, currentTime: 0 }, resources = createAudioResourceLeases(), registry = createLiveLaneSourceBuses({ context, resources, owner: 'selected-owner', generation: 1, isCurrent: () => true }); registry.declare(['same-lane']);
   return { registry, resources, pin: voices => registry.pin({ sourceBusId: 'voices:selected', voiceSelection: voices, inputLayout: 'audioStereo', tap: 'pre-fader' }) }; };
 
 describe('immutable selected-voice source buses', () => {
@@ -20,7 +21,7 @@ describe('immutable selected-voice source buses', () => {
     const releaseA = f.registry.registerVoice({ laneId: 'same-lane', voiceId: 'a', sourceGeneration: 1, pre: a, post }), releaseB = f.registry.registerVoice({ laneId: 'same-lane', voiceId: 'b', sourceGeneration: 1, pre: b, post: node() });
     const releaseOther = f.registry.registerVoice({ laneId: 'same-lane', voiceId: 'other', sourceGeneration: 1, pre: unrelated, post: node() });
     const lane = f.registry.pin({ sourceBusId: 'lane:same-lane', tap: 'pre-fader', inputLayout: 'audioStereo' }), selection = f.pin([member('b'), member('a')]), shared = f.pin([member('a'), member('b')]);
-    expect(shared.node).to.equal(selection.node); expect(a.connections.has(lane.node)).to.equal(true); expect(a.connections.has(selection.node)).to.equal(true); expect(b.connections.has(selection.node)).to.equal(true); expect(unrelated.connections.has(selection.node)).to.equal(false);
+    expect(shared.node).to.equal(selection.node); expect(reaches(a, lane.node)).to.equal(true); expect(reaches(a, selection.node)).to.equal(true); expect(reaches(b, selection.node)).to.equal(true); expect(reaches(unrelated, selection.node)).to.equal(false);
     releaseA(); expect(selection.isActive()).to.equal(true); releaseB(); expect(selection.isActive()).to.equal(false); expect(lane.isActive()).to.equal(true); expect(f.pin([member('a', 2)])).to.equal(null);
     releaseOther(); shared.release(); selection.release(); lane.release(); await f.registry.dispose().completion; expect(f.resources.diagnostics().reservations).to.equal(0); await f.resources.dispose().completion;
   });
@@ -54,11 +55,11 @@ describe('overlapping token-fenced source masks in the production kernel', () =>
     let error = 0; for (let frame = 0; frame < 128; frame++) error = Math.max(error, Math.abs(channels[0][0][frame] - channels[1][0][frame]), Math.abs(channels[0][0][frame] + channels[2][0][frame] - left[frame]), Math.abs(preChannels[0][0][frame] * 0.25 - channels[0][0][frame]));
     expect(error).to.be.lessThan(1e-6); expect(left).to.deep.equal(dryLeft); expect(right).to.deep.equal(dryRight); expect(kernel.counters).to.deep.equal(reference.counters);
   });
-  it('releases ended routing cost without clearing the next slot token', () => {
+  it('clears ended voice routes without disabling a bus or clearing the next slot token', () => {
     const processor = Object.create(OwnedSineProcessor.prototype); processor.kernel = new OwnedSineKernel(48000, 1); processor.laneTaps = { routes: new Uint16Array([3]), tokens: new Uint32Array([10]) }; processor.laneRouteCount = 1;
     processor.message = { count: 0, data: new Float64Array(64 * RECEIPT_WIDTH) }; processor.port = { postMessage() {} };
     processor.kernel.receipt(ENDED, 1, 0, 9, 100); processor.flushReceipts(); expect(processor.laneRouteCount).to.equal(1);
-    processor.kernel.receipt(ENDED, 2, 0, 10, 101); processor.flushReceipts(); expect(processor.laneRouteCount).to.equal(0); expect(processor.laneTaps.routes[0]).to.equal(0);
+    processor.kernel.receipt(ENDED, 2, 0, 10, 101); processor.flushReceipts(); expect(processor.laneRouteCount).to.equal(1); expect(processor.laneTaps.routes[0]).to.equal(0);
   });
 });
 
@@ -70,7 +71,7 @@ describe('captured lane identity across live and offline sources', () => {
     const records = [{ kind: 'musical-intents', payload: { intents: intents.slice(0, 2) } }, { kind: 'input-observation', payload: { kind: 'instrument-performance', change: { version: 1, removed: [], upserts: [lane('carrier', 0), lane('donor', 1)] } } }, { kind: 'musical-intents', payload: { intents: intents.slice(2) } }];
     const routing = captureRevoiceLaneRouting(records, initial, true), revoice = { intents, laneRouting: routing }, resolve = createCausalRenderLaneResolver(revoice);
     const ids = intents.map((intent, index) => resolve(intent, index)); expect(ids).to.deep.equal(['donor', 'carrier', 'carrier']); expect(intents).to.deep.equal([{ laneId: 0 }, { laneId: 1 }, { laneId: 0 }]);
-    const plan = prepareEffectGraphRevision(createCrossExcitationRecipe({ recipe: 'rust-bloom', donorLaneId: 'donor', carrierLaneId: 'carrier' }));
+    const plan = prepareEffectGraphRevision(createCrossExcitationRecipe({ recipe: 'rust-bloom', donorLaneId: 'donor', carrierLaneId: 'carrier' }).graph);
     expect(prepareEffectSourceBindings(plan, [...new Set(ids)]).routes.every(route => route.available)).to.equal(true);
     expect(prepareEffectSourceBindings(plan, ['0', '1']).routes.every(route => !route.available)).to.equal(true);
   });

@@ -41,7 +41,7 @@ export function createAudioResourceLeases({ resourceBudget = null, ownerPrefix =
       lease.releaseAttempted = true;
       lease.releaseError = new Error('Audio reservation release is already retiring or failed.');
       try {
-        const acknowledged = resourceBudget?.release({ token, owner: budgetOwner });
+        const acknowledged = bytes + estimateBytes > 0 ? resourceBudget?.release({ token, owner: budgetOwner }) : true;
         if (acknowledged === false) throw new Error('Audio resource adapter did not acknowledge release.');
         if (acknowledged && typeof acknowledged.then === 'function') {
           Promise.resolve(acknowledged).catch(() => {});

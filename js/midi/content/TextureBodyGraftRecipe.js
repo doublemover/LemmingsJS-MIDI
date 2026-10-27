@@ -6,7 +6,7 @@ import { canonicalDataText, freezeData, hashData, hashDataText } from '../../cor
 
 const quantity = (value, unit) => ({ value, unit });
 const component = (id, parameters) => ({ id, role: id, parameters });
-const macro = (id, name, parameter, low, high, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 10, perceptualDirection: name + ' follows the declared new-voice equation; existing bodies retain their onset state.',
+const macro = (id, name, parameter, low, high, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 0, perceptualDirection: name + ' follows the declared new-voice equation; existing bodies retain their onset state.',
   targets: [{ parameter, minimum: quantity(low, unit), maximum: quantity(high, unit), curve: 'linear', composition: 'replace', clamp: true }] });
 
 export async function createTextureBodyGraftRecipe({ manifest, assetHash, byteLength, pitch, graftBody = 'tin', originalBody = null, modalFit = null, textureKind = 'sand-drag', traversalBinding } = {}) {

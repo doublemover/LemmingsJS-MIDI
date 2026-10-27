@@ -29,7 +29,7 @@ describe('Bow Orchard authored score (runtime/browser/listening qualification de
   });
   it('keeps one body through committed motion, stationary coverage and reversal', async () => {
     const item = await createFrictionPerformanceScore({ sourceHash: h('b'), descriptor: (await descriptors()).find(value => value.engineId === 'worklet-friction') }), engine = createCausalMusicEngine({ getGraph: () => item.scene.causalMappings }), intents = [];
-    for (const [index, [from, to]] of [[0, 8], [8, 16], [16, 16], [16, 8]].entries()) intents.push(...engine.processBatch(sampleMotionBatch(index + 1, from, to, { physicalPayload: { pathEvidence: 'committed-coordinate-write', contactObserved: false } })));
+    for (const [index, [from, to]] of [[0, 8], [8, 16], [16, 16], [16, 8]].entries()) intents.push(...engine.processBatch(sampleMotionBatch(index + 1, from, to, { action: 'walk', physicalPayload: { pathEvidence: 'committed-coordinate-write', contactObserved: false } })));
     expect(intents.filter(intent => intent.kind === 'begin')).to.have.length(1); const travel = intents.filter(intent => intent.articulationState?.travel).map((intent, index) => planFrictionTravel(item.scene.patchRefs[0].reference.definition.parameters, intent, index * 2880, 48000)); expect(travel.some(value => value.from === value.to)).to.equal(true); expect(travel.some(value => value.to < value.from)).to.equal(true); expect(new Set(travel.map(value => value.ownerIdentity)).size).to.equal(1); engine.dispose();
   });
   it('authors the actual compiled-source physics and reverse observation acceptance fixture', async () => {

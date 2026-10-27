@@ -31,7 +31,7 @@ export async function createSoundSeedLayerRecipe({ manifest, assetHash, byteLeng
     childOwnership: 'one-semantic-onset;one-source-slot;three-private-children;coherent-end-and-forced-retirement', fixedBankSet: ['sample-read-v1', 'grain-window-v1'],
     parentBackingLayers: 0, sourceCost: { worstCasePerSourceUnits: 96, fixedReads: 64, cloud: 16, maximumBody: 16, evidence: 'sum-of-owned-primitive-declared-units;not-measured-device-cpu' },
     quality: transform === 'hollow-tool' ? 'creative-modal-replacement-of-sustained-component;not-accurate-reconstruction' : 'granular-revoice;not-transparent-time-warp-or-perceptual-source-isolation' });
-  const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), source = cloneData(base.source), recipe = source.recipes[0];
+  const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), source = structuredClone(cloneData(base.source)), recipe = source.recipes[0];
   const recipeId = 'seed.layers.' + contractHash.slice(0, 24), sampleTemplate = source.files[0], dataTemplate = source.files[1];
   source.pack.id = recipe.id = recipeId; source.pack.name = recipe.name = transform === 'hammer-cloud' ? 'Hammer / Cloud · three owned seed layers' : transform === 'bowed-scrap' ? 'Bowed Scrap · one real contact with observed-motion grains' : 'Hollow Tool · creative fitted sustained-body hybrid';
   recipe.tags = ['sound-seed', transform, 'three-owned-children', 'creative-revoice']; recipe.engine = { id: 'worklet-seed-layers', version: 1 }; recipe.seedLayers = seedLayers; delete recipe.sampleMap;

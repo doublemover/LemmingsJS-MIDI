@@ -5,7 +5,7 @@ export const SOUND_SEED_TRANSFORMS = Object.freeze(['hammer-seed', 'ice-dust', '
 const fail = message => { throw new TypeError('Sound seed recipe: ' + message); };
 const quantity = (value, unit) => ({ value, unit });
 const component = (id, values) => ({ id, role: id, parameters: Object.fromEntries(Object.entries(values).map(([key, [value, unit]]) => [key, quantity(value, unit)])) });
-const macro = (id, name, parameter, minimum, maximum, unit, default01 = 0.5) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 10,
+const macro = (id, name, parameter, minimum, maximum, unit, default01 = 0.5) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 0,
   perceptualDirection: name + ' increases for new owned voices; existing voices retain their onset settings.',
   targets: [{ parameter, minimum: quantity(minimum, unit), maximum: quantity(maximum, unit), curve: 'linear', composition: 'replace', clamp: true }] });
 

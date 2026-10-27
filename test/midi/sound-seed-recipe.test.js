@@ -28,10 +28,10 @@ describe('frozen sound-seed recipes and instrument preparation (runtime acceptan
       expect(first.source.files.every(file => file.parents.length === 0)).to.equal(true);
       const output = await compile(first.source), patch = output.prepared.patches[0].definition;
       expect(patch.engineId).to.equal('worklet-sample'); expect(patch.sampleMap.zones[0]).to.include({ pitchTracking: 'fixed', loop: null });
-      expect(patch.macros.map(macro => macro.id)).to.deep.equal(['body', 'grain-edge', 'damp']);
+      expect(patch.macros.map(macro => macro.id)).to.deep.equal(['body', 'grain-edge', 'damp'].sort());
       expect(first.contract.warnings.join(' ')).to.include('printed'); expect(output.prepared.pack.files.some(file => file.sha256 === parent)).to.equal(false);
       const bank = { schema: 'lemmings-owned-pcm-bank/v1', assetHash: h, pcmHash: h, bankHash: h, format: 'float32-planar-le', sourceFrames: 24000, sourceSampleRate: 48000,
-        frames: 24000, sampleRate: 48000, channels: 2, bytes: 24000 * 8, decoderVersion: 'fixture', peak: 0.5, sampleMagnitudeLimit: 16, evidence: 'fixture' };
+        frames: 24000, sampleRate: 48000, channels: 2, bytes: 24000 * 8, decoderVersion: 'fixture', peak: 0.5, sampleMagnitudeLimit: 16, evidence: 'copied-decoded-pcm-not-acoustic-qualification' };
       const plan = prepareOwnedSamplePlan(patch, await createOwnedPcmSetDescriptor([bank]), 48000);
       for (const cents of [3600, 6000, 8400]) expect(plan.select({ version: 1, kind: 'begin', generation: 1, onsetId: 'new-' + cents, pitch: { cents }, velocity01: 0.7 }).readDerivative).to.equal(1);
       expect(first.contract.newOnsets).to.include('old-events-are-baked-ancestry-only');

@@ -37,11 +37,12 @@ const profileFor = kernel => {
   const profile = profiles[kernel?.width], source = kernel?.source;
   if (!profile || !source || source.rate !== kernel.sampleRate || source.voices !== kernel.maxVoices ||
       !integer(source.voices, 1, profile.layout.voices)) fail('Unknown source or incompatible owned voice profile.');
+  if (profile.kind === 5 && (!Array.isArray(source.plan?.entries) || !integer(source.plan.entries.length, 1, SAMPLE_LAYOUT.zones))) fail('Sample source zone storage differs from its admitted map.');
   const t = TEXTURE_EXCITER_LIMITS;
   const expected = profile.kind === 9 ? [source.voices * SEED_LAYER_LAYOUT.state, source.voices * GRANULAR_LAYOUT.cloudState, source.voices * GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState] : profile.kind === 8 ? [source.voices * WIND_MODEL_LIMITS.state, source.voices * WIND_MODEL_LIMITS.modes * WIND_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 7 ? [source.voices * FRICTION_MODEL_LIMITS.state, source.voices * FRICTION_MODEL_LIMITS.modes * FRICTION_MODEL_LIMITS.modeWidth, source.voices * SEALED_BODY_STATE, source.voices * SEALED_BODY_PARAMETERS] : profile.kind === 6 ? [source.voices * t.state, source.voices * t.modes * t.modeWidth, source.voices * t.pulses * t.pulseWidth, source.voices * t.modes, 2] : profile.kind === 1 ? [source.voices * PLUCK_LAYOUT.state, source.voices * source.stride, source.stride] :
     profile.kind === 2 ? [source.voices * CHOIR_LAYOUT.state, source.voices * 3 * CHOIR_LAYOUT.bandState] :
       profile.kind === 3 ? [source.voices * SPECTRUM_LAYOUT.state, source.voices * 16 * SPECTRUM_LAYOUT.partialState] :
-        profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * SAMPLE_LAYOUT.zones * SAMPLE_LAYOUT.cursorScalars] :
+        profile.kind === 5 ? [source.voices * SAMPLE_LAYOUT.state, source.voices * source.plan.entries.length * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth, source.voices * source.plan.entries.length * SAMPLE_LAYOUT.cursorScalars] :
           [source.voices * GRANULAR_LAYOUT.cloudState, source.voices * GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState];
   for (let i = 0; i < profile.arrays.length; i++) {
     const array = source[profile.arrays[i]], type = profile.kind === 1 && i === 1 ? Float32Array : Float64Array;

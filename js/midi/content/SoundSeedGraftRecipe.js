@@ -8,7 +8,7 @@ export const SOUND_SEED_GRAFT_BODIES = freezeData({
   tin: { name: 'Original tin modal body', revision: 'original-tin-body-v1', ratios: [1, 1.43, 2.17, 2.91, 4.07, 5.33], t60: [0.8, 0.65, 0.5, 0.4, 0.3, 0.2], gains: [1, 0.7, 0.5, 0.35, 0.25, 0.18] },
   wood: { name: 'Original dry wood modal body', revision: 'original-dry-wood-body-v1', ratios: [1, 2.76, 5.4, 8.93], t60: [0.25, 0.17, 0.1, 0.06], gains: [1, 0.6, 0.35, 0.2] }
 });
-const macro = (id, name, parameter, minimum, maximum, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 10,
+const macro = (id, name, parameter, minimum, maximum, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 0,
   perceptualDirection: name + ' follows the displayed feed-forward template equation for new voices; old bodies retain their onset state.', targets: [{ parameter, minimum: { value: minimum, unit }, maximum: { value: maximum, unit }, curve: 'linear', composition: 'replace', clamp: true }] });
 
 export async function createSoundSeedGraftRecipe({ manifest, assetHash, byteLength, pitch, graftBody = 'tin', modalFit = null, transform = 'feedforward-graft', traversalBinding = null } = {}) {

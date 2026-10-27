@@ -139,14 +139,14 @@
     "tar": "^7.4.3",
     "typescript": "^5.9.3",
     "ws": "^8.18.1",
-    "zod": "^3.25.76"
+    "zod": "^4.6.7"
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
   },
   "overrides": {
     "diff": "8.0.3",
-    "ip-address": "10.7.3",
-    "serialize-javascript": "7.0.5"
+    "ip-address": "10.7.5",
+    "serialize-javascript": "7.1.4"
   }
 }

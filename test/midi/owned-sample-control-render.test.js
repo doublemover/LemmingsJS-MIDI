@@ -15,8 +15,9 @@ const a = 'a'.repeat(64), b = 'b'.repeat(64);
 const pin = hash => {
   const samples = Float32Array.from({ length: 16000 }, (_, i) => (i % 400 < 4 ? 0.5 : Math.sin(i * 0.04) * 0.2));
   const ref = { contentHash: hash, kind: 'sample', bytes: 64044, frames: samples.length, channels: 1, sourceSampleRate: 48000 };
+  const buffer = { length: samples.length, sampleRate: 48000, numberOfChannels: 1, getChannelData: () => samples };
   const make = () => ({ ref, variant: { contentHash: hash, frames: samples.length, channels: 1, targetSampleRate: 48000, decoderVersion: 'control-fixture-v1' },
-    buffer: { length: samples.length, sampleRate: 48000, numberOfChannels: 1, getChannelData: () => samples }, isActive: () => true, retain: make, release: () => true });
+    buffer, isActive: () => true, retain: make, release: () => true });
   return make();
 };
 const definition = mode => {
@@ -34,14 +35,14 @@ const definition = mode => {
 describe('owned multi-asset sample control references (deferred runtime fixtures)', () => {
   for (const mode of ['forward', 'reverse', 'positionDriven']) it('renders selected ' + mode + ' controls and the original release child at each output rate', async () => {
     const [descriptor] = await describeNativeInstrumentEngines([{ engineId: 'worklet-sample', engineVersion: 1, artifactHash: 'c'.repeat(64) }]);
-    expect(descriptor).to.include({ maximumVoices: 2 }); expect(descriptor.capabilities).to.include({ samples: true, advancedSampleMaps: true, offlineRender: true });
+    expect(descriptor).to.include({ maximumVoices: 16 }); expect(descriptor.capabilities).to.include({ samples: true, advancedSampleMaps: true, offlineRender: true });
     const resources = createAudioResourceLeases(), set = await prepareOwnedPcmSet([pin(a), pin(b)], { resources, owner: 'control-fixture' }), copy = await set.copyForProcessor();
     try {
       const patch = definition(mode), source = { packId: 'fixture', packVersion: '1', contentHash: 'd'.repeat(64), patchIdentity: patch.id + '@1', definitionHash: await hashData(patch), attribution: 'Fixture' };
       let seed;
       for (const sampleRate of [44100, 48000, 96000]) {
         const result = await renderOwnedSourceControls({ definition: patch, descriptor, pcm: copy.payload, source, sampleRate }, { yieldControl: async () => {} });
-        expect(result.manifest.sourceBank.bankHash).to.equal(set.descriptor.bankHash); expect(result.manifest.sampleMap).to.include({ physicalSourcePool: 2, logicalVoiceLimit: 1 });
+        expect(result.manifest.sourceBank.bankHash).to.equal(set.descriptor.bankHash); expect(result.manifest.sampleMap).to.include({ physicalSourcePool: 1, logicalVoiceLimit: 1 });
         expect(result.manifest.sampleSelection.region.playbackMode).to.equal(mode); expect(result.manifest.statistics.peak).to.be.greaterThan(0);
         expect(result.manifest.tail.childFrames).to.be.greaterThan(result.manifest.tail.releaseFrames); expect(result.manifest.tail.state).to.equal('all-voices-ended');
         expect(result.manifest).to.include({ physicalTakeEvidence: false, acousticReceipt: false });

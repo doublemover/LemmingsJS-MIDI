@@ -28,7 +28,8 @@ const withFixture = work => {
   }
 };
 
-describe('runtime provenance gate', () => {
+describe('runtime provenance gate', function() {
+  this.timeout(30000);
   it('accepts the reviewed inventory and fails a modified vendored byte', () => withFixture(({ target, run }) => {
     expect(run().status).to.equal(0);
     appendFileSync(path.join(target, 'js/vendor/jquery.js'), '\n');

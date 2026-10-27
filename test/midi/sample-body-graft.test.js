@@ -29,7 +29,7 @@ describe('finite sample excitation into an owned modal body (runtime qualificati
     const make = async mute => {
       const planes = [new Float32Array(4096), new Float32Array(4096)]; if (!mute) { planes[0][8] = 0.8; planes[1][8] = -0.4; }
       const descriptor = { schema: 'lemmings-owned-pcm-bank/v1', assetHash: hash, pcmHash: hash, bankHash: hash, format: 'float32-planar-le', sourceFrames: 4096, sourceSampleRate: 48000,
-        frames: 4096, sampleRate: 48000, channels: 2, bytes: 4096 * 8, decoderVersion: 'fixture-v1', peak: 0.8, sampleMagnitudeLimit: 16, evidence: 'fixture' };
+        frames: 4096, sampleRate: 48000, channels: 2, bytes: 4096 * 8, decoderVersion: 'fixture-v1', peak: 0.8, sampleMagnitudeLimit: 16, evidence: 'copied-decoded-pcm-not-acoustic-qualification' };
       return { descriptor: await createOwnedPcmSetDescriptor([descriptor]), banks: [{ descriptor, planes }] };
     }; pcm = await make(false); silent = await make(true);
   });
@@ -103,7 +103,7 @@ describe('finite sample excitation into an owned modal body (runtime qualificati
       const recipe = await createSoundSeedGraftRecipe({ manifest, assetHash: hash, byteLength: 100000, pitch: { mode: 'pitched', rootCents: 6000 }, graftBody });
       const compiled = await compileSoundContent(recipe.source, { targets: descriptors.map(descriptor => ({ descriptor })) }), patch = compiled.prepared.patches[0].definition;
       expect(patch.engineId).to.equal('worklet-sample'); expect(patch.sampleMap.zones[0].pitchTracking).to.equal('fixed'); expect(patch.parameters.graftModeCount).to.equal(graftBody === 'tin' ? 6 : 4);
-      expect(patch.macros.map(macro => macro.name)).to.deep.equal(['EXCITE', 'BODY', 'DAMP', 'MIX']); expect(recipe.contract.graft.articulationPolicy).to.include('one-semantic-source');
+      expect(patch.macros.map(macro => macro.name)).to.deep.equal(['EXCITE', 'BODY', 'DAMP', 'MIX'].sort()); expect(recipe.contract.graft.articulationPolicy).to.include('one-semantic-source');
       expect(() => prepareFeedforwardGraftDescriptor({ ...recipe.contract.graft, exciterRef: { port: 'detector-envelope', assetHash: hash } })).to.throw('detector envelopes');
     }
     const traversalBinding = createMotionBodyTraversalBinding(sampleTravelGraph().instruments[0], { framesPerWorldPixel: 20 }), movingRecipe = await createSoundSeedGraftRecipe({ manifest, assetHash: hash, byteLength: 100000, pitch: { mode: 'pitched', rootCents: 6000 }, graftBody: 'wood', transform: 'motion-body-graft', traversalBinding });

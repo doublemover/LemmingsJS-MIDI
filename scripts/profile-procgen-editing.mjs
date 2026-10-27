@@ -12,8 +12,8 @@ try {
     await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
     report.cases.push(await page.evaluate(async laneCount => {
       const studio = window.__PROCGEN_STUDIO__; studio.transport.pause();
-      const { procgenIndexDiagnostics } = await import('./js/app/procgen/workstation/ProcgenProjectIndex.js');
-      const { createProcgenPattern } = await import('./js/app/procgen/workstation/ProcgenWorkstationProject.js');
+      const { procgenIndexDiagnostics } = await import(new URL('./js/app/procgen/workstation/ProcgenProjectIndex.js', window.location.href).href);
+      const { createProcgenPattern } = await import(new URL('./js/app/procgen/workstation/ProcgenWorkstationProject.js', window.location.href).href);
       for (const lane of studio.getProject().procgen.lanes) {
         const pattern = createProcgenPattern(lane.family, lane.role); pattern.length = 64; pattern.steps = Array.from({ length: 64 }, (_, index) => ({ ...pattern.steps[index % 16] }));
         studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { mode: 'pattern', patternPurpose: 'Performance harness: complementary control input', patterns: Array.from({ length: 4 }, () => pattern) } });

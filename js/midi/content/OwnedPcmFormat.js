@@ -13,3 +13,12 @@ export function validOwnedPcmSetDescriptor(d) {
   for (let index = 0; index < d.banks.length; index++) { const bank = d.banks[index]; if (!validOwnedPcmDescriptor(bank) || bank.assetHash <= previous || d.assetHashes[index] !== bank.assetHash) return false; previous = bank.assetHash; bytes += bank.bytes; }
   return bytes === d.bytes;
 }
+
+export function validOwnedPcmPlanes(planes, descriptor, previousBuffers = null) {
+  const { frames, channels, bytes } = descriptor || {};
+  if (!integer(frames, 2, 4194304) || !integer(channels, 1, 2) || bytes !== frames * channels * 4 || !Array.isArray(planes) || planes.length !== channels ||
+      planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== frames || previousBuffers?.has(plane.buffer))) return false;
+  const packed = planes.every((plane, channel) => plane.buffer === planes[0].buffer && plane.buffer.byteLength === bytes && plane.byteOffset === channel * frames * 4);
+  const independent = planes.every(plane => plane.byteOffset === 0 && plane.byteLength === plane.buffer.byteLength) && (channels === 1 || planes[0].buffer !== planes[1].buffer);
+  return packed || independent;
+}

@@ -12,7 +12,7 @@ const canvasFixture = () => {
 };
 
 describe('FileProvider runtime lease transfer', () => {
-  it('keeps prepared resources alive and releases the final lease after another retirement step fails', async () => {
+  it('retains the provider lease when a world reader fails to acknowledge retirement', async () => {
     const masks = await loadProcgenMasks();
     const provider = new FileProvider('/', { indexedDB: null, localStorage: null });
     const resourceLease = provider.acquireLease(), world = new ProcgenLaneWorld({ masks, laneCount: 1 });
@@ -26,9 +26,11 @@ describe('FileProvider runtime lease transfer', () => {
     world.dispose = () => { originalDispose(); throw new Error('Injected sibling cleanup failure'); };
     const receipt = runtime.stop();
     await receipt.completion;
-    assert.equal(receipt.resources.find(resource => resource.name === 'world').status, 'failed');
-    assert.equal(receipt.resources.find(resource => resource.name === 'asset-provider-lease').status, 'completed');
-    assert.equal(provider._disposed, true); assert.equal(provider.getCacheStats().resourceLeases, 0);
+    const resources = receipt.resources.find(resource => resource.name === 'world-resources').retirement.resources;
+    assert.equal(resources.find(resource => resource.name === 'world-readers').status, 'failed');
+    assert.equal(resources.find(resource => resource.name === 'asset-provider-lease').status, 'failed');
+    assert.equal(provider._disposed, false); assert.equal(provider.getCacheStats().resourceLeases, 1);
+    resourceLease.release(); assert.equal(provider._disposed, true);
     assert.equal(runtime.stop(), receipt);
   });
 });

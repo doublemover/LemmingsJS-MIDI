@@ -6,6 +6,7 @@ import { BEGIN, UPDATE, END, CANCEL, APPLIED, REJECTED } from '../../js/app/midi
 import { createOwnedPcmSetDescriptor } from '../../js/app/resources/OwnedPcmSetVerification.js';
 import { computeOwnedSourceBank } from '../../js/app/resources/OwnedSourceBankComputation.js';
 import { singleSampleMap } from '../helpers/sampleMap.js';
+import { ownedSourceStateBytes, writeOwnedSourceState, restoreOwnedSourceState } from '../../js/app/midi-ui/worklet/OwnedSourceState.js';
 
 const a = 'a'.repeat(64), b = 'b'.repeat(64), identity = { engineArtifactHash: 'c'.repeat(64), patchDefinitionHash: 'd'.repeat(64), graphRevision: 1 };
 const row = (opcode, frame, sequence, values = {}) => Object.assign(new Array(SAMPLE_LAYOUT.width).fill(0), {
@@ -39,6 +40,13 @@ describe('pooled owned sample source and logical release children (runtime quali
     return { id: 'kernel-sample', revision: 1, sampleRefs: [{ sha256: a, bytes: 32044, required: true }, { sha256: b, bytes: 32044, required: true }], sampleMap: map,
       parameters: { releaseSeconds: 0.01 }, voicePolicy: { maxVoices: 2 } };
   };
+  it('authors sixteen-voice held PCM/state continuation with cursor storage bounded to declared zones', () => {
+    const definition = patch(); definition.voicePolicy.maxVoices = 16; const kernel = new OwnedSampleKernel(48000, pcm, definition, 16, sourceBank), clone = new OwnedSampleKernel(48000, pcm, definition, 16, sourceBank);
+    expect(kernel.source.cursorQueues.length).to.equal(16 * definition.sampleMap.zones.length * SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth); expect(kernel.source.cursors).to.have.length(16);
+    submit(kernel, Array.from({ length: 16 }, (_, slot) => row(BEGIN, 0, slot + 1, { 4: slot }))); render(kernel, 256);
+    const bytes = new Uint8Array(ownedSourceStateBytes(kernel)); writeOwnedSourceState(kernel, bytes, identity); restoreOwnedSourceState(clone, bytes, identity); expect(render(clone, 512)).to.deep.equal(render(kernel, 512));
+    const small = new OwnedSampleKernel(48000, pcm, patch(), undefined, sourceBank); expect(small.maxVoices).to.equal(2); expect(small.source.cursors).to.have.length(2); expect(() => restoreOwnedSourceState(small, bytes, identity)).to.throw();
+  });
   const create = (rate = 48000, options = {}) => new OwnedSampleKernel(rate, pcm, patch(options), 2, sourceBank);
 
   for (const rate of [44100, 48000, 96000]) for (const reverse of [false, true]) it('keeps a fractional ' + (reverse ? 'reverse' : 'forward') + ' playhead and authored loop period at ' + rate + ' Hz', () => {

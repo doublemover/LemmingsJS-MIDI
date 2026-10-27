@@ -16,6 +16,7 @@ import { OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES } from '../../js/a
 import { OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES } from '../../js/app/midi-ui/worklet/OwnedGranularProcessor.js';
 import { getOwnedSourceProfile } from '../../js/app/midi-ui/OwnedSourceProfiles.js';
 
+const expectReady = async work => { const result = await work; expect(result.status, result.reason).to.equal('ready'); return result; };
 const row = (opcode, frame, sequence, slot = 0, token = 1, values = {}) => {
   const data = new Array(WIDTH).fill(0);
   Object.assign(data, { 0: 1, 1: frame, 2: sequence, 3: opcode, 4: slot, 5: token, 6: 440, 7: 0.5,
@@ -153,7 +154,7 @@ const setupHost = (engineId = 'worklet-sine') => {
   const source = { 'worklet-sine': [OwnedSineKernel, WIDTH, 64, 'owned-sine-v7-owned-retirement', 'owned-sine-f64-command-v1'],
     'worklet-choir': [OwnedChoirKernel, CHOIR_WIDTH, CHOIR_VOICES, 'owned-choir-v6-owned-retirement', 'owned-choir-f64-command-v1'],
     'worklet-pluck': [OwnedPluckKernel, PLUCK_WIDTH, PLUCK_VOICES, 'owned-pluck-v6-owned-retirement', 'owned-pluck-f64-command-v1'],
-    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v7-circular-partials', 'owned-spectrum-f64-command-v1'] }[engineId];
+    'worklet-spectrum': [OwnedSpectrumKernel, SPECTRUM_WIDTH, SPECTRUM_VOICES, 'owned-spectrum-v9-route-coordinate', 'owned-spectrum-f64-command-v1'] }[engineId];
   const granular = engineId === 'worklet-granular', actualSource = granular ? [OwnedGranularKernel, GRANULAR_WIDTH, GRANULAR_VOICES, 'owned-granular-v6-owned-retirement', 'owned-granular-f64-command-v1'] : source;
   const nodes = [], contextListeners = new Set(); let contextState = 'running';
   const context = { get state() { return contextState; }, set state(value) { contextState = value; for (const listener of contextListeners) listener(); },
@@ -195,7 +196,7 @@ describe('Owned worklet host lifecycle', () => {
     const { backend, nodes, patch, preview } = setupHost('worklet-spectrum'); patch.patch.parameters = { sourceMode: 2, attackSeconds: 0.005, decaySeconds: 0, sustain01: 1, releaseSeconds: 0.01 };
     const engine = createCausalMusicEngine({ getGraph: () => sampleTravelGraph() });
     const outbound = engine.processBatch(sampleMotionBatch(1, 0, 1))[0], rest = engine.processBatch(sampleMotionBatch(2, 1, 1))[0], returned = engine.processBatch(sampleMotionBatch(3, 1, 0))[0];
-    expect((await backend.prepare(patch)).status).to.equal('ready'); backend.renewExecutionLease(1, 'live', 24000);
+    await expectReady(backend.prepare(patch)); backend.renewExecutionLease(1, 'live', 24000);
     const begin = backend.begin(outbound, 0); expect(begin.status).to.equal('accepted'); expect(begin.circularTravel.endPhaseCycles).to.equal(1 / 512);
     expect(backend.updateCanonicalTravel(outbound.voiceId, rest, 2880).status).to.equal('accepted'); expect(backend.updateCanonicalTravel(outbound.voiceId, returned, 5760).status).to.equal('accepted');
     expect(backend.end(outbound.voiceId, { seconds: 0.01 }, 6000).effectiveTargetFrame).to.equal(8640);
@@ -227,7 +228,7 @@ describe('Owned worklet host lifecycle', () => {
   it('prepares every non-PCM source with the real resource owner and retains runtime storage through disposal', async () => {
     for (const engineId of ['worklet-sine', 'worklet-pluck', 'worklet-choir', 'worklet-spectrum']) {
       const { backend, nodes, patch, preview, context } = setupHost(engineId), resources = createAudioResourceLeases(); preview._audioResources = resources;
-      expect((await backend.prepare(patch)).status).to.equal('ready'); expect(nodes).to.have.length(1);
+      await expectReady(backend.prepare(patch)); expect(nodes).to.have.length(1);
       const profile = getOwnedSourceProfile(engineId); expect(resources.diagnostics().exactBytes).to.be.at.least(profile.sourceBytes({ sampleRate: 48000, pcm: null }));
       const receipt = backend.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete');
       // Module code is a separate context-lifetime estimate.
@@ -258,7 +259,7 @@ describe('Owned worklet host lifecycle', () => {
       const { backend, nodes, patch, intent, context } = setupHost(engineId), observed = [];
       patch.patch.causalBindings = [{ id: 'movement', sourceKind: 'MotionCommitted', payloadField: 'displacementPixels', unit: 'world-pixel', target,
         inputMin: 0, inputMax: 8, outputMin: 0.1, outputMax: 0.9, outputUnit: 'normalized', curve: 'linear', composition: 'replace', mode: 'continuous', smoothingMs: 8 }];
-      expect((await backend.prepare(patch)).status).to.equal('ready'); const execution = backend.registerExecution({ executionEpoch: 'physical-source', generation: 1 }).execution;
+      await expectReady(backend.prepare(patch)); const execution = backend.registerExecution({ executionEpoch: 'physical-source', generation: 1 }).execution;
       const stop = backend.observeCommandOutcomes(outcome => observed.push(outcome), { execution });
       expect(backend.begin(intent('held'), 128, execution).status).to.equal('accepted');
       const cause = { sourceKind: 'MotionCommitted', eventId: 'motion:one', evidence: 'completed-world-fact', values: { displacementPixels: { value: 8, unit: 'world-pixel' } } };
@@ -332,7 +333,7 @@ describe('Owned worklet host lifecycle', () => {
   it('requires a verified runtime handshake and joins applied receipts to independent executions', async () => {
     const { backend, nodes, patch, intent, preview } = setupHost();
     expect(backend.begin(intent('same'), 100).reason).to.equal('audio-not-ready');
-    expect((await backend.prepare(patch)).status).to.equal('ready');
+    await expectReady(backend.prepare(patch));
     expect(backend.begin(intent('same'), 100, 'live').stage).to.equal('queued');
     expect(backend.begin(intent('same'), 100, 'cue').status).to.equal('accepted');
     await Promise.resolve();
@@ -356,7 +357,7 @@ describe('Owned worklet host lifecycle', () => {
     const { backend, nodes, patch, intent, preview } = setupHost(); await backend.prepare(patch); backend.begin(intent('a'), 100);
     nodes[0].onprocessorerror(); expect(preview._voices.size).to.equal(0); expect(nodes[0].disconnected).to.equal(true);
     expect(backend.renderDiagnostics().readiness).to.equal('processor-error');
-    expect((await backend.prepare(patch)).status).to.equal('ready'); expect(nodes).to.have.length(2);
+    await expectReady(backend.prepare(patch)); expect(nodes).to.have.length(2);
     expect(backend.begin(intent('b'), 100).status).to.equal('accepted'); backend.dispose();
   });
   it('contains native teardown failure, closes independent leaves and retains uncertain runtime storage', async () => {
@@ -440,7 +441,7 @@ describe('Owned worklet host lifecycle', () => {
     expect((await backend.prepare(patch)).reason).to.equal('module-load-failed');
     expect(budget.diagnostics().accountedBytes).to.equal(0);
     context.audioWorklet.addModule = async () => {};
-    expect((await backend.prepare(patch)).status).to.equal('ready');
+    await expectReady(backend.prepare(patch));
     backend.begin(intent('funded'), 100); await Promise.resolve();
     expect(preview._audioResources.diagnostics().reservations).to.equal(2);
     nodes[0].onprocessorerror();

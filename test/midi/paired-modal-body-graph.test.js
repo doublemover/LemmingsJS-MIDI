@@ -24,7 +24,7 @@ describe('canonical paired modal body graph (live/device qualification deferred)
   it('does not accept stale endpoints, a forged profile identity or a silent policy upgrade', async () => {
     const model = await fixture(), graph = JSON.parse(JSON.stringify(model.graph)), parameters = graph.nodes.find(node => node.kind === 'paired-modal-body').parameters;
     parameters.a.modes[0].frequencyHz++; expect((await failure(() => createOwnedEffectGraphKernel({ definition: graph }))).code).to.equal('invalid-resonator-morph'); parameters.a.modes[0].frequencyHz--; parameters.profileIdentity = '0'.repeat(64); expect((await failure(() => createOwnedEffectGraphKernel({ definition: graph }))).code).to.equal('invalid-paired-modal-body');
-    expect((await failure(() => fixture(48000, 'next-onset-only'))).message).to.include('paired-held'); expect((await failure(() => fixture(48000, 'prepared-dual-body-blend'))).message).to.include('dual-body blend');
+    expect((await failure(() => fixture(48000, 'next-onset-only'))).message).to.include('paired-held'); expect(await fixture(48000, 'prepared-dual-body-blend')).to.include({ bodyCount: 2, strategy: 'prepared-endpoint-audio-blend' });
     parameters.profileIdentity = model.profileIdentity; parameters.inputGain01 = 1.01; expect(() => preparePairedModalBodyProfile(parameters)).to.throw('bounded MORPH');
   });
   it('adds no work without source audio, preserves signed cancellation and contains a bad body alone', async () => {

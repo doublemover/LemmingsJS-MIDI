@@ -1,3 +1,4 @@
+import { validOwnedPcmPlanes } from '../../../midi/content/OwnedPcmFormat.js';
 import { OwnedSampleBody } from './OwnedSampleBody.js';
 import { SAMPLE_LAYOUT } from '../OwnedSourceLayout.js';
 import { SAMPLE_BODY_STATE_OFFSET } from '../../../midi/content/SampleBodyProfile.js';
@@ -8,7 +9,7 @@ import { OwnedSampleReader } from './OwnedSampleReader.js';
 import { canonicalDataText } from '../../../core/CanonicalData.js';
 
 export const OWNED_SAMPLE_STATE_WIDTH = SAMPLE_LAYOUT.state;
-const ZONES = 128, QUEUE = OWNED_SAMPLE_CURSOR_CAPACITY * 7, SCALARS = OWNED_SAMPLE_CURSOR_SCALARS.length;
+const QUEUE = OWNED_SAMPLE_CURSOR_CAPACITY * 7, SCALARS = OWNED_SAMPLE_CURSOR_SCALARS.length;
 const discontinuities = Object.freeze(['continuous', 'seek', 'restore', 'topology-rebind']);
 const S = Object.freeze({ zone: 0, active: 1, start: 2, frame: 3, position: 4, derivative: 5, released: 6, releaseFrame: 7, releaseFrames: 8, releaseGain: 9,
   attackGain: 10, attackDone: 11, childActive: 12, childPosition: 13, childStart: 14, childEnd: 15, childGain: 16, childDerivative: 17, forced: 18,
@@ -18,27 +19,26 @@ const finite = (value, low, high) => Number.isFinite(value) && value >= low && v
 const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 
 export class OwnedSampleSource {
-  constructor(rate, pcm, patch, voices = OWNED_SAMPLE_VOICES, sourceBank) {
-    if (!integer(voices, 1, OWNED_SAMPLE_VOICES)) throw new TypeError('Invalid owned sample voice pool.');
+  constructor(rate, pcm, patch, voices = patch?.voicePolicy?.maxVoices ?? OWNED_SAMPLE_VOICES, sourceBank) {
+    if (!integer(voices, 1, Math.min(OWNED_SAMPLE_VOICES, patch?.voicePolicy?.maxVoices ?? 0))) throw new TypeError('Invalid owned sample voice pool.');
     this.plan = prepareOwnedSamplePlan(patch, pcm?.descriptor, rate); this.descriptor = this.plan.descriptor; this.rate = rate; this.voices = voices;
     if (!Array.isArray(pcm.banks) || pcm.banks.length !== this.descriptor.banks.length) throw new TypeError('Owned sample PCM planes are unavailable.');
     const buffers = new Set();
     this.pcm = pcm.banks.map((bank, index) => {
       const expected = this.descriptor.banks[index];
-      if (canonicalDataText(bank.descriptor).text !== canonicalDataText(expected).text || !Array.isArray(bank.planes) || bank.planes.length !== expected.channels ||
-          bank.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== expected.frames || buffers.has(plane.buffer))) throw new TypeError('Owned sample private PCM differs from the verified aggregate source.');
+      if (canonicalDataText(bank.descriptor).text !== canonicalDataText(expected).text || !validOwnedPcmPlanes(bank.planes, expected, buffers)) throw new TypeError('Owned sample private PCM differs from the verified aggregate source.');
       for (const plane of bank.planes) buffers.add(plane.buffer); return Object.freeze([...bank.planes]);
     });
     this.reader = new OwnedSampleReader(sourceBank); this.bank = this.reader.bank; this.stereo = this.descriptor.banks.some(bank => bank.channels === 2); this.ownsEnvelope = true; this.cancelQueuedOnForcedEnd = true; this.maxUpdateMask = 15;
     this.sourceGain = 0.9 / (2 * Math.SQRT2 * this.reader.maximumL1 * Math.max(1, ...this.descriptor.banks.map(bank => bank.peak)));
-    this.state = new Float64Array(voices * OWNED_SAMPLE_STATE_WIDTH); this.cursorQueues = new Float64Array(voices * ZONES * QUEUE); this.cursorScalars = new Float64Array(voices * ZONES * SCALARS);
+    this.state = new Float64Array(voices * OWNED_SAMPLE_STATE_WIDTH); this.cursorQueues = new Float64Array(voices * this.plan.entries.length * QUEUE); this.cursorScalars = new Float64Array(voices * this.plan.entries.length * SCALARS);
     this.body = this.plan.body ? new OwnedSampleBody(this.plan.body, this.state, OWNED_SAMPLE_STATE_WIDTH, voices) : null;
-    this.cursors = new Array(voices * ZONES).fill(null);
+    this.cursors = new Array(voices * this.plan.entries.length).fill(null);
     for (let zone = 0; zone < this.plan.entries.length; zone++) if (this.plan.entries[zone].attack.cursorProfile) for (let slot = 0; slot < voices; slot++) {
       const index = zone * voices + slot, entry = this.plan.entries[zone].attack;
       this.cursors[index] = new OwnedSampleCursor(entry.cursorProfile.parameters, { sourceFrame: entry.sourceFirst, queueStorage: this.cursorQueues.subarray(index * QUEUE, (index + 1) * QUEUE) });
     }
-    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v4-motion-body', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
+    this.configuration = canonicalDataText({ profile: 'owned-sample-source-v5-instance-zones', plan: this.plan.identity, voices }, { maxBytes: 524288, maxNodes: 32768 }).bytes;
     this.beginFrontier = { frame: 0, released: false, length: 0, lastSequence: 0, lastEndFrame: 0, lastEndPosition: 0, lastSeekFrame: 0 };
     this.leftSample = this.rightSample = this.readLeft = this.readRight = 0;
   }

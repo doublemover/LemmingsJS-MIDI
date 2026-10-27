@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { verifyRuntimeProvenance } from './RuntimeProvenance.js';
+import { normalizeBomDependencies } from './RuntimeBomDependencies.js';
 
 const rootArgument = process.argv.find(argument => argument.startsWith('--root='));
 const root = rootArgument ? path.resolve(rootArgument.slice('--root='.length)) : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,7 +46,7 @@ if (process.argv.includes('--sbom')) {
     bom.dependencies.push({ ref, dependsOn: [] });
   }
   bom.components.sort((a, b) => a['bom-ref'].localeCompare(b['bom-ref']));
-  rootDependency.dependsOn.sort(); bom.dependencies.sort((a, b) => a.ref.localeCompare(b.ref));
+  bom.dependencies = normalizeBomDependencies(bom.dependencies);
   const schema = JSON.parse(readFileSync(resolve('provenance/schema/bom-1.5.schema.json'), 'utf8'));
   const ajv = new Ajv({ strict: false });
   addFormats(ajv);

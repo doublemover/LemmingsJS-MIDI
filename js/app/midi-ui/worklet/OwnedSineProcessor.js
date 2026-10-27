@@ -351,7 +351,13 @@ class OwnedSineKernel {
       if (stems?.preChannels) for (let stem = 0; stem < stems.preChannels.length; stem++) { stems.preChannels[stem][0][offset] = this.preStemSums[stem * 2]; stems.preChannels[stem][1][offset] = this.preStemSums[stem * 2 + 1]; }
       if (this.displayEnabled && frame + 1 >= this.displayNext) this.finishDisplay(frame + 1);
     }
-    this.lastFrame = frameStart + left.length;
+    const boundary = frameStart + left.length;
+    if (sourceEnvelope) for (let slot = 0; slot < this.maxVoices; slot++) if (this.active[slot] && this.source.finished(slot)) {
+      const at = slot * 28;
+      if (this.displayEnabled) this.measureDisplay(slot, 0, boundary, 0, 2);
+      this.active[slot] = 0; this.source.retire(slot); this.receipt(ENDED, this.voice[at + 22], slot, this.voice[at + 2], boundary, this.voice[at + 20]);
+    }
+    this.lastFrame = boundary;
   }
 }
 

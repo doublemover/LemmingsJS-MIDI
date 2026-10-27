@@ -14,7 +14,7 @@ export const PLUCK_LAYOUT = Object.freeze({ width: 24, voices: 16, state: 28, de
 export const CHOIR_LAYOUT = Object.freeze({ width: 26, voices: 8, state: 40, bands: 3, bandState: 8, tableLength: 2048, tableSamples: 8 * 2049 });
 export const SPECTRUM_LAYOUT = Object.freeze({ width: 73, voices: 8, state: 36, partialState: 6, partials: 16, tableLength: 2048, tableSamples: 16 * 5 * 2049, sineSamples: 2049, frameSamples: 256 });
 export const GRANULAR_LAYOUT = Object.freeze({ width: 33, voices: 8, cloudState: 44, grainState: 14, grains: 16, windowSamples: 2049, birthsPerBucket: 32 });
-export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 2, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
+export const SAMPLE_LAYOUT = Object.freeze({ width: 40, voices: 16, state: 144, zones: 128, cursorCapacity: 32, cursorWidth: 7, cursorScalars: 21 });
 export const SEED_LAYER_LAYOUT = Object.freeze({ width: 56, voices: 2, state: 144 });
 export const CHOIR_SOURCE_HEAP_ESTIMATE = 65536;
 export const SPECTRUM_SOURCE_HEAP_ESTIMATE = 65536;
@@ -38,10 +38,11 @@ export function granularSourceBytes(rate, voices = GRANULAR_LAYOUT.voices) {
   check(rate, voices, GRANULAR_LAYOUT.voices, 192000); if (!Number.isInteger(rate)) throw new RangeError('Invalid granular source rate.');
   return GRANULAR_LAYOUT.windowSamples * 4 + voices * (GRANULAR_LAYOUT.cloudState + GRANULAR_LAYOUT.grains * GRANULAR_LAYOUT.grainState) * 8;
 }
-export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices) {
+export function sampleSourceBytes(rate, voices = SAMPLE_LAYOUT.voices, zones = SAMPLE_LAYOUT.zones) {
   check(rate, voices, SAMPLE_LAYOUT.voices, 96000);
   if (![44100, 48000, 96000].includes(rate)) throw new RangeError('Invalid owned sample source rate.');
-  return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + SAMPLE_LAYOUT.zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
+  if (!Number.isSafeInteger(zones) || zones < 1 || zones > SAMPLE_LAYOUT.zones) throw new RangeError('Invalid declared owned sample zone count.');
+  return 524288 + SAMPLE_READ_TABLE_SAMPLES * 4 + voices * (SAMPLE_LAYOUT.state + zones * (SAMPLE_LAYOUT.cursorCapacity * SAMPLE_LAYOUT.cursorWidth + SAMPLE_LAYOUT.cursorScalars)) * 8;
 }
 
 export function seedLayerSourceBytes(rate, voices = SEED_LAYER_LAYOUT.voices) {

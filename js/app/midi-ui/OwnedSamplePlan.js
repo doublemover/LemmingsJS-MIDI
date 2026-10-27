@@ -1,3 +1,4 @@
+import { SAMPLE_LAYOUT } from './OwnedSourceLayout.js';
 import { prepareSampleBodyProfile } from '../../midi/content/SampleBodyProfile.js';
 import { createSampleMapResolver, sampleMapRenderIdentity, OWNED_SAMPLE_MAP_PROFILE } from '../../midi/content/SampleInstrumentMap.js';
 import { validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
@@ -6,7 +7,7 @@ import { sampleRegionRate, sampleRegionArticulation } from './NativeSamplePlan.j
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 
 export const OWNED_SAMPLE_PLAN_REVISION = 'owned-sample-region-plan-motion-body-v2';
-export const OWNED_SAMPLE_VOICES = 2;
+export const OWNED_SAMPLE_VOICES = SAMPLE_LAYOUT.voices;
 export const OWNED_SAMPLE_CURSOR_CAPACITY = 32;
 const fail = message => { throw Object.assign(new Error(message), { name: 'OwnedSamplePreflightError', code: 'owned-sample-preflight' }); };
 const integer = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
@@ -47,7 +48,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
   const byZone = new Map(entries.map((entry, index) => [entry.zoneId, index]));
   let cursorBytes = 0, cursorTransferBytes = 0, cursorCount = 0;
   for (const entry of entries) if (entry.attack.cursorProfile) {
-    cursorCount += OWNED_SAMPLE_VOICES; cursorBytes += entry.attack.cursorProfile.stateBytes * OWNED_SAMPLE_VOICES;
+    cursorCount += patch.voicePolicy.maxVoices; cursorBytes += entry.attack.cursorProfile.stateBytes * patch.voicePolicy.maxVoices;
     cursorTransferBytes = Math.max(cursorTransferBytes, entry.attack.cursorProfile.transferBytes);
   }
   const identity = canonicalDataText({ revision: OWNED_SAMPLE_PLAN_REVISION, patchId: patch.id, patchRevision: patch.revision, map: sampleMapRenderIdentity(map),
@@ -58,7 +59,7 @@ export function prepareOwnedSamplePlan(patch, descriptor, sampleRate) {
   };
   return Object.freeze({ revision: OWNED_SAMPLE_PLAN_REVISION, map, entries: Object.freeze(entries), descriptor, sampleRate, identity, body,
     footprint: freezeData({ cursorCount, cursorBytes, maximumCursorTransferBytes: cursorTransferBytes, metadataEstimateBytes: 524288 + cursorCount * 6144,
-      layersPerVoice: 2, maximumReadHeadsPerVoice: 4, maximumVoices: OWNED_SAMPLE_VOICES, realTimeCapacityQualified: false }),
+      layersPerVoice: 2, maximumReadHeadsPerVoice: 4, maximumVoices: patch.voicePolicy.maxVoices, realTimeCapacityQualified: false }),
     select(intent) {
       const region = resolve(intent), zoneIndex = byZone.get(region.selection.zoneId), entry = entries[zoneIndex], offset = intent.expression?.pitchOffsetCents ?? 0;
       const attack = rateFor(entry.attack, intent.pitch, offset), release = entry.release ? rateFor(entry.release, intent.pitch, offset) : null;

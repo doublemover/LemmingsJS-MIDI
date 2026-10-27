@@ -142,7 +142,7 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
     const patch = entry?.definition, requirement = entry?.engineRequirement, identity = patch?.id + '@' + patch?.revision;
     keysOnly(requirement, ['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'], 'patches.engineRequirement');
     if (patch?.schemaVersion === 2) keysOnly(patch, ['schemaVersion', 'id', 'revision', 'name', 'author', 'tags', 'engineId', 'engineVersion', 'parameters',
-      'modulations', 'sampleRefs', 'sampleMap', 'macros', 'causalBindings', 'variation', 'voicePolicy', 'mix', 'midiFallback'], 'patches.definition');
+      'modulations', 'sampleRefs', 'sampleMap', 'seedLayers', 'macros', 'causalBindings', 'variation', 'voicePolicy', 'mix', 'midiFallback'], 'patches.definition');
     assertContent(patch && id(patch.id) && natural(patch.revision, 2147483647) && patch.revision > 0 && !identities.has(identity) &&
       requirement && id(requirement.engineId) && natural(requirement.engineVersion, 65535) && requirement.engineVersion > 0 &&
       hash(requirement.artifactHash) && hash(requirement.parameterSchemaHash) && patch.engineId === requirement.engineId && patch.engineVersion === requirement.engineVersion &&

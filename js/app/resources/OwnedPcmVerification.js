@@ -1,8 +1,8 @@
-import { validOwnedPcmDescriptor } from '../../midi/content/OwnedPcmFormat.js';
+import { validOwnedPcmDescriptor, validOwnedPcmPlanes } from '../../midi/content/OwnedPcmFormat.js';
 const failure = message => Object.assign(new Error(message), { name: 'CausalRenderError', code: 'pcm-identity-mismatch' });
 export async function verifyOwnedPcmPayload(payload, expected, { signal, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)), crypto = globalThis.crypto } = {}) {
   const descriptor = payload?.descriptor;
-  if (!validOwnedPcmDescriptor(descriptor) || descriptor.assetHash !== expected?.sha256 || !Array.isArray(payload.planes) || payload.planes.length !== descriptor.channels || payload.planes.some(plane => !(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || plane.length !== descriptor.frames) ||
+  if (!validOwnedPcmDescriptor(descriptor) || descriptor.assetHash !== expected?.sha256 || !validOwnedPcmPlanes(payload.planes, descriptor) ||
       new Uint8Array(new Uint16Array([1]).buffer)[0] !== 1) throw failure('Owned rendering requires a complete matching immutable PCM bank.');
   signal?.throwIfAborted(); const bytes = new Uint8Array(descriptor.bytes); let offset = 0, peak = 0;
   for (const plane of payload.planes) {

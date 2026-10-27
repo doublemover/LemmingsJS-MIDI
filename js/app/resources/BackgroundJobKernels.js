@@ -1,3 +1,4 @@
+import { buildCircuitWorkshop } from './CircuitWorkshopBuilder.js';
 import { prepareOwnedStretchCore } from './OwnedStretchCore.js';
 import { OWNED_STRETCH_CORE } from '../../midi/content/OwnedStretchCoreIdentity.js';
 import { bakeSeedWarp } from './SeedWarpBake.js';
@@ -97,7 +98,7 @@ const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimat
     }
     if (++nodes > maxNodes || item.depth > 48) throw problem('structure-capacity', 'Background input exceeds its structural bound.');
     const input = item.value, type = typeof input;
-    if (input === null || type === 'boolean' || type === 'number') { if (type === 'number' && !Number.isFinite(input)) throw problem('invalid-data', 'JSON numbers must be finite.'); bytes += String(input).length; }
+    if (input === null || type === 'boolean' || type === 'number') { if (type === 'number' && !Number.isFinite(input)) throw problem('invalid-data', 'JSON numbers must be finite.'); bytes += Object.is(input, -0) ? 2 : String(input).length; }
     else if (type === 'string') { if (input.length > Math.min(maxBytes, maxStringBytes)) throw problem('input-capacity', 'Background string exceeds its byte bound.'); bytes += jsonStringBytes(input); }
     else if (type === 'undefined') bytes += 4;
     else if (type !== 'object' || active.has(input)) throw problem('invalid-data', 'Background input must contain only acyclic snapshot data.');
@@ -356,6 +357,16 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  if (kind === 'build-circuit-workshop') {
+    if (!input || Object.keys(input).some(key => !['variant', 'applicationBuildId'].includes(key)) || typeof input.variant !== 'string' || !/^[a-f0-9]{64}$/.test(input.applicationBuildId || '') || estimatedPeakBytes < 128 * 1048576) throw problem('invalid-contract', 'Original kit preparation needs its exact application, named variant and complete worker overlap.');
+    const catalog = await getNativeInstrumentCatalog(); guard(signal, current);
+    if (catalog.state !== 'bound-application-engines' || catalog.executionIdentity?.buildId !== input.applicationBuildId) throw problem('engine-identity-unbound', 'The original kit producer differs from the requested application build.');
+    const value = await buildCircuitWorkshop({ variant: input.variant }, { descriptors: catalog.descriptors, applicationBuildId: catalog.executionIdentity.buildId, estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
+    const representation = canonicalDataText({ pack: value.pack, kit: value.kit, contentHash: value.contentHash, kitHash: value.kitHash, contractHash: value.contractHash, qualification: value.qualification }, { maxBytes: 4 * 1048576, maxNodes: 131072 }).bytes.length,
+      retainedBytes = value.assets.reduce((sum, asset) => sum + asset.bytes.byteLength, 0) * 2 + representation * 8 + 1048576;
+    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'The prepared original kit exceeds its admitted output representation.');
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
   if (kind === 'encode-recovery-page' || kind === 'decode-recovery-page') {
     let value;
     try { value = kind === 'encode-recovery-page' ? await encodeProcgenRecoveryPage(input, { maxBytes, signal }) : await decodeProcgenRecoveryPage(input, { maxBytes, signal }); }

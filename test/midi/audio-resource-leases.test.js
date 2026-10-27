@@ -4,6 +4,13 @@ import { createAudioResourceLeases, releaseAudioResourceAfterRetirement, KERNEL_
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
 
 describe('Audio resource admission', () => {
+  it('releases zero-byte declarations after their empty budget reservation is reconciled away', async () => {
+    const budget = createResourceBudget(), audio = createAudioResourceLeases({ resourceBudget: budget });
+    const empty = audio.reserve({ kind: 'empty-source-declaration', owner: 'offline', consumerOwned: true });
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(empty.release()).to.equal(true); expect(empty.release()).to.equal(false);
+    expect(audio.diagnostics().reservations).to.equal(0); await audio.dispose().completion;
+  });
   it('joins consumer-owned buffers during bulk teardown and keeps them charged until actual release', async () => {
     const audio = createAudioResourceLeases(), lease = audio.reserve({ kind: 'pcm-copy', owner: 'game', bytes: 64, consumerOwned: true });
     const owner = audio.retireOwner('game'), all = audio.dispose(); expect(owner.outcome).not.to.equal('complete'); expect(all.outcome).not.to.equal('complete');

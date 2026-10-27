@@ -49,7 +49,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     perVoiceDamping: source.damping, perVoiceTimbre: source.perVoiceTimbre, supportedParameterIds: Object.freeze(Object.keys(fields)) });
   if (!finite(leadSeconds, 0.01, 2) || !finite(smoothingSeconds, 0, 1) || !Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 4096 ||
       !finite(initializationTimeoutMs, 1, 30000)) throw new Error('Invalid worklet backend options.');
-  let node = null, context = null, ready = false, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
+  let node = null, context = null, ready = false, preparedVoices = null, disposed = false, preparing = 0, patch = null, sequence = 0, packetSequence = 0;
   let sourceInspection = null, sourceInspectionSerial = 0, lastSourceInspection = null;
   let pumpTimer = null, fault = null, truncated = 0, nextEpoch = 0, cancellationHistoryFull = false;
   let ownerStopped = false, ownerStopReceipt = null;
@@ -308,6 +308,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (faultRetirement && faultRetirement.outcome !== 'complete' && (retirementContext || context)?.state !== 'closed') return reject(faultRetirement.state === 'retired' ? 'audio-retirement-unknown' : 'audio-retirement-pending');
     if (pendingInitializations.size >= 2) return reject('source-preparation-capacity');
     const next = validate(resolution); if (!next) return reject('unsupported-patch-or-engine');
+    const candidateVoices = isSampler ? next.maxVoices : MAX_VOICES; if (ready && preparedVoices !== candidateVoices) return reject('source-capacity-requires-new-renderer');
     if (!Array.isArray(assets) || assets.length !== (source.requiresPCMSet ? new Set(next.samplePatch.sampleRefs.map(ref => ref.sha256)).size : source.requiresPCM ? 1 : 0)) return reject('required-source-assets-unavailable');
     if (source.requiresPCM && (!preview._audioResources || assets.some(pin => { const ref = source.requiresPCMSet ? next.samplePatch.sampleRefs.find(ref => ref.sha256 === pin?.ref?.contentHash) : next.sampleRef; return !pin?.isActive?.() || !ref || pin.ref.contentHash !== ref.sha256 || pin.ref.bytes !== ref.bytes; }))) return reject('required-pcm-source-unavailable');
     const candidateContext = preview.getAudioContext();
@@ -339,14 +340,14 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       assetController.signal.throwIfAborted(); if (!current()) return reject('preparation-cancelled');
       timer = setTimeout(() => abortPreparation(new Error('kernel-initialization-timeout')), initializationTimeoutMs);
       if (!ready) candidateResourceLease = preview._audioResources?.reserveWorkletRuntime(owner, preview._generation,
-        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: MAX_VOICES }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate + (source.requiresPCMSet ? 131072 : 0), true) || null;
+        source.sourceBytes({ sampleRate: candidateContext.sampleRate, pcm: candidatePcm, voices: candidateVoices, ...(isSampler ? { sampleZones: next.samplePatch.sampleMap.zones.length } : {}) }) + (laneTapsEnabled ? 65536 : 0) + CAPACITY * (WIDTH - SINE_WIDTH) * 8, source.heapEstimate + (source.requiresPCMSet ? 131072 : 0), true) || null;
       await Promise.race([loadOwnedWorkletModule(candidateContext, source, preview._audioResources), interrupted]);
       if (!current()) return reject('preparation-cancelled');
       if (!ready) {
         const channel = preview._channel(0, owner), destination = channel.sourceInput || channel.gain;
         const create = createWorkletNode || ((audioContext, name, options) => new globalThis.AudioWorkletNode(audioContext, name, options));
         candidate = create(candidateContext, 'lemmings-owned-' + engineId.slice('worklet-'.length) + '-v1', { numberOfInputs: 0, numberOfOutputs: laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1, outputChannelCount: new Array(laneTapsEnabled ? 1 + LIVE_LANE_TAP_LIMIT * 2 : 1).fill(2),
-          processorOptions: { maxVoices: MAX_VOICES, ...(source.requiresPCMSet ? { samplePatch: next.samplePatch } : {}), ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload, ...(fixedBank.identities.length > 1 ? { auxiliarySourceBanks: fixedBank.auxiliary } : {}) } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
+          processorOptions: { maxVoices: candidateVoices, ...(source.requiresPCMSet ? { samplePatch: next.samplePatch } : {}), ...(laneTapsEnabled ? { laneTapProtocol: LIVE_LANE_TAP_PROTOCOL } : {}), ...(fixedBank ? { sourceBank: fixedBank.payload, ...(fixedBank.identities.length > 1 ? { auxiliarySourceBanks: fixedBank.auxiliary } : {}) } : {}), ...(inputCopy ? { pcm: inputCopy.payload } : {}) } });
         nodeContexts.set(candidate, candidateContext); if (source.requiresPCMSet) retirementAware.add(candidate);
         await Promise.race([new Promise((resolve, rejectReady) => {
           candidate.onprocessorerror = () => rejectReady(new Error('processor-error-during-prepare'));
@@ -354,7 +355,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
             const data = event.data;
             if (data?.type === 'ready' && data.retirementProtocol === 1) retirementAware.add(candidate);
             if (data?.type !== 'ready' || data.protocol !== PROTOCOL || data.engineId !== runtime.engineId || data.engineVersion !== 1 ||
-                data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || laneTapsEnabled && (data.laneTapProtocol !== LIVE_LANE_TAP_PROTOCOL || data.maxLaneTaps !== LIVE_LANE_TAP_LIMIT) || data.maxVoices !== MAX_VOICES ||
+                data.runtimeABI !== runtime.runtimeABI || data.buildId !== runtime.buildId || laneTapsEnabled && (data.laneTapProtocol !== LIVE_LANE_TAP_PROTOCOL || data.maxLaneTaps !== LIVE_LANE_TAP_LIMIT) || data.maxVoices !== candidateVoices ||
                 data.sampleRate !== candidateContext.sampleRate || data.width !== WIDTH || data.capacity !== CAPACITY ||
                 source.requiresPCMSet && (data.samplePlanIdentity !== candidatePlan.identity || data.retirementProtocol !== 1) || data.displayProtocol !== DISPLAY_PROTOCOL || data.displayWidth !== DISPLAY_WIDTH || data.displayVoices !== DISPLAY_VOICES ||
                 isLayered && data.auxiliarySourceBankHashes?.['grain-window-v1'] !== getOwnedSourceBankIdentity('grain-window-v1').hash || source.requiresPCM && data.pcmBankHash !== candidatePcm?.bankHash || source.bankId && data.sourceBankHash !== getOwnedSourceBankIdentity(source.bankId).hash) return rejectReady(new Error('kernel-abi-mismatch'));
@@ -387,7 +388,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
         };
         node.onprocessorerror = () => { if (node === connectedNode) markFault('processor-error'); };
         runtimeResourceLease = candidateResourceLease; candidateResourceLease = null; pcmDescriptor = candidatePcm; samplePlan = candidatePlan;
-        ready = true; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
+        ready = true; preparedVoices = candidateVoices; fault = null; faultRetirement = null; retirementContext = null; ownerStopped = false; display.configure(true);
       }
       try { ensureLaneProducer(); } catch (error) { markFault('lane-source-admission-failed'); throw error; }
       patch = next; if (candidatePlan) samplePlan = candidatePlan; return Object.freeze({ status: 'ready', patchId: next.id, revision: next.revision, capabilities, runtime, ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}) });
@@ -502,7 +503,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
     if (cancelled.has(generationKey)) return reject('generation-cancelled', intent.voiceId);
     if (cancellationHistoryFull && !isManagedExecutionEpoch(executionEpoch)) return reject('execution-registration-required', intent.voiceId);
     if (voices.has(key) || preview._semanticVoiceOwners.has(JSON.stringify([owner, executionEpoch, intent.voiceId]))) return reject('duplicate-owner-voice', intent.voiceId);
-    const slot = slots.findIndex(voice => voice == null);
+    const slot = slots.findIndex((voice, index) => index < preparedVoices && voice == null);
     const renderCost = source.cost(parameters);
     if (slot < 0 || !source.requiresPCMSet && voices.size >= patch.maxVoices || preview._renderVoiceCount() + renderCost > preview._maxScheduledVoices) return reject('shared-voice-budget', intent.voiceId);
     if (slotTokens[slot] === 0xffffffff) return reject('voice-slot-generation-exhausted', intent.voiceId);
@@ -544,7 +545,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
       baseFrequency: frequency / 2 ** (offset / 1200), mixPan: patch.pan01, patchRevision: patch.revision, patchId: patch.id,
       stringT60Seconds: parameters.stringT60Seconds, bodyT60Seconds: parameters.bodyT60Seconds, sourceParameters: parameters,
       sourceChannels: source.requiresPCMSet ? pcmDescriptor.banks.some(bank => bank.channels === 2) ? 2 : 1 : pcmDescriptor?.channels || 1,
-      performancePlan: patch.performance, continuousBase: performance?.continuousBase,
+      performancePlan: patch.performance, continuousBase: performance?.continuousBase, sourceValues: parameters,
       physicalCauses: isExtended ? new Map(initialCause ? [[initialCause.sourceKind, initialCause]] : []) : null, physicalFrame: targetFrame,
       startedAt: targetFrame / context.sampleRate, requestRelease: (time, force, reason) => {
         if (voice.released) return; voice.released = true; voice.releaseAt = Math.max(voice.start, time); voice.terminationCause = reason;
@@ -766,7 +767,7 @@ export function createWorkletInstrumentBackend(preview, owner = null, { leadSeco
   };
   const renderDiagnostics = ({ includeTraces = false } = {}) => Object.freeze({ engineId: runtime.engineId, runtime, capabilities,
     module: inspectOwnedWorkletModule(context || preview.getAudioContext(), runtime.workletUrl),
-    readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
+    preparedVoices, readiness: disposed ? 'disposed' : fault || !ready ? fault || 'runtime-unprepared' : ownerStopped ? 'kernel-stop-pending' : !preview._ownerReady(owner) ? 'audio-not-ready' : 'ready',
     activeVoices: voices.size, queued: queue?.diagnostics() || null, inFlight: inFlight.size, outstandingCommands: inFlight.size + (queue?.diagnostics().queued || 0), outstandingCapacity: CAPACITY, terminalReserve: SINE_MAX_VOICES, cancellationReceipts: cancellationReceipts.size, counters: Object.freeze({ ...counters }), pendingPreparations: pendingPreparations.size,
     ...(pcmDescriptor ? { sourceBank: pcmDescriptor } : {}),
     sourceState: lastSourceInspection, sourceInspectionPending: !!sourceInspection,

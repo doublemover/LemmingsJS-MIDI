@@ -6548,3 +6548,67 @@ export-budget acknowledgments still prevent a false complete receipt.
   scene geometry remain separate qualification. Formatting, eight-file syntax/
   import checks, critical types and static provenance pass (268 worker modules;
   10 components / 337 files). No runtime, browser, DSP or full-suite tests ran.
+
+
+### Continuation 259 — original prepared Circuit Workshop and bounded kit capacity
+
+- Added a worker-only original finite-source producer for deep/short kicks,
+  body/noise snares, rim, four-lobe clap, six toms, three choked hats and crash.
+  Clean, dusty, industrial and finite printed-room variants preserve actual WAV
+  hashes, source clocks, production models, component counts and the exact
+  application/renderer identity. Sources use fixed authored gains, finite edge/DC
+  handling and band-limited additive metal; no limiter or normalization claim.
+- Added immutable DrumKitDefinition and saved-reference binding. Local GM keys
+  select articulations independently of hardware fallback; unmapped notes name
+  their rim approximation. This tier refuses retuning, declares lane/kit-instance
+  hat ownership and validates actual decoded source frames/rate/channels. Each
+  composite source remains one semantic strike and one owned sample reader.
+- Sound Library now prepares and stages complete verified kits through shared
+  background jobs and archive ownership. Existing Apply/Hold preview preserve
+  the exact kit data. Canceled, failed or unknown producers/readers keep their
+  copy-workspace charges until retirement; publication never applies a lane.
+- Raised the owned sampler ceiling to sixteen, with each instance allocating its
+  declared patch capacity and zone count. Live readiness, memory quotations,
+  offline rendering and held-state validation use that same capacity. A prepared
+  renderer refuses a capacity change rather than resizing held state. Small
+  existing patches retain compact cursor storage; the runtime/configuration
+  identities explicitly change with the storage shape.
+- Corrected Nursery's mutable score copies and counted shared scene source pools
+  by their actual immutable renderer-instance key rather than once per lane.
+- Authored deferred cases for all four source variants, archive corruption,
+  saved kit/clock drift, cancellation/unknown retirement, sixteen-voice held
+  state continuation and live preparation capacity. This is an unqualified
+  prepared-source edition: live oscillator controls, per-strike source retuning,
+  a shared ROOM send, remaining GM models/schemes, physical Switchyard wiring,
+  spectrum/headroom, device and listening evidence remain implementation or
+  qualification work. The later repair run below exercises the Node/runtime
+  cases; browser, device and listening qualification remain separate.
+
+### Continuation 260 — full-suite repair batch and CI packaging
+
+- Frontloaded repairs for the 150 recorded failures across immutable recipe
+  construction, canonical macro controls, scene catalog/native/owned rehearsal
+  contracts, exact PCM layout/ancestry, source voice retirement and capacity,
+  resource leases, mutable monitor routes, and physical journey/contact facts.
+- Sustained travel updates retain one held voice without also emitting distance
+  pulses. Distance-attack articulation remains separate. Actual walk/landing,
+  occupancy direction and route discontinuity facts now drive their intended
+  owners; fixtures use actual command feedback and structured causal clocks.
+- Corrected stale fixture contracts, source/runtime pins, descriptor order and
+  explicit producer/reader retirement. Added negative checks for PCM aliasing,
+  unprepared voice slots and zero-byte logical leases. Long deterministic source
+  and physical fixtures receive explicit correctness timeouts.
+- The final combined Node run completed with 6,198 passing and one stale held
+  voice expectation, after the original 150 failures cleared. All 92 input hashes
+  remained unchanged during that run. The remaining fixture now requires one
+  active voice and no duplicate onset; its follow-up is validated separately.
+  See `docs/validation/full-suite-repair-2026-10-27.json` for the source receipt.
+- CI packaging merges duplicate npm CycloneDX dependency references while
+  preserving every dependency edge. Dependency repairs remove the current audit
+  findings; MCP editor records use explicit string keys compatible with Zod 4.
+  The combined follow-up passed all 172 articulation/Nursery/provenance/MCP
+  cases. Formatting, undefined-call checks, critical types, dependency checking,
+  release readiness, MCP compatibility and schema-validated SBOM generation pass;
+  dependency audit reports zero vulnerabilities. Browser qualification helpers
+  now resolve their serialized imports against the browser document URL. GitHub
+  CI's full coverage/browser run remains the final published-head check.

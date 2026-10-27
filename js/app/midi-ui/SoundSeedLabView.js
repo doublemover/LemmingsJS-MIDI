@@ -127,7 +127,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     warpDraft = revision; preparedWarpRevision = edit; warpParentSelection = parentSelection; say('Finite warp material prepared. Inspect its source/body/tail receipt, then explicitly select it. Its timing, spectra and listening quality remain unqualified.');
   }));
   const useWarp = button('Use warped material · fixed-rate source', () => { if (active || !warpCurrent()) return; modalSelection = null; derivedSelection = 'warped-seed'; transform.value = 'hammer-seed'; pitch.value = 'unpitched'; invalidateRecipe(); drawn = null; renderAncestry(chosenCandidate()); });
-  for (const input of [warpRate, warpPitch, warpOutputRate]) listen(input, 'change', () => { warpRevision++; warp.cancel(); if (modalParentSelection === 'warped-seed') invalidateModal(); invalidateRecipe(); });
+  for (const input of [warpRate, warpPitch, warpOutputRate]) listen(input, 'change', () => { warpRevision++; useWarp.disabled = true; warp.cancel(); if (modalParentSelection === 'warped-seed') invalidateModal(); invalidateRecipe(); });
   const download = button('Export frozen WAV', () => { const candidate = chosenCandidate(); if (!candidate?.metadata().assetReady) return;
     const receipt = deliverArtifactToAnchor(candidate.artifact, { document, windowRef: window }); say(receipt.state === 'delivery-requested' ? 'WAV download requested. Browser completion is unacknowledged; the in-memory seed remains available.' : 'WAV delivery ' + receipt.state + '.'); });
   const decompose = button('Analyze seed components', run(async () => {

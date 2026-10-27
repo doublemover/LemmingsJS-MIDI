@@ -44,7 +44,7 @@ describe('spatial texture into a private calibrated modal body (runtime qualific
     for (const textureKind of ['sand-drag', 'cloth-rub', 'crackle-skin', 'foam-air']) {
       const recipe = await createTextureBodyGraftRecipe({ ...options(), textureKind }), compiled = await compileSoundContent(recipe.source, { targets }), patch = compiled.prepared.patches[0];
       expect(patch.definition.sampleRefs).to.have.length(0); expect(patch.definition.sampleMap).not.to.exist; expect(patch.definition.engineId).to.equal('worklet-texture'); expect(patch.definition.parameters.graftModeCount).to.equal(6); expect(patch.definition.parameters.releaseSeconds).to.equal(4);
-      expect(patch.definition.macros.map(macro => macro.name)).to.deep.equal(['EXCITE', 'BODY', 'DAMP', 'MIX']); expect(patch.dependencies).to.include.members([hash, recipe.contractHash]); expect(await hashDataText(recipe.contractText)).to.equal(recipe.contractHash);
+      expect(patch.definition.macros.map(macro => macro.name)).to.deep.equal(['EXCITE', 'BODY', 'DAMP', 'MIX'].sort()); expect(patch.dependencies).to.include.members([hash, recipe.contractHash]); expect(await hashDataText(recipe.contractText)).to.equal(recipe.contractHash);
       expect(recipe.contract.sourceMaterialRole).to.include('frozen-audio-not-played'); expect(recipe.contract.graft.transition).to.include('next-onset-only'); expect(recipe.source.realizationGroups[0].profiles).to.have.length(1);
     }
   });

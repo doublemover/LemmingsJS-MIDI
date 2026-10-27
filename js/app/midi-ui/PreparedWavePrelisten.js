@@ -37,7 +37,7 @@ export function createPreparedWavePrelisten({ audio, resourceBudget, onState = (
   return Object.freeze({ state, stop: () => close(current),
     async play({ file, source, isCurrent = () => true, onReveal } = {}) {
       if (disposed || current || unknown.size || !audio?.acquireAudition || !audio?.createSession || typeof isCurrent !== 'function' || !file?.artifact?.borrow || !file.artifact.onDiscard || !file.manifest) throw fail('Stop the current preview and choose a retained rendered WAV.');
-      const context = audio.getAudioContext(), route = audio.getMonitorRouteState(), metadata = file.artifact.metadata();
+      const context = audio.getAudioContext(), route = { ...audio.getMonitorRouteState() }, metadata = file.artifact.metadata();
       if (!audio.getState().enabled || context?.state !== 'running' || !['rehearsal', 'separate-device'].includes(route.mode) || !['ready', 'playing-route'].includes(route.state)) throw fail('Enable audio and choose an explicit PRELISTEN route first.');
       if (!metadata.retained || !Number.isSafeInteger(metadata.byteLength) || metadata.byteLength < 64 || metadata.byteLength > 16 * 1048576) throw fail('Prelisten supports one retained WAV up to sixteen MiB.');
       const rawManifest = file.manifest;

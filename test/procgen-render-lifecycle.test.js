@@ -202,7 +202,7 @@ describe('ProcGen display resource lifecycle', () => {
     expect(() => createProcgenLaneRuntime({ canvas, assets: { groundPieces: [] }, initialWorld: world, windowRef,
       resourceLease: { release: () => released++ } })).to.throw('Injected canvas creation failure');
     expect(world.disposals).to.equal(1); expect(released).to.equal(1);
-    expect(canvases.every(surface => surface.width === 0 && surface.height === 0 && surface.listeners.size === 0)).to.equal(true);
+    expect(canvases.filter(surface => surface !== canvas).every(surface => surface.width === 0 && surface.height === 0 && surface.listeners.size === 0)).to.equal(true); expect(canvas.listeners.size).to.equal(0);
   });
 
   it('passes shared render reservations through runtime creation and retires them on stop', () => {

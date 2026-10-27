@@ -1,3 +1,6 @@
+import { prepareCircuitWorkshopPack } from './CircuitWorkshopPreparation.js';
+import { readStagedDrumKit } from './DrumKitReference.js';
+import { CIRCUIT_WORKSHOP_VARIANTS } from '../../midi/content/CircuitWorkshopProfile.js';
 import { NATIVE_SOUND_COLLECTIONS } from '../procgen/workstation/NativeSoundCollections.js';
 import { NATIVE_OFFLINE_SOURCE_IDS } from './NativeOfflineDriver.js';
 import { getOwnedSourceProfile, OWNED_SOURCE_IDS } from './OwnedSourceProfiles.js';
@@ -53,7 +56,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   const run = work => {
     if (disposed || current || factoryFaults.size) return Promise.resolve(null);
     const operation = { controller: new AbortController(), sequence: ++sequence }; current = operation; render();
-    operation.promise = Promise.resolve().then(() => work(operation)).catch(error => { setStatus(error?.message || 'Sound library operation failed.'); return null; })
+    operation.promise = Promise.resolve().then(() => work(operation)).catch(error => { if (error.drumKitOwnership) factoryFaults.set(operation.sequence, { receipt: error.retirement, ownership: error.drumKitOwnership }); setStatus(error?.message || 'Sound library operation failed.'); return null; })
       .finally(() => { if (current === operation) current = null; render(); }); return operation.promise;
   };
   const reviewRights = entry => rights.checked ? { decision: 'allow', receiptId: 'local-visible-review:' + sequence,
@@ -108,6 +111,15 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     }
     publish(next, operation); setStatus(name + ' definitions staged. Audition a revision before installing or applying it.');
   });
+  const prepareCircuit = () => run(async operation => {
+    try {
+      const result = await prepareCircuitWorkshopPack({ variant: circuitVariant.value, jobs, reader, resourceBudget, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed, onProgress: progress => { if (current === operation && !disposed) setStatus('Preparing original Circuit Workshop sources' + (progress.voiceId ? ' · ' + progress.voiceId : '') + '…'); } });
+      publish(result.stage, operation); setStatus(result.name + ': ' + result.voices + ' original fixed-source articulations prepared. Audition this exact revision, save its material, then Apply. ROOM remains a separate shared send; the printed-room variant is explicitly baked into these sources. Listening and device qualification are pending.');
+    } catch (error) { if (error.circuitWorkshopOwnership) factoryFaults.set(operation.sequence, { receipt: error.retirement, ownership: error.circuitWorkshopOwnership }); throw error; }
+  });
+  const circuitVariant = node('select'); circuitVariant.setAttribute('aria-label', 'Circuit Workshop prepared-source variant');
+  for (const [id, variant] of Object.entries(CIRCUIT_WORKSHOP_VARIANTS)) { const option = node('option', variant.name); option.value = id; circuitVariant.append(option); } controls.append(circuitVariant);
+  const circuitFactory = button('Prepare Circuit Workshop · fixed-source edition', prepareCircuit);
   const factory = button('Prepare factory instruments', () => prepareFactory(FACTORY_SOURCE, 'Factory'));
   const fmFactory = button('Prepare FM Forge', () => prepareFactory(FM_FORGE_SOURCE, 'FM Forge'));
   const materialFactory = button('Prepare struck materials', () => prepareFactory(MATERIAL_SOURCE, 'Struck materials'));
@@ -156,7 +168,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       finally { current?.controller.abort(failure('Preview gesture finished.')); }
       return;
     }
-    return run(async operation => { const candidate = installation.applyCandidate(stage, selection); check(operation);
+    return run(async operation => { let candidate = installation.applyCandidate(stage, selection); check(operation); const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) });
       await onApply(candidate, { signal: operation.controller.signal }); check(operation); setStatus('Instrument applied to the selected lane.'); });
   });
   const hold = button('Hold to preview incoming events', () => {});
@@ -168,7 +180,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     const operation = { mode: 'lane-preview', controller: new AbortController(), sequence: ++sequence, previewLease: null }; current = operation;
     const released = new Promise(resolve => operation.controller.signal.addEventListener('abort', resolve, { once: true }));
     hold.setAttribute('aria-pressed', 'true'); render();
-    operation.promise = Promise.resolve().then(() => onApply(candidate, { signal: operation.controller.signal, hold: true })).then(async lease => {
+    operation.promise = Promise.resolve().then(async () => { const drumKit = await readStagedDrumKit(stage, selection, { signal: operation.controller.signal, resourceBudget }); check(operation); if (drumKit) candidate = Object.freeze({ ...candidate, reference: Object.freeze({ ...candidate.reference, drumKit }) }); return onApply(candidate, { signal: operation.controller.signal, hold: true }); }).then(async lease => {
       operation.previewLease = lease; check(operation); render(); setStatus('Previewing current incoming events. Release restores the prior sound. Apply commits once; held voices retain their onset renderer.'); await released;
     }).catch(error => { if (!operation.controller.signal.aborted) setStatus(error.message); }).finally(async () => {
       const receipt = operation.previewLease?.cancel(); if (receipt?.completion) await receipt.completion;
@@ -268,9 +280,10 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
         sampleMap = map; sampleMapSource = patch.definitionHash;
         modelInfo.textContent = 'Sample instrument: ' + map.articulations.map(entry => entry.name).join(', ') + ' · ' + map.zones.length +
           ' mapped regions. The authored pitch and velocity ranges apply; playback speed changes pitch and duration.' +
-          (patch.definition.engineId === 'worklet-sample' ? ' Owned source pool: two voices including release tails; source and workspace quotas apply. Forward, reverse and explicit source-frame position controls use the same prepared reader in live and offline playback. Position control auditions use an authored outbound/return program, not physical motion. Listening and real-time capacity qualification are pending.' : '') +
+          (patch.definition.engineId === 'worklet-sample' ? ' Owned source pool: ' + patch.definition.voicePolicy.maxVoices + ' declared voices including release tails; source and workspace quotas apply. Forward, reverse and explicit source-frame position controls use the same prepared reader in live and offline playback. Position control auditions use an authored outbound/return program, not physical motion. Listening and real-time capacity qualification are pending.' : '') +
           (chosen ? ' Last control selection: ' + chosen.zoneId + ' · alternate ' + (chosen.alternateIndex + 1) + '/' + chosen.alternates + (chosen.neutralFallback ? ' · declared neutral fallback.' : '.') : '');
       }
+      if (patch?.definition?.tags?.includes('circuit-workshop')) modelInfo.textContent += ' Fixed prepared drum pitches keep GM articulation separate from tuning. WEIGHT is source low-pass, SNAP is host attack and METAL is velocity brightness contrast. ROOM requires a separate shared send; small-room-print contains finite recorded taps. No commercial drum-machine emulation or listening qualification is claimed.';
       if (patch?.state === 'definition-admitted' && patch.definition.engineId === 'native-fm') {
         const parameters = Object.fromEntries(Object.entries(NATIVE_FM_PARAMETERS).map(([id, parameter]) => [id, parameter.default])); Object.assign(parameters, patch.definition.parameters);
         modelInfo.textContent = 'Patch model: ' + (parameters.dualPair ? 'four' : 'two') + ' operator sources · carrier/modulator ' + parameters.carrierRatio + ':' + parameters.modulatorRatio +
@@ -315,7 +328,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
       const realization = lease.prepared.pack.compilation?.realizationGroups?.find(group => group.profiles.some(profile => profile.patchIdentity === selection)), profile = realization?.profiles.find(profile => profile.patchIdentity === selection);
       if (realization && profile) modelInfo.textContent += ' Authored realization ' + profile.id + ' · ' + realization.profiles.length + ' explicit profile(s). ' + (realization.singleProfileLimit || profile.changedAudibleProperties.join(' ')) + ' Preserved invariant claims: ' + profile.preservedInvariants.join(', ') + '. Device cost, listening and numerical equivalence are unqualified; automatic quality substitution is unavailable.';
     } finally { lease.release(); } }
-    for (const element of [factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
+    for (const element of [circuitFactory, circuitVariant, factory, fmFactory, materialFactory, pluckFactory, choirFactory, spectrumFactory, biomeFactory, tactileFactory, textureFactory, frictionFactory, windFactory, importInput, select, rights, browse, more, archivedToggle]) element.disabled = busy;
     if (gestureSource !== sampleMapSource) {
       gestureSource = sampleMapSource; gesture.replaceChildren();
       for (const entry of sampleMap?.articulations || []) { const option = node('option', entry.name); option.value = entry.id; gesture.append(option); }

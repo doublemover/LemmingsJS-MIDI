@@ -7,7 +7,7 @@ import { prepareFrictionModel, FRICTION_MODEL_REVISION } from './FrictionModel.j
 import { canonicalDataText, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 
 const quantity = (value, unit) => ({ value, unit }), component = (id, parameters) => ({ id, role: id, parameters });
-const macro = (id, name, parameter, low, high, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 10, perceptualDirection: name + ' changes the external linear body on the next actor onset; the intact parent feedback model is unchanged.', targets: [{ parameter, minimum: quantity(low, unit), maximum: quantity(high, unit), curve: 'linear', composition: 'replace', clamp: true }] });
+const macro = (id, name, parameter, low, high, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 0, perceptualDirection: name + ' changes the external linear body on the next actor onset; the intact parent feedback model is unchanged.', targets: [{ parameter, minimum: quantity(low, unit), maximum: quantity(high, unit), curve: 'linear', composition: 'replace', clamp: true }] });
 export async function createSealedBodyGraftRecipe({ manifest, assetHash, byteLength, pitch, graftBody = 'tin', originalBody = null, modalFit = null, transform = 'sealed-wind-body-graft', traversalBinding = null } = {}) {
   const fail = message => { throw new TypeError('Sealed graft: ' + message); }, wind = transform === 'sealed-wind-body-graft';
   if (!wind && transform !== 'sealed-friction-body-graft') fail('Choose the intact wind or friction output template.');

@@ -23,7 +23,8 @@ describe('causal musical intent engine', () => {
     const next = engine.processBatch(batch(2, [motion(6, 11)]));
     expect(next.some(intent => intent.terminationReason === 'mapping-changed')).to.equal(false);
     expect(next.find(intent => intent.kind === 'update').voiceId).to.equal(first.voiceId);
-    expect(next.filter(intent => intent.kind === 'begin')).to.have.length(1);
+    expect(next.filter(intent => intent.kind === 'begin')).to.have.length(0);
+    expect(engine.snapshot().active.map(voice => voice.voiceId)).to.deep.equal([first.voiceId]);
     const restored = createCausalMusicEngine({ getGraph: () => current }); restored.restore(engine.snapshot());
     expect(restored.processBatch(batch(3, [motion(11, 12)]))).to.deep.equal(engine.processBatch(batch(3, [motion(11, 12)])));
   });

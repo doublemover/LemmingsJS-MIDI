@@ -1,0 +1,425 @@
+{
+  "schema": "lemmings-full-suite-receipt/v1",
+  "date": "2026-10-27",
+  "command": "npm test",
+  "scope": "Full Node/Mocha repair batch; all 150 original failures cleared. One residual sustained-voice fixture expectation failed and is corrected separately.",
+  "result": {
+    "passed": 6198,
+    "failed": 1,
+    "mochaDuration": "7m",
+    "exitCode": 1,
+    "allPassing": false
+  },
+  "source": {
+    "head": "068d0439d076e314e3e45e5ec68b7b39a5f9467a",
+    "files": [
+      {
+        "path": "content/sounds/circular-travel.json",
+        "sha256": "b2580fdb35603ab60ffd19d6f687b0e758bb3150c9ce2fc1a98ed83dd2050653"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "ad5dfe36ba17c3d92d4e90dc311a1a759be345f25c7ccef2829967b31a8fda6d"
+      },
+      {
+        "path": "js/actions/PhysicalFlightFacts.js",
+        "sha256": "b649ef612e5da2ec3dcd01696c3d85d9926a61500467392c035985657d98fbc0"
+      },
+      {
+        "path": "js/app/midi-ui/AudioResourceLeases.js",
+        "sha256": "c17e4f0dcde22a1410beaf7e5be3b40629782321e15c59449b127023348c4287"
+      },
+      {
+        "path": "js/app/midi-ui/CausalOwnedRender.js",
+        "sha256": "ddea4d1c3ecd05fbcf9741614bf58599679a6fb9a1b43cbff4c6e4b60e87a1f2"
+      },
+      {
+        "path": "js/app/midi-ui/CircuitWorkshopPreparation.js",
+        "sha256": "ffa10b2b915703a036b400054b10fc4cbd77bf196a5bae62efba2d0da0b21b05"
+      },
+      {
+        "path": "js/app/midi-ui/DrumKitReference.js",
+        "sha256": "60d86fb3c13f589917eaa2668c172773a2715ef3f553a13100fe853a23ed6e2c"
+      },
+      {
+        "path": "js/app/midi-ui/NativeInstrumentSchema.js",
+        "sha256": "d609b94c1c888ca4204980a40af4e82408358ca8633ff9f69ae6e137cf1c4e7d"
+      },
+      {
+        "path": "js/app/midi-ui/NativeOfflineDriver.js",
+        "sha256": "fbd94a15186c9c4d47c1234070d7794891779b374751ba386821599a22b61660"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSamplePlan.js",
+        "sha256": "60e2ff83937861749cbafae20e9cbe941e3156d3534208592bcefdd23fb2e1e5"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceControlRender.js",
+        "sha256": "278557fe1b4cdb21b41f24f01bc0f183a446f1b07065a40a58d0e0696f5b93ec"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceLayout.js",
+        "sha256": "986d652c094bca7387012f6ce8485a7f420dd85869d546afb578c92424223bc6"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedSourceProfiles.js",
+        "sha256": "682f1ee3dcc6f5f18abe318f37adf1f80f673b6e04dfc62bf70c3f377e0e8e77"
+      },
+      {
+        "path": "js/app/midi-ui/PreparedWavePrelisten.js",
+        "sha256": "3a5006c0c13f9001c910c664b92326727ca43a1e5c8db0b88d04b9bd775d5c87"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentLibrary.js",
+        "sha256": "e08a3509bd4e46fc71be58a5249855b44425ed38fff1346974013383caedeec4"
+      },
+      {
+        "path": "js/app/midi-ui/SoundMaterialProvider.js",
+        "sha256": "98d0e5fd1c4e942fc0bba676e8a936e14caab19023d16f01b6f740acf1f90aa7"
+      },
+      {
+        "path": "js/app/midi-ui/SoundSeedLabView.js",
+        "sha256": "1601dd1ffc43880f7cc7208a9fe2004be36fc76629c2d4f6567429de6510cb6a"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSampleProcessor.js",
+        "sha256": "336a7e82b33a9689d9f46486faf1dee7f525f9e405744a7279daef2f6bd62476"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSampleSource.js",
+        "sha256": "b1ad11783bd6c8c0f6d8eaa5364bf5f25146a90eead18a392a921de93c6a7da0"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSeedLayerProcessor.js",
+        "sha256": "1ae42e99645e20d47b813ce9ecab8cf73e52a116b2fabb4fa1c4b6cd8ba77ac0"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSineProcessor.js",
+        "sha256": "5944b64fe36eb0b617d81649eab26acc343d7d3f99aebfd1734f821fc5de96b8"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedSourceState.js",
+        "sha256": "5be405e246f44cb78e5c7becb25e0e166353b75f4a82efeec994a8f85f3188f9"
+      },
+      {
+        "path": "js/app/midi-ui/workletInstrumentBackend.js",
+        "sha256": "6457d11ff147483e429ac3c6db3b51fe78dd7ca35dde86d5486e967471e10ec1"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+        "sha256": "348f4d0510c7a5a3c41a909acde234a861d25fa790a9548d84a6e8ff6816c625"
+      },
+      {
+        "path": "js/app/procgen/workstation/FrictionPerformanceScore.js",
+        "sha256": "035cc5f6750a677cbb607089428b7376b557729d8247f563869dbc4a45dfd37b"
+      },
+      {
+        "path": "js/app/procgen/workstation/InstrumentNurseryScore.js",
+        "sha256": "73952f8dbee88ddc456a77d61fa1bed884534571477e14bd18bfbb61e63abced"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformancePracticeScores.js",
+        "sha256": "a5c3c2ff9c06e6a652d90ce40049450a607c44415e8383e516e82af1c3b8e512"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js",
+        "sha256": "1f67a7a3dbc2e9a712832baac4126cbc63aea1f642cfa3d0e2e4beea4593dadb"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
+        "sha256": "d9c4200333c3f5ea9ba327e3d0b154bc3a79b8ff94d64f7666ebbe0417df8413"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneWorldAdapter.js",
+        "sha256": "d755dddb6af321d6350a917dc9fc900ca3c6480bcb8c2e6cca94db043aaec095"
+      },
+      {
+        "path": "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+        "sha256": "ab91185c7036bc677b7854a8d4789204daa0fc58a20ea2af4535cead90210cbe"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "sha256": "6eed37c924d0a348f5828b91b4382bbe9f041b6446a322726b69bf3a0804bfa0"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "sha256": "4e8057830e0faa9a245dc7966dc6d25eff322d4ee9a483d578d7c011aed77e30"
+      },
+      {
+        "path": "js/app/resources/CircuitWorkshopBuilder.js",
+        "sha256": "b5cd1f0def51be3f56b003009c3ca7f194b0b85b7371424396cbc2bede814330"
+      },
+      {
+        "path": "js/app/resources/OwnedPcmSetVerification.js",
+        "sha256": "8ceadcce5e0100091cbc195a7aeeae6d82488c86496c7dcd17d008cc7d6c3ac9"
+      },
+      {
+        "path": "js/app/resources/OwnedPcmVerification.js",
+        "sha256": "80d4caa140db7305b0efc77fb41b061ca82eb6eaa15de2ea9f92aa048132eec0"
+      },
+      {
+        "path": "js/midi/content/CircuitWorkshopProfile.js",
+        "sha256": "2c6810f98951565fdb39b2ee9063192226bb113571d4165450d8312337cb4deb"
+      },
+      {
+        "path": "js/midi/content/DrumKitDefinition.js",
+        "sha256": "5d46d077fcf05532422561092f7c0f584d1d905f4250e05de6235d127078e1c4"
+      },
+      {
+        "path": "js/midi/content/GraftComparison.js",
+        "sha256": "e62d8e07b775c58802db4f7a18d6a7a8f438a131bb478160536184f1fe7592cd"
+      },
+      {
+        "path": "js/midi/content/OwnedPcmFormat.js",
+        "sha256": "5c8ca60905ce8257c804a8148121a2bcbf3cb7626e6cd9cf4820094995da7521"
+      },
+      {
+        "path": "js/midi/content/SealedBodyGraftRecipe.js",
+        "sha256": "124650be6fb5f4191bb38cac77723fe69183115594f9ed99b70105ce2f130e54"
+      },
+      {
+        "path": "js/midi/content/SeedLayerProfile.js",
+        "sha256": "b68e34e0f1aa1e85a015e3137c6635bf13f4a413496547296bff8b05cde97aab"
+      },
+      {
+        "path": "js/midi/content/SoundContentPack.js",
+        "sha256": "2f31d390683608b4937836150c380315a7d0df50751da2150fa02c1213bb8e11"
+      },
+      {
+        "path": "js/midi/content/SoundContentReference.js",
+        "sha256": "83e6703287b519142499860e18ea275f185af28f892a296fe863f661e2f5221a"
+      },
+      {
+        "path": "js/midi/content/SoundSeedGraftRecipe.js",
+        "sha256": "276a215878b260da00352e27a5371d50edd2bef8c19875a527918c571845b553"
+      },
+      {
+        "path": "js/midi/content/SoundSeedLayerRecipe.js",
+        "sha256": "f573a543a8d9bdc224439724dcc181f2daa6cc85b2167945d07fcc9d929a6554"
+      },
+      {
+        "path": "js/midi/content/SoundSeedRecipe.js",
+        "sha256": "ec4a3af91c8a88c5a572383ad90bc428c52e912282ef3999505fc1657f595890"
+      },
+      {
+        "path": "js/midi/content/TextureBodyGraftRecipe.js",
+        "sha256": "d1202bfd8515b72528a434f2c73329c1d90691c3f4b48d2c87f2aff56e191674"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "sha256": "3c09ea0385219494ac295d03345455e3c86a84a8c56553fcf5c104af9df11ec1"
+      },
+      {
+        "path": "test/builder-miner-score.test.js",
+        "sha256": "cb922eed08c46667375d0a46bf88ffdb897cd43b5d47483bd5445d58b21e67d8"
+      },
+      {
+        "path": "test/fileprovider-runtime-lease.test.js",
+        "sha256": "fbe49627f906320bb91e5eff56eef1c79f144083c206e0a5b9956a5e758c54e4"
+      },
+      {
+        "path": "test/friction-performance-score.test.js",
+        "sha256": "fc4c4376b39251fcbb808631eb9350a78bdab47a8d5f4fc3a1abeec664180870"
+      },
+      {
+        "path": "test/glacier-choir-score.test.js",
+        "sha256": "07729ca6e129b535876bc55ea9a91f111d5e1e0b0bc4e3a4e8e360796c52abbc"
+      },
+      {
+        "path": "test/instrument-nursery-score.test.js",
+        "sha256": "fb98e14cd1761e57b0aa705e7d8092b924e56a2a4745986c3cce54bf9ebdae65"
+      },
+      {
+        "path": "test/instrument-nursery-strike.test.js",
+        "sha256": "303f88b3601473bcd8d7204b969d4877b1ce5a0abcc4ab92dd0613b30c37badd"
+      },
+      {
+        "path": "test/midi/audio-resource-leases.test.js",
+        "sha256": "7678b1340aaf0505ae08b93dcd32298fd16bac1ec1ac68981206fca591085f71"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "sha256": "b673bdc277b2b2df025ecb0ed049981f16acce7979a63b4cf35178ffb370f153"
+      },
+      {
+        "path": "test/midi/causal-owned-render.test.js",
+        "sha256": "2c320cae11f21272f4d4fdb23ad89e6b47f0926e76c185025e32121716e0ce14"
+      },
+      {
+        "path": "test/midi/circuit-workshop.test.js",
+        "sha256": "73f5f93b40ddd90f3ac264453ceebfd3d1a852e1692bc46fa70494989cc8d1c9"
+      },
+      {
+        "path": "test/midi/finite-fm-body-graft.test.js",
+        "sha256": "9f13d2c5199bd3c9616045abafced7c916997085024e4a51bd2db6331d3ab394"
+      },
+      {
+        "path": "test/midi/fractional-alignment.test.js",
+        "sha256": "3d60f6ba99a2e669343583de1bc47381758f80ee1df18748e0092e1b71554b79"
+      },
+      {
+        "path": "test/midi/instrument-performance.test.js",
+        "sha256": "8b0a39814496ad38e5e0de6c1e49d828a72d825fe913fea8df92ac02d3c041c5"
+      },
+      {
+        "path": "test/midi/original-graft-origin.test.js",
+        "sha256": "b241a66c84e88a749cd0e2ff26d2033661fe72765cb21144025b0ea680df2383"
+      },
+      {
+        "path": "test/midi/owned-friction-source.test.js",
+        "sha256": "451fc38c4bf6cc1ebaa93357ac48276a53d3d9f348ff4fc64f2c9722deb45e53"
+      },
+      {
+        "path": "test/midi/owned-pcm-bank.test.js",
+        "sha256": "c84d5979272fbe1d9e9772050431c5bdf5e5f150d535077048e6af19f1e23479"
+      },
+      {
+        "path": "test/midi/owned-sample-backend.test.js",
+        "sha256": "685e91912e2ed69f943ac98ca0c203ff4158826725842f8b7ebd3cdedc3239fe"
+      },
+      {
+        "path": "test/midi/owned-sample-control-render.test.js",
+        "sha256": "e1d911ec0300f7e35093bf65a2a6bac9f598aa1cdecef77d89948b3b2a47c386"
+      },
+      {
+        "path": "test/midi/owned-sample-kernel.test.js",
+        "sha256": "cb20b69564b97a5ac9aacac6018ba86f7ea7de3af6b0b5c694f7ab96af41bd9a"
+      },
+      {
+        "path": "test/midi/owned-sine-worklet.test.js",
+        "sha256": "3951e35bf949064ee731c281cfc888a6da498b89a68faca989ba956c9b9dc4fe"
+      },
+      {
+        "path": "test/midi/owned-wind-source.test.js",
+        "sha256": "60ea4517a25a971eb123ec73ef91d9c6eb803d9e4e2da752028babb1fcf26679"
+      },
+      {
+        "path": "test/midi/paired-modal-body-graph.test.js",
+        "sha256": "fc66f3f5764c35fa896cb244f3b050074d2fafe24435c23b0759dc87600df5d8"
+      },
+      {
+        "path": "test/midi/prepared-surfaces.test.js",
+        "sha256": "23fbde3378e62706aa48506b4dbda639696cb0fb00e70ab73fbbdd2c63d1000b"
+      },
+      {
+        "path": "test/midi/resonator-morph.test.js",
+        "sha256": "3034bf5af31b0f7f6d279394055f0c2592e3bb327cd68881c4aaa4a975e192cc"
+      },
+      {
+        "path": "test/midi/sample-body-graft.test.js",
+        "sha256": "57effe4bb7f6a209f24bf063822b066dd05fb0416b79e7d60259d3641c05ff24"
+      },
+      {
+        "path": "test/midi/sealed-body-graft.test.js",
+        "sha256": "1ed4493f1bd519d509615728ddb8297ec64a9673892825ab5e9986585f9c049f"
+      },
+      {
+        "path": "test/midi/seed-warp-workflow.test.js",
+        "sha256": "87916fe6631155e8e039a1472cf476fa0c78990feffd1d0299960f497b5c51f4"
+      },
+      {
+        "path": "test/midi/selected-voice-sources.test.js",
+        "sha256": "79289ae11335d8a9607f80bf1d101e2933f48135ca967460192f44aab159a24a"
+      },
+      {
+        "path": "test/midi/sound-material-ancestry.test.js",
+        "sha256": "da18ec2a91a8ed4b11cdd13da44b70dd1c9e6ec195c9338aa3f5af1fa8977cd7"
+      },
+      {
+        "path": "test/midi/sound-seed-recipe.test.js",
+        "sha256": "36fbceb98f3fb728ff6bbd1a72e1b73d1b20f46539aa4f5a08704f7cf9b281db"
+      },
+      {
+        "path": "test/midi/spatial-texture.test.js",
+        "sha256": "dad47b340bca8a2836d692405971d97f12957d32d7997f2730cb5d762016260b"
+      },
+      {
+        "path": "test/midi/texture-body-graft.test.js",
+        "sha256": "ab9de49dc9618f511a18567d88e00394b47e3ddd9e653b086e64a618bb3adfe3"
+      },
+      {
+        "path": "test/procgen-boot.test.js",
+        "sha256": "26aa7afb6be616783b0d4337a54cb80cca61aa1d7aa212837e3f844c8103cc20"
+      },
+      {
+        "path": "test/procgen-lanes.test.js",
+        "sha256": "b9abdc06e49e377ef47a1424797fa0cceeba59ec27fc790cf768f34ab739b398"
+      },
+      {
+        "path": "test/procgen-optimization.test.js",
+        "sha256": "8c597494fe0b555bfefd44bb93f33031fb0203eb53cef23cc223421f60475dd2"
+      },
+      {
+        "path": "test/procgen-performance-scene.test.js",
+        "sha256": "b0e671870a8e709e9fa37636815301e404dde7e937be13775c6fb57b2610a1c9"
+      },
+      {
+        "path": "test/procgen-physical-score.test.js",
+        "sha256": "41d7283518648e86a01c400d790c391aab95d5bf40152ab76fb3a7cb655b47c2"
+      },
+      {
+        "path": "test/procgen-render-lifecycle.test.js",
+        "sha256": "79f8f4c12d519efb2734cbd9effcb51093f13a0c14915d59fe54cc1fa9a4f399"
+      },
+      {
+        "path": "test/procgen-scored-terrain.test.js",
+        "sha256": "508d82297971d383aa61bb67c0b4036d20595f4d54294bf11cc29941c0ae5981"
+      },
+      {
+        "path": "test/runtime-provenance.test.js",
+        "sha256": "c0587afaa3eca9ed6cc1c62e04e27465aa047e6c9f6d63a5fd4f9d212f011281"
+      },
+      {
+        "path": "test/scene-native-rehearsal.test.js",
+        "sha256": "65b2c4f7b4e1e877cefd1db496e4ab897e567b86940bd4e434c5f12077acb0d4"
+      },
+      {
+        "path": "test/scene-owned-rehearsal.test.js",
+        "sha256": "ee7fb7d1366ed221819995b29be969e842f74346d4b52308977f5fd91d4902f1"
+      },
+      {
+        "path": "test/wind-performance-score.test.js",
+        "sha256": "4c8afd1274cd5aa7721a09167044c633c51e3360075461b79f7c1c014c518acb"
+      }
+    ],
+    "inputsUnchangedDuringRun": true
+  },
+  "log": {
+    "name": "lemmings-rook-final-suite-20261027.log",
+    "sha256": "2ce26f60b4a2b2c8429844cc87f4bff43c5f2acb858245a8fd9d4d3d318d13bd"
+  },
+  "remainingFailure": {
+    "file": "test/procgen-causal-music-engine.test.js",
+    "test": "preserves unchanged instruments, travel phase and voice identity across unrelated mapping edits",
+    "reason": "Expected a duplicate distance pulse from an already-held sustained voice."
+  },
+  "limitations": [
+    "Node/Mocha correctness run only; separate browser, device, listening, numerical and sustained-performance qualification remains.",
+    "Subsequent dependency and CI tooling repairs require separate validation."
+  ],
+  "followup": {
+    "command": "npx mocha test/runtime-bom-dependencies.test.js test/mcp-schema-compatibility.test.js test/procgen-causal-music-engine.test.js test/procgen-travel-articulation.test.js test/instrument-nursery-score.test.js test/instrument-nursery-strike.test.js test/runtime-provenance.test.js \"test/mcp-*.test.js\"",
+    "passed": 172,
+    "failed": 0,
+    "exitCode": 0,
+    "mochaDuration": "9s",
+    "scope": "Remaining held-voice fixture, sustained/distance articulation, Nursery, SBOM normalization, provenance and MCP validation after dependency repairs.",
+    "log": {
+      "name": "lemmings-rook-ci-followup-20261027.log",
+      "sha256": "2e0adad479ca8f2d9740e8fb64e399cf818765da35c8d5fa1796a889ea897517"
+    },
+    "packageSha256": "db26c6559aaeebfd50e0837495cb08f94f2270c9886b0d61de4b89e451e82c23",
+    "lockSha256": "43570476bc75466faab4fcc11868dbb4587921eaeb5ce1c88ca7f6e0bd6fa39a",
+    "checks": {
+      "format": "pass",
+      "undefinedCalls": "pass",
+      "criticalTypes": "pass",
+      "provenanceSbomSchema": "pass",
+      "dependencyAudit": "0 vulnerabilities",
+      "dependencyCheck": "pass",
+      "releaseReadiness": "pass",
+      "mcpClientCompatibility": "pass"
+    },
+    "fullSuiteAfterFollowup": "Pending GitHub CI coverage run; no claim that this focused follow-up is a second full suite."
+  }
+}

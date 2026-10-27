@@ -121,7 +121,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     if (!validControlKinds(kinds)) throw new Error('Invalid held physical control sources.');
     if (!restoring && onsetPlans.has(voiceId)) { const onset = onsetPlans.get(voiceId); record.basePitchCents = onset.baseCents; record.onsetPitch = onset.pitch; record.tonalState = onset.tonalState; record.rootedSourceEventIds = record.rootedSourceEventIds || onset.sourceEventIds; record.tonalOffset = 0; }
     record.physicalSourceKinds = Object.freeze([...kinds].sort()); active.set(voiceId, record);
-    if (!kinds.length && !record.instrument.actionVoicePolicy?.expressionMappings.length) return;
+    if (!kinds.length && !record.instrument.actionVoicePolicy?.expressionMappings.length && !record.instrument.contactTravel) return;
     let records = byActor.get(record.actorId);
     if (!records) { records = new Set(); byActor.set(record.actorId, records); } records.add(record);
   };
@@ -427,6 +427,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
                 actorId: fact.actorId, laneId: fact.laneId, actionInstanceId: fact.actionInstanceId,
                 lifetimeScope: state.lifetimeScope, scopeInstanceId: state.scopeInstanceId });
             }
+            continue;
           }
           for (const crossing of result.crossings) {
             if (!responds(instrument, fact, `${fact.eventId}:travel:${crossing.ordinal}`)) continue;

@@ -1,4 +1,4 @@
-import { MAX_OWNED_PCM_BYTES, MAX_OWNED_PCM_BANKS, validOwnedPcmDescriptor, validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
+import { MAX_OWNED_PCM_BYTES, MAX_OWNED_PCM_BANKS, validOwnedPcmDescriptor, validOwnedPcmPlanes, validOwnedPcmSetDescriptor } from '../../midi/content/OwnedPcmFormat.js';
 import { verifyOwnedPcmPayload } from './OwnedPcmVerification.js';
 import { hashData, freezeData, canonicalDataText } from '../../core/CanonicalData.js';
 const fail = message => { throw Object.assign(new Error(message), { name: 'CausalRenderError', code: 'pcm-set-identity-mismatch' }); };
@@ -17,7 +17,7 @@ export async function verifyOwnedPcmSetPayload(payload, expectedRefs, options = 
   if (refs.size !== descriptor.banks.length || descriptor.assetHashes.some(hash => !refs.has(hash))) fail('PCM set differs from the patch asset inventory.');
   let actualBytes = 0; const buffers = new Set();
   for (const bank of payload.banks) {
-    if (!Array.isArray(bank?.planes) || bank.planes.length > 2) fail('Invalid PCM set plane inventory.');
+    if (!validOwnedPcmPlanes(bank?.planes, bank?.descriptor, buffers)) fail('Invalid PCM set plane inventory.');
     const owned = new Set();
     for (const plane of bank.planes) { if (!(plane instanceof Float32Array) || !(plane.buffer instanceof ArrayBuffer) || buffers.has(plane.buffer)) fail('PCM set banks require independently owned buffers.'); owned.add(plane.buffer); actualBytes += plane.byteLength; }
     for (const buffer of owned) buffers.add(buffer);

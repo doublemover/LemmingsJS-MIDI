@@ -12,7 +12,7 @@ export function transitionPhysicalFlight(actor, previousAction, nextAction) {
       startPosition: { x: actor.x, y: actor.y }, peakY: actor.y, travelPixels: 0, source: previous ? 'action-transition' : 'spawn-fall' };
     actor._physicalFlightState = state; emit(actor, 'FlightArcStarted', state);
   } else if (airborne(previous) && !airborne(next) && actor._physicalFlightState) {
-    endPhysicalFlight(actor, next === 'walking' ? 'safe-landing' : 'action-interrupted');
+    endPhysicalFlight(actor, ['walk', 'walking'].includes(next) ? 'safe-landing' : 'action-interrupted');
   }
 }
 export function observePhysicalFlightStep(actor, beforeX, beforeY) {
