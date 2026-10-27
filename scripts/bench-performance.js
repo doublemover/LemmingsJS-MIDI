@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBenchmarkReceipt } from './BenchmarkReceipt.js';
+import { installBrowserWorkObservation } from './BrowserWorkObservation.js';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 const VALID_MODES = new Set(['sequence', 'bench', 'reverse']);
@@ -357,6 +358,7 @@ const run = async (config = createPerformanceBenchConfig()) => {
       throw new Error(`Requested bench mode "${mode}" is unsupported by current E2E capabilities.`);
     }
     await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
+    const observation = await withTimeout(page.evaluate(installBrowserWorkObservation), opTimeoutMs, 'observeCompletedWork');
 
     const samples = [];
     const warmupSamples = [];
@@ -364,47 +366,41 @@ const run = async (config = createPerformanceBenchConfig()) => {
     let maxSpeed = 0;
     let maxFrameMs = 0;
     const start = Date.now();
-    const totalWindowMs = warmupMs + durationMs;
-    while (Date.now() - start < totalWindowMs) {
+    let measuredDurationMs = 0;
+    while (measuredDurationMs < durationMs) {
       assertRuntimeBudget('sampling');
       const evalStart = Date.now();
-      const bench = await withTimeout(page.evaluate(() => {
-        const metrics = window.__E2E__.getBenchMetrics?.() || {};
-        const state = window.__E2E__.getState?.() || {};
-        const timer = state?.game?.timer || {};
-        return {
-          ...metrics,
-          reverse: !!state?.game?.timeTravel?.isReversing,
-          frameMs: Number(timer.frameTime || 0)
-        };
-      }), opTimeoutMs, 'sampleBenchMetrics');
+      const bench = await withTimeout(page.evaluate(() => window.__LEMMINGS_BENCH_OBSERVATION__.sample()), opTimeoutMs, 'sampleCompletedWork');
 
       const evalMs = Date.now() - evalStart;
-      const tps = Number(bench?.tps || 0);
-      const speed = Number(bench?.speedFactor || 0);
-      const frameMs = Number(bench?.frameMs || 0);
+      const tps = bench.tps;
+      const speed = bench.speedFactor;
+      const frameMs = summarize(bench.frameGapsMs.map(frameMs => ({ frameMs })), 'frameMs').p95;
       if (tps > maxTps) maxTps = tps;
       if (speed > maxSpeed) maxSpeed = speed;
       if (frameMs > maxFrameMs) maxFrameMs = frameMs;
       const elapsedMs = Date.now() - start;
       const sample = {
+        ...bench,
         elapsedMs,
         tps,
         speedFactor: speed,
         frameMs,
         evalMs,
         reverse: !!bench?.reverse,
-        benchMaxSpeed: bench?.benchMaxSpeed ?? null
+        benchMaxSpeed: bench.bench?.benchMaxSpeed ?? null
       };
-      if (elapsedMs < warmupMs) {
+      const intervalStartMs = bench.observedAtMs - bench.measurementElapsedMs - observation.startedAtMs;
+      if (intervalStartMs < warmupMs) {
         warmupSamples.push(sample);
       } else {
         samples.push({
           ...sample,
           elapsedMs: elapsedMs - warmupMs
         });
+        measuredDurationMs += bench.measurementElapsedMs;
       }
-      await sleep(sampleMs);
+      if (measuredDurationMs < durationMs) await sleep(sampleMs);
     }
 
     try {
@@ -436,11 +432,15 @@ const run = async (config = createPerformanceBenchConfig()) => {
 
     const summary = {
       receipt: createBenchmarkReceipt('performance', requestedProfile, [`${mode}:entrances:${entrances}`]),
+      measurement: { kind: 'completed-work/v1', clock: 'browser-performance-now', frameDistribution: 'completed-raf-gap-ms',
+        tickExecution: 'Game runGameLogic', renderExecution: 'GameDisplay render', maximumTimingValuesPerInterval: 16384 },
       profile: requestedProfile,
       mode,
       durationMs,
       warmupMs,
       sampleMs,
+      measuredDurationMs,
+      completedTicks: flaggedSamples.reduce((sum, sample) => sum + sample.completedTicks, 0),
       entrances,
       url: benchUrl,
       maxTps,
@@ -454,7 +454,9 @@ const run = async (config = createPerformanceBenchConfig()) => {
       outlierCount: flaggedSamples.length - filteredSamples.length,
       tpsStats: summarize(flaggedSamples, 'tps'),
       speedStats: summarize(flaggedSamples, 'speedFactor'),
-      frameStats: summarize(flaggedSamples, 'frameMs'),
+      frameStats: summarize(flaggedSamples.flatMap(sample => sample.frameGapsMs.map(frameMs => ({ frameMs }))), 'frameMs'),
+      tickExecutionStats: summarize(flaggedSamples.flatMap(sample => sample.tickExecutionMs.map(durationMs => ({ durationMs }))), 'durationMs'),
+      renderExecutionStats: summarize(flaggedSamples.flatMap(sample => sample.renderExecutionMs.map(durationMs => ({ durationMs }))), 'durationMs'),
       evalStats: summarize(flaggedSamples, 'evalMs'),
       filteredTpsStats: summarize(filteredSamples, 'tps'),
       filteredSpeedStats: summarize(filteredSamples, 'speedFactor'),
@@ -463,6 +465,9 @@ const run = async (config = createPerformanceBenchConfig()) => {
     };
     console.log(JSON.stringify(summary, null, 2));
   } finally {
+    if (page) {
+      try { await withTimeout(page.evaluate(() => window.__LEMMINGS_BENCH_OBSERVATION__?.dispose()), opTimeoutMs, 'disposeWorkObservation'); } catch {}
+    }
     await closeQuietly(page, 'page.close');
     await closeQuietly(context, 'context.close');
     await closeQuietly(browser, 'browser.close');

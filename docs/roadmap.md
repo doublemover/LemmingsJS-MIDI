@@ -6640,3 +6640,40 @@ export-budget acknowledgments still prevent a false complete receipt.
   frame before reading state. The deterministic stale-state regression, all
   43 combined benchmark/runner cases and the actual smoke batch pass; workload
   targets and thresholds remain unchanged.
+
+### Continuation 261 — reservation frontiers and truthful benchmark producers (#1122, #1254, #901)
+
+- The preceding checkpoint 5951f72d is fully green in CI: 6,200 instrumented
+  tests, 90.09% lines/statements, 83.46% branches and 88.17% functions. All
+  original 150 failures are repaired; their 33 issue owners now record that CI
+  evidence. The following development is a separate frontloaded batch.
+- Ordinary and independent-local capacity admission now runs at dispatch, counts
+  sounding owners separately, preserves a sounding owner on setup refusal, and
+  records explicit terminal reasons. Immediate onsets displace only overlapping
+  queued intervals; nonoverlapping reservations survive. Pending reservations
+  have an independent finite bound. Authored fake-clock cases cover cancellation,
+  same-pitch/timed-off/chord ordering, output ownership and unavailable capacity.
+- Browser benchmark receipts now distinguish requested rates from completed
+  tick/monotonic-time throughput, actual RAF gaps and existing logic/render
+  execution measures. Observation storage is bounded and overflow is invalid.
+  Version-two receipt admission requires actual work and the declared population.
+- MIDI CPU rows use deterministic chronological workloads and real CPU clocks,
+  with separate successful-work and saturated-rejection rows, per-repetition
+  admissions/submissions/rejections and cleanup evidence. Rejected attempts no
+  longer qualify a successful-work row.
+- History qualification captures independently observed forward state and full
+  terrain mask/RGB without scanning the archive. Applied target/return states
+  are compared exactly; actual cold-decode/cache-hit counters distinguish first
+  touches and repeats. Bounded retained checkpoint payloads are retired after
+  probing. No-op and actor/terrain corruption controls are authored. Existing
+  terrain undo #1264 was already closed; its 24 production-owner regressions
+  are confirmed by the green checkpoint.
+- Both maintained direct-Mocha subsets now route through shared runner categories
+  while preserving their exact files and guard order. The package-script guard
+  scans every maintained Mocha command. Coverage retains its instrumented owner.
+- Runtime validation of this new batch is deferred while development continues;
+  formatting, syntax and critical-type checks are the current preflight scope.
+
+- Preflight passes: formatting, syntax for 23 changed/new modules, critical
+  types, undefined-call scan, dependency checking and runtime provenance
+  (10 components / 340 files). New runtime fixtures remain deliberately unrun.

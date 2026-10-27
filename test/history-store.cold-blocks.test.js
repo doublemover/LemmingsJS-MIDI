@@ -174,6 +174,13 @@ describe('HistoryStore cold blocks', function() {
     expect(history.deltas[coldTick]).to.equal(1);
     const delta = history.getDelta(coldTick);
     expect(delta).to.be.ok;
+    const decoded = history.getHistoryStats();
+    expect(decoded.coldBlockDecodes).to.be.greaterThan(stats.coldBlockDecodes);
+    expect(decoded.coldDecodedBytes).to.be.greaterThan(stats.coldDecodedBytes);
+    history.getDelta(coldTick);
+    const cached = history.getHistoryStats();
+    expect(cached.coldBlockDecodes).to.equal(decoded.coldBlockDecodes);
+    expect(cached.coldBlockCacheHits).to.be.greaterThan(decoded.coldBlockCacheHits);
     expect(delta.tick).to.equal(coldTick);
   });
 

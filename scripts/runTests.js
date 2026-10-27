@@ -56,6 +56,13 @@ const CATEGORY_PATTERNS = Object.freeze({
   workflow: ['test/*workflow*.test.js'],
   tools: ['test/tools/*.test.js', 'test/listSprites*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
+  'work-removal': [
+    'test/work-removal.test.js', 'test/solver-runner.test.js', 'test/solver-tactical.test.js', 'test/solver-integration.test.js',
+    'test/displayimage-coverage.test.js', 'test/history-store.diffing.test.js', 'test/history-store.replay-apply.test.js',
+    'test/time-travel-controller.seek.test.js', 'test/midi/midi-ui-controller.test.js', 'test/midi/local-game-preview.test.js',
+    'test/midi/game-spatial-sounds.test.js', 'test/midi/browser-note-preview.test.js'
+  ],
+  'procgen-long': ['integration/procgen-source-long.test.js'],
   editor: [
     'test/editor/*.test.js',
     'test/editor-*.test.js',
@@ -73,7 +80,9 @@ const CATEGORY_ORDER = Object.freeze([
   'offline-tools',
   'bench',
   'release',
-  'workflow'
+  'workflow',
+  'work-removal',
+  'procgen-long'
 ]);
 const CHANGED_FILE_CATEGORY_RULES = Object.freeze([
   { category: 'midi', matches: normalized => normalized.startsWith('js/midi/') || normalized.startsWith('js/app/midi') || normalized.startsWith('test/midi/') },

@@ -112,6 +112,7 @@ const historyStoreStatsMethods = {
       coldBlockCount: this._coldBlockCount,
       coldBlockBytes: this._coldBlockBytes,
       coldBlocksCreated: this._coldBlocksCreated, coldBlocksThawed: this._coldBlocksThawed, coldBlocksRetired: this._coldBlocksRetired,
+      coldBlockDecodes: this._coldBlockDecodes, coldBlockCacheHits: this._coldBlockCacheHits, coldDecodedBytes: this._coldDecodedBytes,
       retention: this.getRetentionPolicy()
     };
   },

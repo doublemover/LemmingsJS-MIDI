@@ -39,9 +39,15 @@ is never the default comparison base. Missing PR targets fall back to the full s
 base ref, changed files, inferred categories, and Mocha args without running
 guards or tests.
 The maintained subset scripts (`test-core`, `test-bench-unit`,
-`test-workflow`, `test-tools`, `test-offline-tools`, and `test-editor`) all go
+`test-workflow`, `test-tools`, `test-offline-tools`, `test-editor`,
+`test:work-removal`, and `test-procgen-long`) all go
 through `scripts/runTests.js`, so they share the same runtime-global guard,
 critical typecheck guard, and runtime budget reporting as `npm test`.
+The work-removal category retains its twelve targeted files; procgen-long keeps
+its integration fixture separate from the default unit suite. Instrumented
+`coverage` commands own their Mocha process under c8; CI runs the static guards
+before that single full coverage pass. Unsupported ad-hoc raw npm entrypoints
+must use the explicit `test:raw:*` prefix.
 
 Tests that require significant manual setup or large downloads belong in
 [`excluded-tests.md`](excluded-tests.md). No tests are currently excluded.
@@ -69,7 +75,9 @@ npm run bench-smoke -- --soak
 
 `bench-history` is the replay-invariant guardrail for compression/rewind work:
 
-- It runs random seek/replay probes and fails on replay-hash divergence
+- It compares applied seek states and complete terrain mask/RGB with independent
+  checkpoints captured during forward execution, then restores the actual
+  starting state boundary. It fails on incomplete or unequal replay
   (`HISTORY_REQUIRE_REPLAY_PARITY`, defaults to `true`).
 - It fails when bounded history retention is not enabled
   (`HISTORY_REQUIRE_BOUNDED_RETENTION`, defaults to `true`).
@@ -77,6 +85,13 @@ npm run bench-smoke -- --soak
   (`HISTORY_REQUIRE_COLD_COMPACTION`, defaults to `true` for `default`/`soak`).
 
 `bench-hotpaths` now reports percentile and allocation diagnostics per section:
+
+Browser performance receipts measure completed ticks per monotonic elapsed time,
+actual RAF gaps, and logic/render execution spans. Requested timer rates are
+configuration fields. MIDI hot paths separate successful fixed work from saturated
+rejection, with deterministic workload clocks, real CPU timers, per-repetition
+admitted/submitted/rejected counts, and final cleanup evidence. These controlled
+CPU fixtures do not measure hardware or live audio throughput.
 
 - `avgMs`, `p50Ms`, `p95Ms`, `p99Ms`, `worstMs`
 - `allocBytesAvg`, `allocBytesP95`, `allocBytesWorst`

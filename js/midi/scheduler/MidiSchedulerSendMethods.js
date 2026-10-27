@@ -1,4 +1,5 @@
 import { getLocalAudioNotePan } from './LocalAudioVoiceBudget.js';
+import { pendingReservationConflicts } from './VoiceReservationIntervals.js';
 import { transferGamePhraseVoiceKey } from './MidiGamePhraseQueue.js';
 import { getAppContext } from '../../core/dependencies.js';
 import {
@@ -64,7 +65,6 @@ const midiSchedulerSendMethods = {
         : null;
 
       const now = this._nowMs();
-      if (sendTimeMs > now && !mpeEnabled && this._pendingNoteOns.size >= this._maxActiveNotes) { releaseExternalShare(); return false; }
       if (sendTimeMs > now && this._pendingNoteOns.size >= Math.max(32, this._maxActiveNotes * 4)) { releaseExternalShare(); return false; }
       const releaseUnclaimed = () => { if (localReservationId != null) this._releaseReservation(localReservationId); };
       if (meta.rateReserved !== true) {
@@ -90,7 +90,6 @@ const midiSchedulerSendMethods = {
         this._usedOutputChannels.set(output, usedChannels);
       }
       if (channelNumber != null) usedChannels.add(channelNumber);
-      if (output.supportsIndependentNoteGates && !this._admitLocalNote(output, meta, trackId, voiceBudget)) { releaseUnclaimed(); releaseExternalShare(); return false; }
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
       admissionToken = token;
@@ -104,17 +103,6 @@ const midiSchedulerSendMethods = {
         scheduledMs: sendTimeMs, durationMs, held: durationMs === 0,
         connectionEpoch: routeLease?.connectionEpoch ?? null, routeRevision: routeLease?.routeRevision ?? null } : null;
       this._observe('scheduled', { ...captureMeta, type: 'noteOn', offScheduledMs: durationMs > 0 ? offTimeMs : null });
-      if (
-        !deferredMpe && !output.supportsIndependentNoteGates && trackId &&
-          voiceBudget != null &&
-          this._countActiveNotesForTrack?.(trackId) >= voiceBudget
-      ) {
-        this._stealOldestNoteForTrack(trackId);
-      }
-      if (!deferredMpe && !output.supportsIndependentNoteGates && this._activeNotes.size >= this._maxActiveNotes) {
-        this._stealOldestNote();
-      }
-
       if (this._disposed || lifecycle !== this._lifecycleVersion || this._resolveOutput(outputId) !== output) {
         this._removePlannedRateEntries(token);
         releaseUnclaimed();
@@ -173,13 +161,13 @@ const midiSchedulerSendMethods = {
             this._stopActiveNoteToken(token, 'mpe-capacity');
           };
           if (trackId && voiceBudget != null &&
-              [...this._activeNotes.values()].filter(info => started(info) && info.trackId === trackId).length >= voiceBudget) {
+              this._countSoundingNotes(trackId) >= voiceBudget) {
             if (this._mpeZonePlan?.voicePolicy === 'reject') { rejectCapacity(); return; }
             const victim = this._findOldestActiveNote(info => started(info) && info.trackId === trackId);
             this._stopActiveNoteToken(victim, 'mpe-track-voice-budget');
           }
           if (!ownsVoice()) { dispatchFailed = true; return; }
-          if ([...this._activeNotes.values()].filter(started).length >= this._maxActiveNotes) {
+          if (this._countSoundingNotes() >= this._maxActiveNotes) {
             if (this._mpeZonePlan?.voicePolicy === 'reject') { rejectCapacity(); return; }
             this._stopActiveNoteToken(this._findOldestActiveNote(started), 'mpe-global-voice-budget');
           }
@@ -197,17 +185,19 @@ const midiSchedulerSendMethods = {
             channel: channelNumber, note: spec.note, outputId, startedAt, token
           });
         }
-        if (!active.mpe && !output.supportsIndependentNoteGates) {
-          // MIDI 1.0 has one gate per output/channel/pitch. Retrigger owns that gate.
-          for (const [previousToken, previous] of [...this._activeNotes]) {
-            if (previousToken !== token && previous.hasStarted && previous.output === output &&
-                previous.channel === channelNumber && previous.note === spec.note) {
-              this._stopActiveNoteToken(previousToken);
-            }
-          }
-        }
         try {
           if (!ownsVoice()) { dispatchFailed = true; return; }
+          if (typeof output.channels?.[channelNumber]?.sendNoteOn !== 'function') {
+            dispatchFailed = true;
+            this.recordThrottle('onset-unsupported', this._nowMs(), captureMeta);
+            this._stopActiveNoteToken(token, 'onset-unsupported');
+            return;
+          }
+          let localVictims = !active.mpe && output.supportsIndependentNoteGates
+            ? this._planLocalNoteAdmission(output, meta, trackId, voiceBudget) : [];
+          if (localVictims === null) {
+            dispatchFailed = true; this._stopActiveNoteToken(token, 'local-admission-rejected'); return;
+          }
           this._removePlannedRateEntries(token, 'on');
           const expression = this._expressionPlan(spec, output, channelNumber);
           if (expression.coalesced) this._observe('coalesced', { ...captureMeta, type: 'controllers',
@@ -232,6 +222,28 @@ const midiSchedulerSendMethods = {
             control.state.bindings.set(control.binding, control.value);
           }
           Object.assign(expression.state, expression.spanState);
+
+          if (!active.mpe) {
+            if (output.supportsIndependentNoteGates) {
+              localVictims = this._planLocalNoteAdmission(output, meta, trackId, voiceBudget);
+              if (localVictims === null) {
+                dispatchFailed = true; this._stopActiveNoteToken(token, 'local-admission-rejected'); return;
+              }
+              for (const victim of localVictims) this._stopActiveNoteToken(victim, 'local-voice-budget');
+            } else {
+              while (ownsVoice() && trackId && voiceBudget != null && this._countSoundingNotes(trackId) >= voiceBudget) {
+                this._stopActiveNoteToken(this._findOldestActiveNote(info => info.hasStarted === true && info.trackId === trackId), 'ordinary-track-voice-budget');
+              }
+              while (ownsVoice() && this._countSoundingNotes() >= this._maxActiveNotes) {
+                this._stopActiveNoteToken(this._findOldestActiveNote(info => info.hasStarted === true), 'ordinary-global-voice-budget');
+              }
+              for (const [previousToken, previous] of this._activeNotes) {
+                if (previousToken !== token && previous.hasStarted && previous.output === output && previous.channel === channelNumber && previous.note === spec.note) {
+                  this._stopActiveNoteToken(previousToken, 'same-pitch-retrigger');
+                }
+              }
+            }
+          }
 
           const zonePatchChanged = mpeEnabled && expression.controls.some(control => control.channel !== channelNumber);
           if ((!mpeEnabled || zonePatchChanged) && !output.supportsPerNoteInstrument && expression.controls.length) {
@@ -280,6 +292,11 @@ const midiSchedulerSendMethods = {
             this._stopActiveNoteToken(token);
             if (spec.phraseVoiceKey != null) this.cancelGamePhrase(spec.phraseVoiceKey, { releaseActive: false, complete: true });
             return;
+          }
+          if (!active.mpe && sendTimeMs <= now && this._pendingNoteOns.size) {
+            for (const victim of pendingReservationConflicts(this._activeNotes.values(), active, this._maxActiveNotes, voiceBudget)) {
+              this._stopActiveNoteToken(victim, 'reservation-superseded-at-onset');
+            }
           }
           if (typeof window !== 'undefined') window.lastMidiOutputMessage = {
             type: 'noteOn', note: spec.note, velocity: attackVelocity, channel: channelNumber, outputId, timeMs: sendTimeMs, program: spec.program, ensembleRole: spec.ensembleRole, laneIndex: meta.laneIndex, lemmingId: meta.lemmingId

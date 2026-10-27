@@ -121,7 +121,9 @@ const buildHotpathSummary = (argv = process.argv.slice(2)) => {
       iterations: midiSchedulerIterations,
       notesPerIter: midiSchedulerNotes,
       repeats
-    })
+    }),
+    midiRouterRejected: runMidiRouterBench({ iterations: midiRouterIterations, eventsPerIter: midiRouterEvents, repeats, workload: 'saturated-rate-rejection' }),
+    midiSchedulerRejected: runMidiSchedulerBench({ iterations: midiSchedulerIterations, notesPerIter: midiSchedulerNotes, repeats, workload: 'saturated-rate-rejection' })
   };
 };
 const main = (argv = process.argv.slice(2)) => {

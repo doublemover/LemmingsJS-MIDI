@@ -603,5 +603,19 @@
       },
       "logSha256": "1f0356dc0b07fa073ee91fdecb32b9fc802a17874b09898a00de62b01550fe60"
     }
+  },
+  "verifiedCiCheckpoint": {
+    "sourceRevision": "5951f72d4fc1431af7c4b554e4bf6510df1289d2",
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40466061709/job/122061628970",
+    "passed": 6200,
+    "failed": 0,
+    "allChecksGreen": true,
+    "coverage": {
+      "statements": 90.09,
+      "lines": 90.09,
+      "branches": 83.46,
+      "functions": 88.17
+    },
+    "scope": "Published completed 150-failure repair. Subsequent backlog development is outside this validated checkpoint."
   }
 }

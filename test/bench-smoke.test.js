@@ -6,10 +6,16 @@ const thresholds = { perfP95FrameMsMax: 250, perfP50TpsMin: 15, historySpanRatio
   antsAvgMsMax: 250, tileCompositionAvgMsMax: 250, overlayPlaneAvgMsMax: 250, scaledBlitAvgMsMax: 250 };
 const fixture = () => ({
   performance: { receipt: createBenchmarkReceipt('performance', 'smoke', ['bench:entrances:30']), sampleCount: 20,
-    samples: Array.from({ length: 20 }, () => ({ frameMs: 16, tps: 30 })), frameStats: { p95: 16 }, tpsStats: { p50: 30 },
+    measurement: { kind: 'completed-work/v1', clock: 'browser-performance-now', frameDistribution: 'completed-raf-gap-ms' },
+    samples: Array.from({ length: 20 }, (_, index) => ({ frameMs: 16, tps: 30, completedTicks: 15, measurementElapsedMs: 500,
+      startTick: index * 15, tick: (index + 1) * 15, frameGapsMs: Array(31).fill(16), tickExecutionMs: Array(15).fill(1), renderExecutionMs: Array(15).fill(2),
+      ready: true, running: true, reverse: false, continuousDirection: true, overflow: false, activeActors: 30, entrances: 30 })), frameStats: { p95: 16 }, tpsStats: { p50: 30 },
     filteredFrameStats: { p95: 16 }, filteredTpsStats: { p50: 30 } },
   history: { receipt: createBenchmarkReceipt('history', 'smoke', ['speed:30', 'speed:60']), failures: [],
-    results: [30, 60].map(speedFactor => ({ speedFactor, maxSpanTicks: 6000, targetSpanTicks: 6000, sampleCount: 4 })) },
+    results: [30, 60].map(speedFactor => ({ speedFactor, maxSpanTicks: 6000, targetSpanTicks: 6000, sampleCount: 4,
+      seekProbe: { status: 'complete', evidence: 'exact-forward-state-and-base64-terrain', deltaAvailable: true, hashMatch: true, startRestored: true, startTick: 6000, restoredTick: 6000,
+        observations: ['first-touch-cold', 'return', 'warm-repeat', 'return'].map((phase, index) => ({ phase, targetTick: index % 2 ? 6000 : 1000, observedTick: index % 2 ? 6000 : 1000,
+          accepted: true, exactStateMatch: true, durationMs: 1, coldDecodes: index === 0 ? 1 : 0, coldCacheHits: index === 0 ? 0 : 1, coldDecodedBytes: index === 0 ? 100 : 0 })) } })) },
   hotpaths: { receipt: createBenchmarkReceipt('hotpaths', 'smoke', REQUIRED_SMOKE_HOTPATHS),
     ...Object.fromEntries(REQUIRED_SMOKE_HOTPATHS.map(name => [name, { avgMs: 10, workIterations: 3000, sampleCount: 4, samplesMs: [10, 10, 10, 10] }])) }
 });
@@ -32,12 +38,27 @@ describe('admitted benchmark smoke gates', () => {
   });
   it('retains raw tail failures even when filtered summaries report healthy values', () => {
     const data = fixture(); data.performance.frameStats.p95 = 500;
-    data.performance.samples = data.performance.samples.map(sample => ({ ...sample, frameMs: 500 }));
+    data.performance.samples = data.performance.samples.map(sample => ({ ...sample, frameMs: 500, frameGapsMs: [500] }));
     const gate = evaluateSmokeResults(data, thresholds);
     expect(gate).to.include({ ok: false, measurementValid: true }); expect(gate.metrics.perfP95Frame).to.equal(500);
     expect(gate.diagnostics.some(item => item.kind === 'performance-regression')).to.equal(true);
     data.performance.filteredSampleCount = 0;
     expect(evaluateSmokeResults(data, thresholds).measurementValid).to.equal(false);
+  });
+  it('rejects target-rate substitutions, stalled or paused owners and a missing scene population', () => {
+    for (const patch of [
+      { completedTicks: 0, tps: 166.67, targetTps: 166.67 },
+      { tps: 166.67, targetTps: 166.67 }, { running: false }, { ready: false },
+      { activeActors: 0 }, { entrances: 1 }, { overflow: true }, { tickExecutionMs: [] }, { renderExecutionMs: [] }
+    ]) {
+      const data = fixture(); data.performance.samples[0] = { ...data.performance.samples[0], ...patch };
+      expect(evaluateSmokeResults(data, thresholds)).to.include({ ok: false, measurementValid: false });
+    }
+    const slow = fixture();
+    slow.performance.samples = slow.performance.samples.map((sample, index) => ({ ...sample,
+      completedTicks: 5, startTick: index * 5, tick: (index + 1) * 5, tps: 10, targetTps: 10000 }));
+    slow.performance.tpsStats.p50 = 10;
+    expect(evaluateSmokeResults(slow, thresholds)).to.include({ ok: false, measurementValid: true });
   });
   it('gates each history scenario and rejects empty, missing and duplicate required sets', () => {
     const data = fixture(); data.history.results[1].maxSpanTicks = 0;

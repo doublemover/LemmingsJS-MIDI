@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBenchmarkReceipt } from './BenchmarkReceipt.js';
+import { installHistoryReplayEvidence } from './HistoryReplayEvidence.js';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 
@@ -249,8 +250,14 @@ const summarizeTimings = (timingsMs) => {
   };
 };
 
-const readHistoryAfterFrame = (scope = globalThis) => new Promise(resolve => {
-  scope.requestAnimationFrame(() => resolve(scope.__E2E__?.getState?.()?.game?.history || null));
+const readHistoryAfterFrame = (scope = globalThis) => new Promise((resolve, reject) => {
+  scope.requestAnimationFrame(() => {
+    try {
+      const game = scope.__E2E__?.getState?.()?.game;
+      scope.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__?.capture(game);
+      resolve(game?.history || null);
+    } catch (error) { reject(error); }
+  });
 });
 
 const sampleHistoryWindow = async ({ durationMs, sampleMs, targetSpan, readHistory, assertBudget = () => {}, now = Date.now, wait = sleep }) => {
@@ -341,6 +348,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         'waitForGameReady'
       );
       await withTimeout(page.evaluate((value) => window.__E2E__.setSpeed(value), speed), opTimeoutMs, 'setSpeed');
+      await withTimeout(page.evaluate(installHistoryReplayEvidence, { samples: seekSamples }), opTimeoutMs, 'prepareIndependentReplayOracle');
       await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
 
       const start = Date.now();
@@ -362,95 +370,23 @@ const run = async (config = createHistoryBenchConfig()) => {
 
       await withTimeout(page.evaluate(() => window.__E2E__.pause()), opTimeoutMs, 'e2e.pause');
       const seekProbe = await withTimeout(
-        page.evaluate(({ samples }) => {
-          const api = window.__E2E__;
-          if (!api?.seek || !api?.getState) return null;
-          const gameState = api?.getState?.()?.game;
-          const historyState = gameState?.history || null;
-          const minTick = Number.isFinite(historyState?.minTick) ? Math.trunc(historyState.minTick) : 0;
-          const maxTick = Number.isFinite(historyState?.maxTick)
-            ? Math.trunc(historyState.maxTick)
-            : Math.trunc(gameState?.timer?.tickIndex || 0);
-          const startTick = Math.max(minTick, Math.min(maxTick, Math.trunc(gameState?.timer?.tickIndex || maxTick)));
-          const seekMs = [];
-          const count = Math.max(1, Math.trunc(samples || 1));
-          const span = Math.max(1, startTick - minTick);
-
-          const computeReplayHash = () => {
-            if (!api?.getDelta || maxTick < minTick) return null;
-            let hash = 2166136261;
-            const pushByte = (value) => {
-              hash ^= value & 0xff;
-              hash = Math.imul(hash, 16777619);
-            };
-            const pushAscii = (value) => {
-              const text = String(value);
-              for (let i = 0; i < text.length; i += 1) {
-                pushByte(text.charCodeAt(i));
-              }
-              pushByte(124);
-            };
-            for (let tick = minTick; tick <= maxTick; tick += 1) {
-              const delta = api.getDelta(tick);
-              if (!delta) continue;
-              const noOp = Number.isFinite(delta.flags)
-                ? ((delta.flags | 0) === 0 ? 1 : 0)
-                : 0;
-              pushAscii(tick);
-              pushAscii(noOp);
-              pushAscii(delta.lemChanges?.ids?.length || 0);
-              pushAscii(delta.lemAdded?.length || 0);
-              pushAscii(delta.lemRemoved?.length || 0);
-              pushAscii(delta.groundChanges?.indices?.length || 0);
-              pushAscii(delta.entranceChanges?.indices?.length || 0);
-              pushAscii(delta.triggerCooldownChanges?.ids?.length || 0);
-              pushAscii(delta.triggerAdd?.length || 0);
-              pushAscii(delta.triggerRemove?.length || 0);
-              pushAscii(delta.objectAnimChanges?.ids?.length || 0);
-              pushAscii(delta.soundEvents?.length || 0);
-              pushAscii(delta.minimapDeaths?.length || 0);
-              pushByte(10);
-            }
-            return (hash >>> 0).toString(16).padStart(8, '0');
-          };
-
-          const hashBefore = computeReplayHash();
-          const deltaAvailable = hashBefore != null;
-          for (let i = 0; i < count; i += 1) {
-            const ratio = (i + 1) / (count + 1);
-            const target = Math.max(minTick, startTick - Math.trunc(span * ratio));
-            const start = performance.now();
-            api.seek(target);
-            seekMs.push(performance.now() - start);
-          }
-          const returnStart = performance.now();
-          api.seek(startTick);
-          seekMs.push(performance.now() - returnStart);
-          const hashAfter = computeReplayHash();
-          return {
-            minTick,
-            maxTick,
-            startTick,
-            seekMs,
-            deltaAvailable,
-            hashBefore,
-            hashAfter,
-            hashMatch: hashBefore === hashAfter
-          };
-        }, { samples: seekSamples }),
-        opTimeoutMs,
-        'seekReplayProbe'
+        page.evaluate(() => window.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__.probe()),
+        opTimeoutMs, 'seekReplayProbe'
       );
+      await withTimeout(page.evaluate(() => window.__LEMMINGS_HISTORY_REPLAY_EVIDENCE__.dispose()), opTimeoutMs, 'retireIndependentReplayOracle');
       const seekStats = summarizeTimings(seekProbe?.seekMs);
       if (seekStats.p95Ms > seekP95MsMax) {
         failures.push(
           `speed=${speed} seek p95 ${seekStats.p95Ms.toFixed(2)}ms > ${seekP95MsMax.toFixed(2)}ms`
         );
       }
-      if (requireReplayParity && seekProbe?.deltaAvailable !== false && seekProbe?.hashMatch === false) {
+      if (requireReplayParity && (seekProbe?.status !== 'complete' || seekProbe?.hashMatch !== true || seekProbe?.startRestored !== true)) {
         failures.push(
-          `speed=${speed} replay parity mismatch after seeks (${seekProbe.hashBefore} != ${seekProbe.hashAfter})`
+          `speed=${speed} applied replay state/terrain verification failed: ${seekProbe?.error || 'incomplete independent evidence'}`
         );
+      }
+      if (requireColdCompaction && !seekProbe?.observations?.some(row => row.phase === 'first-touch-cold' && row.coldDecodes > 0)) {
+        failures.push(`speed=${speed} no first-touch cold decode occurred inside a timed seek`);
       }
       const retention = lastHistory?.retention || null;
       if (requireBoundedRetention) {
@@ -479,12 +415,13 @@ const run = async (config = createHistoryBenchConfig()) => {
         maxSpanTicks: maxSpan,
         targetSpanTicks: targetSpan,
         seekProbe: {
+          status: seekProbe?.status ?? 'unavailable', evidence: seekProbe?.evidence ?? null,
+          startRestored: seekProbe?.startRestored === true, restoredTick: seekProbe?.restoredTick ?? null,
+          observations: seekProbe?.observations || [], retainedOracleBytes: seekProbe?.retainedOracleBytes ?? 0,
           minTick: seekProbe?.minTick ?? 0,
           maxTick: seekProbe?.maxTick ?? 0,
           startTick: seekProbe?.startTick ?? 0,
           deltaAvailable: seekProbe?.deltaAvailable !== false,
-          hashBefore: seekProbe?.hashBefore ?? null,
-          hashAfter: seekProbe?.hashAfter ?? null,
           hashMatch: !!seekProbe?.hashMatch,
           ...seekStats
         },
@@ -492,6 +429,7 @@ const run = async (config = createHistoryBenchConfig()) => {
           spanTicks: Number(lastHistory?.spanTicks || 0),
           coldBlockCount: Number(lastHistory?.coldBlockCount || 0),
           coldBlockBytes: Number(lastHistory?.coldBlockBytes || 0),
+          coldBlockDecodes: Number(lastHistory?.coldBlockDecodes || 0), coldBlockCacheHits: Number(lastHistory?.coldBlockCacheHits || 0),
           retention: retention
             ? {
               enableHistoryCap: !!retention.enableHistoryCap,

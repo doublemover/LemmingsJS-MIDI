@@ -459,7 +459,16 @@ const midiSchedulerChannelMethods = {
     return count;
   },
 
-  _admitLocalNote(output, meta, trackId, voiceBudget) {
+  _countSoundingNotes(trackId = null) {
+    const normalized = normalizeTrackId(trackId);
+    let count = 0;
+    for (const info of this._activeNotes.values()) {
+      if (info.hasStarted === true && (!normalized || info.trackId === normalized)) count++;
+    }
+    return count;
+  },
+
+  _planLocalNoteAdmission(output, meta, trackId, voiceBudget) {
     if (typeof output.isVoiceActive === 'function') {
       for (const [token, info] of this._activeNotes) {
         if (info.output === output && info.hasStarted && !output.isVoiceActive(token)) this._stopActiveNoteToken(token);
@@ -467,20 +476,22 @@ const midiSchedulerChannelMethods = {
     }
     if (typeof output.canAllocateVoice === 'function' && !output.canAllocateVoice()) {
       this.recordThrottle('local-source-cap', this._nowMs(), meta);
-      return false;
+      return null;
     }
-    let matches = null;
-    if (trackId && voiceBudget != null && this._countActiveNotesForTrack(trackId) >= voiceBudget) {
-      matches = info => normalizeTrackId(info.trackId) === trackId;
-    } else if (this._activeNotes.size < this._maxActiveNotes) return true;
-    const candidates = [...this._activeNotes.values()].filter(info => info.output === output && (!matches || matches(info)));
-    const victim = selectLocalAudioVoice(candidates, meta);
-    if (!victim) {
-      this.recordThrottle('local-voice-priority', this._nowMs(), meta);
-      return false;
+    let total = this._countSoundingNotes(), trackTotal = trackId ? this._countSoundingNotes(trackId) : 0;
+    if (total < this._maxActiveNotes && (!trackId || voiceBudget == null || trackTotal < voiceBudget)) return [];
+    const victims = [], candidates = [...this._activeNotes.values()].filter(info => info.hasStarted === true && info.output === output);
+    while (total >= this._maxActiveNotes || trackId && voiceBudget != null && trackTotal >= voiceBudget) {
+      const trackFull = trackId && voiceBudget != null && trackTotal >= voiceBudget;
+      const victim = selectLocalAudioVoice(trackFull ? candidates.filter(info => info.trackId === trackId) : candidates, meta);
+      if (!victim) {
+        this.recordThrottle('local-voice-priority', this._nowMs(), meta);
+        return null;
+      }
+      victims.push(victim.token); candidates.splice(candidates.indexOf(victim), 1);
+      total--; if (victim.trackId === trackId) trackTotal--;
     }
-    this._stopActiveNoteToken(victim.token, 'local-voice-budget');
-    return true;
+    return victims;
   },
 
   _stealOldestNoteForTrack(trackId) {
