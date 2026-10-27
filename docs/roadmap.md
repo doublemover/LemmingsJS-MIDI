@@ -6821,4 +6821,9 @@ export-budget acknowledgments still prevent a false complete receipt.
   reconstruction. Retired asynchronous owners cannot publish or pause a new one.
 - Shared admission validates digest algorithms, matching hashes and serialization
   bounds. Actor, terrain and no-op negative controls remain strict. All **79
-  benchmark cases pass**; the supported three-speed soak retest is in progress.
+  benchmark cases pass**. The supported retest now passes at all three speeds:
+  spans **60,079 / 60,014 / 60,109 ticks**, **226 / 226 / 227 cold blocks**,
+  **16 / 13 / 16 timed first-touch cold decodes**, twelve warm-repeat targets
+  apiece and seek p95 **28.1 / 17.7 / 27.0ms** against the unchanged 400ms gate.
+  Every replay has matching SHA-256 state/terrain evidence and restores its
+  starting boundary. Retained oracle digests occupy **3,536 bytes per scenario**.
