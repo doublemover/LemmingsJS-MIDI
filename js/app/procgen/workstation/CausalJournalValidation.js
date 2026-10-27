@@ -39,4 +39,3 @@ export const verifyManifestHashes = async (manifest, { maxChunks = 4096 } = {}) 
   return Object.freeze({ takeId: manifest.takeId, rootHash: manifest.rootHash, canonicalHash: manifest.canonicalHash,
     effectiveStatus: manifest.state === 'finalized' && manifest.complete ? 'complete' : 'partial' });
 };
-

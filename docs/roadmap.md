@@ -6610,5 +6610,16 @@ export-budget acknowledgments still prevent a false complete receipt.
   cases. Formatting, undefined-call checks, critical types, dependency checking,
   release readiness, MCP compatibility and schema-validated SBOM generation pass;
   dependency audit reports zero vulnerabilities. Browser qualification helpers
-  now resolve their serialized imports against the browser document URL. GitHub
-  CI's full coverage/browser run remains the final published-head check.
+  now resolve their serialized imports against the browser document URL.
+- Final full `npm test` on clean published head `5002e618` passed all 6,203 cases
+  in 369.84 seconds. The receipt preserves that revision, environment and log
+  digest separately from the earlier repair run. CI also exposed historical
+  branch whitespace and a local CRLF versus committed LF provenance mismatch;
+  both receive byte-only cleanup. CI coverage/browser qualification remains
+  the final published-head check.
+- Browser follow-through found a frozen-palette startup failure and a focused
+  pitch-spelling/caret regression. Palette lookups now live in a shared WeakMap
+  with invalidation on color edits; Frame and MapObject no longer mutate source
+  palettes. The clip inspector preserves equivalent typed pitch spelling while
+  focused and still displays external note changes. All 45 focused Node cases
+  and all 13 browser boundary cases pass (43.4 seconds for the browser batch).

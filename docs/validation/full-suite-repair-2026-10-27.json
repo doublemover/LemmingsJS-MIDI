@@ -421,5 +421,45 @@
       "mcpClientCompatibility": "pass"
     },
     "fullSuiteAfterFollowup": "Pending GitHub CI coverage run; no claim that this focused follow-up is a second full suite."
+  },
+  "publishedFullRun": {
+    "command": "npm test",
+    "sourceRevision": "5002e61873b246caa6897e085e8dccb5c19b5665",
+    "sourceState": "Clean published head; no source edits during run.",
+    "node": "v26.12.1",
+    "platform": "win32",
+    "passed": 6203,
+    "failed": 0,
+    "exitCode": 0,
+    "runtimeSeconds": 369.84,
+    "log": {
+      "name": "lemmings-rook-published-suite-20261027.log",
+      "sha256": "110938331e945ce69a40a71752721263a6452da637b71ae84fd4cb3a972674a1"
+    },
+    "scope": "Complete Node/Mocha suite after all runtime, fixture, dependency and CI-tooling repairs. Later branch whitespace-only cleanup and subsequent CI checks are separate."
+  },
+  "browserFollowup": {
+    "scope": "Frozen-palette startup, equivalent typed-pitch spelling/caret and historical branch whitespace repairs after the clean 6203-test head.",
+    "unit": {
+      "command": "npx mocha test/colorpalette.test.js test/frame.test.js test/mapobject.test.js test/midi/midi-event-clip-polyphony-editor.test.js test/procgen-boot.test.js",
+      "passed": 45,
+      "failed": 0,
+      "exitCode": 0,
+      "logSha256": "563d67d55dc293ae73fc208ffb1f4579ebe853ede9a22cf89e4970b72684b4aa"
+    },
+    "browser": {
+      "command": "npm run test-e2e:boundaries",
+      "passed": 13,
+      "failed": 0,
+      "exitCode": 0,
+      "durationSeconds": 43.4,
+      "logSha256": "a5f863164776fdcbd6e7ef79508c1da7253d67e5d02d5aa2ed7d6a18edb762cf"
+    },
+    "checks": [
+      "format",
+      "critical types",
+      "provenance 10 components / 340 files",
+      "complete branch whitespace against origin/master"
+    ]
   }
 }

@@ -50,11 +50,13 @@ const createMidiEventClipEditor = ({ document, bind, getProject, getSource, comm
     while (row && row !== root && row.dataset?.clipRow == null) row = row.parentElement || row.parent;
     const key = active.dataset.clipField, rowIndex = row?.dataset?.clipRow, cell = row?.dataset?.clipCell;
     const selection = Number.isInteger(active.selectionStart) ? [active.selectionStart, active.selectionEnd, active.selectionDirection] : null;
+    const editedPitch = active.type === 'text' ? active.value : null;
     return () => {
       const nextRow = Array.from(root.children).find(value => value.dataset.clipRow === rowIndex && value.dataset.clipCell === cell);
       const controls = nextRow ? Array.from(nextRow.children).flatMap(value => [value, ...Array.from(value.children)]) : [];
       let control = controls.find(value => value.dataset.clipField === key);
       if (control?.disabled) control = controls.find(value => ['Earlier', 'Later'].includes(value.dataset.clipField) && !value.disabled);
+      if (editedPitch != null && control?.type === 'text' && parseClipNote(editedPitch) === parseClipNote(control.value)) control.value = editedPitch;
       control?.focus?.({ preventScroll: true });
       if (selection && control?.setSelectionRange) control.setSelectionRange(...selection);
     };

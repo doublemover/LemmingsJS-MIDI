@@ -8,4 +8,3 @@ export function ownedSourceBankIds(profile, parameters = {}) {
   for (const id of ids) getOwnedSourceBankIdentity(id);
   return Object.freeze(ids);
 }
-

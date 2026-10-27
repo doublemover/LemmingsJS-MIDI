@@ -46,4 +46,3 @@ export function inspectVoiceExtensions(changes, { patchVoices = null, patchLimit
     mode: 'gate', semantic: true, overrides: changes });
   return sources;
 }
-

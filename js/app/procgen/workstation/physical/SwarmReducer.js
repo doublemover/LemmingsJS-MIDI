@@ -101,7 +101,7 @@ export const createSwarmReducer = () => {
         if (desired.length >= budget) break; if (slot >= slotsFor(group)) continue;
         const members = mode === 'individual' ? [group.members[slot]] : group.members, representative = members[0], rawId = representative.intent.voiceId;
         if (mode === 'individual' && !changed && !fresh.has(rawId) && !audible.has(`individual:${rawId}`)) continue;
-        any = true; 
+        any = true;
         const live = members.filter(record => held.has(record.intent.voiceId)), key = mode === 'individual' ? `individual:${rawId}` : `${mode}:${group.key}:${slot}`;
         desired.push({ key, group, members, representative, slot, live });
       }

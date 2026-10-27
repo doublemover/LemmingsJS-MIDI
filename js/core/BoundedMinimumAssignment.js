@@ -14,4 +14,3 @@ export function assignBoundedMinimumCosts(costs, rows, columns, fail = message =
   }
   const result = new Uint16Array(rows); for (let column = 1; column <= columns; column++) if (p[column]) result[p[column] - 1] = column - 1; return result;
 }
-

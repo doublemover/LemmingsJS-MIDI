@@ -61,4 +61,3 @@ export function destroyNativeVoice(voice, reason = 'source-ended') {
   if (receipt.state === 'retired') retainFailure(receipt); else receipt.completion.then(retainFailure);
   return receipt;
 }
-
