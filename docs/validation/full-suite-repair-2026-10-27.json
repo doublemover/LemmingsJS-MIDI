@@ -8586,5 +8586,124 @@
     "limitations": [
       "Full CI for this follow-through is pending. No additional route-template, hardware or listening qualification is claimed."
     ]
+  },
+  "continuation280": {
+    "baseHead": "74067889ac12e579317a619ef7e631fa787c6e4e",
+    "scope": "Serialize physical-authoring edits during asynchronous Undo/Redo, correctly charge queued command strings, and qualify transactional music/history behavior.",
+    "implemented": [
+      "World-changing history now refuses physical graph/junction/fragment/release-authoring edits until the owned rebuild commits or rolls back, preserving responsive compatible musical commands.",
+      "The bounded command queue charges two bytes per serialized UTF-16 code unit, preserving its 1MiB and 256-command limits. A failure before project publication removes its unadmitted queued command without dropping a published edit.",
+      "Existing retained-history estimation already includes lane-array structural costs; no new heap-size claim or threshold change is made."
+    ],
+    "validation": {
+      "nodePassed": 121,
+      "nodeFailed": 0,
+      "browserPassed": 1,
+      "browserFailed": 0,
+      "browserSeconds": 23.8,
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "checks": [
+        "Exact note-81 history reproduction and real built-browser rebuild; the invalidated Redo branch cannot overwrite the new edit.",
+        "Success, failed load and canceled rebuild serial note sequences with repeated Undo/Redo, rejected physical edits, JSON save/reopen and acknowledged dirty state.",
+        "Queued-command byte pressure rejects before publication; disposal cannot publish a retired candidate.",
+        "Existing recorded chord, macro gesture, no-op and resource-pressure history checks remain in the grouped run.",
+        "Actual physical world graph edit/Undo/Redo during causal recording produces new monotonic applied revisions, unchanged historical pickup content, no world replacement and a verified complete journal.",
+        "The built production browser retains note 81 through world-changing Undo, rejects a conflicting physical edit/repeated history move, then performs musical Undo/Redo without replacing that world."
+      ],
+      "retainedChargeObservations": [
+        {
+          "laneCount": 8,
+          "undo": 24,
+          "retainedBytes": 38304,
+          "byteLimit": 65536,
+          "dropped": 0
+        },
+        {
+          "laneCount": 128,
+          "undo": 24,
+          "retainedBytes": 61344,
+          "byteLimit": 65536,
+          "dropped": 0
+        },
+        {
+          "laneCount": 1024,
+          "undo": 6,
+          "retainedBytes": 58344,
+          "byteLimit": 65536,
+          "dropped": 18
+        }
+      ],
+      "measurementScope": "Conservative logical retained-history charges, including shared structural containers; not V8 heap profiling. All use the unchanged 65,536-byte configured test budget.",
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog280-owners-sealed-20261027.log",
+          "sha256": "9bd6bf600abc59c5de25d1f9d3ce0d70cf7b9db648d5490179479e0918512ac1",
+          "bytes": 11753
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog280-browser-release-20261027.log",
+          "sha256": "76ffd19fb059f49c66d98dcc0678491423ce3cd5e38c1ac9bea4f32b21c8b051",
+          "bytes": 423
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog280-format-integration-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog280-types-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog280-undefined-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "1251de64637e14ee6d1700c8e306f0d06bd36aa8790ee7cdf787e13a0f939cf5",
+        "bytes": 181680
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "b61feb038842953012c264a310634757aee66856b5913499d0e9f7907071692f",
+        "bytes": 88342
+      },
+      {
+        "path": "e2e/procgen-workstation-workflow.spec.js",
+        "sha256": "10b71386d88c6c65bb6870b3dff614356d7c34bcc925a133af1dfe41a5b7fddc",
+        "bytes": 13274
+      }
+    ],
+    "maintainedBrowserBoundaries": {
+      "previous": 44,
+      "expected": 45,
+      "observedInNewCI": false
+    },
+    "diagnostics": [
+      "The first save/reopen fixture expected a newly imported document to be clean. It now verifies the deliberate dirty state followed by an acknowledged Save becoming clean.",
+      "Canonical empty graph fields are omitted; fixture inspection normalizes omitted pickups to an empty list.",
+      "A generic mock checkpoint spread timer callbacks from a real physical world, which canonical journal admission correctly rejected. Actual ProcgenLaneWorld fixtures now use the real checkpoint codec; plain mock fixtures retain their isolated stub.",
+      "The production default cell uses a scale degree with note=null. The exact note-81 reproduction now explicitly commits its required note-60 starting cell before Add Lane."
+    ],
+    "limitations": [
+      "Full CI for this continuation is pending. The previous 74067889 run has passed static checks, 44 desktop browser boundaries, protocol and benchmark smoke and is still running coverage.",
+      "These controlled retained-charge observations do not establish process heap/GC or native device performance. No external hardware or acoustic claim."
+    ]
   }
 }

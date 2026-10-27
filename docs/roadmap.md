@@ -7101,3 +7101,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   Both production desktop switchyard cases pass, including exact actor selection,
   overlay retirement and mouse/native keyboard cancellation. Formatting passes.
   This is a scoped follow-through; full CI remains separate.
+
+### Continuation 280 — history conflict admission and serial acceptance
+
+- Pending world Undo/Redo now serializes conflicting physical graph, junction,
+  fragment and release authoring, while compatible musical edits remain visible
+  and are replayed against the committed or restored source. Queued strings are
+  charged in UTF-16 bytes under the existing 1MiB/256-command bound; failure before
+  publication removes only its unadmitted command.
+- The grouped run passes **121 Node cases / one real built-browser boundary**.
+  It covers exact note 81, repeated Undo/Redo, success/failure/cancel/dispose,
+  saved JSON reopen and truthful dirty/Save acknowledgment, gesture/chord/no-op
+  history, physical admission pressure and recorded graph edit/Undo/Redo with
+  fresh monotonic mappings in a verified journal. The browser rebuild retains
+  note 81, rejects conflicting physical edits and preserves its world through
+  later musical Undo/Redo at the 1920x1080 desktop baseline.
+- Existing retained-history accounting already includes lane arrays. Under the
+  configured 65,536-byte test bound, 24 edits retain 38,304 bytes at 8 lanes and
+  61,344 at 128; 1024 lanes retain six entries / 58,344 bytes and drop 18 older
+  entries. Undo/Redo preserves the charge. These are conservative logical charges,
+  not process heap measurements. Formatting, types, undefined calls, provenance
+  and whitespace pass. Full CI for this continuation remains pending.

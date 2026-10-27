@@ -146,3 +146,26 @@ test('shared automation editor updates the canonical project and resolves spans 
   await page.locator('#procgenPause').click();
   await expect.poll(() => page.evaluate(id => window.__PROCGEN_STUDIO__.engine.getAutomationSpanState(id, 0)?.resolution?.winnerId, spanId)).toBe(spanId);
 });
+
+
+test('world-changing Undo retains concurrent note 81 and serializes physical edits', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); await ready(page, { patterns: true });
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__;
+    studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 60 } });
+    await studio.handlers.addLane();
+    const before = window.__PROCGEN_LANES__.world, move = studio.handlers.undo(), busy = studio.handlers.historyBusy();
+    const repeated = studio.handlers.undo(), graph = studio.getProject().procgen.physicalGraph;
+    const conflicting = studio.dispatch({ type: 'procgen/physicalGraph', graph: { ...graph, revision: graph.revision + 1 } });
+    studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    const visible = studio.getProject().procgen.lanes[0].patterns[0].steps[0].note;
+    const committed = await move, repeatedResult = await repeated, redo = await studio.handlers.redo();
+    const world = window.__PROCGEN_LANES__.world, note = () => studio.getProject().procgen.lanes[0].patterns[0].steps[0].note;
+    const retained = note(); await studio.handlers.undo(); const undone = note(); await studio.handlers.redo();
+    return { busy, conflicting, visible, committed, repeatedResult, redo, retained, undone, redone: note(),
+      laneCount: world.laneCount, projectLanes: studio.getProject().procgen.lanes.length,
+      historyBusy: studio.handlers.historyBusy(), rebuilt: before !== world, musicKeepsWorld: world === window.__PROCGEN_LANES__.world };
+  });
+  expect(result).toEqual({ busy: true, conflicting: false, visible: 81, committed: true, repeatedResult: false, redo: false,
+    retained: 81, undone: 60, redone: 81, laneCount: 8, projectLanes: 8, historyBusy: false, rebuilt: true, musicKeepsWorld: true });
+});

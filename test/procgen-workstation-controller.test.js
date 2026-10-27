@@ -51,7 +51,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
     restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
-    captureCheckpoint: world => { captures.push(world); return { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
+    captureCheckpoint: world => { captures.push(world); return world instanceof ProcgenLaneWorld ? captureProcgenCheckpoint(world) : { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
     getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
@@ -228,6 +228,26 @@ describe('ProcGen workstation orchestration', () => {
     expect(score.counts.physicalBatches).to.equal(1);
     await f.studio.dispose().completion;
   });
+  it('records graph edit, Undo and Redo as fresh monotonic mappings without replacing the world', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage, physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); const world = f.runtime.world;
+    try {
+      const armed = await f.studio.handlers.startCausalTake(); expect(armed, f.statuses.join(' | ')).to.include({ state: 'recording' });
+      const takeId = armed.takeId, before = f.studio.getProject().procgen.physicalGraph;
+      const graph = { ...before, revision: before.revision + 1, pickups: [{ id: 'recorded-gate', geometry: { kind: 'segment', points: [{ x: 120, y: 0 }, { x: 120, y: 32 }] } }] };
+      f.studio.dispatch({ type: 'procgen/physicalGraph', graph });
+      expect(world.physicalAuthoring.graph.pickups[0].id).to.equal('recorded-gate');
+      expect(await f.studio.handlers.undo()).to.equal(true); expect(world.physicalAuthoring.graph.pickups || []).to.have.length(0);
+      expect(await f.studio.handlers.redo()).to.equal(true); expect(world.physicalAuthoring.graph.pickups[0].id).to.equal('recorded-gate');
+      expect(world.physicalAuthoring.graph.revision).to.equal(before.revision + 3); expect(f.runtime.world).to.equal(world);
+      const stopped = await f.studio.stopCausalTake({ reason: 'history-mapping-matrix' }); expect(stopped.complete).to.equal(true);
+      const journal = createProcgenCausalJournal({ storage }), result = await journal.query({ takeId }), mappings = result.records.filter(record => record.kind === 'mapping');
+      expect(mappings.map(record => record.payload.revision)).to.deep.equal([before.revision + 1, before.revision + 2, before.revision + 3]);
+      expect(mappings.map(record => record.payload.pickups?.length || 0)).to.deep.equal([1, 0, 1]); expect((await journal.verify(takeId)).status).to.equal('complete');
+    } finally { await f.studio.dispose().completion; world.dispose(); }
+  });
+
   it('marks failed physical batch processing as partial instead of certifying an empty performance', async () => {
     const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
     const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
@@ -657,6 +677,77 @@ describe('ProcGen workstation orchestration', () => {
     expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(60);
     f.studio.dispose();
   });
+
+  for (const outcome of ['commit', 'fail', 'cancel']) {
+    it('matches serial history after queued music and rapid repeats when rebuilds ' + outcome, async () => {
+      const f = setup({ laneCount: 8 }); f.studio.bindRuntime();
+      try {
+        expect(await f.studio.handlers.addLane()).to.equal(true);
+        const release = f.holdRestart(), pending = f.studio.handlers.undo();
+        for (const type of ['procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']) {
+          const before = f.studio.getProject(); expect(f.studio.dispatch({ type })).to.equal(false); expect(f.studio.getProject()).to.equal(before);
+        }
+        expect(await f.studio.handlers.undo()).to.equal(false); expect(await f.studio.handlers.redo()).to.equal(false);
+        for (const note of [81, 82, 83]) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+        expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(83);
+        if (outcome === 'fail') f.failRestart(); else if (outcome === 'cancel') f.cancelRestart();
+        release(); expect(await pending).to.equal(outcome === 'commit');
+        const lanes = outcome === 'commit' ? 8 : 9;
+        const check = note => { const project = f.studio.getProject(); expect(project.procgen.lanes).to.have.length(lanes); expect(project.procgen.lanes[0].patterns[0].steps[0].note).to.equal(note); };
+        check(83); expect(await f.studio.handlers.redo()).to.equal(false); check(83);
+        for (const note of [82, 81, 60]) { expect(await f.studio.handlers.undo()).to.equal(true); check(note); }
+        for (const note of [81, 82, 83]) { expect(await f.studio.handlers.redo()).to.equal(true); check(note); }
+        f.failRestart(false); expect(await f.studio.handlers.save()).to.equal(true);
+        const saved = JSON.parse(JSON.stringify(f.stored.get('Test song'))), reopened = setup({ laneCount: lanes });
+        try {
+          reopened.studio.bindRuntime(); expect(await reopened.studio.loadSession(saved)).to.equal(true);
+          expect(reopened.studio.getProject().procgen).to.deep.equal(f.studio.getProject().procgen);
+          expect(reopened.runtime.world.laneCount).to.equal(lanes); expect(reopened.runtime.world.seed).to.equal(f.studio.getProject().procgen.seed);
+          expect(reopened.studio.getDocumentState().dirty).to.equal(true);
+          expect(await reopened.studio.handlers.save()).to.equal(true); expect(reopened.studio.getDocumentState().dirty).to.equal(false);
+        } finally { await reopened.studio.dispose().completion; }
+      } finally { await f.studio.dispose().completion; }
+    });
+  }
+
+  it('bounds queued history commands by UTF-16 serialized bytes before publishing them', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    try {
+      await f.studio.handlers.addLane(); const release = f.holdRestart(), pending = f.studio.handlers.undo(), before = f.studio.getProject();
+      expect(f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 }, ignored: 'x'.repeat(600000) })).to.equal(false);
+      expect(f.studio.getProject()).to.equal(before);
+      f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 82 }, ignored: 'x'.repeat(300000) });
+      const accepted = f.studio.getProject();
+      expect(f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 83 }, ignored: 'x'.repeat(300000) })).to.equal(false);
+      expect(f.studio.getProject()).to.equal(accepted); release(); expect(await pending).to.equal(true);
+      expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(82);
+    } finally { await f.studio.dispose().completion; }
+  });
+
+  it('does not publish a retired history rebuild after disposal with queued music', async () => {
+    const f = setup(); f.studio.bindRuntime(); await f.studio.handlers.addLane();
+    const release = f.holdRestart(), pending = f.studio.handlers.undo();
+    f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: 81 } });
+    const before = f.studio.getProject(), retirement = f.studio.dispose(); release();
+    expect(await pending).to.equal(false); await retirement.completion;
+    expect(f.studio.getProject()).to.equal(before); expect(f.studio.handlers.historyBusy()).to.equal(false);
+  });
+
+  for (const laneCount of [8, 128, 1024]) {
+    it('retains bounded structural Undo and Redo charges at ' + laneCount + ' lanes', async () => {
+      const f = setup({ laneCount, historyBytesLimit: 65536 });
+      try {
+        for (let note = 61; note < 85; note++) f.studio.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note } });
+        const before = f.studio.handlers.historyState(); expect(before.retainedBytes).to.be.at.most(65536);
+        expect(before.retainedBytes).to.be.at.least(before.undo * (laneCount * 8 + 1024));
+        console.info('History retained-charge observation: ' + JSON.stringify({ laneCount, undo: before.undo, retainedBytes: before.retainedBytes, byteLimit: before.byteLimit, dropped: before.dropped }));
+        if (laneCount === 1024) expect(before.dropped).to.be.greaterThan(0);
+        expect(await f.studio.handlers.undo()).to.equal(true); expect(await f.studio.handlers.redo()).to.equal(true);
+        expect(f.studio.handlers.historyState().retainedBytes).to.equal(before.retainedBytes);
+        expect(f.studio.getProject().procgen.lanes[0].patterns[0].steps[0].note).to.equal(84);
+      } finally { await f.studio.dispose().completion; }
+    });
+  }
 
   it('quantizes consecutive recorded notes into different cells and captures simultaneous notes as a chord', () => {
     const f = setup(); f.studio.bindRuntime(); f.studio.handlers.record(true);

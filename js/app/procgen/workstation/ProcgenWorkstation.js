@@ -63,6 +63,8 @@ import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRe
 
 const STORAGE_KEY = 'lemmings.procgen.workstation.v1';
 const MAX_SESSION_FILE_BYTES = 64 * 1048576;
+const WORLD_HISTORY_ACTIONS = new Set(['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed',
+  'procgen/physicalGraph', 'procgen/junctions', 'procgen/fragments', 'procgen/detachFragment', 'procgen/releaseGesture']);
 const FAST_PROCGEN_ACTIONS = new Set(['procgen/sceneMacro', 'procgen/worldTheme', 'procgen/releaseGesture', 'procgen/fragments', 'procgen/detachFragment', 'procgen/junctions', 'procgen/physicalGraph', 'procgen/effectRack', 'procgen/seed', 'procgen/addLane', 'procgen/removeLane', 'procgen/lane', 'procgen/palette',
   'procgen/step', 'procgen/pattern', 'procgen/launch', 'procgen/launched', 'procgen/launchedBatch']);
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -380,18 +382,24 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (physicalAuthoringAbort) { status('Finish the paused physical authoring transaction before editing.'); return false; }
     if (disposed) return project;
     if (pendingHistory) {
-      if (['procgen/worldTheme', 'procgen/addLane', 'procgen/removeLane', 'procgen/seed'].includes(action.type) ||
+      if (WORLD_HISTORY_ACTIONS.has(action.type) ||
           action.type === 'procgen/lane' && action.patch?.worldThemeId) {
         status('Wait for Undo or Redo to finish before changing the world.'); return false;
       }
       const next = reduceMidiProject(project, action);
       if (equal(next, project)) return project;
-      const serialized = JSON.stringify(action), bytes = serialized.length;
+      const serialized = JSON.stringify(action), bytes = serialized.length * 2;
       if (pendingHistory.bytes + bytes > 1048576 || pendingHistory.commands.length >= 256) {
         status('Undo or Redo is still preparing. Finish it before adding more edits.'); return false;
       }
-      pendingHistory.commands.push({ action: JSON.parse(serialized), historyGroup }); pendingHistory.bytes += bytes;
-      const updated = syncProject(next, { history: false, renderAction: action });
+      const transaction = pendingHistory, command = { action: JSON.parse(serialized), historyGroup }, previous = project;
+      transaction.commands.push(command); transaction.bytes += bytes;
+      let updated;
+      try { updated = syncProject(next, { history: false, renderAction: action }); }
+      catch (error) {
+        if (project === previous) { transaction.commands.splice(transaction.commands.indexOf(command), 1); transaction.bytes -= bytes; }
+        throw error;
+      }
       if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
       return updated;
     }
