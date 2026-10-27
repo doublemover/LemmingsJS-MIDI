@@ -1,3 +1,4 @@
+import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
@@ -1031,12 +1032,8 @@ test('MIDI E2E helpers expose runtime config and UI metrics', async ({ page }) =
   expect(runtime.sfx['1']).toMatchObject({ note: 77, trackId: 'track-1' });
 });
 
-test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and phone sizes', async ({ page }) => {
-  for (const viewport of [
-    { width: 1280, height: 900 },
-    { width: 820, height: 1180 },
-    { width: 390, height: 844 }
-  ]) {
+test('MIDI sequencer layout avoids horizontal overflow at supported desktop resolutions', async ({ page }) => {
+  for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await openMidiUi(page);
     const metrics = await page.evaluate(() => {

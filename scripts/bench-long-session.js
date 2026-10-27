@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -373,7 +374,7 @@ const run = async () => {
       args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
     }), opTimeoutMs, 'chromium.launch');
     context = await withTimeout(
-      browser.newContext({ ignoreHTTPSErrors: true }),
+      browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, ignoreHTTPSErrors: true }),
       opTimeoutMs,
       'browser.newContext'
     );

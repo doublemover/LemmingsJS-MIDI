@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +30,7 @@ const applicationBuildId = createHash('sha256').update(canonicalDataText(manifes
 await fs.writeFile(path.join(output, 'source-snapshot.json'), JSON.stringify({ ...manifest, applicationBuildId }, null, 2), { flag: 'wx' });
 const { browser, environment } = await launchAudioEvidenceBrowser(); let context;
 try {
-  context = await browser.newContext({ permissions: [] }); const page = await context.newPage();
+  context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, permissions: [] }); const page = await context.newPage();
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url()); if (url.origin !== 'http://127.0.0.1:8138') return route.abort();

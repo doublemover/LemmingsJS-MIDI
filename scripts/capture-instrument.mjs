@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import fs from 'node:fs/promises';
 
@@ -8,7 +9,7 @@ const browser = await chromium.launch({
   headless: true
 });
 try {
-  const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+  const page = await browser.newPage({ viewport: MIN_DESKTOP_VIEWPORT });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const base = process.env.LEMMINGS_E2E_BASE_URL || 'http://127.0.0.1:8080';

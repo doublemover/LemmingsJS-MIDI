@@ -181,7 +181,7 @@ test('project renders retain the focused field buffer, caret and selected edit t
     lane: window.workstationViewTest.state.laneId, label: document.activeElement.closest('label')?.textContent }))).toEqual({
     value: 'Uncommitted lane', caret: 4, lane: 'lane-1', label: 'Name'
   });
-  await page.setViewportSize({ width: 1100, height: 720 });
+  await page.setViewportSize({ width: 2560, height: 1440 });
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
   await page.evaluate(() => window.workstationViewTest.view.renderInspector());
   await expect(page.getByLabel('Name', { exact: true })).toBeFocused();

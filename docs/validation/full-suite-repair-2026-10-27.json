@@ -818,22 +818,21 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "b58e7ae159ac017a7c425652aced21492fc79b3a",
-    "job": 122112650821,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40481496326/job/122112650821",
-    "passed": 6266,
+    "head": "98a66cba5916153823b033b66e38082d2467625a",
+    "job": 122339341551,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40546767098/job/122339341551",
+    "passed": 6384,
     "failed": 0,
+    "browserPassed": 43,
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.18,
-      "statements": 90.18,
-      "branches": 83.44,
-      "functions": 88.19
+      "lines": 90.24,
+      "statements": 90.24,
+      "branches": 83.47,
+      "functions": 88.21
     },
     "excludesContinuations": [
-      264,
-      265,
-      266
+      278
     ],
     "excludesLaterWork": true
   },
@@ -6487,9 +6486,9 @@
           {
             "rate": 44100,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 1.4901161193847656e-8,
-            "childEnvelopeError": 4.8487908688166215e-8,
-            "chokeError": 2.9802322387695312e-8,
+            "schedulingError": 1.4901161193847656e-08,
+            "childEnvelopeError": 4.8487908688166215e-08,
+            "chokeError": 2.9802322387695312e-08,
             "forceAttackError": 0.012642532587051392,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6500,9 +6499,9 @@
           {
             "rate": 48000,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 1.4901161193847656e-8,
-            "childEnvelopeError": 1.478940236387949e-7,
-            "chokeError": 2.9802322387695312e-8,
+            "schedulingError": 1.4901161193847656e-08,
+            "childEnvelopeError": 1.478940236387949e-07,
+            "chokeError": 2.9802322387695312e-08,
             "forceAttackError": 0.01267138123512268,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6513,9 +6512,9 @@
           {
             "rate": 96000,
             "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-            "schedulingError": 3.725290298461914e-8,
-            "childEnvelopeError": 2.8647482464005947e-7,
-            "chokeError": 1.4897523215040565e-8,
+            "schedulingError": 3.725290298461914e-08,
+            "childEnvelopeError": 2.8647482464005947e-07,
+            "chokeError": 1.4897523215040565e-08,
             "forceAttackError": 0.012671560049057007,
             "forceTailError": 0.2896309196949005,
             "finalPeak": 0,
@@ -6586,9 +6585,9 @@
             0.05
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-8,
+          "prefixError": 2.9802322387695312e-08,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-8
+          "tailError": 6.001011854106508e-08
         },
         {
           "rate": 44100,
@@ -6601,7 +6600,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.3832062006891022e-7
+          "tailError": 1.3832062006891022e-07
         },
         {
           "rate": 44100,
@@ -6612,9 +6611,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 7.28649887649091e-7
+          "tailError": 7.28649887649091e-07
         },
         {
           "rate": 44100,
@@ -6627,7 +6626,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 2.5090717131748264e-7
+          "tailError": 2.5090717131748264e-07
         },
         {
           "rate": 44100,
@@ -6640,7 +6639,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.6148668838256164e-7
+          "tailError": 1.6148668838256164e-07
         },
         {
           "rate": 44100,
@@ -6651,9 +6650,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 7.635071164191487e-7
+          "tailError": 7.635071164191487e-07
         },
         {
           "rate": 44100,
@@ -6666,7 +6665,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.3832062006891022e-7
+          "tailError": 1.3832062006891022e-07
         },
         {
           "rate": 44100,
@@ -6705,9 +6704,9 @@
             0.2
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-8,
+          "prefixError": 2.9802322387695312e-08,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-8
+          "tailError": 6.001011854106508e-08
         },
         {
           "rate": 44100,
@@ -6720,9 +6719,9 @@
             0.2
           ],
           "relative": 0.05,
-          "prefixError": 2.9802322387695312e-8,
+          "prefixError": 2.9802322387695312e-08,
           "schedulingError": 0,
-          "tailError": 6.001011854106508e-8
+          "tailError": 6.001011854106508e-08
         },
         {
           "rate": 44100,
@@ -6735,7 +6734,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.4021283101239845e-7
+          "tailError": 1.4021283101239845e-07
         },
         {
           "rate": 44100,
@@ -6748,7 +6747,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 9.516469473558331e-8
+          "tailError": 9.516469473558331e-08
         },
         {
           "rate": 44100,
@@ -6761,7 +6760,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.6071628822222905e-7
+          "tailError": 1.6071628822222905e-07
         },
         {
           "rate": 44100,
@@ -6772,9 +6771,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 4.0502775283668413e-7
+          "tailError": 4.0502775283668413e-07
         },
         {
           "rate": 48000,
@@ -6800,7 +6799,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-7
+          "tailError": 1.350541909694858e-07
         },
         {
           "rate": 48000,
@@ -6813,7 +6812,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-7
+          "tailError": 3.911678989609868e-07
         },
         {
           "rate": 48000,
@@ -6824,9 +6823,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 8.697186907324905e-7
+          "tailError": 8.697186907324905e-07
         },
         {
           "rate": 48000,
@@ -6839,7 +6838,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.53842071692889e-7
+          "tailError": 1.53842071692889e-07
         },
         {
           "rate": 48000,
@@ -6852,7 +6851,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.5430152414119824e-7
+          "tailError": 1.5430152414119824e-07
         },
         {
           "rate": 48000,
@@ -6863,9 +6862,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 8.697186907324905e-7
+          "tailError": 8.697186907324905e-07
         },
         {
           "rate": 48000,
@@ -6878,7 +6877,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-7
+          "tailError": 3.911678989609868e-07
         },
         {
           "rate": 48000,
@@ -6919,7 +6918,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-7
+          "tailError": 1.350541909694858e-07
         },
         {
           "rate": 48000,
@@ -6934,7 +6933,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.350541909694858e-7
+          "tailError": 1.350541909694858e-07
         },
         {
           "rate": 48000,
@@ -6947,7 +6946,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.911678989609868e-7
+          "tailError": 3.911678989609868e-07
         },
         {
           "rate": 48000,
@@ -6960,7 +6959,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.9478922086424433e-7
+          "tailError": 1.9478922086424433e-07
         },
         {
           "rate": 48000,
@@ -6973,7 +6972,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.5430152414119824e-7
+          "tailError": 1.5430152414119824e-07
         },
         {
           "rate": 48000,
@@ -6984,9 +6983,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 2.3016706110490226e-7
+          "tailError": 2.3016706110490226e-07
         },
         {
           "rate": 96000,
@@ -7012,7 +7011,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-7
+          "tailError": 1.7379721006793858e-07
         },
         {
           "rate": 96000,
@@ -7025,7 +7024,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-7
+          "tailError": 7.92499631696586e-07
         },
         {
           "rate": 96000,
@@ -7036,9 +7035,9 @@
             0.3
           ],
           "relative": 0.3,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 4.499964415538571e-7
+          "tailError": 4.499964415538571e-07
         },
         {
           "rate": 96000,
@@ -7051,7 +7050,7 @@
           "relative": 0.45,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.549541236080316e-8
+          "tailError": 8.549541236080316e-08
         },
         {
           "rate": 96000,
@@ -7064,7 +7063,7 @@
           "relative": 0.6,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.390595512830501e-8
+          "tailError": 8.390595512830501e-08
         },
         {
           "rate": 96000,
@@ -7075,9 +7074,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 4.499964415538571e-7
+          "tailError": 4.499964415538571e-07
         },
         {
           "rate": 96000,
@@ -7090,7 +7089,7 @@
           "relative": 0.2,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-7
+          "tailError": 7.92499631696586e-07
         },
         {
           "rate": 96000,
@@ -7131,7 +7130,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-7
+          "tailError": 1.7379721006793858e-07
         },
         {
           "rate": 96000,
@@ -7146,7 +7145,7 @@
           "relative": 0.05,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.7379721006793858e-7
+          "tailError": 1.7379721006793858e-07
         },
         {
           "rate": 96000,
@@ -7159,7 +7158,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 7.92499631696586e-7
+          "tailError": 7.92499631696586e-07
         },
         {
           "rate": 96000,
@@ -7172,7 +7171,7 @@
           "relative": 0.1,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 3.96249815848293e-7
+          "tailError": 3.96249815848293e-07
         },
         {
           "rate": 96000,
@@ -7185,7 +7184,7 @@
           "relative": 0,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 8.390595512830501e-8
+          "tailError": 8.390595512830501e-08
         },
         {
           "rate": 96000,
@@ -7196,9 +7195,9 @@
             0.1
           ],
           "relative": 0.1,
-          "prefixError": 5.960464477539063e-8,
+          "prefixError": 5.960464477539063e-08,
           "schedulingError": 0,
-          "tailError": 1.29984691732421e-7
+          "tailError": 1.29984691732421e-07
         }
       ],
       "productionSources": [
@@ -7210,9 +7209,9 @@
           "startFrame": 4410,
           "cutFrame": 6615,
           "endFrame": 8379,
-          "prefixError": 3.259629011154175e-9,
+          "prefixError": 3.259629011154175e-09,
           "schedulingError": 0,
-          "tailError": 3.941960749487272e-8,
+          "tailError": 3.941960749487272e-08,
           "afterEndPeak": 0,
           "rms": 0.004243232268681608,
           "suspendedBatches": 3,
@@ -7227,9 +7226,9 @@
           "startFrame": 4410,
           "cutFrame": 11025,
           "endFrame": 12789,
-          "prefixError": 1.4901161193847656e-8,
-          "schedulingError": 1.4901161193847656e-8,
-          "tailError": 6.954760409239036e-8,
+          "prefixError": 1.4901161193847656e-08,
+          "schedulingError": 1.4901161193847656e-08,
+          "tailError": 6.954760409239036e-08,
           "afterEndPeak": 0,
           "rms": 0.04343084320579065,
           "suspendedBatches": 3,
@@ -7244,9 +7243,9 @@
           "startFrame": 4410,
           "cutFrame": 6615,
           "endFrame": 8379,
-          "prefixError": 1.4901161193847656e-8,
-          "schedulingError": 2.2351741790771484e-8,
-          "tailError": 6.326235611059383e-8,
+          "prefixError": 1.4901161193847656e-08,
+          "schedulingError": 2.2351741790771484e-08,
+          "tailError": 6.326235611059383e-08,
           "afterEndPeak": 0,
           "rms": 0.009280665443303247,
           "suspendedBatches": 3,
@@ -7263,7 +7262,7 @@
           "endFrame": 9120,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.856222235294136e-8,
+          "tailError": 1.856222235294136e-08,
           "afterEndPeak": 0,
           "rms": 0.004243236494044079,
           "suspendedBatches": 3,
@@ -7278,9 +7277,9 @@
           "startFrame": 4800,
           "cutFrame": 12000,
           "endFrame": 13920,
-          "prefixError": 1.4901161193847656e-8,
-          "schedulingError": 1.4901161193847656e-8,
-          "tailError": 5.989245489834705e-8,
+          "prefixError": 1.4901161193847656e-08,
+          "schedulingError": 1.4901161193847656e-08,
+          "tailError": 5.989245489834705e-08,
           "afterEndPeak": 0,
           "rms": 0.025793015530409726,
           "suspendedBatches": 3,
@@ -7295,9 +7294,9 @@
           "startFrame": 4800,
           "cutFrame": 7200,
           "endFrame": 9120,
-          "prefixError": 2.2351741790771484e-8,
-          "schedulingError": 2.2351741790771484e-8,
-          "tailError": 4.3469481174340796e-8,
+          "prefixError": 2.2351741790771484e-08,
+          "schedulingError": 2.2351741790771484e-08,
+          "tailError": 4.3469481174340796e-08,
           "afterEndPeak": 0,
           "rms": 0.009283087247938155,
           "suspendedBatches": 3,
@@ -7314,7 +7313,7 @@
           "endFrame": 18240,
           "prefixError": 0,
           "schedulingError": 0,
-          "tailError": 1.4522169983904876e-8,
+          "tailError": 1.4522169983904876e-08,
           "afterEndPeak": 0,
           "rms": 0.004242611789378318,
           "suspendedBatches": 3,
@@ -7329,9 +7328,9 @@
           "startFrame": 9600,
           "cutFrame": 24000,
           "endFrame": 27840,
-          "prefixError": 1.4901161193847656e-8,
+          "prefixError": 1.4901161193847656e-08,
           "schedulingError": 0,
-          "tailError": 1.6826100777966868e-7,
+          "tailError": 1.6826100777966868e-07,
           "afterEndPeak": 0,
           "rms": 0.02606171008446146,
           "suspendedBatches": 3,
@@ -7346,9 +7345,9 @@
           "startFrame": 9600,
           "cutFrame": 14400,
           "endFrame": 18240,
-          "prefixError": 2.2351741790771484e-8,
+          "prefixError": 2.2351741790771484e-08,
           "schedulingError": 0,
-          "tailError": 2.91465160756621e-8,
+          "tailError": 2.91465160756621e-08,
           "afterEndPeak": 0,
           "rms": 0.009283521410744863,
           "suspendedBatches": 3,
@@ -7360,11 +7359,11 @@
         {
           "rate": 44100,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 1.4901161193847656e-8,
-          "childEnvelopeError": 4.8487908688166215e-8,
-          "chokeError": 2.9802322387695312e-8,
-          "forceAttackError": 1.0690991958384188e-7,
-          "forceTailError": 5.960464477539063e-8,
+          "schedulingError": 1.4901161193847656e-08,
+          "childEnvelopeError": 4.8487908688166215e-08,
+          "chokeError": 2.9802322387695312e-08,
+          "forceAttackError": 1.0690991958384188e-07,
+          "forceTailError": 5.960464477539063e-08,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -7373,11 +7372,11 @@
         {
           "rate": 48000,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 1.4901161193847656e-8,
-          "childEnvelopeError": 1.478940236387949e-7,
-          "chokeError": 2.9802322387695312e-8,
-          "forceAttackError": 1.1598070448481934e-7,
-          "forceTailError": 4.5200185604804544e-8,
+          "schedulingError": 1.4901161193847656e-08,
+          "childEnvelopeError": 1.478940236387949e-07,
+          "chokeError": 2.9802322387695312e-08,
+          "forceAttackError": 1.1598070448481934e-07,
+          "forceTailError": 4.5200185604804544e-08,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -7386,11 +7385,11 @@
         {
           "rate": 96000,
           "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
-          "schedulingError": 3.725290298461914e-8,
-          "childEnvelopeError": 2.8647482464005947e-7,
-          "chokeError": 1.4897523215040565e-8,
-          "forceAttackError": 2.0364920227944339e-7,
-          "forceTailError": 6.649642955713908e-8,
+          "schedulingError": 3.725290298461914e-08,
+          "childEnvelopeError": 2.8647482464005947e-07,
+          "chokeError": 1.4897523215040565e-08,
+          "forceAttackError": 2.0364920227944339e-07,
+          "forceTailError": 6.649642955713908e-08,
           "finalPeak": 0,
           "childPlateau": 0.3620387017726898,
           "suspendedBatches": 3,
@@ -8169,13 +8168,404 @@
       "previous": 41,
       "added": 2,
       "expected": 43,
-      "observedInNewCI": false
+      "observedInNewCI": true,
+      "observed": 43
     },
     "limitations": [
-      "Full CI for the new combined commit has not yet completed. Latest complete green checkpoint remains d08d99ab.",
+      "Full CI for 98a66cba passes all checks: 6,384 Node cases and 43 browser boundaries. Later uncommitted development is outside this checkpoint.",
       "Version 1 recipe links explicitly refuse authored scenes; canonical portable scene ID/revision and asset admission are not implemented by this sharing sheet.",
       "Checkpoint export omits stored causal journals/takes and separate assets; selected-take archive export is used when a finished causal take is selected.",
       "No external hardware/acoustic, physical disk durability, hosted sharing or rights qualification is claimed."
+    ],
+    "fullCI": {
+      "head": "98a66cba5916153823b033b66e38082d2467625a",
+      "job": 122339341551,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40546767098/job/122339341551",
+      "passed": 6384,
+      "failed": 0,
+      "browserPassed": 43,
+      "allChecksGreen": true,
+      "coverage": {
+        "lines": 90.24,
+        "statements": 90.24,
+        "branches": 83.47,
+        "functions": 88.21
+      },
+      "excludesContinuations": [
+        278
+      ],
+      "excludesLaterWork": true,
+      "masterCapture": {
+        "state": "Ready",
+        "timelineFrames": 54144,
+        "capturedFrames": 54144,
+        "stopReason": "user-stop",
+        "terminalAcknowledged": true
+      }
+    },
+    "scopeCorrection": "Browser results below 1920x1080 in this historical checkpoint are not acceptance evidence for the desktop-only product. Continuation 278 corrects the shared baseline and reruns affected cases."
+  },
+  "continuation278": {
+    "baseHead": "98a66cba5916153823b033b66e38082d2467625a",
+    "scope": "Desktop physical switchyard controls, read-only qualified traversal presentation, exact accepted walking paths, and correction of browser/capture validation to the product minimum of 1920x1080.",
+    "implemented": [
+      "Lazy shared world/dock controls, actual request/supersession/expiry/cancel state, authoring and world epoch fences, bounded projected anchors and safety/port display.",
+      "Selected-world observer requires complete continuous committed-coordinate-write inlet-to-outlet source facts; at most 64 tracks, 32 retained segments per actor, 8 observed crossings, explicit 512KiB presentation reservation and disposal.",
+      "Ordinary walking now records its actual accepted coordinates; reverted wall attempts and failed actions add no motion fact.",
+      "World inspection yields camera direction while focused, scopes the inspector, preserves native SELECT Escape, and renders bounded high-contrast historical/actual crossing paths.",
+      "Shared desktop baseline 1920x1080 with 2560x1440 and 3840x2160 resize matrices. Phone/tablet emulation and orientation cases removed. Capture, qualification and browser performance scripts use the same minimum; desktop/qhd/uhd capture presets and docs replace mobile presets."
+    ],
+    "scopeCorrection": {
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "userDirection": "The product has always targeted 1080p desktop minimum. Issue wording about narrow layouts does not establish phone/tablet support.",
+      "historicalEvidence": "Earlier phone/subminimum viewport results in this receipt remain historical diagnostics and are excluded from target acceptance. Continuation 277 CI preceded the desktop baseline correction.",
+      "newScreenshots": [
+        {
+          "path": "test-results/physical-junction-controls-e588f-use-and-definition-gestures/switchyard-desktop-controls.png",
+          "viewport": {
+            "width": 1920,
+            "height": 1080
+          }
+        },
+        {
+          "path": "test-results/physical-junction-controls-3d8b0-out-changing-paused-physics/switchyard-wide.png",
+          "viewport": {
+            "width": 2560,
+            "height": 1440
+          }
+        }
+      ]
+    },
+    "validation": {
+      "nodePassed": 335,
+      "nodeFailed": 0,
+      "browserPassed": 16,
+      "browserFailed": 0,
+      "browserDurationSeconds": 46.9,
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "masterBehind": 0,
+      "displayIndependence": "A 160-tick twin-world fixture matches physical source batches, canonical physics hashes and nonempty causal musical intents with and without the selected observer. The production browser also preserves the paused canonical physics hash through control selection and 20 forced repaints.",
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog278-owners-desktop-20261027.log",
+          "sha256": "9a345870d5abd86bab507b33ef599e8ff596359203a0ec985f149f87bfae5a0b",
+          "bytes": 26468
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog278-browser-desktop-20261027.log",
+          "sha256": "2e008b954d3bd4919342fe2b55563a40e9cba47692d9682ed698dd099c755e18",
+          "bytes": 2269
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog278-format-desktop-20261027.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog278-types-desktop-20261027.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog278-undefined-desktop-20261027.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        }
+      }
+    },
+    "diagnostics": [
+      {
+        "failure": "Browser fixture requested a junction before real source terrain materialization.",
+        "resolution": "Materialize through 180 ordinary world ticks and read the actual walking lane/floor; preserve backend admission."
+      },
+      {
+        "failure": "Ordinary walkers exposed only coarse endpoint motion, insufficient to establish a route.",
+        "resolution": "Record accepted coordinates in ActionWalkSystem; preserve strict observer precision."
+      },
+      {
+        "failure": "SVG line visibility assertion treated a real horizontal zero-height stroke box as absent.",
+        "resolution": "Check positive path length, computed stroke width/color and actual stroke hit; aggregate retained segments into outlined bounded paths."
+      },
+      {
+        "failure": "An obsolete external HTTP server stopped during a tool-session reset.",
+        "resolution": "Use the owned ephemeral browser-boundary runner."
+      },
+      {
+        "failure": "Phone/subminimum validation exceeded the explicit desktop product scope.",
+        "resolution": "Remove phone-specific changes and emulation, centralize desktop minimum, rerun all 16 affected desktop cases as one batch."
+      }
+    ],
+    "maintainedBrowserBoundaries": {
+      "previous": 43,
+      "expected": 44,
+      "observedInNewCI": false
+    },
+    "source": [
+      {
+        "path": "AGENTS.md",
+        "sha256": "5e99743822685a9fce650800e4acba84ee771fce1915264552b72c36f9686399",
+        "bytes": 1834
+      },
+      {
+        "path": "css/procgen-workstation.css",
+        "sha256": "517af7dc87cbdbc2aff90a8737129c6e0dd98be2753e7dd55d92c9467de4c202",
+        "bytes": 30306
+      },
+      {
+        "path": "docs/level-editor/workflows.md",
+        "sha256": "e7000c477c06144fe91101d2670e906c484a94cd7e0908037e2ec69248da90b9",
+        "bytes": 3359
+      },
+      {
+        "path": "docs/midi-ui.md",
+        "sha256": "ab479f8db6a284a1a6f8d8705d0c3618ac1ea5ab36a68ffdd6a4d9eab6fbae5a",
+        "bytes": 45923
+      },
+      {
+        "path": "docs/playwright-tests.md",
+        "sha256": "ebfb49c2d637d0455cdf5f224e8fc9a0c289ee0690c7d5aa694e06b7cadb84be",
+        "bytes": 6664
+      },
+      {
+        "path": "e2e/browser-generation.spec.js",
+        "sha256": "527fb73824c17a273c5a1597159bb598a6f2ebbab2dcedd0e9f3d382a569d587",
+        "bytes": 8328
+      },
+      {
+        "path": "e2e/desktop-studio-controls.spec.js",
+        "sha256": "712e00ef26ad7b35d77040cf4bfe2bc4b99be993c8b760e537297cc7013010a0",
+        "bytes": 9791
+      },
+      {
+        "path": "e2e/editor-audit.spec.js",
+        "sha256": "f171d1958a04a78b036bd68505ebb1018c69ae8e3131daa6716df35ffed0435b",
+        "bytes": 9311
+      },
+      {
+        "path": "e2e/game-layout.spec.js",
+        "sha256": "3da4f6d28b635c0ab5a463703647f6b52bb10d8c07a3ef59a22084fe06e71340",
+        "bytes": 3632
+      },
+      {
+        "path": "e2e/helpers/desktopViewports.js",
+        "sha256": "0be6f873048875d68360b768c232fd300721e3a9b7ceb0d80553db5a4cd09ad0",
+        "bytes": 284
+      },
+      {
+        "path": "e2e/instrument-workbench.spec.js",
+        "sha256": "0d1e782f543f06b4f8749f5aa9d9d8669c092ae16a700896676237fbe7f32810",
+        "bytes": 18602
+      },
+      {
+        "path": "e2e/midi-ui.spec.js",
+        "sha256": "3cb462346ed161f9320d5713b21a81600e0c383ef652d127141018b48c56e9cb",
+        "bytes": 53094
+      },
+      {
+        "path": "e2e/physical-junction-controls.spec.js",
+        "sha256": "03f878d9abf1883ac45406e7a6d37aaaaae6e0d16d3f06c3a7ceefd2e92e73d9",
+        "bytes": 9256
+      },
+      {
+        "path": "e2e/procgen-sharing.spec.js",
+        "sha256": "0ad916b12038d760a5ba042ee80cfda7675cc65de0b7e2e1b9274e36f816b932",
+        "bytes": 9964
+      },
+      {
+        "path": "e2e/procgen-survey.spec.js",
+        "sha256": "435fbdeb1a7de79227d2ca49e46c69aa520f22c4ed2482ba0587d53d180b4f78",
+        "bytes": 30825
+      },
+      {
+        "path": "e2e/procgen-workstation-fullscreen.spec.js",
+        "sha256": "74d4aad0b7ed60f4b8a6ae0f22090b0e0d9f177f07283c5ad9854af9153360b3",
+        "bytes": 3303
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "sha256": "050620258b2737af4413e5bd68093a6b4e14e18087ef2fe844bce9556f7285ef",
+        "bytes": 28603
+      },
+      {
+        "path": "e2e/procgen-workstation-workflow.spec.js",
+        "sha256": "c59cc2aab5807263b800ea8146d765ff9d025ddca242762ab7c87a8527eb8175",
+        "bytes": 11359
+      },
+      {
+        "path": "e2e/procgen.spec.js",
+        "sha256": "97ca27c21ab4d7c3817e358fdfd4dc19b7d67eb059f0f4f20d21291d641441a6",
+        "bytes": 17421
+      },
+      {
+        "path": "js/actions/ActionWalkSystem.js",
+        "sha256": "b95024409f3c5bab7b32dd9327a06a9d1689ded376f1b913c73b3cee998a09ba",
+        "bytes": 2623
+      },
+      {
+        "path": "js/app/procgen/ProcgenPresentationSnapshot.js",
+        "sha256": "1e1920ba079a31720bdf7709fa0262262f5eb3ca697505a0c95d713de5ca2e05",
+        "bytes": 11674
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalJunctionControls.js",
+        "sha256": "b10bf3df73bbf87e4506d028921f28a7a405e36f0de4762323622e436a242d5c",
+        "bytes": 25613
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalJunctionPresentation.js",
+        "sha256": "4c634fcd6d09b6e504b10b0920f5d99cacad34adb7d28f413b2a0025142c1a58",
+        "bytes": 8390
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalJunctionView.js",
+        "sha256": "92c625226e54e70d9f321a6a3d55fa75068ffe3492539bcc896ee66db5a63545",
+        "bytes": 944
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "89dc9ded4d910a4a7608a9e958c8e77c61adc1cc3d18a9e1314b5fb8a2ff1b83",
+        "bytes": 181207
+      },
+      {
+        "path": "package.json",
+        "sha256": "be5470ebcb086889b9206ee454d329d6b18ffb27415ac1b3fbf195ef80cf316f",
+        "bytes": 8665
+      },
+      {
+        "path": "playwright.config.js",
+        "sha256": "269c879329bcefe8c59ec738f07a7ffb11fa409016382a947d416b0c4f2122fd",
+        "bytes": 2494
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "sha256": "ca1bed7268172b3c4b4e835b10bbe1f7f27879c5468c3096e1da93eb3d0c2c58",
+        "bytes": 18869
+      },
+      {
+        "path": "scripts/bench-long-session.js",
+        "sha256": "774ee0a6d9b523edad66546a6730e0058898e6d0d5bb2d9a398b944dc62ab4dd",
+        "bytes": 17276
+      },
+      {
+        "path": "scripts/bench-performance.js",
+        "sha256": "3c8660241cc214d3e6748d72355a86b57d544545f63063313910fab26f9da1cf",
+        "bytes": 16379
+      },
+      {
+        "path": "scripts/bench-procgen-soak.js",
+        "sha256": "7d218ca1edac41060fc77eaa9d6009998d162cf5bc2bd5b89b034422441e0d05",
+        "bytes": 9928
+      },
+      {
+        "path": "scripts/capture-instrument.mjs",
+        "sha256": "9c6665b805d24721e67e9cb683847fc1e8a1d47ae6adb92a8571b5d6fe3d72ae",
+        "bytes": 1802
+      },
+      {
+        "path": "scripts/e2e-capture-rects.js",
+        "sha256": "e351e48995590d67cd8dacbe6bd92919d51a1989c1c3eeb79a2ad351f372806b",
+        "bytes": 13165
+      },
+      {
+        "path": "scripts/measure-local-audio.js",
+        "sha256": "ab8a8f050bf53ab0fd76dca844dfe70e61fa441aa43474a01b375b57c3b276cb",
+        "bytes": 17504
+      },
+      {
+        "path": "scripts/measure-native-semantic-audio.js",
+        "sha256": "c56794084b8050014be1801166d98a48fcfdf2e1c4e1130d026f398e92ab7ddd",
+        "bytes": 10101
+      },
+      {
+        "path": "scripts/measure-sample-audio.js",
+        "sha256": "27cded57aa3fa37eb5cbe206d0ff63a11bbdb049ad4f0251ed79418de2936406",
+        "bytes": 14029
+      },
+      {
+        "path": "scripts/measure-shared-local-audio.js",
+        "sha256": "7372f4b849006eeab4083136eec6de267e5fabedc91f06b0db4ec5c70be62cb4",
+        "bytes": 8836
+      },
+      {
+        "path": "scripts/measure-worklet-audio.js",
+        "sha256": "f68c8a0ae7a74f96fc0258720886d17a15352b9de71e3761a33a8d38b9bb2175",
+        "bytes": 11973
+      },
+      {
+        "path": "scripts/midi-capture-native.js",
+        "sha256": "ccfb32def3f8c3a2123f183a0757a34210b2efe4b4bcceaede44160c6856f688",
+        "bytes": 7130
+      },
+      {
+        "path": "scripts/profile-procgen-editing.mjs",
+        "sha256": "eca004c79704e9e90ef661bf7d9837f4d9d86824700af6f4e10592258f49c937",
+        "bytes": 4528
+      },
+      {
+        "path": "scripts/profile-procgen-recovery.mjs",
+        "sha256": "d7a69c1b8e390c809d12c88e68a2889849427e8e9171f99a8a296ba00a8405bd",
+        "bytes": 3619
+      },
+      {
+        "path": "scripts/profile-procgen-workstation.mjs",
+        "sha256": "53adc90f5cd5a1cfa5e628fc0960b439a8b9ba97d1556e3d33a48256f02e11b9",
+        "bytes": 7593
+      },
+      {
+        "path": "scripts/profile-resource-recovery.mjs",
+        "sha256": "d64248e6ae17e526da292ef12d79246bf54f393a0751c3a7fbb682b9a8299f29",
+        "bytes": 9354
+      },
+      {
+        "path": "scripts/qualify-sound-content.mjs",
+        "sha256": "d020b211e570b0e5b62013cb3b22a27575a0bc0c6a87ee63a7f51e02349eb257",
+        "bytes": 10112
+      },
+      {
+        "path": "test/e2e-capture-rects-script.test.js",
+        "sha256": "1ad2cfeedfaa9e5417fd57f4c53b5b902f65d22c65300c6ef112a7c27cd7bf53",
+        "bytes": 1577
+      },
+      {
+        "path": "test/helpers/junctionPresentationWorld.js",
+        "sha256": "7334475b9319520678b1b0deb8e6ba98e56c53a9d6bbed2133d12457906511cb",
+        "bytes": 2288
+      },
+      {
+        "path": "test/physical-junction-controls.test.js",
+        "sha256": "c71b8da7736a5417e4a5905601a1cff6c58ec871dc9c17e91630c4d99b43b27e",
+        "bytes": 11705
+      },
+      {
+        "path": "test/physical-junction-presentation.test.js",
+        "sha256": "4683b3c6271a578ded039c3356bad85c5d96837285263472dcba6312b7c2f2b3",
+        "bytes": 8509
+      },
+      {
+        "path": "test/procgen-presentation-snapshot.test.js",
+        "sha256": "9c7a09892ea68c2c79c820ec8d46f3f4e2ef34dc855e8c5c7a5812f279fde669",
+        "bytes": 6447
+      },
+      {
+        "path": "test/walk-wall-collision.test.js",
+        "sha256": "250183d8f3962170f9ec81fc78b33f47581a8509f4d84b41e63f6919770d00b2",
+        "bytes": 4863
+      }
+    ],
+    "limitations": [
+      "Full CI for this continuation is pending; the last fully green checkpoint remains 98a66cba, prior to the desktop baseline correction.",
+      "The actual direct/stepped same-outlet fixture establishes controls and real crossings, not qualification of all two/three-branch production route templates, later musical differences, Stage/recorded cue replacement and seek/reload matrices. Issue #1232 remains open for those requirements.",
+      "No external hardware, acoustic, long-session or disk durability claim."
     ]
   }
 }

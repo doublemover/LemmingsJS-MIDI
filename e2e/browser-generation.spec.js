@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -24,7 +25,7 @@ async function updateGeneration(page) {
 test('a fresh real application install supports every offline entry without another online reload', { tag: '@boundary' }, async ({ browser }) => {
   test.setTimeout(240000);
   const output = path.join(repository, 'dist', 'browser-offline-e2e-' + randomUUID()), build = await buildBrowserRuntime({ rootDir: repository, outputDir: output });
-  const server = await browserGenerationServer({ directory: output }), context = await browser.newContext(), page = await context.newPage();
+  const server = await browserGenerationServer({ directory: output }), context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT }), page = await context.newPage();
   try {
     await page.goto(server.url); await page.waitForURL(server.url + build.buildId + '/index.html', { timeout: 180000 });
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
@@ -80,7 +81,7 @@ test('a failed B stays unavailable and a complete B retains the live A generatio
   test.setTimeout(180000);
   const fixture = await browserGenerationFixture(); let missing = null;
   const a = await fixture.build(), server = await browserGenerationServer({ directory: path.join(fixture.root, 'dist/browser'), unavailable: file => file === missing });
-  const context = await browser.newContext(), oldPage = await context.newPage();
+  const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT }), oldPage = await context.newPage();
   try {
     await oldPage.goto(server.url); await oldPage.waitForURL(server.url + a.buildId + '/index.html');
     await oldPage.waitForFunction(() => !!globalThis.fixtureIdentity); const identityA = await applicationIdentity(oldPage);

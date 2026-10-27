@@ -74,7 +74,7 @@ Common commands:
 Direct CLI form:
 
 - `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/midi.js`
-- `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/editor.js --viewport=tablet`
+- `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/editor.js --viewport=qhd`
 - `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/game-hud.js --target=game-runtime-hud --json`
 
 Supported flags:
@@ -84,7 +84,7 @@ Supported flags:
   default.
 - `--out-dir=<path>`: output directory; it must stay under
   `temp/e2e-captures/`.
-- `--viewport=desktop|tablet|mobile`: viewport preset.
+- `--viewport=desktop|qhd|uhd`: 1920x1080, 2560x1440, or 3840x2160 desktop viewport.
 - `--target=name[,name...]`: capture only named targets.
 - `--json`: machine-readable output.
 

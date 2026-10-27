@@ -1,5 +1,38 @@
 @import url('./sound-content-library.css');
 
+.studio-junction-controls { margin: 12px 0; padding: 12px; border-top: 1px solid #8da0ac; font-size: 12px; }
+.studio-junction-controls h2 { margin-bottom: 8px; }
+.studio-junction-controls select, .studio-junction-floating select { box-sizing: border-box; width: 100%; max-width: 100%; margin: 4px 0; min-height: 32px; }
+.studio-junction-controls output, .studio-junction-floating output { display: block; overflow-wrap: anywhere; margin: 7px 0; font-size: 11px; }
+.studio-junction-controls button, .studio-junction-floating button { min-height: 32px; margin: 4px 5px 4px 0; }
+.studio-junction-controls ol { padding-left: 18px; overflow-wrap: anywhere; }
+.studio-junction-layer { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+.studio-junction-layer svg { position: fixed; overflow: hidden; pointer-events: none; }
+.studio-junction-anchor { position: fixed; box-sizing: border-box; width: 44px; height: 44px; transform: translate(-50%, -50%); pointer-events: auto; border: 1px solid #c7d1c4; border-radius: 5px; background: #263e34ed; color: #f2efcc; font: 10px system-ui; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+.studio-junction-anchor[aria-pressed=true] { outline: 2px solid #e1d27e; outline-offset: 2px; }
+.studio-junction-floating { position: fixed; box-sizing: border-box; width: 250px; max-height: 150px; overflow: auto; padding: 8px; border: 1px solid #98b8aa; border-radius: 5px; background: #1c3129f5; color: #f0efce; pointer-events: auto; font: 11px system-ui; }
+.studio-junction-floating select { background: #243e32; color: inherit; }
+.studio-junction-notches { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; margin: 8px 0; }
+.studio-junction-notches span { position: relative; padding: 14px 2px 4px; border-top: 2px solid #81998e; text-align: center; font-size: 10px; overflow-wrap: anywhere; }
+.studio-junction-notches span[data-applied=true]::before { content: '▮'; position: absolute; top: -5px; left: calc(50% - 5px); color: #78ba8d; font-size: 20px; transition: color 120ms linear; }
+.studio-junction-notches span[data-requested=true]::after { content: '▽'; position: absolute; top: -4px; left: calc(50% - 7px); color: #dbb25c; font-size: 17px; }
+.studio-junction-notches span[data-draft=true] { border-bottom: 1px solid #7faed4; }
+.studio-junction-notches[data-geometry=stale-geometry] span[data-applied=true]::before { color: #b4b4b4; }
+.junction-applied-region { fill: none; stroke: #8bce9f; stroke-width: 2; }
+.junction-unverified-region { fill: none; stroke: #b8b8b8; stroke-width: 1; stroke-dasharray: 3 3; }
+.junction-safety-region { stroke: #d7bc70; stroke-width: 1; stroke-dasharray: 3 3; }
+.junction-hatch { stroke: #d7bc70; stroke-width: 1; opacity: .3; }
+.junction-safety-mark { fill: #f5d273; font: bold 13px system-ui; }
+.junction-port { fill: #172c24; stroke: #abcbce; stroke-width: 1.5; }
+.junction-port.outlet { stroke: #edc97b; }
+.junction-port-direction { fill: none; stroke: #c5d6d1; stroke-width: 1.2; }
+.junction-observed-outline { fill: none; stroke: #08151c; stroke-width: 5; opacity: .9; }
+.junction-observed-outline[data-historical=true] { opacity: .5; }
+.junction-observed { fill: none; stroke: #60d7ff; stroke-width: 2.5; }
+.junction-historical { stroke: #9eabc0; opacity: .5; stroke-dasharray: 3 2; }
+.studio-junction-controls [hidden], .studio-junction-layer[hidden], .studio-junction-layer [hidden] { display: none; }
+.studio-junction-dialog textarea { box-sizing: border-box; max-width: 100%; width: min(70ch, 80vw); }
+
 /* The shared world stays underneath both views; only editing chrome changes. */
 body.procgen-workstation {
   box-sizing: border-box;

@@ -1,3 +1,4 @@
+import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
@@ -15,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => window.__E2E__?.getState().editor?.assets?.terrain?.length);
   await apply(page, [{ type: 'level.loadText', args: { text: await fs.readFile('examples/editor-audit/orchard-gate.nxlv', 'utf8'), resetHistory: true } }]);
 });
-test('Every tool shortcut, brush fields, metadata, palette filter and responsive viewport', async ({ page }, testInfo) => {
+test('Every tool shortcut, brush fields, metadata, palette filter and desktop viewports', async ({ page }, testInfo) => {
   for (const [key, tool] of Object.entries({ s:'select', t:'terrain', g:'gadget', r:'trigger', m:'midi-flag', e:'entrance', x:'exit', f:'steel', b:'brush', d:'eraser' })) {
     await page.keyboard.press(`Key${key.toUpperCase()}`);
     expect((await state(page)).controller.tool).toBe(tool);
@@ -34,9 +35,9 @@ test('Every tool shortcut, brush fields, metadata, palette filter and responsive
   expect(editor.session.level.header).toMatchObject({ TITLE:'Metadata test', WIDTH:800, HEIGHT:192, LEMMINGS:12, SAVE_REQUIREMENT:8, TIME_LIMIT:6, MAX_SPAWN_INTERVAL:25, START_X:80, START_Y:4 });
   await page.locator('#editorPaletteSearch').fill('terrain_9');
   await expect(page.locator('#editorPaletteSearch')).toHaveValue('terrain_9');
-  for (const viewport of [{width:1280,height:800},{width:768,height:1024},{width:390,height:844}]) {
+  for (const viewport of DESKTOP_VIEWPORTS) {
     await page.setViewportSize(viewport);
-    await page.screenshot({ path:testInfo.outputPath(`editor-responsive-${viewport.width}.png`), fullPage:true });
+    await page.screenshot({ path:testInfo.outputPath(`editor-desktop-${viewport.width}.png`), fullPage:true });
     await expect(page.locator('#editorNewLevel')).toBeVisible();
   }
 });

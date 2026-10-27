@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 
@@ -13,7 +14,7 @@ const laneCounts = [...new Set(String(args.lanes || '8,64,1024').split(',').map(
 if (!laneCounts.length || laneCounts.length > 8 || laneCounts.some(value => !Number.isSafeInteger(value) || value < 1 || value > 1024)) throw new Error('Profile lane counts must be integers from 1 to 1024.');
 const report = { name: args.name || 'Lyra', timestamp: new Date().toISOString(), baseURL, durationMs, warmupTicks, seed,
   sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), laneCounts,
-  viewport: { width: 1440, height: 1000 }, cases: [], errors: [] };
+  viewport: MIN_DESKTOP_VIEWPORT, cases: [], errors: [] };
 
 const measure = ({ durationMs }) => new Promise(resolve => {
   const api = window.__PROCGEN_LANES__, world = api.world, renderer = api.renderer;

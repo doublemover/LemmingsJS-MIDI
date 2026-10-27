@@ -1,3 +1,4 @@
+import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/ProcgenMidiDefaults.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
@@ -150,9 +151,9 @@ test('legacy: seed menu dismissal and Help preserve useful keyboard focus', asyn
   expect(await page.locator('#procgenDrawer').evaluate(el => el.inert)).toBe(true);
 });
 
-for (const width of [390, 768, 1440]) {
+for (const { width, height } of DESKTOP_VIEWPORTS) {
   test('legacy: procgen primary controls fit a ' + width + 'px viewport', async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height });
     await page.goto('/procgen.html?workstation=0&e2e=1&seed=42&lanes=2'); await ready(page);
     for (const id of ['procgenPause', 'procgenFollow', 'procgenListen', 'procgenLanes', 'procgenPack', 'procgenHelp', 'procgenTab']) {
       const box = await page.locator('#' + id).boundingBox();

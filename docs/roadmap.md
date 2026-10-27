@@ -470,11 +470,9 @@ than broad sequencer rewrites.
   - preview with current key/scale/global shaping.
   - visible output log and all-notes-off/panic.
 - Layout:
-  - desktop: stable DAW-like workspace with transport, browser, track/mixer, and
-    inspector regions.
-  - tablet: collapsible browser/inspector with the sequencer grid still usable.
-  - phone/narrow: task-focused single-column flows for setup, browse, edit, and
-    audition without clipped labels.
+  - desktop at 1920x1080 minimum: stable DAW-like workspace with transport,
+    browser, track/mixer, and inspector regions. Phone and tablet layouts are
+    outside the product scope.
 - Accessibility:
   - semantic controls.
   - focus order matching visual order.
@@ -7058,5 +7056,38 @@ export-budget acknowledgments still prevent a false complete receipt.
   grouped follow-through passes all seven sharing/navigation cases and three
   real captures (102,272 / 102,144 / 101,249 frames), with canceled save retry,
   finite PCM and nonzero peaks. The validation receipt preserves failed attempts
-  and truthful partial-prefix results. Full CI for the new commit remains pending;
-  no blanket closure of the remaining GitHub backlog is implied.
+  and truthful partial-prefix results. Full CI for 98a66cba subsequently passes
+  **6,384 Node cases / 43 browser boundaries**, all static, protocol, benchmark,
+  policy and dependency checks, with **90.24% lines/statements, 83.47% branches,
+  88.21% functions**. Its capture boundary produces a Ready, acknowledged
+  54,144-frame WAV. The remaining GitHub backlog still needs its own work.
+
+### Continuation 278 — desktop switchyard and qualified walking observations
+
+- The supported minimum is 1920x1080 desktop. Browser fixtures now share that
+  baseline and test larger 2560x1440 and 3840x2160 desktop resolutions. Phone,
+  tablet and orientation cases are removed; capture/qualification/performance
+  scripts and documented desktop/qhd/uhd capture presets follow the same scope.
+  Earlier subminimum viewport results remain historical diagnostics, outside
+  target acceptance. AGENTS.md records the product constraint explicitly.
+- The lazy switchyard provides one shared world/dock destination and policy,
+  solid applied and ghost pending notches, canonical blocking/expiry and
+  supersession receipts, cancellation, protected definition editing and world
+  epoch fences. Projection uses bounded collision-aware anchors, distinct port,
+  safety and observed path marks, and scoped inspector controls. Keyboard and
+  mouse ownership preserve native selection, camera yielding and disposal.
+- Traversal requires complete, continuous accepted coordinate-write facts from
+  the current world and applied junction. Requests, downstream actors, coarse
+  endpoints and stale geometry cannot invent a crossing. Tracks and historical
+  paths are bounded and resource admitted. Ordinary walking now supplies its
+  real accepted movement; reverted wall attempts and failed actions add none.
+- One grouped run passes **335 Node cases / 16 desktop browser cases**, including
+  all three desktop sizes, actual world requests/crossings, paused hash stability,
+  mouse cancellation, native Escape, clipboard fallback and fullscreen resize.
+  A real 160-tick twin-world case preserves physical batches, canonical physics
+  hashes and nonempty causal music intents with/without observation. Formatting,
+  critical types, undefined-call scan, provenance and whitespace checks pass.
+  Full CI is pending for this continuation; 98a66cba is the prior green checkpoint.
+- #1232 still needs the full branching-route/musical-difference, Stage/cue and
+  seek/reload qualification matrix. The receipt preserves the fixture/source-path
+  fixes and the explicit correction from out-of-scope phone validation.

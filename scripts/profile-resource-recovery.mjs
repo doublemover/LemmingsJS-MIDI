@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import http from 'node:http';
@@ -48,7 +49,7 @@ let browser;
 try {
   const launched = await launchAudioEvidenceBrowser(); browser = launched.browser; report.environment = { ...launched.environment, measurementScope: 'resource-and-recovery-browser-workload', realtime: 'simulation-and-interaction-measured; audio-not-qualified' };
   for (const required of RESOURCE_RECOVERY_CASES) {
-    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: required.dpr, permissions: [], serviceWorkers: 'block' });
+    const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, deviceScaleFactor: required.dpr, permissions: [], serviceWorkers: 'block' });
     const page = await context.newPage(), browserErrors = [], driverClicks = []; page.on('pageerror', error => browserErrors.push(String(error.message).slice(0, 1024)));
     await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
     let row = { ...required }, expired = false; const caseTimer = setTimeout(() => { expired = true; void context.close().catch(() => {}); }, 600000);

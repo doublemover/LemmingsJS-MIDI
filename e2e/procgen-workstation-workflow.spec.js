@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
@@ -13,7 +14,7 @@ const ready = async (page, { patterns = false } = {}) => {
 };
 
 test('workstation boots eight instrument lanes and switches sequence layouts without replacing the world', async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page);
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes.length)).toBe(8);

@@ -1,8 +1,9 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 
 test('production workstation reaccepts the same world and canvas after fullscreen geometry changes', async ({ page }) => {
   test.setTimeout(90000);
-  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=3');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => {
@@ -37,7 +38,7 @@ test('production workstation reaccepts the same world and canvas after fullscree
   await page.evaluate(() => document.exitFullscreen());
   await expect.poll(geometry).toMatchObject({ fullscreen: null, snapshot: true,
     sameWorld: true, sameCanvas: true, stagePreparing: false });
-  await page.setViewportSize({ width: 1024, height: 700 });
+  await page.setViewportSize({ width: 2560, height: 1440 });
   await expect.poll(geometry).toMatchObject({ snapshot: true, sameWorld: true, sameCanvas: true, stagePreparing: false });
   const resized = await geometry();
   expect(resized.width).toBeCloseTo(resized.domWidth, 0);

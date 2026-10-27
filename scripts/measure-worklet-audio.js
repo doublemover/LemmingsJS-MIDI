@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -9,7 +10,7 @@ const rates = option('sample-rates', '44100,48000,96000').split(',').map(Number)
 if (!rates.length || rates.length > 8 || rates.some(rate => !Number.isInteger(rate) || rate < 8000 || rate > 192000)) throw new Error('Invalid audio fixture rates.');
 const root = process.cwd(), directory = path.resolve(root, option('out-dir', 'temp/worklet-audio-evidence'));
 const { browser, environment } = await launchAudioEvidenceBrowser();
-const context = await browser.newContext({ permissions: [] }).catch(async error => { await browser.close(); throw error; });
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, permissions: [] }).catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));
 let server = null;

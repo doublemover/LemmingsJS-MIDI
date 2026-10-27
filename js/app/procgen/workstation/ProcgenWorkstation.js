@@ -256,7 +256,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } })); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
-    if (state.presentationTransition || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
+    if (state.presentationTransition || renderer()?.junctionInspectionOwner || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
     lastObserverAt = timestamp;
     const world = runtime()?.world, render = renderer(); if (!world || !render) return;
     const ranked = project.procgen.lanes.map((lane, index) => ({ index, distance: world.stall?.lanes?.[index]?.maxX || world.frontiers?.[index] || 0 })).sort((a, b) => b.distance - a.distance || a.index - b.index);
@@ -1477,14 +1477,18 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       });
     },
     openPhysicalJunctions() {
-      physicalJunctionView ||= createPhysicalJunctionView({ document, displayScheduler: view?.displayScheduler,
+      physicalJunctionView ||= createPhysicalJunctionView({ document, window, getRuntime: runtime, displayScheduler: view?.displayScheduler,
+        canRequest: () => !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTakeStart && !causalTakeStop,
+        canAuthor: () => !disposed && !stageSession?.active() && !worldBusy && !pendingHistory && !physicalAuthoringAbort,
+        onRevealLane: lane => { state.firstLane = lane; state.laneId = project.procgen.lanes[lane]?.id || state.laneId; state.tab = 'Physical'; view?.renderInspector?.(); view?.layout?.(); view?.launched?.(); },
+        onObserveCrossing: crossing => { runtime()?.renderer?.render?.(true); if (worldInspector?.select(`${crossing.generation}:actor:${crossing.actorId}`)) worldInspector.reveal(); else status('This observed actor is no longer in the current visible actor index.'); },
         getDefinitions: () => project.procgen.junctions || [], query: id => runtime()?.world?.queryJunction?.(id, { includeDefinition: false }),
-        save: junctions => { if (worldBusy || pendingHistory) throw new Error('Wait for the world/history transaction.'); dispatch({ type: 'procgen/junctions', junctions }); },
+        save: junctions => { if (stageSession?.active()) throw new Error('Exit Stage before editing junction definitions.'); if (worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('Wait for the world/history transaction.'); const result = dispatch({ type: 'procgen/junctions', junctions }); if (result === false) throw new Error('Junction definitions were not admitted. Finish the current edit operation.'); return result; },
         request: (junctionId, configurationId, policy) => handlers.requestJunction(junctionId, configurationId, policy), cancel: id => handlers.cancelJunctionRequest(id), onStatus: status });
       physicalJunctionView.open();
     },
     requestJunction(junctionId, configurationId, policy = 'waitForSafeBoundary') {
-      const world = runtime()?.world; if (!world || worldBusy || pendingHistory || causalTakeStart || causalTakeStop) throw new Error('Wait for a committed world boundary.');
+      const world = runtime()?.world; if (!world || worldBusy || pendingHistory || physicalAuthoringAbort || causalTakeStart || causalTakeStop) throw new Error('Wait for a committed world boundary.');
       const definition = world.physicalJunctions.definitions.find(value => value.id === junctionId); if (!definition) throw new Error('Junction definition has not reached its command boundary.');
       if (!Number.isSafeInteger(++junctionRequestSerial)) throw new Error('Junction request identity exhausted.');
       const id = `junction:${world.generation}:${world.tickIndex}:${junctionRequestSerial}`, command = { id, transactionId: id, kind: 'junction-request', origin: 'manual', target: { generation: world.generation },

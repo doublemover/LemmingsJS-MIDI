@@ -55,5 +55,29 @@ describe('ActionWalkSystem wall collision', function() {
       }
     }
   });
+  it('emits one accepted coordinate path for walking without a tentative wall excursion', () => {
+    for (const wall of [false, true]) {
+      const facts = [], action = new ActionWalkSystem(null), level = new Level(24, 24);
+      Object.assign(level, { worldId: 'walk-source', generation: 2, tickIndex: 7 });
+      for (let x = 0; x < 24; x++) level.groundMask.setGroundAt(x, 16);
+      if (wall) for (let y = 9; y <= 16; y++) level.groundMask.setGroundAt(12, y);
+      const actor = new Lemmings.Lemming(11, 16, 4); actor.lookRight = true; actor.action = action;
+      actor.setRuntime({ physicalFacts: { enabled: () => true, emit: fact => { facts.push(fact); } } });
+      action.process(level, actor); const motion = facts.filter(fact => fact.kind === 'MotionCommitted');
+      expect(motion).to.have.length(wall ? 0 : 1);
+      if (wall) { expect(facts.map(fact => fact.kind)).to.deep.equal(['ContactResolved', 'DirectionChanged']); expect(actor.x).to.equal(11); }
+      else { expect(motion[0].physicalPayload.pathEvidence).to.equal('committed-coordinate-write'); expect(motion[0].positionBefore).to.deep.equal({ x: 11, y: 16 }); expect(motion[0].positionAfter).to.deep.equal({ x: 12, y: 16 }); expect(actor._physicalMotionFactTick).to.equal(7); }
+    }
+  });
+  it('records the complete accepted corner move and emits no motion from a failed action', () => {
+    const facts = [], action = new ActionWalkSystem(null), level = new Level(24, 24);
+    for (let x = 0; x < 24; x++) level.groundMask.setGroundAt(x, 16);
+    for (let y = 14; y <= 16; y++) level.groundMask.setGroundAt(12, y);
+    const actor = new Lemmings.Lemming(11, 16, 4); actor.lookRight = true; actor.action = action;
+    actor.setRuntime({ physicalFacts: { enabled: () => true, emit: fact => { facts.push(fact); } } });
+    action.process(level, actor); expect(facts[0].positionAfter).to.deep.equal({ x: 12, y: 14 });
+    facts.length = 0; const broken = { getGroundMaskLayer() { throw new Error('source unavailable'); } };
+    expect(() => action.process(broken, actor)).to.throw('source unavailable'); expect(facts).to.have.length(0);
+  });
 
 });

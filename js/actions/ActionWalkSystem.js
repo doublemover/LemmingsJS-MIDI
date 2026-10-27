@@ -2,6 +2,7 @@ import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { Lemming } from '../lemmings/Lemming.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { recordPhysicalMotion } from './PhysicalMotionFacts.js';
 
 class ActionWalkSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -11,6 +12,12 @@ class ActionWalkSystem extends ActionBaseSystem {
     return false;
   }
   process(level, lem) {
+    const beforeX = lem.x, beforeY = lem.y;
+    const next = this._process(level, lem);
+    recordPhysicalMotion(level, lem, beforeX, beforeY);
+    return next;
+  }
+  _process(level, lem) {
     lem.frameIndex++;
     const prevX = lem.x;
     lem.x += (lem.lookRight ? 1 : -1);

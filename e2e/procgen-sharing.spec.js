@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 
 const ready = async page => {
@@ -64,13 +65,13 @@ test('recipe review uses real clipboard acknowledgement and all fields reopen in
 });
 
 test('clipboard permission rejection retains a selected read-only URL and manual copy instructions', async ({ page, context }) => {
-  test.setTimeout(60000); await page.setViewportSize({ width: 390, height: 780 }); await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2'); await ready(page);
+  test.setTimeout(60000); await page.setViewportSize(MIN_DESKTOP_VIEWPORT); await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2'); await ready(page);
   await context.grantPermissions([], { origin: new URL(page.url()).origin }); await openShare(page);
   await page.getByRole('button', { name: 'Copy link', exact: true }).click();
   await expect(page.locator('#procgenShareStatus')).toContainText('Ctrl+C'); await expect(page.locator('#procgenShareStatus')).not.toContainText('link copied');
   const input = page.locator('#procgenShareUrl'); await expect(input).toBeFocused(); await expect(input).toHaveAttribute('readonly', '');
   expect(await input.evaluate(element => element.selectionEnd - element.selectionStart)).toBe((await input.inputValue()).length);
-  const bounds = await page.getByRole('dialog').boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(390); expect(bounds.height).toBeLessThanOrEqual(756);
+  const bounds = await page.getByRole('dialog').boundingBox(); expect(bounds.x).toBeGreaterThanOrEqual(0); expect(bounds.x + bounds.width).toBeLessThanOrEqual(MIN_DESKTOP_VIEWPORT.width); expect(bounds.height).toBeLessThanOrEqual(MIN_DESKTOP_VIEWPORT.height - 24);
 });
 
 test('sharing prepares the reviewed checkpoint before focusing existing file delivery controls', async ({ page }) => {

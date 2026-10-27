@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test';
+import { MIN_DESKTOP_VIEWPORT } from './e2e/helpers/desktopViewports.js';
 
 const DEFAULT_PLAYWRIGHT_BASE_URL = 'https://localhost:8080';
 
@@ -43,6 +44,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL,
+    viewport: { ...MIN_DESKTOP_VIEWPORT },
+    screen: { ...MIN_DESKTOP_VIEWPORT },
     browserName: 'chromium',
     ignoreHTTPSErrors: true,
     permissions: ['midi'],

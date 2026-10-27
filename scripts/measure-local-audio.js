@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { LOCAL_AUDIO_SOURCES, launchAudioEvidenceBrowser } from './audio-evidence-runtime.js';
@@ -11,7 +12,7 @@ const moduleUrls = Object.fromEntries(Object.entries({
   preview: 'js/app/midi-ui/browserNotePreview.js', scheduler: 'js/midi/MidiScheduler.js', capture: 'js/midi/capture/MidiOutputCapture.js'
 }).map(([key, path]) => [key, new URL('/' + path, url).href]));
 const { browser, environment } = await launchAudioEvidenceBrowser();
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 } })
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT })
   .catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));

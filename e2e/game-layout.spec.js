@@ -1,10 +1,9 @@
+import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { waitForHarnessReady } from './helpers/harness.js';
 
-test.use({ hasTouch: true });
-
-for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, { width: 844, height: 390 }, { width: 320, height: 568 }]) {
+for (const [sizeIndex, size] of DESKTOP_VIEWPORTS.entries()) {
   test(`game controls stay above the fold and arrows beside the level selector at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await installExternalAssetStubs(page);
@@ -57,7 +56,7 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
       await page.locator('#midiWorkspaceClose').click();
       await expect(page.locator('#midiWorkspaceToggle')).toBeFocused();
     }
-    await page.setViewportSize({ width: size.height, height: size.width });
+    await page.setViewportSize(DESKTOP_VIEWPORTS[(sizeIndex + 1) % DESKTOP_VIEWPORTS.length]);
     await check();
   });
 }

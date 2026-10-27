@@ -107,9 +107,25 @@ const hitProcgenPresentation = (snapshot, clientX, clientY) => {
   return hits.sort(compareEntities);
 };
 const getProcgenPresentationEntity = (snapshot, id) => snapshots.get(snapshot)?.entitiesById.get(id) || null;
+const overlapsProcgenPresentation = (snapshot, clientRect, kinds = ['actor', 'contact', 'gate']) => {
+  const index = snapshot && snapshots.get(snapshot); if (!index || !finiteRect(clientRect)) return true;
+  const left = (clientRect.left - snapshot.rect.left) / snapshot.rect.width * snapshot.logicalSize.width;
+  const top = (clientRect.top - snapshot.rect.top) / snapshot.rect.height * snapshot.logicalSize.height;
+  const right = left + clientRect.width / snapshot.rect.width * snapshot.logicalSize.width;
+  const bottom = top + clientRect.height / snapshot.rect.height * snapshot.logicalSize.height;
+  const x1 = Math.floor(left / CELL_SIZE), x2 = Math.floor(right / CELL_SIZE), y1 = Math.floor(top / CELL_SIZE), y2 = Math.floor(bottom / CELL_SIZE);
+  if ((x2 - x1 + 1) * (y2 - y1 + 1) > 64) return true;
+  const seen = new Set(), matches = entity => {
+    if (seen.has(entity.id)) return false; seen.add(entity.id); index.queryVisits++;
+    return kinds.includes(entity.kind) && entity.regions.some(region => left < region.x + region.width && right > region.x && top < region.y + region.height && bottom > region.y);
+  };
+  for (let y = y1; y <= y2; y++) for (let x = x1; x <= x2; x++) for (const entity of index.bins.get(`${x}:${y}`) || []) if (matches(entity)) return true;
+  for (const entity of index.wide) if (matches(entity)) return true;
+  return false;
+};
 const procgenPresentationStats = snapshot => {
   const index = snapshot && snapshots.get(snapshot);
   return { entities: snapshot?.entities.length || 0, cells: index?.bins.size || 0, wideEntities: index?.wide.length || 0, memberships: index?.memberships || 0, estimatedBytes: index?.estimatedBytes || 0, queryVisits: index?.queryVisits || 0 };
 };
 
-export { createProcgenPresentationSnapshot, readProcgenCanvasRect, sameProcgenRect, procgenScreenToWorld, procgenWorldToScreen, hitProcgenPresentation, getProcgenPresentationEntity, procgenPresentationStats };
+export { createProcgenPresentationSnapshot, readProcgenCanvasRect, sameProcgenRect, procgenScreenToWorld, procgenWorldToScreen, hitProcgenPresentation, overlapsProcgenPresentation, getProcgenPresentationEntity, procgenPresentationStats };

@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { waitForHarnessReady } from './helpers/harness.js';
@@ -16,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('all layouts keep the identical live map canvas and musical undo keeps game time', { tag: '@boundary' }, async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   await page.evaluate(() => { window.__E2E__.pause(); window.__originalGameCanvas = document.getElementById('gameCanvas'); });
@@ -86,25 +87,8 @@ test('character choices replace one accessory while retaining separate eyewear',
   expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
 });
 
-test.describe('mobile workbench availability', () => {
-  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1' });
-  test('mobile hides MIDI until explicit opt-in', async ({ page }) => {
-    await page.goto('/?e2e=1'); await waitForHarnessReady(page);
-    await expect(page.locator('#midiWorkspaceToggle')).toBeHidden();
-    await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
-    expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
-    await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
-    await expect(page.locator('#midiWorkspaceToggle')).toBeVisible();
-    if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
-    await expect(page.locator('#midiSequencerWorkspace')).toBeVisible();
-    await page.setViewportSize({ width: 844, height: 390 });
-    await expect(page.locator('#gameCanvas')).toBeVisible();
-  });
-});
-
 test('every right-pane workspace keeps aligned direct Panic and close controls', { tag: '@boundary' }, async ({ page }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   await page.evaluate(() => window.__E2E__.pause());
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();

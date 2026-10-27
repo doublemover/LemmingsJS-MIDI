@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 
@@ -5,7 +6,7 @@ const base = process.env.LEMMINGS_E2E_BASE_URL || 'http://127.0.0.1:8189';
 const browser = await chromium.launch({ headless: true, executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined });
 const report = { schema: 'procgen-edit-cost/v1', sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), cases: [], errors: [] };
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ viewport: MIN_DESKTOP_VIEWPORT });
   page.on('pageerror', error => report.errors.push(error.message));
   for (const laneCount of [8, 128, 1024]) {
     await page.goto(`${base}/procgen.html?e2e=1&seed=42&lanes=${laneCount}`);

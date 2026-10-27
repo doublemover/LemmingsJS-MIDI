@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 import { admitPcmMetrics } from '../js/app/midi-ui/PcmEvidence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -7,7 +8,7 @@ import { LOCAL_AUDIO_SOURCES, launchAudioEvidenceBrowser } from './audio-evidenc
 const root = process.cwd(), directory = path.resolve(root, 'temp/shared-local-audio-evidence');
 const sources = LOCAL_AUDIO_SOURCES;
 const { browser, environment } = await launchAudioEvidenceBrowser();
-const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, permissions: [] })
+const context = await browser.newContext({ viewport: MIN_DESKTOP_VIEWPORT, permissions: [] })
   .catch(async error => { await browser.close(); throw error; });
 const page = await context.newPage(), errors = [];
 page.on('pageerror', error => errors.push(error.message));

@@ -1,3 +1,4 @@
+import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import { generateProcgenSurveyCandidates } from '../js/app/procgen/survey/ProcgenSurveyCandidates.js';
@@ -108,8 +109,8 @@ test.describe('survey recorded review interactions', () => {
     await expect(page.locator('#surveyTick')).toHaveText('Tick 64');
   });
 
-  test('explains an absent baseline and fits a narrow review viewport', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  test('explains an absent baseline and fits the supported desktop review viewport', async ({ page }) => {
+    await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
     await page.goto('/procgen-survey.html');
     const report = reviewFixture(); report.results = report.results.slice(1);
     await page.evaluate(value => window.__procgenSurveyDashboard.load(value), report);
@@ -360,7 +361,7 @@ test('scenario and policy-seed review preserves candidate identity and exposes d
   await expect(page.locator('#surveyOutcomeSummary')).toContainText('Incomplete episode');
   await page.locator('#surveyFilter').selectOption('incomplete');
   await expect(page.locator('.survey-tile:visible')).toHaveCount(2);
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Next scenario', exact: true }).click();
   await expect(page.locator('#surveyNextScene')).toBeDisabled();

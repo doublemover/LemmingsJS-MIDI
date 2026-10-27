@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { createProcgenPresentationSnapshot, readProcgenCanvasRect, procgenScreenToWorld, procgenWorldToScreen, hitProcgenPresentation, procgenPresentationStats } from '../js/app/procgen/ProcgenPresentationSnapshot.js';
+import { createProcgenPresentationSnapshot, readProcgenCanvasRect, procgenScreenToWorld, procgenWorldToScreen, hitProcgenPresentation, overlapsProcgenPresentation, procgenPresentationStats } from '../js/app/procgen/ProcgenPresentationSnapshot.js';
 
 const make = (options = {}) => createProcgenPresentationSnapshot({ worldId: 'world', generation: 2, tick: 50, terrainRevision: 3, revision: 7,
   rect: { left: 31, top: 47, width: 400, height: 304 }, backingSize: { width: 1200, height: 912 }, logicalSize: { width: 800, height: 608 }, originX: 100,
@@ -9,6 +9,17 @@ const make = (options = {}) => createProcgenPresentationSnapshot({ worldId: 'wor
   ], ...options });
 
 describe('ProcGen immutable presented projection', () => {
+  it('keeps control hit rectangles clear of actors and gates using the bounded spatial index', () => {
+    const snapshot = make({ entities: [{ id: 'actor', kind: 'actor', bounds: { x: 200, y: 230, width: 10, height: 10 } },
+      { id: 'gate', kind: 'gate', bounds: { x: 300, y: 240, width: 10, height: 10 } }, { id: 'wide', kind: 'zone', bounds: { x: 100, y: 210, width: 400, height: 70 } }] });
+    const actor = procgenWorldToScreen(snapshot, 205, 235, 2), gate = procgenWorldToScreen(snapshot, 305, 245, 2);
+    expect(overlapsProcgenPresentation(snapshot, { left: actor.x - 2, top: actor.y - 2, width: 4, height: 4 })).to.equal(true);
+    expect(overlapsProcgenPresentation(snapshot, { left: gate.x - 2, top: gate.y - 2, width: 4, height: 4 })).to.equal(true);
+    expect(overlapsProcgenPresentation(snapshot, { left: 32, top: 48, width: 10, height: 10 })).to.equal(false);
+    expect(overlapsProcgenPresentation(snapshot, { left: 32, top: 48, width: 10, height: 10 }, ['zone'])).to.equal(true);
+    expect(overlapsProcgenPresentation(snapshot, { left: 0, top: 0, width: 1e6, height: 1e6 })).to.equal(true);
+    expect(procgenPresentationStats(snapshot).queryVisits).to.be.below(20);
+  });
   it('maps CSS-scaled logical content and cropped rows at fractional DPR without DPR input arithmetic', () => {
     const snapshot = make();
     expect(procgenScreenToWorld(snapshot, 31, 47)).to.include({ x: 100, y: 210, lane: 2 });
