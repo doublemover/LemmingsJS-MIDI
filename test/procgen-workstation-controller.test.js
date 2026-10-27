@@ -58,6 +58,30 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('keeps freshly admitted pattern voices after seeking away a paused resume boundary', async () => {
+    const f = setup({ lookaheadMs: 80 }); f.studio.bindRuntime(); f.enable();
+    f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'pattern', patternPurpose: 'A held phrase across the paused seek boundary' } });
+    f.studio.dispatch({ type: 'procgen/pattern', laneId: 'lane-1', slot: 0,
+      patch: { length: 16, steps: Array.from({ length: 16 }, (_, index) => ({ enabled: index === 0, note: 60, duration: 8 })) } });
+    f.studio.transport.pause(); f.studio.transport.seek(0);
+    f.studio.play(); expect(f.studio.engine.snapshot().active).to.have.length(1);
+    f.studio.transport.pause(); f.studio.transport.seek(0);
+    expect(f.studio.engine.snapshot().active).to.have.length(0);
+    f.studio.play(); expect(f.studio.engine.snapshot().active).to.have.length(1);
+    expect(f.calls).to.have.length(2);
+    await f.studio.dispose().completion;
+  });
+  it('renders canonical Redo when its stored change has no current reducer action', async () => {
+    const f = setup(); f.studio.bindRuntime(); let renders = 0; const patches = [];
+    f.view.render = () => { renders++; }; f.view.patchProject = action => { patches.push(action); };
+    f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.25 } });
+    expect(patches).to.have.length(1); expect(patches[0].type).to.equal('procgen/lane');
+    await f.studio.handlers.undo(); expect(f.studio.getProject().procgen.lanes[0].gain).to.equal(1);
+    const beforeRedo = renders;
+    await f.studio.handlers.redo(); expect(f.studio.getProject().procgen.lanes[0].gain).to.equal(0.25);
+    expect(renders).to.be.greaterThan(beforeRedo); expect(patches.every(Boolean)).to.equal(true);
+    await f.studio.dispose().completion;
+  });
   it('authorizes the selected physical note route after asynchronous MIDI activation and retires its subscription', async () => {
     let notify, retired = 0;
     const output = { id: 'physical-state-route', state: 'connected', channels: { 1: { sendControlChange() {}, sendNoteOn() {}, sendNoteOff() {} } } };

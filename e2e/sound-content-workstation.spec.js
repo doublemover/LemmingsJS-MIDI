@@ -148,7 +148,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   await expect(dialog.getByLabel('Sound library status')).toContainText('Instrument applied');
   const applied = await page.evaluate(() => ({ reference: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].instrumentRef,
     tick: window.__PROCGEN_LANES__.world.tickIndex, hardwareRequests: window.soundLibraryMidiRequests }));
-  expect(applied.reference).toMatchObject({ schema: 'lemmings-sound-reference/v1', patchId: 'foundation.soft-triangle', revision: 2 });
+  expect(applied.reference).toMatchObject({ schema: 'lemmings-sound-reference/v1', patchId: 'foundation.soft-triangle', revision: 3 });
   expect(applied.reference.definitionHash).toMatch(/^[a-f0-9]{64}$/); expect(applied.tick).toBe(before.tick); expect(applied.hardwareRequests).toBe(0);
   await dialog.getByRole('button', { name: 'Prepare reference export', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Download prepared file', exact: true })).toBeEnabled();
@@ -157,7 +157,7 @@ test('built sound library keeps world/project state unchanged through staging, a
   await expect(dialog.getByLabel('Sound library status')).toContainText('Download requested');
 });
 
-test('a pinned worklet lane sends actual voice measurements through physical playback to the actor view', async ({ page }, testInfo) => {
+test('a pinned worklet lane sends actual voice measurements through physical playback to the actor view', { tag: '@boundary' }, async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
@@ -232,7 +232,7 @@ test('selected control WAV rendering uses a real immutable worker without enabli
   expect(after).toEqual({ ...before, audioOpens: 0, hardwareRequests: 0 });
 });
 
-test('master recording uses the real capture worklet and keeps PCM after a canceled file save', async ({ page }) => {
+test('master recording uses the real capture worklet and keeps PCM after a canceled file save', { tag: '@boundary' }, async ({ page }) => {
   await page.addInitScript(() => {
     window.captureMidiRequests = 0; window.capturePickerCount = 0; window.captureFileChunks = []; window.captureFileClosed = false;
     Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => { window.captureMidiRequests++; throw new Error('Unexpected MIDI request'); } });
@@ -268,7 +268,8 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   expect(receipt.fileClosed).toBe(true); expect(receipt.hardwareRequests).toBe(0); expect(samples.length).toBe(manifest.timelineFrames * 8);
   expect(manifest).toMatchObject({ schema: 'lemmings-master-pcm/v1', tap: 'post-protection-shared-browser-master', channels: 2,
     includesCurrentMasterOwnersAndAuditions: true, acousticEvidence: false, terminalAcknowledged: true, format: 'float32-le' });
-  let peak = 0; for (let at = 0; at < samples.length; at += 4) { const sample = samples.readFloatLE(at); expect(Number.isFinite(sample)).toBe(true); peak = Math.max(peak, Math.abs(sample)); }
-  expect(peak).toBeGreaterThan(0);
+  let peak = 0, nonfinite = 0;
+  for (let at = 0; at < samples.length; at += 4) { const sample = samples.readFloatLE(at); if (!Number.isFinite(sample)) nonfinite++; else peak = Math.max(peak, Math.abs(sample)); }
+  expect(nonfinite).toBe(0); expect(peak).toBeGreaterThan(0);
   await dialog.getByRole('button', { name: 'Discard captured PCM', exact: true }).click(); await expect(dialog.getByRole('button', { name: 'Save captured WAV', exact: true })).toBeDisabled();
 });

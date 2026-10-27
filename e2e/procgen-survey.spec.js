@@ -6,15 +6,17 @@ import { createSurveyServer } from '../scripts/procgen-survey/SurveyServer.js';
 import { runSurveyJobs } from '../scripts/procgen-survey/SurveyWorkerPool.js';
 import { createSurveySourceManifest, createNodeSurveyTrial } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 import { normalizeSurveyScenario } from '../js/app/procgen/survey/ProcgenSurveyScenario.js';
+import { createBrowserSurveyFixtureReport } from './helpers/surveyReport.js';
 
 test.use({ permissions: [] });
 test.describe('procgen survey native boundary', () => {
   test('matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary', async ({ page }, testInfo) => {
     test.setTimeout(60000);
-    const filename = process.env.LEMMINGS_SURVEY_REPORT; if (!filename) throw new Error('Set LEMMINGS_SURVEY_REPORT to the completed bounded qualification report');
-    const report = JSON.parse(await fs.readFile(filename, 'utf8')).value, errors = []; page.on('pageerror', error => errors.push(error.message));
+    const filename = process.env.LEMMINGS_SURVEY_REPORT;
+    const report = filename ? JSON.parse(await fs.readFile(filename, 'utf8')).value : await createBrowserSurveyFixtureReport(), errors = [];
+    page.on('pageerror', error => errors.push(error.message));
     await page.addInitScript(() => { window.__surveyOutputRequests = { midi: 0, audio: 0 }; navigator.requestMIDIAccess = () => { window.__surveyOutputRequests.midi++; throw new Error('Survey must stay muted'); }; window.AudioContext = class { constructor() { window.__surveyOutputRequests.audio++; throw new Error('Survey must stay muted'); } }; });
-    await page.goto('/procgen-survey.html'); await page.locator('#surveyFile').setInputFiles(filename);
+    await page.goto('/procgen-survey.html'); await page.locator('#surveyFile').setInputFiles({ name: 'browser-survey.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ value: report })) });
     await expect(page.locator('.survey-tile:visible')).toHaveCount(16);
     const first = page.locator('.survey-tile:visible').first(); await first.focus(); const identity = await first.getAttribute('data-trial-id');
     await page.evaluate(() => { const dashboard = window.__procgenSurveyDashboard; dashboard.load(dashboard.getReport()); dashboard.render(); });
@@ -263,7 +265,7 @@ test.describe('survey report and replay ownership', () => {
 });
 
 
-test('saved exact-source reports replay muted controlled and generated trials and reject changed bytes', async ({ page }, testInfo) => {
+test('saved reports compare current muted controlled and generated trials with explicit source uncertainty and reject changed assets', async ({ page }, testInfo) => {
   test.setTimeout(60000);
   const scenes = [normalizeSurveyScenario({ id: 'saved-controlled', horizonTicks: 64 }),
     normalizeSurveyScenario({ id: 'saved-generated', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, horizonTicks: 64, laneHeight: 144 })];
@@ -290,12 +292,19 @@ test('saved exact-source reports replay muted controlled and generated trials an
     expect(receipt.executionIdentity.status).toBe('unbound'); expect(receipt.independentSample).toBe(false); receipts.push(receipt);
   }
   await page.route('**/js/app/procgen/survey/ProcgenSurveyCore.js', route => route.fulfill({ contentType: 'text/javascript', body: '// changed source bytes' }));
+  await page.evaluate(() => { delete window.__procgenSurveyReplayReceipt; });
+  await page.locator('#surveyReplay').click();
+  await expect.poll(() => page.evaluate(() => window.__procgenSurveyReplayReceipt), { timeout: 30000 }).toBeTruthy();
+  await expect(page.locator('#surveyReplayStatus')).toContainText('The active build is unverified', { timeout: 30000 });
+  expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toMatchObject({ matched: false, compatibilityMatch: true, executionIdentity: { status: 'unbound' } });
+  const asset = Object.keys(sourceManifest.assetHashes)[0];
+  await page.route('**/' + asset, route => route.fulfill({ contentType: 'application/octet-stream', body: Buffer.from([0]) }));
   await page.locator('#surveyReplay').click();
   await expect(page.locator('#surveyReplayStatus')).toContainText('Replay source differs from the saved trial', { timeout: 30000 });
   expect(await page.evaluate(() => window.__procgenSurveyReplayReceipt)).toBeUndefined();
   const outputs = await page.evaluate(() => window.__surveyOutputRequests);
   expect(outputs).toEqual({ midi: 0, audio: 0 }); expect(errors).toEqual([]);
-  await testInfo.attach('saved-report-source-replay.json', { body: JSON.stringify({ sourceDigest: sourceManifest.codeDigest, receipts, outputs, errors, changedSourceRejected: true }), contentType: 'application/json' });
+  await testInfo.attach('saved-report-source-replay.json', { body: JSON.stringify({ sourceDigest: sourceManifest.codeDigest, receipts, outputs, errors, activeCodeUnverified: true, changedAssetRejected: true }), contentType: 'application/json' });
 });
 
 

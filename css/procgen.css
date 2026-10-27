@@ -54,6 +54,15 @@ body {
   font: 14px/1.4 system-ui, sans-serif;
 }
 #procgenDrawer.is-open { transform: translateY(0); }
+.procgen-startup-error {
+  position: fixed; z-index: 100; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  box-sizing: border-box; width: min(620px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto;
+  padding: 20px; border: 1px solid #d6b776; border-radius: 8px; background: #181412; color: #eee5d4;
+  box-shadow: 0 8px 28px #0008; overflow-wrap: anywhere;
+}
+.procgen-startup-error h2 { margin-top: 0; }
+.procgen-startup-error button { min-height: 36px; padding: 6px 12px; }
+.procgen-startup-error :focus-visible { outline: 2px solid #ffcc38; outline-offset: 3px; }
 #procgenTab {
   position: fixed;
   z-index: 21;

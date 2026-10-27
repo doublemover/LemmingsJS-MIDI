@@ -25,7 +25,7 @@ test('a shared recipe opens its declared world with an unrelated saved two-lane 
     seed: 999, speed: 2, bpm: 240, gameSpeed: 2, speedMode: 'game', outputs: [null, null, null] });
 });
 
-test('a malformed shared recipe leaves the prior recoverable setup untouched', async ({ page }) => {
+test('a malformed shared recipe leaves the prior recoverable setup untouched', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(90000);
   await page.goto('/README.md');
   await page.evaluate(() => localStorage.setItem('lemmings.procgen.workstation.v1', '{"version":1,"project":{"saved":"prior"}}'));

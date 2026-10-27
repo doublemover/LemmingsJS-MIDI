@@ -262,6 +262,7 @@ const keyboardShortcutActionsMethods = {
   },
 
   _onKeyUp(e) {
+    if (this._isNativeActivationKey(e)) return;
     const actions = this.keybindings.getActionsForEvent(e);
     if (!actions.length) return;
     let handled = false;

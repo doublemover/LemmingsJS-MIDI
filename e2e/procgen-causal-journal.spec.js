@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { RECOVERY_DATABASE_VERSION } from '../js/runtime/BrowserGenerationPins.js';
 
 test('v4 causal manifests migrate once and browsing touches only compact summary rows @boundary', async ({ page }) => {
   await page.goto('/e2e/fixtures/causal-journal.html');
@@ -86,7 +87,7 @@ test('causal takes upgrade v3 project storage and reopen the exact durable prefi
   expect(result.receipt.complete).toBe(true);
   expect(result.verified.verifiedThroughSequence).toBe(100);
   expect(result.oldName).toBe('Existing v3 project');
-  expect(result.databaseState.version).toBe(5);
+  expect(result.databaseState.version).toBe(RECOVERY_DATABASE_VERSION);
   expect(result.databaseState.stores).toEqual(expect.arrayContaining(['sessions', 'projectMetadata', 'takeHeaders', 'takeHeads', 'takeSummaries', 'takeChunkIndex', 'takeCheckpointIndex', 'takeChunks', 'takeCheckpoints']));
   expect(result.ticks).toEqual([40, 41, 42]);
   expect(result.inspection).toEqual({ paused: true, recording: false, hardware: false, thru: false, physicalLayers: false });

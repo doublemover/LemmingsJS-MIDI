@@ -8,7 +8,7 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
   test(`game controls stay above the fold and arrows beside the level selector at ${size.width}x${size.height}`, async ({ page }) => {
     await page.setViewportSize(size);
     await installExternalAssetStubs(page);
-    await page.goto('/?e2e=1');
+    await page.goto('/?e2e=1&midi=1');
     await waitForHarnessReady(page);
     const measure = async () => page.evaluate(() => {
       const rect = selector => {
@@ -17,7 +17,7 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
       };
       return {
         width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth,
-        canvas: rect('#gameCanvas'), chrome: rect('#gameChrome'), level: rect('#levelIndexSelect'),
+        canvas: rect('#gameCanvas'), container: rect('.game_container'), chrome: rect('#gameChrome'), level: rect('#levelIndexSelect'),
         controls: ['#gameTypeSelect', '#levelGroupSelect', '#levelIndexSelect', '#savedLevelSelect', '#savedLevelSave', '#savedLevelExport', '#savedLevelImport', '#midiWorkspaceToggle', '#levelPrevButton', '#levelNextButton'].map(rect),
         arrows: ['#levelPrevButton', '#levelNextButton'].map(rect)
       };
@@ -26,12 +26,14 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
       await expect.poll(() => page.evaluate(() => {
         const slot = document.querySelector('.game-stage-slot');
         const canvas = document.querySelector('#gameCanvas').getBoundingClientRect();
-        return Math.abs(canvas.width - Math.min(slot.clientWidth, slot.clientHeight * 800 / 480));
+        const container = document.querySelector('.game_container').getBoundingClientRect();
+        return Math.max(Math.abs(canvas.width - container.width), container.width - slot.clientWidth, container.height - slot.clientHeight);
       })).toBeLessThan(1);
       const layout = await measure();
       expect(layout.scrollWidth).toBeLessThanOrEqual(layout.width);
       expect(layout.canvas.y).toBeGreaterThanOrEqual(layout.chrome.bottom - 1);
       expect(layout.canvas.bottom).toBeLessThanOrEqual(layout.height + 1);
+      expect(layout.container.bottom).toBeLessThanOrEqual(layout.height + 1);
       expect(layout.canvas.width / layout.canvas.height).toBeCloseTo(800 / 480, 2);
       for (const rect of layout.controls) {
         expect(rect.x).toBeGreaterThanOrEqual(0);

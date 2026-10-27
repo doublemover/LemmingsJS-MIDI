@@ -74,6 +74,26 @@ describe('verified selected browser survey asset contracts', function() {
       fetchFile: async () => { requests++; } }), 'complete saved source and asset inventory');
     expect(requests).to.equal(0);
   });
+  it('verifies the declared stretch WASM and rejects other asset code paths before fetching', async () => {
+    const manifest = copy(sourceManifest), name = 'assets/audio/signalsmith-stretch-core.wasm';
+    const bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+    manifest.codeHashes[name] = await hexSha256(bytes);
+    manifest.codeDigest = await hexSha256(new TextEncoder().encode(JSON.stringify(manifest.codeHashes)));
+    let wasmReads = 0;
+    const verified = await verifiedBrowserFiles(manifest, url => {
+      if (url.pathname.endsWith('/' + name)) { wasmReads++; return new globalThis.Response(bytes); }
+      return fileFetch(url);
+    });
+    try { expect(wasmReads).to.equal(1); expect(verified.verification.codeFiles).to.equal(Object.keys(manifest.codeHashes).length); }
+    finally { await verified.release().completion; }
+    for (const invalid of ['assets/audio/other.wasm', 'assets/audio/../signalsmith-stretch-core.wasm', 'assets/audio//signalsmith-stretch-core.wasm']) {
+      const rejected = copy(manifest); delete rejected.codeHashes[name]; rejected.codeHashes[invalid] = manifest.codeHashes[name];
+      rejected.codeDigest = await hexSha256(new TextEncoder().encode(JSON.stringify(rejected.codeHashes)));
+      let reads = 0;
+      await rejects(() => verifiedBrowserFiles(rejected, () => { reads++; throw new Error('Unexpected fetch'); }), 'Unsupported replay source path');
+      expect(reads).to.equal(0);
+    }
+  });
   it('rejects exact qualification before execution when active modules have no trusted build identity', async () => {
     let requests = 0;
     await rejects(() => createBrowserSurveyTrial({ scenario: controlled, sourceManifest, mode: 'exact',

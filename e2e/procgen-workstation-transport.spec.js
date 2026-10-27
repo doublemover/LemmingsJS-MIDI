@@ -7,13 +7,13 @@ async function ready(page) {
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
 }
 
-test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', async ({ page }) => {
+test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(90000); const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
   await page.evaluate(() => {
     const studio = window.__PROCGEN_STUDIO__, project = studio.getProject();
-    for (const [index, lane] of project.procgen.lanes.entries()) studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { mode: 'pattern', mute: index > 0 } });
+    for (const [index, lane] of project.procgen.lanes.entries()) studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { mode: 'pattern', patternPurpose: 'Exercise a sustained complementary phrase across a physical checkpoint', mute: index > 0 } });
     studio.dispatch({ type: 'procgen/pattern', laneId: 'lane-1', slot: 0, patch: { length: 16, steps: Array.from({ length: 16 }, (_, index) => ({ enabled: index === 0, note: 60, duration: 8 })) } });
     studio.transport.seek(0); studio.handlers.record(true); studio.play();
     studio.dispatch({ type: 'procgen/launch', laneId: 'lane-1', slot: 1 });
@@ -65,10 +65,10 @@ test('recovery preserves a paused exact snapshot while New resets composition an
     await studio.handlers.new();
   });
   const fresh = await page.evaluate(() => ({ state: window.__PROCGEN_STUDIO__.transport.getState(), root: window.__PROCGEN_STUDIO__.getProject().global.scale.root }));
-  expect(fresh.state).toMatchObject({ bpm: 120, gameSpeed: 1, linked: true, speedMode: 'bpm' }); expect(fresh.root).not.toBe(9);
+  expect(fresh.state).toMatchObject({ bpm: 120, gameSpeed: 3, linked: false, speedMode: 'game' }); expect(fresh.root).not.toBe(9);
   const restored = await page.evaluate(async () => {
     const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js'); const storage = createProcgenSessionStorage();
-    const session = await storage.load('__recovery__'); await window.__PROCGEN_STUDIO__.loadSession(session); await storage.close();
+    const session = await storage.loadRecovery({ requireVerified: true }); await window.__PROCGEN_STUDIO__.loadSession(session); await storage.close();
     return { state: window.__PROCGEN_STUDIO__.transport.getState(), root: window.__PROCGEN_STUDIO__.getProject().global.scale.root };
   });
   expect(restored.state).toMatchObject({ bpm: 175, gameSpeed: 4, linked: false, playing: false }); expect(restored.root).toBe(9);

@@ -291,7 +291,11 @@ class BrowserNotePreview {
         session.report();
         if (session.enableOperation !== operation || session.disposed) { settle(false); return promise; }
         // Invoke directly: AudioContext creation/resume must retain the caller's gesture.
-        Promise.resolve(this.enable(id)).then(async ready => { const receipt = this._effectRetirements.get(id)?.scope.getReceipt(); if (receipt) { await receipt.completion; ready = ready && receipt.outcome === 'complete'; } settle(ready); }, () => settle(false)).catch(() => settle(false));
+        Promise.resolve(this.enable(id)).then(async ready => {
+          const receipts = [this._effectRetirements.get(id)?.scope.getReceipt(), this._laneSourceBuses.get(id)?.retirement];
+          for (const receipt of receipts) if (receipt) { await receipt.completion; ready = ready && receipt.outcome === 'complete'; }
+          settle(ready);
+        }, () => settle(false)).catch(() => settle(false));
       } catch { settle(false); }
       return promise;
     };
@@ -330,7 +334,8 @@ class BrowserNotePreview {
       configureLaneSources: laneIds => {
         if (!Array.isArray(laneIds) || laneIds.length > 1024 || laneIds.some(value => typeof value !== 'string' || !value || value.length > 160) || new Set(laneIds).size !== laneIds.length) throw new TypeError('Invalid lane source declaration.');
         if (session.disposed) throw new Error('The lane source session has retired.');
-        this._laneSourceBuses.get(id)?.buses.declare(laneIds); session.laneSourceIds = laneIds.slice();
+        if (this._laneSourceBuses.has(id)) this._laneSourcesFor(id, this._context).declare(laneIds);
+        session.laneSourceIds = laneIds.slice();
       },
       prepareEffectGraph: async (definition, options = {}) => {
         const generation = session.generation, context = this._context;
@@ -739,9 +744,15 @@ class BrowserNotePreview {
 
   _retireLaneSources(owner) {
     const entry = this._laneSourceBuses.get(owner); if (!entry) return;
-    const receipt = entry.buses.dispose();
-    if (receipt.outcome === 'complete') this._laneSourceBuses.delete(owner);
-    else this._retirementFaults.add(owner);
+    let receipt;
+    try { receipt = entry.retirement ||= entry.buses.dispose(); }
+    catch (error) { this._retirementFaults.add(owner); throw error; }
+    const reconcile = () => {
+      if (receipt.outcome === 'complete') { if (this._laneSourceBuses.get(owner) === entry) this._laneSourceBuses.delete(owner); }
+      else this._retirementFaults.add(owner);
+    };
+    if (receipt.state === 'retired') reconcile();
+    else if (!entry.retirementObserved) { entry.retirementObserved = true; receipt.completion.then(reconcile, () => this._retirementFaults.add(owner)); }
     return receipt;
   }
 

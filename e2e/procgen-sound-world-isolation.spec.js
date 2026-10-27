@@ -11,7 +11,7 @@ const ready = async page => {
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
 };
 
-test('six pinned native sounds preserve the actual 1000-tick world and causal event order without a legacy pattern path', async ({ page }, testInfo) => {
+test('six pinned native sounds preserve the actual 1000-tick world and causal event order without a legacy pattern path', { tag: '@boundary' }, async ({ page }, testInfo) => {
   await ready(page); await page.locator('#procgenListen').click();
   const result = await page.evaluate(async () => {
     const root = new URL('./', location.href), { captureProcgenCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpoint.js', root)),

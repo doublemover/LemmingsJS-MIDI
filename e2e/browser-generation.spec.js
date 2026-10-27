@@ -21,7 +21,7 @@ async function updateGeneration(page) {
   });
 }
 
-test('a fresh real application install supports every offline entry without another online reload', async ({ browser }) => {
+test('a fresh real application install supports every offline entry without another online reload', { tag: '@boundary' }, async ({ browser }) => {
   test.setTimeout(240000);
   const output = path.join(repository, 'dist', 'browser-offline-e2e-' + randomUUID()), build = await buildBrowserRuntime({ rootDir: repository, outputDir: output });
   const server = await browserGenerationServer({ directory: output }), context = await browser.newContext(), page = await context.newPage();

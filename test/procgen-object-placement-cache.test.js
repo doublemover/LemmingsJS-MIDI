@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { ProcgenObjectPlacementCache } from '../js/app/procgen/ProcgenObjectPlacementCache.js';
+import { ProcgenTerrainRevisions } from '../js/app/procgen/ProcgenTerrainRetention.js';
 
 const fixture = (options = {}) => {
   const image = { width: 4, height: 2, frames: [new Uint8Array(8).fill(1)], palette: { getColor: () => 0xffabcdef } };
@@ -15,6 +16,18 @@ const fixture = (options = {}) => {
 };
 
 describe('local ProcGen object placement geometry', () => {
+  it('validates dependencies and assembly supports without touching physical revision retention', () => {
+    const { cache, world, descriptor, object } = fixture(), revisions = new ProcgenTerrainRevisions(1, 128);
+    revisions.set(1, 9); revisions.set(0, 4); world.terrainTileRevisions = revisions;
+    world.peekTerrainTileRevision = key => revisions.peek(key);
+    world.getTerrainTileRevision = () => { throw new Error('Rendering cannot retain physical terrain revisions.'); };
+    object.assembly = { chunk: 0, bounds: { x1: 0, x2: 4, y1: 0, y2: 4 }, contacts: [{ x: 1, y: 1 }], foundationSupports: [{ x: 1, y: 2 }] };
+    const order = [...revisions], first = cache.get(0, 0, descriptor);
+    expect(first).to.have.length(1); expect(cache.get(0, 0, descriptor)).to.equal(first); expect([...revisions]).to.deep.equal(order);
+    revisions.set(0, 5);
+    expect(cache.get(0, 0, descriptor)).not.to.equal(first); expect(cache.getStats().placementRebuilds).to.equal(2);
+    cache.dispose();
+  });
   it('rejects aggregate masks before any clip allocation sampling or reservation', () => {
     const { cache, descriptor, object, samples, reservations } = fixture({ maxClipBytes: 12 });
     descriptor.objects.push({ ...object, x: 140 });

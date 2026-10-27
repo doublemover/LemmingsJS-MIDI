@@ -26,7 +26,7 @@ test('Arrow navigation updates the selected level', async ({ page }) => {
     return select && select.options.length > 1;
   });
   const initialValue = await levelSelect.inputValue();
-  await page.locator('.arrow_r').click();
+  await page.locator('#levelNextButton').click();
   await page.waitForFunction((prev) => {
     const select = document.getElementById('levelIndexSelect');
     return select && select.value !== prev;
@@ -34,14 +34,14 @@ test('Arrow navigation updates the selected level', async ({ page }) => {
   const nextValue = await levelSelect.inputValue();
   expect(nextValue).not.toBe(initialValue);
 
-  await page.locator('.arrow_l').click();
+  await page.locator('#levelPrevButton').click();
   await page.waitForFunction((prev) => {
     const select = document.getElementById('levelIndexSelect');
     return select && select.value === prev;
   }, initialValue);
 });
 
-test('Level arrows support keyboard activation', async ({ page }) => {
+test('Level arrows support keyboard activation', { tag: '@boundary' }, async ({ page }) => {
   const levelSelect = page.locator('#levelIndexSelect');
   await page.waitForFunction(() => {
     const select = document.getElementById('levelIndexSelect');
@@ -51,7 +51,7 @@ test('Level arrows support keyboard activation', async ({ page }) => {
   const next = page.locator('#levelNextButton');
   const prev = page.locator('#levelPrevButton');
 
-  await expect(next).toHaveAttribute('role', 'button');
+  await expect(page.getByRole('button', { name: 'Next level', exact: true })).toHaveCount(1);
   await expect(next).toHaveAttribute('aria-label', 'Next level');
   await next.focus();
   await expect(next).toBeFocused();

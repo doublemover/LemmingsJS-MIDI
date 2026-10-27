@@ -1,6 +1,6 @@
 import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
-import { procgenTileRevision } from './ProcgenTerrainRetention.js';
+import { peekProcgenTileRevision } from './ProcgenTerrainRetention.js';
 
 const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
 
@@ -25,7 +25,7 @@ class ProcgenObjectPlacementCache {
     const key = [world.generation, world.leftEdgeX];
     for (const cx of chunks) {
       const state = world.terrainGrowth?.stateFor?.(lane, cx);
-      key.push(cx, procgenTileRevision(world, lane * 0x800000 + cx), Math.max(0, Math.min(width, world.generatedThrough[lane] - cx * width)), unprepared(state) ? -1 : state?.revision || 0);
+      key.push(cx, peekProcgenTileRevision(world, lane * 0x800000 + cx), Math.max(0, Math.min(width, world.generatedThrough[lane] - cx * width)), unprepared(state) ? -1 : state?.revision || 0);
     }
     for (const object of descriptor.objects) key.push(object.x, object.y, object.supportY, object.clipToTerrain, object.role, object.flip, object.flipY, object.phase, object.animation, object.assembly?.sourceRevision || '');
     return key.join(':');
@@ -52,8 +52,8 @@ class ProcgenObjectPlacementCache {
       const object = descriptor.objects[objectIndex], image = procgenObjectImage(object), hazard = ['trap', 'liquid', 'hazard'].includes(object.role);
       if (world.terrainGrowth?.objectReady && !world.terrainGrowth.objectReady(lane, chunk, objectIndex)) continue;
       if (object.x + image.width + (object.role === 'liquid' ? 1 : 0) > world.generatedThrough[lane]) continue;
-      if (object.assembly && !assemblyPlacementReady(world, lane, object, descriptor)) continue;
-      if (hazard && world.hazards && !world.hazards.placementReady(lane, chunk, object, descriptor)) continue;
+      if (object.assembly && !assemblyPlacementReady(world, lane, object, descriptor, { readOnly: true })) continue;
+      if (hazard && world.hazards && !world.hazards.placementReady(lane, chunk, object, descriptor, { readOnly: true })) continue;
       if (object.supportY != null && !hazard) {
         let supported = true;
         for (let dx = 0; dx < image.width; dx++) if (!matchesTerrain(object.x + dx, object.supportY)) { supported = false; break; }

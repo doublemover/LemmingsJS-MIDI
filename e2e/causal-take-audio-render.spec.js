@@ -32,12 +32,13 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
   const before = await page.evaluate(() => ({ project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex,
     takeId: window.__PROCGEN_STUDIO__.handlers.causalTakeState().last.takeId }));
   await page.getByRole('button', { name: 'Render sine WAV…', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Render causal take sine revoice', exact: true });
-  await expect(dialog.getByRole('button', { name: 'Prepare sine revoice WAV', exact: true })).toBeEnabled();
+  const dialog = page.getByRole('dialog', { name: 'Render causal take owned-source revoice', exact: true });
+  await dialog.getByLabel('Render source model', { exact: true }).selectOption('worklet-sine');
+  await expect(dialog.getByRole('button', { name: 'Prepare revoice WAV', exact: true })).toBeEnabled();
   const endSeconds = Math.min(5, Number(await dialog.getByLabel('End seconds from capture').getAttribute('max')));
   await dialog.getByLabel('End seconds from capture').fill(String(endSeconds)); await dialog.getByLabel('Include all captured dry lane stems').check();
-  await dialog.getByRole('button', { name: 'Prepare sine revoice WAV', exact: true }).click();
-  await expect(dialog.getByRole('status')).toContainText('prepared', { timeout: 60000 });
+  await dialog.getByRole('button', { name: 'Prepare revoice WAV', exact: true }).click();
+  await expect(dialog.getByRole('status', { name: '', exact: true })).toContainText('prepared', { timeout: 60000 });
   await expect(dialog.getByLabel('Prepared rendered file').locator('option')).toHaveCount(2);
   const downloading = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Download selected WAV', exact: true }).click();
   const download = await downloading, filename = testInfo.outputPath('actual-causal-sine-master.wav'); await download.saveAs(filename);

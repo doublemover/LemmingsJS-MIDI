@@ -26,7 +26,8 @@ const hexSha256 = async bytes => {
 };
 const sourcePath = (name, code) => {
   const valid = typeof name === 'string' && !name.split('/').some(part => !part || part === '.' || part === '..') &&
-    (code ? /^(js|scripts|tools)\/[A-Za-z0-9_.\/-]+\.(?:[cm]?js|wasm)$/.test(name) : name === 'assets/procgen/terrain-recipes.json' || /^[A-Za-z0-9_-]+\/(MAIN|GROUND\d+O|VGAGR\d+)\.DAT$/.test(name));
+    (code ? /^(js|scripts|tools)\/[A-Za-z0-9_.\/-]+\.(?:[cm]?js|wasm)$/.test(name) || name === 'assets/audio/signalsmith-stretch-core.wasm'
+      : name === 'assets/procgen/terrain-recipes.json' || /^[A-Za-z0-9_-]+\/(MAIN|GROUND\d+O|VGAGR\d+)\.DAT$/.test(name));
   if (!valid) throw new Error(`Unsupported replay source path: ${name}`);
   const url = new URL(name, repoUrl);
   if (url.origin !== repoUrl.origin || !url.pathname.startsWith(repoUrl.pathname)) throw new Error('Replay sources must remain in this origin and repository');

@@ -34,12 +34,18 @@ test('production workstation reaccepts the same world and canvas after fullscree
   expect(entered.width).toBeCloseTo(entered.domWidth, 0);
   expect(entered.height).toBeCloseTo(entered.domHeight, 0);
 
+  await page.evaluate(() => document.exitFullscreen());
+  await expect.poll(geometry).toMatchObject({ fullscreen: null, snapshot: true,
+    sameWorld: true, sameCanvas: true, stagePreparing: false });
   await page.setViewportSize({ width: 1024, height: 700 });
   await expect.poll(geometry).toMatchObject({ snapshot: true, sameWorld: true, sameCanvas: true, stagePreparing: false });
   const resized = await geometry();
   expect(resized.width).toBeCloseTo(resized.domWidth, 0);
   expect(resized.height).toBeCloseTo(resized.domHeight, 0);
 
+  await page.getByRole('button', { name: 'Expand fullscreen' }).click();
+  await expect.poll(geometry).toMatchObject({ fullscreen: 'procgenPresentationRoot', snapshot: true,
+    sameWorld: true, sameCanvas: true, stagePreparing: false });
   await page.evaluate(() => document.exitFullscreen());
   await expect.poll(geometry).toMatchObject({ fullscreen: null, snapshot: true,
     sameWorld: true, sameCanvas: true, stagePreparing: false });

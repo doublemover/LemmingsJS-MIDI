@@ -8,6 +8,19 @@ import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 
 describe('physical-first project boundary', () => {
+  it('creates four authored phrases on explicit mode entry and retains them only within the same mode', () => {
+    let project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(), { lanes: [createProcgenLane(0)] }));
+    expect(project.procgen.lanes[0].patterns).to.have.length(0);
+    expect(() => reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'pattern' } })).to.throw('explicit physical purpose');
+    project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'pattern', patternPurpose: 'A complementary clocked response to committed physical events' } });
+    const patterns = project.procgen.lanes[0].patterns;
+    expect(patterns).to.have.length(4); expect(patterns.every(pattern => pattern.steps.length === 16)).to.equal(true);
+    project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { gain: 0.5 } });
+    expect(project.procgen.lanes[0].patterns).to.equal(patterns);
+    project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'physical', patterns: [], patternPurpose: null } });
+    expect(project.procgen.lanes[0].patterns).to.have.length(0);
+    expect(project.procgen.lanes[0].mode).to.equal('physical');
+  });
   it('creates a declared graph with no required pattern cells and roundtrips its numeric precision', () => {
     let project = createProcgenWorkstationProject(createMidiProject(), { seed: 5 });
     expect(project.procgen).to.include({ version: 2, playModel: 'physical-v1', seed: 5 });

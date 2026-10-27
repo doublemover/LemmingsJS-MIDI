@@ -7412,5 +7412,531 @@
       "The broad MIDI batch precedes the final callback-context capture; the final 186 owner cases and all PCM scenarios cover the exact current source.",
       "The parent full CI is green; later combined changes await their own full CI after push."
     ]
+  },
+  "continuation276": {
+    "date": "2026-10-27",
+    "parentRevision": "d08d99abf5e98229105841c1042ceba3c37d9211",
+    "scope": "Full browser inventory and grouped repairs to immutable replay, frozen image previews, read-only rendering, source-owner retirement, native keyboard activation, complementary pattern entry and responsive controls.",
+    "sourceFiles": [
+      {
+        "path": "css/game.css",
+        "sha256": "4c2046809bfa1ca4925908f8c94cd35fe4ad819aac5cf679171a9b55cd3257dd"
+      },
+      {
+        "path": "css/midi-instrument.css",
+        "sha256": "14e532f683e6a706860c9a8dcad69f26bf4db1d5a306438e118f4ee1941cbeac"
+      },
+      {
+        "path": "css/procgen.css",
+        "sha256": "391889a016a43a961961da6412657a505b086ab53205d3d5e6f81c765cbf2644"
+      },
+      {
+        "path": "e2e/asset-resilience.spec.js",
+        "sha256": "7e0f1774f3b69ee3a346b6c6af5a1690879a97ba37ef0ab4e62bd2c33c2c9581"
+      },
+      {
+        "path": "e2e/browser-generation.spec.js",
+        "sha256": "c2fa35d747d3791d72f6fcd33e5a1dbde2bc8c751925c6fe22c91ad069e2f869"
+      },
+      {
+        "path": "e2e/causal-take-audio-render.spec.js",
+        "sha256": "53bef5fa1e3a0a406dbca4d8df2dc3df4b9ad2c63ec9c6ea90738939d433443a"
+      },
+      {
+        "path": "e2e/desktop-studio-controls.spec.js",
+        "sha256": "871a0179d0c3435cfa5c2a191c50a9d43071eb00c92f5c33bcea263d66505099"
+      },
+      {
+        "path": "e2e/editor.spec.js",
+        "sha256": "31b4417f734fa2cf31f7cfb375165b767b368fab81989a52cbb467ece446bcc4"
+      },
+      {
+        "path": "e2e/game-layout.spec.js",
+        "sha256": "f75aa3a5b3ddbf01eb41ee777f320e088cbbaf20343d088285c9597fd0ac7b5c"
+      },
+      {
+        "path": "e2e/game.spec.js",
+        "sha256": "4e6fa2ba4f6cb7298116cf1310f5ac34a49c2e0bb8508d539fb41900dba25012"
+      },
+      {
+        "path": "e2e/harness.navigation.spec.js",
+        "sha256": "49d783340ddad6d57d8b1fe6e7cc43550747418e1fd4e8df95ee3132adf12ece"
+      },
+      {
+        "path": "e2e/helpers/procgenPatterns.js",
+        "sha256": "c22d71ece369bb30baf0e876a74b49f86815b0b0ed4c96e9eb5489435335a9e0"
+      },
+      {
+        "path": "e2e/helpers/surveyReport.js",
+        "sha256": "81500d25eaa3468267ca8d57838aac12f3857da2c684ef624fac6050dbaf7d31"
+      },
+      {
+        "path": "e2e/midi-ui.spec.js",
+        "sha256": "0af7d73e9f4ee2fd044f4fa5075c88c05a2144edbc530bd882888b9ee483d462"
+      },
+      {
+        "path": "e2e/midi-workflow.spec.js",
+        "sha256": "fa5b8832ee21c24f05ed9080b1e7552beda0275a49c8443b0a00639b4f404bbb"
+      },
+      {
+        "path": "e2e/procgen-action-chains.spec.js",
+        "sha256": "765ccfc6f86eb2f414701330ef06076fea80ee7361e3fe28a56469d8d1025fcc"
+      },
+      {
+        "path": "e2e/procgen-actor-effects.spec.js",
+        "sha256": "ed498d8214dbdf2c2fda27fac0b7ff047264de95f05a1fc6e5fc5acadb838908"
+      },
+      {
+        "path": "e2e/procgen-causal-journal.spec.js",
+        "sha256": "cc35d73b7c3721c9fa19cc052df18b0a519698cbf9b9a373a8f1357fc2cb6b39"
+      },
+      {
+        "path": "e2e/procgen-sound-world-isolation.spec.js",
+        "sha256": "2d9147f5c2ec0baceec215b31a0f1c152e2964278e854c40ee0f259b89aa78ee"
+      },
+      {
+        "path": "e2e/procgen-startup-recipe.spec.js",
+        "sha256": "596b4e4e88314f71b62d9623a389a6a55c07f708028f0c32f9b0c7ab8a9dc872"
+      },
+      {
+        "path": "e2e/procgen-survey.spec.js",
+        "sha256": "abb8b3ce4c50641c2f565b3c794bc18db36edb4b28f2638451a44ec2762b7d99"
+      },
+      {
+        "path": "e2e/procgen-workstation-fullscreen.spec.js",
+        "sha256": "8d18207257a3a1d9d37f19068fc4241ce91410953a09dd2045ad57aa56186b85"
+      },
+      {
+        "path": "e2e/procgen-workstation-transport.spec.js",
+        "sha256": "6795d64c99e20208ec981dd7d3b437b19ed770ef53669b471e77447f15fc9706"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "sha256": "4b0e9d958e38a25ee0ef1328c022b5d98fe0eaad2468dc281e2e3d83a8dc4579"
+      },
+      {
+        "path": "e2e/procgen-workstation-workflow.spec.js",
+        "sha256": "7feeee5cf9f87a9defb1e9c36c3ab4ff2fe2ff50153ea16d49a08f92bc607ceb"
+      },
+      {
+        "path": "e2e/sound-content-workstation.spec.js",
+        "sha256": "f5ca98e1b9a8689257902f6eea8cf538936f23aa55fbf4ce33a99d13c0be8e66"
+      },
+      {
+        "path": "js/app/editorPreviewCache.js",
+        "sha256": "b840993fd77cd9f4855c4af15cbafad3adff1ac83744d96fb206e60b564c9509"
+      },
+      {
+        "path": "js/app/midi-ui/browserNotePreview.js",
+        "sha256": "03af324bffba82a3167e782fe526763f44b70d98ec9fb225bb0b3377d03d72b6"
+      },
+      {
+        "path": "js/app/procgen/ProcgenAssemblyPlacement.js",
+        "sha256": "dc68de1fab96220f38aab4e69f902ca4b6c6f74c42963ee02566d5751dc5d536"
+      },
+      {
+        "path": "js/app/procgen/ProcgenHazards.js",
+        "sha256": "31e29b425f875b8a7fb1a6309f1ab940f65977e2fdf5236d3b935012a602a3b5"
+      },
+      {
+        "path": "js/app/procgen/ProcgenLaneRenderer.js",
+        "sha256": "e4b7e9809acf341cdf82b9e986c093a31790a50e502a6b64578c73ee00865d9d"
+      },
+      {
+        "path": "js/app/procgen/ProcgenLaneWorld.js",
+        "sha256": "a9b1612fbd350a8f6c22d21d452542cf74cfee2466cefe420c59636268663464"
+      },
+      {
+        "path": "js/app/procgen/ProcgenObjectPlacementCache.js",
+        "sha256": "43c099d445265544ce18a7021667d4a58f0171d29ffca63361ac8898342ec85f"
+      },
+      {
+        "path": "js/app/procgen/ProcgenTerrainRetention.js",
+        "sha256": "0e7b6d08a5f141184743d3e9a75f0a3827365d476eb7a448b1203cc29aa869a0"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyBrowserAssets.js",
+        "sha256": "b07f4ff70abbe0fb83f4c38f3c856cdd494394c86f0e98ae3357a4c5d75371a6"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "84848e04dd74791a0527baaf89268aed1bcaf87a225ee1d41d569853ad71075d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationProject.js",
+        "sha256": "48b2cfb9c1f15967408fd8c9434f79d8c64ebefea7d8dffe795a62e006cf18ba"
+      },
+      {
+        "path": "js/app/procgenBoot.js",
+        "sha256": "f937f97148ca2904c013b542744a1136f1a7f3d8228510f41517f0a4a95196d5"
+      },
+      {
+        "path": "js/input/keyboard-shortcuts/KeyboardShortcutActions.js",
+        "sha256": "1d288bce07cd1dd79a79cd9af7deeeadda8e7c5a573ba86f526b4856799487a6"
+      },
+      {
+        "path": "js/input/keyboard-shortcuts/KeyboardShortcutRuntime.js",
+        "sha256": "cfc6fd1ca5050aeaefa014ec961747157d751f7e84d8facc9c9034485a40f796"
+      },
+      {
+        "path": "package.json",
+        "sha256": "44509df51bfef1bdf517a5a36e77b7cd798b1dbda767728e4f8310fab6a63339"
+      },
+      {
+        "path": "test/editor/editor-preview-cache.test.js",
+        "sha256": "91d0d629a1a54c43084c998fc976f1a295907c8f44e539db98e76f04d2a7742b"
+      },
+      {
+        "path": "test/input/keyboard-range-focus.test.js",
+        "sha256": "19524ce3a1a796085c64744ee7f97b427391614adf5f03ef793165861876edc3"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "sha256": "47a3e2c6582efe88c1bdfce8adae5fcc7315fea592064a6417b00812ce80dcd7"
+      },
+      {
+        "path": "test/procgen-object-placement-cache.test.js",
+        "sha256": "38c56c6f92fd43d6d9e7b674a417d430f129352a8e88f61645066b385b47dce1"
+      },
+      {
+        "path": "test/procgen-physical-project.test.js",
+        "sha256": "4c1aec216e7ce743ab3de50efaaed66f3b39aa7d5e2203789ff42ebefa25c0c8"
+      },
+      {
+        "path": "test/procgen-survey-browser-assets.test.js",
+        "sha256": "571d16f9ed5fbeb3bb8e44945e2be722e93590d40ac8c182ea6dc227264fe683"
+      },
+      {
+        "path": "test/procgen-terrain-retention.test.js",
+        "sha256": "1a705b593f2b0e0f1b46b6b33a29e5c28833fb32ff2d75fe75eb03436b4760d5"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "ab69d1cd870ec1857cf4ff8e8d49007094485621709d494e6c1c605411d378fd"
+      }
+    ],
+    "previousFullCi": {
+      "head": "d08d99abf5e98229105841c1042ceba3c37d9211",
+      "job": 122248808944,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40521300586/job/122248808944",
+      "passed": 6352,
+      "browserBoundaries": 33,
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.46,
+        "functions": 88.19
+      },
+      "allGatesGreen": true
+    },
+    "attempts": [
+      {
+        "kind": "complete-browser-inventory",
+        "expected": 231,
+        "passed": 178,
+        "failed": 51,
+        "skipped": 2,
+        "minutes": 23.2,
+        "logSha256": "49ae5937a564c1a4c3143485d75fdd807311e5fc9698481647212e5a10a5e58b"
+      },
+      {
+        "kind": "grouped-browser-retest",
+        "passed": 210,
+        "failed": 17,
+        "skipped": 2,
+        "notRun": 2,
+        "minutes": 18.5,
+        "logSha256": "46f599d4f8b527d1d25da6351b5a3f9b811914dcc5fe3131c431b533b533ba91",
+        "limitations": [
+          "The master capture worker was deliberately terminated after its synchronous per-float Playwright assertion loop consumed over 300 CPU seconds. Every sample is now scanned with aggregate finite and peak assertions.",
+          "Further source repairs were made during this diagnostic pass; its browser build staging correctly rejected one source mutation. It is not a final frozen-source qualification."
+        ]
+      },
+      {
+        "kind": "final-focused-node",
+        "passed": 155,
+        "failed": 0,
+        "seconds": 1,
+        "logSha256": "a081f031b5299dfa8b1997b69a5e13ed7c65ef49d6bcfcd27e93321b6f8bc52c"
+      },
+      {
+        "kind": "frozen-full-browser",
+        "passed": 225,
+        "failed": 4,
+        "skipped": 2,
+        "seconds": 672.620272,
+        "sourceFiles": [
+          {
+            "path": "css/game.css",
+            "sha256": "4c2046809bfa1ca4925908f8c94cd35fe4ad819aac5cf679171a9b55cd3257dd"
+          },
+          {
+            "path": "css/midi-instrument.css",
+            "sha256": "14e532f683e6a706860c9a8dcad69f26bf4db1d5a306438e118f4ee1941cbeac"
+          },
+          {
+            "path": "css/procgen.css",
+            "sha256": "391889a016a43a961961da6412657a505b086ab53205d3d5e6f81c765cbf2644"
+          },
+          {
+            "path": "e2e/asset-resilience.spec.js",
+            "sha256": "7e0f1774f3b69ee3a346b6c6af5a1690879a97ba37ef0ab4e62bd2c33c2c9581"
+          },
+          {
+            "path": "e2e/browser-generation.spec.js",
+            "sha256": "c2fa35d747d3791d72f6fcd33e5a1dbde2bc8c751925c6fe22c91ad069e2f869"
+          },
+          {
+            "path": "e2e/causal-take-audio-render.spec.js",
+            "sha256": "53bef5fa1e3a0a406dbca4d8df2dc3df4b9ad2c63ec9c6ea90738939d433443a"
+          },
+          {
+            "path": "e2e/desktop-studio-controls.spec.js",
+            "sha256": "871a0179d0c3435cfa5c2a191c50a9d43071eb00c92f5c33bcea263d66505099"
+          },
+          {
+            "path": "e2e/editor.spec.js",
+            "sha256": "31b4417f734fa2cf31f7cfb375165b767b368fab81989a52cbb467ece446bcc4"
+          },
+          {
+            "path": "e2e/game-layout.spec.js",
+            "sha256": "f75aa3a5b3ddbf01eb41ee777f320e088cbbaf20343d088285c9597fd0ac7b5c"
+          },
+          {
+            "path": "e2e/game.spec.js",
+            "sha256": "4e6fa2ba4f6cb7298116cf1310f5ac34a49c2e0bb8508d539fb41900dba25012"
+          },
+          {
+            "path": "e2e/harness.navigation.spec.js",
+            "sha256": "e6b7ba47697eab5c78eb96e50a72645afb9c93adddb355cae16c8d55fef75ad7"
+          },
+          {
+            "path": "e2e/helpers/procgenPatterns.js",
+            "sha256": "c22d71ece369bb30baf0e876a74b49f86815b0b0ed4c96e9eb5489435335a9e0"
+          },
+          {
+            "path": "e2e/helpers/surveyReport.js",
+            "sha256": "81500d25eaa3468267ca8d57838aac12f3857da2c684ef624fac6050dbaf7d31"
+          },
+          {
+            "path": "e2e/midi-ui.spec.js",
+            "sha256": "8a2907cfc3484230ae3c0df54ac0b2f1ed2367c166863721cdffef9892ad3bd2"
+          },
+          {
+            "path": "e2e/midi-workflow.spec.js",
+            "sha256": "fa5b8832ee21c24f05ed9080b1e7552beda0275a49c8443b0a00639b4f404bbb"
+          },
+          {
+            "path": "e2e/procgen-action-chains.spec.js",
+            "sha256": "765ccfc6f86eb2f414701330ef06076fea80ee7361e3fe28a56469d8d1025fcc"
+          },
+          {
+            "path": "e2e/procgen-actor-effects.spec.js",
+            "sha256": "ed498d8214dbdf2c2fda27fac0b7ff047264de95f05a1fc6e5fc5acadb838908"
+          },
+          {
+            "path": "e2e/procgen-causal-journal.spec.js",
+            "sha256": "cc35d73b7c3721c9fa19cc052df18b0a519698cbf9b9a373a8f1357fc2cb6b39"
+          },
+          {
+            "path": "e2e/procgen-sound-world-isolation.spec.js",
+            "sha256": "2d9147f5c2ec0baceec215b31a0f1c152e2964278e854c40ee0f259b89aa78ee"
+          },
+          {
+            "path": "e2e/procgen-startup-recipe.spec.js",
+            "sha256": "596b4e4e88314f71b62d9623a389a6a55c07f708028f0c32f9b0c7ab8a9dc872"
+          },
+          {
+            "path": "e2e/procgen-survey.spec.js",
+            "sha256": "abb8b3ce4c50641c2f565b3c794bc18db36edb4b28f2638451a44ec2762b7d99"
+          },
+          {
+            "path": "e2e/procgen-workstation-fullscreen.spec.js",
+            "sha256": "8d18207257a3a1d9d37f19068fc4241ce91410953a09dd2045ad57aa56186b85"
+          },
+          {
+            "path": "e2e/procgen-workstation-transport.spec.js",
+            "sha256": "144841b9bb4115586ef4320117c15e5efc407ecf0b8d035b8862d20c5968781c"
+          },
+          {
+            "path": "e2e/procgen-workstation-view.spec.js",
+            "sha256": "4b0e9d958e38a25ee0ef1328c022b5d98fe0eaad2468dc281e2e3d83a8dc4579"
+          },
+          {
+            "path": "e2e/procgen-workstation-workflow.spec.js",
+            "sha256": "1158d22cee6d47d4daf3b0856a43177aa6916fad7d042180edb2578b7032d303"
+          },
+          {
+            "path": "e2e/sound-content-workstation.spec.js",
+            "sha256": "f5ca98e1b9a8689257902f6eea8cf538936f23aa55fbf4ce33a99d13c0be8e66"
+          },
+          {
+            "path": "js/app/editorPreviewCache.js",
+            "sha256": "b840993fd77cd9f4855c4af15cbafad3adff1ac83744d96fb206e60b564c9509"
+          },
+          {
+            "path": "js/app/midi-ui/browserNotePreview.js",
+            "sha256": "03af324bffba82a3167e782fe526763f44b70d98ec9fb225bb0b3377d03d72b6"
+          },
+          {
+            "path": "js/app/procgen/ProcgenAssemblyPlacement.js",
+            "sha256": "dc68de1fab96220f38aab4e69f902ca4b6c6f74c42963ee02566d5751dc5d536"
+          },
+          {
+            "path": "js/app/procgen/ProcgenHazards.js",
+            "sha256": "31e29b425f875b8a7fb1a6309f1ab940f65977e2fdf5236d3b935012a602a3b5"
+          },
+          {
+            "path": "js/app/procgen/ProcgenLaneRenderer.js",
+            "sha256": "e4b7e9809acf341cdf82b9e986c093a31790a50e502a6b64578c73ee00865d9d"
+          },
+          {
+            "path": "js/app/procgen/ProcgenLaneWorld.js",
+            "sha256": "a9b1612fbd350a8f6c22d21d452542cf74cfee2466cefe420c59636268663464"
+          },
+          {
+            "path": "js/app/procgen/ProcgenObjectPlacementCache.js",
+            "sha256": "43c099d445265544ce18a7021667d4a58f0171d29ffca63361ac8898342ec85f"
+          },
+          {
+            "path": "js/app/procgen/ProcgenTerrainRetention.js",
+            "sha256": "0e7b6d08a5f141184743d3e9a75f0a3827365d476eb7a448b1203cc29aa869a0"
+          },
+          {
+            "path": "js/app/procgen/survey/ProcgenSurveyBrowserAssets.js",
+            "sha256": "b07f4ff70abbe0fb83f4c38f3c856cdd494394c86f0e98ae3357a4c5d75371a6"
+          },
+          {
+            "path": "js/app/procgen/workstation/ProcgenWorkstationProject.js",
+            "sha256": "48b2cfb9c1f15967408fd8c9434f79d8c64ebefea7d8dffe795a62e006cf18ba"
+          },
+          {
+            "path": "js/app/procgenBoot.js",
+            "sha256": "f937f97148ca2904c013b542744a1136f1a7f3d8228510f41517f0a4a95196d5"
+          },
+          {
+            "path": "js/input/keyboard-shortcuts/KeyboardShortcutActions.js",
+            "sha256": "1d288bce07cd1dd79a79cd9af7deeeadda8e7c5a573ba86f526b4856799487a6"
+          },
+          {
+            "path": "js/input/keyboard-shortcuts/KeyboardShortcutRuntime.js",
+            "sha256": "cfc6fd1ca5050aeaefa014ec961747157d751f7e84d8facc9c9034485a40f796"
+          },
+          {
+            "path": "package.json",
+            "sha256": "04bcfe80905f3d5f70558a01380d5a03fb949143cebec4ca5e437bdc70fba868"
+          },
+          {
+            "path": "test/editor/editor-preview-cache.test.js",
+            "sha256": "91d0d629a1a54c43084c998fc976f1a295907c8f44e539db98e76f04d2a7742b"
+          },
+          {
+            "path": "test/input/keyboard-range-focus.test.js",
+            "sha256": "19524ce3a1a796085c64744ee7f97b427391614adf5f03ef793165861876edc3"
+          },
+          {
+            "path": "test/midi/browser-note-preview.test.js",
+            "sha256": "47a3e2c6582efe88c1bdfce8adae5fcc7315fea592064a6417b00812ce80dcd7"
+          },
+          {
+            "path": "test/procgen-object-placement-cache.test.js",
+            "sha256": "38c56c6f92fd43d6d9e7b674a417d430f129352a8e88f61645066b385b47dce1"
+          },
+          {
+            "path": "test/procgen-physical-project.test.js",
+            "sha256": "4c1aec216e7ce743ab3de50efaaed66f3b39aa7d5e2203789ff42ebefa25c0c8"
+          },
+          {
+            "path": "test/procgen-survey-browser-assets.test.js",
+            "sha256": "571d16f9ed5fbeb3bb8e44945e2be722e93590d40ac8c182ea6dc227264fe683"
+          },
+          {
+            "path": "test/procgen-terrain-retention.test.js",
+            "sha256": "1a705b593f2b0e0f1b46b6b33a29e5c28833fb32ff2d75fe75eb03436b4760d5"
+          }
+        ],
+        "logSha256": "65823cd7faf5a6d12c2eb97065d72925ccc3fd2221ade84668005368bd0796b2",
+        "failures": [
+          "level navigation fixture read the game before asynchronous loading finished",
+          "normalized modulation accessibility/default fixture",
+          "held pattern resume state after seek",
+          "Redo model changed without refreshing its inspector"
+        ]
+      },
+      {
+        "kind": "grouped-final-follow-through",
+        "passed": 48,
+        "failed": 2,
+        "seconds": 240.216984,
+        "logSha256": "7e014012db7136526143d52113e473740d4036f133b7b7455a9858314ed55a52",
+        "scope": "All changed controller and related import/picker/journal/physical/MIDI workflows; remaining failures were neutral MIDI selection and the retired native naming prompt fixture."
+      },
+      {
+        "kind": "final-fixture-follow-through",
+        "passed": 2,
+        "failed": 0,
+        "seconds": 27.703649000000002,
+        "logSha256": "2adc7986989558d5d6ab18b2cf3703a00d8e5c54d21f11f3cf14ad578789d9c4",
+        "scope": "Both final fixtures pass, including complete actual Save/Load/Reroll/Replay/New journey through the owned HTML naming dialog."
+      },
+      {
+        "kind": "sealed-affected-node",
+        "passed": 232,
+        "failed": 0,
+        "seconds": 2,
+        "logSha256": "84780d5682d864193a58d47ec700bc8ba1f1c0e9bb17aa01cd10de6af606e8bd"
+      },
+      {
+        "kind": "sealed-midi-category",
+        "passed": 2431,
+        "failed": 0,
+        "seconds": 48.44,
+        "logSha256": "2662d62f0d491499d55427aa00b3fd73486c1eaba7204927c6911943e9fe946f"
+      }
+    ],
+    "staticChecks": {
+      "format": true,
+      "criticalTypes": true,
+      "undefinedCalls": true,
+      "runtimeProvenance": true,
+      "whitespace": true
+    },
+    "finalBrowser": {
+      "state": "complete-across-full-run-and-grouped-follow-through",
+      "inventory": 231,
+      "nonBenchmarkCases": 229,
+      "casesWithPassingAttempt": 229,
+      "existingBenchmarkSkips": 2,
+      "remainingFailedCases": 0,
+      "singleFinalFullSuiteClaim": false,
+      "scope": "The complete frozen run and targeted final controller/fixture batches together cover every non-benchmark case. Broader browser cases were not redundantly rerun after the final controller fixes."
+    },
+    "maintainedBoundaryAdditions": [
+      "fresh complete offline application with replay WASM",
+      "malformed shared recipe and reachable fresh startup",
+      "six native sound selections with exact physical/causal parity",
+      "real worklet voice-to-actor display",
+      "real master PCM capture and canceled-save recovery",
+      "native level navigation keyboard activation",
+      "held complementary pattern capture/resume without duplicate notes",
+      "musical edit Undo/Redo and owned Save/Load/Reroll/Replay/New journey"
+    ],
+    "remainingOpenIssueCountAtAudit": 233,
+    "limitations": [
+      "Existing source/asset hashes, path boundaries, budgets, retirement acknowledgements and physical-state comparison remain enforced.",
+      "No vendor or binary modifications. No acoustic/device or cross-browser qualification is claimed.",
+      "This scoped batch does not complete the remaining GitHub backlog."
+    ],
+    "additionalRepairs": [
+      "Canonical Redo now uses a full view render when historical change metadata has no current reducer action.",
+      "Seek/Stop/restore reset stale resume ownership; an empty held-note list cannot erase newly admitted pattern voices.",
+      "Modulation fixtures use valid normalized positions and explicitly select the neutral project.",
+      "Workstation save journeys use the actual owned HTML dialog."
+    ],
+    "upstream": {
+      "behindMaster": 0,
+      "aheadMasterBeforeCommit": 411
+    },
+    "currentPushCi": "pending"
   }
 }

@@ -26,6 +26,34 @@ const deferred = () => {
 };
 
 describe('separate cue workload and graph admission', () => {
+  it('reconciles retired lane source declarations only after the previous producer acknowledges retirement', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context });
+    const live = preview.createSession('source-restart'), neighbor = preview.createSession('source-neighbor');
+    await live.enable(); await neighbor.enable(); live.configureLaneSources(['lane-1']);
+    const owner = live.getState().ownerId, prior = preview._laneSourcesFor(owner, context), entry = preview._laneSourceBuses.get(owner);
+    const gate = deferred(), scope = createProcgenRetirementScope();
+    entry.buses = { ...prior, dispose: () => scope.retire([{ name: 'source-buses', run: () => prior.dispose() }, { name: 'producer', run: () => gate.promise }]) };
+    const stopped = live.stop();
+    expect(() => live.configureLaneSources(['lane-1'])).to.throw('retirement is unresolved');
+    expect(preview._laneSourceBuses.get(owner)).to.equal(entry);
+    gate.resolve(); await stopped.completion;
+    expect(stopped.outcome).to.equal('complete'); expect(await live.enable()).to.equal(true);
+    expect(() => live.configureLaneSources(['lane-1'])).not.to.throw();
+    expect(preview._laneSourceBuses.get(owner)).not.to.equal(entry);
+    expect(neighbor.getState().enabled).to.equal(true);
+    await preview.dispose();
+  });
+  it('keeps a refused source retirement blocked without retiring another owner', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context });
+    const live = preview.createSession('source-fault'), neighbor = preview.createSession('source-fault-neighbor');
+    await live.enable(); await neighbor.enable();
+    const owner = live.getState().ownerId, prior = preview._laneSourcesFor(owner, context), entry = preview._laneSourceBuses.get(owner);
+    entry.buses = { ...prior, dispose() { throw new Error('Native source retirement refused'); } };
+    const stopped = live.stop(); await stopped.completion;
+    expect(stopped.outcome).to.equal('partial'); expect(await live.enable()).to.equal(false);
+    expect(preview._laneSourceBuses.get(owner)).to.equal(entry); expect(neighbor.getState().enabled).to.equal(true);
+    entry.buses = prior; await preview.dispose();
+  });
   it('publishes bounded master provenance independently of display observers and excludes separate cue', async () => {
     const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, cueVoices: 1 });
     const live = preview.createSession('capture-live'), cue = preview.createSession('capture-cue', { workloadClass: 'cue' });

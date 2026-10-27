@@ -5,9 +5,12 @@ test('browser runtime completes a bounded four-stage physical route for an admit
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.world?.gameResources);
   const result = await page.evaluate(async () => {
     const api = window.__PROCGEN_LANES__; api.pause();
-    const [{ chainWorld }, { LemmingStateType: State }, masks] = await Promise.all([
-      import('/test/support/procgen-chain-fixtures.js'), import('/js/lemmings/LemmingStateType.js'), api.world.gameResources.getMasks()
+    const [{ chainWorld }, { LemmingStateType: State }, { FileProvider }, { GameResources }] = await Promise.all([
+      import('/test/support/procgen-chain-fixtures.js'), import('/js/lemmings/LemmingStateType.js'), import('/js/data/FileProvider.js'), import('/js/game/GameResources.js')
     ]);
+    const provider = new FileProvider('/', { indexedDB: null, localStorage: null }), resources = new GameResources(provider, { path: 'lemmings' });
+    let masks;
+    try { masks = await resources.getMasks(); } finally { resources.dispose(); provider.dispose(); }
     const { world, actor } = chainWorld(masks, 'quad'); world.admissionPaused = true;
     try {
       const crew = [actor], events = [];

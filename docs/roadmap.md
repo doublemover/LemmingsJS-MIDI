@@ -6982,3 +6982,45 @@ export-budget acknowledgments still prevent a false complete receipt.
   Generated constant sample buffers qualify envelope/source ownership, without
   claiming decoder, device/acoustic or live Panic-button delivery conformance.
   These three browser scenarios are now maintained CI boundaries.
+
+### Continuation 276 — complete browser inventory and grouped runtime repairs
+
+- Full CI at d08d99ab passes **6,352 Node cases**, **33 browser boundaries** and
+  all benchmark/protocol/static/policy/dependency gates. The additional complete
+  231-case browser inventory found 51 failures, 178 passes and two existing
+  benchmark skips. Every one of the **229 non-benchmark cases** now has a passing
+  result across the frozen full run and final grouped follow-through batches.
+- Replay verifies the declared Signalsmith WASM through the existing exact-file
+  hash/path/budget checks. Frozen decoded images retain preview signatures solely
+  in their WeakMap. Compact desktop chrome wraps into an automatic grid row;
+  expert field pairs use their intended grid without clipping controls.
+- Terrain/object rendering, assembly support checks and hazard presentation use
+  non-retaining terrain revision peeks. Physical reads keep their original
+  retention and capacity policies. Six native sound changes preserve the exact
+  1,000-tick physical checkpoint and causal event order without relaxing hashes.
+- Lane declarations reconcile source generations; Enable waits for native source
+  and effect retirement. Pending acknowledgement is distinct from refusal, which
+  keeps its owner blocked. Completion removes only its own cached entry. Actual
+  worklet voice measurements now reach the physical actor display after audition.
+- Enter/Space retain native button, summary and link activation on both edges;
+  focused range controls retain global Help and shared game-speed detents.
+  Malformed recipes expose a visible, focused fresh-start action. Explicit
+  complementary pattern entry creates four authored phrases instead of retaining
+  an invalid empty list, while physical defaults remain empty.
+- Redo refreshes its inspector when historical change metadata has no current
+  reducer action. Seek/Stop/restore clear stale resume ownership; an empty held
+  list cannot erase newly admitted notes. Real held-pattern capture, disarmed
+  restoration, resume and tempo change keep one voice without duplicate starts.
+- Browser fixtures use explicit neutral projects/complementary purposes, current
+  recovery/version contracts, normalized positions, owned naming dialogs and the
+  actual bounded row/dock layout. The survey boundary can generate 18 real
+  bounded trials. PCM validation scans every sample before aggregate finite/peak
+  assertions, removing millions of synchronous assertion calls.
+- Final affected Node checks pass **232 cases**; the MIDI category passes
+  **2,431 cases**. The frozen full browser run passed 225 cases with four remaining
+  failures, followed by a 50-case related batch and the final two corrected
+  journeys, leaving no unaddressed browser failures. These are scoped runs, not
+  a claim of another redundant all-green full browser invocation. Formatting,
+  critical types, undefined calls, provenance and whitespace checks pass; master
+  is already contained. Eight new cases join maintained CI. Full CI for this
+  combined commit must be checked after push; the wider GitHub backlog remains.

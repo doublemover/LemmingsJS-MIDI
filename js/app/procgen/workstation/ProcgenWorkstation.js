@@ -370,7 +370,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     persist();
     if (!transport.getState().playing) scheduleRecovery();
     if (render) {
-      if (change && view?.patchProject) view.patchProject(renderAction, change);
+      if (change && renderAction && view?.patchProject) view.patchProject(renderAction, change);
       else if (renderAction?.type === 'procgen/step' && view?.patchStep) view.patchStep(renderAction); else view?.render();
       if (!change || change.structural || change.fields.some(key => ['ccAutomation', 'mute', 'channel', 'outputId', 'externalProgram', 'externalPercussion', 'bankMSB', 'bankLSB'].includes(key))) reportRouting();
     } return project;
@@ -414,13 +414,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const held = position.source === 'external' && pendingResume ? engine?.snapshot().active : null;
       if (held) pendingResume = false;
       engine?.onBeat({ ...position, preserveAhead: true });
-      if (held) engine.resume({ ...position, activeNotes: held });
+      if (held?.length) engine.resume({ ...position, activeNotes: held });
     },
     onSpeed(speed) { const timer = runtime()?.world?.timer; if (timer) timer.speedFactor = speed; },
     onFlush(reason) {
       ports?.flush(); router()?.scheduler?.allNotesOff?.();
       physicalPlayback?.stop();
-      if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) engine?.reset();
+      if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) { engine?.reset(); pendingResume = false; }
       else pendingResume = (engine?.getState().beat ?? -1) >= 0;
     },
     onStop(reason) {
@@ -586,7 +586,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
     if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
-    transport.play(); if (held) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
+    transport.play(); if (held?.length) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
     if (causalTake) {
       recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: transport.getState().effectiveSpeed });
       recordCausalControl('input', { version: 1, kind: 'transport-state', playing: true });
@@ -600,7 +600,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (causalTake && previous.bpm !== next.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: next.bpm });
     if (causalTake && next.playing && (previous.effectiveSpeed !== next.effectiveSpeed || previous.gameSpeed !== next.gameSpeed))
       recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: next.effectiveSpeed });
-    if (held && previous.bpm !== next.bpm) { pendingResume = false; engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
+    if (held && previous.bpm !== next.bpm) { pendingResume = false; if (held.length) engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
     macroGestures.cancelAll(); soundTransactions.cancel('The world or transport is being replaced.');

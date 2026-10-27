@@ -177,9 +177,17 @@ const keyboardShortcutRuntimeMethods = {
     return !!this.view?.game?.timeTravel?.isReversing;
   },
 
+  _isNativeActivationKey(e) {
+    if (!['Enter', 'Space', ' '].includes(e?.code || e?.key)) return false;
+    const control = e?.target?.closest?.('button, summary, a[href]') || e?.target;
+    const tag = String(control?.tagName || '').toUpperCase();
+    return tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'A' && !!control.hasAttribute?.('href');
+  },
+
   _shouldIgnoreKey(e, actions = []) {
     const target = e?.target;
     if (!target) return false;
+    if (this._isNativeActivationKey(e)) return true;
     if (target.isContentEditable) return true;
     const tag = String(target.tagName || '').toUpperCase();
     if (tag === 'INPUT' && String(target.type || target.getAttribute?.('type')).toLowerCase() === 'range') {

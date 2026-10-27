@@ -29,11 +29,11 @@ class ProcgenHazards {
     return { x1: object.x + image.trigger_left, y1: lane * this.world.laneHeight + object.y + image.trigger_top,
       x2: object.x + image.trigger_left + image.trigger_width, y2: lane * this.world.laneHeight + object.y + image.trigger_top + image.trigger_height };
   }
-  placementReady(lane, chunk, object, descriptor) {
+  placementReady(lane, chunk, object, descriptor, { readOnly = false } = {}) {
     if (!hazardType(object)) return false;
     if (this.world.terrainGrowth?.objectReady && !this.world.terrainGrowth.objectReady(lane, chunk, descriptor.objects.indexOf(object))) return false;
     const world = this.world, terrain = world.terrain, image = procgenObjectImage(object), bounds = this._bounds(object, lane);
-    if (object.assembly) return bounds.x1 < bounds.x2 && bounds.y1 < bounds.y2 && assemblyPlacementReady(world, lane, object, descriptor);
+    if (object.assembly) return bounds.x1 < bounds.x2 && bounds.y1 < bounds.y2 && assemblyPlacementReady(world, lane, object, descriptor, { readOnly });
     const origin = chunk * terrain.chunkWidth, top = lane * this.world.laneHeight;
     if (![bounds.x1, bounds.y1, bounds.x2, bounds.y2, object.supportY].every(Number.isFinite) ||
         bounds.x1 >= bounds.x2 || bounds.y1 >= bounds.y2 || bounds.x1 < origin || bounds.x2 > origin + terrain.chunkWidth ||

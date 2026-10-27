@@ -409,12 +409,12 @@ test('UI export and import accepts the same semantic editor state', async ({ pag
   expect(semanticSummary(afterLevel)).toEqual(before);
 });
 
-test('Selection inspector toggles terrain one-way flags', async ({ page }) => {
+test('Selection inspector preserves unsupported terrain one-way flags as read-only metadata', async ({ page }) => {
   const terrainId = await page.evaluate(() => window.__E2E__.getState().editor.assets.terrain[0]?.id);
   expect(Number.isFinite(terrainId)).toBe(true);
 
   await applyEditorOps(page, [
-    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: terrainId, X: 32, Y: 32 } } },
+    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: terrainId, X: 32, Y: 32, ONE_WAY: true } } },
     { type: 'entry.add', args: { kind: 'steel', props: { X: 96, Y: 32, WIDTH: 16, HEIGHT: 16 } } },
     { type: 'selection.set', args: { selection: [{ kind: 'terrain', index: 0 }] } }
   ], { preview: { refresh: false }, returnState: 'editor' });
@@ -423,16 +423,10 @@ test('Selection inspector toggles terrain one-way flags', async ({ page }) => {
   await page.locator('#editorSelectionFlags').evaluate(element => {
     element.open = true;
   });
-  await expect(oneWay).toBeEnabled();
-  await expect(oneWay).not.toBeChecked();
-
-  await oneWay.check();
-  const checkedProps = await page.evaluate(() => window.__E2E__.getState().editor.session.level.terrains[0].props);
-  expect(checkedProps.ONE_WAY).toBe(true);
-
-  await oneWay.uncheck();
-  const uncheckedProps = await page.evaluate(() => window.__E2E__.getState().editor.session.level.terrains[0].props);
-  expect(Object.prototype.hasOwnProperty.call(uncheckedProps, 'ONE_WAY')).toBe(false);
+  await expect(oneWay).toBeDisabled();
+  await expect(oneWay).toBeChecked();
+  await expect(oneWay).toHaveAttribute('title', /not supported by the current game runtime/);
+  expect(await page.evaluate(() => window.__E2E__.getState().editor.session.level.terrains[0].props.ONE_WAY)).toBe(true);
 
   await applyEditorOps(page, [
     { type: 'selection.set', args: { selection: [{ kind: 'steel', index: 0 }] } }

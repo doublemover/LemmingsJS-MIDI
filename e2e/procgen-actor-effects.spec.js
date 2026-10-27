@@ -17,7 +17,8 @@ for (const deviceScaleFactor of [1, 2]) test.describe(`actor effect presentation
     });
     const pixels = await page.locator('#gameCanvas').screenshot();
     const receipt = await page.evaluate(() => {
-      const api = window.__PROCGEN_LANES__, renderer = api.renderer, target = window.__effectTarget, actor = renderer.actorVisibility.actorById(target.actorId), manager = renderer.actorEffects;
+      const api = window.__PROCGEN_LANES__, renderer = api.renderer, target = window.__effectTarget, actor = renderer.actorVisibility.renderActor(target.actorId), manager = renderer.actorEffects;
+      if (!actor) throw new Error('The completed presentation must resolve to its current physical actor.');
       const beforeDistances = [-6, 0, 6].map(dx => actor.getClickDistance(actor.x + dx, actor.y - 5));
       const now = performance.now(), frame = Math.round(now * 48), identity = { worldId: api.world.worldId, generation: api.world.generation, executionEpoch: 'synthetic-render-qualification', contextEpoch: 1, graphRevision: 1, routeRevision: 1 };
       manager.setEpoch({ ...identity, owner: 'synthetic-render-fixture#1' }); manager.setProfile({ version: 1, enabled: true, intensity: 1, smoothingMs: 0, holdMs: 250, decayMs: 1000, bindings: [

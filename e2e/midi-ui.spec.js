@@ -9,12 +9,13 @@ test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
 });
 
-const openMidiUi = async (page, { resetStorage = false, withDevices = true, permission = 'granted' } = {}) => {
+const openMidiUi = async (page, { resetStorage = false, withDevices = true, permission = 'granted', neutralProject = false } = {}) => {
   if (resetStorage) await clearLocalStorage(page);
   await installWebMidiStub(page, { withDevices, permission });
   const midi = new MidiUiPage(page);
   await midi.goto('/?e2e=1');
   await waitForHarnessReady(page);
+  if (neutralProject) await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'project.reset', factoryConfig: {} }));
   await page.waitForSelector('#midiSourceList .midi-source-row');
   return midi;
 };
@@ -203,7 +204,7 @@ test('MIDI sequencer reports permission denial and mocked device lifecycle', asy
 });
 
 test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   const setField = async (selector, value) => {
     await page.locator(selector).evaluate((element, nextValue) => {
       element.value = String(nextValue);
@@ -289,7 +290,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
 });
 
 test('MIDI sequencer lowers direct chord mappings into runtime config', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   const setField = async (selector, value) => {
     await page.locator(selector).evaluate((element, nextValue) => {
       element.value = String(nextValue);
@@ -354,7 +355,7 @@ test('MIDI sequencer routes multiple sources to separate track channels', async 
 });
 
 test('MIDI sequencer removes tracks and manages clip library controls', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   await expect(midi.trackRemoveButton()).toBeDisabled();
   await expect(midi.clipDuplicateButton()).toBeDisabled();
   await expect(midi.clipRemoveButton()).toBeDisabled();
@@ -473,7 +474,7 @@ test('MIDI project file and template controls preserve edits, adopted identity a
 });
 
 test('MIDI sequencer learns a selected direct source note and resolves range warnings', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   await midi.enable();
   const setField = async (selector, value) => {
     await page.locator(selector).evaluate((element, nextValue) => {
@@ -529,7 +530,7 @@ test('MIDI sequencer records mocked MIDI notes into a step clip', async ({ page 
 });
 
 test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   await midi.enable();
   const setField = async (selector, value) => {
     await page.locator(selector).evaluate((element, nextValue) => {
@@ -614,7 +615,7 @@ test('MIDI clip inspector moves focus when arp controls hide', async ({ page }) 
 });
 
 test('MIDI source browser search and filters remain usable', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   await expect(midi.sourceRows().first()).toBeVisible();
 
   await page.locator('#midiViewExpert').click();
@@ -758,7 +759,7 @@ test('MIDI source filters keep an active listbox option', async ({ page }) => {
 });
 
 test('MIDI sequencer edits modulation controls', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   await expect(midi.modulationInspector()).toBeVisible();
   const setField = async (selector, value) => {
     await page.locator(selector).evaluate((element, nextValue) => {
@@ -797,14 +798,14 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   const laneLayout = await page.locator('.midi-automation-row').last().evaluate(row => {
     const children = Array.from(row.children);
     const rowRect = row.getBoundingClientRect();
-    const removeRect = children[children.length - 1].getBoundingClientRect();
+    const removeRect = row.querySelector('.midi-automation-remove').getBoundingClientRect();
     return {
       childCount: children.length,
       rowHeight: rowRect.height,
       removeTopOffset: removeRect.top - rowRect.top
     };
   });
-  expect(laneLayout.childCount).toBe(9);
+  expect(laneLayout.childCount).toBe(10);
   expect(laneLayout.removeTopOffset).toBeLessThan(laneLayout.rowHeight / 2);
   const laneA11y = await page.locator('.midi-automation-row').last().evaluate(row => ({
     role: row.getAttribute('role'),
@@ -822,13 +823,13 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
     `${laneName} operator`,
     `${laneName} minimum`,
     `${laneName} maximum`,
-    `${laneName} point beat`,
+    `${laneName} normalized position`,
     `${laneName} point value`,
     `Remove modulation lane ${laneName}`
   ]));
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
   await midi.automationPointBeatFields().last().evaluate(element => {
-    element.value = '2';
+    element.value = '0.5';
     element.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await midi.automationPointValueFields().last().evaluate(element => {
@@ -857,8 +858,8 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   });
   expect(project.automation.length).toBeGreaterThan(automationCount);
   expect(project.automation.at(-1).axisOp).toBe('mul');
-  expect(project.automation.at(-1).points[0]).toEqual({ beat: 2, value: 0.7 });
-  expect(runtime.position.mappings.at(-1).points).toEqual([{ beat: 2, value: 0.7 }]);
+  expect(project.automation.at(-1).points[0]).toEqual({ beat: 0.5, value: 0.7 });
+  expect(runtime.position.mappings.at(-1).points).toEqual([{ beat: 0.5, value: 0.7 }]);
 
   await page.locator('#midiViewExpert').click();
   await midi.automationRemoveButtons().last().click();
@@ -907,7 +908,7 @@ test('MIDI sequencer surfaces source conflicts in the browser and inspector', as
 });
 
 test('MIDI sequencer listboxes support keyboard navigation', async ({ page }) => {
-  await openMidiUi(page);
+  await openMidiUi(page, { neutralProject: true });
   const optionId = (kind, id) => `midi-${kind}-option-${String(id).replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
   const visibleSources = await page.locator('#midiSourceList .midi-source-row').evaluateAll(rows => rows.map(row => row.dataset.sourceId));
   expect(visibleSources.length).toBeGreaterThan(1);
@@ -1013,7 +1014,7 @@ test('MIDI step grid supports rest controls', async ({ page }) => {
 });
 
 test('MIDI E2E helpers expose runtime config and UI metrics', async ({ page }) => {
-  const midi = await openMidiUi(page);
+  const midi = await openMidiUi(page, { neutralProject: true });
   const before = await midi.uiMetrics();
 
   await setFieldValue(page, '#midiMappingNote', 77);
@@ -1064,7 +1065,7 @@ test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and p
 
 test('Desktop MIDI studio opens ready, keeps saved audio state, and closes transient captures', async ({ page }) => {
   await installWebMidiStub(page);
-  await page.goto('/?e2e=1');
+  await page.goto('/?e2e=1&midi=1');
   await waitForHarnessReady(page);
   const workspace = page.locator('#midiSequencerWorkspace');
   const toggle = page.locator('#midiWorkspaceToggle');
@@ -1100,9 +1101,8 @@ test('Desktop MIDI studio opens ready, keeps saved audio state, and closes trans
   expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
   await page.reload();
   await waitForHarnessReady(page);
-  await expect(workspace).toBeHidden();
+  await expect(workspace).toBeVisible();
   expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
-  await toggle.click();
   await page.locator('#midiViewExpert').click();
   await expect(page.locator('#midiEnabledToggle')).toBeChecked();
   await expect(page.locator('#midiMappingNote')).toHaveValue('74');

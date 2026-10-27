@@ -80,8 +80,9 @@ class ProcgenTerrainRevisions extends Map {
     for (const key of super.keys()) { if (super.size <= this.maxEntries) break; if (!this.interests.has(key)) this._retire(key); }
   }
   set(key, revision) { super.delete(key); super.set(key, revision); this._limit(); return this; }
+  peek(key) { return super.has(key) ? super.get(key) : -(this.epochs[Math.floor(key / TILE_LANE_STRIDE)] || 0); }
   read(key) {
-    const revision = super.has(key) ? super.get(key) : -(this.epochs[Math.floor(key / TILE_LANE_STRIDE)] || 0);
+    const revision = this.peek(key);
     this.set(key, revision); return revision;
   }
   retain(interests) {
@@ -101,4 +102,5 @@ class ProcgenTerrainRevisions extends Map {
   snapshot() { return { ...this.stats, entries: this.size, maxEntries: this.maxEntries, interests: this.interests.size, recentTilesPerLane: RECENT_TILES_PER_LANE }; }
 }
 const procgenTileRevision = (world, key) => world.getTerrainTileRevision?.(key) ?? world.terrainTileRevisions?.get(key) ?? 0;
-export { ProcgenTerrainEdits, ProcgenTerrainRevisions, procgenTileRevision, RECENT_TILES_PER_LANE };
+const peekProcgenTileRevision = (world, key) => world.peekTerrainTileRevision?.(key) ?? world.terrainTileRevisions?.peek?.(key) ?? world.terrainTileRevisions?.get(key) ?? world.getTerrainTileRevision?.(key) ?? 0;
+export { ProcgenTerrainEdits, ProcgenTerrainRevisions, procgenTileRevision, peekProcgenTileRevision, RECENT_TILES_PER_LANE };

@@ -474,6 +474,7 @@ class ProcgenLaneWorld {
   }
   _editKey(x, y) { return Math.floor(y / this.laneHeight) * 0x2000000 + Math.floor(x / EDIT_CHUNK_WIDTH); }
   getTerrainTileRevision(key) { return this.terrainTileRevisions.read(key); }
+  peekTerrainTileRevision(key) { return this.terrainTileRevisions.peek(key); }
   _invalidateEditChunk(key) {
     const lane = Math.floor(key / 0x2000000), index = key % 0x2000000, slot = lane * this._editSlots + (index & (this._editSlots - 1));
     if (this._laneEditIndex[lane] === index) { this._laneEditIndex[lane] = -1; this._laneEdits[lane] = null; }

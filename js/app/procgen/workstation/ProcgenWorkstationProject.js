@@ -204,7 +204,7 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   if (action.type === 'procgen/lane') {
     if (!action.patch || typeof action.patch !== 'object') return project;
     next = createProcgenLane(index, { ...lane, ...action.patch, ...(Object.hasOwn(action.patch, 'instrumentRef') ? { instrumentPatchId: action.patch.instrumentRef?.patchId ?? null } : {}), id: lane.id, revision: lane.revision }, lane);
-    if (action.patch.patterns === undefined) next.patterns = lane.patterns;
+    if (action.patch.patterns === undefined && next.mode === lane.mode) next.patterns = lane.patterns;
   } else if (action.type === 'procgen/worldTheme') {
     if (!PROCGEN_SOUND_COLLECTIONS.some(item => item.id === action.worldThemeId)) throw new Error('An explicit known physical world theme is required.');
     next = createProcgenLane(index, { ...lane, worldThemeId: action.worldThemeId }, lane);

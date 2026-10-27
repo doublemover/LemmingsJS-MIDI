@@ -56,6 +56,7 @@ test('visual selectors support repeated mixed/single/accessory changes without c
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.evaluate(() => window.__E2E__.pause());
+  await expect(page.locator('#midiGameClock')).toContainText('PAUSE');
   const tick = await page.locator('#midiGameClock').textContent();
   for (const shape of ['donut', 'circle', 'rounded_triangle', 'mixed']) {
     await page.locator(`#characterShapeChoices [data-value=${shape}]`).click();
@@ -73,14 +74,14 @@ test('visual selectors support repeated mixed/single/accessory changes without c
 });
 
 test('focused speed range preserves global Help and speed keys while native arrows use game detents', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 }); await installExternalAssetStubs(page);
+  await page.setViewportSize({ width: 1909, height: 950 }); await installExternalAssetStubs(page);
   await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page);
   if (!await page.locator('#midiSequencerWorkspace').isVisible()) await page.locator('#midiWorkspaceToggle').click();
   await page.evaluate(() => { window.__E2E__.pause(); window.__E2E__.setSpeed(10); });
   const range = page.locator('#midiGameSpeed'), number = page.locator('#midiGameSpeedValue');
   await expect(number).toHaveValue('10'); await range.focus();
   await page.keyboard.press('ArrowRight'); await expect(number).toHaveValue('20');
-  await page.keyboard.press('='); await expect(number).toHaveValue('21');
+  await page.keyboard.press('='); await expect(number).toHaveValue('30');
   await page.keyboard.press('-'); await expect(number).toHaveValue('20');
   await page.keyboard.press('F1'); await expect(page.locator('#shortcutOverlay')).toHaveAttribute('aria-hidden', 'false');
   await page.keyboard.press('Escape'); await expect(range).toBeFocused();

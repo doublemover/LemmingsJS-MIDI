@@ -17,6 +17,19 @@ const fixture = () => {
 };
 
 describe('global shortcuts while a range is focused', () => {
+  it('leaves native button, summary and link activation to the browser on both key edges', () => {
+    const f = fixture();
+    for (const tagName of ['BUTTON', 'SUMMARY', 'A']) for (const code of ['Space', 'Enter']) {
+      const target = { tagName, hasAttribute: name => name === 'href' };
+      expect(f.press(code, target)).to.equal(false);
+      let prevented = false;
+      f.shortcuts._onKeyUp({ code, target, preventDefault() { prevented = true; } });
+      expect(prevented).to.equal(false);
+    }
+    expect(f.timer.pauses).to.equal(0);
+    expect(f.press('F1', { tagName: 'BUTTON' })).to.equal(true); expect(f.helps).to.equal(1);
+    f.shortcuts.dispose();
+  });
   it('keeps Help and all speed aliases usable while leaving native arrow adjustments alone', () => {
     const f = fixture(), range = { tagName: 'INPUT', type: 'range' };
     expect(f.press('F1', range)).to.equal(true); expect(f.helps).to.equal(1);

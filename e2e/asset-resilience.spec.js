@@ -72,19 +72,21 @@ test('real terrain decoding retires private compressed cursors before cache evic
     const { FileProvider } = await import('/js/data/FileProvider.js');
     const { EditorAssetCache } = await import('/js/editor/EditorAssetCache.js');
     const { createResourceBudget } = await import('/js/app/resources/ResourceBudget.js');
-    const budget = createResourceBudget({ limitBytes: 32 * 1024 * 1024 });
+    const budget = createResourceBudget({ limitBytes: 128 * 1024 * 1024 });
     const provider = new FileProvider('/', { budgetAdapter: budget, maxResponseBytes: 2 * 1024 * 1024, localStorage: null, cacheProbeMs: 1000 });
     const cache = new EditorAssetCache();
     const assets = await cache.loadStyleAssets('dirt', { path: 'lemmings' }, provider);
     await provider.waitForCacheWrites();
     const warm = provider.getRawAssetStats();
-    provider.clearCache(); const retired = budget.diagnostics().residentBytes;
+    provider.clearCache(); const retired = provider.getRawAssetStats().residentBytes;
     const decoded = assets.terrainImages.some(image => image?.frames?.length);
-    cache.clear(); provider.dispose();
-    return { warm, retired, decoded };
+    const decodedResident = budget.diagnostics().residentBytes;
+    const retirement = cache.clear(); await retirement.completion; provider.dispose();
+    return { warm, retired, decoded, decodedResident, retirement: retirement.outcome, remaining: budget.diagnostics().accountedBytes };
   });
   expect(result.decoded).toBe(true); expect(result.warm.residentBytes).toBeGreaterThan(0);
   expect(result.warm.pinnedBytes).toBe(0); expect(result.retired).toBe(0);
+  expect(result.decodedResident).toBeGreaterThan(0); expect(result.retirement).toBe('complete'); expect(result.remaining).toBe(0);
 });
 
 test('GameResources and LevelLoader retire owned raw cursors while surviving consumers stay readable', async ({ page }) => {
