@@ -617,5 +617,145 @@
       "functions": 88.17
     },
     "scope": "Published completed 150-failure repair. Subsequent backlog development is outside this validated checkpoint."
+  },
+  "continuation262": {
+    "date": "2026-10-27",
+    "parentRevision": "a692adf2c165d51cfb459a2810d2976c1143e436",
+    "scope": "Frontloaded ordinary/local voice reservations, measured benchmarks, shared runner and bounded browser-master provenance; all residual failures repaired together.",
+    "sourceFiles": [
+      {
+        "path": "js/app/midi-ui/MasterCaptureProvenance.js",
+        "sha256": "e79097615c64b943e6ffab4a708914b342c936df47d7f3735b18c6d0584286ff"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedMasterCapture.js",
+        "sha256": "92addbbfcd9d1d32c4633de7c5d37b758414937298aa2b0ee4efea2b16ee5221"
+      },
+      {
+        "path": "js/app/midi-ui/OwnerEffectGraphHost.js",
+        "sha256": "c8d03c41fa0487333abc8ab11e9a6ce4ec7876df495157c81c3ed59927330f49"
+      },
+      {
+        "path": "js/app/midi-ui/browserNotePreview.js",
+        "sha256": "772f6227e5026fcab0c248d869499136d4e2129b1034fe7f89287bf655804292"
+      },
+      {
+        "path": "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js",
+        "sha256": "ea8cded6fc0a598499c1b953ef7a5d9ef972567123c9d694359a418ec6991acd"
+      },
+      {
+        "path": "js/app/procgen/workstation/AudioClockBridge.js",
+        "sha256": "5e9b01c9b1788ccb3e4bbf91d299add63d83f3c6be27e912f8ce1a40bd51a9b2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "sha256": "a4295c4e2044d2b98c36ae62d27eaf0b5c0e174739b7ac8d39797a82c29b4462"
+      },
+      {
+        "path": "js/game/game-view/GameViewDiagnostics.js",
+        "sha256": "fb30c2d17badcb1563255f3e17656accdc92e1c4276b92655bd3bbb08dd5e836"
+      },
+      {
+        "path": "js/midi/scheduler/FutureMidiRateWindow.js",
+        "sha256": "618a79379363b56f49a6f69aaa449477982933352add1ea5cbc5f44b65c5f9c6"
+      },
+      {
+        "path": "js/midi/scheduler/MidiSchedulerRateMethods.js",
+        "sha256": "e170e410836481542a8e9a5a71977216e32c9ea84b771e1c99cc757a55a7e215"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "sha256": "c0ec6e2ea599f5581dd05fc304f7a47a0513a9f3810931e7ded5619cf403e57d"
+      },
+      {
+        "path": "test/gameview.coverage.03-gameview-coverage.test.js",
+        "sha256": "68ac10aed2033a065ba6c6b25fa495c6e2d6b5abfc06d70c6cf12236e03f0e6d"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "sha256": "2acf78413ccbbce8c80a51db5eb03844606d0193160e1357b42ef4d2e146148f"
+      },
+      {
+        "path": "test/midi/future-midi-rate-window.test.js",
+        "sha256": "541cadcaa03158e99bc59ffc72937d5fa29cb4f585a77db28d72e24b2bd60d1a"
+      },
+      {
+        "path": "test/midi/master-capture-provenance.test.js",
+        "sha256": "6c25f447940b26b5c8b49d0298e172584435bf658139d3927192c0bc9f632c0f"
+      },
+      {
+        "path": "test/midi/midi-future-voice-reservations.test.js",
+        "sha256": "389310e88e2f0e23dc528115b3b9a24543403e236abf596343f675889118520f"
+      },
+      {
+        "path": "test/midi/midi-routing-leases.test.js",
+        "sha256": "14808b1ae231ec013672a710e2ffe888d67c529adfa930c6b3d72500f1a0cf20"
+      },
+      {
+        "path": "test/midi/midi-scheduler.coverage.02-midischeduler-coverage-core-behavior.test.js",
+        "sha256": "4a6c26030fdcab3d5509e4f4039ff58367b8ef19c1070967ffcff6c2d3023876"
+      },
+      {
+        "path": "test/midi/owned-master-capture.test.js",
+        "sha256": "dd32555ec94c388c7693c9e78293c46818a7d1d3c4d5d362cf29ec04016a3891"
+      }
+    ],
+    "runs": [
+      {
+        "id": "initial",
+        "command": "npm test",
+        "passed": 6251,
+        "failed": 11,
+        "exitCode": 11,
+        "logPath": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog262-full-suite-20261027.log",
+        "logSha256": "fbdb66a48ee5212b29931fb833c7da2560bec9558293bfd347aeb0136f06a933"
+      },
+      {
+        "id": "combinedRetest",
+        "command": "npm test",
+        "passed": 6266,
+        "failed": 0,
+        "exitCode": 0,
+        "logPath": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog262-batch-retest-20261027.log",
+        "logSha256": "1688d9161abd08edc467f10a8f31bd4f4f8a7a335f598f399582ae2f54f98333",
+        "runtimeSeconds": 377.51
+      }
+    ],
+    "browserBenchmark": {
+      "command": "node scripts/bench-smoke.js --url=http://127.0.0.1:8081/?e2e=1",
+      "exitCode": 0,
+      "ok": true,
+      "measurementValid": true,
+      "totalDurationMs": 28705,
+      "metrics": {
+        "perfP95Frame": 50,
+        "perfP50Tps": 84.22664624772538,
+        "historyRatio": 0.5028333333333334,
+        "antsAvgMs": 37.6,
+        "tileCompositionAvgMs": 15.1,
+        "overlayPlaneAvgMs": 43.37,
+        "scaledBlitAvgMs": 57.36
+      },
+      "failures": [],
+      "logPath": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-backlog262-benchmark-20261027.log",
+      "logSha256": "11b145f4a9273314ab6e4fd487fadfecab480888292de4262a43a045542e409f"
+    },
+    "staticChecks": [
+      "format",
+      "critical checkJs (shared-runner preflight)",
+      "runtime-global guard (shared-runner preflight)",
+      "undefined-call scan",
+      "branch whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "closedIssue": {
+      "number": 901,
+      "evidence": "29 scripts/runTests cases, exact twelve-file work-removal subset, maintained entrypoints and guard order"
+    },
+    "qualificationLimits": [
+      "Actual live browser PCM tap and independent complete/partial WAV decoder, five-minute capture and physical cue-device behavior remain separate.",
+      "No native MIDI2, listening, soak or universal performance qualification is claimed.",
+      "The newest CI result is pending; 5951f72d remains the separately verified green CI checkpoint."
+    ]
   }
 }

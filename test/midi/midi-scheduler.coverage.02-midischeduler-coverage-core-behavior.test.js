@@ -258,12 +258,12 @@ describe('MidiScheduler coverage: core behavior', function() {
     });
     scheduler.setOutput(output);
     scheduler._maxActiveNotes = 1;
-    scheduler._activeNotes.set(1, { note: 60, channel: 1, startedAt: 0 });
-    let stolen = false;
-    scheduler._stealOldestNote = () => { stolen = true; };
+    scheduler.sendNote({ note: 60, channel: 1, durationTicks: 0 });
     scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, pan: 80, timeMs: scheduler._nowMs() });
-    expect(stolen).to.equal(true);
+    expect(calls.filter(call => call.type === 'noteOff').map(call => call.note)).to.deep.equal([60]);
+    expect(scheduler._countSoundingNotes()).to.equal(1);
     expect(calls.some(call => call.type === 'cc')).to.equal(true);
+    scheduler.dispose();
   });
 
   it('arms timers and processes note offs with missing outputs', function() {

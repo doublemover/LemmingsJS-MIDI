@@ -138,9 +138,9 @@ const gameViewDiagnosticsMethods = {
       return true;
     };
 
-    if (!this._benchEntrancePool) {
+    if (!this._benchEntrancePool || this._benchEntrancePool.length < entrances) {
       level.entrances = baseEntrances.slice();
-      const target = Math.max(...this._benchCounts);
+      const target = Math.max(entrances, ...this._benchCounts);
       for (const step of increments) {
         let offset = 0;
         while (level.entrances.length < target && offset <= level.width) {

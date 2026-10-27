@@ -26,6 +26,22 @@ const deferred = () => {
 };
 
 describe('separate cue workload and graph admission', () => {
+  it('publishes bounded master provenance independently of display observers and excludes separate cue', async () => {
+    const context = new FakeContext(), preview = new BrowserNotePreview({ createAudioContext: () => context, cueVoices: 1 });
+    const live = preview.createSession('capture-live'), cue = preview.createSession('capture-cue', { workloadClass: 'cue' });
+    await live.enable(); await cue.enable(); const rows = [];
+    const release = preview.subscribeCaptureProvenance(row => rows.push(row));
+    expect(() => preview.subscribeCaptureProvenance(() => {})).to.throw('unavailable');
+    const scoreMapping = Object.freeze({ scoreEpoch: 'score', executionEpoch: 'execution', beat: 2, bpm: 120,
+      hostMs: 0, contextSeconds: 0, correlationHostMs: 0, uncertaintyMs: 0, presentationDelayMs: 12 });
+    expect(live.setCaptureContext({ worldId: 'world', graphRevision: 3, routeRevision: 2, scoreMapping })).to.equal(true);
+    expect(live.setCaptureContext({ worldId: 'world', graphRevision: 3, routeRevision: 2, scoreMapping })).to.equal(false);
+    expect(rows).to.have.length(1); expect(rows[0].owners).to.have.length(1);
+    expect(rows[0].owners[0].graph.scoreMapping).to.deep.equal(scoreMapping);
+    expect(rows[0].owners[0].ownerId).to.equal(live.getState().ownerId);
+    release(); live.setCaptureContext({ worldId: 'world', graphRevision: 4, routeRevision: 2, scoreMapping });
+    expect(rows).to.have.length(1); await preview.dispose();
+  });
   it('rejects an earlier onset that would overlap a committed future note in a one-voice workload', async () => {
     const context = new FakeContext(); context.currentTime = 0;
     const preview = new BrowserNotePreview({ createAudioContext: () => context, nowMs: () => 0, maxVoices: 1 }); await preview.enable();

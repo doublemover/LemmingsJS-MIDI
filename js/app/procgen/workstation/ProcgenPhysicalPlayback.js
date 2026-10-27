@@ -227,6 +227,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
         anchoredEpoch = score.epoch; anchoredBpm = bpm;
       } catch { clock.invalidate(); anchoredEpoch = null; }
     }
+    session?.setCaptureContext?.({ worldId: batch.worldId, graphRevision: getGraph()?.revision ?? null,
+      routeRevision: routed?.routeRevision() ?? 0, scoreMapping: clock.getAnchor() });
     if (routed && prepared && permitted() && session?.getState().enabled) {
       const frame = clock.currentFrame(), context = audio.getAudioContext(), rate = context?.sampleRate;
       if (Number.isSafeInteger(frame) && Number.isFinite(rate) && (leaseEpoch !== executionEpoch || leaseContext !== context || leaseUntil == null || frame + rate * 4 >= leaseUntil)) {

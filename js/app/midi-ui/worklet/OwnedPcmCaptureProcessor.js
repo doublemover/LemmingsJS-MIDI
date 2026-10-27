@@ -20,7 +20,7 @@ class OwnedPcmCaptureKernel {
     this.pool[index] = new Float32Array(buffer); this.states[index] = 0; return true;
   }
   requestStop(frame, reason = 'user-stop') {
-    if (this.stopped || !Number.isSafeInteger(frame) || frame < 0 || !['user-stop', 'panic', 'context-interrupted', 'owner-retired'].includes(reason)) return false;
+    if (this.stopped || !Number.isSafeInteger(frame) || frame < 0 || !['user-stop', 'panic', 'context-interrupted', 'owner-retired', 'provenance-unavailable'].includes(reason)) return false;
     if (frame < this.stopFrame) { this.stopFrame = frame; this.stopReason = reason; } return true;
   }
   gap(first, last, reason) {

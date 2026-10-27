@@ -232,17 +232,20 @@ describe('activated MIDI output leases', function() {
     });
   });
 
-  it('rolls back a reservation when local admission throws before the voice token is bound', function() {
-    withFakeClockAndPerformance(() => {
+  it('rolls back deferred reservations when local admission throws at the onset frontier', function() {
+    withFakeClockAndPerformance(clock => {
       const calls = [], output = makeOutput([1], calls, 'local'), scheduler = new MidiScheduler(configuration(false));
       output.supportsIndependentNoteGates = true;
       output.canAllocateVoice = () => { throw new Error('local admission unavailable'); };
       scheduler.setOutput(output);
-      expect(scheduler.sendNote({ note: 60, timeMs: 1000, durationTicks: 1 })).to.equal(false);
+      expect(scheduler.sendNote({ note: 60, timeMs: 1000, durationTicks: 1 })).to.equal(true);
+      expect(calls).to.deep.equal([]); clock.tick(1000);
       expect(scheduler._ratePlanned).to.deep.equal([]); expect(calls).to.deep.equal([]);
-      const reservation = scheduler.reserve({ on: { timeMs: 1000, count: 1, bytes: 3 } }, { outputId: 'local' }, 0);
-      expect(scheduler.sendNote({ note: 64, timeMs: 1000, durationTicks: 0 }, { rateReserved: true, reservationId: reservation.reservationId })).to.equal(false);
-      expect(scheduler._ratePlanned).to.deep.equal([]); scheduler.dispose();
+      const reservation = scheduler.reserve({ on: { timeMs: 2000, count: 1, bytes: 3 } }, { outputId: 'local' }, 1000);
+      expect(scheduler.sendNote({ note: 64, timeMs: 2000, durationTicks: 0 }, { rateReserved: true, reservationId: reservation.reservationId })).to.equal(true);
+      clock.tick(1000);
+      expect(scheduler._ratePlanned).to.deep.equal([]); expect(scheduler._activeNotes.size).to.equal(0);
+      expect(scheduler._pendingNoteOns.size).to.equal(0); expect(calls).to.deep.equal([]); scheduler.dispose();
     });
   });
 

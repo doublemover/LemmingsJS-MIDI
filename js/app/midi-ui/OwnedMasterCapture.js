@@ -2,6 +2,7 @@ import { createAudioResourceLeases, releaseAudioResourceAfterRetirement } from '
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { prepareReplayableExportArtifact } from '../export/ExportArtifact.js';
 import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
+import { createMasterCaptureProvenance } from './MasterCaptureProvenance.js';
 
 const PROTOCOL = 1, CHANNELS = 2, CHUNK_FRAMES = 4096, MAX_GAPS = 256, COPY_BYTES = 65536;
 let captureSequence = 0;
@@ -71,7 +72,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     unresolvedOwnership: hasUnknownOwnership(), resourceAccounting: resources.diagnostics() });
   const report = () => { try { onChange(state()); } catch { /* Presentation cannot change capture ownership. */ } };
   const checkContext = operation => !disposed && preview.getAudioContext() === operation.context &&
-    preview.getState().contextEpoch === operation.contextEpoch && operation.context.state === 'running';
+    preview.getState().contextEpoch === operation.contextEpoch && operation.context.sampleRate === operation.sampleRate && operation.context.state === 'running';
   const retireNative = (operation, terminalAcknowledged) => {
     if (operation.nativeReceipt) return operation.nativeReceipt;
     const receipt = createProcgenRetirementScope().retire([
@@ -103,6 +104,8 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
   const finish = (operation, terminal = null, reason = null) => {
     if (operation.finished) return; operation.finished = true;
     clearTimeout(operation.timer); clearTimeout(operation.watchdog); clearTimeout(operation.readyTimer);
+    try { operation.unsubscribeProvenance?.(); } catch (error) { operation.error ||= error; }
+    operation.unsubscribeProvenance = null;
     if (operation.onContextState) operation.context.removeEventListener?.('statechange', operation.onContextState);
     let verified = false, gaps = [], end = operation.lastFrame ?? operation.sourceStartFrame;
     if (terminal) {
@@ -143,13 +146,16 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     const timelineFrames = operation.sourceStartFrame == null || end == null ? 0 : Math.max(0, end - operation.sourceStartFrame);
     operation.frames = timelineFrames;
     const complete = verified && !gaps.length && ['user-stop', 'capacity-reached'].includes(reason) && !operation.error;
+    const provenance = operation.provenance.finish({ sourceStartFrame: operation.sourceStartFrame, endFrameExclusive: end,
+      terminationReason: reason || operation.stopRequested || 'capture-interrupted' });
     operation.manifest = freezeData({ schema: 'lemmings-master-pcm/v1', ownerId: operation.ownerId, contextEpoch: operation.contextEpoch,
       tap: 'post-protection-shared-browser-master', includesCurrentMasterOwnersAndAuditions: true, separateCueBusExcluded: true,
       rehearsalOnMasterIncluded: true, monitorAtStart: operation.monitorAtStart,
+      provenance, segments: provenance.segments,
       externalMidiAudio: false, microphone: false, acousticEvidence: false, sampleRate: operation.sampleRate, channels: CHANNELS, format: 'float32-le',
       intendedStartFrame: operation.targetStartFrame, sourceStartFrame: operation.sourceStartFrame, endFrameExclusive: end,
       timelineFrames, capturedFrames: operation.capturedFrames, state: complete ? 'Ready' : timelineFrames ? 'Partial' : 'Failed',
-      stopReason: reason || 'capture-interrupted', terminalAcknowledged: verified, gaps,
+      stopReason: reason || operation.stopRequested || 'capture-interrupted', requestedStopReason: operation.stopRequested ?? null, terminalAcknowledged: verified, gaps,
       missingFramePolicy: 'explicit-zero-placeholders-preserve-source-time', trailingCoverage: verified ? 'verified-through-end-frame' : 'unknown-after-last-received-frame',
       zeroChannelFrames: verified ? terminal.zeroChannelFrames : null, monoFrames: verified ? terminal.monoFrames : null,
       resampling: false, normalization: false, digestState: 'omitted-streaming', nativeRetirement: operation.nativeReceipt.outcome });
@@ -165,7 +171,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
     const operation = current;
     if (!operation) return Promise.resolve(null);
     if (operation.finished) return operation.completion;
-    if (!['user-stop', 'panic', 'context-interrupted', 'owner-retired'].includes(reason)) return Promise.reject(fail('Invalid capture stop reason.'));
+    if (!['user-stop', 'panic', 'context-interrupted', 'owner-retired', 'provenance-unavailable'].includes(reason)) return Promise.reject(fail('Invalid capture stop reason.'));
     operation.stopRequested ||= reason;
     if (!operation.node) { report(); return operation.completion; }
     if (operation.phase !== 'stopping') {
@@ -193,7 +199,18 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
       frames: 0, capturedFrames: 0, sequence: 0, tokens: new Uint32Array(2), sourceStartFrame: null, lastFrame: null, packetGaps: [], finished: false,
       complete: null, completion: null, targetStartFrame: 0, error: null, monitorAtStart: source.monitorRoute || null };
     operation.completion = new Promise(resolve => { operation.complete = resolve; }); current = operation; report();
+    operation.provenance = createMasterCaptureProvenance({ contextEpoch, sampleRate });
     try {
+      const observeProvenance = snapshot => {
+        if (operation.finished || operation.stopRequested) return;
+        if (!checkContext(operation)) { void stop('context-interrupted'); return; }
+        try { operation.provenance.observe(snapshot); }
+        catch (error) { operation.error ||= error; void stop('provenance-unavailable'); }
+      };
+      if (preview.getCaptureProvenance && preview.subscribeCaptureProvenance) {
+        operation.unsubscribeProvenance = preview.subscribeCaptureProvenance(observeProvenance);
+        observeProvenance(preview.getCaptureProvenance());
+      }
       operation.storage = new Float32Array(maxFrames * CHANNELS);
       // addModule is an accepted native operation: its ownership survives stop.
       await context.audioWorklet.addModule(new URL('./worklet/OwnedPcmCaptureProcessor.js', import.meta.url));
@@ -206,6 +223,7 @@ export function createOwnedMasterCapture({ preview, resourceBudget, AudioWorklet
         const message = event.data; if (operation.finished) return;
         try {
           if (message?.protocol !== PROTOCOL || message.epoch !== ownerId) throw fail('Capture message belongs to another owner.');
+          if (preview.getAudioContext() !== context || preview.getState().contextEpoch !== contextEpoch || context.sampleRate !== sampleRate) { finish(operation, null, 'context-interrupted'); return; }
           if (message.type === 'ready') {
             if (operation.ready || message.sampleRate !== sampleRate || message.channels !== CHANNELS || message.chunkFrames !== CHUNK_FRAMES || message.pool !== 2 ||
                 message.targetStartFrame !== operation.targetStartFrame) throw fail('Invalid capture readiness receipt.');

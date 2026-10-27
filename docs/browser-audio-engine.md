@@ -589,8 +589,9 @@ index. Buffer pressure records missing frames rather than allocating a growing
 queue. Mono input is duplicated; a valid disconnected input records digital
 silence. Nonfinite input, clock discontinuities and unsupported layouts stop the
 capture with a finite prefix. Its output is zero so a pull connection cannot
-double the audible master. Processor fixtures are authored and unexecuted; host
-ownership and artifact finalization are implemented in `OwnedMasterCapture`.
+double the audible master. Processor and host protocol fixtures exercise exact
+frame ownership and finite-prefix finalization in `OwnedMasterCapture`; they do
+not establish actual browser-tap or device qualification.
 
 The host reserves its full duration and sample rate before allocating PCM. It
 captures the post-protection shared master, including auditions currently routed
@@ -603,8 +604,8 @@ receipt preserves only the received prefix and retains the uncertain processor
 reservation until confirmed context closure. Accepted module loading remains
 owned across cancellation. Finalized PCM remains pinned until artifact expiry or
 discard and settlement of its delivery reader. Streaming delivery avoids making
-a full WAV copy; a full artifact digest is explicitly omitted. These host fixtures
-are authored and unexecuted. Capture is memory-backed and cannot promise recovery
+a full WAV copy; a full artifact digest is explicitly omitted. Capture is
+memory-backed and cannot promise recovery
 after browser termination. The workstation's **Record audio…** dialog starts and
 stops capture independently of causal recording, shows actual source/received
 frame counts, and saves the retained WAV through the existing owned file writer.
@@ -1970,3 +1971,20 @@ from any physical take or semantic intent replay. Existing PCM cue inspection
 can verify its layout. New rate/energy/reversal/cut/forged-state/Panic/control WAV
 fixtures are authored but unrun. Actual graph/route integration, moving-control
 worklet cost, PCM cuts, alias/decay and levelmatched listening remain pending.
+
+Capture provenance retains at most 48 host observations, with a 64 KiB retained
+text allowance charged to the capture's existing metadata reservation. Each
+observation records monitor-route revision, live owner graph/effect identities
+and the owner's score-clock anchor where available. Separate cue owners are
+excluded. The manifest explicitly permits unscored master auditions and does not
+invent a universal score position for a mix of independent owners.
+
+The segment map uses actual captured source-frame bounds in one context/rate
+domain. Graph and route observations carry `appliedFrame: null`: a sampled host
+clock does not establish the render frame when a graph change became audible.
+Score anchors retain their host/audio correlation, uncertainty and presentation
+delay. Graph history is referenced by the segment's owner-scoped score mapping;
+route observations do not split PCM or imply sample-accurate graph boundaries.
+Metadata exhaustion stops capture as `provenance-unavailable`, preserves partial
+PCM and marks provenance incomplete. Context or rate replacement finalizes only
+the known original-clock prefix; it never appends a different rate to the WAV.

@@ -6677,3 +6677,33 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Preflight passes: formatting, syntax for 23 changed/new modules, critical
   types, undefined-call scan, dependency checking and runtime provenance
   (10 components / 340 files). New runtime fixtures remain deliberately unrun.
+
+### Continuation 262 — bounded capture provenance and direct benchmark scenes
+
+- #1047: master PCM manifests now include an exact source-frame segment map and
+  bounded host observations of monitor routes, owner graph/effect revisions and
+  score-clock anchors. These observations explicitly retain unknown applied
+  frames; they do not claim processor acknowledgments or acoustic evidence.
+  Private cue owners are excluded. Unscored master sources remain explicit.
+- Provenance is capped at 48 observations and 64 KiB of retained text allowance
+  within the existing capture metadata reservation. Refusal stops capture and
+  preserves the admitted prefix. Context/rate replacement cannot append samples
+  under the old WAV clock. Observation subscriptions retire with capture.
+- #1254: CI on a692adf2 exposed the direct benchmark entrance pool using an empty
+  sequence list instead of the requested population. Pool construction now
+  includes the requested count and expands for later larger runs. The admission
+  check remains strict. Regression fixtures cover direct and expanding scenes.
+- Regression fixtures cover provenance ownership, bounds, score anchors, cue
+  exclusion, route changes, metadata exhaustion and sample-rate interruption.
+  Runtime validation is batched after this implementation pass. Critical types
+  passed; no new runtime success is claimed here yet.
+
+- Executed follow-through: initial combined run 6,251/11; all residual fixes
+  frontloaded, then complete retest **6,266 passing / zero failures** (377.51s).
+  Browser benchmark smoke passes with actual measurements and independent
+  replay parity. Future endpoint/link windows now include reserved attacks and
+  releases, closing the discovered far-future release-burst overbooking gap.
+  Static checks pass; #901 is closed with its 29 passing wrapper cases.
+  The source/log-bound evidence is in the full-suite repair receipt. Actual
+  live-tap/decoder, cold/soak/native-device and listening qualification remain
+  separate; no current-head CI success is claimed before its run completes.

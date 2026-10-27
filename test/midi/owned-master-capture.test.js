@@ -2,13 +2,19 @@ import { expect } from 'chai';
 import { createOwnedMasterCapture, createPcmCaptureWavLayout } from '../../js/app/midi-ui/OwnedMasterCapture.js';
 import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
 
-function fixture({ addModule = async () => {} } = {}) {
+function fixture({ addModule = async () => {}, provenance = false } = {}) {
   const listeners = new Set(), nodes = [], budget = createResourceBudget(); let tapRetired = 0;
   const context = { sampleRate: 48000, currentTime: 0, state: 'running', audioWorklet: { addModule }, destination: {},
     addEventListener(type, callback) { listeners.add(callback); }, removeEventListener(type, callback) { listeners.delete(callback); },
     createGain: () => ({ gain: { value: 1 }, connect() {}, disconnect() {} }) };
   const preview = { getAudioContext: () => context, getState: () => ({ enabled: context.state === 'running', contextEpoch: 4 }),
     acquireMasterCaptureTap: () => ({ release() { tapRetired++; return true; } }) };
+  const provenanceListeners = new Set(); let routeRevision = 0;
+  if (provenance) {
+    preview.getCaptureProvenance = () => ({ contextEpoch: 4, sampleRate: context.sampleRate,
+      observedFrame: Math.ceil(context.currentTime * context.sampleRate), routeRevision, owners: [] });
+    preview.subscribeCaptureProvenance = listener => { provenanceListeners.add(listener); return () => provenanceListeners.delete(listener); };
+  }
   class Node {
     constructor(ctx, name, options) {
       this.options = options; this.messages = []; this.port = { postMessage: message => this.messages.push(message), close() {} }; nodes.push(this);
@@ -28,10 +34,40 @@ function fixture({ addModule = async () => {} } = {}) {
     }
   }
   const owner = createOwnedMasterCapture({ preview, resourceBudget: budget, AudioWorkletNodeType: Node });
-  return { owner, context, budget, nodes, listeners, get tapRetired() { return tapRetired; } };
+  return { owner, context, budget, nodes, listeners, provenanceListeners,
+    changeRoute(revision) { routeRevision = revision; for (const listener of provenanceListeners) listener(preview.getCaptureProvenance()); },
+    get tapRetired() { return tapRetired; } };
 }
 
 describe('owned browser master PCM capture', () => {
+  it('retains route observations and exact PCM segment bounds through finalization', async () => {
+    const f = fixture({ provenance: true }); await f.owner.start({ seconds: 1 });
+    const node = f.nodes[0]; node.ready(); node.pcm(); f.context.currentTime = 2 / 48000; f.changeRoute(1); node.end();
+    const result = f.owner.state(); expect(result.state).to.equal('ready');
+    expect(result.manifest.provenance.graphRevisionHistory.map(row => row.routeRevision)).to.deep.equal([0, 1]);
+    expect(result.manifest.segments[0]).to.include({ sourceStartFrame: 0, frameCount: 4, contextEpoch: 4, sampleRate: 48000 });
+    expect(f.provenanceListeners.size).to.equal(0); result.artifact.discard();
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('stops explicitly when route provenance fills and keeps admitted PCM available', async () => {
+    const f = fixture({ provenance: true }); await f.owner.start({ seconds: 1 });
+    const node = f.nodes[0]; node.ready(); node.pcm();
+    for (let index = 1; index < 100; index++) f.changeRoute(index);
+    expect(f.owner.state().state).to.equal('stopping');
+    expect(node.messages.some(message => message.type === 'stop' && message.reason === 'provenance-unavailable')).to.equal(true);
+    node.end({ reason: 'provenance-unavailable' }); const result = f.owner.state();
+    expect(result.state).to.equal('partial'); expect(result.manifest.provenance.complete).to.equal(false);
+    expect(f.provenanceListeners.size).to.equal(0); result.artifact.discard();
+  });
+  it('never labels new-rate samples with the original WAV clock', async () => {
+    const f = fixture({ provenance: true }); await f.owner.start({ seconds: 1 });
+    const node = f.nodes[0]; node.ready(); node.pcm(); f.context.sampleRate = 44100; f.changeRoute(1); node.end();
+    const result = f.owner.state(); expect(result.state).to.equal('partial');
+    expect(result.manifest).to.include({ sampleRate: 48000, stopReason: 'context-interrupted', terminalAcknowledged: false });
+    expect(result.manifest.segments).to.have.length(1);
+    f.context.state = 'closed'; for (const listener of [...f.listeners]) listener(); result.artifact.discard();
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('writes a float WAV with exact frame and annotation lengths', () => {
     const layout = createPcmCaptureWavLayout({ sampleRate: 48000, timelineFrames: 33, schema: 'fixture' }), header = new DataView(layout.header.buffer);
     expect(header.getUint16(20, true)).to.equal(3); expect(header.getUint32(44, true)).to.equal(33);

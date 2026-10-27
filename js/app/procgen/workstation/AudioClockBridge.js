@@ -24,7 +24,7 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
     if (!Number.isFinite(before) || !Number.isFinite(after) || after < before || after - before > 100) throw new Error('Uncertain audio clock sample.');
     anchor = Object.freeze({ executionEpoch, scoreEpoch, beat, hostMs, bpm,
       contextSeconds, correlationHostMs: (before + after) / 2, sampleRate: context.sampleRate,
-      uncertaintyMs: (after - before) / 2, reason });
+      uncertaintyMs: (after - before) / 2, presentationDelayMs, reason });
     anchorContext = context;
     rebases++;
     return anchor;
@@ -87,5 +87,5 @@ export function createAudioClockBridge({ getContext, nowMs, presentationDelayMs 
       outputCorrelation });
   };
   const invalidate = () => { anchor = null; anchorContext = null; };
-  return { rebase, isAnchored, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate };
+  return { rebase, isAnchored, toTargetFrame, currentFrame, correlateDisplay, diagnostics, invalidate, getAnchor: () => anchor };
 }

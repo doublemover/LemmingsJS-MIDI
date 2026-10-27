@@ -120,6 +120,8 @@ export function createOwnerEffectGraphHost({ context, input, dry, destination, r
       if (Number.isFinite(arm.retireAt) && targetFrame >= Math.ceil(arm.retireAt * context.sampleRate)) throw failure('stale-prepared-body', 'The command falls after the retained body deadline.');
       return Object.freeze({ ...arm.graph.update(nodeId, values, targetFrame), ownerRouteRevision: arm.routeRevision, bodyLifecycle: arm === current ? 'active' : 'retained-tail' }); },
     panicPreparedBody(nodeId, expected) { const arm = preparedArm(expected); return arm.graph.panicBody(nodeId); },
+    captureSnapshot: () => Object.freeze({ revision, mode, graphDefinitionHash: current?.graph.hash ?? null,
+      transitionFrames: Math.ceil(transitionSeconds * context.sampleRate), appliedFrame: null }),
     performanceSnapshot: () => !disposed && current ? Object.freeze({ definition: current.graph.plan.definition, graphDefinitionHash: current.graph.hash, ownerRouteRevision: revision,
       mode, sampleRate: context.sampleRate, targetFrame: Math.ceil(context.currentTime * context.sampleRate) }) : null,
     requestInspection: () => current?.graph.requestInspection?.() || false,

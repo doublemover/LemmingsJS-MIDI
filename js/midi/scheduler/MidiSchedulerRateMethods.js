@@ -1,5 +1,6 @@
 import { getAppContext } from '../../core/dependencies.js';
 import { midiTransportBudget } from './MidiTransportBudget.js';
+import { futureMidiRatePeak } from './FutureMidiRateWindow.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -224,6 +225,19 @@ const midiSchedulerRateMethods = {
     if (this._rateHistorySaturated) { result.ok = false; result.softOk = false; result.reason = 'history-cap'; }
     const pendingCount = this._ratePlanned.reduce((sum, entry) => entry.outputId === outputId ? sum + entry.count : sum, 0);
     const entries = this._planEntries(plan);
+    if (entries.length > MAX_RATE_ENTRIES) return { ...result, ok: false, softOk: false, reason: 'reservation-cap' };
+    if (profile.protocol === 'midi1' && (entries.some(entry => entry.timeMs >= now + this._rateWindowMs) ||
+        this._ratePlanned.some(entry => entry.timeMs >= now + this._rateWindowMs))) {
+      const future = [...this._rateSent, ...this._ratePlanned, ...entries.map(entry => ({ ...entry, outputId, budgetScope: profile.scope }))];
+      const endpoint = futureMidiRatePeak(future, { now, windowMs: this._rateWindowMs, scope: rateScope });
+      const link = profile.linkId ? futureMidiRatePeak(future, { now, windowMs: this._rateWindowMs, scope: { scope: profile.scope } }) : null;
+      result.futureWindows = { endpoint, link };
+      const futureBytesExceeded = endpoint.peakBytes > (profile.endpointMaxBytesPerSecond ?? maxBytes) || link && link.peakBytes > profile.linkMaxBytesPerSecond;
+      const futureCountExceeded = endpoint.peakMessages > (profile.endpointMaxMessagesPerSecond ?? maxMessages) || link && link.peakMessages > profile.linkMaxMessagesPerSecond;
+      if (futureBytesExceeded || futureCountExceeded) {
+        result.ok = false; result.softOk = false; result.reason = futureBytesExceeded ? 'byte-limit' : 'count-limit';
+      }
+    }
     const plannedCount = entries.reduce((sum, entry) => sum + Math.max(0, Number(entry.count) || 0), 0);
     const policyFailure = profile.requestedProtocol && profile.requestedProtocol !== 'midi1' ? 'protocol-budget-unsupported'
       : entries.some(entry => Number.isFinite(entry.timeMs) && entry.timeMs - now > profile.queueHorizonMs) ? 'queue-horizon'

@@ -12,6 +12,7 @@ import { createSoundMaterialProvider } from './SoundMaterialProvider.js';
 import { createOwnedCueRouting } from './OwnedCueRouting.js';
 import { createForegroundAuditionOwner } from './ForegroundAuditionOwner.js';
 import { createAudioIntervalAdmission, audioIntervalStorageBytes } from './AudioIntervalAdmission.js';
+import { canonicalDataText, freezeData } from '../../core/CanonicalData.js';
 const retirementState = receipt => receipt ? { state: receipt.state, outcome: receipt.outcome,
   failures: receipt.resources.filter(resource => ['failed', 'unknown'].includes(resource.status)).map(resource => ({ name: resource.name, status: resource.status, error: resource.error })) } : null;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -76,6 +77,7 @@ class BrowserNotePreview {
       : createAudioContext;
     this._nowMs = nowMs || (() => globalThis.performance?.now?.() ?? Date.now());
     this._listeners = new Set();
+    this._captureProvenanceListeners = new Set();
     if (typeof onStateChange === 'function') this._listeners.add(onStateChange);
     this._maxVoices = clamp(Math.trunc(finite(maxVoices, 32)), 1, MAX_RENDER_VOICES);
     if (!Number.isSafeInteger(cueVoices) || cueVoices < 0 || cueVoices > 8 || !Number.isSafeInteger(cueCostUnits) || cueCostUnits < cueVoices ||
@@ -242,7 +244,7 @@ class BrowserNotePreview {
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
-    session.report = () => { for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } };
+    session.report = () => { for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } this._reportCaptureProvenance(); };
     session.cancel = () => {
       session.generation++; session.enabled = false; session.starting = false;
       const operation = session.enableOperation; session.enableOperation = null; session.enablePromise = null;
@@ -295,6 +297,14 @@ class BrowserNotePreview {
     };
     session.api = {
       output: this._createOutput(id), getState, enable, stop, panic: stop,
+      setCaptureContext: ({ worldId, graphRevision, routeRevision, scoreMapping = null } = {}) => {
+        if (session.disposed) return false;
+        const previous = session.captureContext;
+        if (previous?.worldId === worldId && previous.graphRevision === graphRevision && previous.routeRevision === routeRevision && session.captureAnchor === scoreMapping) return false;
+        const data = { worldId, graphRevision, routeRevision, scoreMapping };
+        session.captureContext = freezeData(JSON.parse(canonicalDataText(data, { maxBytes: 4096, maxNodes: 128, domain: 'Capture score mapping' }).text));
+        session.captureAnchor = scoreMapping; this._reportCaptureProvenance(); return true;
+      },
       createInstrumentBackend: options => {
         if (session.disposed || this._disposed) throw new Error('Local audio session is closed.');
         return this._registerInstrumentBackend(createNativeOscillatorBackend(this, id, options), id);
@@ -420,6 +430,28 @@ class BrowserNotePreview {
 
   getAudioContext() { return this._context; }
 
+  getCaptureProvenance() {
+    const context = this._context;
+    return { contextEpoch: this._contextEpoch, sampleRate: context?.sampleRate,
+      observedFrame: Math.ceil((context?.currentTime ?? 0) * (context?.sampleRate ?? 0)),
+      routeRevision: this.getMonitorRouteState().revision ?? null,
+      owners: [...this._sessions.values()].filter(session => !session.disposed && session.workloadClass === 'live').map(session => ({
+        ownerId: session.id, generation: session.generation, enabled: session.enabled,
+        graph: session.captureContext ?? null, effects: this._channels.get(session.id + ':0')?.effects?.captureSnapshot() ?? null
+      })), unscoredMasterSourcesPossible: true };
+  }
+
+  subscribeCaptureProvenance(listener) {
+    if (typeof listener !== 'function' || this._disposed || this._captureProvenanceListeners.size) throw new Error('Capture provenance observer is unavailable.');
+    this._captureProvenanceListeners.add(listener);
+    return () => this._captureProvenanceListeners.delete(listener);
+  }
+
+  _reportCaptureProvenance() {
+    if (!this._captureProvenanceListeners.size) return;
+    for (const listener of this._captureProvenanceListeners) { try { listener(this.getCaptureProvenance()); } catch { /* Capture contains its own failure policy. */ } }
+  }
+
   getSoundMaterialProvider() {
     if (this._disposed) throw new Error('Local sound material owner is closed.');
     return this._soundMaterialProvider ||= createSoundMaterialProvider({ getContext: () => this._context, resourceBudget: this._soundMaterialBudget });
@@ -494,6 +526,7 @@ class BrowserNotePreview {
   _setStatus(status, message) {
     this._status = status;
     this._message = message;
+    this._reportCaptureProvenance();
     for (const listener of this._listeners) {
       try { listener(this.getState()); } catch { /* UI callbacks must not break audio cleanup. */ }
     }
@@ -695,7 +728,7 @@ class BrowserNotePreview {
         });
       } },
       { name: 'terminal-state', run: () => {
-        this._setStatus('disposed', 'Browser preview is closed.'); this._listeners.clear();
+        this._setStatus('disposed', 'Browser preview is closed.'); this._listeners.clear(); this._captureProvenanceListeners.clear();
         for (const session of this._sessions.values()) session.listeners.clear();
         this._sessions.clear(); this._captureReleases.clear(); this.capture = null;
       } }

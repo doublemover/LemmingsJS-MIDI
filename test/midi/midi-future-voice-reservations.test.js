@@ -118,8 +118,8 @@ describe('ordinary and local future voice reservations', () => {
 
   it('bounds pending reservations independently of the one sounding voice slot', () => withFakeClockAndPerformance(() => {
     const f = fixture(); f.send({ note: 60 });
-    for (let index = 0; index < 32; index++) expect(f.send({ note: 64, timeMs: 2000 + index * 2000 })).to.equal(true);
-    expect(f.send({ note: 67, timeMs: 100000 })).to.equal(false);
+    for (let index = 0; index < 32; index++) expect(f.send({ note: 64, timeMs: 1000 + index * 1000 })).to.equal(true);
+    expect(f.send({ note: 67, timeMs: 33000 })).to.equal(false);
     expect(f.scheduler._pendingNoteOns.size).to.equal(32); expect(f.notes()).to.have.length(1); f.scheduler.dispose();
   }));
 });
