@@ -247,12 +247,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const more = button('More projects', async () => {
       if (!current(owner.generation) || owner.loading || !page.nextCursor || !fetchPage) return;
       const generation = owner.generation, cursor = page.nextCursor, query = owner.query;
+      const restorePageFocus = document.activeElement === more;
       owner.loading = true;
       more.disabled = true; feedback.textContent = 'Loading more projects…';
       try {
         const next = await fetchPage(cursor, query);
         if (!current(generation) || owner.query !== query || page.nextCursor !== cursor || !next) return;
-        owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items); feedback.textContent = next.items.length ? '' : next.nextCursor ?
+        owner.back.push(owner.cursor); owner.cursor = cursor; page = next; append(next.items, restorePageFocus); feedback.textContent = next.items.length ? '' : next.nextCursor ?
           'No matches in this page. Continue the search with More projects.' : 'No more matching projects.';
       } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Could not load more projects. Retry.'; }
       finally { if (current(generation)) { owner.loading = false; more.disabled = !page.nextCursor; more.hidden = !page.nextCursor; } }
@@ -265,19 +266,25 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       } catch (error) { if (current(generation)) feedback.textContent = error.message; }
       finally { if (current(generation)) owner.loading = false; }
     });
-    const append = entries => {
+    const append = (entries, restorePageFocus = false) => {
+      const focused = document.activeElement, focusedId = focused?.dataset?.projectId;
+      const restoreFocus = items.contains(focused) || focused === more || focused === previous || restorePageFocus && (focused === document.body || focused === projectList);
       items.replaceChildren(); previous.hidden = !owner.back.length;
-      for (const entry of entries) items.append(button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
-        if (!current(owner.generation) || owner.loading) return;
-        const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
-        feedback.textContent = 'Opening project…';
-        try {
-          const loaded = await load(entry.id); if (!current(generation)) return;
-          if (loaded) retirePicker(owner, { close: true });
-          else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
-        } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
-        finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; } }
-      }));
+      for (const entry of entries) {
+        const choice = button(`${entry.name} · ${new Date(entry.savedAt).toLocaleString()} · ${String(entry.id).slice(-6)}`, async () => {
+          if (!current(owner.generation) || owner.loading) return;
+          const generation = owner.generation; owner.loading = true; search.disabled = true; more.disabled = true;
+          feedback.textContent = 'Opening project…';
+          try {
+            const loaded = await load(entry.id); if (!current(generation)) return;
+            if (loaded) retirePicker(owner, { close: true });
+            else feedback.textContent = 'Project could not be opened. It may have changed or been removed; choose another or retry.';
+          } catch (error) { if (current(generation)) feedback.textContent = error?.message || 'Project could not be opened.'; }
+          finally { if (current(generation)) { owner.loading = false; search.disabled = false; more.disabled = !page.nextCursor; } }
+        });
+        choice.dataset.projectId = entry.id; items.append(choice);
+      }
+      if (restoreFocus) ([...items.children].find(choice => choice.dataset.projectId === focusedId) || items.firstElementChild || search).focus();
       if (!items.childElementCount) feedback.textContent = page.nextCursor ? 'No matches in this page. Continue the search with More projects.' :
         'No matching projects. Save here or import a project file.';
     };

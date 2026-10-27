@@ -6885,4 +6885,32 @@ export-budget acknowledgments still prevent a false complete receipt.
   fully contained. Physical receiver/acoustic conformance remains separate.
 - The preceding 81967853 full CI checkpoint is green with **6,312 passing** and
   **23 browser boundaries**. This later implementation has its own executed
-  results above; its full CI remains pending until pushed.
+  results above. Full CI at 44b773da also passes: **6,333 cases**, **24 browser
+  boundaries**, 90.21% line/statement coverage, and all remaining gates green.
+
+### Continuation 273 — payload-free project paging and recoverable selection
+
+- Fresh IndexedDB databases start with completed legacy migration. Upgraded
+  databases scan keys and compact metadata, skipping modern checkpoint payloads.
+  Legacy transfers retain their sources, yield after one checkpoint, and publish
+  a completion marker only if no concurrent legacy writer changed its revision.
+  Browsing rechecks that compact marker, including writes from other tabs.
+- Picker cancellation aborts metadata cursors and selected checkpoint reads.
+  Project deletion removes checkpoint and metadata atomically. Page changes keep
+  keyboard focus on the visible rows. A failed isolated world preparation keeps
+  the selection lease alive, allowing another selection or a successful retry.
+- Native Chromium fixtures populate **100 and 1,000 records**, each with a
+  controlled **128 KiB opaque checkpoint payload**. A 40-item page reads **42
+  metadata records / 3,866 UTF-8 JSON bytes**, **zero checkpoint payload bytes**,
+  and retains **19,660 additional JS heap bytes** after collection in both runs.
+  Complete browsing also reads no payloads; selecting one record reads exactly
+  its 128 KiB. These are controlled storage fixtures, not recorded performances
+  or measurements of IndexedDB's internal wire encoding.
+- **94 storage/controller cases** and **12 browser boundaries** pass, including
+  equal-timestamp cursors, another connection's rename/delete, sparse search,
+  in-flight cancellation, late legacy writes, recovery source preservation,
+  keyboard paging, malformed checkpoint rejection, retry and actual project open.
+  The first browser pass exposed a disabled More button losing focus; that defect
+  is fixed and the complete related browser batch passes. New paging scenarios
+  are included in the maintained CI boundary list. Full CI for this later batch
+  will be verified after push; the green 44b773da checkpoint remains distinct.

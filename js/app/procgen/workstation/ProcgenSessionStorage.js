@@ -117,6 +117,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
         const metadata = request.result.objectStoreNames.contains('projectMetadata') ? request.transaction.objectStore('projectMetadata') :
           request.result.createObjectStore('projectMetadata', { keyPath: 'id' });
         if (!metadata.indexNames.contains('byUpdated')) metadata.createIndex('byUpdated', ['savedAt', 'id']);
+        if (event.oldVersion === 0) metadata.put({ id: 'migration:v1', kind: 'migration', revision: 0 });
         upgradeCausalJournalStores(request.result, request.transaction);
         upgradeBrowserGenerationPins(request.result, request.transaction, event.oldVersion);
       };
@@ -127,18 +128,23 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     } catch (error) { finish(error); }
     return promise;
   };
-  const operation = async (mode, perform, storeName = 'sessions') => {
+  const operation = async (mode, perform, storeName = 'sessions', signal = null) => {
+    signal?.throwIfAborted();
     const db = await open();
+    signal?.throwIfAborted();
     if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry the operation.');
     return new Promise((resolve, reject) => {
       let transaction, request, settled = false;
-      const fail = error => { if (!settled) { settled = true; reject(storageFailure(error)); } };
+      const abort = () => { try { transaction?.abort(); } catch { /* The transaction already settled. */ } };
+      const cleanup = () => signal?.removeEventListener('abort', abort);
+      const fail = error => { if (!settled) { settled = true; cleanup(); reject(storageFailure(error)); } };
       try {
         transaction = db.transaction(storeName, mode);
-        request = perform(transaction.objectStore(storeName));
-        transaction.oncomplete = () => { if (!settled) { settled = true; resolve(request?.result); } };
+        signal?.addEventListener('abort', abort, { once: true });
+        request = perform(transaction.objectStore(Array.isArray(storeName) ? storeName[0] : storeName), transaction);
+        transaction.oncomplete = () => { if (!settled) { settled = true; cleanup(); resolve(request?.result); } };
         transaction.onabort = () => fail(transaction.error || request?.error || namedError('AbortError', 'Transaction aborted'));
-      } catch (error) { fail(error); }
+      } catch (error) { abort(); fail(error); }
     });
   };
   const saveDocument = async (id, expectedRevision, session, commitId) => {
@@ -186,59 +192,88 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       } catch (error) { reject(storageFailure(error)); }
     });
   };
-  const legacyBatch = async after => {
+  const legacyBatch = async (after, signal) => {
+    signal?.throwIfAborted();
     const db = await open();
+    signal?.throwIfAborted();
     if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry migration.');
     return new Promise((resolve, reject) => {
       try {
-        const transaction = db.transaction('sessions', 'readonly');
+        const transaction = db.transaction(['sessions', 'projectMetadata'], 'readonly'), store = transaction.objectStore('sessions');
+        const abort = () => { try { transaction.abort(); } catch { /* The transaction already settled. */ } };
+        signal?.addEventListener('abort', abort, { once: true });
         const range = after == null ? null : keyRange.lowerBound(after, true);
-        const request = transaction.objectStore('sessions').openCursor(range);
+        const keysOnly = typeof store.openKeyCursor === 'function';
+        const request = keysOnly ? store.openKeyCursor(range) : store.openCursor(range);
         const records = [];
         let scanned = 0, nextCursor = null;
         request.onsuccess = () => {
           const cursor = request.result;
           if (!cursor) return;
-          if (records.length === 16 || scanned === 64) { nextCursor = after; return; }
+          if (records.length === 1 || scanned === 64) { nextCursor = after; return; }
           scanned++; after = cursor.key;
-          if (!cursor.value.kind && cursor.value.session) records.push(cursor.value);
-          cursor.continue();
+          if (!keysOnly) {
+            if (!cursor.value.kind && cursor.value.session) records.push(cursor.value);
+            cursor.continue(); return;
+          }
+          const key = cursor.primaryKey;
+          const metadata = transaction.objectStore('projectMetadata').get(String(key).startsWith('doc:') ? key : legacyDocumentId(key));
+          metadata.onsuccess = () => {
+            if (metadata.result) { cursor.continue(); return; }
+            const payload = store.get(key);
+            payload.onsuccess = () => { if (payload.result && !payload.result.kind && payload.result.session) records.push(payload.result); cursor.continue(); };
+          };
         };
-        transaction.oncomplete = () => resolve({ records, nextCursor });
-        transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
+        transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve({ records, nextCursor }); };
+        transaction.onabort = () => { signal?.removeEventListener('abort', abort); reject(storageFailure(transaction.error || request.error)); };
       } catch (error) { reject(storageFailure(error)); }
     });
   };
-  let migration = null, migrationDone = false;
-  const migrateLegacy = () => {
-    if (migrationDone) return Promise.resolve();
-    if (migration) return migration;
-    migration = (async () => {
-      const marker = await operation('readonly', store => store.get('migration:v1'), 'projectMetadata');
-      if (marker) { migrationDone = true; return; }
-      const transfer = async record => {
-        try { validateProcgenSession(record.session); } catch { return; }
-        const recovery = record.id === '__recovery__', id = recovery ? 'recovery:latest' : legacyDocumentId(record.id);
-        await insertIfAbsent({ id, kind: recovery ? 'recovery' : 'document', revision: 1,
-          commitId: 'legacy-migration-v1', name: record.name, savedAt: record.savedAt,
-          createdAt: record.savedAt, session: record.session });
-      };
-      if (keyRange?.lowerBound) {
-        let after = null;
-        do {
-          const batch = await legacyBatch(after);
-          for (const record of batch.records) await transfer(record);
-          after = batch.nextCursor;
-          if (after != null) await new Promise(resolve => setTimeout(resolve, 0));
-        } while (after != null);
-      } else {
-        const records = await operation('readonly', store => store.getAll());
-        for (const record of records) if (!record.kind && record.session) await transfer(record);
-      }
-      await operation('readwrite', store => store.put({ id: 'migration:v1', kind: 'migration' }), 'projectMetadata');
-      migrationDone = true;
-    })().finally(() => { migration = null; });
-    return migration;
+  let migration = null;
+  const migrateLegacy = async signal => {
+    signal?.throwIfAborted();
+    while (migration) {
+      try { await migration; } catch { /* Another caller can retry a canceled or failed migration. */ }
+      signal?.throwIfAborted();
+    }
+    const work = (async () => {
+      let complete = false;
+      do {
+        signal?.throwIfAborted();
+        const marker = await operation('readonly', store => store.get('migration:v1'), 'projectMetadata', signal);
+        if (marker && !marker.pending) return;
+        const transfer = async record => {
+          signal?.throwIfAborted();
+          try { validateProcgenSession(record.session); } catch { return; }
+          const recovery = record.id === '__recovery__', id = recovery ? 'recovery:latest' : legacyDocumentId(record.id);
+          await insertIfAbsent({ id, kind: recovery ? 'recovery' : 'document', revision: 1,
+            commitId: 'legacy-migration-v1', name: record.name, savedAt: record.savedAt,
+            createdAt: record.savedAt, session: record.session });
+        };
+        if (keyRange?.lowerBound) {
+          let after = null;
+          do {
+            const batch = await legacyBatch(after, signal);
+            for (const record of batch.records) await transfer(record);
+            after = batch.nextCursor;
+            if (after != null) await new Promise(resolve => setTimeout(resolve, 0));
+          } while (after != null);
+        } else {
+          const records = await operation('readonly', store => store.getAll(), 'sessions', signal);
+          for (const record of records) if (!record.kind && record.session) await transfer(record);
+        }
+        complete = await operation('readwrite', store => {
+          const request = store.get('migration:v1'), result = { result: false };
+          request.onsuccess = () => {
+            if ((request.result?.revision || 0) !== (marker?.revision || 0)) return;
+            store.put({ id: 'migration:v1', kind: 'migration', revision: marker?.revision || 0 }); result.result = true;
+          };
+          return result;
+        }, 'projectMetadata', signal);
+      } while (!complete);
+    })();
+    migration = work;
+    try { await work; } finally { if (migration === work) migration = null; }
   };
   const recoveryPages = createProcgenRecoveryPageStore({ open, jobs: backgroundJobs, resourceBudget: budgetAdapter, isCurrent: () => !retired, validateSession: validateProcgenSession });
   const causalJournalStorage = createCausalJournalStorage({ open, available: db => !retired && db === database, wrapFailure: storageFailure });
@@ -247,8 +282,8 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     supportsRecoveryFactory: true,
     getState: () => ({ state, error: lastError, generation, retired, recoveryPages: recoveryPages.stats() }),
     saveDocument,
-    async loadDocument(id) {
-      const record = await operation('readonly', store => store.get(id));
+    async loadDocument(id, { signal } = {}) {
+      const record = await operation('readonly', store => store.get(id), 'sessions', signal);
       if (!record || record.kind !== 'document') throw new Error('Project not found.');
       return { id, revision: record.revision, name: record.name, savedAt: record.savedAt, session: validateProcgenSession(record.session) };
     },
@@ -256,7 +291,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       let record, computed;
       try {
         computed = await checksumSnapshot(async () => {
-          record = await operation('readonly', store => store.get(id));
+          record = await operation('readonly', store => store.get(id), 'sessions', signal);
           if (!record || record.kind !== 'document') throw new Error('Project not found.');
           return record.session;
         }, { signal });
@@ -269,22 +304,26 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       await migrateLegacy();
       const records = await operation('readonly', store => store.getAll(), 'projectMetadata');
       return records.filter(record => record.kind !== 'migration').map(({ id, revision, name, savedAt }) => ({ id, revision, name, savedAt }))
-        .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || a.id.localeCompare(b.id));
+        .sort((a, b) => b.savedAt.localeCompare(a.savedAt) || b.id.localeCompare(a.id));
     },
-    async listDocumentPage({ limit = 40, cursor = null, query = '' } = {}) {
+    async listDocumentPage({ limit = 40, cursor = null, query = '', signal } = {}) {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100 || typeof query !== 'string' || query.length > 120 ||
           cursor && (typeof cursor.savedAt !== 'string' || typeof cursor.id !== 'string')) throw new TypeError('Invalid project page request');
-      await migrateLegacy();
+      await migrateLegacy(signal);
       const db = await open();
+      signal?.throwIfAborted();
       if (retired || db !== database) throw storageFailure(null, 'Project storage connection changed. Retry the project list.');
       const needle = query.trim().toLocaleLowerCase();
       return new Promise((resolve, reject) => {
+        let transaction;
+        const abort = () => { try { transaction?.abort(); } catch { /* The transaction already settled. */ } };
         try {
-          const transaction = db.transaction('projectMetadata', 'readonly');
+          transaction = db.transaction('projectMetadata', 'readonly');
           const index = transaction.objectStore('projectMetadata').index('byUpdated');
           const range = cursor ? keyRange?.upperBound([cursor.savedAt, cursor.id], true) : null;
           if (cursor && !range) throw new Error('Project paging key ranges are unavailable');
           const request = index.openCursor(range, 'prev'), items = [];
+          signal?.addEventListener('abort', abort, { once: true });
           const scanLimit = Math.max(200, limit * 8);
           let last = null, lastScanned = null, nextCursor = null, scanned = 0;
           request.onsuccess = () => {
@@ -297,9 +336,9 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
             items.push({ id: value.id, revision: value.revision, name: value.name, savedAt: value.savedAt });
             last = { savedAt: value.savedAt, id: value.id }; entry.continue();
           };
-          transaction.oncomplete = () => resolve({ items, nextCursor, storageState: state });
-          transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
-        } catch (error) { reject(storageFailure(error)); }
+          transaction.oncomplete = () => { signal?.removeEventListener('abort', abort); resolve({ items, nextCursor, storageState: state }); };
+          transaction.onabort = () => { signal?.removeEventListener('abort', abort); reject(storageFailure(transaction.error || request.error)); };
+        } catch (error) { abort(); signal?.removeEventListener('abort', abort); reject(storageFailure(error)); }
       });
     },
     async saveRecovery(source, { signal, documentRevision = null, tick = null, laneCount = source?.world?.laneCount, snapshotMetadata = null, incremental = false } = {}) {
@@ -404,10 +443,23 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       const estimate = await globalThis.navigator?.storage?.estimate?.();
       return estimate ? { usage: estimate.usage ?? null, quota: estimate.quota ?? null } : null;
     },
-    async save(id, session) { validateProcgenSession(session); await operation('readwrite', store => store.put({ id, name: session.name, savedAt: session.savedAt, session })); return id; },
+    async save(id, session) {
+      validateProcgenSession(session);
+      await operation('readwrite', (store, transaction) => {
+        const metadata = transaction.objectStore('projectMetadata'), marker = metadata.get('migration:v1');
+        marker.onsuccess = () => {
+          const revision = (marker.result?.revision || 0) + 1;
+          if (!Number.isSafeInteger(revision)) { transaction.abort(); return; }
+          store.put({ id, name: session.name, savedAt: session.savedAt, session });
+          metadata.put({ id: 'migration:v1', kind: 'migration', revision, pending: true });
+        };
+        return marker;
+      }, ['sessions', 'projectMetadata']);
+      return id;
+    },
     async load(id) { const record = await operation('readonly', store => store.get(id)); if (!record) throw new Error('Project not found.'); return validateProcgenSession(record.session); },
     async list() { return (await operation('readonly', store => store.getAll())).filter(value => value.session && typeof value.savedAt === 'string').map(({ id, name, savedAt }) => ({ id, name, savedAt })).sort((a, b) => b.savedAt.localeCompare(a.savedAt)); },
-    async remove(id) { await operation('readwrite', store => store.delete(id)); },
+    async remove(id) { await operation('readwrite', (store, transaction) => { transaction.objectStore('projectMetadata').delete(id); return store.delete(id); }, ['sessions', 'projectMetadata']); },
     close() {
       if (retired) return;
       retired = true; generation++; recoveryPages.dispose();

@@ -1239,7 +1239,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         throw error;
       }
       Object.assign(legacy.settings, oldSettings); lastLegacySpeed = legacy.settings.speed; if (previous.playing) play(); throw error;
-    } finally { signal?.removeEventListener('abort', cancel); worldBusy = false; finishOperation(lease); if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist(); }
+    } finally {
+      signal?.removeEventListener('abort', cancel); worldBusy = false;
+      if (loaded || lease.kind !== 'select-session' || runtime() !== previousRuntime) finishOperation(lease);
+      if (deferredPersist && startupCommitted && (loaded || runtime() === previousRuntime)) persist();
+    }
   }
   async function rebuild({ seed = project.procgen.seed, fresh = false, projectNext = null, history = true, worldSettings = {} } = {}) {
     if (disposed) return false;
@@ -1674,7 +1678,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     load: safe(async () => {
       if (worldBusy) throw new Error('A world change is already running. Wait for it to finish.');
       const lease = beginOperation('select-session');
-      const page = storage.listDocumentPage ? await storage.listDocumentPage() : null;
+      const page = storage.listDocumentPage ? await storage.listDocumentPage({ signal: lease.signal }) : null;
       const entries = page ? null : storage.listDocuments ? await storage.listDocuments() : await storage.list();
       if (!ownsOperation(lease)) return false;
       const loadSelected = safe(async id => {
@@ -1689,7 +1693,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       });
       if (page && view.showProjectPage) view.showProjectPage(page, loadSelected, async (cursor, query) => {
         if (!ownsOperation(lease)) return null;
-        const next = await storage.listDocumentPage({ cursor, query });
+        const next = await storage.listDocumentPage({ cursor, query, signal: lease.signal });
         return ownsOperation(lease) ? next : null;
       });
       else view.showProjects(entries || page.items, loadSelected);

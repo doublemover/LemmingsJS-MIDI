@@ -261,4 +261,29 @@ describe('ProcGen session storage connection lifecycle', () => {
     expect(adapter.records.has('legacy-0')).to.equal(true);
     storage.close();
   });
+
+  it('invalidates migration atomically when another storage owner writes a later legacy project', async () => {
+    const adapter = fakeIndexedDb(), reader = createProcgenSessionStorage(adapter), writer = createProcgenSessionStorage(adapter);
+    expect(await reader.listDocuments()).to.deep.equal([]);
+    await writer.save('later', session('Later legacy'));
+    expect(adapter.metadata.get('migration:v1').pending).to.equal(true);
+    expect((await reader.listDocuments()).map(item => item.name)).to.deep.equal(['Later legacy']);
+    expect(adapter.metadata.get('migration:v1')).not.to.have.property('pending');
+    reader.close(); writer.close();
+  });
+
+  it('deletes the checkpoint and its picker metadata in the same transaction', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter);
+    await storage.saveDocument('doc:removed', 0, session('Removed'), 'commit'); await storage.remove('doc:removed');
+    expect(adapter.records.has('doc:removed')).to.equal(false); expect(adapter.metadata.has('doc:removed')).to.equal(false);
+    expect(await storage.listDocuments()).to.deep.equal([]); storage.close();
+  });
+
+  it('refuses canceled pages and loads before opening or cloning any checkpoint', async () => {
+    const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter), controller = new AbortController(); controller.abort();
+    for (const run of [() => storage.listDocumentPage({ signal: controller.signal }), () => storage.loadDocument('doc:any', { signal: controller.signal })]) {
+      let error; try { await run(); } catch (failure) { error = failure; } expect(error?.name).to.equal('AbortError');
+    }
+    expect(adapter.opens).to.equal(0); expect(adapter.reads.sessions).to.equal(0); storage.close();
+  });
 });

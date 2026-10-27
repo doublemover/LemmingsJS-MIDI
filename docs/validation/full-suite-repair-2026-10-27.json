@@ -5664,5 +5664,171 @@
       "Later async receipt identity fields are covered by the final 18-case regression; broader MIDI/browser batch precedes that metadata-only alignment."
     ],
     "upstream": "Fetched origin; upstream master is fully contained (0 commits behind)."
+  },
+  "continuation273": {
+    "date": "2026-10-27",
+    "parentRevision": "44b773dac5d57a8433051a3966a847a1279f6c5a",
+    "scope": "Native metadata-only paging qualification and fixes for hidden migration payload reads, cross-tab legacy invalidation, cancellation, stale delete metadata, keyboard focus and retry after failed isolated checkpoint preparation.",
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenSessionStorage.js",
+        "sha256": "27fe1638f285fb82b47a20f89c91974ba80cc075e38de76a3917a998522676f7"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "90762f73828661e7b2e517bbca45a1db2bf9356c896e68c180e331cd0f51f93d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "1bec46842bcc3281bae317e5bed5364288176682209cb328b30f61de60631c7e"
+      },
+      {
+        "path": "test/procgen-session-storage.test.js",
+        "sha256": "ed24ab53d8601c7c5facc5187a712bec3c8fa40d82d290d3e854b52db869759d"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "e065ed12ba2599c498dda9c2809c3b51746dbb3404b727ed74a8ab5e79428261"
+      },
+      {
+        "path": "e2e/procgen-project-paging.spec.js",
+        "sha256": "234c0c0854f88eac9607d4c8a05aeea6aabf39e30df117a3da3e4ae50a8a274d"
+      },
+      {
+        "path": "package.json",
+        "sha256": "1e4ec5e3f8be0ec3c659ec60af329b618bccb4332722f0dbe0c64cc95da8576a"
+      }
+    ],
+    "previousFullCi": {
+      "head": "44b773dac5d57a8433051a3966a847a1279f6c5a",
+      "job": 122197047711,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40506505778/job/122197047711",
+      "passed": 6333,
+      "browserBoundaries": 24,
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.46,
+        "functions": 88.19
+      },
+      "allGatesGreen": true
+    },
+    "attempts": [
+      {
+        "command": "npx mocha test/procgen-session-storage.test.js test/procgen-workstation-controller.test.js",
+        "passed": 93,
+        "failed": 0,
+        "logSha256": "3ddd23cb3cca072ed80fdfdb78107908893092de52cf0ce9026ee3e749758140"
+      },
+      {
+        "command": "node scripts/run-browser-boundaries.js e2e/procgen-project-paging.spec.js e2e/procgen-workstation-view.spec.js --grep @boundary --workers=1",
+        "passed": 11,
+        "failed": 1,
+        "reason": "New keyboard fixture exposed actual disabled-More focus loss; fixed before rerun.",
+        "logSha256": "78881cd85b068e8885f1993b93a866817cf4c8726facc9e0b8c9d237688e1b10"
+      },
+      {
+        "passed": 12,
+        "failed": 0,
+        "reason": "Focus repair; full related browser batch.",
+        "logSha256": "d6bc1b06afdbd476ca15286a30ae70bbf61a8d7e054900ed303d8175c9d75ba9"
+      },
+      {
+        "passed": 12,
+        "failed": 0,
+        "runtimeSeconds": 18.3,
+        "reason": "Extended production fixture to a valid-header malformed checkpoint; selection can retry after candidate rejection.",
+        "logSha256": "399af4f0a2615e09c751520bb623a1038c90331e55fab8c4436a016986040581"
+      },
+      {
+        "passed": 94,
+        "failed": 0,
+        "runtimeSeconds": 4,
+        "reason": "Final storage/controller batch including preserved picker lease on world preparation failure.",
+        "logSha256": "1634dbc4a5287a99c2de622a42442cd2457c3e4ddda086f764adbb26f119c4ab"
+      }
+    ],
+    "nativeIndexedDbReceipts": [
+      {
+        "fixture": "controlled valid session headers with 128 KiB opaque checkpoint payloads; not captured performances",
+        "count": 100,
+        "totalCheckpointPayloadBytes": 13107200,
+        "firstPage": {
+          "sessionKeys": [],
+          "sessionPayloadBytes": 0,
+          "sessionCursors": 0,
+          "metadataRecords": 42,
+          "metadataBytes": 3866,
+          "keyCursors": 0
+        },
+        "retainedHeapDeltaBytes": 19660,
+        "remainingPages": {
+          "sessionKeys": [],
+          "sessionPayloadBytes": 0,
+          "sessionCursors": 0,
+          "metadataRecords": 63,
+          "metadataBytes": 5779,
+          "keyCursors": 0
+        },
+        "selected": {
+          "sessionKeys": [
+            "doc:000005"
+          ],
+          "sessionPayloadBytes": 131072,
+          "sessionCursors": 0,
+          "metadataRecords": 0,
+          "metadataBytes": 0,
+          "keyCursors": 0
+        },
+        "byteMetric": "materialized checkpoint typed-array bytes and UTF-8 metadata JSON bytes; not IndexedDB wire encoding"
+      },
+      {
+        "fixture": "controlled valid session headers with 128 KiB opaque checkpoint payloads; not captured performances",
+        "count": 1000,
+        "totalCheckpointPayloadBytes": 131072000,
+        "firstPage": {
+          "sessionKeys": [],
+          "sessionPayloadBytes": 0,
+          "sessionCursors": 0,
+          "metadataRecords": 42,
+          "metadataBytes": 3866,
+          "keyCursors": 0
+        },
+        "retainedHeapDeltaBytes": 19660,
+        "remainingPages": {
+          "sessionKeys": [],
+          "sessionPayloadBytes": 0,
+          "sessionCursors": 0,
+          "metadataRecords": 1007,
+          "metadataBytes": 92691,
+          "keyCursors": 0
+        },
+        "selected": {
+          "sessionKeys": [
+            "doc:000005"
+          ],
+          "sessionPayloadBytes": 131072,
+          "sessionCursors": 0,
+          "metadataRecords": 0,
+          "metadataBytes": 0,
+          "keyCursors": 0
+        },
+        "byteMetric": "materialized checkpoint typed-array bytes and UTF-8 metadata JSON bytes; not IndexedDB wire encoding"
+      }
+    ],
+    "staticChecks": [
+      "npm run format",
+      "critical checkJs types",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "Controlled 128 KiB opaque checkpoint payloads with valid session headers; not 1000 recorded performances.",
+      "Byte receipts measure materialized checkpoint typed arrays and UTF-8 metadata JSON, not browser-internal IndexedDB encoding.",
+      "Retained heap observation is Chromium/CDP after collection on this host, not an all-device memory guarantee.",
+      "Full CI at the parent is green; this later batch has focused execution pending its own pushed CI."
+    ],
+    "upstream": "Fetched origin; master is fully contained (0 commits behind)."
   }
 }

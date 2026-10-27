@@ -53,7 +53,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
-    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart() { rejectRestart = true; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
+    enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
 }
 
@@ -718,12 +718,34 @@ describe('ProcGen workstation orchestration', () => {
     f.view.showProjectPage = (page, load, more) => { f.view.page = page; f.view.loadChoice = load; f.view.more = more; };
     expect(await f.studio.handlers.load()).to.equal(true);
     expect(f.view.page.items).to.have.length(1); expect(requests).to.have.length(1);
+    expect(requests[0].signal).to.be.instanceOf(globalThis.AbortSignal);
     expect(await f.view.loadChoice('doc:first')).to.equal(false);
     expect(f.studio.getDocumentState().id).to.equal(null);
     expect((await f.view.more(f.view.page.nextCursor, '')).items[0].id).to.equal('doc:chosen');
     expect(await f.view.loadChoice('doc:chosen')).to.equal(true);
     expect(f.studio.getDocumentState()).to.include({ id: 'doc:chosen', revision: 2, dirty: false });
     f.studio.dispose();
+  });
+
+  it('aborts the project paging storage lease on Cancel and refuses later continuation reads', async () => {
+    let signal, reads = 0;
+    const storage = { async listDocumentPage(options) { signal = options.signal; reads++; return { items: [], nextCursor: 'next' }; }, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
+    f.view.showProjectPage = (page, load, more) => { f.view.more = more; };
+    expect(await f.studio.handlers.load()).to.equal(true); expect(signal.aborted).to.equal(false);
+    f.studio.handlers.cancelProjectPicker(); expect(signal.aborted).to.equal(true);
+    expect(await f.view.more('next', '')).to.equal(null); expect(reads).to.equal(1); f.studio.dispose();
+  });
+
+  it('keeps the picker lease available after isolated world preparation fails so the same selection can retry', async () => {
+    let session;
+    const storage = { async listDocumentPage() { return { items: [{ id: 'doc:retry', name: 'Retry', savedAt: '2026-10-27T12:00:00Z' }], nextCursor: null }; },
+      async loadDocument() { return { id: 'doc:retry', revision: 1, session }; }, close() {} };
+    const f = setup({ storageOverride: storage }); f.studio.bindRuntime(); session = f.studio.capture(); const original = f.runtime;
+    f.view.showProjectPage = (page, load) => { f.view.choose = load; }; await f.studio.handlers.load();
+    f.failRestart(); expect(await f.view.choose('doc:retry')).to.equal(false); expect(f.runtime).to.equal(original);
+    f.failRestart(false); expect(await f.view.choose('doc:retry')).to.equal(true);
+    expect(f.studio.getDocumentState()).to.include({ id: 'doc:retry', revision: 1, dirty: false }); f.studio.dispose();
   });
 
   it('keeps the save indicator dirty when edits outlive an in-flight durable snapshot', async () => {
