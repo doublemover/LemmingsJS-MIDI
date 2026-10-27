@@ -5379,5 +5379,77 @@
       "SHA-256 fingerprints are computed from independent live state and full terrain buffers, never by prewarming stored deltas.",
       "Seek timing ends before asynchronous oracle hashing; all digest work is outside the timed reconstruction interval."
     ]
+  },
+  "continuation270": {
+    "date": "2026-10-27",
+    "scope": "Owned backdrop dismissal and actual workstation naming/IndexedDB/playback acceptance; keep formatter away from generated artifacts and vendor copies.",
+    "sourceFiles": [
+      {
+        "path": "js/app/controls/ProjectNameDialog.js",
+        "sha256": "b4d1f8455b28d143eba6d6385b01639b2f7eb1a8ba265817f35b621ed6bacec6"
+      },
+      {
+        "path": "test/parameter-controls.test.js",
+        "sha256": "ace73cdc8b2d7e4a4e31cda5e24835b4e0aecd1ce1ecc65fa86fc87616391752"
+      },
+      {
+        "path": "e2e/procgen-project-naming.spec.js",
+        "sha256": "6878c381ce6355334f84100a686598dec81d612b37b0ff5ca4945fe83982e18b"
+      },
+      {
+        "path": "eslint.config.js",
+        "sha256": "90acf35a480eb6b0ab45e67fafbdd9be44d9e86bc2d7cdfd72ef3e0538c2a6d4"
+      },
+      {
+        "path": "test/eslint-generated-artifacts.test.js",
+        "sha256": "c29ff469aa35635c99e9d3daba39119277260b7db104700b09d7fb2f7a133ea2"
+      },
+      {
+        "path": "package.json",
+        "sha256": "aef4fae5aef5e83f917a1a819702b07a32cb8362ba3c69ac5da846040bd3649c"
+      }
+    ],
+    "runs": [
+      {
+        "command": "Parameter, formatter boundary and workstation controller regressions",
+        "passed": 81,
+        "failed": 0,
+        "logSha256": "9b0dce0e68080309acbe32b36f63b9a4745637224e651afe473015c48b767d7d"
+      },
+      {
+        "command": "node scripts/run-browser-boundaries.js e2e/procgen-project-naming.spec.js --workers=1",
+        "entry": "/procgen.html?e2e=1&seed=42&lanes=2",
+        "passed": 2,
+        "failed": 0,
+        "runtimeSeconds": 6.3,
+        "matrixConditions": 16,
+        "logSha256": "8f46957563dda639775b6312993e7f1f36b917d60bdc1aaca7d786c4d37de805"
+      },
+      {
+        "command": "Initial installed-generation naming attempt",
+        "passed": 0,
+        "failed": 2,
+        "scope": "Formatter changed generated browser bytes; immutable build refused reuse",
+        "logSha256": "fc44397a3114e6e1e91b8f88501fbe1848d988be604c917c69b33a072f3971ab"
+      },
+      {
+        "command": "Fresh installed-generation naming attempt",
+        "passed": 0,
+        "failed": 2,
+        "scope": "Installed build remained Loading with pending module requests; no naming acceptance obtained",
+        "logSha256": "568e43e395fdab9ad2efe3877e515c54a12648ad320866296d28e40b1ae80e77"
+      }
+    ],
+    "staticChecks": [
+      "format",
+      "critical checkJs",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "The passing browser matrix uses the real source application, controller, dialog and IndexedDB; installed-generation startup remains unresolved separately.",
+      "Automatic approval review rejected removal of the generated snapshot with only blocked by policy; the snapshot was preserved."
+    ]
   }
 }

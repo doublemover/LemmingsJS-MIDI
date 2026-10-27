@@ -6827,3 +6827,21 @@ export-budget acknowledgments still prevent a false complete receipt.
   apiece and seek p95 **28.1 / 17.7 / 27.0ms** against the unchanged 400ms gate.
   Every replay has matching SHA-256 state/terrain evidence and restores its
   starting boundary. Retained oracle digests occupy **3,536 bytes per scenario**.
+
+### Continuation 270 — project naming dismissal and browser save ownership
+
+- Naming dialogs now cancel on an owned backdrop gesture. Inside drags, foreign
+  pointers and cancelled gestures cannot dismiss the dialog or submit a name.
+- The real workstation/IndexedDB browser matrix passes all sixteen paused/playing
+  conditions: explicit Cancel, Escape, close, backdrop, editable empty names,
+  repeated saves, successful copies and quota refusal. Cancellation performs no
+  document writes, keeps identity/project/stored bytes, and restores playback
+  exactly once when needed. Failure keeps the previous saved record intact.
+- **81 parameter/controller/formatter cases** and both production-source browser
+  scenarios pass (6.3s). Naming scenarios join the maintained CI boundary batch.
+- Formatting now globally excludes generated builds, traces, reports, coverage
+  and vendor directories. Actual source guards remain enabled. A first attempt
+  had reformatted generated copies; automatic approval review refused deleting
+  the generated snapshot, which was preserved. Fresh installed-generation startup
+  also stalls with pending module requests; that separate qualification remains
+  unresolved and is not represented by the passing source-app naming matrix.

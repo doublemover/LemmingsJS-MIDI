@@ -14,6 +14,17 @@ export function createProjectNameDialog({ document, window } = {}) {
       const finish = result => { if (done) return; done = true; if (pending?.dialog === dialog) pending = null;
         try { dialog.close?.(); } finally { dialog.remove(); if (previousFocus?.isConnected !== false) previousFocus?.focus?.({ preventScroll: true }); resolve(result); } };
       pending = { dialog, finish };
+      let backdropPointer = null;
+      const outside = event => {
+        const bounds = dialog.getBoundingClientRect?.();
+        return event.target === dialog && bounds && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom);
+      };
+      dialog.addEventListener('pointerdown', event => { backdropPointer = event.isPrimary !== false && (event.button ?? 0) === 0 && outside(event) ? event.pointerId : null; });
+      dialog.addEventListener('pointerup', event => {
+        if (backdropPointer == null || event.pointerId !== backdropPointer) return;
+        backdropPointer = null; if (outside(event)) finish(null);
+      });
+      dialog.addEventListener('pointercancel', event => { if (event.pointerId === backdropPointer) backdropPointer = null; });
       form.addEventListener('submit', event => {
         event.preventDefault(); const name = input.value.trim();
         if (!name || name.length > 120) { error.textContent = 'Enter a project name (1–120 characters).'; input.setAttribute('aria-invalid', 'true'); input.focus?.(); return; }

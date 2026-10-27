@@ -1,6 +1,7 @@
 import { lintGlobals, testLintGlobals } from './scripts/lint-globals.js';
 
 export default [
+  { ignores: ['**/vendor/**', 'dist/**', 'test-results/**', 'playwright-report/**', 'coverage/**'] },
   {
     files: ['**/*.js'],
     ignores: [

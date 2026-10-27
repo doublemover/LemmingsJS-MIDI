@@ -59,4 +59,14 @@ describe('typed parameter control transactions', () => {
     input.value = '  A named world  '; form.dispatchEvent(event('submit')); expect(await pending).to.equal('A named world');
     const cancelled = owner.request({ value: 'Unsaved' }); owner.dispose(); expect(await cancelled).to.equal(null);
   });
+  it('dismisses naming only for one owned backdrop gesture, preserving inside drags and cancelled or foreign pointers', async () => {
+    const document = new TestDocument(), create = document.createElement.bind(document);
+    document.createElement = tag => { const element = create(tag); if (tag === 'dialog') { element.showModal = () => {}; element.close = () => element.dispatchEvent(event('close')); element.getBoundingClientRect = () => ({ left: 100, right: 300, top: 100, bottom: 200 }); } return element; };
+    const owner = createProjectNameDialog({ document }), pending = owner.request({ value: 'Keep this name' });
+    const dialog = document.body.children[0], pointer = (type, id, x, y) => dialog.dispatchEvent(event(type, { target: dialog, pointerId: id, clientX: x, clientY: y, button: 0 }));
+    pointer('pointerdown', 1, 150, 150); pointer('pointerup', 1, 10, 10); expect(document.body.children).to.have.length(1);
+    pointer('pointerdown', 1, 10, 10); pointer('pointercancel', 1, 10, 10); pointer('pointerup', 1, 10, 10); expect(document.body.children).to.have.length(1);
+    pointer('pointerdown', 1, 10, 10); pointer('pointerup', 2, 10, 10); expect(document.body.children).to.have.length(1);
+    pointer('pointerup', 1, 10, 10); expect(await pending).to.equal(null); expect(document.body.children).to.have.length(0); owner.dispose();
+  });
 });
