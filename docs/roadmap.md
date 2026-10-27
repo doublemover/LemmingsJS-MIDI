@@ -6949,3 +6949,36 @@ export-budget acknowledgments still prevent a false complete receipt.
   history ratios **0.503667 / 1.005667**, 100 ms frame p95 and 101.58 median ticks/s.
   Thresholds and workloads remain unchanged. Full CI for the combined later
   implementation must be checked after push.
+
+### Continuation 275 — native ADSR PCM and authoritative terminal scheduling
+
+- Full CI at cb78e475 passes **6,347 cases**, **30 browser boundaries**, all
+  benchmark/protocol/static/policy/dependency gates, and 90.21% line/statement,
+  83.46% branch and 88.18% function coverage. The preceding history smoke refusal
+  is retained in the receipt alongside its completed-cohort repair.
+- Native oscillator/FM/modal and sampled voices accept an earlier replacement
+  release while ignoring later repeats. The offline driver now validates and
+  submits explicit end events. A queued sample release child is replaced only
+  after its previous source is retired, keeping the original selection, decoded
+  pin, gain and main onset; stale source callbacks cannot retire its replacement.
+- Musical sample release and forced cleanup have separate bounded terminal
+  records. Choke rebuild applies the primary release followed by the earliest
+  cleanup, preserving the already-declared main and child envelopes. Forced tails
+  cannot outlive their original endpoint. Future pitch changes rebuild the child
+  through the primary release without moving cleanup or retriggering selection;
+  neutral pressure/pan updates avoid unnecessary child-envelope work.
+- The first actual PCM pass exposed forced cleanup reviving the sample main
+  envelope; the API doubles had passed. The repaired path passes **2,429 MIDI
+  cases** and the consolidated browser PCM matrix at **44.1/48/96 kHz**:
+  **48 ConstantSource boundary/repeat cases**, **nine oscillator/default-FM/modal
+  cases**, and **three sample/choke/forced-child matrix rows**. Ahead scheduling
+  matches submission after real offline suspension. Default FM releases during
+  its 1.4-second decay; oscillator release occurs during attack.
+- Maximum constant-source prefix error is 5.96e-8 and tail error 8.70e-7;
+  production oscillator/FM/modal prefix/scheduling error is 2.24e-8, tail error
+  1.68e-7, and output after the terminal is exactly zero. Sample child/choke/forced
+  errors stay below 2.87e-7 with zero final output. Every production render returns
+  declared exact/estimated resources and fixture pins after caller release.
+  Generated constant sample buffers qualify envelope/source ownership, without
+  claiming decoder, device/acoustic or live Panic-button delivery conformance.
+  These three browser scenarios are now maintained CI boundaries.

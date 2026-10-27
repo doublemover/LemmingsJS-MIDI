@@ -6402,6 +6402,1015 @@
       "Local timing observations compare 10 samples per implementation/scenario and do not establish a universal speedup.",
       "Current full CI must be verified after push; latest complete green checkpoint remains 44b773da."
     ],
-    "upstream": "Fetched origin/master; fully contained (0 behind)."
+    "upstream": "Fetched origin/master; fully contained (0 behind).",
+    "fullCi": {
+      "head": "cb78e475fd9cff0a92eab558ceffe7178f5ea545",
+      "job": 122227951221,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40515403501/job/122227951221",
+      "passed": 6347,
+      "browserBoundaries": 30,
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.46,
+        "functions": 88.18
+      },
+      "allGatesGreen": true
+    }
+  },
+  "continuation275": {
+    "date": "2026-10-27",
+    "parentRevision": "cb78e475fd9cff0a92eab558ceffe7178f5ea545",
+    "scope": "Native ADSR PCM qualification plus earlier release replacement, explicit offline end submission, retired pending sample-child source replacement and independent musical/forced terminal reconstruction.",
+    "sourceFiles": [
+      {
+        "path": "js/app/midi-ui/nativeOscillatorBackend.js",
+        "sha256": "530f7c36aa130002da9f7d81a8bc6c46a5c4ae8df0f91c33fbdfed6608e87ed9"
+      },
+      {
+        "path": "js/app/midi-ui/sampleInstrumentBackend.js",
+        "sha256": "f3559bdb84dc294b5eddb0b9e0029370c2889100b54ae7ad3d22c5dac538d91b"
+      },
+      {
+        "path": "js/app/midi-ui/NativeOfflineDriver.js",
+        "sha256": "88206971e680366fa495524d7524e3878b33d678867abd9269922c27d3a22155"
+      },
+      {
+        "path": "e2e/native-adsr-envelope.spec.js",
+        "sha256": "4cb863ee83d4744f35e7933232d3592179f2bb6bdf6f432ac519dfa0a74fcc1a"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "sha256": "74764684eebfaefd379dc3f5273c89edbd2a16ced26634705e41671d8e632219"
+      },
+      {
+        "path": "test/midi/sample-instrument-backend.test.js",
+        "sha256": "4e9d2b91ff56655c9ef49753c1057540d5e162c9aeea8dc56adef3d75ee955e9"
+      },
+      {
+        "path": "test/midi/native-offline-ownership.test.js",
+        "sha256": "6e3f25aea63dac6b79c50dc2026184164897ea83cbfc048917b7ae4491f748e9"
+      },
+      {
+        "path": "package.json",
+        "sha256": "acd19387f8ad407c4c37211c6b918149ff3592306238e10886fdf27b81b953b8"
+      }
+    ],
+    "previousFullCi": {
+      "head": "cb78e475fd9cff0a92eab558ceffe7178f5ea545",
+      "job": 122227951221,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40515403501/job/122227951221",
+      "passed": 6347,
+      "browserBoundaries": 30,
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.46,
+        "functions": 88.18
+      },
+      "allGatesGreen": true
+    },
+    "attempts": [
+      {
+        "kind": "initial-midi-category",
+        "passed": 2428,
+        "failed": 0,
+        "runtimeSeconds": 49.37,
+        "logSha256": "23cfd3ed6d1a00bd818aba5be77e6e22feac3b21196ad6c2d99fa06abb89c64f"
+      },
+      {
+        "kind": "initial-native-pcm",
+        "passed": 2,
+        "failed": 1,
+        "reason": "Actual sample PCM exposed forced cleanup replacing the primary end and rebuilding held gain; API doubles did not expose the audible error.",
+        "failedSampleRows": [
+          {
+            "rate": 44100,
+            "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+            "schedulingError": 1.4901161193847656e-8,
+            "childEnvelopeError": 4.8487908688166215e-8,
+            "chokeError": 2.9802322387695312e-8,
+            "forceAttackError": 0.012642532587051392,
+            "forceTailError": 0.2896309196949005,
+            "finalPeak": 0,
+            "childPlateau": 0.3620387017726898,
+            "suspendedBatches": 3,
+            "retired": true
+          },
+          {
+            "rate": 48000,
+            "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+            "schedulingError": 1.4901161193847656e-8,
+            "childEnvelopeError": 1.478940236387949e-7,
+            "chokeError": 2.9802322387695312e-8,
+            "forceAttackError": 0.01267138123512268,
+            "forceTailError": 0.2896309196949005,
+            "finalPeak": 0,
+            "childPlateau": 0.3620387017726898,
+            "suspendedBatches": 3,
+            "retired": true
+          },
+          {
+            "rate": 96000,
+            "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+            "schedulingError": 3.725290298461914e-8,
+            "childEnvelopeError": 2.8647482464005947e-7,
+            "chokeError": 1.4897523215040565e-8,
+            "forceAttackError": 0.012671560049057007,
+            "forceTailError": 0.2896309196949005,
+            "finalPeak": 0,
+            "childPlateau": 0.3620387017726898,
+            "suspendedBatches": 3,
+            "retired": true
+          }
+        ],
+        "logSha256": "15cb3f0e0eff52ffe8121b5e06b4b6c7cb795cfef77eed84a8111026e3f6f1df"
+      },
+      {
+        "kind": "musical-vs-forced-terminal-repair",
+        "passed": 185,
+        "failed": 0,
+        "logSha256": "79349f8fa7d4f1ceea4c93b5c9e8f92616811a91e2624199b05042c7e0dd8310"
+      },
+      {
+        "kind": "native-pcm-after-terminal-repair",
+        "passed": 3,
+        "failed": 0,
+        "runtimeSeconds": 1.7,
+        "logSha256": "574b881c1d742f356dc4e1cbeeb13bf3d992378759162efd7a34a8e3ed6e6ca9"
+      },
+      {
+        "kind": "final-midi-category",
+        "command": "npm test -- midi",
+        "passed": 2429,
+        "failed": 0,
+        "runtimeSeconds": 50.28,
+        "logSha256": "d91faafc12aa614032edaaf2febae4e843e3af31a418861fd6c85f4c84bc656d"
+      },
+      {
+        "kind": "final-source-owner-callback-context",
+        "passed": 186,
+        "failed": 0,
+        "runtimeMs": 808,
+        "logSha256": "f2d3da48f34d10682366cb8ec14ec473397180aa3b44a950cc48074b15aa2548"
+      },
+      {
+        "kind": "final-native-pcm",
+        "passed": 3,
+        "failed": 0,
+        "runtimeSeconds": 1.8,
+        "logSha256": "9b5cacab1f5f3951b2eb12eae99aba60483db6c77bd1f0aed0326a39feb754f4"
+      }
+    ],
+    "pcm": {
+      "constantSource": [
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05
+          ],
+          "relative": 0.05,
+          "prefixError": 2.9802322387695312e-8,
+          "schedulingError": 0,
+          "tailError": 6.001011854106508e-8
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.3832062006891022e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.3
+          ],
+          "relative": 0.3,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 7.28649887649091e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.45
+          ],
+          "relative": 0.45,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 2.5090717131748264e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.6
+          ],
+          "relative": 0.6,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.6148668838256164e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 7.635071164191487e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.3832062006891022e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            -0.05
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.4,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 2.9802322387695312e-8,
+          "schedulingError": 0,
+          "tailError": 6.001011854106508e-8
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 2.9802322387695312e-8,
+          "schedulingError": 0,
+          "tailError": 6.001011854106508e-8
+        },
+        {
+          "rate": 44100,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.4021283101239845e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 9.516469473558331e-8
+        },
+        {
+          "rate": 44100,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.6071628822222905e-7
+        },
+        {
+          "rate": 44100,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 4.0502775283668413e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.350541909694858e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 3.911678989609868e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.3
+          ],
+          "relative": 0.3,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 8.697186907324905e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.45
+          ],
+          "relative": 0.45,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.53842071692889e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.6
+          ],
+          "relative": 0.6,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.5430152414119824e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 8.697186907324905e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 3.911678989609868e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            -0.05
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.4,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.350541909694858e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.350541909694858e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 3.911678989609868e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.9478922086424433e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.5430152414119824e-7
+        },
+        {
+          "rate": 48000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 2.3016706110490226e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.7379721006793858e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 7.92499631696586e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.3
+          ],
+          "relative": 0.3,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 4.499964415538571e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.45
+          ],
+          "relative": 0.45,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 8.549541236080316e-8
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.6
+          ],
+          "relative": 0.6,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 8.390595512830501e-8
+        },
+        {
+          "rate": 96000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 4.499964415538571e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0.2
+          ],
+          "relative": 0.2,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 7.92499631696586e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            -0.05
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 0
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.4,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.7379721006793858e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0.05,
+            0.05,
+            0.2
+          ],
+          "relative": 0.05,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.7379721006793858e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 7.92499631696586e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0.2,
+          "decay": 0,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 3.96249815848293e-7
+        },
+        {
+          "rate": 96000,
+          "attack": 0,
+          "decay": 0,
+          "sustain": 0.4,
+          "requests": [
+            0
+          ],
+          "relative": 0,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 8.390595512830501e-8
+        },
+        {
+          "rate": 96000,
+          "attack": 0,
+          "decay": 0.25,
+          "sustain": 0,
+          "requests": [
+            0.1
+          ],
+          "relative": 0.1,
+          "prefixError": 5.960464477539063e-8,
+          "schedulingError": 0,
+          "tailError": 1.29984691732421e-7
+        }
+      ],
+      "productionSources": [
+        {
+          "rate": 44100,
+          "engine": "native-oscillator",
+          "attackSeconds": 0.2,
+          "decaySeconds": 0.05,
+          "startFrame": 4410,
+          "cutFrame": 6615,
+          "endFrame": 8379,
+          "prefixError": 3.259629011154175e-9,
+          "schedulingError": 0,
+          "tailError": 3.941960749487272e-8,
+          "afterEndPeak": 0,
+          "rms": 0.004243232268681608,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 352800,
+          "retired": true
+        },
+        {
+          "rate": 44100,
+          "engine": "native-fm",
+          "attackSeconds": 0.002,
+          "decaySeconds": 1.4,
+          "startFrame": 4410,
+          "cutFrame": 11025,
+          "endFrame": 12789,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 1.4901161193847656e-8,
+          "tailError": 6.954760409239036e-8,
+          "afterEndPeak": 0,
+          "rms": 0.04343084320579065,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 352800,
+          "retired": true
+        },
+        {
+          "rate": 44100,
+          "engine": "native-modal",
+          "attackSeconds": 0.002,
+          "decaySeconds": 0,
+          "startFrame": 4410,
+          "cutFrame": 6615,
+          "endFrame": 8379,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 2.2351741790771484e-8,
+          "tailError": 6.326235611059383e-8,
+          "afterEndPeak": 0,
+          "rms": 0.009280665443303247,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 352800,
+          "retired": true
+        },
+        {
+          "rate": 48000,
+          "engine": "native-oscillator",
+          "attackSeconds": 0.2,
+          "decaySeconds": 0.05,
+          "startFrame": 4800,
+          "cutFrame": 7200,
+          "endFrame": 9120,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.856222235294136e-8,
+          "afterEndPeak": 0,
+          "rms": 0.004243236494044079,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 384000,
+          "retired": true
+        },
+        {
+          "rate": 48000,
+          "engine": "native-fm",
+          "attackSeconds": 0.002,
+          "decaySeconds": 1.4,
+          "startFrame": 4800,
+          "cutFrame": 12000,
+          "endFrame": 13920,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 1.4901161193847656e-8,
+          "tailError": 5.989245489834705e-8,
+          "afterEndPeak": 0,
+          "rms": 0.025793015530409726,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 384000,
+          "retired": true
+        },
+        {
+          "rate": 48000,
+          "engine": "native-modal",
+          "attackSeconds": 0.002,
+          "decaySeconds": 0,
+          "startFrame": 4800,
+          "cutFrame": 7200,
+          "endFrame": 9120,
+          "prefixError": 2.2351741790771484e-8,
+          "schedulingError": 2.2351741790771484e-8,
+          "tailError": 4.3469481174340796e-8,
+          "afterEndPeak": 0,
+          "rms": 0.009283087247938155,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 384000,
+          "retired": true
+        },
+        {
+          "rate": 96000,
+          "engine": "native-oscillator",
+          "attackSeconds": 0.2,
+          "decaySeconds": 0.05,
+          "startFrame": 9600,
+          "cutFrame": 14400,
+          "endFrame": 18240,
+          "prefixError": 0,
+          "schedulingError": 0,
+          "tailError": 1.4522169983904876e-8,
+          "afterEndPeak": 0,
+          "rms": 0.004242611789378318,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 768000,
+          "retired": true
+        },
+        {
+          "rate": 96000,
+          "engine": "native-fm",
+          "attackSeconds": 0.002,
+          "decaySeconds": 1.4,
+          "startFrame": 9600,
+          "cutFrame": 24000,
+          "endFrame": 27840,
+          "prefixError": 1.4901161193847656e-8,
+          "schedulingError": 0,
+          "tailError": 1.6826100777966868e-7,
+          "afterEndPeak": 0,
+          "rms": 0.02606171008446146,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 768000,
+          "retired": true
+        },
+        {
+          "rate": 96000,
+          "engine": "native-modal",
+          "attackSeconds": 0.002,
+          "decaySeconds": 0,
+          "startFrame": 9600,
+          "cutFrame": 14400,
+          "endFrame": 18240,
+          "prefixError": 2.2351741790771484e-8,
+          "schedulingError": 0,
+          "tailError": 2.91465160756621e-8,
+          "afterEndPeak": 0,
+          "rms": 0.009283521410744863,
+          "suspendedBatches": 3,
+          "heldPcmBytes": 768000,
+          "retired": true
+        }
+      ],
+      "sampleSources": [
+        {
+          "rate": 44100,
+          "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+          "schedulingError": 1.4901161193847656e-8,
+          "childEnvelopeError": 4.8487908688166215e-8,
+          "chokeError": 2.9802322387695312e-8,
+          "forceAttackError": 1.0690991958384188e-7,
+          "forceTailError": 5.960464477539063e-8,
+          "finalPeak": 0,
+          "childPlateau": 0.3620387017726898,
+          "suspendedBatches": 3,
+          "retired": true
+        },
+        {
+          "rate": 48000,
+          "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+          "schedulingError": 1.4901161193847656e-8,
+          "childEnvelopeError": 1.478940236387949e-7,
+          "chokeError": 2.9802322387695312e-8,
+          "forceAttackError": 1.1598070448481934e-7,
+          "forceTailError": 4.5200185604804544e-8,
+          "finalPeak": 0,
+          "childPlateau": 0.3620387017726898,
+          "suspendedBatches": 3,
+          "retired": true
+        },
+        {
+          "rate": 96000,
+          "fixture": "native constant AudioBuffer with explicit fixture pin; no decoder qualification",
+          "schedulingError": 3.725290298461914e-8,
+          "childEnvelopeError": 2.8647482464005947e-7,
+          "chokeError": 1.4897523215040565e-8,
+          "forceAttackError": 2.0364920227944339e-7,
+          "forceTailError": 6.649642955713908e-8,
+          "finalPeak": 0,
+          "childPlateau": 0.3620387017726898,
+          "suspendedBatches": 3,
+          "retired": true
+        }
+      ]
+    },
+    "staticChecks": [
+      "npm run format",
+      "critical checkJs types",
+      "undefined calls",
+      "whitespace",
+      "runtime provenance: 10 components / 340 files"
+    ],
+    "limits": [
+      "Actual Chromium OfflineAudioContext PCM at 44.1/48/96 kHz; no device, acoustic or cross-browser bit-identity claim.",
+      "Generated constant sample buffers with explicit fixture pins qualify envelope/source ownership without qualifying a file decoder.",
+      "Live Panic-button delivery is separate; software Panic/owner-isolation fixtures and explicit native cleanup/choke PCM pass.",
+      "The broad MIDI batch precedes the final callback-context capture; the final 186 owner cases and all PCM scenarios cover the exact current source.",
+      "The parent full CI is green; later combined changes await their own full CI after push."
+    ]
   }
 }

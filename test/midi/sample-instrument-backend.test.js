@@ -242,6 +242,41 @@ describe('Owned native sample regions', () => {
     expect(voice.end).to.be.closeTo(0.3, 1e-12);
   });
 
+  it('reschedules an earlier release child with the same selection and pins while stale source callbacks stay inert', async () => {
+    const { backend, preview, context, asset, selections } = await setup({}, region({ releaseRegion: region({ onsetFrame: 35280, endFrame: 44100 }) }));
+    backend.begin(intent(), 480, 'take'); backend.end('A', { seconds: 0.04, velocity01: 0.5 }, 9600, 'take');
+    const voice = [...preview._voices][0], main = voice.main.source, oldChild = voice.child.source, staleEnd = oldChild.onended, pins = asset.shared.pins;
+    expect(backend.end('A', { seconds: 0.04, velocity01: 0.5 }, 4800, 'take').status).to.equal('accepted');
+    expect(voice.releaseAt).to.equal(0.1); expect(voice.end).to.be.closeTo(0.3, 1e-12);
+    expect(voice.main.source).to.equal(main); expect(main.starts).to.have.length(1);
+    expect(oldChild.disconnected).to.equal(true); expect(oldChild.buffer).to.equal(null); expect(voice.child.source).not.to.equal(oldChild);
+    expect(voice.child.source.starts).to.have.length(1); expect(voice.child.source.starts[0][0]).to.equal(0.1);
+    expect(asset.shared.pins).to.equal(pins); expect(selections()).to.equal(1);
+    staleEnd(); expect(voice.child.ended).to.equal(false); expect(preview._voices.has(voice)).to.equal(true);
+    expect(backend.end('A', { seconds: 1 }, 7200, 'take').reason).to.equal('already-releasing'); expect(asset.shared.pins).to.equal(pins);
+  });
+
+  it('does not extend a release child past its natural tail when forced cleanup arrives near the endpoint', async () => {
+    const { backend, preview, context } = await setup({}, region({ releaseRegion: region({ onsetFrame: 35280, endFrame: 44100 }) }));
+    backend.begin(intent(), 480, 'take'); backend.end('A', { seconds: 0.04 }, 9600, 'take');
+    const voice = [...preview._voices][0], originalEnd = voice.end; context.currentTime = 0.3975;
+    expect(backend.end('A', { seconds: 0.005, force: true }, 19080, 'take').status).to.equal('accepted');
+    expect(voice.semanticRelease.at).to.equal(0.2); expect(voice.forcedRelease.at).to.equal(0.3975);
+    expect(voice.end).to.equal(originalEnd); expect(voice.child.gain.gain.events.at(-1)).to.include({ type: 'ramp', value: 0, time: originalEnd });
+  });
+
+  it('replans a future release pitch through its primary end without moving a queued forced cleanup', async () => {
+    const { backend, preview, context, selections } = await setup({}, region({ releaseRegion: region({ onsetFrame: 35280, endFrame: 44100 }) }));
+    backend.begin(intent(), 480, 'take'); backend.end('A', { seconds: 0.04, velocity01: 0.5 }, 9600, 'take');
+    backend.end('A', { seconds: 0.005, force: true }, 14400, 'take');
+    const voice = [...preview._voices][0], child = voice.child.source;
+    expect(backend.update('A', { pitchOffsetCents: 1200 }, 4800, 'take').status).to.equal('accepted');
+    expect(voice.semanticRelease.at).to.equal(0.2); expect(voice.forcedRelease.at).to.equal(0.3);
+    expect(voice.child.source).to.equal(child); expect(child.starts).to.have.length(1);
+    expect(child.playbackRate.events.at(-1)).to.include({ value: 2, time: 0.2 }); expect(voice.end).to.be.closeTo(0.3, 1e-12);
+    expect(context.sources).to.have.length(2); expect(selections()).to.equal(1);
+  });
+
   it('uses the onset offset for an authored pitch range when the base pitch itself lies outside it', async () => {
     const selected = region({ pitchRange: { minCents: 5900, maxCents: 6100 }, releaseRegion: region({ rootCents: 5900 }) }),
       { backend, context } = await setup({}, selected);

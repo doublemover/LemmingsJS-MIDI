@@ -97,6 +97,16 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
   const reconcileComponents = components => createProcgenRetirementScope().retire(components.map((component, index) => ({
     name: 'closed-source-pin-' + index, run: () => releaseComponentPin(component)
   })));
+  const watchSourceEnd = (voice, component) => {
+    const source = component.source, context = preview._context;
+    source.onended = () => {
+      if (component.source !== source) return;
+      component.ended = true; component.completed = true; if (!preview._voices.has(voice)) return;
+      if (voice.stolen && voice.releaseAt > context.currentTime) return;
+      if (!voice.released && voice.child && context.currentTime < voice.hardEnd - 1 / context.sampleRate) return;
+      if (!voice.released || voice.components.every(item => item.ended)) preview._destroyVoice(voice, !voice.released && voice.ownedGate ? 'owner-lease-expired-or-source-ended' : 'sample-sources-ended');
+    };
+  };
   const prepare = async (resolution, assets = []) => {
     if (disposed) return reject('disposed');
     if (preparationFault) return reject('sample-retirement-unknown');
@@ -295,13 +305,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
       if (pan) voice.panAutomation = createSmoothedAudioParameter({ param: pan.pan, initialValue: clamp((expression.pan01 ?? values.pan01) + prepared.mix.pan01, -1, 1), startTime: start, smoothingSeconds, maxEvents: maxControlEvents });
       if (voice.child) { voice.child.source.playbackRate.setValueAtTime(childRate, start); voice.child.gain.gain.setValueAtTime(0, start); }
       voice.requestRelease = (at, force = false, reason = 'semantic-end', velocity = 1) => releaseVoice(voice, at, force, reason, velocity);
-      const sourceEnded = component => {
-        component.ended = true; component.completed = true; if (!preview._voices.has(voice)) return;
-        if (voice.stolen && voice.releaseAt > context.currentTime) return;
-        if (!voice.released && voice.child && context.currentTime < voice.hardEnd - 1 / context.sampleRate) return;
-        if (!voice.released || components.every(item => item.ended)) preview._destroyVoice(voice, !voice.released && voice.ownedGate ? 'owner-lease-expired-or-source-ended' : 'sample-sources-ended');
-      };
-      for (const component of components) component.source.onended = () => sourceEnded(component);
+      for (const component of components) watchSourceEnd(voice, component);
       preview._voices.add(voice); voices.set(identity, voice); preview._semanticVoiceOwners.set(sharedIdentity, voice);
       const main = voice.main, offset = region.onsetFrame / main.pin.ref.sourceSampleRate;
       if (region.loop) main.source.start(start, offset); else main.source.start(start, offset, (region.endFrame - region.onsetFrame) / main.pin.ref.sourceSampleRate);
@@ -340,6 +344,13 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     const childEnd = Math.min(voice.hardEnd, at + duration / ratio, at + 4), peak = velocity * selected.gain01 * voice.patchGain,
       attackEnd = at + Math.min(0.005, (childEnd - at) / 3), releaseStart = Math.max(attackEnd, childEnd - 0.005);
     const from = Math.max(at, preview._context.currentTime);
+    if (child.started && child.envelope?.at !== at && child.envelope?.at > preview._context.currentTime) {
+      child.source.onended = null; child.source.stop(preview._context.currentTime); child.source.disconnect(); child.source.buffer = null;
+      child.started = false; child.ended = false;
+      child.source = preview._context.createBufferSource(); child.source.buffer = child.pin.buffer; child.source.connect(child.gain);
+      if (selected.loop) { child.source.loop = true; child.source.loopStart = selected.loop.startFrame / child.pin.ref.sourceSampleRate; child.source.loopEnd = selected.loop.endFrame / child.pin.ref.sourceSampleRate; }
+      watchSourceEnd(voice, child);
+    }
     child.source.playbackRate.setValueAtTime(ratio, from);
     truncateNativeEnvelope({ gain: child.gain, start: at, attack: attackEnd - at, decay: 0, sustain: 1, peak,
       released: true, releaseAt: releaseStart, releaseLevel: peak, end: childEnd }, from);
@@ -351,12 +362,13 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     voice.end = Math.max(voice.mainReleaseEnd, childEnd);
   };
   const releaseVoice = (voice, requested, force, reason, velocity = 1, restoring = false) => {
-    if (!preview._voices.has(voice) || voice.released && !force) return;
+    if (!preview._voices.has(voice)) return;
     const context = preview._context, at = restoring ? requested : Math.max(requested, context.currentTime);
+    if (voice.released && !force && at >= voice.releaseAt) return;
     if (at < voice.start || force && reason !== 'sample-choke' && voice.start > context.currentTime && at <= voice.start) { preview._destroyVoice(voice, 'sample-cancel-before-onset'); return; }
-    if (at >= voice.hardEnd) return;
+    if (at >= voice.hardEnd || force && voice.released && at >= voice.end) return;
     const beforeOnsetChoke = force && reason === 'sample-choke' && at <= voice.start;
-    const until = Math.min(voice.hardEnd, at + (beforeOnsetChoke ? 0 : force ? 0.005 : voice.release)), gain = voice.gain.gain;
+    const until = Math.min(voice.hardEnd, force ? voice.end : Infinity, at + (beforeOnsetChoke ? 0 : force ? 0.005 : voice.release)), gain = voice.gain.gain;
     let level = 0;
     if (restoring && at < context.currentTime) {
       level = nativeHeldEnvelopeLevel(voice, at); voice.releaseLevel = level; voice.releaseAt = at; voice.released = true;
@@ -384,6 +396,15 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (voice.components.every(component => component.ended) && at <= context.currentTime) preview._destroyVoice(voice, reason);
     armExpiry(); preview._observe('synth-release', { ...voice.captureMeta, voiceId: voice.id, audioTime: at, endAudioTime: voice.end, reason });
   };
+  const restoreTerminal = (voice, now, next = null) => {
+    const terminal = voice.semanticRelease;
+    const forced = next && (!voice.forcedRelease || next.start < voice.forcedRelease.at) ? { at: next.start, reason: 'sample-choke', velocity: 1 } : voice.forcedRelease;
+    voice.released = false; voice.stolen = false; voice.releaseLevel = null;
+    if (voice.child) voice.child.ended = !!voice.child.completed;
+    if (!terminal || terminal.at >= now) scheduleHeldEnvelope(voice, voice.hardEnd);
+    if (terminal) { voice.release = terminal.seconds; releaseVoice(voice, terminal.at, false, 'semantic-end', terminal.velocity, true); }
+    if (forced && forced.at < voice.end) releaseVoice(voice, forced.at, true, forced.reason, forced.velocity, true);
+  };
   const rebuildChokes = (group, scope) => {
     if (rebuildingChokes) return;
     rebuildingChokes = true;
@@ -395,12 +416,7 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
         const next = members.filter(candidate => candidate !== voice && preview._voices.has(candidate) && (candidate.start > voice.start ||
           candidate.start === voice.start && candidate.playback.voiceId > voice.playback.voiceId))
           .sort((a, b) => a.start - b.start || (a.playback.voiceId < b.playback.voiceId ? 1 : a.playback.voiceId > b.playback.voiceId ? -1 : 0))[0];
-        const terminal = voice.semanticRelease;
-        voice.released = false; voice.stolen = false; voice.releaseLevel = null;
-        if (voice.child) voice.child.ended = !!voice.child.completed;
-        if (!terminal || terminal.at >= now) scheduleHeldEnvelope(voice, voice.hardEnd);
-        if (terminal) { voice.release = terminal.seconds; releaseVoice(voice, terminal.at, terminal.force === true, terminal.force ? 'owned-cleanup' : 'semantic-end', terminal.velocity, true); }
-        if (next && next.start < voice.end) releaseVoice(voice, next.start, true, 'sample-choke');
+        restoreTerminal(voice, now, next);
       }
     } finally { rebuildingChokes = false; armExpiry(); }
   };
@@ -417,7 +433,10 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (changes.some(([automation, value]) => value != null && !automation.canInsert(now))) return reject('expression-queue-full', voiceId);
     try {
       for (const [automation, value] of changes) if (value != null && !automation.insert(value, Math.max(time, now), now, Math.max(smoothingSeconds, rampSeconds))) throw new Error('Expression automation refused admission.');
-      if (voice.released && !voice.stolen && voice.child && voice.releaseAt > now) scheduleReleaseChild(voice, voice.releaseAt, voice.releaseVelocity);
+      if (ratio != null && voice.child && voice.semanticRelease?.at > now) {
+        if (voice.region.chokeGroup) rebuildChokes(voice.region.chokeGroup, voice.region.chokeScope);
+        else restoreTerminal(voice, now);
+      }
       armExpiry();
     }
     catch { errors++; preview._destroyVoice(voice, 'sample-update-failure'); return reject('sample-update-failure', voiceId); }
@@ -433,13 +452,14 @@ export function createSampleInstrumentBackend(preview, owner = null, { resolveRe
     if (time == null || release != null && (!plain(release) || !finite(release.seconds, 0, 4) ||
         release.velocity01 != null && !finite(release.velocity01, 0, 1) || release.force != null && typeof release.force !== 'boolean' || release.mode != null && release.mode !== 'one-shot' ||
         release.mode === 'one-shot' && !finite(release.tailSeconds, 0, 4))) return reject('invalid-release', voiceId);
-    if (voice.semanticRelease && release?.force !== true) return trace({ status: 'accepted', stage: 'scheduled', voiceId, reason: 'already-releasing' });
-    if (release) voice.release = release.seconds;
     const at = release?.mode === 'one-shot' ? Math.max(time, voice.start + release.tailSeconds) : time;
-    voice.semanticRelease = { at: Math.max(at, preview._context.currentTime), seconds: voice.release, velocity: release?.velocity01 ?? 1, force: release?.force === true };
+    const now = preview._context.currentTime, target = Math.max(at, now), prior = release?.force === true ? voice.forcedRelease : voice.semanticRelease;
+    if (prior && target >= prior.at || voice.stolen && voice.releaseAt <= now) return trace({ status: 'accepted', stage: 'scheduled', voiceId, reason: 'already-releasing' });
+    if (release?.force === true) voice.forcedRelease = { at: target, velocity: release.velocity01 ?? 1, reason: 'owned-cleanup' };
+    else { if (release) voice.release = release.seconds; voice.semanticRelease = { at: target, seconds: voice.release, velocity: release?.velocity01 ?? 1 }; }
     try {
       if (voice.region.chokeGroup) rebuildChokes(voice.region.chokeGroup, voice.region.chokeScope);
-      else releaseVoice(voice, at, release?.force === true, release?.force ? 'owned-cleanup' : 'semantic-end', release?.velocity01 ?? 1);
+      else restoreTerminal(voice, now);
     }
     catch { errors++; preview._destroyVoice(voice, 'sample-release-failure'); return reject('sample-release-failure', voiceId); }
     return trace({ status: 'accepted', stage: 'scheduled', voiceId, targetFrame, executionEpoch, endFrame: Math.ceil(voice.end * preview._context.sampleRate),

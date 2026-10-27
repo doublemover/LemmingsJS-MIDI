@@ -310,11 +310,11 @@ const createNativeOscillatorBackend = (preview, owner = null, { gateMode = 'boun
     if (time == null || release != null && (!Number.isFinite(release.seconds) || release.seconds < 0 || release.seconds > 4 || release.force != null && typeof release.force !== 'boolean' ||
         (release.mode != null && release.mode !== 'one-shot') ||
         (release.mode === 'one-shot' && (!Number.isFinite(release.tailSeconds) || release.tailSeconds < 0 || release.tailSeconds > 4)))) return failure('invalid-release', { voiceId });
-    if (voice.released && release?.force !== true) return Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch,
-      targetFrame, reason: 'already-releasing' });
-    if (release) voice.release = release.seconds;
     const releaseAt = release?.mode === 'one-shot' ? Math.max(time, voice.start + release.tailSeconds, preview._context.currentTime) :
       Math.max(time, preview._context.currentTime);
+    if (voice.released && release?.force !== true && releaseAt >= voice.releaseAt) return Object.freeze({ status: 'accepted', stage: 'scheduled', voiceId, executionEpoch,
+      targetFrame, reason: 'already-releasing' });
+    if (release) voice.release = release.seconds;
     try { preview._release(voice, releaseAt, release?.force === true, release?.force ? 'owned-cleanup' : release?.mode === 'one-shot' ? 'semantic-one-shot' : 'semantic-end'); }
     catch {
       deliveryErrors++; preview._destroyVoice(voice, 'backend-failure-after-acceptance');

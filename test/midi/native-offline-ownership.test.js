@@ -11,6 +11,18 @@ const patch = CAUSAL_RENDER_SOURCES.find(source => source.id === 'native-oscilla
 const request = { patch, events: [], frames: 128, sampleRate: 48000 };
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 describe('native offline producer ownership (API doubles, no PCM qualification)', () => {
+  it('rejects malformed explicit end requests before allocating an offline context or PCM', async () => {
+    const resources = createAudioResourceLeases(), admission = createBackgroundWorkerAdmission(); let contexts = 0;
+    class OfflineDouble { constructor() { contexts++; throw new Error('Unadmitted context allocation'); } }
+    for (const end of [{ releaseSeconds: -1 }, { releaseSeconds: NaN }, { releaseSeconds: 4.1 }, { releaseSeconds: 0.01, force: 'yes' }, {}]) {
+      let error;
+      try { await renderNativeOfflineGraph({ ...request, events: [{ kind: 'end', frame: 0, voiceId: 'unknown', ...end }] }, { resources, admission, OfflineAudioContext: OfflineDouble }); }
+      catch (failure) { error = failure; }
+      expect(error?.code).to.equal('native-event-preflight');
+    }
+    expect(contexts).to.equal(0); expect(resources.diagnostics().exactBytes).to.equal(0);
+    await resources.dispose().completion; admission.dispose();
+  });
   it('uses the mapped sample backend and releases its retained pins while keeping returned PCM owned', async () => {
     const budget = createResourceBudget(), resources = createAudioResourceLeases({ resourceBudget: budget }), admission = createBackgroundWorkerAdmission({ maxWorkers: 1 });
     const hash = 'a'.repeat(64), ref = { contentHash: hash, kind: 'sample', bytes: 64044, frames: 32000, sourceSampleRate: 32000, channels: 1 };

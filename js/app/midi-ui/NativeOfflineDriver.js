@@ -53,6 +53,7 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
         typeof event.voiceId !== 'string' || !event.voiceId || event.voiceId.length > 512 ||
         event.executionEpoch != null && (typeof event.executionEpoch !== 'string' || !event.executionEpoch || event.executionEpoch.length > 256) ||
         event.releaseVelocity01 != null && (!Number.isFinite(event.releaseVelocity01) || event.releaseVelocity01 < 0 || event.releaseVelocity01 > 1) ||
+        event.kind === 'end' && (!Number.isFinite(event.releaseSeconds) || event.releaseSeconds < 0 || event.releaseSeconds > 4 || event.force != null && typeof event.force !== 'boolean') ||
         event.kind === 'lane' && (typeof event.laneId !== 'string' || !event.laneId || event.laneId.length > 128) ||
         event.kind === 'begin' && (!natural(event.releaseFrame) || event.releaseFrame < event.frame ||
           !Number.isFinite(event.releaseSeconds) || event.releaseSeconds < 0.002 || event.releaseSeconds > 4))
@@ -208,6 +209,9 @@ export async function renderNativeOfflineGraph({ patch, events, frames, sampleRa
           const selection = retainSampleSelectionReceipt(onset);
           if (selection) { selectedOnsets++; if (sourceSelections.length < selectionLimit) sourceSelections.push(Object.freeze({ intentId: event.intent.intentId, voiceId: event.voiceId, frame: event.frame, ...selection })); }
           accept(backend.end(event.voiceId, { seconds: event.releaseSeconds, ...(event.releaseVelocity01 != null ? { velocity01: event.releaseVelocity01 } : {}) }, event.releaseFrame, event.executionEpoch || 'offline-render'), event);
+        } else if (event.kind === 'end') {
+          accept(backend.end(event.voiceId, { seconds: event.releaseSeconds, ...(event.releaseVelocity01 != null ? { velocity01: event.releaseVelocity01 } : {}),
+            ...(event.force != null ? { force: event.force } : {}) }, event.frame, event.executionEpoch || 'offline-render'), event);
         } else if (event.kind === 'lane') accept(backend.updateLaneMix(event.voiceId, { gain: 1, pan: 0 }, event.frame, event.executionEpoch || 'offline-render', event.laneId), event);
         else if (event.kind === 'update' && Object.keys(event.expression || {}).length)
           accept(backend.update(event.voiceId, event.expression, event.frame, event.executionEpoch || 'offline-render'), event);

@@ -284,6 +284,19 @@ describe('BrowserNotePreview', function() {
     pitch: { cents: 6000.001, referenceHz: 440 }, velocity01: 0.7501, expression: {},
     sourceEventIds: ['physical:1'], onsetId: 'onset:' + voiceId, actorId: 'actor:' + voiceId });
 
+  it('moves a queued native release earlier without restarting its onset and ignores later repeats', async () => {
+    const { preview, context } = setup({ maxVoices: 8 }), session = preview.createSession('early-end'), backend = session.createInstrumentBackend();
+    await backend.prepare(nativePatch()); await session.enable(); context.currentTime = 0;
+    expect(backend.begin(nativeIntent('earlier'), 4800).status).to.equal('accepted');
+    expect(backend.end('earlier', { seconds: 0.04 }, 19200).status).to.equal('accepted');
+    const voice = [...preview._voices][0], source = voice.oscillator;
+    expect(voice.releaseAt).to.equal(0.4);
+    expect(backend.end('earlier', { seconds: 0.04 }, 9600).status).to.equal('accepted');
+    expect(voice.releaseAt).to.equal(0.2); expect(voice.end).to.be.closeTo(0.24, 1e-12); expect(voice.oscillator).to.equal(source);
+    expect(backend.end('earlier', { seconds: 0.5 }, 14400).reason).to.equal('already-releasing');
+    expect(voice.releaseAt).to.equal(0.2); expect(voice.release).to.equal(0.04); await preview.dispose();
+  });
+
   it('schedules actual travel-derived voices through the strict expression adapter', async () => {
     const { preview, context } = setup({ maxVoices: 8 }), session = preview.createSession('travel'), backend = session.createInstrumentBackend({ gateMode: 'owned' });
     expect((await backend.prepare(nativePatch())).status).to.equal('ready'); await session.enable();
