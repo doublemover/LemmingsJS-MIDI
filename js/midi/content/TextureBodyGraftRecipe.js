@@ -1,4 +1,4 @@
-import { createSoundSeedRecipe } from './SoundSeedRecipe.js';
+import { createGraftRecipeOrigin } from './GraftRecipeOrigin.js';
 import { SOUND_SEED_GRAFT_BODIES } from './SoundSeedGraftRecipe.js';
 import { prepareTextureExciter, TEXTURE_EXCITER_KINDS } from './TextureExciter.js';
 import { prepareTextureBodyGraftDescriptor, TEXTURE_BODY_REVISION } from './TextureBodyProfile.js';
@@ -9,11 +9,12 @@ const component = (id, parameters) => ({ id, role: id, parameters });
 const macro = (id, name, parameter, low, high, unit, default01) => ({ id, name, mode: 'onset-only', default01, smoothingMs: 10, perceptualDirection: name + ' follows the declared new-voice equation; existing bodies retain their onset state.',
   targets: [{ parameter, minimum: quantity(low, unit), maximum: quantity(high, unit), curve: 'linear', composition: 'replace', clamp: true }] });
 
-export async function createTextureBodyGraftRecipe({ manifest, assetHash, byteLength, pitch, graftBody = 'tin', modalFit = null, textureKind = 'sand-drag', traversalBinding } = {}) {
+export async function createTextureBodyGraftRecipe({ manifest, assetHash, byteLength, pitch, graftBody = 'tin', originalBody = null, modalFit = null, textureKind = 'sand-drag', traversalBinding } = {}) {
   const fail = message => { throw new TypeError('Texture body: ' + message); };
   if (pitch?.mode !== 'pitched' || !Number.isFinite(pitch.rootCents) || pitch.rootCents < 2400 || pitch.rootCents > 9600) fail('Declare body tuning independently of the unpitched spatial exciter.');
   traversalBinding = validateTextureBodyTravelBinding(traversalBinding);
-  const texture = prepareTextureExciter({ kind: textureKind }), base = await createSoundSeedRecipe({ manifest, assetHash, byteLength, transform: 'hammer-seed', pitch: { mode: 'unpitched' } }), rootHz = 440 * 2 ** ((pitch.rootCents - 6900) / 1200);
+  if (originalBody !== null && originalBody !== graftBody) fail('The original ancestry must name the body actually rendered.');
+  const texture = prepareTextureExciter({ kind: textureKind }), base = await createGraftRecipeOrigin({ manifest, assetHash, byteLength, originalBody, modalFit }), rootHz = 440 * 2 ** ((pitch.rootCents - 6900) / 1200);
   if (rootHz < 20 || rootHz > 2000) fail('The declared body root exceeds this owned source range.');
   let body = SOUND_SEED_GRAFT_BODIES[graftBody];
   if (graftBody === 'fitted') {
@@ -27,10 +28,10 @@ export async function createTextureBodyGraftRecipe({ manifest, assetHash, byteLe
   const graft = prepareTextureBodyGraftDescriptor({ exciterRef: { port: 'observed-spatial-texture-audio-excitation', contentHash: textureHash, revision: texture.revision }, bodyRef: { port: 'linear-modal-audio-input', contentHash: bodyHash, revision: body.revision, modeCount: body.ratios.length },
     observationRef: { port: 'signed-modal-audio-observation', contentHash: await hashData(observation), revision: observation.revision }, excitationCalibration: { reference: 'owned-texture-filtered-peak-contract-v1', inputPeakBound: 1, injection: '(1-r)/(2*sqrt(2))', observationGain: 0.4, failure: 'stop-body-input-and-retain-tail', acousticCalibration: 'unqualified-relative-audio-model' } });
   const contract = freezeData({ ...base.contract, transform: 'texture-body-graft', pitchDeclaration: { mode: 'declared-body-root', rootCents: pitch.rootCents }, texture, body, observation, graft, traversalBinding,
-    sourceMaterialRole: 'body-fit-and-regeneration-ancestry-only;frozen-audio-not-played', releasePolicy: 'positive-body-decay-under-explicit-four-second-owned-release-envelope;final-owner-cutoff', warnings: ['Spatial excitation is original, not a reconstruction of the frozen seed. BODY changes intrinsic modal T60; the separate four-second release envelope remains explicit. Numerical, spectral, device and listening qualification is pending.'] });
+    sourceMaterialRole: originalBody === null ? 'body-fit-and-regeneration-ancestry-only;frozen-audio-not-played' : 'original-authored-modal-model-data;no-recorded-PCM', releasePolicy: 'positive-body-decay-under-explicit-four-second-owned-release-envelope;final-owner-cutoff', warnings: [originalBody === null ? 'Spatial excitation is original, not a reconstruction of the frozen seed. BODY changes intrinsic modal T60; the separate four-second release envelope remains explicit. Numerical, spectral, device and listening qualification is pending.' : 'Original spatial exciter and authored modal model. No frozen recording is played or required. BODY changes intrinsic modal T60 under a separate four-second release envelope. Numerical, spectral, device and listening qualification is pending.'] });
   const encoded = canonicalDataText(contract, { maxBytes: 262144, maxNodes: 32768 }), contractHash = await hashDataText(encoded.text), source = structuredClone(base.source), recipe = source.recipes[0], id = 'texture.body.' + contractHash.slice(0, 24);
   source.pack.id = id; source.pack.name = (textureKind === 'sand-drag' && graftBody === 'tin' ? 'Tin pollen' : TEXTURE_EXCITER_KINDS.includes(textureKind) ? textureKind : 'Texture') + ' → ' + body.name; recipe.id = id; recipe.name = source.pack.name; recipe.engine = { id: 'worklet-texture', version: 1 }; delete recipe.sampleMap; recipe.sampleRefs = [];
-  recipe.tags = ['procedural-texture', 'texture-body-graft', 'observed-travel', 'private-modal-body', 'unqualified-content']; recipe.dependencies = [assetHash, contractHash]; recipe.voicePolicy = { maxVoices: 8, steal: 'reject' };
+  recipe.tags = ['procedural-texture', 'texture-body-graft', 'observed-travel', 'private-modal-body', 'unqualified-content']; recipe.dependencies = [base.contract.assetHash, contractHash]; recipe.voicePolicy = { maxVoices: 8, steal: 'reject' };
   const parameters = { textureBodySeconds: quantity(texture.bodySeconds, 's'), graftModeCount: quantity(body.ratios.length, 'count'), graftMix01: quantity(0.7, 'normalized'), graftT60Seconds: quantity(longest, 's'), graftDamping01: quantity(0, 'normalized'), graftExcite01: quantity(1, 'normalized'), graftPickup01: quantity(0.5, 'normalized') };
   for (let index = 0; index < body.ratios.length; index++) {
     parameters['graftMode' + index + 'Ratio'] = quantity(body.ratios[index], 'ratio'); parameters['graftMode' + index + 'T60Scale'] = quantity(body.t60[index] / longest, 'ratio'); parameters['graftMode' + index + 'PickupA'] = quantity(observation.gainsA[index], 'dimensionless'); parameters['graftMode' + index + 'PickupB'] = quantity(observation.gainsB[index], 'dimensionless');
@@ -41,7 +42,7 @@ export async function createTextureBodyGraftRecipe({ manifest, assetHash, byteLe
   const invariants = ['one-canonical-source', 'motion-gated-spatial-exciter', 'positive-private-body-tail', 'signed-observation', 'next-onset-body-transition'];
   source.realizationGroups = [{ schema: 'lemmings-authored-sound-realizations/v1', id: id + '.realization', defaultProfileId: 'prepared', requiredInvariants: invariants, profiles: [{ id: 'prepared', recipeId: id, algorithmRevision: TEXTURE_BODY_REVISION, preservedInvariants: invariants, changedAudibleProperties: [], fallbackProfileId: null }], transitions: [], singleProfileLimit: 'One original bounded body tier; no measured cheaper alternative. Exact kernel-state cut API is awaiting PCM-equivalence qualification.' }];
   source.files[1].sha256 = contractHash; source.files[1].bytes = encoded.bytes.length;
-  return freezeData({ source, contract, contractHash, contractText: encoded.text, templateRevision: TEXTURE_BODY_REVISION });
+  return freezeData({ source, contract, contractHash, contractText: encoded.text, ...(originalBody === null ? {} : { originalModelFile: base.originalModelFile }), templateRevision: TEXTURE_BODY_REVISION });
 }
 
 export function createTextureBodyTravelBinding(instrument) {

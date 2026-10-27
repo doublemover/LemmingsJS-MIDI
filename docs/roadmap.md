@@ -6445,3 +6445,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   artifact rejection, cancellation and fault/lifetime cases. Formatting, five-file
   syntax/import checks, critical types and diff whitespace pass. No WASM, DSP,
   browser, listening or full-suite tests ran.
+
+### Continuation 255 — original graft ancestry and Nursery pair (#1216, #1233)
+
+- Added explicit original authored model ancestry for procedural texture and
+  intact wind/friction outer-body templates. The model bytes and typed contract
+  are separately hashed generated data; there is no fictional PCM, take or fitted
+  recording. Mixed original/seed ancestry, mismatched models and unbacked fits are
+  refused. The existing frozen-seed path retains its complete identity/result.
+- Installed Instrument Nursery's original pair: one finite entrant supplies Tin
+  pollen through actual signed journey motion; another supplies Glass breath
+  through observed non-spawn flight. The intact feedback calibration is sealed,
+  dry/wet observation retains the same excitation, and no body child becomes a
+  semantic onset. EXCITE/BODY/DAMP/MIX use the existing atomic scene macro action.
+  The catalog retains exact original model/template text as well as requirements.
+- The third finite hammer/FM route still requires prepared immutable sample
+  material plus the scene asset-pin adapter. This pair is named and described as
+  such; it does not claim the complete three-template Nursery or measured acoustic
+  usefulness. Scene geometry, physical trace fixtures, same-take PCM comparisons,
+  device cost and matched-level listening remain unqualified.
+- Authored unrun compiled-origin, complete legacy identity, model mismatch,
+  metadata/hash closure, actual-world motion/flight, empty world and dry/body
+  physical-trace fixtures. Formatting, seven-file syntax/import checks, critical
+  types, diff whitespace and static provenance pass (10 components / 337 files).
+  No runtime, browser, numerical, audio, listening or full-suite tests ran.

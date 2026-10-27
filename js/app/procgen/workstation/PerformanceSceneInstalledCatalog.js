@@ -1,3 +1,4 @@
+import { createInstrumentNurseryScore } from './InstrumentNurseryScore.js';
 import { createGlacierChoirScores } from './GlacierChoirScore.js';
 import { createRescueOrchestraScores } from './RescueOrchestraScore.js';
 import { createSwitchyardScores } from './SwitchyardScore.js';
@@ -21,7 +22,7 @@ import { validatePerformanceSceneRecipe } from './PerformanceSceneRecipe.js';
 // Larger named performances still need their authored geometry and qualification.
 export async function createInstalledPerformanceSceneCatalog({ getCatalog = getNativeInstrumentCatalog, signal } = {}) {
   signal?.throwIfAborted(); const catalog = await getCatalog(); signal?.throwIfAborted();
-  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map();
+  const registry = createPerformanceSceneRegistry(), recipes = new Map(), available = new Map(), embeddedAssets = new Map();
   if (catalog.state !== 'bound-application-engines' || !/^[a-f0-9]{64}$/.test(catalog.executionIdentity?.buildId) || !catalog.descriptors.some(value => value.engineId === 'worklet-sine')) return Object.freeze({ registry, available: false, reason: 'Scene scores require an immutable application build with pinned world and audio artifacts.', resolveDependency: async () => ({ status: 'unavailable', reason: 'Executing source is unbound.' }), getRecipe() { throw new Error('Scene source is unbound.'); } });
   const sourceHash = catalog.executionIdentity.buildId, descriptor = catalog.descriptors.find(value => value.engineId === 'worklet-sine');
   const put = (kind, id, revision, hash, storage = 'installed-runtime') => { const value = { kind, id, revision, hash, status: 'available', storage }; available.set(sceneDependencyKey(value), freezeData(value)); };
@@ -141,6 +142,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
   const registerAuthoredScores = async items => {
     for (const item of items) {
       signal?.throwIfAborted(); recipes.set(item.recipeHash, item.recipe); put('score-recipe', item.recipe.id, item.recipe.revision, item.recipeHash, 'embedded');
+      for (const asset of item.embeddedAssets || []) embeddedAssets.set(asset.hash, freezeData({ ...asset }));
       for (const dependency of item.dependencies) put(dependency.kind, dependency.id, dependency.revision, dependency.hash);
       for (const { reference } of item.scene.patchRefs) {
         const engine = reference.engineRequirement; put('engine', engine.engineId, engine.engineVersion, engine.artifactHash); put('parameter-schema', engine.engineId, engine.engineVersion, engine.parameterSchemaHash);
@@ -149,10 +151,13 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
       await registry.register(item.scene);
     }
   };
+  const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
+  if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));
   for (const crewDescriptor of [pluck, choir, modal]) if (crewDescriptor?.maximumVoices >= (crewDescriptor.engineId === 'worklet-choir' ? 8 : 16)) await registerAuthoredScores(await createRescueOrchestraScores({ sourceHash, descriptor: crewDescriptor, signal }));
   return Object.freeze({ registry, available: true, reason: null, sourceHash,
+    getEmbeddedAsset(hash) { return embeddedAssets.get(hash) || null; },
     resolveDependency: async dependency => available.get(sceneDependencyKey(dependency)) || { status: 'unavailable', reason: 'The exact dependency is not installed in this scene catalog.' },
     getRecipe(scene) { const recipe = recipes.get(scene.worldRecipeRef.hash); if (!recipe || recipe.id !== scene.worldRecipeRef.id || recipe.revision !== scene.worldRecipeRef.revision) throw new Error('The exact physical score recipe is unavailable.'); return recipe; },
     async origin(scene, variants = []) { return freezeData({ schema: 'lemmings-performance-scene-origin/v1', manifest: scene, sceneHash: await performanceSceneHash(scene), recipe: recipes.get(scene.worldRecipeRef.hash), variants }); } });
