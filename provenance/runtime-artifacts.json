@@ -226,6 +226,7 @@
         "js/app/procgen/workstation/CausalProbabilityPolicy.js",
         "js/app/procgen/workstation/CausalRandom.js",
         "js/app/procgen/workstation/LaneMixState.js",
+        "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
@@ -234,6 +235,8 @@
         "js/app/procgen/workstation/ProcgenRecoveryChecksum.js",
         "js/app/procgen/workstation/ProcgenRecoveryChunks.js",
         "js/app/procgen/workstation/ProcgenRecoveryPageCodec.js",
+        "js/app/procgen/workstation/ProcgenSmfBytes.js",
+        "js/app/procgen/workstation/RecordedMidiEncoding.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
@@ -392,8 +395,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 273,
-      "sha256": "f5ddba2debe8e4d7340a03cc0f4cfac56fc351db3e552c5a38cd984c24c8f7e8"
+      "fileCount": 276,
+      "sha256": "dc09962297971cc62b90f067622d3ef1a08357b9af076ab78562138f8c938578"
     },
     {
       "id": "lemmings-timing-worker-source",

@@ -22534,6 +22534,502 @@
     "openIssueInventory": {
       "count": 216,
       "source": "Fresh three-page GitHub open-issue inventory after1169 closure; no new issues since308."
+    },
+    "remoteCi": {
+      "head": "57bc549b37d7e249a87cab20bbb017597db321ac",
+      "status": "failure",
+      "run": 40744947136,
+      "job": 123016128535,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40744947136/job/123016128535",
+      "reason": "Required workstation file has no PR smoke case: procgen-workstation-recording-range.spec.js. Opt-in benchmark had no boundary companion. Receipt upload consequently had no selection file.",
+      "desktopPassed": 22,
+      "static": "passed",
+      "nodeCoverage": "skipped",
+      "benchmark": "skipped",
+      "policy": "success",
+      "dependencyReview": "success",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci312-failure.log",
+        "bytes": 92508,
+        "sha256": "afff3e855f465c695d155302f868db43b5de666dc343178896b3b8f08d18f5c5"
+      },
+      "repair": "Continuation313 adds an actual production-workstation range/cleanup smoke case without weakening the required-file catalog rule."
+    }
+  },
+  "continuation313": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Prepare stable recorded MIDI prefixes in an admitted cancelable worker",
+    "sourceBase": "57bc549b37d7e249a87cab20bbb017597db321ac",
+    "issues": [
+      1117
+    ],
+    "development": [
+      "Capture a stable prefix into25-byte typed columns per source slot. Bound route IDs/text and complete export workspace; reserve before allocation, yield in short slices and never detach live recording data. Appends do not change the prefix; cancellation/clear/document replacement/disposal fence publication.",
+      "Select accepted-output versus intent evidence, balance same-pitch FIFO per route/channel, preserve stable same-timestamp order and encode exact SMF bytes in a required admitted worker. Transfer owned output through acknowledged pages. Remove main-thread whole-take copy/sort from the production export handler.",
+      "Publish progress/Cancel preparation in the existing file panel. Pressure, missing workers, failure, Cancel and stale results retain the prior prepared artifact. Preserve independent Panic and bounded backpressured file delivery.",
+      "Bind each recording buffer to a unique identity, changed on explicit clearing, so unsaved-session source references cannot collide. Include exact worker execution/transport receipts on the prepared artifact. Queued-input estimates include the bounded route-text table.",
+      "Add the missing production boundary case alongside312's opt-in benchmark; preserve the required-file smoke rule. Refresh the existing worker provenance component for the three new shared worker modules."
+    ],
+    "validation": {
+      "node": {
+        "passed": 212,
+        "failed": 0,
+        "scope": "64 generated complete-byte reference corpora, stable-prefix/clear/dispose/admission ownership, existing recording/ports/workstation orchestration, shared worker lifecycle and bounded file-delivery/backpressure regressions.",
+        "scopedCoverage": {
+          "MidiRecordingExportSnapshot.js": {
+            "lines": 100,
+            "branches": 100,
+            "functions": 100
+          },
+          "ProcgenSmfBytes.js": {
+            "lines": 100,
+            "branches": 90.9,
+            "functions": 100
+          },
+          "RecordedMidiEncoding.js": {
+            "lines": 100,
+            "branches": 86.31,
+            "functions": 66.66
+          }
+        }
+      },
+      "browser": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 49268.535,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "workerExport": {
+          "events": 99991,
+          "byteLength": 400370,
+          "panicOwnerMs": 0.7000000029802322,
+          "physics": 1,
+          "worker": {
+            "protocol": 3,
+            "jobId": "background-27",
+            "kind": "encode-recorded-midi",
+            "ownerId": "procgen-midi-export",
+            "ownerEpoch": 1,
+            "sourceRevision": "28875f58-d500-4730-a344-823a618c440e:0:99991",
+            "state": "computed",
+            "publication": "not-committed",
+            "method": "dedicated-worker",
+            "queueWaitMs": 0,
+            "elapsedMs": 1964.7999999970198,
+            "inputBytes": 2500136,
+            "nodes": 33,
+            "retainedBytes": 5002384,
+            "inputTransport": {
+              "schema": "owned-background-snapshot-pages/v1",
+              "packets": 75,
+              "operations": 148,
+              "bytes": 2511505,
+              "maximumSliceMs": 0.30000001192092896,
+              "maximumPostMessageMs": 0.10000000894069672,
+              "elapsedMs": 151.09999999403954,
+              "stagingBytes": 131072
+            },
+            "outputTransport": {
+              "mode": "acknowledged-snapshot-pages",
+              "packets": 1,
+              "operations": 52,
+              "bytes": 4458,
+              "ownedTransferredBytes": 400370,
+              "maximumSliceMs": 0.10000000894069672,
+              "elapsedMs": 1,
+              "retainedEstimateBytes": 804060
+            },
+            "executionIdentity": {
+              "receiptVersion": 3,
+              "activeExecution": "bound",
+              "buildId": "aa636c458427c358c5f2f5b2b2eb931597879d3f3f4d2ee6bca41958f2e72114",
+              "closureDigest": "949a2ab21286cdd6fa4edc2e77e787c5127ede43c06476cdab8941f2be4ce9fc",
+              "assetDigest": "2ade4e24ca073697afee35eeec43ae6ef55962f9b40f9a84900852de0deda9ba",
+              "codeDigest": "ff14019faa41820dd658fe33e28d651e0303a36325d936f1df07263179fac5ab",
+              "harnessVersion": "browser-survey-v1",
+              "identityRecipe": "normalized-data-slot-v2-instruments",
+              "instrumentArtifacts": [
+                {
+                  "engineId": "native-fm",
+                  "engineVersion": 1,
+                  "artifactHash": "7847948272b0e173f015843db7043a54d86eb5caa3792679ae4d976646848b3d"
+                },
+                {
+                  "engineId": "native-modal",
+                  "engineVersion": 1,
+                  "artifactHash": "f1adfed29846f4506b3fcaaa8e76062494cf22a60459413722186f725c494f69"
+                },
+                {
+                  "engineId": "native-oscillator",
+                  "engineVersion": 1,
+                  "artifactHash": "a9cdc694548ecef9c586d1a48be839af04a83788e96780ad888cb4f1e5ab83b3"
+                },
+                {
+                  "engineId": "native-sample",
+                  "engineVersion": 1,
+                  "artifactHash": "9893eff482394383495206530952e36ea706fceda856c122cb9e3dc2c1af6757"
+                },
+                {
+                  "engineId": "worklet-choir",
+                  "engineVersion": 1,
+                  "artifactHash": "4d58d0678c8ce39d4c2ae7ce89e2da09338bd3e32d2eb85f6bb0d307a519a697"
+                },
+                {
+                  "engineId": "worklet-friction",
+                  "engineVersion": 1,
+                  "artifactHash": "d1d3ccebe6bfd397b4b0772e49eca807bcf2871638f49234a0d892bda26684c4"
+                },
+                {
+                  "engineId": "worklet-granular",
+                  "engineVersion": 1,
+                  "artifactHash": "381cc1ccd489d3f517d2288ff488a7167fb46dc78b376db7b7ca2bc9f25f4f84"
+                },
+                {
+                  "engineId": "worklet-pluck",
+                  "engineVersion": 1,
+                  "artifactHash": "b18fa01db0c3c7e52de63fcd689fdba7b9b4881d24e9e94291c310051553c609"
+                },
+                {
+                  "engineId": "worklet-sample",
+                  "engineVersion": 1,
+                  "artifactHash": "2bf178e979ce0590f3cb5f450897760b0a78f8659dd5c74cba72e357df703ad3"
+                },
+                {
+                  "engineId": "worklet-seed-layers",
+                  "engineVersion": 1,
+                  "artifactHash": "db3078571c90bc600335a8328cc3d931c9133c745de4fc8be181d78545ad7fb0"
+                },
+                {
+                  "engineId": "worklet-sine",
+                  "engineVersion": 1,
+                  "artifactHash": "3b018896016be98b4b73c57868a8c8316daa351140053a385fa828e08642999c"
+                },
+                {
+                  "engineId": "worklet-spectrum",
+                  "engineVersion": 1,
+                  "artifactHash": "317a06a85976df4be6e6f319b0897c00bfc413b8a54db896b38095300cb4e7c7"
+                },
+                {
+                  "engineId": "worklet-texture",
+                  "engineVersion": 1,
+                  "artifactHash": "c5f2ff062d5620a4dce3d8e966016381dafbef26da6c66737638f0b582b61e2c"
+                },
+                {
+                  "engineId": "worklet-wind",
+                  "engineVersion": 1,
+                  "artifactHash": "a4ae25189f0bba736ab96f10f1aba1218f7d56b6dc401b7f48e8a6935e6e9126"
+                }
+              ],
+              "stateSchema": 3,
+              "realmId": "53ff3624-9f91-4b26-8696-f3a090125074",
+              "capabilityProfile": "browser-background-jobs",
+              "binding": "immutable-application-generation"
+            }
+          },
+          "manifest": {
+            "schema": "procgen-recording-window/v1",
+            "complete": true,
+            "reason": null,
+            "reasons": [],
+            "evidence": "intent-render",
+            "retainedRange": {
+              "firstSequence": 1,
+              "lastSequence": 99991,
+              "firstTimestamp": 0,
+              "lastTimestamp": 99989
+            },
+            "firstLostSequence": null,
+            "droppedRecords": 0,
+            "droppedCategories": {
+              "input": 0,
+              "output": 0,
+              "transport": 0,
+              "other": 0
+            },
+            "omittedOnsets": 0,
+            "omittedReleases": 0
+          },
+          "options": {
+            "bpm": 360,
+            "beatsPerBar": 4,
+            "beatUnit": 4
+          },
+          "tempo": {
+            "bpm": 360,
+            "beat": 0.4488000000715256
+          },
+          "retainedAfterCancel": true,
+          "scope": "actual-workstation-worker-preparation-and-cancellation;no-device-or-end-to-end-button-latency-claim"
+        },
+        "scope": "Actual built workstation99991-record export, reference equality of downloaded bytes, cancellation preserving prior file and paused physics; production1000-history range cleanup and opt-in1k-1m recording benchmark.",
+        "sourceDeltaToPublication": []
+      },
+      "earlierBrowser": [
+        {
+          "passed": 0,
+          "failed": 1,
+          "reason": "New fixture dynamically imported the legacy reference encoder after production no longer referenced it, so the immutable build correctly omitted it. Move reference comparison to Node against the actual download."
+        },
+        {
+          "passed": 3,
+          "failed": 0,
+          "scope": "Before final recording UUID and conservative queued-route-text estimates; repeated final native cohort qualifies those final changes."
+        }
+      ],
+      "earlierNode": [
+        {
+          "passed": 212,
+          "failed": 0,
+          "scope": "Before final UUID and queued-route-text estimate checks; final cohort repeats all212 together."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/345 files;worker276",
+        "whitespace",
+        "browser collection:140 full/111 smoke/all14 capabilities"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Exact-head CI pending publication; latest complete full green remains311. Preserve312 catalog failure separately.",
+      "scopeLimits": [
+        "Panic timing is one actual owner call during preparation cancellation, not end-to-end button p95/p99 or hardware output.",
+        "MIDI exports retain explicit partial-window/evidence semantics. They do not establish durable causal-tape capture, exact physical-device lifecycles or acoustic equivalence.",
+        "Existing stalled/canceled writer tests use injected sink acknowledgments; real disk quota and native durability remain distinct."
+      ],
+      "coverageFollowup": "Snapshot100% lines/branches/functions; encoder100% lines,86.31% branches. Additional malformed worker columns and default callback variants remain fault-injection follow-up, not evidence of missing public acceptance."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-categories-final.log",
+        "bytes": 2287,
+        "sha256": "5e52b2ca514e6b65f9a5d5e33866942637c41c17beadb851ac7a5f734904829b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-categories.log",
+        "bytes": 2287,
+        "sha256": "5e52b2ca514e6b65f9a5d5e33866942637c41c17beadb851ac7a5f734904829b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-format-publication.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-format-verified.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-native-final.log",
+        "bytes": 858,
+        "sha256": "2cdd8c8bf24d063204482ec6095b19961b7a2ebcc502b80ca6e7490fc88ac3ef"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-native-verified.log",
+        "bytes": 859,
+        "sha256": "c28ad41e005be2bcd56df4b250999153890221671b7091db6829d0442620a497"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-native.log",
+        "bytes": 3984,
+        "sha256": "1d74f13721983e26c5b44921097363538008594613eb765fc5f19f1623a7a2d9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-node-final.log",
+        "bytes": 21065,
+        "sha256": "7714df68b57bbaf324af57dcf263ec5e22af0806fe99c66ae2ece4ed13cd4719"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-node.log",
+        "bytes": 21066,
+        "sha256": "b7064e96042e87c5a400654421fb7b5fc10375a42df5abd77e3d262b34d49a8d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-provenance-final.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-provenance.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-types-final.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-undefined-final.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-browser-selection.json",
+        "bytes": 276368,
+        "sha256": "5caea6470c7cff6e85ae8efbb02b92dfaa3866717a2f8a72893ed626e9bee613"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-midi-export-results.json",
+        "bytes": 8878,
+        "sha256": "4578df0c6dc4aeb6ef96e64dadacfda5637f4840314c5064c9a1b3c5032fb690"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-recording-final-results.json",
+        "bytes": 20895,
+        "sha256": "b795337f9b25062612c9386e6af02f8097f86159e1d9f78f01c26f1bdf587e0c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-recording-verified-results.json",
+        "bytes": 20999,
+        "sha256": "8da5ce43714b7827da2eb694f0510fab0fa3d206f1e040704f56063dcb0c24b8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-313-coverage\\coverage-summary.json",
+        "bytes": 254201,
+        "sha256": "2124aa40ac1b7437db031b016d8a25b9cf158a84c46a99d83893fed708abec80"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-captures\\second-browser-recording-range-benchmark.json",
+        "bytes": 6198,
+        "sha256": "9a33b0ba97404d8af6e25e9d1ae27aa5c3c294c7b82db119d0f7a6b630cc588c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-captures\\second-recorded-midi-worker-export.json",
+        "bytes": 3957,
+        "sha256": "265471947a25953bcfcccc8edd7ed0c07de63215f37c72747978ae71519569f4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-captures\\verified-browser-recording-range-benchmark.json",
+        "bytes": 6247,
+        "sha256": "c420f8614fcdee9dc97665c3d5bf91390b78706b4adc24673f66757cb546ae4e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog313-captures\\verified-recorded-midi-worker-export.json",
+        "bytes": 3990,
+        "sha256": "fe8b059138c2acec7397505551924f0e7ccf5f0b4d78e1143a873c5492c4ef3d"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 42625,
+        "sha256": "8b28bf1074797b6b29aadb52e2900cace45173bfa645290c92697a1495d82ddc"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 597041,
+        "sha256": "9c454a234bccf8048ee6ce826cf6f490a8b9eda7fe2adad31e1f71d3b5e7132e"
+      },
+      {
+        "path": "e2e/procgen-workstation-midi-worker-export.spec.js",
+        "bytes": 4430,
+        "sha256": "c143e6c8fa611b471a95ba8df4deda481e48b285f0f0b5197d16813e32cee223"
+      },
+      {
+        "path": "e2e/procgen-workstation-recording-range.spec.js",
+        "bytes": 3943,
+        "sha256": "d2b1446130ed72c3006b1a12f81ef6731aaf87421623a60d2775f218e63bc7f4"
+      },
+      {
+        "path": "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
+        "bytes": 2645,
+        "sha256": "9d15d15b44300c559be77528c9492fffc5da92d20d7d621e1556523ca6e37769"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiExport.js",
+        "bytes": 3412,
+        "sha256": "295983dd0d31ff5e9af0aa35499918b5e1fe44f1b54bb56f1895fec5ea3e6909"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "bytes": 66570,
+        "sha256": "97dc4280010764168a2168d7bb3b197d479e5c6c721fb898f2eb73cda56a48f1"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSmfBytes.js",
+        "bytes": 913,
+        "sha256": "0735887cb06356ba2de9ef54d70f3275a09d63a3c51e19b86fbb9fe2185c0ee2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 199142,
+        "sha256": "6feb65e8c2eec9808e16d9dcd64c37b31a50d48cb103efd4f49d4c5c02d12f67"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 134354,
+        "sha256": "c964211b27f9473d28a4bc8a6366718b167744dd7754aa8d4e1ee082b0fc8118"
+      },
+      {
+        "path": "js/app/procgen/workstation/RecordedMidiEncoding.js",
+        "bytes": 6714,
+        "sha256": "7252c8839348913ba81ecf52fd49bc6487c2d2fbfc021446192197546ca641bc"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "bytes": 49580,
+        "sha256": "dd2aea911a243125bf9ffe5429de5f99c0193bf0d7c188eea8ed953952ffc682"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "bytes": 1925,
+        "sha256": "3103ffd867dfe00666705ecbacb9e581a5f556f7ac07dab9ae28f765cc3e6f23"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "bytes": 7352,
+        "sha256": "48fc3fb1b947ab329e10248b43faac582ec42a44e920bd51257687fa20118911"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21123,
+        "sha256": "929ba1dc42ebf61643f7af8f87b48707eb46a4dc7f3dd84c9937ea125f22681a"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 102708,
+        "sha256": "bd98f53f69c0e07aa728e70eac3af021444f585a28e0e05027733d48768dfe40"
+      },
+      {
+        "path": "test/recorded-midi-export.test.js",
+        "bytes": 8956,
+        "sha256": "28dec11267a588402ebccdae3212dedd17ee828278ffe079280070269c87ffad"
+      }
+    ],
+    "issueStatus": {
+      "1117": {
+        "state": "open-implemented-partial",
+        "remaining": "Actual pause/Panic button-tail latency, active-ledger reference evaluation and durable-backpressure/document-boundary qualification under1092/1087."
+      }
     }
   }
 }

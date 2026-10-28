@@ -12,6 +12,8 @@ import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetiremen
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { backgroundJobService } from '../js/app/resources/BackgroundJobService.js';
+import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
 function target() {
   const events = new Map();
@@ -49,12 +51,15 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
   let rejectSave = false, saveCalls = 0;
   const storage = storageOverride || { async save(id, session) { saveCalls++; if (rejectSave) throw new Error('Storage unavailable'); stored.set(id, session); }, async load(id) { return stored.get(id); }, async list() { return [...stored.keys()].map(id => ({ id })); }, close() {} };
   let rejectRestart = false, returnFalseRestart = false, restartGate = null;
+  const midiJobs = createTestBackgroundJobs();
+  const jobs = backgroundJobs || { compute: options => (options.kind === 'encode-recorded-midi' ? midiJobs : backgroundJobService).compute(options) };
   const studio = createProcgenWorkstation({ document, window, legacy, getRuntime: () => runtime,
     restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return world instanceof ProcgenLaneWorld ? captureProcgenCheckpoint(world) : { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    getInstrumentCatalog, resourceBudget, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
+    getInstrumentCatalog, resourceBudget, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, backgroundJobs: jobs
   });
+  const dispose = studio.dispose; studio.dispose = () => { const retirement = dispose(); retirement.completion.then(() => midiJobs.dispose()); return retirement; };
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; }, allowSave() { rejectSave = false; },
     holdRestart() { let release; restartGate = new Promise(resolve => { release = resolve; }); return release; }, failCamera() { throwCamera = true; } };
@@ -207,10 +212,11 @@ describe('ProcGen workstation orchestration', () => {
   });
   it('does not let an older project preparation replace a newer prepared MIDI artifact', async () => {
     let complete, releases = 0; const gate = new Promise(resolve => { complete = resolve; });
-    const f = setup({ backgroundJobs: { async compute() { await gate; return { value: new Uint8Array([1]), release() { releases++; } }; } } });
+    const jobs = createTestBackgroundJobs();
+    const f = setup({ backgroundJobs: { async compute(options) { if (options.kind === 'encode-recorded-midi') return jobs.compute(options); await gate; return { value: new Uint8Array([1]), release() { releases++; } }; } } });
     const pending = f.physicalOwner.prepareShareExport(f.physicalOwner.getShareExportDescriptor());
     await f.studio.handlers.exportMidi(); const midi = f.studio.getExportState().artifact; expect(midi.formatVersion).to.equal('smf1/v1'); complete();
-    expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact.artifactId).to.equal(midi.artifactId); expect(releases).to.equal(1); await f.studio.dispose().completion;
+    expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact.artifactId).to.equal(midi.artifactId); expect(releases).to.equal(1); await f.studio.dispose().completion; jobs.dispose();
   });
   it('keeps freshly admitted pattern voices after seeking away a paused resume boundary', async () => {
     const f = setup({ lookaheadMs: 80 }); f.studio.bindRuntime(); f.enable();
@@ -480,6 +486,23 @@ describe('ProcGen workstation orchestration', () => {
     timers.at(-1)();
     const retired = f.studio.dispose(); await retired.completion;
     expect(f.studio.getExportState().artifact.retained).to.equal(false);
+  });
+  for (const action of ['cancel', 'clear', 'dispose']) it('retires a held MIDI preparation on ' + action + ' without replacing the previous artifact or blocking Panic', async () => {
+    const jobs = createTestBackgroundJobs(); let hold = false, start, release;
+    const entered = new Promise(resolve => { start = resolve; }), gate = new Promise(resolve => { release = resolve; });
+    const f = setup({ backgroundJobs: { async compute(options) { if (hold) { start(); await gate; } return jobs.compute(options); } } });
+    try {
+      await f.studio.handlers.exportMidi(); const original = f.studio.getExportState().artifact.artifactId; hold = true;
+      const pending = f.studio.handlers.exportMidi(); await entered;
+      expect(f.studio.getExportState().preparation).to.include({ kind: 'midi', phase: 'queued' });
+      expect(f.studio.handlers.stopOutput().playing).to.equal(false);
+      if (action === 'cancel') expect(f.studio.handlers.cancelExportDelivery()).to.equal(true);
+      else if (action === 'clear') f.studio.ports.clearRecording();
+      else await f.studio.dispose().completion;
+      release(); await pending;
+      expect(f.studio.getExportState().artifact.artifactId).to.equal(original); expect(f.studio.getExportState().preparation).to.equal(null);
+      if (action !== 'dispose') expect(f.studio.getExportState().artifact.retained).to.equal(true);
+    } finally { release(); await f.studio.dispose().completion; jobs.dispose(); }
   });
   it('never writes a newer artifact to a picker opened for an older export', async () => {
     const f = setup(); let resolvePicker, opened = 0;

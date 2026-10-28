@@ -1219,20 +1219,20 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       exportDesk.open = true; exportDesk.scrollIntoView?.({ block: 'nearest' });
       (savePrepared.disabled ? retryExport : savePrepared).focus?.({ preventScroll: true });
     },
-    exportState(artifact, delivery) {
+    exportState(artifact, delivery, preparation = null) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';
-      exportDesk.hidden = !artifact?.retained && !delivery?.errorKind && !['writing', 'failed', 'interrupted', 'canceled'].includes(delivery?.state);
+      exportDesk.hidden = !preparation && !artifact?.retained && !delivery?.errorKind && !['writing', 'failed', 'interrupted', 'canceled'].includes(delivery?.state);
       retryExport.disabled = !ready || !artifact.deliveryModes?.includes('anchor');
       savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';
-      cancelDelivery.disabled = !writing; discardPrepared.disabled = !artifact?.retained;
+      cancelDelivery.disabled = !writing && !preparation; cancelDelivery.textContent = preparation ? 'Cancel preparation' : 'Cancel delivery'; discardPrepared.disabled = !artifact?.retained;
       const size = artifact?.byteLength == null ? artifact?.streamingEstimate == null ? 'size pending' :
         `about ${artifact.streamingEstimate.toLocaleString()} bytes` : `${artifact.byteLength.toLocaleString()} bytes`;
-      exportSummary.textContent = artifact ? `${artifact.suggestedFilename} · ${size}${ready ? '' : ' · expired'}` : 'No prepared file';
-      exportDetails.textContent = artifact ? `Source ${artifact.immutableSourceRef} · ${artifact.formatVersion} · SHA-256 ${artifact.sha256 || artifact.digestState}` +
+      exportSummary.textContent = preparation ? 'Preparing MIDI performance' : artifact ? `${artifact.suggestedFilename} · ${size}${ready ? '' : ' · expired'}` : 'No prepared file';
+      exportDetails.textContent = preparation ? `${preparation.phase} · ${preparation.completedUnits.toLocaleString()}${preparation.totalUnits == null ? '' : ' / ' + preparation.totalUnits.toLocaleString()}` : artifact ? `Source ${artifact.immutableSourceRef} · ${artifact.formatVersion} · SHA-256 ${artifact.sha256 || artifact.digestState}` +
         `${artifact.coverageLossReportRef ? ` · coverage ${artifact.coverageLossReportRef}` : ''} · Delivery ${delivery?.state || 'ready'}` :
         'Choose Export or MIDI to prepare a file.';
-      if (artifact?.retained) exportDesk.open = true;
+      if (artifact?.retained || preparation) exportDesk.open = true;
     },
     storage({ dirty, savedAt, error, recovery }) {
       storageStatus.textContent = error ? 'Save failed · Export' : dirty ? 'Unsaved' : 'Saved';

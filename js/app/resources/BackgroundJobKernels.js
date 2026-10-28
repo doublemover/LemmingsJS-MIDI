@@ -34,6 +34,7 @@ import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
 import { renderPerformanceSceneRehearsal } from '../procgen/workstation/PerformanceSceneRehearsalRender.js';
+import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
 
 export { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
 import { BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
@@ -142,6 +143,11 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'encode-recorded-midi') {
+    const value = await encodeRecordedMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
+    return { value, inputBytes: input.snapshot.count * 25 + new TextEncoder().encode(JSON.stringify({ outputIds: input.snapshot.outputIds, window: input.window, options: input.options })).byteLength, nodes: 32 + input.snapshot.outputIds.length,
+      retainedBytes: value.bytes.byteLength * 2 + 65536 };
+  }
   if (kind === 'prepare-stretch-core-image') {
     const execution = getActiveExecutionIdentity('browser-background-jobs');
     if (execution.activeExecution !== 'bound' || input?.applicationBuildId !== execution.buildId || !input || Object.keys(input).some(key => !['wasmBytes', 'applicationBuildId', 'sampleRate', 'blockFrames', 'intervalFrames', 'randomSeed', 'maximumHeapBytes'].includes(key)) || !(input.wasmBytes instanceof Uint8Array) || input.wasmBytes.byteLength !== OWNED_STRETCH_CORE.wasmBytes || maxBytes < OWNED_STRETCH_CORE.wasmBytes + 4096 || estimatedPeakBytes < 192 * 1048576) throw problem('invalid-stretch-image-contract', 'Initial stretch images require their actual worker build, pinned bytes and complete preparation/transfer workspace.');

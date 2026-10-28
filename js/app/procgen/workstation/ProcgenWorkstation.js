@@ -32,7 +32,6 @@ import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyPro
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
-import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { createLaneDisplayEvidence } from './LaneDisplayEvidence.js';
 import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
@@ -1146,8 +1145,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  let preparedExport = null, lastDelivery = null, activeExportAbort = null, exportPreparationRevision = 0;
-  const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery);
+  let preparedExport = null, lastDelivery = null, activeExportAbort = null, midiExportPreparation = null, lastMidiExportReceipt = null, exportPreparationRevision = 0;
+  const exportPreparationState = () => midiExportPreparation ? Object.freeze({ kind: 'midi', phase: midiExportPreparation.phase,
+    completedUnits: midiExportPreparation.completedUnits, totalUnits: midiExportPreparation.totalUnits }) : null;
+  const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery, exportPreparationState());
   const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
     if (disposed) throw new Error('The export owner is retired.');
     ++exportPreparationRevision;
@@ -1203,6 +1204,39 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       else if (!deliver) status('Project checkpoint ready. Choose Save file or Retry file to request delivery.');
       return artifact.metadata();
     } finally { computed?.release(); signal?.removeEventListener('abort', cancel); finishOperation(lease); }
+  };
+  const prepareMidiExport = async () => {
+    midiExportPreparation?.controller.abort();
+    const controller = new AbortController(), source = ports.createRecordingExportSource(), generation = documentGeneration, id = documentId,
+      request = ++exportPreparationRevision, state = source.state;
+    const pending = { controller, phase: 'queued', completedUnits: 0, totalUnits: source.count }; midiExportPreparation = pending; publishExportState();
+    const isCurrent = () => !disposed && !controller.signal.aborted && documentGeneration === generation && request === exportPreparationRevision && source.isCurrent();
+    let computed = null;
+    try {
+      const options = { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit };
+      const window = { recordingComplete: state.recordingComplete, incompleteReason: state.incompleteReason, incompleteReasons: state.incompleteReasons,
+        retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence, droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories };
+      computed = await backgroundJobs.compute({ kind: 'encode-recorded-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation,
+        sourceRevision: `${source.id}:${source.revision}:${source.count}`, inputBytes: source.inputBytes, estimatedPeakBytes: source.estimatedPeakBytes,
+        signal: controller.signal, budgetAdapter: resourceBudget, isCurrent, retainInput: true, releasePreparedInput: source.release,
+        prepareInput: async ({ signal }) => ({ snapshot: await source.prepareInput({ signal, onProgress: progress => {
+          if (isCurrent()) { Object.assign(pending, progress); publishExportState(); }
+        } }), window, options }), onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
+      if (!isCurrent()) return null;
+      const { bytes, manifest } = computed.value;
+      const artifact = prepareDownload({ bytes, filename: manifest.complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', type: 'audio/midi',
+        sourceRef: `recording:${source.id}:${id ?? 'unsaved'}:${source.revision}:${source.count}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
+        formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
+      lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
+      if (deliverPrepared()?.state === 'delivery-requested') {
+        const evidence = manifest.evidence === 'api-accepted' ? 'submitted output' : 'rendered preview intent';
+        const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : manifest.reason;
+        status(manifest.complete ? `Recorded ${evidence} download requested. Check your browser downloads.` :
+          `Partial ${evidence} download requested: ${reasons}; ${manifest.omittedOnsets} unmatched onset(s) omitted.`);
+      }
+      return artifact.metadata();
+    } catch (error) { if (controller.signal.aborted) return null; throw error; }
+    finally { computed?.release(); source.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
   const getShareExportDescriptor = () => {
     const world = runtime()?.world, takeId = selectedCausalTakeId || lastCausalTake?.takeId;
@@ -1899,30 +1933,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       } finally { computed?.release(); finishOperation(lease); }
     }),
     export: safe(() => prepareProjectExport()),
-    exportMidi: safe(() => {
-      const state = ports.getState();
-      const submitted = ports.getRecording({ direction: 'output', evidence: 'api-accepted' });
-      const hasSubmitted = submitted.some(event => event.direction === 'output');
-      const captured = hasSubmitted ? submitted : ports.getRecording({ direction: 'output', evidence: 'intent-render' });
-      const balanced = selectBalancedProcgenRecording(captured);
-      const complete = state.recordingComplete && !balanced.omittedOnsets && !balanced.omittedReleases;
-      const reason = state.incompleteReason || (complete ? null : 'unpaired-note-boundary');
-      const manifest = { schema: 'procgen-recording-window/v1', complete, reason, reasons: state.incompleteReasons,
-        evidence: hasSubmitted ? 'api-accepted' : 'intent-render',
-        retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence,
-        droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories,
-        omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases };
-      prepareDownload({ bytes: exportProcgenMidi(balanced.events, { bpm: transport.getState().bpm,
-        beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, manifest }),
-      filename: complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', type: 'audio/midi',
-      sourceRef: `recording:${documentId}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
-      formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
-      if (deliverPrepared()?.state !== 'delivery-requested') return;
-      const source = hasSubmitted ? 'submitted output' : 'rendered preview intent';
-      const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : reason;
-      status(complete ? `Recorded ${source} download requested. Check your browser downloads.` :
-        `Partial ${source} download requested: ${reasons}; ${balanced.omittedOnsets} unmatched onset(s) omitted.`);
-    }),
+    exportMidi: safe(prepareMidiExport),
     retryExport() {
       const receipt = deliverPrepared();
       if (!receipt) { status('No prepared file is available to retry.'); return null; }
@@ -1930,12 +1941,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return receipt;
     },
     discardExport() {
+      midiExportPreparation?.controller.abort();
       ++exportPreparationRevision;
       if (!preparedExport) return false;
       preparedExport.discard(); preparedExport = null; lastDelivery = null;
       publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
     },
     cancelExportDelivery() {
+      if (midiExportPreparation) { midiExportPreparation.controller.abort(); status('Canceling MIDI preparation. The previous prepared file remains ready.'); return true; }
       if (!activeExportAbort) return false;
       activeExportAbort.abort(); status('Canceling file delivery. The prepared file remains ready.'); return true;
     },
@@ -2080,7 +2093,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   });
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
-    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
+    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery, preparation: exportPreparationState(),
+      preparationReceipt: lastMidiExportReceipt?.artifactId === preparedExport?.artifactId ? lastMidiExportReceipt?.receipt || null : null }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
     getNavigationDiagnostics: () => view.navigationDiagnostics?.() || null,
     getVariationState: () => patchVariations?.state() || null,
@@ -2120,7 +2134,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
         { name: 'physical-control-owner', run: () => releasePhysicalControls?.() },
-        { name: 'prepared-export', run: () => { activeExportAbort?.abort(); preparedExport?.discard(); } },
+        { name: 'prepared-export', run: () => { midiExportPreparation?.controller.abort(); activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'macro-gestures', run: () => macroGestures.dispose() },

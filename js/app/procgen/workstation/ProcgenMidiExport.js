@@ -1,18 +1,5 @@
 import { encodeProcgenMidi } from './ProcgenMidiPorts.js';
-
-const variable = value => {
-  if (!Number.isSafeInteger(value) || value < 0 || value > 0x0fffffff) throw new RangeError('MIDI delta time exceeds the four-byte SMF limit.');
-  const bytes = [value & 127];
-  while ((value = Math.floor(value / 128))) bytes.unshift((value & 127) | 128);
-  return bytes;
-};
-const word = value => [(value >> 8) & 255, value & 255];
-const long = value => [(value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255];
-const tempo = bpm => {
-  const microseconds = Math.round(60000000 / bpm);
-  if (!Number.isFinite(bpm) || bpm <= 0 || microseconds < 1 || microseconds > 0xffffff) throw new RangeError('Tempo is outside the representable SMF range; export was not retimed.');
-  return [0xff, 0x51, 3, (microseconds >> 16) & 255, (microseconds >> 8) & 255, microseconds & 255];
-};
+import { smfVariable as variable, smfTempo as tempo, smfHeader } from './ProcgenSmfBytes.js';
 
 // A retained window may end before a real release arrives. Omit only the
 // unpaired message; an invented Note Off would claim an event we did not see.
@@ -69,8 +56,7 @@ export function exportProcgenMidi(events = [], { bpm = 120, ppq = 480, beatsPerB
   for (const event of timeline) { track.push(...variable(event.tick - previous), ...event.data); previous = event.tick; }
   track.push(0, 0xff, 0x2f, 0);
   const result = new Uint8Array(22 + track.length);
-  result.set([0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, ...word(ppq),
-    0x4d, 0x54, 0x72, 0x6b, ...long(track.length)]);
+  result.set(smfHeader(ppq, track.length));
   result.set(track, 22);
   return result;
 }

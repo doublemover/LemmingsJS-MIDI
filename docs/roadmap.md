@@ -8165,3 +8165,39 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #1117 stays open: worker/streamed MIDI export, pause/Panic button latency,
   full-reference voice/route/sustain comparisons and disk-backpressure/disposal
   qualification remain. Continue development on the synchronous export path.
+
+### Continuation 313 — admitted recording export and responsive cancellation
+
+- MIDI export now captures a stable prefix into25-byte typed columns per source
+  slot, yielding within bounded128-event checks/4096-event slices. Admission
+  precedes allocation. New appends preserve the prefix; cancellation, clearing,
+  document replacement and disposal fence its publication. Route IDs and text,
+  total workspace, event count, output size and SMF timing have explicit bounds.
+- An admitted worker selects actual accepted-output versus preview-intent
+  evidence, balances same-pitch FIFO lifecycles per route/channel, sorts stable
+  beat order and writes the exact SMF into owned bytes. Main-thread full-history
+  filter/copy/sort is removed from the production export handler. Worker output
+  transfers through existing acknowledged pages and remains charged until use.
+- Publish progress and Cancel preparation in the existing file panel. Cancel,
+  failure and staleness retain prior prepared bytes; Panic remains independent.
+  Exact worker execution/transport receipts are bound to the prepared artifact.
+- All212 grouped Node cases pass, including64 generated reference-byte corpora
+  with overlapping same-pitch voices, sustain, route separation, out-of-order
+  beats, canceled records, evidence selection, partial caps and tempo changes;
+  cancel/clear/dispose, admission-before-copy, owned result transfer and existing
+  streaming delivery/backpressure regressions pass in the same batch.
+- All3 native cases pass at1920×1080:99,991 actual workstation records export
+  through a dedicated worker; downloaded bytes equal the reference encoder,
+  cancellation preserves the prior file and paused physics, and cleanup remains
+  prompt. Production1000-event range cleanup and the opt-in1k–1m benchmark also
+  pass. The first native fixture imported the now-unreferenced legacy encoder
+  from the built generation; move reference comparison to Node against the
+  actual downloaded file. No runtime fallback or unsupported viewport is added.
+- Fix312 CI's catalog failure by adding the required real production smoke case
+  beside its opt-in benchmark. Preserve the required-file rule. Collection now
+  passes with all14 capabilities;312 Node/benchmark steps were skipped after
+  that catalog failure. Refresh worker provenance to276 files; all10 components
+  and345 inventoried files verify. No complete local suite is repeated.
+- #1117 retains actual pause/Panic button-tail latency, active-ledger reference
+  qualification and durable-write failure scope. #1092 retains its actual
+  10,000-tick storage/replay/branch and recording document-boundary acceptance.

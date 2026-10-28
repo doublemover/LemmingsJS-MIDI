@@ -164,9 +164,18 @@ Recording first reserves its bounded range index and a conservative estimate for
 private event metadata. If admission fails, Record stays off and reports why;
 playback and Panic remain available. Flush/Panic reconcile active and future
 ownership. Range refresh visits only affected 128-event chunks, including when a
-canceled event was the first/last sequence or timestamp. Explicit MIDI export
-still copies the retained window; its separate streaming/worker migration and
-end-to-end button-latency qualification remain tracked in #1117.
+canceled event was the first/last sequence or timestamp.
+MIDI export reserves a finite workspace before copying a stable recording prefix
+into compact typed columns in short slices. An admitted worker selects output
+evidence, balances notes, orders beats and encodes the SMF; the UI thread does
+not sort or replay the take. The file panel shows progress and **Cancel
+preparation**. Cancellation keeps the previous prepared file. Appending new
+events cannot change the captured prefix; clearing or canceling older events,
+switching documents and disposal invalidate the job. Missing workers or resource
+pressure refuse preparation while live cleanup remains available. File delivery
+uses the existing bounded, cancelable writer; a prepared MIDI file is not a
+durable causal-tape archive. End-to-end button-latency and durable-backpressure
+qualification remain tracked in #1117 and #1092.
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the
 browser's downloads before relying on a local copy.

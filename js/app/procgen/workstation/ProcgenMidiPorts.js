@@ -4,9 +4,12 @@ import { createMidiControllerMutations } from '../../../midi/protocol/MidiContro
 import { createMpeZonePlan } from '../../../midi/scheduler/MpeZonePlan.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
 import { createMidiRecordingRangeIndex } from './MidiRecordingRangeIndex.js';
+import { snapshotMidiRecording, recordingExportPeakBytes } from './MidiRecordingExportSnapshot.js';
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
+let recordingOrdinal = 0;
+const newRecordingId = () => globalThis.crypto?.randomUUID?.() || `recording-${Date.now().toString(36)}-${++recordingOrdinal}`;
 const ACTIVE_SENSING_TIMEOUT_MS = 300;
 const HOST_OBSERVATION_GAP_MS = 600;
 const BASELINE_RESET_CONTROLLERS = new Set([0, 6, 32, 38, 96, 97, 98, 99, 100, 101, 121]);
@@ -81,6 +84,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const recordingRange = createMidiRecordingRangeIndex({ getRecords: () => records, capacity: maxRecordedEvents, resourceBudget });
   let droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
   let nearCapReported = false;
+  let recordingMutation = 0, recordingId = newRecordingId();
   const intentRenderEntries = new Set(), intentExpiry = [], activeTrace = new Map();
   const usedChannels = new Map(), noteOutputs = new Map(), activeOutputs = new Map(), routeIntents = new Map(), rawVoices = new Map(), sustainedChannels = new Map();
   const retiredPorts = new WeakSet(), retiredOutputIds = new Set();
@@ -229,7 +233,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return stored;
   };
   const cancelRecorded = event => {
-    if (recordingRange.cancel(event)) retainedEvents--;
+    if (recordingRange.cancel(event)) { retainedEvents--; recordingMutation++; }
   };
   const pruneIntentEntries = timestamp => {
     while (intentExpiry.length && intentExpiry[0].end.timestamp <= timestamp) {
@@ -880,6 +884,15 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         (evidence === 'all' || event.evidence === evidence || event.type === 'tempo'))
         .map(event => ({ ...event, data: [...event.data] }));
     },
+    createRecordingExportSource() {
+      if (disposed) throw new Error('The recording owner retired.');
+      let source = records;
+      const count = source.length, mutation = recordingMutation, state = getState(), estimatedPeakBytes = recordingExportPeakBytes(count);
+      const isCurrent = () => !disposed && source != null && source === records && mutation === recordingMutation;
+      return Object.freeze({ id: recordingId, state, count, revision: mutation, inputBytes: count * 25 + 2 * 1048576, estimatedPeakBytes, isCurrent,
+        prepareInput: options => snapshotMidiRecording({ ...options, records: source, count, isCurrent }),
+        release() { source = null; return true; } });
+    },
     recordEvent(event, meta = {}) {
       const messages = encodeProcgenMidi(event);
       if (disposed || !recording || !messages.length || !Number.isFinite(event.timestamp ?? event.timeMs ?? now())) return false;
@@ -890,6 +903,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     recordTempo(bpm, beat = transport?.getState().beat || 0, timestamp = now()) { record({ type: 'tempo', bpm, beat, timestamp, data: [], source: 'transport' }); },
     clearRecording() {
+      recordingMutation++; recordingId = newRecordingId();
       records = []; droppedRecords = 0; retainedEvents = 0; eventSequence = 0; firstLostSequence = null; incompleteReason = null;
       incompleteReasons.clear();
       recordingRange.clear({ release: !recording });
