@@ -17919,5 +17919,164 @@
       "test/browser-workflow-catalog.test.js": "66c8840dd5512e0c1238327775b1e925750451f0df552b1747de1e29b7af083b",
       "test/instrument-motion-policy.test.js": "bee3d09d1974c6ea39dd3db5e0a0a84fa19efaaf0143599fd0fa70500c4e89ec"
     }
+  },
+  "continuation301": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Qualify native Chromium desktop zoom and complete material review",
+    "sourceBase": "ce3a713f31022a9c11fda68fec004c68fd3107e1",
+    "issues": [
+      995,
+      1042
+    ],
+    "development": [
+      "Permission-free Manifest V3 test extension in one disposable persistent Chromium profile uses chrome.tabs.setZoom/getZoom with automatic browser handling; no user browser profile or product code changes.",
+      "Native window setup on a separate blank fixture ensures every product viewport remains at least 1920x1080, including zoom200. Base DPR1/effective DPR1/2, CSS zoom1 and visualViewport scale1 are verified separately.",
+      "Capture the complete physical viewport with Page.captureScreenshot and reject cropped images. Playwright native zoom screenshot cropping was found during visual review and corrected before accepting final captures.",
+      "Production eight-lane 100/200/100 journeys cover exact-entry errors, focus, popup bounds, World dock, reduced motion preference and unchanged world/project/history/routes/output. Real material states cover contrast/hit tests and forced-color geometry."
+    ],
+    "validation": {
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 10470.42,
+        "scope": "Both new native zoom journeys together; not a full workstation project run"
+      },
+      "initialBrowser": {
+        "passed": 2,
+        "failed": 0,
+        "scope": "Geometry/interaction passed, but Playwright captures were visually found cropped; not accepted as full native viewport art captures."
+      },
+      "browserVersion": "153.0.8010.12",
+      "baseDpr": 1,
+      "viewports": [
+        {
+          "zoom": 1,
+          "width": 3984,
+          "height": 2305,
+          "dpr": 1,
+          "cssZoom": "1",
+          "visualScale": 1
+        },
+        {
+          "zoom": 2,
+          "width": 1992,
+          "height": 1152,
+          "dpr": 2,
+          "cssZoom": "1",
+          "visualScale": 1
+        },
+        {
+          "zoom": 1,
+          "width": 3984,
+          "height": 2305,
+          "dpr": 1,
+          "cssZoom": "1",
+          "visualScale": 1
+        }
+      ],
+      "textSamples": 102,
+      "minimumMeasuredTextContrast": 6.233731733164469,
+      "interceptedCapTargets": 0,
+      "forcedColorGeometryUnchanged": true,
+      "materialStates": 9,
+      "collection": {
+        "full": 125,
+        "smoke": 98,
+        "files": 25,
+        "sourceInputs": 1068
+      },
+      "checks": [
+        "format",
+        "browser collection",
+        "whitespace"
+      ],
+      "visualReview": "Complete eight-lane instrument and nine-state contact sheets reviewed at native200, including exact-entry error/focus and forced colors; all five final captures are3984x2305."
+    },
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200-forced-colors.png",
+        "bytes": 193037,
+        "sha256": "7167c7eca613709a02b00efe6e8251c4716449b88eeb8c2f0fec6147059f75b7",
+        "width": 3984,
+        "height": 2305
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200.png",
+        "bytes": 203795,
+        "sha256": "9a2b5038f97e6a35ee5ab6469790e5c4a831d4e8ea13668c419547d7f54ce960",
+        "width": 3984,
+        "height": 2305
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-0.png",
+        "bytes": 163781,
+        "sha256": "971ca23d63c8b3badba0187b234c560d9bb436afd1785d396d4f35e608e1dc54",
+        "width": 3984,
+        "height": 2305
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-2.png",
+        "bytes": 161901,
+        "sha256": "6f6c28bdb2060e65c02c468d5c457d40f2362be6c1f230249596e9a334690485",
+        "width": 3984,
+        "height": 2305
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-200-1.png",
+        "bytes": 351215,
+        "sha256": "b450371fd973b524c21b4a1e9179b63d3cb89c4593639a4cc7e33ba8e18dc8de",
+        "width": 3984,
+        "height": 2305
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-native-zoom-final-results.json",
+        "bytes": 53923,
+        "sha256": "13d70e36be40d4d4a0e948d60b5015f69fa8e1bb5e087736db1d3c277967dcfc"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-selection.json",
+        "bytes": 259493,
+        "sha256": "0a1eab09594607a9307c83bcc6286c38b1dcb7ab5ccbadf627a0a36cda27e540"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-native-zoom-initial-results.json",
+        "bytes": 52412,
+        "sha256": "793f306b92af909a4dcae2e02989a812d063d85dada334732f6f13233383127f"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-native-zoom.log",
+        "bytes": 655,
+        "sha256": "826c07ec3547bfd0e2de4c46e8018b6b68e691c7f7cd598ac2f962279889c7b6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-native-zoom-final.log",
+        "bytes": 655,
+        "sha256": "d15c08a1f0752312bc01d9ab7946fbff2109146c23289e1705b7c469b795fc09"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog301-collection.log",
+        "bytes": 1866,
+        "sha256": "f8d00b09662e13068d06cdf94c0f8b93fbfc7a38b6b1927a085a2f6675fffb27"
+      }
+    ],
+    "scopeLimits": [
+      "Base DPR1 native browser zoom qualification complements the independent DPR1/1.5/2 and low-effects/greyscale/high-contrast/1080p/QHD/UHD continuation298 matrix.",
+      "Actual device/acoustic/assistive-technology qualification remains separate under1042.",
+      "Current full-branch CI is pending; no full Node suite repeated for test-only additions."
+    ],
+    "sourceHashes": {
+      "docs/roadmap.md": "4e7372a78421d3c06c61e213311ce75ee0f11bad1fc069ba138c45757cfe4bf8",
+      "e2e/helpers/nativeDesktopZoom.js": "3e1e33189f81cbfb65343478952048814e04d993f379aeeac069817d9216e249",
+      "e2e/procgen-workstation-native-zoom.spec.js": "fd8b6c1fd6f21418ab460896642e544af1c3c265027ebedf6db4bb1fa4566654",
+      "test/support/workstation-zoom/background.js": "5e2818bec6b6e7f425c666f64561627fe2e1c0e63bfbf55b483d9d948f373cb5",
+      "test/support/workstation-zoom/blank.html": "9333fa41f735fd84c90145f001e847484bde5fc553f90e052dca6e36ec5a7646",
+      "test/support/workstation-zoom/manifest.json": "aac0fb795b603f83c957331b1d051e8422806a4418c88d26dcfd2534f0baf22d"
+    }
   }
 }

@@ -7766,3 +7766,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   types, undefined calls, provenance and whitespace checks pass. Viewport flash,
   maximum simultaneous effects, held-tail/device qualification, actual browser
   UI zoom and assistive-device checks remain separate acceptance work.
+
+### Continuation 301 — native desktop browser zoom and material review
+
+- Qualify actual Chromium automatic tab zoom through a permission-free test
+  extension in one disposable profile. Native 100/200/100 percent round trips
+  report 3984×2305 / 1992×1152 / 3984×2305 logical workspaces, base DPR1 and
+  effective DPR1/2/1, CSS zoom1 and visual scale1. No product viewport falls
+  below the supported 1920×1080 desktop minimum. No user browser is modified.
+- Both native journeys pass together. Eight lane heads, transport, exact-entry
+  errors and the World dock remain in bounds; world checkpoint/tick, music,
+  history, routes and output counts remain identical. All nine real-control
+  states fit at 200 percent. The 102 measured text samples have minimum 6.23:1
+  contrast; no cap target is intercepted. Forced colors/reduced motion preserve
+  specimen geometry and buffered edits never publish.
+- Inspect the complete instrument/contact-sheet captures and retain five hashed
+  3984×2305 PNGs. Chromium's native screenshot method fixes Playwright's cropped
+  zoom output; reject any capture smaller than the physical viewport. Keep the
+  initial geometry-only cohort distinct from the corrected full capture cohort.
+  Collection binds 125 workstation cases / 98 smoke / 25 files / 1068 inputs.
+- This completes #995's remaining native zoom/material review. Existing DPR,
+  contrast, low-effects, greyscale, high-contrast and 1080p/QHD/UHD evidence is
+  retained in continuation298. Actual assistive-device qualification remains
+  under #1042; this browser run does not claim an acoustic/device/AT pass.
