@@ -818,45 +818,39 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "cd22832b7975f2f46933f195831eab3dc8ac4dfb",
-    "job": 122511403658,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40595839122/job/122511403658",
-    "passed": 6500,
+    "head": "aefa1709f1070cadfb3272c44ea3bb4a9316b020",
+    "job": 122539468215,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40604185921/job/122539468215",
+    "passed": 6515,
     "failed": 0,
-    "browserPassed": 62,
+    "browserPassed": 71,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
       "lines": 90.28,
       "statements": 90.28,
       "branches": 83.52,
-      "functions": 88.16
+      "functions": 88.22
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      287,
-      288,
-      289
+      290
     ],
     "excludesLaterWork": true,
     "masterCapture": {
-      "state": "Partial",
-      "frames": 33408,
-      "capturedFrames": 33408,
-      "stopReason": "noncontiguous-render-clock",
-      "clockDiscontinuity": {
-        "actualFrame": 50816,
-        "expectedFrame": 50944,
-        "frames": 128
-      }
+      "state": "Ready",
+      "frames": 57728,
+      "capturedFrames": 57728,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null
     },
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci286-green.log",
-      "sha256": "529111607af9c7e3eb84a670c83ec00a29f0adfaa55eebaff642d69597533f85",
-      "bytes": 1088466
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci289-green.log",
+      "sha256": "16d542fccb829f3d65a11c08d9ca952f1ca26dd7a157ee17e3ef9eb82bcca7f8",
+      "bytes": 1095426
     }
   },
   "continuation264": {
@@ -10250,6 +10244,42 @@
           "sha256": "8aac3d488ff58802331d959f987c1df3ac6ee4743103c242b50319ee8f5844df",
           "bytes": 371
         }
+      },
+      "remoteCi": {
+        "head": "aefa1709f1070cadfb3272c44ea3bb4a9316b020",
+        "job": 122539468215,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40604185921/job/122539468215",
+        "passed": 6515,
+        "failed": 0,
+        "browserPassed": 71,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.28,
+          "statements": 90.28,
+          "branches": 83.52,
+          "functions": 88.22
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          290
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 57728,
+          "capturedFrames": 57728,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci289-green.log",
+          "sha256": "16d542fccb829f3d65a11c08d9ca952f1ca26dd7a157ee17e3ef9eb82bcca7f8",
+          "bytes": 1095426
+        }
       }
     },
     "source": [
@@ -10360,10 +10390,161 @@
       }
     },
     "limitations": [
-      "Current full CI is pending; the latest fully green cd22832b checkpoint excludes this continuation.",
+      "Full remote CI is now green at aefa1709: 6515 coverage cases / 71 desktop boundaries, all checks successful. This excludes continuation290.",
       "The trace proves the lesson hash mismatch but does not serialize its exact differing checkpoint field. Source inspection identifies the sampler write, and the new actual-runtime regression verifies its removal without changing physics hash rules.",
       "Requested/API-submitted state is not receiver readback or acoustic evidence. Per-lane OLED pages and the live fact/mapping/admission adapter remain development under #996/#997.",
       "The wider backlog remains open; no hardware or assistive-device certification is inferred."
+    ]
+  },
+  "continuation290": {
+    "baseHead": "aefa1709f1070cadfb3272c44ea3bb4a9316b020",
+    "scope": "Bounded live lane displays and correct achieved simulation rate at the 1920x1080 desktop minimum.",
+    "implemented": [
+      "Add stable two-line OLEDs with manual identity/cause/parameter/output pages, complete name/evidence expansion, focused owned draft priority and explicit output/parameter blockers. No automatic carousel, hover-only reveal, signal-meter fabrication or acoustic-success lamp.",
+      "Observe canonical physical batches after actual intent dispatch. Keep copied scalar causes, frozen pitch/velocity, exact event/intent/mapping/voice/batch/generation/sink/execution identities and explicit missing-source/receipt coverage. Late receipt updates cannot retarget another source or execution.",
+      "Bound interest to eight visible lanes plus selected lane, four intents per lane, four source references and four receipts per intent, and 512 inspected inputs per collection per batch. Declare storage before retaining evidence; denial remains an independent optional-display failure. Dispose owned retention with the controller.",
+      "Use the existing dirty display scheduler and retained text nodes. Page changes and draft focus do not edit the project, mutate physical state, request permission or send MIDI. Past facts age in simulation ticks; no independent UI/audio clock or flash replay is introduced.",
+      "Include required physical/pattern row height in projection identity and reconcile mode changes immediately. This prevents a delayed geometry change and lane removal during an inspector drag; strict zero-childList-mutation and one-commit assertions remain.",
+      "Use the base physical tick duration for achieved simulation speed. Fifty observed ticks/s at a 60ms base interval displays 3x instead of being divided by the requested speed twice."
+    ],
+    "validation": {
+      "nodePassed": 178,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "1s",
+      "browserInitial": {
+        "passed": 34,
+        "failed": 3,
+        "reportedDuration": "1.9m",
+        "failures": [
+          "New fixture assumed a top-level recording batchId; compare actual retained intentId/voiceId and canonical batch prefix instead.",
+          "DPR1 and DPR2 captured gestures detected delayed pattern-row projection reconciliation; cache and immediate mode reconciliation fixed."
+        ]
+      },
+      "browserFinal": {
+        "passed": 37,
+        "failed": 0,
+        "status": "passed",
+        "scope": "New live/read-only/draft OLED cases plus operational/MIDI, physical MIDI, production desktop command/DPR, and workstation view boundaries."
+      },
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-node-final.log",
+          "sha256": "54c565c5338bbedf40047e7006ee4eeebe20cb7ebd1f00e5b328a000584f7080",
+          "bytes": 17245
+        },
+        "browserInitial": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-browser.log",
+          "sha256": "3c4c4a81a18de47743f2407fca7a1f0205d6bcbeef927fd9194e4218ae833934",
+          "bytes": 19440
+        },
+        "browserFinal": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-browser-final.log",
+          "sha256": "6afa779e6ad88f37419a0ec9b647ccb3682b9a4eb3f609b85bbd3e18263b78ea",
+          "bytes": 6833
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-format-repair.log",
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f",
+          "bytes": 55
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-types-final.log",
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592",
+          "bytes": 96
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-undefined-final.log",
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7",
+          "bytes": 111
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog290-provenance.log",
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf",
+          "bytes": 142
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css/procgen-workstation.css",
+        "sha256": "06f19c74ae45cbd5964204d7e1fd184e2c9c32e556efb56fb5b42940831c7450",
+        "bytes": 34151
+      },
+      {
+        "path": "docs/procgen-workstation.md",
+        "sha256": "bccac0c0de061c1c13161a54db058235370c77b9ba7e3a592f78c393c1c9c1dd",
+        "bytes": 29828
+      },
+      {
+        "path": "docs/roadmap.md",
+        "sha256": "fba32b0093642639508025cb55b711cf27cb183ee3996710ba26e47b730179b6",
+        "bytes": 538876
+      },
+      {
+        "path": "e2e/procgen-lane-display.spec.js",
+        "sha256": "d3670097013b2aef96d626192f622c0f0bf6d42b4bc6180c62a85b3cb808a7ea",
+        "bytes": 7371
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplayEvidence.js",
+        "sha256": "393ecd7c8dbb5d416db3c7819d87be6fe3b2cf2cb4be79c75dca676eedd489c5",
+        "bytes": 7977
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplaySnapshot.js",
+        "sha256": "d008e27302a2cd0e2551666c6dbcba6a833b3d3f00a3f8b993da1691e1082ce6",
+        "bytes": 5093
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplayView.js",
+        "sha256": "e271ee556af4b93cbd4aafb2080b976d3cb4083a2260a05496bed7088b5cf728",
+        "bytes": 1617
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "sha256": "be2cfee74e05331b0a7c71328bc32f6b805675ee46b9ad463cbbbae118d689f5",
+        "bytes": 193169
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "sha256": "2d8d1d154d569fbb20a28d50b0fd4a38980bcd521dd713487875b6fe7b2ea1de",
+        "bytes": 113347
+      },
+      {
+        "path": "package.json",
+        "sha256": "5c99f24c61417248857f13cd4a63487a8fe201f135072b37517b5cce47135272",
+        "bytes": 8822
+      },
+      {
+        "path": "test/lane-display-evidence.test.js",
+        "sha256": "21206f2036ffa3888d46f6c35b9536770ebde72db0c212327703b2409a0c7dc2",
+        "bytes": 9446
+      },
+      {
+        "path": "test/lane-display-view.test.js",
+        "sha256": "5872e9ef0fbd40ae9812b14545a9238b0061dd309b2e9cd2084c92e15cecc0b3",
+        "bytes": 1796
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "sha256": "d3dfdd62050724a18fda2dbd98624ccbc72a13886f8d621391439df663e179fc",
+        "bytes": 98272
+      }
+    ],
+    "limitations": [
+      "Current full CI must verify this continuation; the aefa1709 green checkpoint excludes it.",
+      "#997 world-projected counted marks, interactive fanout/fanin drilldown and complete rendered/shared-body/transfer/missing-window qualification remain development.",
+      "Unknown receiver readback, absent render measurements and missing graph revisions remain unknown. No hardware, listening or assistive certification is inferred.",
+      "#996 wider overlap/suppression/visibility/source-retirement qualification remains before issue closure."
     ]
   }
 }

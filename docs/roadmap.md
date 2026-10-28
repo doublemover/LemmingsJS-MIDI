@@ -7380,3 +7380,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   whitespace pass. This fixes #996's MIDI evidence counterexample; the per-lane
   OLED pages/live causal adapter remain separate development. Current full CI
   remains pending; the last green checkpoint is cd22832b.
+
+### Continuation 290 — bounded live lane displays at the desktop minimum
+
+- Add retained two-line lane readouts with manual Identity/Cause/Parameter/Output
+  pages and an explicit full-name/evidence dialog. Owned focused drafts temporarily
+  override the selected page; output/parameter errors take priority. Display
+  choices create no project edit, MIDI send, backend activation or physical write.
+- Join canonical facts, immutable intents and exact sink receipts after dispatch,
+  with separate isolated UI error handling. Bound interest to eight visible lanes
+  plus the selected lane, four intents/sources/receipts per owner and 512 inspected
+  inputs per collection per batch. Report omissions; missing facts, revisions,
+  render measurements and receiver readback stay unknown. Late submissions require
+  the exact retained sink/execution/batch/generation identity.
+- Use the existing demand-driven scheduler, retained text nodes and one lazy owned
+  storage reservation. Replacing the document/world fences old receipts; hiding
+  a display skips obsolete images. Past causes keep source ticks and stale age,
+  without an independent animation/audio clock or invented signal meter.
+- Preserve all fader/phrase actions in headers sized for the 1920x1080 desktop
+  minimum. Include physical/pattern row requirements in the projection cache key
+  and reconcile a mode change immediately, preventing a delayed row-count change
+  during a captured inspector drag. No phone/tablet viewport cases are added.
+- Correct measured simulation speed to use the base tick duration rather than the
+  requested-speed-adjusted interval. Fifty achieved ticks/s at a 60ms base tick
+  reports 3x, even when the requested interval is 20ms.
+- The preceding aefa1709 full CI is green: 6,515 coverage cases / 71 desktop
+  boundaries; all checks pass. Master capture is Ready at 57,728 contiguous frames.
+  That checkpoint excludes this continuation. Current grouped validation is
+  recorded separately in the canonical validation receipt. #997 still needs
+  world-projected counted causal marks, drilldown and its complete output matrix;
+  an OLED cause page alone does not close that issue.

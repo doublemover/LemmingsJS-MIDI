@@ -60,6 +60,15 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('expresses measured simulation rate against the base tick duration rather than its requested speed-scaled interval', async () => {
+    const f = setup();
+    try {
+      f.runtime.world.generation = 1; Object.assign(f.runtime.world.timer, { speedFactor: 3, frameTime: 20, TIME_PER_FRAME_MS: 60 }); f.legacy.settings.speed = 3;
+      f.legacy.getOperationalMetrics = () => ({ generation: 1, achievedTicksPerSecond: 50, observedAt: 1000 });
+      const snapshot = f.studio.getOperationalSnapshot(); expect(snapshot.simulation).to.include({ requestedSpeed: 3, achievedTicksPerSecond: 50, tickDurationMs: 60 });
+      expect(snapshot.simulation.achievedTicksPerSecond * snapshot.simulation.tickDurationMs / 1000).to.equal(3);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('retains exact MIDI expression requests across unrelated project edits and invalidates channel/document targets', async () => {
     const f = setup(); const laneId = f.studio.getProject().procgen.lanes[0].id, events = [];
     f.studio.ports.sendEvent = event => { events.push(event); return true; };

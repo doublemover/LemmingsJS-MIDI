@@ -437,3 +437,39 @@ actions and preserve a focusable read-only numeric value. Their two states remai
 distinct in the accessibility tree. At desktop DPR 1 and 2, the rotary cap retains
 a 44px interaction region; decrement, increment and Reset remain inside the
 supported inspector widths.
+
+## Lane displays
+
+At the 1920×1080 desktop minimum, each visible lane has one recessed two-line
+readout. **View actions → Lane display page** selects Identity, Cause, Parameter
+or Output for the selected lane. Pages stay selected until explicitly changed;
+there is no automatic carousel. **Read selected lane display** opens the full
+name and evidence explanation without hover. Its dialog retains Stop and Panic.
+
+A focused owned parameter temporarily shows its current draft, including an
+incomplete numeric entry. Moving focus away restores the selected page. Output
+blockers and parameter errors take priority. The readout does not commit drafts,
+enable a backend or request MIDI permission. Its bezel and text nodes stay in
+place across display updates.
+
+Cause and output pages use committed facts, immutable musical intents and exact
+sink receipts. A physical fact, an admitted/scheduled intent and an API submission
+are separate stages. The symbols ○, ◇, ▷, ↗ and × mean unknown, observed intent,
+sink admission, MIDI API submission and rejection respectively; ! marks degraded
+evidence. None establishes audible sound. Local peak/RMS and receiver state stay
+unknown where no qualified measurement/readback exists. Lane gain is a requested
+value rather than a signal meter.
+
+The expanded explanation includes retained intent, batch, source-event, voice and
+mapping IDs. An absent mapping revision stays unknown. Past causes retain their
+source tick and age in simulation ticks; after 30 ticks they are marked stale.
+Pausing the world does not manufacture fresh activity. A changed document/world
+generation cannot attach old evidence to a reused actor index.
+
+Display evidence is bounded to at most eight visible lanes plus the selected
+lane, four retained intents per lane, four source references per intent and four
+sink receipts per intent. Each batch inspects at most 512 facts, intents and
+receipts per collection; omissions and missing ranges are disclosed. Admission
+of its owned storage can fail independently of musical output. Hiding a display
+coalesces obsolete visual work through the existing shared scheduler; it creates
+no additional clock, note stream, event flash replay or physical-state writes.

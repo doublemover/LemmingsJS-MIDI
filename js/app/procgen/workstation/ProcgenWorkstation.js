@@ -33,6 +33,7 @@ import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
 import { exportProcgenMidi, selectBalancedProcgenRecording } from './ProcgenMidiExport.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
+import { createLaneDisplayEvidence } from './LaneDisplayEvidence.js';
 import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
 import { causalRuntimeSourceVersions } from './CausalRuntimeIdentity.js';
 import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
@@ -162,6 +163,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const undo = [], redo = [], listeners = [], noteEntries = new Map();
   const retirement = createProcgenRetirementScope();
   const midiParameterEvidence = createMidiParameterEvidence({ resourceBudget });
+  const laneDisplayEvidence = createLaneDisplayEvidence({ resourceBudget });
+  const laneDisplaySource = (world = runtime()?.world, generation = world?.generation) => JSON.stringify([documentGeneration, world?.worldId ?? null, generation ?? null]);
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
   let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
@@ -920,6 +923,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (causalTake && physicalReceiptBoundary && receipt.stage === 'effect-performance-capture') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' });
       if (physicalReceiptBuffer) physicalReceiptBuffer.push(receipt);
       else if (causalTake && physicalReceiptBoundary) { const recorded = causalTake.recordSinkOutcome(receipt, physicalReceiptBoundary); if (receipt.schema === 'lemmings-effect-performance/v1' && recorded.status !== 'accepted') causalTake.markGap({ kind: 'effect-performance', firstTick: physicalReceiptBoundary.tick, lastTick: physicalReceiptBoundary.tick, generation: physicalReceiptBoundary.generation, reason: 'effect-performance-not-admitted' }); }
+      if (!physicalReceiptBuffer) { try { if (laneDisplayEvidence.receipt(laneDisplaySource(next.world), receipt)) view?.refreshLaneDisplays?.(); } catch {} }
     };
     const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
       isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
@@ -964,6 +968,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         physicalReceiptBuffer = [];
         const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
           playing: transport.getState().playing, position });
+        try { laneDisplayEvidence.observe({ sourceKey: laneDisplaySource(next.world, batch.generation), batch, intents: intents || [], receipts: physicalReceiptBuffer, lanes: playbackProject().procgen.lanes }); view?.refreshLaneDisplays?.(); } catch {}
         if (causalTake) {
           const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, bodyCommands: physicalPlayback?.engine.bodyPreparations()?.batchId === batch.batchId ? physicalPlayback.engine.bodyPreparations().commands : [], probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
           if (receipt.status === 'rejected') { physicalFeedback?.disarm(); markPhysicalGap(batch, 'capture-admission-rejected'); }
@@ -1416,7 +1421,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return createProcgenOperationalSnapshot({ identity, simulation: { available: !!world && !startupFailure, preparing: !startupFailure && (worldBusy || !world && !startupCommitted), failure: startupFailure,
       canStartFresh: !!document.getElementById('procgenStartupFresh'),
       paused: laneRuntime?.paused ?? (world?.timer?.speedFactor === 0 || (legacy.isPaused?.() ?? !position.playing)), requestedSpeed: legacy.settings.speed,
-      achievedTicksPerSecond: metrics && world && metrics.generation === world.generation ? metrics.achievedTicksPerSecond : null, measurementTime: metrics?.observedAt, tickDurationMs: world?.timer?.frameTime },
+      achievedTicksPerSecond: metrics && world && metrics.generation === world.generation ? metrics.achievedTicksPerSecond : null, measurementTime: metrics?.observedAt, tickDurationMs: world?.timer?.TIME_PER_FRAME_MS },
     transport: position, output, midi, physical: physicalPlayback?.operationalState?.() || null, lanes: project.procgen.lanes,
     storage: { error: currentStorageError() }, recovery: { state: recoveryState, error: recoveryError, lessonAvailable: operationalLessonAvailable }, stage: !!stageSession?.active() });
   };
@@ -1424,11 +1429,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed || startupCommitted) return false;
     startupFailure = String(error?.message || 'The initial world could not be prepared.').slice(0, 200); view?.refreshOperational?.(); return true;
   };
-  const expressionTarget = event => {
+  const expressionTarget = (event, { requireSelected = true, output = null, midi = null } = {}) => {
     if (disposed || !event || !['sustain', 'bend', 'pressure'].includes(event.type)) return null;
-    const lane = selected(), channel = event.channel ?? lane.channel;
+    const lane = event.laneId ? procgenLane(project.procgen.lanes, event.laneId) : selected();
+    if (!lane || requireSelected && lane.id !== selected().id) return null;
+    const channel = event.channel ?? lane.channel;
     if (!Number.isInteger(channel) || channel < 1 || channel > 16 || event.laneId && (event.laneId !== lane.id || channel !== lane.channel || (event.outputId ?? null) !== (lane.outputId ?? null))) return null;
-    const output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState();
+    output ||= legacy.local.getOperationalState?.() || legacy.local.getState(); midi ||= ports.getOperationalState();
     const outputId = event.outputId || lane.outputId || output.outputId || output.selectedOutputId || midi.noteOutputId || null;
     const route = midi.outputRoutes.find(value => value.outputId === outputId), key = JSON.stringify([documentGeneration, lane.id, output.selectedBackend,
       output.outputGeneration ?? null, outputId, route?.connectionEpoch ?? null, channel, 'owned-channel-expression', event.type]);
@@ -1437,6 +1444,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       endpointName: route?.name || output.selectedOutputName || outputId || 'No MIDI destination', available: route?.active === true });
   };
   const handlers = {
+    laneDisplayState(laneIds) {
+      laneDisplayEvidence.setLanes(laneIds);
+      const operational = getOperationalSnapshot(), sourceKey = laneDisplaySource(), output = legacy.local.getOperationalState?.() || legacy.local.getState(), midi = ports.getOperationalState();
+      return laneIds.map(laneId => {
+        const lane = procgenLane(project.procgen.lanes, laneId); if (!lane) return null;
+        const parameters = ['sustain', 'bend', 'pressure'].map(type => { const target = expressionTarget({ type, laneId, channel: lane.channel, outputId: lane.outputId }, { requireSelected: false, output, midi }); return target && midiParameterEvidence.read(target); }).filter(value => value?.revision);
+        const parameter = parameters.reduce((latest, value) => !latest || value.revision > latest.revision ? value : latest, null);
+        return { lane, revision: projectRevision, simulation: operational.simulation, mix: physicalPlayback?.laneMixView(laneId) || null, evidence: laneDisplayEvidence.read(laneId, sourceKey), parameter };
+      }).filter(Boolean);
+    },
     operationalState: getOperationalSnapshot,
     recoverOperational: async (action, identity) => {
       const current = getOperationalSnapshot();
@@ -2095,6 +2112,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'transport', run: () => transport.dispose()?.completion },
         { name: 'midi-ports', run: () => ports.dispose() },
         { name: 'midi-parameter-evidence', run: () => midiParameterEvidence.dispose() },
+        { name: 'lane-display-evidence', run: () => laneDisplayEvidence.dispose() },
         ...removeListeners.map((remove, index) => ({ name: `listener-${index}`, run: remove })),
         { name: 'view', run: () => view.dispose() },
         { name: 'storage', run: () => {
