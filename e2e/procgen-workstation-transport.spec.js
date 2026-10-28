@@ -3,7 +3,7 @@ import { installWebMidiStub } from './helpers/webmidiStub.js';
 
 async function ready(page) {
   await page.goto('/procgen.html?e2e=1&seed=42');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
 }
 

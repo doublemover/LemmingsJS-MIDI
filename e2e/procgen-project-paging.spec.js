@@ -154,7 +154,7 @@ test('native legacy migration skips modern payloads, notices writes from another
 test('production picker pages by keyboard, retains the live document on corrupt/deleted selections, retries and opens only the chosen project @boundary', async ({ page }) => {
   test.setTimeout(90000);
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=2');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__; studio.transport.pause();
     const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js');

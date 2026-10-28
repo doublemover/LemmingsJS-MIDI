@@ -7918,3 +7918,41 @@ export-budget acknowledgments still prevent a false complete receipt.
   imports remain supported. A real Mocha subprocess regression passes, and one
   whole-suite dry collection registers 6,673 tests with zero browser helper
   discoveries. These are collection counts, not executed-suite pass counts.
+
+### Continuation 306 — resource-aware routes and isolated timing alternatives
+
+- Replace node-only route dominance with bounded priority labels carrying actual
+  cumulative skill use, required assignments, score and estimated ticks. Preserve
+  expensive prefixes that save a downstream skill. Enforce node/frontier, action,
+  estimated tick and measured wall-time budgets; distinguish estimates from replay
+  work and keep selected skeletons unverified. Stable code-point ties include fall
+  exposure and terrain mutation cost. Route hashes include resource receipts.
+- Search original applicability windows and lazy exact-tick alternatives from
+  isolated initial runners. Bound script/continuation tables, reject reused or
+  inconsistent source factories and stop on failed/asynchronous retirement. Exact
+  continuation keys include pending constraints, final postconditions and complete
+  synthetic terrain/actor/clock/policy state; resource dominance retains inventory.
+  Actual verifier ticks/nodes accumulate across attempts. A rescued final actor is
+  allowed to leave the active population; default generated scripts no longer
+  impose the contradictory active-at-completion postcondition.
+- Grouped solver validation passes all 80 cases, including earliest-fails/later-
+  builder-succeeds through real synthetic replay, repeated work counts, terrain
+  identity, resource/equivalence pruning, source isolation and independent real
+  procedural whole-crew goals. Preserve the initial 78-pass/one generated-
+  postcondition failure and the later 79-pass/one overloaded one-second semantic
+  fixture timeout. That fixture now requests an explicit ten-second wall budget
+  with its original finite tick/node/action limits and a fifteen-second test cap.
+- All nineteen affected desktop browser journeys pass together after correcting
+  Playwright readiness argument placement and the containing test lifetime. These
+  cover installed/offline startup, naming, import, paging, transport and all
+  workflow journeys, including the CI-failing queued launch. The archived cohort
+  precedes only final solver risk/invalid-window refinements and Node fixture
+  changes; browser-exercised readiness/runtime sources are unchanged afterward.
+- Focused coverage is recorded per module; add future regression coverage for
+  malformed graph/count combinations and adapter-specific source/failure branches
+  when those adapters gain isolated factories. Broader generated-level completeness
+  and multi-actor strategy remain outside #944/#945. Both named local search
+  contracts now have executed acceptance evidence and can close after publication.
+  Types, undefined calls, formatting, provenance and whitespace pass. New full CI
+  must execute coverage; prior2aba8eea passed22 desktop/102 smoke cases, failed one
+  thirty-second readiness fixture and skipped Node coverage.

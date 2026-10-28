@@ -17749,7 +17749,8 @@
         302,
         303,
         304,
-        305
+        305,
+        306
       ],
       "excludesLaterWork": true,
       "passed": 6603
@@ -19416,6 +19417,236 @@
       "scripts/runTests.js": "9d22b4cef387b913bc18e0ead860de220be61274f7ef63077d80670b8601db94",
       "test/midi/midi-controller-mutations.test.js": "5bdd82e4ef5150bd52c0539ad63b259f238b22263a2e8a6de5bbf8f8d7cea290",
       "test/mocha-fixture-discovery.test.js": "7dc88f9a166d0fbb527c48f1a459ec48706e810bf761db5b0600b8a2d067f1ea"
+    },
+    "remoteCi": {
+      "head": "2aba8eea40af5d07d3e8597d33d3e1d214d93e44",
+      "status": "failure",
+      "run": 40695715209,
+      "job": 122841807525,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40695715209/job/122841807525",
+      "browserPassed": 124,
+      "browserFailed": 1,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 102,
+        "workstationSmokeFailed": 1
+      },
+      "nodeCoverageExecuted": false,
+      "failure": "Queued-launch workflow fixture hits default30s test lifetime while waiting for boot. It passes its60s timeout as waitForFunction page argument rather than the third options argument.306 repairs the argument positions and coherent containing test lifetime.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 55168,
+        "captured": 55168,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.022854328155517578,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci305-failed.log",
+        "bytes": 138746,
+        "sha256": "2df0abe2765641ed0150b635d2be6bcd4a43c1b09fb6e4a82a16d53db0f83fca"
+      }
+    }
+  },
+  "continuation306": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Cumulative route resources, isolated timing alternatives and coherent browser readiness bounds",
+    "sourceBase": "2aba8eea40af5d07d3e8597d33d3e1d214d93e44",
+    "issues": [
+      944,
+      945
+    ],
+    "development": [
+      "Bounded priority frontier and resource-aware per-node dominance retain cumulative skill inventory, assignments, estimated ticks and score. More expensive prefixes preserving downstream skills survive. Enforce node/frontier/action/tick/wall limits and return no over-budget chosen skeleton. Expose actual expanded work separately from estimates and hash resource metadata.",
+      "Lazy ordered timing alternatives follow applicability-window guidance and exact ticks. Every attempt forks initial synthetic state or uses an explicitly isolated owned runtime factory. Reused/changed source identities, failed or asynchronous retirement and unsupported runtime sources stop explicitly.",
+      "Canonical script and continuation tables are bounded by the work budget. Continuations include pending constraints, final postconditions and complete non-inventory synthetic terrain/actor/clock/policy state; resource labels compare remaining inventory and used assignments. Actual replay work accumulates across attempts.",
+      "Runtime replay retains authority over solved outcomes. Generated actions no longer incorrectly require an actor to remain active after being rescued; caller-supplied final postconditions remain explicit.",
+      "Correct readiness timeout argument positions in six browser specs. Workflow/naming helpers keep at least90s total test lifetime while respecting larger explicit caps. No browser viewport or production boot behavior changes.",
+      "Keep independent sourced Brick semantic fixture bounded but request an explicit10s search deadline/15s test cap under coverage, preserving original tick/node/action bounds. Production search defaults are unaffected."
+    ],
+    "validation": {
+      "node": {
+        "passed": 80,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "All solver*.test.js plus actual procedural solver adapter goals, including initialized Game replay, exact sourced terrain and whole-crew physical cases.",
+        "scopedCoverage": {
+          "RoutePlanner.js": {
+            "lines": 90.03,
+            "branches": 79.06,
+            "functions": 100
+          },
+          "TimingSearch.js": {
+            "lines": 95.5,
+            "branches": 53.12,
+            "functions": 100
+          },
+          "SolverTimingSearch.js": {
+            "lines": 100,
+            "branches": 83.08,
+            "functions": 100
+          },
+          "SolverSearchFrontier.js": {
+            "lines": 100,
+            "branches": 87.5,
+            "functions": 100
+          },
+          "SolverRunner.js": {
+            "lines": 78.03,
+            "branches": 71.12,
+            "functions": 83.67
+          }
+        }
+      },
+      "browser": {
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 132266.75,
+        "scope": "All six affected specs across disjoint desktop/workstation projects: installed/offline startup, naming, import, paging, transport and full workflow file.",
+        "sourceDeltaToFinal": [
+          "js/solver/RoutePlanner.js",
+          "js/solver/SolverTimingSearch.js",
+          "test/procgen-solver-adapter.test.js",
+          "test/solver-bounded-search.test.js"
+        ],
+        "scopeLimit": "Browser cohort precedes final pure solver risk/negative-window refinements and Node fixture/assertion changes. All browser-exercised readiness/runtime sources remain identical; final80-case Node cohort covers the final solver source."
+      },
+      "earlierNode": [
+        {
+          "passed": 78,
+          "failed": 1,
+          "reason": "New successful timing case exposed old generated activeCountAtLeast1 final postcondition, which contradicts rescue of the final actor."
+        },
+        {
+          "passed": 80,
+          "failed": 0,
+          "scope": "Before final risk/negative-window refinements."
+        },
+        {
+          "passed": 79,
+          "failed": 1,
+          "reason": "Existing sourced Brick semantic search crossed its default1s budget under coverage plus concurrent static checks; explicit finite fixture deadline corrected."
+        }
+      ],
+      "acceptance": [
+        "Zero-action route budget, cumulative two-builders/one-builder counterexample, expensive skill-preserving prefix, real source inventory, deterministic ties, fall/mutation scoring and each declared budget.",
+        "Real synthetic earliest-builder failure followed by a later successful verified replay; deterministic chosen script/work stats; equivalent and resource-dominated continuation pruning; bounded actual ticks/nodes.",
+        "Unchanged caller fixture/runner, complete terrain identity, reused/changed source rejection, failed/asynchronous retirement, factory exception, exact-window deduplication, explicit skipped verification and malformed/narrow windows."
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/340 files",
+        "whitespace"
+      ],
+      "scopeLimits": [
+        "No full local Node suite repeated. Immutable new-head CI must execute complete coverage and required browser smoke.",
+        "Synthetic fixtures and controlled source contracts prove local search behavior. Existing real Game/procedural replay cases remain passing; no claim of general generated-level completeness or multi-actor strategy search.",
+        "Additional focused branch coverage can extend malformed graph/count combinations and adapter-specific isolated-factory failure paths when those adapters are implemented."
+      ]
+    },
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-native-results.json",
+        "bytes": 53623,
+        "sha256": "f4430af286641a8b88c9fa8fbf1bcdb321ec461e9e41aa5e7d212695bea88911"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-native-source.json",
+        "bytes": 1390,
+        "sha256": "b42fb937437ff9d6459309f4e9dfe5b71a4fbd63e19e22de2d545fb35923e2d8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-306-final-coverage\\coverage-summary.json",
+        "bytes": 192114,
+        "sha256": "b7ac5f10cbd865df16f49a65d7f9c63ff5b5c9790ded8b08023652ba7794d1d9"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-node-initial.log",
+        "bytes": 7428,
+        "sha256": "173ef57db3e527ca3edd0d74675a0113269eac6f1cfeebea9158c3f19c32fdeb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-node-accepted.log",
+        "bytes": 7044,
+        "sha256": "5042e8b3b12310f18011ef0dad5b4d2200e915d58ba6c311429524f401394ba1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-node-published.log",
+        "bytes": 7479,
+        "sha256": "8c8eb414bc757fb8c7cadfae73eb95c7f436f0ec4b6f39f959fa4e3741cbd743"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-node-final.log",
+        "bytes": 7043,
+        "sha256": "d0f34cb02bb1211ffc388aba3698d6ed2c68fbe52d93c1c7f8e08029fcc34492"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-native.log",
+        "bytes": 13331,
+        "sha256": "12004fac386816c4c67840829a8e5f95dfd08d70411953a9d229dfeb357423a5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-types-published.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-undefined-published.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-provenance.log",
+        "bytes": 142,
+        "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog306-format-final-accepted.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      }
+    ],
+    "issueStatus": {
+      "944": {
+        "state": "software-acceptance-complete",
+        "evidence": "Executed cumulative resources, dominance and all declared budgets with unverified skeletons."
+      },
+      "945": {
+        "state": "software-acceptance-complete",
+        "evidence": "Executed real later-success search, pruning, isolated source ownership and actual work counters; verification remains authoritative."
+      }
+    },
+    "inventory": {
+      "priorImpliedOpen": 220,
+      "closuresReady": [
+        944,
+        945
+      ],
+      "scope": "No fresh inventory fetched at this checkpoint."
+    },
+    "sourceHashes": {
+      "docs/roadmap.md": "f16f64ce6d489a78beb39a92faad7fb9d9d4ebfad68862bab9b0e757ec175c8d",
+      "docs/solver.md": "b8948a9273490676468aa1058128f82d461e7636964dcee0ad714989761676ab",
+      "e2e/browser-generation-startup.spec.js": "dc83d8c78d48b82945360a35f2395e35c5fff568d543bd6f571aa60468e743cb",
+      "e2e/procgen-import-admission.spec.js": "8439bd85575989d24bc517d6e44e22d6b4287b390bceb16da815a5e724afc596",
+      "e2e/procgen-project-naming.spec.js": "03ebd29874a45aa1921754aff0b05e9dcb545fb1628c9bcb38097665cf233a5a",
+      "e2e/procgen-project-paging.spec.js": "705ab607b39052bacd84d0713147a9900f55ad645a95113ed31d9def741eea3a",
+      "e2e/procgen-workstation-transport.spec.js": "0c893066682c115183ce836e9e224cb3fc628599ec899743b1717f16ba08f6bb",
+      "e2e/procgen-workstation-workflow.spec.js": "5983f2ce48794a2752342584d0b8036249c401c8bb7e0125b561022d25be967f",
+      "js/solver/RoutePlanner.js": "f2d346e6c3183763d25f6df25cb8b9e70efb7480634024d265bd0f78f9fcae9d",
+      "js/solver/SolverRunner.js": "d489bc9f8a244c9aaee7d6ada0d7e97f3cac97915f5419c86d3857d2af29c189",
+      "js/solver/SolverSearchFrontier.js": "8640a258db5b71cdea759cc2354680495f167aed45594a8ce38d0cf6dbf7de42",
+      "js/solver/SolverTimingSearch.js": "398df48827d5976d9f52e5217a06eef6c0a91f1aeacc600af4b3dce4c557a072",
+      "js/solver/TimingSearch.js": "fb61059b62d46d7a48ec99f1df31f59d56ad689f8554cfc1fee28203b3e7d748",
+      "test/procgen-solver-adapter.test.js": "485feece46d5436f15c51887c61ee43abb79ce0132041f5cadfc0624100d4658",
+      "test/solver-bounded-search.test.js": "ae4d74a57d33e872daa82953246cd94f7a1d28ff4d6710461a52c9886e5fc5c0"
     }
   }
 }

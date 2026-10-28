@@ -1,13 +1,4 @@
-import {
-  SOLVER_EXPLANATION_CODES,
-  SOLVER_RESULT_TYPES,
-  createSolverResult,
-  normalizeSolverOptions
-} from './SolverTypes.js';
-import { planSolverRoute } from './RoutePlanner.js';
-import { validateSaveCountForResult } from './SolverCrowd.js';
-import { stableHash } from './SolverState.js';
-import { verifyActionReplay } from './SolverRunner.js';
+import { runBoundedTimingSearch } from './SolverTimingSearch.js';
 
 const DEFAULT_SKILL_FOR_EDGE = Object.freeze({
   build: 'builder',
@@ -23,6 +14,7 @@ const mutationBoundsForSegment = segment => segment?.mutation?.affectedBounds ??
 const windowForSegment = (segment, fallbackTick) => {
   const raw = segment.roughActionWindow;
   if (raw) {
+    if (!Number.isSafeInteger(raw.start) || !Number.isSafeInteger(raw.end) || raw.start < 0 || raw.end < 0 || raw.end < raw.start) return { start: raw.start, end: raw.end };
     const mutationBounds = mutationBoundsForSegment(segment);
     return {
       start: mutationBounds
@@ -54,7 +46,7 @@ const actionForSegment = (segment, tickCursor) => {
   const window = windowForSegment(segment, tickCursor);
   return {
     skillType,
-    target: {
+    target: segment.target ?? {
       kind: 'lemming',
       role: skillType === 'blocker' ? 'blocker-anchor' : 'frontier'
     },
@@ -65,135 +57,32 @@ const actionForSegment = (segment, tickCursor) => {
       'target-active',
       ...spatialPreconditionsForSegment(segment)
     ],
-    expectedPostconditions: [
-      { type: 'activeCountAtLeast', count: 1 }
-    ],
+    expectedPostconditions: segment.expectedPostconditions ?? [],
     rationale: `Apply ${skillType} for ${segment.type} segment ${segment.index}.`
   };
 };
 
-const compactStats = stats => ({
-  nodes: stats.nodes,
-  ticksConsidered: stats.ticksConsidered,
-  actionsConsidered: stats.actionsConsidered,
-  prunedEquivalentStates: stats.prunedEquivalentStates,
-  prunedImpossiblePreconditions: stats.prunedImpossiblePreconditions,
-  prunedDominatedScripts: stats.prunedDominatedScripts,
-  bestFailureReason: stats.bestFailureReason
-});
-
-const buildCandidateScript = routeSkeleton => {
+const buildCandidateScript = (routeSkeleton, maximumActions) => {
   const actions = [];
   let tickCursor = 0;
   for (const segment of routeSkeleton.segments ?? []) {
     tickCursor += 12;
-    const action = actionForSegment(segment, tickCursor);
-    if (!action) continue;
-    actions.push(action);
-    tickCursor = Math.max(tickCursor, action.window.end);
+    const skill = segment.requiredSkillFamilies?.[0] ?? DEFAULT_SKILL_FOR_EDGE[segment.type];
+    const required = segment.requiredSkillCounts ?? (skill ? { [skill]: segment.requiredSkillCount ?? 1 } : {});
+    for (const [family, count] of Object.entries(required)) {
+      if (!Number.isSafeInteger(count) || count < 0) throw new RangeError('Invalid route skill requirement.');
+      for (let index = 0; index < count; index++) {
+        const action = actionForSegment({ ...segment, requiredSkillFamilies: [family] }, tickCursor); actions.push(action);
+        if (actions.length > maximumActions) return actions;
+      }
+    }
+    if (actions.length) tickCursor = Math.max(tickCursor, actions.at(-1).window.end);
   }
   return actions;
 };
 
-const searchActionTiming = (runnerOrSource, routeOrInput = null, options = {}) => {
-  const normalized = normalizeSolverOptions(options);
-  const stats = {
-    nodes: 0,
-    ticksConsidered: 0,
-    actionsConsidered: 0,
-    prunedEquivalentStates: 0,
-    prunedImpossiblePreconditions: 0,
-    prunedDominatedScripts: 0,
-    bestFailureReason: null
-  };
-  const routeSkeleton = routeOrInput?.kind === 'solver-route-skeleton'
-    ? routeOrInput
-    : routeOrInput?.routeSkeleton ??
-      planSolverRoute(routeOrInput ?? runnerOrSource, options).routeSkeleton;
-  if (!routeSkeleton) {
-    const result = createSolverResult({
-      resultType: SOLVER_RESULT_TYPES.FAILED,
-      summary: 'Timing search has no route skeleton to schedule',
-      explanations: [SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT],
-      budgetUsage: { nodes: 1 }
-    });
-    result.timingSearchStats = compactStats({ ...stats, nodes: 1 });
-    return result;
-  }
-
-  const seenStateKeys = new Set();
-  const actions = buildCandidateScript(routeSkeleton);
-  stats.actionsConsidered = actions.length;
-  stats.ticksConsidered = actions.reduce((sum, action) => {
-    return sum + Math.max(1, action.window.end - action.window.start + 1);
-  }, 0);
-  stats.nodes = Math.max(1, actions.length + 1);
-  if (stats.nodes > normalized.maxNodes || actions.length > normalized.maxActions) {
-    const result = createSolverResult({
-      resultType: SOLVER_RESULT_TYPES.TIMEOUT,
-      summary: 'Timing search exhausted deterministic budget',
-      explanations: [SOLVER_EXPLANATION_CODES.BUDGET_EXHAUSTED],
-      budgetUsage: {
-        nodes: stats.nodes,
-        actions: actions.length,
-        ticks: stats.ticksConsidered
-      }
-    });
-    result.timingSearchStats = compactStats(stats);
-    result.routeSkeleton = routeSkeleton;
-    return result;
-  }
-
-  const canonicalKey = stableHash(actions.map(action => ({
-    skillType: action.skillType,
-    target: action.target,
-    window: action.window
-  })));
-  if (seenStateKeys.has(canonicalKey)) {
-    stats.prunedEquivalentStates += 1;
-  }
-  seenStateKeys.add(canonicalKey);
-
-  const narrow = actions.find(action => action.window.end < action.window.start);
-  if (narrow) {
-    stats.prunedImpossiblePreconditions += 1;
-    stats.bestFailureReason = SOLVER_EXPLANATION_CODES.TIMING_WINDOW_TOO_NARROW;
-    const result = createSolverResult({
-      resultType: SOLVER_RESULT_TYPES.FAILED,
-      summary: 'Timing search found an impossible action window',
-      actions,
-      explanations: [SOLVER_EXPLANATION_CODES.TIMING_WINDOW_TOO_NARROW],
-      budgetUsage: {
-        nodes: stats.nodes,
-        actions: actions.length,
-        ticks: stats.ticksConsidered
-      }
-    });
-    result.timingSearchStats = compactStats(stats);
-    result.routeSkeleton = routeSkeleton;
-    return result;
-  }
-
-  const replay = options.verify === false
-    ? createSolverResult({
-      resultType: SOLVER_RESULT_TYPES.UNKNOWN,
-      summary: 'Timing candidate generated; runtime replay was skipped by option',
-      actions,
-      budgetUsage: {
-        nodes: stats.nodes,
-        actions: actions.length,
-        ticks: stats.ticksConsidered
-      }
-    })
-    : verifyActionReplay(runnerOrSource, actions, normalized);
-  const result = options.crowd
-    ? validateSaveCountForResult(replay, options.crowd, normalized)
-    : replay;
-  result.timingSearchStats = compactStats(stats);
-  result.routeSkeleton = routeSkeleton;
-  result.candidateScriptHash = stableHash(actions);
-  return result;
-};
+const searchActionTiming = (runnerOrSource, routeOrInput = null, options = {}) =>
+  runBoundedTimingSearch(runnerOrSource, routeOrInput, options, buildCandidateScript);
 
 export {
   searchActionTiming

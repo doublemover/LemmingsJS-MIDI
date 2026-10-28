@@ -2,11 +2,13 @@ import {
   SOLVER_EXPLANATION_CODES,
   SOLVER_RESULT_TYPES,
   createSolverResult,
-  normalizeSolverOptions
+  normalizeSolverOptions,
+  createBudgetMeter
 } from './SolverTypes.js';
 import { buildReachabilityGraph } from './ReachabilityGraph.js';
 import { analyzeSolverCrowd } from './SolverCrowd.js';
 import { extractSolverState, isSolverState, stableHash } from './SolverState.js';
+import { compareSolverKeys, createSolverSearchFrontier } from './SolverSearchFrontier.js';
 
 const EDGE_TYPE_ORDER = Object.freeze({
   spawn: 0,
@@ -23,9 +25,21 @@ const EDGE_TYPE_ORDER = Object.freeze({
 });
 
 const DESTRUCTIVE_TYPES = new Set(['basher', 'digger', 'miner']);
+const nonnegative = value => Number.isFinite(value) ? Math.max(0, value) : 0;
+const requiredSkills = edge => {
+  if (edge.requiredSkillCounts) return { ...edge.requiredSkillCounts };
+  const families = [...new Set(edge.requiredSkills || [])], count = edge.requiredSkillCount ?? families.length;
+  if (!families.length) return count ? null : {};
+  if (families.length > 1 && count !== families.length) return null;
+  return Object.fromEntries(families.map(skill => [skill, families.length === 1 ? count : 1]));
+};
+const skillTotal = edge => Object.values(requiredSkills(edge) || {}).reduce((sum, count) => sum + count, 0);
+const mutationCost = edge => nonnegative(edge.terrainMutationCost ?? (edge.mutation?.affectedBounds
+  ? edge.mutation.affectedBounds.width * edge.mutation.affectedBounds.height : 0));
+const fallRisk = edge => nonnegative(edge.fallRisk ?? (edge.type === 'fall' ? edge.fallDistance ?? edge.distance : 0));
 
 const edgeCost = edge => {
-  const skillCost = (edge.requiredSkillCount ?? edge.requiredSkills?.length ?? 0) * 100;
+  const skillCost = skillTotal(edge) * 100;
   const destructiveCost = DESTRUCTIVE_TYPES.has(edge.type) ? 25 : 0;
   const hazardCost = (edge.hazardExposure?.length ?? 0) * 1000;
   const blockedCost = edge.blocked ? 10000 : 0;
@@ -34,11 +48,11 @@ const edgeCost = edge => {
   const timingCost = edge.roughTimingWindow
     ? Math.max(0, Math.floor(edge.roughTimingWindow.end - edge.roughTimingWindow.start))
     : 0;
-  return skillCost + destructiveCost + hazardCost + blockedCost + uncertaintyCost + distanceCost + timingCost;
+  return skillCost + destructiveCost + hazardCost + blockedCost + uncertaintyCost + distanceCost + timingCost + fallRisk(edge) * 100 + mutationCost(edge) / 16;
 };
 
 const routeScoreBreakdown = edges => ({
-  skillCount: edges.reduce((sum, edge) => sum + (edge.requiredSkillCount ?? edge.requiredSkills?.length ?? 0), 0),
+  skillCount: edges.reduce((sum, edge) => sum + skillTotal(edge), 0),
   destructiveActions: edges.filter(edge => DESTRUCTIVE_TYPES.has(edge.type)).length,
   hazardExposure: edges.reduce((sum, edge) => sum + (edge.hazardExposure?.length ?? 0), 0),
   uncertainty: edges.reduce((sum, edge) => sum + (edge.uncertainty ?? 0), 0),
@@ -47,13 +61,15 @@ const routeScoreBreakdown = edges => ({
     return sum + Math.max(0, edge.roughTimingWindow.end - edge.roughTimingWindow.start);
   }, 0),
   distance: edges.reduce((sum, edge) => sum + Math.max(0, edge.distance ?? 0), 0),
+  fallRisk: edges.reduce((sum, edge) => sum + fallRisk(edge), 0),
+  terrainMutationCost: edges.reduce((sum, edge) => sum + mutationCost(edge), 0),
   total: edges.reduce((sum, edge) => sum + edgeCost(edge), 0)
 });
 
 const sortEdges = edges => [...edges].sort((left, right) => (
   edgeCost(left) - edgeCost(right) ||
   (EDGE_TYPE_ORDER[left.type] ?? 99) - (EDGE_TYPE_ORDER[right.type] ?? 99) ||
-  String(left.id).localeCompare(String(right.id))
+  compareSolverKeys(String(left.id), String(right.id))
 ));
 
 const buildAdjacency = graph => {
@@ -65,27 +81,18 @@ const buildAdjacency = graph => {
   return adjacency;
 };
 
-const hasUsableSkills = (edge, options) => {
-  if (!edge.requiredSkills?.length) return true;
-  const subset = new Set(options.skillSubset);
-  if (subset.size && edge.requiredSkills.some(skill => !subset.has(skill))) return false;
-  if (edge.availableSkillCount != null && edge.requiredSkillCount != null) {
-    return edge.availableSkillCount >= edge.requiredSkillCount;
-  }
-  return true;
-};
-
 const isDestructiveAllowed = (edge, options) => {
   if (!DESTRUCTIVE_TYPES.has(edge.type)) return true;
   if (options.allowDestructiveSkills === false) return false;
   return true;
 };
 
-const createRouteSkeleton = (graph, edges) => {
+const createRouteSkeleton = (graph, edges, resources = {}) => {
   const scoreBreakdown = routeScoreBreakdown(edges);
   const skeleton = {
     kind: 'solver-route-skeleton',
     graphHash: graph.graphHash,
+    ...resources,
     nodeIds: edges.length
       ? [edges[0].from, ...edges.map(edge => edge.to)]
       : [],
@@ -97,7 +104,8 @@ const createRouteSkeleton = (graph, edges) => {
       to: edge.to,
       type: edge.type,
       requiredSkillFamilies: edge.requiredSkills ?? [],
-      requiredSkillCount: edge.requiredSkillCount ?? edge.requiredSkills?.length ?? 0,
+      requiredSkillCount: skillTotal(edge),
+      requiredSkillCounts: requiredSkills(edge),
       roughActionWindow: edge.roughTimingWindow ?? null,
       mutation: edge.mutation ?? null,
       hazardExposure: edge.hazardExposure ?? [],
@@ -114,6 +122,7 @@ const planSolverRoute = (input, options = {}) => {
     ...normalizeSolverOptions(options),
     allowDestructiveSkills: options.allowDestructiveSkills !== false
   };
+  const meter = createBudgetMeter(normalized, options.now), subset = new Set(normalized.skillSubset);
   const snapshot = options.graph != null && options.crowd != null
     ? input
     : (isSolverState(input) ? input : extractSolverState(input, options));
@@ -140,51 +149,59 @@ const planSolverRoute = (input, options = {}) => {
 
   const adjacency = buildAdjacency(graph);
   const exitSet = new Set(graph.exitNodeIds);
-  const queue = graph.entranceNodeIds.map(nodeId => ({
-    nodeId,
-    edges: [],
-    score: 0
-  }));
-  const bestScoreByNode = new Map(queue.map(item => [item.nodeId, 0]));
+  const skillNames = ['climber', 'floater', 'bomber', 'blocker', 'builder', 'basher', 'miner', 'digger'];
+  const counts = options.skillCounts ?? snapshot?.skills?.counts ?? snapshot?.skills ?? graph.skillCounts;
+  const inventory = Object.fromEntries(skillNames.map(skill => [skill, counts ? nonnegative(counts[skill]) : null]));
+  if (!counts) for (const edge of graph.edges) for (const skill of edge.requiredSkills || []) {
+    if (Object.hasOwn(inventory, skill) && Number.isSafeInteger(edge.availableSkillCount) && edge.availableSkillCount >= 0)
+      inventory[skill] = inventory[skill] == null ? edge.availableSkillCount : Math.min(inventory[skill], edge.availableSkillCount);
+  }
+  let serial = 0, admitted = 0;
+  const queue = createSolverSearchFrontier((a, b) => a.score - b.score || compareSolverKeys(String(a.nodeId), String(b.nodeId)) || a.serial - b.serial, normalized.maxNodes);
+  const labels = new Map();
+  const dominates = (a, b) => a.score <= b.score && a.actions <= b.actions && a.ticks <= b.ticks && skillNames.every(skill => (a.used[skill] || 0) <= (b.used[skill] || 0));
   const stats = {
     nodes: 0,
     edgesConsidered: 0,
     pruned: 0,
-    bestFailureReason: null
+    prunedResources: 0,
+    prunedDominated: 0,
+    prunedBudgets: 0,
+    admitted: 0,
+    bestFailureReason: null,
+    estimates: 'actions are required skill assignments; ticks are cumulative edge estimates, not runtime replay'
   };
-
-  while (queue.length) {
-    queue.sort((left, right) => left.score - right.score || left.nodeId.localeCompare(right.nodeId));
-    const current = queue.shift();
-    stats.nodes += 1;
-    if (stats.nodes > normalized.maxNodes) {
-      const result = createSolverResult({
-        resultType: SOLVER_RESULT_TYPES.TIMEOUT,
-        summary: 'Route planner exhausted node budget',
-        explanations: [SOLVER_EXPLANATION_CODES.BUDGET_EXHAUSTED],
-        budgetUsage: { nodes: stats.nodes }
-      });
-      result.routeSearchStats = stats;
-      result.graphHash = graph.graphHash;
-      return result;
-    }
+  const finish = (resultType, summary, explanations, current = null) => {
+    const result = createSolverResult({ resultType, summary, explanations,
+      budgetUsage: { ...meter.usage(), actions: current?.actions || 0, ticks: current?.ticks || 0 } });
+    result.routeSearchStats = { ...stats, admitted }; result.graphHash = graph.graphHash; result.crowd = crowd; return result;
+  };
+  const timeout = detail => finish(SOLVER_RESULT_TYPES.TIMEOUT, 'Route planner exhausted a declared search budget', [{ code: SOLVER_EXPLANATION_CODES.BUDGET_EXHAUSTED, detail }]);
+  const admit = label => {
+    const previous = labels.get(label.nodeId) || [];
+    if (previous.some(other => other.active && dominates(other, label))) { stats.pruned++; stats.prunedDominated++; return true; }
+    if (admitted >= normalized.maxNodes) return false;
+    for (const other of previous) if (other.active && dominates(label, other)) { other.active = false; stats.prunedDominated++; }
+    label.serial = serial++; label.active = true; admitted++;
+    labels.set(label.nodeId, [...previous.filter(other => other.active), label]); return queue.push(label);
+  };
+  for (const nodeId of [...graph.entranceNodeIds].sort(compareSolverKeys)) {
+    if (!admit({ nodeId, parent: null, edge: null, score: 0, actions: 0, ticks: 0, used: {} })) return timeout('bounded route frontier capacity');
+  }
+  while (queue.size) {
+    if (meter.usage().wallTimeMs > normalized.maxWallTimeMs) return timeout('elapsed wall time');
+    const current = queue.pop(); if (!current.active) continue;
+    meter.recordNode(); stats.nodes++;
     if (exitSet.has(current.nodeId)) {
-      const routeSkeleton = createRouteSkeleton(graph, current.edges);
-      const result = createSolverResult({
-        resultType: SOLVER_RESULT_TYPES.UNKNOWN,
-        summary: 'Route skeleton selected; exact timing and runtime replay still required',
-        explanations: [],
-        budgetUsage: { nodes: stats.nodes, actions: routeSkeleton.segments.length }
-      });
-      result.routeSkeleton = routeSkeleton;
-      result.routeSearchStats = stats;
-      result.graphHash = graph.graphHash;
-      result.crowd = crowd;
+      const edges = []; for (let label = current; label.edge; label = label.parent) edges.push(label.edge); edges.reverse();
+      const result = finish(SOLVER_RESULT_TYPES.UNKNOWN, 'Route skeleton selected; exact timing and runtime replay still required', [], current);
+      result.routeSkeleton = createRouteSkeleton(graph, edges, { estimatedTicks: current.ticks, requiredSkillCounts: { ...current.used } });
       return result;
     }
 
     for (const edge of adjacency.get(current.nodeId) ?? []) {
       stats.edgesConsidered += 1;
+      if (meter.usage().wallTimeMs > normalized.maxWallTimeMs) return timeout('elapsed wall time during edge expansion');
       if (edge.blocked) {
         stats.pruned += 1;
         stats.bestFailureReason = edge.blockers?.[0]?.type === 'steel'
@@ -192,39 +209,40 @@ const planSolverRoute = (input, options = {}) => {
           : SOLVER_EXPLANATION_CODES.HAZARD_UNAVOIDABLE;
         continue;
       }
-      if (!hasUsableSkills(edge, normalized) || !isDestructiveAllowed(edge, normalized)) {
+      const required = requiredSkills(edge);
+      if (!required || Object.entries(required).some(([skill, count]) => !skillNames.includes(skill) || !Number.isSafeInteger(count) || count < 0)) {
+        stats.pruned++; stats.bestFailureReason = SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC; continue;
+      }
+      if (subset.size && Object.keys(required).some(skill => !subset.has(skill)) || !isDestructiveAllowed(edge, normalized)) {
         stats.pruned += 1;
         stats.bestFailureReason = SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT;
         continue;
       }
-      const score = current.score + edgeCost(edge);
-      const previous = bestScoreByNode.get(edge.to);
-      if (previous != null && previous <= score) {
-        stats.pruned += 1;
-        continue;
+      const used = { ...current.used }; let unavailable = null;
+      for (const [skill, count] of Object.entries(required)) {
+        used[skill] = (used[skill] || 0) + count;
+        if (inventory[skill] == null || used[skill] > inventory[skill]) unavailable = skill;
       }
-      bestScoreByNode.set(edge.to, score);
-      queue.push({
-        nodeId: edge.to,
-        edges: [...current.edges, edge],
-        score
-      });
+      if (unavailable) { stats.pruned++; stats.prunedResources++; stats.bestFailureReason = unavailable === 'builder' ? SOLVER_EXPLANATION_CODES.GAP_EXCEEDS_BUILDER_BUDGET : SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT; continue; }
+      const actions = current.actions + Object.values(required).reduce((sum, count) => sum + count, 0);
+      const estimate = edge.estimatedTicks ?? Math.max(nonnegative(edge.distance), edge.roughTimingWindow ? nonnegative(edge.roughTimingWindow.end - edge.roughTimingWindow.start) : 0);
+      if (!Number.isFinite(estimate) || estimate < 0) { stats.pruned++; stats.bestFailureReason = SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC; continue; }
+      const ticks = current.ticks + Math.ceil(estimate);
+      if (actions > normalized.maxActions || ticks > normalized.maxTicks) { stats.pruned++; stats.prunedBudgets++; continue; }
+      const score = current.score + edgeCost(edge);
+      if (!Number.isFinite(score) || score < current.score) { stats.pruned++; stats.bestFailureReason = SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC; continue; }
+      if (!admit({ nodeId: edge.to, parent: current, edge, score, used, actions, ticks })) return timeout('bounded route frontier capacity');
     }
   }
 
   const explanationCode = stats.bestFailureReason ?? SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT;
-  const result = createSolverResult({
-    resultType: SOLVER_RESULT_TYPES.FAILED,
-    summary: 'No route skeleton reaches the exit within supported graph edges',
-    explanations: [{
+  if (stats.prunedBudgets) return timeout('all remaining route candidates exceed action or estimated tick budgets');
+  const result = finish(
+    explanationCode === SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC ? SOLVER_RESULT_TYPES.UNSUPPORTED : SOLVER_RESULT_TYPES.FAILED,
+    'No route skeleton reaches the exit within supported graph edges', [{
       code: explanationCode,
       detail: 'Reachability graph search exhausted all deterministic candidates.'
-    }],
-    budgetUsage: { nodes: stats.nodes }
-  });
-  result.routeSearchStats = stats;
-  result.graphHash = graph.graphHash;
-  result.crowd = crowd;
+    }]);
   return result;
 };
 

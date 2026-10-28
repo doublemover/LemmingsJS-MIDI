@@ -2,8 +2,9 @@ import { expect, test } from './helpers/workstationValidation.js';
 
 test.use({ permissions: [] });
 const ready = async page => {
+  test.setTimeout(Math.max(test.info().timeout, 90000));
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=2');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__, probe = window.nameProbe = { puts: 0, plays: 0, fail: false };
     studio.transport.pause();

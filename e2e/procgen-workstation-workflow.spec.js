@@ -9,8 +9,9 @@ import { enableComplementaryPatterns } from './helpers/procgenPatterns.js';
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 const ready = async (page, { patterns = false } = {}) => {
+  test.setTimeout(Math.max(test.info().timeout, 90000));
   await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=8');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
   if (patterns) { await enableComplementaryPatterns(page); await inspectLane(page); }
 };

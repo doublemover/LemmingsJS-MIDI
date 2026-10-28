@@ -9,7 +9,7 @@ test('installed ProcGen generation completes module imports online and after off
   test.setTimeout(90000);
   await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=2');
   const observe = async () => {
-    await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 30000 });
+    await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 30000 });
     return page.evaluate(async () => {
       window.__PROCGEN_STUDIO__.transport.pause();
       const { getActiveExecutionIdentity } = await import(new URL('js/runtime/ActiveExecutionIdentity.js', window.location.href).href);

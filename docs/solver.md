@@ -112,6 +112,47 @@ panel. It refreshes the preview, runs the same bounded advisory pass, and report
 a compact ok/warning status for designers and E2E without changing validation or
 export blocking behavior.
 
+## Bounded route and timing search
+
+`planSolverRoute` uses a bounded priority frontier and non-dominated resource
+labels per node. Labels retain cumulative skill assignments, remaining inventory,
+estimated ticks and score. A cheaper prefix cannot discard a more expensive
+prefix that preserves a skill needed downstream. Skill availability comes from
+the snapshot or explicit `skillCounts`; graph-only calls can use declared edge
+availability conservatively. Unknown skill families are unsupported. Scores
+include skill/destructive/hazard/uncertainty/distance/timing costs plus declared
+fall risk and terrain mutation area. Ties use code-point order, not host locale.
+
+`maxActions` limits required assignments in a selected route. `maxTicks` limits
+its cumulative edge estimate, using `estimatedTicks` or the larger of distance
+and rough window width. These estimates are not replayed physics ticks.
+`maxNodes` also caps admitted frontier labels; actual expanded nodes and admitted
+labels are reported separately. Elapsed wall-time checks include preparation.
+Exhaustion returns `timeout` without selecting an over-budget skeleton. Selected
+skeletons remain `unknown` until exact runtime replay succeeds.
+
+`searchActionTiming` first tries the original applicability windows, then lazily
+enumerates ordered exact assignment alternatives. It retains bounded script and
+continuation tables instead of materializing the Cartesian timing grid. Actual
+replayed ticks/nodes accumulate across attempts; `maxActions` remains a per-script
+limit. `ticksConsidered` reports real stepped work, not nominal window widths.
+Equivalent canonical assignments skip replay. A runner can expose
+`getSearchState() -> {key, inventory}` to prune equivalent/resource-dominated
+continuations. Its key must include every non-inventory state affecting future
+execution; a display-only summary is insufficient. The synthetic implementation
+includes terrain/steel masks, complete actors, geometry, clock and policy inputs.
+Pending constraints and final postconditions are part of the continuation key.
+Adapters without this contract receive no guessed state-based pruning.
+
+Synthetic fixtures and runners fork isolated state for every attempt. Other
+runtime sources require `options.createRunner`, which must return a fresh owned
+runner or source wrapper for each call. Reusing the live source or a prior owner
+is unsupported. Factory-created owners retire after each attempt; asynchronous
+or failed retirement stops the synchronous search explicitly. No failed candidate
+is replayed into the caller's live world. `verify: false` returns an unverified
+candidate with zero searched ticks. Only `verifyActionReplay` can establish a
+solved result, with its existing runtime authority requirements.
+
 ## Independent procedural physical goals
 
 `ProcgenSolverAdapter` runs the actual shared action systems with assistance and new admissions disabled. It tracks 1-64 ordinary actors by stable ID against a finite physical arrival region; `goalKind: physical-region` and `exitRescues: false` keep this separate from authored exit rescue. Snapshots include real ground/steel, bounded source-object metadata and source/options identity. Protected terrain is checked once after replay, rather than scanned per tick.
