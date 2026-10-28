@@ -8063,3 +8063,40 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #970 is closed completed. #1112/#1204 retain the graft-specific replacement
   journey, broader sparse/dense finite-audio corpus, expanded source/pressure
   cases, human relatedness/listening and actual assistive-technology review.
+
+### Continuation 310 — reviewed source branches and native lifetime repairs
+
+- Rebuild v4 snapshots manifests and recipes before asynchronous work. Bind the
+  complete replacement WAV digest, byte length, immutable reference and canonical
+  manifest hash. Refuse substituted same-label bytes, changed printed effects,
+  incompatible operation/channel/format and unavailable verification before jobs.
+- Preserve external target/draft fences through storage and the workstation's
+  lane transaction. Recheck at final publication and retire stale held previews.
+  Cancel safely before child owners exist; failed, stale and quota-denied work
+  retains the last complete branch and frozen material.
+- Separate archive preparation and retained-stage lifetimes for seed instruments,
+  foundry bodies, Circuit preparation and canonical prepared-content helpers.
+  Keep stale verification checks and charged leases through acknowledged cleanup.
+- Synchronize returned modal modes before computing Refit/Merge readiness in the
+  same paint. Resolve FM/modal control audition bends from the actual source
+  profile, recording requested/effective values; preserve fixed-tuning patches.
+- All78 focused Node cases pass under scoped coverage. A real native journey
+  captures96 physical ticks, renders a dry lane, freezes an exact onset crop,
+  fits/refits a body, auditions/saves/applies the original, saves an unselected
+  project snapshot, and deliberately rebuilds the same take/tap. The new fitted
+  body is auditioned, saved and applied with sound-only Undo. Both packs and the
+  unselected project reopen offline; physics and frozen material remain exact.
+- A separately prepared sampler graft correctly hits the existing cue source
+  quota, remains unqualified/unsaved and cannot Apply. Do not lower resource
+  limits or label that refusal a playback pass. #1236 retains sampler/texture
+  graft live-budget qualification and its second physical performance journey.
+- Preserve earlier native selector/tap, same-paint readiness, stage lifetime,
+  quota and fixed-bend failures with their exact reports. Final native source is
+  frozen and hashed. Refresh the existing273-file worker provenance hash after
+  its shared control fixture changes;10 components/342 files remain inventoried.
+- Latest immutable full CI b8e518de is green:6728 Node passes,10 pre-existing
+  pending,127 browser passes, all14 workstation capabilities and benchmark/static/
+  policy/dependency gates. Coverage90.21% lines/statements,83.61% branches,88.29%
+  functions. Its master is Partial at63232 finite frames after a128-frame gap;
+  keep the prior031e0e15 Ready107136-frame receipt separate. New-head CI remains
+  required after publication. No full local Node suite is repeated.

@@ -9,6 +9,16 @@ export const SOUND_CONTENT_CONTROL_FIXTURE = freezeData({ schema: 'lemmings-cont
     { kind: 'end', seconds: 1 }
   ] });
 
+export function nativeSourceControlFixture(patch) {
+  const limit = patch?.parameters?.maxBendCents;
+  if (!['native-fm', 'native-modal'].includes(patch?.engineId) || !Number.isFinite(limit) || limit < 0 || limit > 1200) throw new TypeError('Native source audition requires its resolved bend profile.');
+  const bend = Math.min(100, limit);
+  return freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: patch.engineId + '-pressure-pan-bounded-bend-v1',
+    bendProfile: { requestedCents: 100, effectiveCents: bend, maximumCents: limit, policy: 'resolved-source-maxBendCents' },
+    events: SOUND_CONTENT_CONTROL_FIXTURE.events.map(event => ({ ...event, ...(event.expression ? {
+      expression: { ...event.expression, ...(event.expression.pitchOffsetCents == null ? {} : { pitchOffsetCents: bend }) } } : {}) })) });
+}
+
 export function sampleMapControlFixture(map, gesture = map?.neutralArticulationId) {
   if (!map?.articulations?.some(entry => entry.id === gesture)) throw new Error('Choose an authored sample gesture for the control fixture.');
   return freezeData({ ...SOUND_CONTENT_CONTROL_FIXTURE, id: 'pressure-pan-pitch-sample-gesture-v1', durationScale: 0.2, events: SOUND_CONTENT_CONTROL_FIXTURE.events.map(event =>

@@ -7,7 +7,7 @@ export async function stagePreparedSoundContent({ prepared, reader, archiver, en
   let lease = null, stage = null;
   try {
     lease = result.artifact.borrow();
-    stage = await reader.stageArchive(lease.blob, { engineDescriptors, signal, isCurrent: stageIsCurrent });
+    stage = await reader.stageArchive(lease.blob, { engineDescriptors, signal, isCurrent, stageIsCurrent });
     signal?.throwIfAborted(); if (!isCurrent()) throw new Error('The prepared sound source changed.');
     return stage;
   } catch (error) { stage?.discard(); throw error; }

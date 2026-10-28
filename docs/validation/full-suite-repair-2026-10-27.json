@@ -20782,6 +20782,499 @@
         "state": "open-implemented-partial",
         "remaining": "Expanded source/pressure refusal journeys and actual assistive/listening qualification."
       }
+    },
+    "remoteCi": {
+      "head": "b8e518ded699cde310e24d2730c893bc197345d4",
+      "status": "success",
+      "run": 40729336568,
+      "job": 122961058945,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40729336568/job/122961058945",
+      "nodePassed": 6728,
+      "nodePending": 10,
+      "browserPassed": 127,
+      "desktopPassed": 22,
+      "workstationSmokePassed": 105,
+      "workstationCapabilities": 14,
+      "benchmark": {
+        "measurementValid": true,
+        "historyRatio": 0.5853333333333334
+      },
+      "coverage": {
+        "lines": 90.21,
+        "statements": 90.21,
+        "branches": 83.61,
+        "functions": 88.29
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 63232,
+        "captured": 63232,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 91136,
+          "expectedFrame": 91264,
+          "frames": 128
+        },
+        "peak": 0.02335798740386963,
+        "nonfinite": 0
+      },
+      "policy": "success",
+      "dependencyReview": "success",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci309-green.log",
+        "bytes": 1152063,
+        "sha256": "69982f56c1b68a9f163b3d80e637298b4f3b4cf241ac05f003004221e34a7343"
+      },
+      "excludesLaterWork": true
+    }
+  },
+  "continuation310": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Exact derived source plans, final review fences, retained stage lifetimes and native branch qualification",
+    "sourceBase": "b8e518ded699cde310e24d2730c893bc197345d4",
+    "issues": [
+      1236,
+      1164,
+      1177,
+      1216
+    ],
+    "development": [
+      "Rebuild v4 snapshots manifests/recipes and binds complete replacement WAV SHA256, byte length, immutable source reference and canonical manifest hash. Refuse same-label byte substitutions, changed printed effects, incompatible operation/channel/format and missing verified bytes before worker scheduling.",
+      "Cancel partially constructed owners safely. Retain target/draft predicates for storage and Apply, propagate them through the workstation handler into the existing lane transaction and recheck immediately before publication. Retire a stale held preview without changing project/history or freeing unknown resources.",
+      "Separate archive preparation and retained-stage predicates. Preserve strict stale verification while seed instruments, foundry bodies, original Circuit preparation and canonical prepared-content helpers retain independently owned stage lifetimes after their preparation operation ends.",
+      "Update fit/Refit/Merge button readiness after synchronizing the actual returned mode list in the same paint. No unrelated UI interaction is required to enable Refit.",
+      "Native FM/modal control fixtures honor the resolved maxBendCents, retain pressure/pan and explicitly bind requested/effective bend data into the actual fixture hash. A fixed-tuning fitted body no longer receives an unsupported generic100-cent bend."
+    ],
+    "validation": {
+      "node": {
+        "passed": 78,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "Seed/rebuild ownership, real analysis/decomposition/composition/fit/warp kernels, full seed-fit-graft repeatability, missing/partial/incompatible/tail/digest sources, quota/failure/cancel/stale completion, final lane review fences, archive/Circuit/foundry lifetimes and installation authority, bounded native control fixtures.",
+        "scopedCoverage": {
+          "LaneSoundTransaction.js": {
+            "lines": 100,
+            "branches": 85.36,
+            "functions": 96.55
+          },
+          "SoundContentReader.js": {
+            "lines": 97.67,
+            "branches": 87.5,
+            "functions": 96.29
+          },
+          "SoundSeedInstrumentOwner.js": {
+            "lines": 82.11,
+            "branches": 58.73,
+            "functions": 78.12
+          },
+          "SoundSeedRebuildOwner.js": {
+            "lines": 92.78,
+            "branches": 79.36,
+            "functions": 82.85
+          },
+          "SoundContentControlFixture.js": {
+            "lines": 65.3,
+            "branches": 100,
+            "functions": 33.33
+          },
+          "SoundSeedRebuildPlan.js": {
+            "lines": 100,
+            "branches": 85.29,
+            "functions": 87.5
+          }
+        }
+      },
+      "browser": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 40414.265,
+        "scope": "Actual96-tick physical phrase, native-modal dry lane render, exact onset crop/frozen seed, real fit and explicit manual refit, native fitted-body audition/install/Apply, original project snapshot saved as an unselected document, same-take/same-tap replacement, new selected branch audition/durable save/Apply/Undo, both exact packs and unselected project reopened offline. A separately prepared sampler graft hits the existing cue source quota, remains unqualified/unsaved and cannot Apply; frozen material and project/physics remain unchanged.",
+        "sourceDeltaToPublication": []
+      },
+      "earlierNode": [
+        {
+          "passed": 31,
+          "failed": 4,
+          "reason": "New test compiler adapter omitted required paged worker inputBytes/nodes metadata."
+        },
+        {
+          "passed": 35,
+          "failed": 1,
+          "reason": "New stale-result fixture expected generic changed wording rather than the actual stale-owner diagnostic."
+        },
+        {
+          "passed": 36,
+          "failed": 0,
+          "scope": "Before central publication fence cases."
+        },
+        {
+          "passed": 46,
+          "failed": 0,
+          "scope": "Before retained archive ownership and resolved native fixture integration."
+        },
+        {
+          "passed": 71,
+          "failed": 0,
+          "scope": "Before bounded native source fixture and installation cohort."
+        }
+      ],
+      "earlierBrowser": [
+        {
+          "run": "initial",
+          "passed": 0,
+          "failed": 1,
+          "reason": "New selector matched BODY FIT and MORPH MAP summaries after a successful actual capture/render/freeze."
+        },
+        {
+          "run": "second",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Actual preflight correctly refused comparing different native/owned master taps. The journey now explicitly selects the same captured lane dry stem."
+        },
+        {
+          "run": "third",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Actual Refit readiness used the prior empty mode list until another paint. Corrected same-paint ordering."
+        },
+        {
+          "run": "fourth",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Actual prepared seed stage borrowed against its completed preparation operation. Corrected separate stage lifetime across affected owners."
+        },
+        {
+          "run": "fifth",
+          "passed": 0,
+          "failed": 1,
+          "reason": "The live sampler graft exceeds the existing cue workload source quota. Preserve that named refusal and qualify the supported native fitted-body branch separately; do not claim sampler-graft audition or Apply."
+        },
+        {
+          "run": "sixth",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Generic control fixture bent an explicitly fixed-tuning modal fit. Resolve the declared source bend profile instead of changing the patch."
+        },
+        {
+          "run": "seventh",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Before browser startup, runtime provenance required the updated worker component hash after its shared control fixture changed. Refresh the existing273-file closure; no files added."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/342 files; worker273 files",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "New exact-head CI pending publication; continuation309 is the latest completely green immutable checkpoint.",
+      "scopeLimits": [
+        "The durable native journey qualifies selected fitted-body branches; sampler/texture graft live audition and second physical performance remain open under their actual resource budgets.",
+        "The Node shared-DAG repeatability is a declared fixture-build observation. Cross-build numerical equality, acoustic output and musical usefulness are not inferred."
+      ],
+      "coverageFollowup": "Plan lines100%, transaction lines100%; expand long producer/retirement interleavings and high-cost sampler/texture admission and real second-performance coverage. Native-only controls/lifetimes supplement scoped Node coverage."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-eighth.log",
+        "bytes": 514,
+        "sha256": "2a7718c31f3af3313b256318485f88613edf220a1e74c659fbc8a3b84ef29fbb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-fifth.log",
+        "bytes": 4584,
+        "sha256": "6285cd898a640c512df03b2343efa0ca6851fc78f435f96ab86fa0ac657b8ede"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-fourth.log",
+        "bytes": 4584,
+        "sha256": "b225df4823597905fcb19bbd7bf373ba3308b24c06a49c1d8d84eaa6f21110d9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-initial.log",
+        "bytes": 4830,
+        "sha256": "593a99d8d01f32fc27bfbde9bfd036eda4e16eefb75e8ed70a11cbf533971f29"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-second.log",
+        "bytes": 4556,
+        "sha256": "93fcc2f4001011d66cd41dcfc99e3ddc23526d283dcebb218e3c29dfe1a50123"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-seventh.log",
+        "bytes": 3050,
+        "sha256": "820c591d606539a33edc3d15ae74ece233d2db0622fa4151e6db3f2014d81c00"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-sixth.log",
+        "bytes": 4554,
+        "sha256": "d729a596c2a06165a6c220980988eb6820c9544743fc1e33e3f1e62159a0de60"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-third.log",
+        "bytes": 5230,
+        "sha256": "460e45e0410e4eff0ccbaefb09b6fe8f136fbb03ebbff2630a38c42ba4e9fd16"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-expanded.log",
+        "bytes": 8263,
+        "sha256": "70076daf35463e203daeb8c777f0f0998bbdda77455443acdb835177fc526b51"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-final.log",
+        "bytes": 4301,
+        "sha256": "319969b1dc0aef3ffcebb8ee50b18168c5b9fd489f78fb0742406662b43a2ba1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-initial.log",
+        "bytes": 6656,
+        "sha256": "89349e3605dc2fccc0db9b553d268b59b08231b38d27bc45966e5cda54f6a86f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-qualified.log",
+        "bytes": 9119,
+        "sha256": "1bf1ff2911c28eeea7129db5ae24a506a7b5afbd726b8d02d6ea0b2b19792dca"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-second.log",
+        "bytes": 4836,
+        "sha256": "85769bb219279dc011950c07be4ac41d52b0e2edafa69032dd14d38b360ef4aa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-node-with-publication.log",
+        "bytes": 5350,
+        "sha256": "d0f0c06f4e75405ae80104f76b46ff0a6f39423ac617334d1c42d19745a8d5fb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-provenance.log",
+        "bytes": 142,
+        "sha256": "7166d1bd7ac18877bb3d1b7c63dbb5f55a85d5f93818e5ee1dcf914091c6f214"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-fifth-results.json",
+        "bytes": 58558,
+        "sha256": "6c0138e71c3722b29fb3d867b227eff8b9bf2497d75f728b3be82e128f8724ae"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-final-results.json",
+        "bytes": 219215,
+        "sha256": "3808859bb1fc989246422cd5e7a4d02e4380ef0eaf81541b074c1c3a87031597"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-fourth-results.json",
+        "bytes": 58571,
+        "sha256": "7e574ef596d984e5646802940779f042aa2c1136840c77aba1b350dda30448fc"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-initial-results.json",
+        "bytes": 10646,
+        "sha256": "c90de562978afb4c58870ea6d37cc99299b27d9f7d77b7ef40a6c5fe4136fb5a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-second-results.json",
+        "bytes": 10323,
+        "sha256": "970729152354471bbc40493a83d5833f8322397297aea2bf1bcd5cf9060d6b61"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-seventh-results.json",
+        "bytes": 8474,
+        "sha256": "dc407894baa75d1deb74b78c3cc9e92c000fcbddf2d40a2b0be068574a343081"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-sixth-results.json",
+        "bytes": 55133,
+        "sha256": "ff28d9c9ff4aeec6467214804825da139939b2b69193b141b8ad649bb3c61aaf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-third-results.json",
+        "bytes": 8702,
+        "sha256": "051ae2db3dbd40449744c4e6181de5d7ef3ad85d8ba9290dfd66e7a9f5504bff"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-native-final-source.json",
+        "bytes": 3161,
+        "sha256": "c8c326190b20bc2d8103969978535f7ec586e5e16bcc3539453ba1b31feab355"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-310-coverage\\coverage-summary.json",
+        "bytes": 96974,
+        "sha256": "6c485a613f6fc413cba5fb955741ddcf56d1fd81bde28a8003dd2f7bb4bc000c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-captures\\lemmings-rook-backlog310-native-fifth-results-seed-rebuild-failure-state.json",
+        "bytes": 36136,
+        "sha256": "8b5322f61d40627327834c7ee952147ed5d3a10b92f8dcff9db08d85db83546f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-captures\\lemmings-rook-backlog310-native-final-results-native-seed-rebuild-receipt.json",
+        "bytes": 160968,
+        "sha256": "12c900efd13636812072d2236eec3c854389b226634d629d397c215100e76a77"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-captures\\lemmings-rook-backlog310-native-fourth-results-seed-rebuild-failure-state.json",
+        "bytes": 36139,
+        "sha256": "99e9edd90a805be2947c911f4c6c97a7e94c14ca75e6f4c8ceaa1d8ebd7b5444"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-captures\\lemmings-rook-backlog310-native-sixth-results-seed-rebuild-failure-state.json",
+        "bytes": 33576,
+        "sha256": "ad8917a010eaad622da6a531fbb840336be49a884235dd4b77c77c6164a37579"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog310-captures\\seed-rebuild-desktop.png",
+        "bytes": 163574,
+        "sha256": "883144fc37ed5abd8b2fa34e453743eb7067335b7a944b507349b4aeb8b3a808"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 589643,
+        "sha256": "f2a4b81edb2b00e70957c9ef67ad6ed3bdf4b4487e32c21e3518ea1ae70c003d"
+      },
+      {
+        "path": "docs/sound-content.md",
+        "bytes": 81984,
+        "sha256": "8c007dab116caddc1390028ee02fe7b4d73080bf9d05a46c8ca8649b5019116c"
+      },
+      {
+        "path": "e2e/procgen-workstation-seed-rebuild.spec.js",
+        "bytes": 14386,
+        "sha256": "c3fcf55237227d4bf45a96e8e12a372d239fe5133a49d99bd38eb0f710a24d7c"
+      },
+      {
+        "path": "js/app/midi-ui/CircuitWorkshopPreparation.js",
+        "bytes": 7303,
+        "sha256": "943209324426e85064121b7a493bf1eef42f56ba7eccde166d1fe392515fc022"
+      },
+      {
+        "path": "js/app/midi-ui/LaneSoundTransaction.js",
+        "bytes": 9902,
+        "sha256": "0246b61a6a35c99eeea036cd86489c3a8cedaf05eac3c19091a16355f485df04"
+      },
+      {
+        "path": "js/app/midi-ui/ShapeFoundryOwner.js",
+        "bytes": 17966,
+        "sha256": "3cf4088090432dc99db41c958de55ae56a6be8609515fcf368e170d934c04577"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentInstallation.js",
+        "bytes": 27365,
+        "sha256": "c7c090f0b87f0f399d18c5023a2c050e6b2296d0e63613fe858c6d17e01e8df0"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentLibrary.js",
+        "bytes": 42867,
+        "sha256": "2cf97a850b2cc7f7bba96abb0a6dc0f88b2ceb71479d4cb2541792cbbcfc1db5"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentPreparedStage.js",
+        "bytes": 1351,
+        "sha256": "48c221e6b065de3e896afc80312de6941fb5d650f8a1c2d87af217bb3aad38cd"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentReader.js",
+        "bytes": 11665,
+        "sha256": "ae0073f67e9e18d5bd614a877e5de78ed1ab362c1c0ebc620f4d441ccb673288"
+      },
+      {
+        "path": "js/app/midi-ui/SoundSeedInstrumentOwner.js",
+        "bytes": 18852,
+        "sha256": "35601208f42c5b4eec13a520b611a6420e085d22605e63b2cea5b6a867143721"
+      },
+      {
+        "path": "js/app/midi-ui/SoundSeedLabView.js",
+        "bytes": 62504,
+        "sha256": "15c2be0027596b607fcdae6d827e793d7d0930ff7f16a34b156ac4beb050d1e7"
+      },
+      {
+        "path": "js/app/midi-ui/SoundSeedRebuildOwner.js",
+        "bytes": 13919,
+        "sha256": "4ffe6f9676873418cd20e1dfc1a250e06bf0983ea61cd4ae714dae24b706437f"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 196893,
+        "sha256": "db509d732b50c9045607fa7b9b27f30b6d742b01d53122e51332606cec111819"
+      },
+      {
+        "path": "js/midi/content/SoundContentControlFixture.js",
+        "bytes": 4833,
+        "sha256": "6f9d8b6f2fda6b1a71822b8c8319f7724076915d8acb438d27c7bc14f1da035b"
+      },
+      {
+        "path": "js/midi/content/SoundSeedRebuildPlan.js",
+        "bytes": 16795,
+        "sha256": "a997e1563ea8eb3b3deb276b3c6ed2cb290741b886286261da340566158ed0b1"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 20935,
+        "sha256": "e24c31f61f4d1073103a3862726a3e28da9da12ea629f3b301fccc1052c1f1ed"
+      },
+      {
+        "path": "test/midi/circuit-workshop.test.js",
+        "bytes": 11909,
+        "sha256": "3553bfe4fac34d0bfd6147bd9dec05da52d4899c2d525cbc1bc95e46131a7c93"
+      },
+      {
+        "path": "test/midi/lane-sound-transaction.test.js",
+        "bytes": 8848,
+        "sha256": "78234d54fc8ae73cfeed9b8f28df5f405cc21af9b71fefe5e4163edfe1b465d0"
+      },
+      {
+        "path": "test/midi/native-source-control-fixture.test.js",
+        "bytes": 2097,
+        "sha256": "74da6f7bad6448dd7c7ef7d3dee88788f67eb9055129f21bb3fb1af3db9c06b7"
+      },
+      {
+        "path": "test/midi/seed-rebuild-ownership.test.js",
+        "bytes": 13526,
+        "sha256": "ebcd0ecbffc50295e5d55f7f8b268be44994029afb8958ce950164c706b4531c"
+      },
+      {
+        "path": "test/midi/sound-content-prepared-stage.test.js",
+        "bytes": 3125,
+        "sha256": "a474c52b0cc725612a42eff0e5bcf694b60842d442d290b033fc5536c0c4a00c"
+      },
+      {
+        "path": "test/midi/sound-content-reader.test.js",
+        "bytes": 6094,
+        "sha256": "84aac365625072caa1dde6c68793155460cd3e135bc2007e0860b5662193a516"
+      },
+      {
+        "path": "test/midi/sound-seed-recipe.test.js",
+        "bytes": 7997,
+        "sha256": "0b914619681a13bcdec3f5f433e306755a6b30a38b6ee15e66b41c3931402443"
+      }
+    ],
+    "issueStatus": {
+      "1236": {
+        "state": "open-implemented-partial",
+        "remaining": "Sampler/texture graft live-budget qualification and second physical performance; broader explicit frozen/selected ancestry and failure scenarios continue under existing owners."
+      }
     }
   }
 }

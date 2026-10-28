@@ -1677,7 +1677,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
         onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
     },
-    applyInstalledInstrument(candidate, { signal, hold = false } = {}) { return soundTransactions.select(candidate, { signal, hold, laneId: selected().id }); },
+    applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
     selectNativeSound(laneId, patchId) {
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. Keep the previous sound.'));
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });
@@ -2082,6 +2082,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
     getNavigationDiagnostics: () => view.navigationDiagnostics?.() || null,
     getVariationState: () => patchVariations?.state() || null,
+    getSoundSeedState: () => soundSeedLab?.state() || null,
     getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),

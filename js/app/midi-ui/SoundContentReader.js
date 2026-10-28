@@ -25,15 +25,16 @@ export function createSoundContentReader({ resourceBudget, jobs = backgroundJobS
       !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300000 || !Number.isSafeInteger(stageLifetimeMs) || stageLifetimeMs < 1 || stageLifetimeMs > 3600000)
     throw new TypeError('Invalid sound import owner.');
   const operations = new Set(); let disposed = false, sequence = 0;
-  const stageArchive = async (blob, { engineDescriptors = [], signal: externalSignal, isCurrent = () => true, onProgress = () => {} } = {}) => {
+  const stageArchive = async (blob, { engineDescriptors = [], signal: externalSignal, isCurrent = () => true, stageIsCurrent = isCurrent, onProgress = () => {} } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || operations.size >= maxPending) throw failure('archive-capacity', 'Sound import is unavailable or has retained stages.');
-    if (!(blob instanceof Blob) || blob.size < 13 || blob.size > maxArchiveBytes || typeof isCurrent !== 'function' || typeof onProgress !== 'function')
+    if (!(blob instanceof Blob) || blob.size < 13 || blob.size > maxArchiveBytes || typeof isCurrent !== 'function' || typeof stageIsCurrent !== 'function' || typeof onProgress !== 'function')
       throw failure('invalid-archive', 'Sound archive is outside the supported byte bounds.');
     const operation = { token: {}, controller: new AbortController(), pending: new Set(), leases: 0, cleanup: false, released: false, held: false }, ordinal = ++sequence;
     const signal = operation.controller.signal; let prepared = null, header = null, stage = null, timer = null;
     const assets = new Map();
     const check = () => { signal.throwIfAborted(); if (disposed || !isCurrent()) throw failure('stale-owner', 'Sound import source ownership changed.'); };
+    const checkStage = () => { signal.throwIfAborted(); if (disposed || !stageIsCurrent()) throw failure('stale-owner', 'Sound import stage ownership changed.'); };
     const release = () => {
       if (!operation.cleanup || operation.pending.size || operation.leases || operation.releaseAttempted) return;
       operation.releaseAttempted = true; assets.clear(); prepared = null; header = null; blob = null;
@@ -100,7 +101,7 @@ export function createSoundContentReader({ resourceBudget, jobs = backgroundJobS
         await compute('asset-hash', bytes, file.bytes, file.sha256, Math.max(1, file.bytes), file.sha256); check(); assets.set(file.sha256, payload);
         try { onProgress(Object.freeze({ phase: 'verified-material', completed: index + 1, total: payloads.length })); } catch { /* Observers do not publish content. */ }
       }
-      check();
+      check(); checkStage();
       const assetHashes = Object.freeze([...assets.keys()]), selection = prepared.patches.map(patch => patch.identity);
       const plan = planSoundContentSelection(prepared, selection, { availableHashes: assetHashes });
       const metadata = freezeData({ format: SOUND_ARCHIVE_FORMAT, mode: header.mode, contentHash: prepared.contentHash,
@@ -108,8 +109,8 @@ export function createSoundContentReader({ resourceBudget, jobs = backgroundJobS
         missingReferences: plan.missingReferences, missingAssetBytes: plan.missingAssetBytes, unavailableEngines: plan.unavailableEngines,
         importedReview: 'untrusted-references-only', qualification: 'verified-material-not-render-qualified' });
       const borrow = () => {
-        check(); if (operation.cleanup) throw failure('stage-retired', 'Sound import stage was discarded.'); operation.leases++; let released = false;
-        const checkLease = () => { check(); if (released) throw failure('stage-retired', 'Sound stage lease was released.'); };
+        checkStage(); if (operation.cleanup) throw failure('stage-retired', 'Sound import stage was discarded.'); operation.leases++; let released = false;
+        const checkLease = () => { checkStage(); if (released) throw failure('stage-retired', 'Sound stage lease was released.'); };
         return Object.freeze({ signal, metadata, get prepared() { checkLease(); return prepared; },
           assetBlob(hash) { checkLease(); return assets.get(hash) || null; },
           release() { if (!released) { released = true; operation.leases--; release(); } } });

@@ -96,7 +96,7 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
       const prefix = new Uint8Array(12); prefix.set(new TextEncoder().encode(SOUND_ARCHIVE_MAGIC)); new DataView(prefix.buffer).setUint32(8, header.length, false);
       phase = 'verifying-frozen-material'; report();
       next = await reader.stageArchive(new Blob([prefix, header, ...payloads.map(entry => entry.blob)]), { engineDescriptors: catalog.descriptors,
-        signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() }); check();
+        signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent(), stageIsCurrent: () => !disposed }); check();
       const identities = next.metadata().patches; if (identities.length !== 1) throw fail('Seed compilation did not produce one complete instrument.');
       const record = { stage: next, identity: identities[0], contract: recipe.contract, assetHash: metadata.assetHash, targetIdentity: motionTarget, installed: false };
       // Publish after producer/input retirement, preserving the old patch on failure.
@@ -126,14 +126,17 @@ export function createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs = b
     }
     phase = 'audition-complete'; return receipt;
   });
-  const install = () => run('saving-immutable-material', async (operation, check) => {
+  const install = ({ isCurrent = () => true } = {}) => run('saving-immutable-material', async (operation, check) => {
     if (!current) throw fail('Compile and audition this seed first.');
-    const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation });
+    if (!isCurrent()) throw fail('The seed installation target changed.');
+    const receipt = await installation.install(current.stage, { signal: operation.controller.signal, isCurrent: () => !disposed && active === operation && isCurrent() });
     current.installed = true; check(); phase = 'durable'; return receipt;
   });
-  const apply = () => run('applying-to-selected-lane', async (operation, check) => {
-    if (!current) throw fail('Prepare this seed first.'); if (current.targetIdentity && current.targetIdentity !== targetIdentity()) throw fail('The motion mapping document or selected lane changed. Prepare its exact target again.'); const source = current, candidate = installation.applyCandidate(source.stage, source.identity); check();
-    await onApply(candidate, { signal: operation.controller.signal }); check(); if (source.targetIdentity) source.targetIdentity = targetIdentity(); phase = 'applied'; return freezeData({ state: 'applied', assetHash: source.assetHash, patchIdentity: source.identity });
+  const apply = ({ isCurrent = () => true } = {}) => run('applying-to-selected-lane', async (operation, check) => {
+    if (!current) throw fail('Prepare this seed first.'); if (current.targetIdentity && current.targetIdentity !== targetIdentity()) throw fail('The motion mapping document or selected lane changed. Prepare its exact target again.');
+    if (!isCurrent()) throw fail('The seed application target changed.');
+    const source = current, candidate = installation.applyCandidate(source.stage, source.identity); check();
+    await onApply(candidate, { signal: operation.controller.signal, isCurrent }); check(); if (source.targetIdentity) source.targetIdentity = targetIdentity(); phase = 'applied'; return freezeData({ state: 'applied', assetHash: source.assetHash, patchIdentity: source.identity });
   });
   const stop = () => { active?.controller.abort(fail('Sound seed operation canceled.')); installation.stop(); };
   const clear = async () => { stop(); await active?.promise.catch(() => {}); if (unknown.size) throw fail('Seed instrument retirement remains unresolved.'); discard(current); current = null; phase = 'no-patch'; error = null; report(); };

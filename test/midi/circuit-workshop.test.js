@@ -92,7 +92,9 @@ describe('original Circuit Workshop prepared-source edition (deferred qualificat
     return { budget, jobs, reader, get releases() { return releases; }, get request() { return request; }, dispose() { reader.dispose(); background.dispose(); } };
   };
   it('stages complete actual source bytes and preserves typed kit identity after producer retirement', async () => {
-    const owner = setup(), result = await prepareCircuitWorkshopPack({ variant: 'clean', ...owner, resourceBudget: owner.budget, getCatalog: async () => catalog });
+    const owner = setup(); let preparing = true;
+    const result = await prepareCircuitWorkshopPack({ variant: 'clean', ...owner, resourceBudget: owner.budget, getCatalog: async () => catalog, isCurrent: () => preparing, stageIsCurrent: () => true });
+    preparing = false;
     expect(owner.releases).to.equal(1); expect(owner.request.estimatedPeakBytes).to.equal(estimatedPeakBytes);
     const kit = await readStagedDrumKit(result.stage, prepared.patches[0].identity, { resourceBudget: owner.budget });
     expect(kit.hash).to.equal(built.kitHash); expect(kit.definition).to.deep.equal(built.kit); expect(result.voices).to.equal(16);

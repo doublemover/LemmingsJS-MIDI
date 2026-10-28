@@ -104,7 +104,7 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
   });
   const prepareCircuit = () => run(async operation => {
     try {
-      const result = await prepareCircuitWorkshopPack({ variant: circuitVariant.value, jobs, reader, resourceBudget, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed, onProgress: progress => { if (current === operation && !disposed) setStatus('Preparing original Circuit Workshop sources' + (progress.voiceId ? ' · ' + progress.voiceId : '') + '…'); } });
+      const result = await prepareCircuitWorkshopPack({ variant: circuitVariant.value, jobs, reader, resourceBudget, signal: operation.controller.signal, isCurrent: () => current === operation && !disposed, stageIsCurrent: () => !disposed, onProgress: progress => { if (current === operation && !disposed) setStatus('Preparing original Circuit Workshop sources' + (progress.voiceId ? ' · ' + progress.voiceId : '') + '…'); } });
       publish(result.stage, operation); setStatus(result.name + ': ' + result.voices + ' original fixed-source articulations prepared. Audition this exact revision, save its material, then Apply. ROOM remains a separate shared send; the printed-room variant is explicitly baked into these sources. Listening and device qualification are pending.');
     } catch (error) { if (error.circuitWorkshopOwnership) factoryFaults.set(operation.sequence, { receipt: error.retirement, ownership: error.circuitWorkshopOwnership }); throw error; }
   });

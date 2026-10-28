@@ -53,4 +53,23 @@ describe('transactional incoming-event lane audition', () => {
     const f = setup(); expect((await reject(f.owner.select(candidate, { laneId: 'lane', patch: { worldThemeId: 'fire' } }))).code).to.equal('invalid-sound-patch');
     f.source.lane.soundChangePolicy = 'crossfade-held'; expect((await reject(f.owner.select(candidate, { laneId: 'lane' }))).message).to.include('new-notes-only'); expect(f.calls).to.have.length(0); await f.owner.dispose().completion;
   });
+  it('refuses an obsolete external recipe review before preparing or changing the previous sound', async () => {
+    const f = setup();
+    expect((await reject(f.owner.select(candidate, { laneId: 'lane', isCurrent: () => false }))).code).to.equal('sound-source-conflict');
+    expect(f.calls).to.have.length(0); expect(f.history).to.equal(0); expect(f.route.key).to.equal('old'); await f.owner.dispose().completion;
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('rechecks the external recipe after slow preparation even when the document and selected lane are unchanged', async () => {
+    const waiting = gate(), f = setup({ prepareGate: waiting }); let reviewed = true;
+    const pending = f.owner.select(candidate, { laneId: 'lane', isCurrent: () => reviewed }), rejected = reject(pending); reviewed = false; waiting.resolve();
+    expect((await rejected).code).to.equal('sound-source-conflict'); expect(f.history).to.equal(0); expect(f.route.key).to.equal('old'); await f.owner.dispose().completion;
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('retires a held preview when its external review expires immediately before commit', async () => {
+    const f = setup(); let reviewed = true;
+    const lease = await f.owner.select(candidate, { laneId: 'lane', hold: true, isCurrent: () => reviewed }); reviewed = false;
+    expect(lease.isCurrent()).to.equal(false); expect(() => lease.commit()).to.throw('changed'); await lease.cancel().completion;
+    expect(f.history).to.equal(0); expect(f.route.key).to.equal('old'); expect(f.owner.diagnostics().active).to.equal(false); await f.owner.dispose().completion;
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
 });

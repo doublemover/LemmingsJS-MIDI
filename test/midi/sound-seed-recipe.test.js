@@ -64,6 +64,7 @@ describe('frozen sound-seed recipes and instrument preparation (runtime acceptan
     let applies = 0;
     const owner = createSoundSeedInstrumentOwner({ resourceBudget: budget, jobs, audio: { createSession() {}, getAudioContext() {} }, getCatalog: async () => ({ descriptors }), onApply: () => { applies++; } });
     await owner.prepare(candidate, { transform: 'hammer-seed' }); expect(owner.state()).to.include({ compiledPatchReady: true, audibleAuditionReady: false, durable: false });
+    await rejected(owner.install({ isCurrent: () => false }), 'installation target changed'); await rejected(owner.apply({ isCurrent: () => false }), 'application target changed');
     const previous = owner.state().patchIdentity;
     await rejected(owner.prepare(candidate, { transform: 'route-relic', isCurrent: () => false }), 'draft changed');
     expect(owner.state().patchIdentity).to.equal(previous); await rejected(owner.apply(), 'Commit this staged pack'); expect(applies).to.equal(0);

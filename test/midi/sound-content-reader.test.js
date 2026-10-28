@@ -27,6 +27,23 @@ describe('owned sound archive import stages', () => {
     expect(stage.metadata().missingAssetBytes).to.deep.equal([fixture.sha256]); expect(stage.metadata().unavailableEngines).to.have.length(1);
     expect(lease.assetBlob(fixture.sha256)).to.equal(null); lease.release(); stage.discard(); owner.dispose();
   });
+  it('separates a completed preparation fence from the retained stage and its leased data', async () => {
+    const owner = setup(); let preparing = true, alive = true;
+    try {
+      const stage = await owner.reader.stageArchive(fixture.archive(), { engineDescriptors: [fixture.engine], isCurrent: () => preparing, stageIsCurrent: () => alive });
+      preparing = false; const lease = stage.borrow(); expect(lease.prepared.contentHash).to.equal(fixture.prepared.contentHash); expect(lease.assetBlob(fixture.sha256)).to.be.instanceOf(Blob);
+      alive = false; expect(() => stage.borrow()).to.throw('stage ownership changed'); expect(() => lease.prepared).to.throw('stage ownership changed');
+      stage.discard(); expect(owner.budget.diagnostics().accountedBytes).to.be.greaterThan(0); lease.release(); expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+    } finally { owner.dispose(); }
+  });
+  it('still refuses stale preparation during verification when a separate stage owner remains alive', async () => {
+    const owner = setup(); let preparing = true;
+    try {
+      await rejects(owner.reader.stageArchive(fixture.archive(), { engineDescriptors: [fixture.engine], isCurrent: () => preparing, stageIsCurrent: () => true, onProgress: () => { preparing = false; } }), 'stale-owner');
+      expect(owner.reader.diagnostics().pending).to.equal(0); expect(owner.budget.diagnostics().accountedBytes).to.equal(0);
+      await rejects(owner.reader.stageArchive(fixture.archive(), { stageIsCurrent: false }), 'invalid-archive');
+    } finally { owner.dispose(); }
+  });
   it('rejects changed manifests, payload corruption, noncanonical headers and extra bytes before staging', async () => {
     const owner = setup();
     for (const archive of [fixture.archive({ extra: [new Uint8Array([1])] }), fixture.archive({ payload: new Uint8Array(3) }),

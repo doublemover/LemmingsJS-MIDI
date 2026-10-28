@@ -3,7 +3,7 @@ import { seedLayerControlFixture, TEXTURE_CONTROL_FIXTURE, FRICTION_CONTROL_FIXT
 import { prepareOwnedSamplePlan } from './OwnedSamplePlan.js';
 import { createOwnedSampleControlFixture } from './OwnedSampleControlFixture.js';
 import { planSoundSourceComparison } from './SoundSourceComparison.js';
-import { SOUND_CONTENT_CONTROL_FIXTURE as fixture, sampleMapControlFixture } from '../../midi/content/SoundContentControlFixture.js';
+import { SOUND_CONTENT_CONTROL_FIXTURE as fixture, sampleMapControlFixture, nativeSourceControlFixture } from '../../midi/content/SoundContentControlFixture.js';
 import { freezeData, hashData } from '../../core/CanonicalData.js';
 import { createInstrumentPatchRegistry } from '../../midi/content/InstrumentPatchV2.js';
 import { planSoundContentSelection } from '../../midi/content/SoundContentPack.js';
@@ -123,6 +123,7 @@ export function createSoundContentInstallation({ audio, registry, getCatalog = g
         }
         const context = operation.context = audio.getAudioContext(), rate = context?.sampleRate;
         if (context?.state !== 'running' || !Number.isFinite(rate) || rate < 8000 || rate > 384000) throw failure('audio-unavailable', 'Audition audio clock is unavailable.');
+        if (!sourceMode && ['native-fm', 'native-modal'].includes(patch.definition.engineId)) auditionFixture = nativeSourceControlFixture(resolution.patch);
         if (patch.definition.engineId === 'worklet-seed-layers') auditionFixture = seedLayerControlFixture(patch.definition);
         if (patch.definition.engineId === 'worklet-wind') auditionFixture = WIND_CONTROL_FIXTURE;
         if (patch.definition.engineId === 'worklet-friction') auditionFixture = FRICTION_CONTROL_FIXTURE;

@@ -9,7 +9,7 @@ import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 import { readStagedDrumKit } from './DrumKitReference.js';
 
 const fail = message => Object.assign(new Error('Circuit Workshop: ' + message), { code: 'circuit-workshop-preparation-unavailable' });
-export async function prepareCircuitWorkshopPack({ variant, jobs, reader, resourceBudget, signal, isCurrent = () => true, getCatalog = getNativeInstrumentCatalog, onProgress = () => {} } = {}) {
+export async function prepareCircuitWorkshopPack({ variant, jobs, reader, resourceBudget, signal, isCurrent = () => true, stageIsCurrent = isCurrent, getCatalog = getNativeInstrumentCatalog, onProgress = () => {} } = {}) {
   const check = () => { signal?.throwIfAborted(); if (!isCurrent()) throw fail('The selected original kit preparation changed.'); }; check();
   if (!jobs?.compute || !reader?.stageArchive || !resourceBudget) throw fail('Use the shared background, verified archive and resource owners.');
   const workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'circuit-workshop-preparation', kind: 'original-kit-archive-and-result-copy-overlap', bytes: 32 * 1048576 }), scope = createProcgenRetirementScope(), storage = createProcgenRetirementScope(); let job = null, next = null, fault = null;
@@ -23,7 +23,7 @@ export async function prepareCircuitWorkshopPack({ variant, jobs, reader, resour
     if (kit.variant !== variant || value.assets.some(asset => !files.has(asset.sha256) || files.get(asset.sha256).path !== asset.path || files.get(asset.sha256).bytes !== asset.bytes.length)) throw fail('The original source bytes differ from their exact compiled kit inventory.');
     const assets = [...value.assets].sort((a, b) => a.sha256 < b.sha256 ? -1 : 1), header = canonicalDataText({ format: SOUND_ARCHIVE_FORMAT, mode: 'portable', contentHash: prepared.contentHash, pack: prepared.pack, payloads: assets.map(asset => ({ sha256: asset.sha256, bytes: asset.bytes.length })), rightsReview: [], qualification: 'verified-material-not-render-qualified' }, { maxBytes: 4 * 1048576, maxNodes: 131072 }), prefix = new Uint8Array(12); prefix.set(new TextEncoder().encode(SOUND_ARCHIVE_MAGIC)); new DataView(prefix.buffer).setUint32(8, header.bytes.length, false);
     const blob = new Blob([prefix, header.bytes, ...assets.map(asset => asset.bytes)], { type: 'application/vnd.lemmings.sound-pack' });
-    next = await reader.stageArchive(blob, { engineDescriptors: catalog.descriptors, signal, isCurrent }); check();
+    next = await reader.stageArchive(blob, { engineDescriptors: catalog.descriptors, signal, isCurrent, stageIsCurrent }); check();
     const stagedKit = await readStagedDrumKit(next, prepared.patches[0].identity, { signal, resourceBudget }); check();
     if (!stagedKit || stagedKit.hash !== value.kitHash || canonicalDataText(stagedKit.definition).text !== canonicalDataText(kit).text) throw fail('The producer kit label differs from its verified staged data.');
     const receipt = scope.retire([{ name: 'original-kit-worker', run: () => retireBackgroundResult(job) }]); await receipt.completion;

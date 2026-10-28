@@ -5,13 +5,15 @@ import { validateTextureBodyTravelBinding } from './TextureBodyGraftRecipe.js';
 import { validateSampleTraversalBinding } from './SampleTraversal.js';
 import { canonicalDataText, freezeData, hashData } from '../../core/CanonicalData.js';
 
-export const SOUND_SEED_REBUILD_REVISION = 'explicit-frozen-seed-branch-components-warp-v3';
+export const SOUND_SEED_REBUILD_REVISION = 'exact-source-frozen-seed-branch-v4';
 const integer = (value, low, high = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) && value >= low && value <= high;
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const fail = message => { throw new TypeError('Seed rebuild: ' + message); };
 
 export async function planSoundSeedRebuild({ seed, replacement, components = null, composition = null, warp = null, modal = null, selectedMaterial = 'original', transform = 'hammer-seed', graftBody = 'tin', textureKind = 'sand-drag', traversalBinding = null, pitch = { mode: 'unpitched' } } = {}) {
-  const metadata = seed?.metadata?.(), original = seed?.manifest, next = replacement?.manifest, replacementMetadata = replacement?.artifact?.metadata?.();
+  const metadata = seed?.metadata?.(), snapshot = value => freezeData(JSON.parse(canonicalDataText(value ?? null, { maxBytes: 262144, maxNodes: 32768 }).text)),
+    original = snapshot(seed?.manifest), next = snapshot(replacement?.manifest), replacementMetadata = replacement?.artifact?.metadata?.();
+  components = snapshot(components); composition = snapshot(composition); warp = snapshot(warp); modal = snapshot(modal); pitch = snapshot(pitch); traversalBinding = snapshot(traversalBinding);
   if (!metadata?.assetReady || original?.schema !== 'lemmings-sound-seed/v1' || !hash(metadata.assetHash) || !Array.isArray(original.ancestry) || !original.ancestry.length || original.ancestry.length > 16 ||
       !['original', 'transient-like', 'sustained-like', 'residual', 'neutral-recombined', 'component-composition', 'warped-seed', 'modal-reconstruction', 'modal-residual'].includes(selectedMaterial) ||
       !['hammer-seed', 'ice-dust', 'route-relic', 'modal-body', 'finite-fm-body-graft', 'feedforward-graft', 'motion-body-graft', 'texture-body-graft', 'sealed-wind-body-graft', 'sealed-friction-body-graft'].includes(transform)) fail('Select one frozen seed and its exact supported derived closure.');
@@ -20,6 +22,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
   if (parent.originKind !== 'OFFLINE REVOICE' || !parent.takeId || !integer(parent.takeRevision, 1) || !hash(parent.sourceCanonicalHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The frozen origin does not bind an exact original take/revision and covered semantic hash. Keep recorded material, or explicitly harvest a new source.' });
   if (!hash(parent.sourcePatchReceipt?.definitionHash) || !hash(parent.sourcePatchReceipt?.engineRequirement?.artifactHash) || !hash(parent.sourcePatchReceipt?.engineRequirement?.parameterSchemaHash)) blockers.push({ node: 'source', state: 'unknown', reason: 'The original frozen lineage lacks its exact resolved patch receipt. Frozen playback remains available.' });
   if (next) {
+    if (next.operation != null && next.operation !== 'sound-only-revoice' || next.channels != null && next.channels !== 2 || next.sampleFormat != null && next.sampleFormat !== 'ieee-float32-le') blockers.push({ node: 'source', state: 'unsupported-realization', reason: 'Rebuild requires an explicit sound-only stereo Float32 revoice. Reinterpretation and other channel realizations need a separately reviewed branch.' });
     if (next.takeId !== parent.takeId || next.takeRevision !== parent.takeRevision || next.sourceCanonicalHash !== parent.sourceCanonicalHash) blockers.push({ node: 'source', state: 'unsupported-realization', reason: 'The replacement does not revoice the same immutable semantic take. Reinterpretation or reperformance requires its own branch and coverage preflight.' });
     if (next.sampleRate !== parent.parentSampleRate || next.timelineZeroSourceFrame !== parent.parentTimelineOriginFrame || next.tap !== parent.sourceTap) blockers.push({ node: 'region', state: 'unsupported-realization', reason: 'Source rate, timeline origin or selected tap changed. Prepare matching coordinates or explicitly harvest an adjusted region.' });
     if (!integer(next.frames, 1) || !integer(parent.firstFrame, 0) || !integer(parent.endFrame, parent.firstFrame + 1, next.frames)) blockers.push({ node: 'region', state: 'missing-prerequisite', reason: 'The new tail does not cover the complete selected parent interval. No implicit crop, extension or silence repair is allowed.' });
@@ -54,6 +57,13 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
         componentKinds.slice(0, 3).some(kind => recipe.componentAssetHashes?.[kind] !== components?.components?.find(entry => entry.kind === kind)?.assetHash)) blockers.push({ node: 'composition', state: 'missing-prerequisite', reason: 'The printed composition lacks its exact original and three decomposition parents.' });
   }
   if (!componentNeeded) components = null; if (!compositionNeeded) composition = null; if (!modalNeeded) modal = null; if (!warpNeeded) warp = null;
+  let replacementSource = null;
+  if (replacementMetadata?.retained && next?.schema === 'lemmings-causal-audio-render/v1') {
+    const sha256 = await replacement.artifact.digest?.();
+    if (!hash(sha256) || !replacement.artifact.metadata().retained) blockers.push({ node: 'source', state: 'missing-prerequisite', reason: 'The complete immutable replacement bytes must remain available with a verified digest.' });
+    else replacementSource = { immutableSourceRef: replacementMetadata.immutableSourceRef, sha256, byteLength: replacementMetadata.byteLength,
+      manifestHash: await hashData(next, { maxBytes: 262144, maxNodes: 32768 }) };
+  }
   const materialNode = material => material === 'original' ? 'region' : material === 'warped-seed' ? 'warp' : material === 'component-composition' ? 'composition' : material.startsWith('modal-') ? 'modal' : 'components';
   const frames = original.frames, nodes = [
     { id: 'source', kind: 'causal-revoice-file', parents: [], oldHash: parent.completeParentArtifactHash, newSourceRef: replacementMetadata?.immutableSourceRef ?? null },
@@ -80,7 +90,7 @@ export async function planSoundSeedRebuild({ seed, replacement, components = nul
   const plan = { schema: 'lemmings-sound-seed-rebuild-plan/v1', algorithmRevision: SOUND_SEED_REBUILD_REVISION, operation: 'sound-only-revoice-selected-derived-branch', originalAssetHash: metadata.assetHash,
     sourceTake: { takeId: parent.takeId ?? null, revision: parent.takeRevision ?? null, canonicalHash: parent.sourceCanonicalHash ?? null }, oldPatchReceipt: parent.sourcePatchReceipt ?? null,
     newPatchReceipt: next ? { definitionHash: next.definitionHash ?? null, engineRequirement: next.engineRequirement ?? null } : null,
-    sourceProfile: 'new-render-all-covered-intents;not-original-live-admission-PCM', sourceTap: parent.sourceTap, sampleRate: parent.parentSampleRate, channelLayout: 'stereo',
+    sourceProfile: 'new-render-all-covered-intents;not-original-live-admission-PCM', replacementSource, sourceTap: parent.sourceTap, sampleRate: parent.parentSampleRate, channelLayout: 'stereo',
     parentRegionFrames: [parent.firstFrame, parent.endFrame], expectedRegionFrames: frames, fades: original.fades, componentOptions, compositionOptions: composition?.recipe?.options ?? null, compositionInputs: composition ? { originalAssetHash: composition.parentAssetHash, componentAssetHashes: composition.recipe.componentAssetHashes, decompositionRecipeHash: composition.recipe.decompositionRecipeHash } : null, modalOptions, modalParentMaterial, warpOptions: warp?.recipe?.options ?? null, warpParentMaterial, warpInputs: warp?.recipe ? { oldAssetHash: warpHash, parentAssetHash: warp.parentAssetHash, coreArtifactHash: warp.recipe.coreArtifactHash, coreConfigurationHash: warp.recipe.coreConfigurationHash, recipeHash: warp.recipeHash } : null, selectedMaterial, transform, graftBody, ...(transform === 'texture-body-graft' ? { textureKind } : {}), traversalBinding: transform === 'sealed-friction-body-graft' ? validateSealedFrictionBodyTravelBinding(traversalBinding) : transform === 'texture-body-graft' ? validateTextureBodyTravelBinding(traversalBinding) : transform === 'motion-body-graft' ? validateSampleTraversalBinding(traversalBinding) : null, pitch,
     nodes: nodes.map(node => ({ ...node, state: blockers.find(blocker => blocker.node === node.id)?.state ?? (blockers.length ? 'blocked-by-prerequisite' : 'rebuildable') })), blockers,
     frozenOriginal: { playable: true, sourceAssetAvailable: !!seed.artifact.metadata().retained, projectReferences: 'preserved', deletion: 'never-part-of-rebuild' },

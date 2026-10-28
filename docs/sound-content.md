@@ -1199,3 +1199,31 @@ bounded even when consumers cancel repeatedly. Existing immutable Blob readers
 can outlive the cache owner with their own reservation; their worker consumer
 must still retire its own source lease. A material/build check is independent
 from actual warp rendering, onset mapping, device cost or listening qualification.
+
+### Reviewed derived-material branches
+
+The seed laboratory offers Keep recorded material, independent harvest and an
+explicit selected-descendant rebuild. A v4 rebuild plan binds the complete
+replacement WAV digest, byte length, immutable source reference and canonical
+manifest hash, including its printed effects and realization receipts. A shared
+display label cannot substitute different bytes. The original seed, fitted
+material and existing project references remain separate immutable branches.
+
+The planner snapshots its manifests and recipes before asynchronous work. A
+changed take, rate, tap, uncovered interval, unavailable digest or incompatible
+operation remains a named prerequisite. A changed tail never adjusts a crop
+implicitly. Preparation checks the reviewed source again before scheduling the
+existing analysis, fit, compile and archive owners in dependency order.
+
+Cancellation handles partially constructed owners. Save and Apply retain the
+reviewed target/draft fence through their existing storage and lane transaction
+boundaries. A stale plan cannot publish over the last complete branch; old
+material is never automatic cleanup. Recipe identity and measured same-build
+repeatability do not promise numerical equivalence across different builds.
+
+Verified archive readers distinguish their preparation predicate from an
+explicit retained-stage predicate. Seed instruments, foundry bodies and Circuit
+preparation retain their owner lifetime after the preparation operation ends.
+Stale verification still refuses publication; retained leases continue to charge
+their material until acknowledged retirement. Default reader callers retain
+the original coupled source fence unless they declare a separate stage lifetime.

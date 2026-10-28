@@ -14,7 +14,7 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
   const report = (state, operation, reason = null) => { try { onState(Object.freeze({ state, laneId: operation?.laneId || null, reason })); } catch { /* Presentation cannot own a sound transaction. */ } };
   const current = operation => {
     const source = getSource(operation.laneId);
-    return !disposed && active === operation && source.available && source.owner === operation.owner &&
+    return !disposed && active === operation && operation.reviewIsCurrent() && source.available && source.owner === operation.owner &&
       source.documentGeneration === operation.documentGeneration && source.worldGeneration === operation.worldGeneration &&
       source.selectedLaneId === operation.laneId && fingerprint(source.lane) === operation.baseline;
   };
@@ -42,7 +42,8 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     const result = finish(operation); report('restoring', operation); return result;
   };
   const commit = operation => {
-    check(operation); publishing = true; let acceptAttempted = false;
+    try { check(operation); } catch (error) { cancelOperation(operation, error.message); throw error; }
+    publishing = true; let acceptAttempted = false;
     try {
       const result = publish(operation.laneId, operation.reference, operation.patch);
       if (result === false) throw failure('sound-publication-rejected', 'The sound edit was not admitted.');
@@ -58,8 +59,9 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
       throw error;
     } finally { publishing = false; finish(operation); }
   };
-  const select = async (candidate, { laneId, signal, hold = false, patch = {} } = {}) => {
+  const select = async (candidate, { laneId, signal, hold = false, patch = {}, isCurrent = () => true } = {}) => {
     signal?.throwIfAborted();
+    if (typeof isCurrent !== 'function') throw new TypeError('A sound review fence must be a function.');
     if (disposed || unknown) throw failure('sound-owner-unavailable', 'Sound transaction resources are unavailable.');
     const reference = typeof candidate === 'function' ? null : validateSoundContentReference({ ...candidate.reference, definition: candidate.definition || candidate.reference?.definition });
     if (!patch || typeof patch !== 'object' || Array.isArray(patch) || Object.keys(patch).some(key => !['family', 'role', 'patch', 'performanceRecipeId', 'linkedThemePresetId'].includes(key)) || Object.values(patch).some(value => value != null && (typeof value !== 'string' || value.length > 128))) throw failure('invalid-sound-patch', 'A sound transaction cannot alter physical or hardware routing fields.');
@@ -72,7 +74,7 @@ export function createLaneSoundTransaction({ getSource, prepare, publish, resour
     if (operations.size >= 2) throw failure('sound-preparation-capacity', 'Wait for the canceled sound preparation to acknowledge retirement.');
     const reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: `sound-transaction-${id}:${++serial}`, kind: 'sound-transaction-inputs', category: 'audio', bytes: 262144 });
     let resolveFinished;
-    const operation = { laneId, reference, patch, owner: source.owner, documentGeneration: source.documentGeneration, worldGeneration: source.worldGeneration,
+    const operation = { laneId, reference, patch, reviewIsCurrent: isCurrent, owner: source.owner, documentGeneration: source.documentGeneration, worldGeneration: source.worldGeneration,
       baseline: fingerprint(source.lane), externalSignal: signal, controller: new AbortController(), reservation, preparing: true, retirement: createProcgenRetirementScope(),
       finished: new Promise(resolve => { resolveFinished = resolve; }), resolveFinished: result => resolveFinished(result) };
     operation.abort = () => cancelOperation(operation, 'The sound gesture was released.');

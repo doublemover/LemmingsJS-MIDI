@@ -258,7 +258,6 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
     printComposition.disabled = busy || derivedDraft !== draft || !d.analysis; useComposition.disabled = busy || !compositionCurrent() || !c.analysis;
     for (const input of [...Object.values(compositionInputs), compositionSolo]) input.disabled = busy;
     compositionInfo.textContent = c.active ? c.phase : c.error || (c.analysis ? (compositionCurrent() ? '' : 'STALE EDIT · ') + c.analysis.recipe.mode + ' · neutral max error ' + c.analysis.reconstruction.maximumAbsoluteError.toExponential(3) + ' · printed creative RMS difference ' + c.analysis.recipe.creativeDifference.rmsDifference.toExponential(3) + ' · one asset; no new semantic onsets' : 'No printed composition prepared. Gain/filter edits require explicit Prepare.');
-    fit.disabled = busy || !validAsset; refit.disabled = busy || modalDraft !== draft || !editableModes.length; mergeModes.disabled = busy || selectedModes.size < 2;
     harvestNew.disabled = busy || !offeredSource; planBranch.disabled = busy || !offeredSource || !analysis.candidate()?.metadata().assetReady;
     buildBranch.disabled = busy || rebuildPlan?.state !== 'rebuildable' || !offeredSource; auditionBranch.disabled = busy || !branch.summary; saveBranch.disabled = busy || !branch.instrument?.audibleAuditionReady;
     applyBranch.disabled = busy || !branch.targetCurrent || !branch.instrument?.durable || !branch.instrument?.audibleAuditionReady; discardBranch.disabled = busy || !branch.summary;
@@ -277,6 +276,7 @@ export function createSoundSeedLabView({ document, window, audio, getPlayback = 
         context.strokeStyle = '#a43754'; for (const mode of modalSummary.estimate.modes) { const x = mode.frequencyHz / (spectrum.frequencyStepHz * spectrum.decibels.length) * 960; context.beginPath(); context.moveTo(x, 0); context.lineTo(x, 120); context.stroke(); }
       }
     }
+    fit.disabled = busy || !validAsset; refit.disabled = busy || modalDraft !== draft || !editableModes.length; mergeModes.disabled = busy || selectedModes.size < 2;
     const summary = d.analysis;
     componentInfo.textContent = d.active ? d.phase : d.error || (summary ? (derivedDraft !== draft ? 'STALE · ' : '') + 'Selected ' + (derivedSelection || 'original frozen seed') + ' · ' + summary.recipe.fftSize + ' FFT / ' + summary.recipe.hopFrames + ' hop · ' + summary.recipe.observationFrames + ' observed frames · neutral max error ' + summary.reconstruction.maximumAbsoluteError.toExponential(3) + ' / RMS ' + summary.reconstruction.rmsError.toExponential(3) + ' · zero output delay, exact original-frame crop.' : 'Analyze a frozen seed to inspect its components.');
     if (summary && derivedDrawn !== summary.generation) {

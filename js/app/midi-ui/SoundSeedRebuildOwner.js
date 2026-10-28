@@ -13,7 +13,7 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
   let current = null, active = null, disposed = false, sequence = 0, phase = 'frozen-material-kept', error = null;
   const identity = () => canonicalDataText(getTargetIdentity(), { maxBytes: 65536, maxNodes: 8192 }).text;
   const state = () => Object.freeze({ disposed, phase, error, active: !!active, unknownRetirement: unknown.size, summary: current?.summary || null, instrument: current?.instrument.state() || null,
-    targetCurrent: !!current && current.target === identity() });
+    targetCurrent: !!current && current.isCurrent() && current.target === identity() });
   const report = () => { if (!disposed) { try { onState(state()); } catch {} } };
   const disposeBundle = bundle => {
     if (!bundle) return null; if (bundle.scope.getReceipt()) return bundle.scope.getReceipt();
@@ -23,23 +23,28 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
       { name: 'branch-warp', run: () => warpFinished }, { name: 'branch-components', run: () => componentsFinished }, { name: 'branch-region', run: () => analysisFinished },
       { name: 'branch-plan', run: async () => { await analysisFinished; bundle.workspace.release(); bundle.asset = null; } }]);
   };
-  const cancel = () => { if (!active) return; active.controller.abort(fail('Derived branch preparation canceled.')); active.bundle?.analysis.cancel(); active.bundle?.composition.cancel(); active.bundle?.components.cancel(); active.bundle?.modal.cancel(); active.bundle?.warp?.cancel(); active.bundle?.instrument.stop(); };
+  const cancel = () => { if (!active) return; active.controller.abort(fail('Derived branch preparation canceled.')); active.bundle?.analysis?.cancel(); active.bundle?.composition?.cancel(); active.bundle?.components?.cancel(); active.bundle?.modal?.cancel(); active.bundle?.warp?.cancel(); active.bundle?.instrument?.stop(); };
   const prepare = ({ plan, replacement, isCurrent = () => true } = {}) => {
     if (disposed || active || unknown.size || plan?.schema !== 'lemmings-sound-seed-rebuild-plan/v1' || plan.state !== 'rebuildable' || !replacement?.artifact?.metadata().retained || typeof isCurrent !== 'function') return Promise.reject(fail('Choose a rebuildable explicit plan and retained replacement source.'));
     const target = identity(), operation = { controller: new AbortController(), bundle: null, generation: ++sequence, published: false, promise: null };
-    const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || !isCurrent() || identity() !== target) throw fail('The selected target, project or rebuild plan changed.'); };
+    const check = () => { operation.controller.signal.throwIfAborted(); if (disposed || !isCurrent() || identity() !== target || !replacement.artifact.metadata().retained) throw fail('The selected target, project or rebuild plan changed.'); };
     active = operation; phase = 'preparing-derived-branch'; error = null; report();
     operation.promise = (async () => {
       try {
         const inventory = canonicalDataText(plan, { maxBytes: 262144, maxNodes: 32768 }); plan = freezeData(JSON.parse(inventory.text));
-        const { planHash, ...effectivePlan } = plan; if (await hashData(effectivePlan, { maxBytes: 262144, maxNodes: 32768 }) !== planHash || plan.nodes[0].newSourceRef !== replacement.artifact.metadata().immutableSourceRef) throw fail('The reviewed plan or replacement source identity changed.'); check();
+        const { planHash, ...effectivePlan } = plan;
+        replacement = { artifact: replacement.artifact, manifest: freezeData(JSON.parse(canonicalDataText(replacement.manifest, { maxBytes: 262144, maxNodes: 32768 }).text)) };
+        const metadata = replacement.artifact.metadata(), source = plan.replacementSource;
+        if (await hashData(effectivePlan, { maxBytes: 262144, maxNodes: 32768 }) !== planHash || !source || plan.nodes[0].newSourceRef !== metadata.immutableSourceRef ||
+            source.immutableSourceRef !== metadata.immutableSourceRef || source.byteLength !== metadata.byteLength || source.sha256 !== await replacement.artifact.digest?.() ||
+            source.manifestHash !== await hashData(replacement.manifest, { maxBytes: 262144, maxNodes: 32768 })) throw fail('The reviewed plan or replacement source identity changed.'); check();
         const workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'seed-derived-branch', generation: operation.generation, category: 'candidate', kind: 'derived-branch-plan', bytes: Math.max(4096, inventory.bytes.length * 8 + 262144) });
-        const bundle = operation.bundle = { scope: createProcgenRetirementScope(), workspace, analysis: null, components: null, composition: null, warp: null, modal: null, instrument: null, asset: null, target, summary: null };
+        const bundle = operation.bundle = { scope: createProcgenRetirementScope(), workspace, analysis: null, components: null, composition: null, warp: null, modal: null, instrument: null, asset: null, target, isCurrent, summary: null };
         const options = { resourceBudget, jobs, onState: report };
         bundle.analysis = createSoundSeedAnalysisOwner(options); bundle.components = createSoundSeedDerivedOwner(options); bundle.composition = createSoundSeedDerivedOwner({ ...options, kind: 'composition' }); bundle.modal = createSoundSeedDerivedOwner({ ...options, kind: 'body-fit' });
         if (plan.warpOptions) { if (!coreMaterial) throw fail('This reviewed warp branch needs its owned pinned core material reader.'); bundle.warp = createSoundSeedDerivedOwner({ ...options, kind: 'warp', coreMaterial }); }
         bundle.instrument = createSoundSeedInstrumentOwner({ audio, resourceBudget, jobs, indexedDB, keyRange, getCatalog, getTargetIdentity, onState: report, onReveal,
-          onApply: (candidate, request) => { if (disposed || identity() !== target) throw fail('The target changed after this derived branch was prepared.'); return onApply(candidate, request); } });
+          onApply: (candidate, request) => { if (disposed || !isCurrent() || identity() !== target) throw fail('The target changed after this derived branch was prepared.'); return onApply(candidate, request); } });
         check(); await bundle.analysis.selectSource(replacement); check();
         const base = await bundle.analysis.prepare({ firstFrame: plan.parentRegionFrames[0], endFrame: plan.parentRegionFrames[1], fades: plan.fades, signal: operation.controller.signal, isCurrent: () => !disposed && isCurrent() && identity() === target }); check();
         if (base.manifest.frames !== plan.expectedRegionFrames || base.manifest.sampleRate !== plan.sampleRate) throw fail('The prepared replacement region differs from the reviewed plan.');
@@ -66,7 +71,7 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
         bundle.summary = freezeData({ schema: 'lemmings-prepared-seed-branch/v1', planHash: plan.planHash, generation: operation.generation, originalAssetHash: plan.originalAssetHash,
           newRegionAssetHash: base.metadata().assetHash, newSelectedAssetHash: bundle.asset.metadata().assetHash, selectedMaterial: plan.selectedMaterial,
           contentHash: bundle.instrument.state().contentHash, patchIdentity: bundle.instrument.state().patchIdentity, sourceTake: plan.sourceTake, sourceProfile: plan.sourceProfile,
-          stages: plan.nodes.map(node => ({ id: node.id, kind: node.kind, state: 'prepared', originalHash: node.oldHash })),
+          replacementSource: plan.replacementSource, stages: plan.nodes.map(node => ({ id: node.id, kind: node.kind, state: 'prepared', originalHash: node.oldHash })),
           originalMaterial: 'unchanged-and-still-playable', projectReferences: 'unchanged-until-explicit-apply', durability: 'not-established-until-storage-commit', qualification: plan.determinism });
         check(); const previous = current; current = bundle; operation.published = true;
         const receipt = disposeBundle(previous); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') { unknown.add({ previous, receipt }); throw fail('The previous candidate branch has unresolved retirement.'); } }
@@ -80,12 +85,12 @@ export function createSoundSeedRebuildOwner({ audio, resourceBudget, jobs, index
   const action = (name, work) => {
     if (disposed || active || unknown.size || !current) return Promise.reject(fail('Prepare a complete candidate branch first.'));
     const operation = { controller: new AbortController(), bundle: current, promise: null }; active = operation; phase = name; error = null; report();
-    operation.promise = Promise.resolve().then(() => work(current)).then(result => { if (phase === name) phase = 'derived-branch-prepared'; return result; }).catch(failure => { error = String(failure.message).slice(0, 512); phase = 'previous-derived-branch-retained'; throw failure; }).finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
+    operation.promise = Promise.resolve().then(() => { operation.controller.signal.throwIfAborted(); if (!current.isCurrent() || identity() !== current.target) throw fail('The selected target changed; prepare a new branch before applying.'); return work(current); }).then(result => { if (phase === name) phase = 'derived-branch-prepared'; return result; }).catch(failure => { error = String(failure.message).slice(0, 512); phase = 'previous-derived-branch-retained'; throw failure; }).finally(() => { if (active === operation) active = null; report(); }); return operation.promise;
   };
-  const clear = async () => { cancel(); await active?.promise.catch(() => {}); if (unknown.size) throw fail('A derived branch has unresolved retirement.'); const receipt = disposeBundle(current); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') { unknown.add({ current, receipt }); throw fail('The candidate branch has unresolved retirement.'); } } current = null; phase = 'frozen-material-kept'; report(); };
+  const clear = async () => { cancel(); await active?.promise?.catch(() => {}); if (unknown.size) throw fail('A derived branch has unresolved retirement.'); const receipt = disposeBundle(current); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') { unknown.add({ current, receipt }); throw fail('The candidate branch has unresolved retirement.'); } } current = null; phase = 'frozen-material-kept'; report(); };
   return Object.freeze({ prepare, cancel, clear, state, candidate: () => current?.asset || null,
-    audition: options => action('auditioning-derived-branch', bundle => bundle.instrument.audition(options)), install: () => action('saving-derived-branch', bundle => bundle.instrument.install()),
-    apply: () => action('applying-derived-branch', async bundle => { if (identity() !== bundle.target) throw fail('The selected target changed; prepare a new branch before applying.'); const result = await bundle.instrument.apply(); phase = 'derived-branch-applied'; return result; }),
+    audition: options => action('auditioning-derived-branch', bundle => bundle.instrument.audition(options)), install: () => action('saving-derived-branch', bundle => bundle.instrument.install({ isCurrent: () => !disposed && bundle.isCurrent() && identity() === bundle.target })),
+    apply: () => action('applying-derived-branch', async bundle => { const result = await bundle.instrument.apply({ isCurrent: () => !disposed && bundle.isCurrent() && identity() === bundle.target }); phase = 'derived-branch-applied'; return result; }),
     stop() { cancel(); current?.instrument.stop(); },
     dispose() { if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; return retirement.retire([{ name: 'derived-branch-owner', run: clear }]); }
   });
