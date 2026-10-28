@@ -7992,3 +7992,47 @@ export-budget acknowledgments still prevent a false complete receipt.
   finite/silent/missing-material/resource audio outcomes; sparse/dense render
   corpus; actual assistive-technology and human musical-relatedness review.
   #1112/#1204 remain open. #944/#945 are closed after the prior acceptance batch.
+
+### Continuation 308 — native variation dock, canonical Keep and real-take A/B
+
+- Mount VARIATIONS in the existing scoped dock. Compact authored knobs retain
+  exact-entry popovers; four keyed strips, four pins, keyboard navigation and
+  advanced seed/locks/provenance preserve focus without autoplay or world edits.
+  Correct full-width dock grid placement and use the shared dark material tokens.
+- Reuse the worker compiler, exact factory/installed-parent leases, archive,
+  verified reader and registry. Separate preparation and retained-stage lifetimes.
+  Keep stores exact content without requiring immediate playback; trim unused
+  parent assets/credits so selection archiving cannot change the generated hash.
+  Required references follow the canonical patch dependency inventory.
+- Render the selected lane of one immutable captured phrase through the existing
+  causal renderer for both parent and candidate. Match measured crop RMS by
+  attenuation only, cap resulting peak at0.8 and route discrete A/B through the
+  owned PRELISTEN PCM envelope. Retain actual source/candidate PCM hashes and
+  finite level evidence; silence, unavailable coverage/material and pressure
+  remain refusals. This is a new local realization of captured intents.
+- Keep and qualified Compare gate a held prepared lane transaction. Check source
+  identity again at publication; the accepted document revision is intentional.
+  Stop only the cue, then retain ordinary sound-only Undo and unchanged physics.
+- All255 grouped Node cases pass under coverage; all seven distinct native
+  browser journeys pass. Revalidate both variation journeys after the final
+  exact-asset/credit closure refinement. The final seven-case predecessor and
+  two-case follow-up have explicit source manifests. Earlier fixture-cleanup,
+  nonexistent Undo API and retained-stage lifetime failures remain recorded.
+- Real native1000-tick control and six-patch traces have equal physics and event
+  hashes, the same world object and unchanged hardware mapping; sound Undo keeps
+  the same physical boundary. Together with migration, slow/cancel/conflict,
+  held-renderer/tail and failure tests, #970 has completed software acceptance.
+- Isolated benchmark smoke passes with unchanged thresholds and replay gates:
+  p95frame66.7ms, p50TPS83.57, minimum history ratio0.58533 against0.5. Explicit
+  history sampling is7s: the former6s equaled the nominal500TPS time to reach its
+  3000-tick floor and left no scheduling margin. This benchmark precedes only the
+  pure fork asset/reference-closure refinement; clock/history/benchmark code is
+  unchanged afterward. Exact-head CI must still run its complete checks.
+- Preserve9e848ca3 CI:22 desktop+103 smoke pass, then history ratio0.498833 fails
+  the benchmark gate and Node coverage is skipped. Its master capture is Partial
+  at103552 frames after a128-frame clock gap; never relabel it Ready. The last
+  completely green full checkpoint remains1c818cc3.
+- Fresh three-page inventory has218 open issues before #970 closure. #1112/#1204
+  retain editable exact fork revisions, broader sparse/dense finite-audio and
+  relatedness/listening qualification, additional source/noise/pressure cases
+  and actual assistive-technology review. No full local Node suite is repeated.

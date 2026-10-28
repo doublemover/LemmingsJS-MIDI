@@ -87,7 +87,8 @@ const closeQuietly = async (target, label) => {
 
 const HISTORY_PROFILES = {
   smoke: {
-    durationMs: 6000,
+    // At speed30 the nominal500 TPS needs6s for the3000-tick smoke floor; allow scheduling headroom.
+    durationMs: 7000,
     sampleMs: 500,
     targetSpanTicks: 6000,
     speeds: '30,60',

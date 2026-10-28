@@ -16,6 +16,20 @@ const fixture = async (callbacks = {}) => {
 };
 
 describe('source-bound bounded variation session', () => {
+  it('accepts its prepared Apply publication as the intentional document revision boundary', async () => {
+    let f;
+    f = await fixture({ compare: async () => ({ admission: {}, release() {} }), keep: async () => ({ saved: true }),
+      apply: async ({ isCurrent }) => { expect(isCurrent()).to.equal(true); f.setSource(source(2)); return { status: 'committed' }; } });
+    await f.session.generate({}); const id = f.session.snapshot().rows[0].id; await f.session.keep(id); await f.session.compare(id);
+    expect(await f.session.apply(id)).to.deep.equal({ status: 'committed' }); expect(f.session.snapshot().rows[0].sourceCurrent).to.equal(false); await f.session.dispose();
+  });
+  it('keeping a compared candidate does not revoke its current comparison fence', async () => {
+    let comparisonCurrent;
+    const f = await fixture({ compare: async ({ isCurrent }) => { comparisonCurrent = isCurrent; return { admission: {}, release() {} }; }, keep: async () => ({ saved: true }) });
+    await f.session.generate({}); const id = f.session.snapshot().rows[0].id;
+    await f.session.compare(id); await f.session.keep(id); expect(comparisonCurrent()).to.equal(true); expect(f.session.snapshot().rows[0]).to.include({ compared: true, kept: true, admitted: true });
+    await f.session.stop(); expect(f.session.snapshot().rows[0].admitted).to.equal(true); await f.session.dispose();
+  });
   it('keeps four stable slots and four exact pins while new batches replace only unpinned rows', async () => {
     const { session } = await fixture(); await session.generate({ seed: 1 });
     const old = session.snapshot().rows; for (const row of old) session.pin(row.id);

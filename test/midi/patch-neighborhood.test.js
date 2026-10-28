@@ -8,6 +8,13 @@ import { prepareSoundContentPack } from '../../js/midi/content/SoundContentPack.
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { resolveSoundContentReference } from '../../js/midi/content/SoundContentReference.js';
 import { singleSampleMap } from '../helpers/sampleMap.js';
+import { hashDataText } from '../../js/core/CanonicalData.js';
+import { createResourceBudget } from '../../js/app/resources/ResourceBudget.js';
+import { createBackgroundJobService } from '../../js/app/resources/BackgroundJobService.js';
+import { createBackgroundWorkerAdmission } from '../../js/app/resources/BackgroundWorkerAdmission.js';
+import { createSoundContentReader, borrowSoundContentStage } from '../../js/app/midi-ui/SoundContentReader.js';
+import { createSoundContentArchiver } from '../../js/app/midi-ui/SoundContentArchive.js';
+import { stagePreparedSoundContent } from '../../js/app/midi-ui/SoundContentPreparedStage.js';
 
 const rejected = async (promise, code) => { let error; try { await promise; } catch (failure) { error = failure; } expect(error?.code).to.equal(code); return error; };
 const referenceFor = prepared => { const patch = prepared.patches.find(entry => entry.state === 'definition-admitted'); return {
@@ -108,6 +115,25 @@ describe('authored bounded patch neighborhoods', function() {
       coordinates: { 'hammer-hardness': 1 }, locks: { parameters: ['indexStart'] }, amount01: 1 });
     expect(result.counts.rejected).to.equal(4); expect(result.candidates.every(candidate => candidate.code === 'constraint-conflict')).to.equal(true);
     expect(JSON.stringify(reference)).to.equal(before);
+  });
+  it('keeps the generated pack hash through real archive staging when the parent has unused assets and credits', async () => {
+    const parent = parents.get('worklet-sample'), pack = structuredClone(parent.prepared.pack), text = 'Unused synthetic fixture terms only.';
+    const license = { id: 'unused-fixture', text, url: 'urn:fixture:unused-terms', sha256: await hashDataText(text) };
+    pack.licenses.push(license); pack.files.push({ ...pack.files[0], path: 'samples/unused.bin', sha256: 'c'.repeat(64),
+      rights: { ...pack.files[0].rights, licenseId: license.id, licenseUrl: license.url, licenseTextHash: license.sha256, declaredUse: 'redistributable' } });
+    const prepared = await prepareSoundContentPack(pack, { engineDescriptors: descriptors });
+    const batch = await generatePatchNeighborhood({ prepared, reference: referenceFor(prepared), descriptor: parent.descriptor, count: 1 });
+    const candidate = batch.candidates[0]; expect(candidate.state).to.equal('compiled'); expect(candidate.compiled.prepared.pack.files).to.have.length(1);
+    expect(candidate.reference.assetHashes).to.deep.equal(parent.reference.definition.sampleRefs.map(entry => entry.sha256));
+    expect(candidate.compiled.prepared.pack.licenses.some(entry => entry.id === license.id)).to.equal(false);
+    const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null, yieldTask: async () => {} });
+    const reader = createSoundContentReader({ resourceBudget: budget, jobs }), archiver = createSoundContentArchiver({ resourceBudget: budget, jobs }); let stage;
+    try {
+      stage = await stagePreparedSoundContent({ prepared: candidate.compiled.prepared, reader, archiver, engineDescriptors: descriptors });
+      expect(stage.metadata().contentHash).to.equal(candidate.reference.packHash);
+      const loan = borrowSoundContentStage(stage); expect(loan.prepared.patches[0].definitionHash).to.equal(candidate.reference.definitionHash); loan.release();
+    } finally { stage?.discard(); await reader.dispose()?.completion; await archiver.dispose()?.completion; await jobs.dispose(); admission.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('rejects invalid controls, unsupported artifacts, unknown locks and compound Circuit parents before publishing', async () => {
     const parent = parents.get('native-fm');

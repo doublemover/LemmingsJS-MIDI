@@ -20,10 +20,13 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
   const pins = new Map(), entries = new Map(), actions = new Set(), generations = new Set(), unresolved = new Map();
   const current = key => !disposed && !unknownRetirement && binding?.key === key && identityKey(getSourceIdentity()) === key;
   const describe = entry => freezeData({ id: entry.id, candidateId: entry.candidate?.id || null, slot: entry.slot, generation: entry.generation,
-    state: entry.state, name: entry.candidate?.name || 'Candidate ' + (entry.slot + 1), pinned: pins.has(entry.id), kept: !!entry.kept,
+    state: entry.state, name: entry.candidate?.name || 'Candidate ' + (entry.slot + 1), pinned: pins.has(entry.id), kept: !!entry.kept, busy: entry.busy,
     sourceCurrent: current(entry.key), duplicateLike: !!entry.candidate?.duplicateLike, code: entry.code || null, reason: entry.reason || null,
     deltas: (entry.candidate?.provenance?.changes || []).slice(0, 2).map(change => ({ ...change })),
-    qualification: entry.candidate?.qualification || null, compared: comparison?.entry === entry } );
+    qualification: entry.candidate?.qualification || null, compared: comparison?.entry === entry, admitted: !!entry.admission,
+    reference: entry.candidate?.reference ? { packHash: entry.candidate.reference.packHash, patchId: entry.candidate.reference.patchId,
+      revision: entry.candidate.reference.revision, definitionHash: entry.candidate.reference.definitionHash } : null,
+    provenance: entry.candidate?.provenance || null } );
   const snapshot = () => freezeData({ generation, parent: binding ? { identity: binding.identity, name: binding.reference.definition.name,
     revision: binding.reference.revision, packHash: binding.reference.packHash, definitionHash: binding.reference.definitionHash } : null,
   rows: rows.map(describe), pins: [...pins.values()].map(describe), generating: !!pending, retiring, retainedBytes, maxRetainedBytes,
@@ -119,7 +122,7 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
     if (kind === 'compare' && (!binding.identity.takeId || !Number.isSafeInteger(binding.identity.takeRevision))) throw fail('missing-reference-take', 'Select an immutable captured physical take before comparing.');
     if (kind === 'apply' && (!entry.kept || !entry.admission)) throw fail('not-admitted', 'Keep and qualify this exact candidate before applying it to the lane.');
     entry.busy = true;
-    const controller = new AbortController(), token = ++actionSerial, source = binding;
+    const controller = new AbortController(), token = kind === 'compare' ? ++actionSerial : actionSerial, source = binding;
     const operation = { controller, finished: null }; actions.add(operation);
     const alive = () => current(entry.key) && !controller.signal.aborted && (kind !== 'compare' || token === actionSerial);
     operation.finished = (async () => {
@@ -130,7 +133,7 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
         const result = await callback({ candidate: entry.candidate, source, signal: controller.signal, isCurrent: alive,
           kept: entry.kept || null, admission: entry.admission || null });
         if (kind === 'compare') lease = result;
-        if (!alive()) throw fail('changed-source', 'The completed variation action belongs to an older source.');
+        if (kind !== 'apply' && !alive()) throw fail('changed-source', 'The completed variation action belongs to an older source.');
         if (kind === 'compare') {
           if (!lease || typeof lease.release !== 'function') throw fail('invalid-comparison', 'Comparison requires an owned cue lease.');
           comparison = { entry, lease }; entry.admission = lease.admission || null; lease = null;
@@ -145,6 +148,7 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
     publish(); return operation.finished;
   };
   return Object.freeze({ bind, generate: start, pin, unpin, compare: id => act(id, 'compare'), keep: id => act(id, 'keep'), apply: id => act(id, 'apply'),
+    drainGeneration: () => Promise.allSettled([...generations].map(operation => operation.finished)),
     stop, cancel() { cancel(); for (const entry of rows) if (entry.state === 'pending') { entry.state = 'canceled'; entry.code = 'canceled'; } publish(); }, snapshot,
     async dispose() {
       if (disposed) return;

@@ -15,7 +15,7 @@ const previewOwner = () => {
   const budget = createResourceBudget(), resources = createAudioResourceLeases({ resourceBudget: budget }), nodes = [];
   const node = () => { const result = { buffer: null, onended: null, disconnectFailure: false, started: false, stopped: false, disconnected: false,
     connect() {}, disconnect() { if (this.disconnectFailure) throw new Error('Native disconnection unknown.'); this.disconnected = true; }, start() { this.started = true; }, stop() { this.stopped = true; },
-    gain: { setValueAtTime() {}, linearRampToValueAtTime() {} } }; nodes.push(result); return result; };
+    gain: { calls: [], setValueAtTime(value, time) { this.calls.push(['set', value, time]); }, linearRampToValueAtTime(value, time) { this.calls.push(['ramp', value, time]); } } }; nodes.push(result); return result; };
   const context = { state: 'running', currentTime: 0, createBuffer(channels, frames, rate) { const data = Array.from({ length: channels }, () => new Float32Array(frames)); return { length: frames, numberOfChannels: channels, sampleRate: rate, getChannelData: index => data[index] }; }, createBufferSource: node, createGain: node };
   const preview = { _sessions: new Map([['cue', { generation: 0, workloadClass: 'cue' }]]), _context: context, _audioResources: resources, _voices: new Set(), _voicesByToken: new Map(), _retiredVoices: new Map(), _retirementFaults: new Set(), _voiceSequence: 0,
     _ownerReady: () => true, _inspectVoiceInterval: () => ({ accepted: true }), _nowMs: () => 0, _cueRouting: { getInput: () => ({}) },
@@ -24,6 +24,13 @@ const previewOwner = () => {
 };
 
 describe('owned rendered PCM cue', () => {
+  it('applies explicit bounded attenuation to the real native gain envelope without rewriting PCM', async () => {
+    const f = previewOwner(), input = wave(), before = input.bytes.slice(), cue = await prepareOwnedPcmCue(f.preview, 'cue', input);
+    for (const level01 of [NaN, Infinity, -0.1, 1.01]) expect(() => cue.play({ level01 })).to.throw('attenuation');
+    expect(f.nodes).to.have.length(0); expect(cue.play({ level01: 0.25 }).status).to.equal('accepted');
+    expect(f.nodes[1].gain.calls.map(call => call[1])).to.deep.equal([0, 0.25, 0.25, 0]); expect(input.bytes).to.deep.equal(before);
+    const receipt = cue.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('checks complete chunks, exact frames and PCM identity before allocating native storage', async () => {
     const input = wave(), f = previewOwner(); expect(inspectOwnedCueWave(input.bytes, input.manifest)).to.deep.equal({ offset: 56, bytes: 2048 });
     const changed = input.bytes.slice(); changed[56] ^= 1; let error;

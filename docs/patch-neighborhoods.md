@@ -48,8 +48,38 @@ an owned cue lease; Apply additionally requires Keep and an admission receipt
 from that comparison owner. Callbacks must honor the supplied signal and
 `isCurrent` predicate at their canonical publication/transaction boundary.
 
-Compiled candidates remain `compiled-data-not-render-qualified`. The dock UI,
-canonical library integration, same-take level-matched render/cue path and
-reference-audio qualification are remaining integration work for #1112/#1204.
-Schema validation and numerical diversity alone do not establish playable finite
-audio, useful musical variation or a listening pass.
+`PatchVariationOwner` connects the session to the existing worker compiler,
+archive/reader/registry, causal take renderer, PRELISTEN owner and prepared lane
+transaction. Factory parents have an explicitly budgeted complete-definition
+lease; installed parents load by their exact pack hash. A changed factory
+catalog cannot silently substitute for an unavailable pinned parent.
+
+The VARIATIONS page occupies the existing scoped dock. Two authored knobs and
+their exact-entry controls edit a local draft. Generate submits four slots.
+Seed/locks/version/outcomes and exact selected provenance remain in an advanced
+foldout. Numbered keyboard navigation never auditions. Pins survive later
+batches and parent changes as inspectable exact references.
+
+Keep stores a reference-only immutable definition through the canonical archive
+and verified reader. It can save an unqualified candidate for later inspection.
+Apply also requires the comparison owner's exact admission and the existing
+lane transaction's final source check. A successful Apply creates the expected
+new document revision and stops the cue; sound Undo uses the existing history.
+
+Compare prepares the selected lane of the same immutable captured physical
+phrase twice, from source time zero through at most eight seconds, with an exact
+crop and the pinned parent/candidate definitions. Missing/held initial state,
+coverage, assets, silence or budget remain explicit refusals. The measured crop
+RMS values select attenuation-only gains with a maximum resulting peak of0.8.
+Those gains reach the real native PCM cue envelope without rewriting saved
+samples. A/B are discrete choices and share the existing explicit monitor route,
+foreground ownership, stop, source fencing and eight-millisecond edge fades.
+The comparison retains both actual PCM hashes and level receipts.
+
+Compiled candidates remain `compiled-data-not-render-qualified` until the real
+reference path succeeds. This is a new local realization of captured intents;
+historic receiver timbre and acoustic output are not recreated. Editable pinned
+fork revisions, the broader sparse/dense finite-audio corpus, musical-relatedness
+listening review and actual assistive-technology qualification remain open for
+#1112/#1204. Schema validation and numerical diversity alone establish no
+listening result.

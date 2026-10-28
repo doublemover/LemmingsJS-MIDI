@@ -19915,6 +19915,551 @@
         "state": "open-implemented-partial",
         "remaining": "Native scoped dock surface and canonical same-take cue/library/transaction adapters, editable exact revisions, keyboard/native browser and actual assistive-technology journeys."
       }
+    },
+    "remoteCi": {
+      "head": "9e848ca3b084f95ba9aec2d1f0b117857b7822a9",
+      "status": "failure",
+      "run": 40711054771,
+      "job": 122896117998,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40711054771/job/122896117998",
+      "browserPassed": 125,
+      "browserFailed": 0,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 103,
+        "explicitBenchmarkSkips": 0
+      },
+      "nodeCoverageExecuted": false,
+      "failure": "Benchmark history speed30 spanRatio0.49883333333333335 fell below0.5. Six-second sampling equaled the nominal500TPS time to reach its3000-tick minimum.308 declares7s history sampling without changing thresholds, targets, independent replay evidence or timeouts.",
+      "benchmark": {
+        "measurementValid": true,
+        "historyRatio": 0.49883333333333335,
+        "historyRatios": [
+          0.49883333333333335,
+          0.8723333333333333
+        ],
+        "perfP95Frame": 116.70000000000073,
+        "perfP50Tps": 84.92569002125433
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 103552,
+        "captured": 103552,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 132992,
+          "expectedFrame": 133120,
+          "frames": 128
+        },
+        "peak": 0.0012296438217163086,
+        "nonfinite": 0
+      },
+      "policy": "success",
+      "dependencyReview": "success",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci307-failed.log",
+        "bytes": 137437,
+        "sha256": "02bd30782be2dd979072c6df9fb5ecf4bddab8380d4bf2af435da724e28dbf8f"
+      },
+      "excludesLaterWork": true
+    }
+  },
+  "continuation308": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Scoped native variations, canonical exact Keep, real physical-phrase A/B and sound/world closure",
+    "sourceBase": "9e848ca3b084f95ba9aec2d1f0b117857b7822a9",
+    "issues": [
+      970,
+      1112,
+      1204
+    ],
+    "development": [
+      "Persistent keyed VARIATIONS dock uses shared compact parameter knobs/exact-entry popovers, four stable strips, four pins, explicit keyboard selection, seed/version/locks/provenance and separate Generate/Compare/Keep/Apply. Native focus/selection does not play; parent/document/lane/take identity gates application.",
+      "Reuse canonical worker compilation, explicitly budgeted complete factory/installed-parent leases, archive, verified reader and registry. Preparation and retained-stage lifetimes are separate. Keep stores inspectable exact reference content independently from audio admission.",
+      "Construct forks with required asset/credit closure and canonical required asset references. A real sample-parent fixture with unused material and an unrelated license roundtrips through the actual archive reader with its generated hash unchanged. Refuse any unexpected saved-selection hash drift before registry publication.",
+      "Existing causal renderers reconstruct the selected lane of the same immutable physical intent phrase for parent and candidate. Match measured crop RMS with attenuation-only gains and a0.8 peak ceiling; actual native PCM cue envelopes apply the gains without rewriting source PCM. Record actual hashes and level receipts. Discrete A/B share explicit PRELISTEN routing and stop ownership.",
+      "Keep plus owned comparison admission gates the existing held lane transaction. Check complete source identity again at publication. An accepted Apply intentionally advances document revision, stops the cue and retains ordinary sound-only Undo without physics/time travel.",
+      "History smoke sampling is explicitly7s, preserving the6000-tick target,50% floor, independent replay/terrain evidence, all performance thresholds and outer deadlines. The former6s equaled its nominal500TPS time to reach3000 ticks and left no scheduling margin."
+    ],
+    "validation": {
+      "node": {
+        "passed": 255,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "All neighborhood/session/level/staging contracts, PCM cue/prelisten, native selection, compiler/pack/archive/reader/install/reference contracts, history/benchmark contracts, real workstation controller, lane sound transaction, routed backend and project/music migration/ownership cases.",
+        "scopedCoverage": {
+          "NativeSoundSelection.js": {
+            "lines": 100,
+            "branches": 73.58,
+            "functions": 85
+          },
+          "OwnedPcmCue.js": {
+            "lines": 95.29,
+            "branches": 82.22,
+            "functions": 89.47
+          },
+          "PatchVariationSession.js": {
+            "lines": 98.14,
+            "branches": 83.64,
+            "functions": 93.33
+          },
+          "PreparedWavePrelisten.js": {
+            "lines": 100,
+            "branches": 90.62,
+            "functions": 95
+          },
+          "SoundContentPreparedStage.js": {
+            "lines": 100,
+            "branches": 75,
+            "functions": 100
+          },
+          "PatchComparisonLevels.js": {
+            "lines": 100,
+            "branches": 100,
+            "functions": 100
+          },
+          "PatchNeighborhood.js": {
+            "lines": 100,
+            "branches": 96.73,
+            "functions": 87.5
+          },
+          "SoundContentCompiler.js": {
+            "lines": 94.81,
+            "branches": 80.89,
+            "functions": 100
+          }
+        }
+      },
+      "browser": {
+        "distinctPassed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "preClosureCohort": {
+          "passed": 7,
+          "failed": 0,
+          "durationMs": 89484.644,
+          "sourceDeltaToFinal": [
+            "js/midi/content/SoundContentCompiler.js",
+            "js/midi/content/PatchNeighborhood.js",
+            "js/app/midi-ui/PatchVariationOwner.js",
+            "test/midi/patch-neighborhood.test.js",
+            "provenance/runtime-artifacts.json"
+          ]
+        },
+        "finalClosureFollowup": {
+          "passed": 2,
+          "failed": 0,
+          "durationMs": 35635.299,
+          "scope": "Both complete variation journeys on the exact final compiler/required-asset closure and worker inventory.",
+          "sourceDeltaToPublication": []
+        },
+        "scope": "Six actual native sound changes across a1000-tick control trace with obsolete pattern path disabled; existing canonical library staging/audition/install/apply;1080p/QHD/UHD dock geometry; explicit knobs/locks and two batches with exact pin/Keep/offline reopen; real captured physical-phrase A/B, matched native cue and Apply/Undo."
+      },
+      "comparison": {
+        "levels": {
+          "schema": "lemmings-patch-comparison-levels/v1",
+          "policy": "same-crop-rms;attenuation-only;peak-at-most-0.8",
+          "targetRms": 0.03828794710596241,
+          "levels": [
+            0.987764076660457,
+            1
+          ],
+          "sourceRms": [
+            0.03876223888948318,
+            0.03828794710596241
+          ],
+          "sourcePeaks": [
+            0.13568180799484253,
+            0.13567431271076202
+          ],
+          "measuredSimilarity": null,
+          "perceptualQuality": null
+        },
+        "takeId": "take:c7643506-2285-407a-861d-48f98c91f422",
+        "takeRevision": 8,
+        "sourceCanonicalHash": "0910ddf10f19379b3098ccca8d8c9ceccb99e2bfcf7081f50cf2aae241eb9fcf",
+        "pcmHashes": [
+          "03ea7f517674f87b475338e5ac902b9853a0307a58f1bda93307d03728cac038",
+          "cd0ba2b75567c613625502fbe6db1ae9ad2ddf0335014e920fe6618dd83b3dff"
+        ],
+        "candidateHash": "c7a39b3ad8919e03ec83a5c7d96742dd4d481c4e956bd622094ae409e436c5ef"
+      },
+      "worldIsolation": {
+        "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+        "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+        "difference": null,
+        "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+        "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+        "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+        "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+        "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+        "selections": [
+          "foundation.soft-triangle",
+          "forge.glass-rivet",
+          "material.timber",
+          "pluck.burrow-thumb",
+          "choir.hollow-ooh",
+          "spectrum.bubble-reed"
+        ],
+        "tickStart": 2,
+        "tickEnd": 1002,
+        "sameWorld": true,
+        "hardwareUnchanged": true,
+        "sourceOnlyFixture": false,
+        "acousticQualification": false
+      },
+      "benchmarkSmoke": {
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 27927,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9461,
+          "benchHistoryStress": 15834,
+          "benchHotpaths": 2630
+        },
+        "metrics": {
+          "perfP95Frame": 66.70000000000073,
+          "perfP50Tps": 83.5707502374169,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 12.11,
+          "tileCompositionAvgMs": 2.21,
+          "overlayPlaneAvgMs": 10.37,
+          "scaledBlitAvgMs": 29.91
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5853333333333334
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0365
+          }
+        ]
+      },
+      "benchmarkSourceLimit": "The isolated benchmark precedes only the pure fork asset/reference-closure refinement listed in browser.sourceDeltaToFinal. Clock/history/benchmark code is unchanged afterward. Exact-head CI must rerun its complete gates.",
+      "earlierNode": [
+        {
+          "passed": 201,
+          "failed": 1,
+          "reason": "New staging test cleanup incorrectly assumed a receipt from synchronous disposer; actual body/roundtrip assertions passed."
+        },
+        {
+          "passed": 254,
+          "failed": 0,
+          "scope": "Before final unused-parent-asset/credit closure regression and refinement."
+        }
+      ],
+      "earlierBrowser": [
+        {
+          "passed": 4,
+          "failed": 2,
+          "reason": "New fixture called nonexistent studio.undo after successful real Compare/Apply; existing library stage incorrectly inherited the completed preparation lifetime. Corrected fixture API and separate retained-stage lifetime, with a real archive reader regression.",
+          "visualFollowup": "Native screenshots exposed single-column placement and a pale parent strip; fixed full dock span, shared dark material tokens and compact shared knobs."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/341 files",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "scopeLimits": [
+        "Only captured-intent new local revoice is qualified here; original live admission/hardware timbre/acoustics and human musical-relatedness are not recreated.",
+        "The255-case Node coverage and7 distinct browser cases are focused evidence; new exact-head full CI is required. Latest completely green immutable checkpoint remains continuation299.",
+        "Editable pinned fork revisions, broader64-seed sparse/dense finite-audio qualification, missing-source/pressure integration cases, musical relatedness and actual assistive-technology review remain open for1112/1204."
+      ],
+      "coverageFollowup": "PatchVariationOwner/View are exercised through real native browser journeys rather than this focused Node coverage. Add injected integration-owner failure/retirement paths, edited-revision cases and broader audio/assistive journeys as those remaining contracts are implemented."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-node-initial.log",
+        "bytes": 20507,
+        "sha256": "821a898db85642838601b86ff291e371ab329ee4c3a7b1a0f946ea683af350e6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-node-before-closure.log",
+        "bytes": 25156,
+        "sha256": "eb89a50ea73a2f857c98e89c3dfa2a05d3cf4128f05f5dc0740bbaba48ef4297"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-node-final.log",
+        "bytes": 25276,
+        "sha256": "4e2ee19ca3595b7baa52478d025f9a3a749a3852fe545ca2ba86e0ed7b738378"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-native-initial.log",
+        "bytes": 9130,
+        "sha256": "3eb1cb7f716dd9243e743f7cfc278aef332542455e27132ffda495e6c91f3891"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-native.log",
+        "bytes": 2613,
+        "sha256": "9856ee2427cad287a7c17e896f114b7d054a03f639b650673afac1f0e19cb85d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-closure-native.log",
+        "bytes": 768,
+        "sha256": "10927ec52c07494c5a26b54e9204642369e097cfc09cf2b665b4723b2cf634e6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-bench.log",
+        "bytes": 917,
+        "sha256": "15f3cf392a13537338fca53ab507504de3d4de2022857ed90321d83e96e0b77c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-provenance.log",
+        "bytes": 142,
+        "sha256": "8046ff0356bcf179e2906450966ab6c1dd1f20d8e2aee1ff355262109cc7768b"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-native-results.json",
+        "bytes": 26703,
+        "sha256": "40eeadee5692cee3ee347874c8dfb82ec9c0e887ac83e9300ecdc89711dcd1f6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-native-source.json",
+        "bytes": 3099,
+        "sha256": "fc3f90efce55fe3377c85869c7cad662343078aec5d9ebc0929caec3a29096d7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-closure-native-results.json",
+        "bytes": 12474,
+        "sha256": "138afbde8369c5d788f908af21464b9ccf8f1df0dcde9ac396448cf2a11a8a2b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-closure-source.json",
+        "bytes": 3540,
+        "sha256": "add0070babf596c405dfdd7ba50d5ab1c94a4d2a796cdffef03dbaf6bae53d58"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-308-coverage\\coverage-summary.json",
+        "bytes": 258210,
+        "sha256": "6489d58a78459b14fca061c46b4168eb17e89b316928505e8d977e1b266b22a1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\desktop-layout-metrics.json",
+        "bytes": 1147,
+        "sha256": "df10f59a522e778003241747f776dd30b60b9fa8fc7988c30403986754137ba5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\kept-neighborhood-receipt.json",
+        "bytes": 4092,
+        "sha256": "525c992cee0e7e678b4b2c2f424cef7228cea8b815771bb18a3428fc70180ff3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\physical-variation-comparison-receipt.json",
+        "bytes": 732,
+        "sha256": "d72017e40ba1ee65c4b3b547ddc07a15426881a3ef5098e8be4315f64a15a023"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\sound-world-isolation.json",
+        "bytes": 975,
+        "sha256": "44a5152328981ee038bafbf1174b62abd917f29837913f5746dd02d0ac7ef1e0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\sound-world-isolation.json.json",
+        "bytes": 878,
+        "sha256": "de645ecb64b97927eee36a6eda53ebea5057a07f1aec8d1c64595d266dea9b8c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\variations-physical-comparison-1080p.png",
+        "bytes": 98138,
+        "sha256": "63e8f0fedfaf306c23c99a1268c0ab1b7594016347395e956905e49c02cb5e1a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog308-captures\\variations-pinned-1080p.png",
+        "bytes": 93500,
+        "sha256": "a77c7eb354eb2485d03387b8bfd5686222d5ba628b59b8054f58e6a6b0b4db1b"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "css/procgen-workstation.css",
+        "bytes": 47607,
+        "sha256": "64853180511bee4ab69b5eb286cb2bc85106a422e059fffb27b4a4c9d0270d99"
+      },
+      {
+        "path": "docs/patch-neighborhoods.md",
+        "bytes": 5424,
+        "sha256": "fe8b8b5a179b17734485231e029793d7a03c056e4c95c58b05801106a7cc3cfa"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 584951,
+        "sha256": "3145364f9390021873631373b07dd1fd469979652036443c3f9abd7496e19c63"
+      },
+      {
+        "path": "e2e/procgen-workstation-variations.spec.js",
+        "bytes": 10964,
+        "sha256": "8c84817a0fc1be72f6770bddb432c243ff44ad27b7e0c8e02b4158b083d6db8b"
+      },
+      {
+        "path": "js/app/midi-ui/NativeSoundSelection.js",
+        "bytes": 7217,
+        "sha256": "20f56aeda65a1deb762e6bb9b045007401ecf286e237b52c825f9a1300b0674e"
+      },
+      {
+        "path": "js/app/midi-ui/OwnedPcmCue.js",
+        "bytes": 8859,
+        "sha256": "5a15af64f57d98b059a54343b67d6af8d1cd09d095897c0561783bacac68f106"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationOwner.js",
+        "bytes": 18191,
+        "sha256": "001fa4d29f98c333bf819a710ff6faabad5245c0e222f63521675172b41b8a39"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationSession.js",
+        "bytes": 12960,
+        "sha256": "6ad217218c1784ba77e3bfec95d696708affc03201bdee7799e68ca7496b9c6c"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationView.js",
+        "bytes": 11981,
+        "sha256": "fb7366e64751ba5fcc6435656819ff9adc7641763ed2918112b755e52205c140"
+      },
+      {
+        "path": "js/app/midi-ui/PreparedWavePrelisten.js",
+        "bytes": 8247,
+        "sha256": "a503ed6067a9629ac51851a9019dc4dfc4607679c97b02f936a87cdddda0ec60"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentLibrary.js",
+        "bytes": 42834,
+        "sha256": "2b97a64724edad75118f6d7cc292d426ff4b318a30c111e6e610916dfa3cc698"
+      },
+      {
+        "path": "js/app/midi-ui/SoundContentPreparedStage.js",
+        "bytes": 1351,
+        "sha256": "4206ba016aac1d481df9e6d6a33776439ac3788487717ca36d8660870f3150fd"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 196811,
+        "sha256": "6cbf863171ed890b7e70f774ed075277d6661fdf1b141604df274e6c8862656a"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 133890,
+        "sha256": "0eb3e3acea7d711e8c6a9e32bac7ff3e17cd44a77be81f0e8049e7d27a3bf5e3"
+      },
+      {
+        "path": "js/midi/content/PatchComparisonLevels.js",
+        "bytes": 1587,
+        "sha256": "8c864c4220dea70bceffd675c319cff9772fd17495f01cdf4bd7ba8861693f26"
+      },
+      {
+        "path": "js/midi/content/PatchNeighborhood.js",
+        "bytes": 10260,
+        "sha256": "cb1c707f0679ab2cc64270029fa71684216453dffedab92cb5389eaec3668fff"
+      },
+      {
+        "path": "js/midi/content/SoundContentCompiler.js",
+        "bytes": 31930,
+        "sha256": "ba48a9801e1113135518a05aa827feb0f23f832c615ba5c75c3a11878e3fc657"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 20885,
+        "sha256": "f691aac56ad0bb1f79b014223c73a2e52d1e72f9e683faa04b033fe4b4bbeed3"
+      },
+      {
+        "path": "scripts/bench-history-stress.js",
+        "bytes": 18971,
+        "sha256": "3a1e29da6865228c488320dbf7d29b0135eb73369a778dc6923e8928975509b6"
+      },
+      {
+        "path": "scripts/bench-smoke.js",
+        "bytes": 8031,
+        "sha256": "fabbe541d35378e5a97a5c698ff66d2ae8b21cf5f5567d393eea0caa7e9a2f5d"
+      },
+      {
+        "path": "test/bench-smoke.test.js",
+        "bytes": 10225,
+        "sha256": "38252b97b195be17f0b043fd3793565a2828414d3447d001a061ef772d257c25"
+      },
+      {
+        "path": "test/midi/owned-pcm-cue.test.js",
+        "bytes": 6486,
+        "sha256": "16b961415b8629c31da67e00e8e28a72eebb6ad84c0c6d8d1d67b39b510f0e13"
+      },
+      {
+        "path": "test/midi/patch-comparison-levels.test.js",
+        "bytes": 2266,
+        "sha256": "df883e2f0cab7bb65b072c58a15861969a99afd14586f90276435c33e420c88b"
+      },
+      {
+        "path": "test/midi/patch-neighborhood.test.js",
+        "bytes": 17059,
+        "sha256": "644dc054c061c6340022a31b484d2fb0d76c8cb1e913e58dd41ebeb78649afec"
+      },
+      {
+        "path": "test/midi/patch-variation-session.test.js",
+        "bytes": 10500,
+        "sha256": "4c08329359ff1447171f441fdfe08ece9da1c71d9ae4eb44111555cecca414ee"
+      },
+      {
+        "path": "test/midi/prepared-wave-prelisten.test.js",
+        "bytes": 8763,
+        "sha256": "55f4ae4cb28cf6cc42fda1304728eafa47ed7df3acc535ff4ed0dc5dc402ede9"
+      },
+      {
+        "path": "test/midi/sound-content-prepared-stage.test.js",
+        "bytes": 2992,
+        "sha256": "8f66f5aa9b49103af925753c5318c9ecd24210d0bbf97cc11baf82dfba976f90"
+      }
+    ],
+    "issueInventory": {
+      "freshOpenIssues": 218,
+      "pages": 3,
+      "scope": "Before970closure; excludes pull requests."
+    },
+    "issueStatus": {
+      "970": {
+        "state": "software-acceptance-complete",
+        "evidence": "Actual six-native-instrument1000-tick physics/event equality and Undo, plus executed migration, slow/cancel/conflict, held renderer/tail, named unsupported policy and hardware-warning contracts."
+      },
+      "1112": {
+        "state": "open-implemented-partial",
+        "remaining": "Editable exact revisions, broader finite-audio corpus and musical-relatedness/listening qualification."
+      },
+      "1204": {
+        "state": "open-implemented-partial",
+        "remaining": "Editable pinned revisions, expanded source/pressure failures and actual assistive/listening qualification."
+      }
     }
   }
 }

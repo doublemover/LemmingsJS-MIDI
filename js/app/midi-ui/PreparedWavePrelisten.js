@@ -35,7 +35,8 @@ export function createPreparedWavePrelisten({ audio, resourceBudget, onState = (
     }); report(); return receipt;
   };
   return Object.freeze({ state, stop: () => close(current),
-    async play({ file, source, isCurrent = () => true, onReveal } = {}) {
+    async play({ file, source, isCurrent = () => true, onReveal, level01 = 1 } = {}) {
+      if (!Number.isFinite(level01) || level01 < 0 || level01 > 1) throw fail('Cue attenuation must be between zero and one.');
       if (disposed || current || unknown.size || !audio?.acquireAudition || !audio?.createSession || typeof isCurrent !== 'function' || !file?.artifact?.borrow || !file.artifact.onDiscard || !file.manifest) throw fail('Stop the current preview and choose a retained rendered WAV.');
       const context = audio.getAudioContext(), route = { ...audio.getMonitorRouteState() }, metadata = file.artifact.metadata();
       if (!audio.getState().enabled || context?.state !== 'running' || !['rehearsal', 'separate-device'].includes(route.mode) || !['ready', 'playing-route'].includes(route.state)) throw fail('Enable audio and choose an explicit PRELISTEN route first.');
@@ -59,10 +60,11 @@ export function createPreparedWavePrelisten({ audio, resourceBudget, onState = (
         record.session = audio.createSession(ownerId, { workloadClass: 'cue' }); if (!record.session || !await record.session.enable()) throw fail('The isolated PCM cue quota is unavailable.'); check();
         record.cue = await record.session.preparePcmCue({ bytes: record.bytes, manifest, signal: record.controller.signal, isCurrent: () => { try { check(); return true; } catch { return false; } } }); check();
         record.bytes = null; record.workspace.resize(4 * 1048576); record.audition.markReady();
-        const playback = record.cue.play(); check(); if (playback?.status !== 'accepted') throw fail('The PCM cue declined playback.');
+        const playback = record.cue.play({ level01 }); check(); if (playback?.status !== 'accepted') throw fail('The PCM cue declined playback.');
         record.playing = true; record.audition.markPlaying(); record.prepared(); phase = 'playing';
         record.cue.completion.then(() => close(record)); record.fence = setInterval(() => { try { check(); } catch (caught) { record.controller.abort(caught); } }, 50); report();
-        return Object.freeze({ source: record.source, playback, pcmHash: manifest.pcmHash, sourceSampleRate: manifest.sampleRate, contextSampleRate: context.sampleRate, level: 'fixed-authored-gain;cue-level-and-8ms-edge-fades-only', acousticReceipt: false, physicalTakeEvidence: false });
+        return Object.freeze({ source: record.source, playback, pcmHash: manifest.pcmHash, sourceSampleRate: manifest.sampleRate, contextSampleRate: context.sampleRate,
+          level: level01 === 1 ? 'fixed-authored-gain;cue-level-and-8ms-edge-fades-only' : 'explicit-attenuation;cue-level-and-8ms-edge-fades', ...(level01 === 1 ? {} : { attenuation01: level01 }), acousticReceipt: false, physicalTakeEvidence: false });
       } catch (caught) {
         error = caught.message; phase = 'failed'; record.prepared(); const receipt = close(record); await receipt.completion; if (receipt.outcome !== 'complete') caught.retirement = receipt; throw caught;
       } finally { record.prepared(); }

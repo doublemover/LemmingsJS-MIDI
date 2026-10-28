@@ -59,7 +59,7 @@ describe('admitted benchmark smoke gates', () => {
     const history = createHistoryBenchConfig({ argv: ['--profile=soak', '--duration=200000', '--speeds=30,60,120,240'], env: {}, log: { warn() {} } });
     expect(history.maxRuntimeMs).to.be.at.least(860000);
     const smoke = createSmokeRunPlan({ env: {} });
-    expect(smoke.historyArgs).to.include('--duration=6000'); expect(smoke.historyTimeoutMs).to.equal(70000);
+    expect(smoke.historyArgs).to.include('--duration=7000'); expect(smoke.perfArgs).to.include('--duration=6000'); expect(smoke.historyTimeoutMs).to.equal(70000);
   });
   it('rejects invalid explicit supervision deadlines', () => {
     for (const timeoutMs of [0, NaN, Infinity]) expect(() => createSmokeRunPlan({ timeoutMs })).to.throw('positive and finite');

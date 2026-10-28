@@ -41,7 +41,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const laneDisplays = new Map(), laneDisplayPages = new Map();
   const retainedLaneDrafts = new Map();
   let parameterScope = null, parameterSeen = null, viewRevision = 0, curveDocumentIdentity = getDocumentIdentity();
-  let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null;
+  let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null, variationsView = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
   const on = (element, event, handler, options) => { element.addEventListener(event, handler, options); listeners.push(() => element.removeEventListener(event, handler, options)); };
@@ -471,13 +471,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (!dock.visible()) { viewRevision++; parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]); return; }
     const nextFields = node('div'), nextTabs = node('div'); macroControls.clear(); parameterSeen = new Set(); viewRevision++;
     if (state.tab !== 'MIDI') { midiRouteView?.dispose(); midiRouteView = null; }
+    if (state.tab !== 'Variations') variationsView?.suspend();
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
     const pattern = lane.mode === 'pattern' ? lane.patterns[state.slot] : null;
     state.step = pattern ? Math.max(0, Math.min(state.step, pattern.length - 1)) : 0;
     const step = pattern?.steps[state.step];
     if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
     parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]);
-    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'Variations', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
     fields.setAttribute('aria-labelledby', 'procgen-dock-tab-' + state.tab);
     nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
@@ -721,6 +722,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const pitches = procgenStepNotes(step, resolveProcgenSound(lane.family, lane.role, lane.patch), getProject().global.scale).map(note => note % 12);
         const keys = node('div', null, 'studio-keyboard'); for (let i = 0; i < 12; i++) { const key = node('i', NOTES[i]); key.className = [1, 3, 6, 8, 10].includes(i) ? 'black' : ''; if (pitches.includes(i)) key.classList.add('lit'); keys.append(key); } nextFields.append(keys);
       }
+    } else if (state.tab === 'Variations') {
+      variationsView ||= handlers.createVariationsView?.();
+      if (variationsView) { variationsView.element.__ownedControl = true; nextFields.append(variationsView.element.isConnected ? controlTree.retain(variationsView.element) : variationsView.element); variationsView.update(); }
+      else nextFields.append(node('p', 'Variation resource ownership is unavailable.', 'studio-hint'));
     } else if (state.tab === 'MIDI') {
       const ports = handlers.devices?.() || { inputs: [], outputs: [] };
       labeled('Input', select([['', 'None'], ...ports.inputs.map(p => [p.id, p.name || p.id])], state.inputId || '', id => handlers.input?.(id), 'MIDI input'), nextFields);
@@ -1261,6 +1266,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
       midiRouteView?.dispose(); midiRouteView = null;
+      variationsView?.dispose(); variationsView = null;
       if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; retireMotion();
       if (mountedViews.get(canvas) === api) mountedViews.delete(canvas);

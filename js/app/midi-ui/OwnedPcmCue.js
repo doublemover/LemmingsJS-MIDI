@@ -62,14 +62,15 @@ export async function prepareOwnedPcmCue(preview, owner, { bytes, manifest, sign
     }
     check();
     return Object.freeze({ completion, metadata: Object.freeze({ pcmHash: manifest.pcmHash, frames: manifest.frames, sampleRate: manifest.sampleRate, cueIncludedInMasterCapture: preview.getMonitorRouteState().cueIncludedInMasterCapture, acousticReceipt: false, edgeFadeSeconds: 0.008 }),
-      play() {
+      play({ level01 = 1 } = {}) {
+        if (!Number.isFinite(level01) || level01 < 0 || level01 > 1) throw failure('Cue attenuation must be between zero and one.');
         check(); if (disposed || started || voice) throw failure('One prepared cue may play once.');
         const start = context.currentTime + 0.04, end = start + manifest.frames / manifest.sampleRate, admission = preview._inspectVoiceInterval(owner, { start, end, releaseAt: end });
         if (!admission.accepted) throw failure('The reserved cue voice quota is busy.');
         const nativeVoice = preview._audioResources.reserveNativeVoice(owner, generation);
         try {
           source = context.createBufferSource(); source.buffer = buffer; gain = context.createGain(); source.connect(gain); gain.connect(preview._cueRouting.getInput());
-          const fade = Math.min(0.008, (end - start) / 2); gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(1, start + fade); gain.gain.setValueAtTime(1, end - fade); gain.gain.linearRampToValueAtTime(0, end);
+          const fade = Math.min(0.008, (end - start) / 2); gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(level01, start + fade); gain.gain.setValueAtTime(level01, end - fade); gain.gain.linearRampToValueAtTime(0, end);
           voice = { id: ++preview._voiceSequence, owner, workloadClass: 'cue', number: 0, note: 0, start, end, releaseAt: end, release: 0, attack: 0, decay: 0, sustain: 1, renderCost: 1,
             startMs: preview._nowMs() + (start - context.currentTime) * 1000, resourceLease: nativeVoice, nativeContext: context, nativeNodesOwnedByBackend: true,
             captureMeta: { source: manifest.schema === 'lemmings-resonator-morph-control-render/v1' ? 'resonator-morph-control-reference' : manifest.schema === 'lemmings-causal-audio-render/v1' ? 'rendered-causal-take-readout' : 'rendered-scene-rehearsal', owner, physicalTakeEvidence: false }, onDestroy: dispose };

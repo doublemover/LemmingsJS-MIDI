@@ -12,7 +12,7 @@ const createSmokeRunPlan = ({ soakRequested = false, timeoutMs = null, env = pro
     : ['--smoke', '--profile=smoke', '--duration=6000', '--warmup=1500', '--sample=500', '--maxRuntime=25000'];
   const historyArgs = soakRequested
     ? ['--soak', '--profile=soak']
-    : ['--smoke', '--profile=smoke', '--duration=6000', '--sample=500', '--speeds=30,60', '--maxRuntime=25000'];
+    : ['--smoke', '--profile=smoke', '--duration=7000', '--sample=500', '--speeds=30,60', '--maxRuntime=25000'];
   const history = createHistoryBenchConfig({ argv: historyArgs, env, log: { warn() {} } });
   return { perfArgs, historyArgs, performanceTimeoutMs: timeoutMs ?? (soakRequested ? 330000 : 70000),
     historyTimeoutMs: timeoutMs ?? (soakRequested ? history.maxRuntimeMs + 30000 : 70000),

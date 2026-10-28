@@ -95,7 +95,7 @@ export async function generatePatchNeighborhood({ prepared, reference: rawRefere
       parameterSignatures.add(signature);
       candidate = { id: candidateId, slot, name, state: 'compiled', duplicateLike, provenance, compiled,
         reference: { schema: reference.schema, packHash: compiled.prepared.contentHash, patchId: candidateId, revision: 1,
-          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, assetHashes: reference.assetHashes, definition: patch.archivedDefinition },
+          definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, assetHashes: [...patch.dependencies].sort(before), definition: patch.archivedDefinition },
         qualification: 'compiled-data-not-render-qualified' };
     } catch (error) {
       current(signal, isCurrent);

@@ -6,6 +6,7 @@ import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { readBrowserBuildResponse } from '../../runtime/BrowserGenerationService.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
+import { canonicalDataText } from '../../core/CanonicalData.js';
 
 const failure = message => Object.assign(new Error(message), { name: 'SoundContentError' });
 let nextOwner = 0;
@@ -13,7 +14,7 @@ export function createNativeSoundSelection({ fetch: fetchSource, jobs = backgrou
   if (typeof fetchSource !== 'function' || !jobs?.compute || !resourceBudget) throw new TypeError('Native sound selection needs fetch, worker and resource owners.');
   const owner = 'native-sound-selection-' + (++nextOwner), operations = new Set(), retirement = createProcgenRetirementScope();
   let disposed = false, serial = 0, unknown = false;
-  const prepare = async (patchId, { signal: externalSignal } = {}) => {
+  const prepare = async (patchId, { signal: externalSignal, includePrepared = false } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || unknown || operations.size >= 2 || !Number.isSafeInteger(serial + 1)) throw failure('Native sound preparation is unavailable or busy.');
     const source = nativeSoundCollection(patchId), reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: owner + ':' + (++serial), kind: 'native-sound-selection', category: 'audio', bytes: 262144 });
@@ -50,8 +51,8 @@ export function createNativeSoundSelection({ fetch: fetchSource, jobs = backgrou
       const reference = validateSoundContentReference({ schema: 'lemmings-sound-reference/v1', packHash: prepared.contentHash, patchId, revision: patch.definition.revision,
         definitionHash: patch.definitionHash, engineRequirement: patch.engineRequirement, assetHashes: [], definition: patch.archivedDefinition });
       const sourceHash = operation.compiled.value.sourceHash, receipt = releaseJobs(); await receipt.completion; check(); if (receipt.outcome !== 'complete') throw Object.assign(failure('Native sound worker retirement is unresolved.'), { retirement: receipt });
-      reservation.resize(262144); operation.ready = true;
-      return Object.freeze({ reference, definition: reference.definition, selectionSource: Object.freeze({ collectionId: source.id, sourceHash, rights: 'unchanged-local-recipe-no-redistribution-grant' }), release: retire });
+      reservation.resize(262144 + (includePrepared ? canonicalDataText(prepared.pack, { maxBytes: 4 * 1048576, maxNodes: 200000 }).bytes.byteLength * 6 : 0)); operation.ready = true;
+      return Object.freeze({ reference, definition: reference.definition, ...(includePrepared ? { prepared } : {}), selectionSource: Object.freeze({ collectionId: source.id, sourceHash, rights: 'unchanged-local-recipe-no-redistribution-grant' }), release: retire });
     } catch (error) { const receipt = retire(); await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; throw error; }
   };
   return Object.freeze({ prepare, diagnostics: () => Object.freeze({ pending: operations.size, unknownRetirement: unknown, disposed }),

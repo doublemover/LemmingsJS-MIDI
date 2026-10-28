@@ -239,8 +239,10 @@ export async function createResolvedPatchRecipeSource({ prepared, reference, des
     maximum: { value: target.maximum, unit: target.composition === 'scale' ? 'ratio' : schema.get(target.parameter).unit } })) }));
   const modulations = definition.modulations.map(modulation => ({ ...modulation,
     amount: { value: modulation.amount, unit: schema.get(modulation.target).unit } }));
-  const { files } = prepared.pack;
+  const plan = planSoundContentSelection(prepared, [parent.identity]), files = plan.files;
+  const licenseHashes = new Set(plan.credits.map(entry => entry.rights.licenseTextHash).filter(Boolean));
   const metadata = Object.fromEntries(Object.entries(prepared.pack).filter(([key]) => !['schema', 'files', 'patches', 'compilation', 'origin'].includes(key)));
+  metadata.licenses = prepared.pack.licenses.filter(license => licenseHashes.has(license.sha256));
   const source = { schema: SOUND_RECIPE_SCHEMA, pack: { ...metadata, id: candidateId, version: '1.0.0', name,
     origin: { id: prepared.pack.id, version: prepared.pack.version, contentHash: reference.packHash } }, files,
   recipes: [{ id: candidateId, revision: 1, name, author: definition.author, tags: definition.tags,

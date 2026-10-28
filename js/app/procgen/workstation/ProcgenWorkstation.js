@@ -59,6 +59,8 @@ import { createLaneSoundTransaction } from '../../midi-ui/LaneSoundTransaction.j
 import { createNativeSoundSelection } from '../../midi-ui/NativeSoundSelection.js';
 import { resolveLegacySoundAlias } from './NativeSoundCollections.js';
 import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
+import { createPatchVariationOwner } from '../../midi-ui/PatchVariationOwner.js';
+import { createPatchVariationView } from '../../midi-ui/PatchVariationView.js';
 import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
 import { createSoundSeedLabView } from '../../midi-ui/SoundSeedLabView.js';
 import { createShapeFoundryView } from '../../midi-ui/ShapeFoundryView.js';
@@ -152,7 +154,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
-  let soundLibrary = null, nativeSoundSelection = null;
+  let soundLibrary = null, nativeSoundSelection = null, patchVariations = null;
   let masterCapture = null, soundSeedLab = null, shapeFoundry = null;
   let releaseGestureView = null, releaseGestureSerial = 0, physicalAuthoringView = null, quarryEchoView = null, crossExcitationView = null, travelColorationView = null, spectralFreezeView = null, sympatheticMapView = null, rectangularMembraneView = null, physicalJunctionView = null, junctionRequestSerial = 0;
   let stageSession = null;
@@ -1650,6 +1652,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
       soundLibrary.open();
     },
+    createVariationsView() {
+      if (disposed || !resourceBudget || !legacy.local.audio) return null;
+      patchVariations ||= createPatchVariationOwner({ window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+        ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}),
+        getJournal: () => causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs }),
+        getSource: () => ({ identity: { documentId, documentGeneration, documentRevision: editRevision, laneId: selected().id, worldGeneration: runtime()?.world?.generation ?? null },
+          reference: selected().instrumentRef || null, takeId: selectedCausalTakeId || lastCausalTake?.takeId || null,
+          available: !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTakeStart && !causalTakeStop }),
+        onReveal: () => handlers.openPrelistenMonitor(), onApply: async (candidate, options) => {
+          const transaction = await soundTransactions.select(candidate, { signal: options.signal, laneId: options.laneId, hold: true });
+          if (!options.isCurrent()) { transaction.cancel(); throw new Error('The variation source changed before lane publication.'); }
+          return transaction.commit();
+        } });
+      return createPatchVariationView({ document, window, owner: patchVariations });
+    },
     async offerMorphSource(index, kind, source, options = {}) {
       if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Resonator authoring ownership is unavailable.');
 
@@ -2064,6 +2081,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
     getNavigationDiagnostics: () => view.navigationDiagnostics?.() || null,
+    getVariationState: () => patchVariations?.state() || null,
     getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),
@@ -2111,6 +2129,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-score-views', run: () => retirePhysicalScoreViews() },
         { name: 'causal-workbench', run: () => pendingWorkbenchStop },
         { name: 'sound-library', run: () => soundLibrary?.dispose() },
+        { name: 'patch-variations', run: () => patchVariations?.dispose() },
         { name: 'release-gesture-view', run: () => releaseGestureView?.dispose() },
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
         { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },

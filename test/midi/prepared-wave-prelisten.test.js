@@ -21,7 +21,7 @@ const fixture = async () => {
         async preparePcmCue(input) {
           calls.push(input); if (switches.hold) { switches.hold.entered.resolve(); await switches.hold.release.promise; }
           cueScope = createProcgenRetirementScope();
-          return { play: () => ({ status: 'accepted', targetTime: 0.04, acousticReceipt: false }), completion: completion.promise,
+          return { play: options => { switches.playedLevel = options.level01; return { status: 'accepted', targetTime: 0.04, acousticReceipt: false }; }, completion: completion.promise,
             dispose() { const receipt = cueScope.getReceipt() || cueScope.retire([{ name: 'synthetic-pcm-producer', run: () => { if (switches.disposalFailure) throw new Error('Synthetic unresolved native disconnection.'); } }]); receipt.completion.then(completion.resolve); return receipt; } };
         }, dispose: () => scope.getReceipt() || scope.retire()
       };
@@ -33,6 +33,15 @@ const fixture = async () => {
 };
 
 describe('prepared rendered-wave prelisten (synthetic lifetime fixtures; listening unqualified)', () => {
+  it('passes explicit comparison attenuation into the owned cue and rejects invalid levels before acquiring it', async () => {
+    const f = await fixture();
+    try {
+      for (const level01 of [NaN, -1, 1.01]) expect((await refused(f.owner.play({ file: f.file, source: f.source, level01 }))).message).to.include('attenuation');
+      expect(f.foreground.state().active).to.equal(false); expect(f.artifact.metadata().activeLeases).to.equal(0);
+      const result = await f.owner.play({ file: f.file, source: f.source, level01: 0.3 }); expect(f.switches.playedLevel).to.equal(0.3); expect(result.attenuation01).to.equal(0.3);
+    } finally { await f.dispose(); }
+    expect(f.budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('plays the exact retained file in the shared foreground cue and retains it until producer retirement', async () => {
     const f = await fixture();
     try {

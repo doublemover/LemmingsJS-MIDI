@@ -9,6 +9,7 @@ import { prepareSoundContentPack, planSoundContentSelection } from '../../midi/c
 import { createSoundContentArchiver } from './SoundContentArchive.js';
 import { createSoundContentReader } from './SoundContentReader.js';
 import { createSoundContentRegistry } from './SoundContentRegistry.js';
+import { stagePreparedSoundContent } from './SoundContentPreparedStage.js';
 import { createSoundContentInstallation } from './SoundContentInstallation.js';
 import { createSoundContentRenderReferences } from './SoundContentRenderReference.js';
 import { getNativeInstrumentCatalog, NATIVE_FM_PARAMETERS } from './NativeInstrumentSchema.js';
@@ -75,18 +76,8 @@ export function createSoundContentLibrary({ document, window, audio, resourceBud
     selection = select.value || null; render();
   };
   const stageDefinitions = async (prepared, operation) => {
-    const result = await archiver.prepareExport({ prepared, selection: prepared.patches.map(patch => patch.identity), mode: 'reference-only',
-      signal: operation.controller.signal, isCurrent: () => current === operation && !disposed });
-    const lease = result.artifact.borrow(); let next = null;
-    try { next = await reader.stageArchive(lease.blob, { engineDescriptors: (await getNativeInstrumentCatalog()).descriptors,
-      signal: operation.controller.signal, isCurrent: () => !disposed }); return next; }
-    catch (error) { next?.discard(); throw error; }
-    finally {
-      const receipt = createProcgenRetirementScope().retire([{ name: 'factory-export-reader', run: () => lease.release() },
-        { name: 'factory-export-artifact', run: () => result.artifact.discard() }, { name: 'factory-export-digest', run: () => result.artifact.digest() }]);
-      await receipt.completion;
-      if (receipt.outcome !== 'complete') { next?.discard(); throw Object.assign(failure('Factory archive source retirement is unresolved.'), { retirement: receipt }); }
-    }
+    return stagePreparedSoundContent({ prepared, archiver, reader, engineDescriptors: (await getNativeInstrumentCatalog()).descriptors,
+      signal: operation.controller.signal, isCurrent: () => current === operation && !disposed, stageIsCurrent: () => !disposed });
   };
   const prepareFactory = (source, name) => run(async operation => {
     let parsed = null, compiled = null, next = null; setStatus('Compiling ' + name + ' recipes…');
