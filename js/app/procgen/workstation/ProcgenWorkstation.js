@@ -147,7 +147,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0;
   let causalTakeArmCanceled = false;
-  let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalReceiptBoundary = null, causalTakeErrorReported = false;
+  let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalProvenanceBuffer = null, physicalProvenanceDropped = 0, physicalReceiptBoundary = null, causalTakeErrorReported = false;
   let selectedCausalTakeId = null, causalTakePage = null, causalTakeCursor = null, causalTakeBack = [], causalTakeListSerial = 0;
   let physicalScoreProjection = null, physicalScore = null, physicalScoreQuery = null, physicalScoreAbort = null, physicalScoreSerial = 0, physicalScoreParent = null;
   let physicalScoreLease = null, physicalScoreParentLease = null, scoreViewRetirement = null;
@@ -917,7 +917,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalBus = next.world?.soundEvents?.onBatch;
     physicalScoreClock = createProcgenPhysicalScoreClock(); physicalClockError = false;
     if (session?.physicalTimeline) physicalScoreClock.restore(session.physicalTimeline);
-    const physicalDocumentEpoch = documentGeneration;
+    let physicalDocumentEpoch = documentGeneration;
     const onPhysicalReceipt = receipt => {
       if (physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
       physicalLessonView?.observeReceipt(receipt, physicalDocumentEpoch);
@@ -930,6 +930,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
     physicalPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       additionalOutputs: [physicalMidi],
+      onIntentProvenance: value => {
+        if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
+        if (value.kind === 'omitted') { physicalProvenanceDropped += value.count; return; }
+        if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
+      },
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
       onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: onPhysicalReceipt });
@@ -966,10 +971,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       }
       try {
         physicalReceiptBoundary = { tick: batch.tick, generation: batch.generation }; sampleMacroPerformance(physicalReceiptBoundary);
-        physicalReceiptBuffer = [];
+        physicalReceiptBuffer = []; physicalProvenanceBuffer = []; physicalProvenanceDropped = 0;
         const intents = physicalPlayback?.processBatch(batch, { bpm: transport.getState().bpm,
           playing: transport.getState().playing, position });
-        try { laneDisplayEvidence.observe({ sourceKey: laneDisplaySource(next.world, batch.generation), batch, intents: intents || [], receipts: physicalReceiptBuffer, lanes: playbackProject().procgen.lanes }); view?.refreshLaneDisplays?.(); } catch {}
+        try { laneDisplayEvidence.observe({ sourceKey: laneDisplaySource(next.world, batch.generation), batch, intents: intents || [], receipts: physicalReceiptBuffer, provenances: physicalProvenanceBuffer, provenanceDropped: physicalProvenanceDropped, lanes: playbackProject().procgen.lanes }); view?.refreshLaneDisplays?.(); } catch {}
         if (causalTake) {
           const receipt = causalTake.recordCommittedBatch({ batch, intents: intents || [], deliveryOutcomes: physicalReceiptBuffer, bodyCommands: physicalPlayback?.engine.bodyPreparations()?.batchId === batch.batchId ? physicalPlayback.engine.bodyPreparations().commands : [], probability: physicalPlayback?.engine.probabilityAnalysis()?.batchId === batch.batchId ? physicalPlayback.engine.probabilityAnalysis() : null });
           if (receipt.status === 'rejected') { physicalFeedback?.disarm(); markPhysicalGap(batch, 'capture-admission-rejected'); }
@@ -985,7 +990,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (!causalTakeErrorReported) status('Physical performance capture: ' + error.message);
         causalTakeErrorReported = true;
       }
-      finally { physicalReceiptBuffer = null; }
+      finally { physicalReceiptBuffer = null; physicalProvenanceBuffer = null; }
     };
     bus?.on?.(onGameEvent); physicalBus?.on?.(onPhysicalBatch);
     const display = next.lanes?.renderer;
@@ -1014,6 +1019,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     attachRouter(next.view?.midiPreviewRouter);
     if (session) {
       documentGeneration++;
+      physicalDocumentEpoch = documentGeneration;
+      if (legacy.local.getState().selectedBackend === 'midi') legacy.local.stop?.();
       cancelInputEdits('project loaded');
       if (!historyRestore) { documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; } storageStatus();
       suppressPersistence = true;
@@ -1969,13 +1976,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   const expressionOutputKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? state.selectedOutputId ?? null, state.outputGeneration ?? null]);
-  let observedOutputRoute = outputRouteKey(legacy.local.getState());
-  let observedExpressionOutput = expressionOutputKey(legacy.local.getState());
+  const initialOutput = legacy.local.getState();
+  let observedOutputRoute = outputRouteKey(initialOutput), observedMidiActivation = initialOutput.selectedBackend === 'midi' && initialOutput.enabled === true;
+  let observedExpressionOutput = expressionOutputKey(initialOutput);
   const unsubscribeOutputState = legacy.local.subscribe?.(state => {
-    if (disposed) return; const next = outputRouteKey(state || legacy.local.getState());
-    if (next !== observedOutputRoute) { observedOutputRoute = next; syncPorts(); }
+    if (disposed) return; const current = state || legacy.local.getState(), next = outputRouteKey(current), midiActivation = current.selectedBackend === 'midi' && current.enabled === true, rearmDefault = midiActivation && !observedMidiActivation;
+    observedMidiActivation = midiActivation;
+    if (next !== observedOutputRoute) { observedOutputRoute = next; syncPorts({ rearmDefault }); }
     view?.refreshOperational?.();
-    const expressionOutput = expressionOutputKey(state || legacy.local.getState());
+    const expressionOutput = expressionOutputKey(current);
     if (expressionOutput !== observedExpressionOutput) { observedExpressionOutput = expressionOutput; view?.renderInspector?.(); }
   });
   if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);

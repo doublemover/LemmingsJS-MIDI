@@ -60,6 +60,17 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('rearms the reviewed default MIDI route only on an explicit activation edge', async () => {
+    let notify, current = { selectedBackend: 'midi', enabled: false, outputId: 'output:reviewed' };
+    const f = setup({ backend: 'midi', outputId: current.outputId, outputSubscribe: listener => { notify = listener; return () => {}; } }), calls = [];
+    f.legacy.local.getState = () => current; f.studio.ports.setNoteOutput = (port, options) => calls.push({ port, rearm: options?.rearm === true });
+    try {
+      current = { ...current, enabled: true }; notify(current); expect(calls.at(-1).rearm).to.equal(true); const count = calls.length;
+      notify({ ...current, discoveredOutputCount: 2 }); expect(calls).to.have.length(count);
+      current = { ...current, enabled: false }; notify(current); expect(calls.at(-1).rearm).to.equal(false);
+      current = { ...current, enabled: true }; notify(current); expect(calls.at(-1).rearm).to.equal(true);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('expresses measured simulation rate against the base tick duration rather than its requested speed-scaled interval', async () => {
     const f = setup();
     try {

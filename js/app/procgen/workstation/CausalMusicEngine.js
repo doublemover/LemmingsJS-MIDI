@@ -100,10 +100,11 @@ const validateCausalInstrumentGraph = value => {
     ...(value.pickups ? { pickups: domain.pickups } : {}), ...(value.ensembles ? { ensembles: domain.ensembles } : {}), ...(value.routes ? { routes: domain.routes } : {}) });
 };
 
-const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null,
+const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline = null, onIntentProvenance = null,
   getLaneState = () => ({ available: true }), getActivityOutputState = () => ({ status: 'unobserved' }), getOnsetControls = () => undefined, getPhysicalControlKinds = () => [], getPerformanceState = () => null,
   maxBeginsPerBatch = 512, maxVoices = 512, maxPhysicalUpdatesPerBatch = 2048, traceLimit = 1024, resourceBudget = null, world = null } = {}) => {
   if (typeof getGraph !== 'function' || (scoreTimeline && typeof scoreTimeline.map !== 'function')) throw new Error('A causal graph provider and valid score timeline are required.');
+  if (onIntentProvenance !== null && typeof onIntentProvenance !== 'function') throw new TypeError('Invalid intent provenance observer.');
   if (!Number.isSafeInteger(traceLimit) || traceLimit < 0 || traceLimit > 8192 || !Number.isSafeInteger(maxBeginsPerBatch) || maxBeginsPerBatch < 0 || maxBeginsPerBatch > 4096 || !Number.isSafeInteger(maxVoices) || maxVoices < 0 || maxVoices > 4096) throw new Error('Invalid bounded causal engine owner capacity.');
   if (!Number.isSafeInteger(maxPhysicalUpdatesPerBatch) || maxPhysicalUpdatesPerBatch < 0 || maxPhysicalUpdatesPerBatch > 4096) throw new Error('Invalid physical control budget.');
   const resourceOwner = createCausalObserverResources({ resourceBudget, maxVoices, maxBeginsPerBatch, traceLimit });
@@ -117,6 +118,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const active = new Map(), suppressed = new Map(), byActor = new Map(), seen = new Set(), seenOrder = [], trace = [];
   const validControlKinds = kinds => Array.isArray(kinds) && kinds.length <= INSTRUMENT_PHYSICAL_SOURCE_KINDS.length && new Set(kinds).size === kinds.length && kinds.every(kind => INSTRUMENT_PHYSICAL_SOURCE_KINDS.includes(kind));
   const addVoice = (voiceId, record, restoring = false) => {
+    if (!Object.hasOwn(record, 'definitionRevision')) record.definitionRevision = instrumentEpochs.get(record.instrument.id) ?? null;
     const kinds = restoring ? record.physicalSourceKinds || [] : getPhysicalControlKinds(record.laneId);
     if (!validControlKinds(kinds)) throw new Error('Invalid held physical control sources.');
     if (!restoring && onsetPlans.has(voiceId)) { const onset = onsetPlans.get(voiceId); record.basePitchCents = onset.baseCents; record.onsetPitch = onset.pitch; record.tonalState = onset.tonalState; record.rootedSourceEventIds = record.rootedSourceEventIds || onset.sourceEventIds; record.tonalOffset = 0; }
@@ -128,6 +130,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   let travel = createTravelAccumulator({ maxEntries: Math.max(4096, maxVoices) }); const decisions = [];
   let generation = null, graph = null, graphSource = null, graphFingerprint = null, liveIds = null, indexed = null, errors = 0, rejected = 0;
   let recoveryRequired = false, probabilityAnalysis = null, probabilityCount = 0, probabilityBytes = 0; const batchDecisions = [], onsetDecisions = new Map();
+  let provenanceCount = 0, provenanceDropped = 0;
   let cursor = { worldId: null, generation: null, tick: -1, lastSequence: -1, batchId: null };
   const accepted = new Map(), rejectedByInstrument = new Map();
   const remember = intent => { if (traceLimit <= 0) return; let bytes; try { bytes = estimateJournalBytes(intent, { maxBytes: 32768, maxNodes: 8192 }); } catch { traceOmitted++; return; }
@@ -136,7 +139,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     trace.push(intent); traceSizes.push(bytes); traceBytes += bytes; };
   const timeFor = (batch, fact) => fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
   const basePitchFor = (instrument, fact) => fact?.topologyBinding?.status === 'complete' ? fact.topologyBinding.pitchCents : (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents + ((fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchOffsetCents) ? fact.pitchOffsetCents : 0);
-  const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null) => {
+  const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null, definitionRevision = undefined) => {
     const qualifiedBodyContact = !instrument.preparedBodyStrike || fact?.kind !== 'ContactSpanBegan' || fact.physicalPayload?.evidence === 'completed-support-cell' && fact.causeKind === 'support';
     const contactCoordinate = kind === 'begin' && qualifiedBodyContact ? captureCircularContactCoordinate(batch, fact, instrument.id, graph?.revision ?? 0) : null;
     if (contactCoordinate) articulationState = { ...articulationState, contactCoordinate };
@@ -145,7 +148,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     const pitch = tonal?.pitch || { cents: baseCents, referenceHz: 440 };
     if (kind === 'begin' && tonal) onsetPlans.set(voiceId, { baseCents, pitch, tonalState: tonal.state, sourceEventIds: fact?.sourceEventIds || (fact?.eventId ? [fact.eventId] : []) });
     const tonalOffset = !fact?.tonalExpression ? active.get(voiceId)?.tonalOffset || 0 : 0;
-    return Object.freeze({
+    const intent = Object.freeze({
       version: 1, intentId: `${batch.batchId}:${instrument.id}:${voiceId}:${fact?.eventId || 'boundary'}:${kind}`,
       worldId: batch.worldId, batchId: batch.batchId, generation: voiceGeneration,
       kind, physicalSourceKind: fact?.kind || instrument.sourceKind, physicalAction: fact?.action ?? null, onsetId: voiceId, voiceId, actorId: fact?.actorId ?? null, laneId: fact?.laneId ?? null,
@@ -167,8 +170,18 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       ...(articulationState ? { articulationState: Object.freeze(articulationState) } : {}),
       ...(kind === 'begin' && onsetDecisions.has(`${instrument.id}:${fact?.observationId || fact?.eventId}`) ? { probabilityDecision: onsetDecisions.get(`${instrument.id}:${fact?.observationId || fact?.eventId}`) } : {}),
       ...(kind === 'begin' ? { performanceControls: validateInstrumentControls(fact?.topologyBinding?.dampingMacroId ? { ...getOnsetControls(fact?.laneId), macros: { ...getOnsetControls(fact?.laneId)?.macros, [fact.topologyBinding.dampingMacroId]: fact.topologyBinding.damping01 } } : getOnsetControls(fact?.laneId)), performanceCause: captureInstrumentCause(fact?.physicalCauseFact || fact) } : {})
-    }); };
+    });
+    if (onIntentProvenance && provenanceCount < 512) {
+      provenanceCount++;
+      const held = active.get(voiceId) || suppressed.get(voiceId), revision = definitionRevision !== undefined ? definitionRevision : held ? held.definitionRevision : instrumentEpochs.get(instrument.id) ?? null;
+      try { onIntentProvenance(Object.freeze({ version: 1, intentId: intent.intentId, batchId: intent.batchId, generation: intent.generation,
+        mappingId: instrument.id, graphRevision: graph?.revision ?? null, mappingRevision: revision, evidence: 'canonical-intent-construction' })); } catch {}
+    } else if (onIntentProvenance) provenanceDropped++;
+    return intent;
+  };
   const publish = (batch, intents) => {
+    if (onIntentProvenance && provenanceDropped) { try { onIntentProvenance(Object.freeze({ version: 1, kind: 'omitted', batchId: batch.batchId, generation: batch.generation, count: provenanceDropped })); } catch {} }
+    provenanceCount = 0; provenanceDropped = 0;
     onsetPlans.clear(); onsetDecisions.clear();
     probabilityAnalysis = freezePhysical({ version: 1, batchId: batch.batchId, requested: probabilityCount, omitted: probabilityCount - batchDecisions.length, coverage: probabilityCount === batchDecisions.length ? 'complete' : 'capped', decisions: [...batchDecisions] });
     const reduction = swarm.reduce(batch, intents), sealed = reduction.intents;
@@ -181,7 +194,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
   const endVoice = (batch, record, fact, reason, output) => {
     active.delete(record.voiceId);
     const records = byActor.get(record.actorId); records?.delete(record); if (!records?.size) byActor.delete(record.actorId);
-    output.push(intentFor(batch, fact || { actorId: record.actorId, laneId: record.laneId }, record.instrument, 'end', record.voiceId, reason, record.generation));
+    output.push(intentFor(batch, fact || { actorId: record.actorId, laneId: record.laneId }, record.instrument, 'end', record.voiceId, reason, record.generation, {}, null, record.definitionRevision));
   };
   const endMatching = (batch, predicate, fact, reason, output) => {
     for (const record of [...active.values()]) if (predicate(record)) endVoice(batch, record, fact, reason, output);
@@ -217,6 +230,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     return graph;
   };
   const processBatch = batch => {
+    provenanceCount = 0; provenanceDropped = 0;
     if (batch?.version !== 1 || !nonempty(batch.batchId) || !nonempty(batch.worldId) || !Number.isSafeInteger(batch.generation) ||
         !Number.isSafeInteger(batch.tick) || !Array.isArray(batch.facts) || batch.facts.length > 8192 || !plain(batch.completeness) ||
         !['complete', 'incomplete'].includes(batch.completeness.status) || !Number.isSafeInteger(batch.completeness.dropped) ||
@@ -542,7 +556,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
           record.lastExpression && (!plain(record.lastExpression) || Object.entries(record.lastExpression).some(([key, value]) => !['pitchOffsetCents', 'pressure01', 'pan01'].includes(key) || !Number.isFinite(value)) || !Number.isSafeInteger(record.lastExpressionTick)) ||
           !Number.isSafeInteger(record.actorId) || !Number.isSafeInteger(record.generation) || record.generation !== value.generation ||
           record.graphRevision !== current.revision || !validControlKinds(record.physicalSourceKinds || [])) throw new Error('Invalid causal voice checkpoint.');
-          seenVoices.add(record.voiceId); next.set(record.voiceId, { ...record, instrument, physicalSourceKinds: Object.freeze([...(record.physicalSourceKinds || [])].sort()) });
+          seenVoices.add(record.voiceId); next.set(record.voiceId, { ...record, instrument, definitionRevision: value.instrumentEpochs && Object.hasOwn(value.instrumentEpochs, instrument.id) ? value.instrumentEpochs[instrument.id] : null, physicalSourceKinds: Object.freeze([...(record.physicalSourceKinds || [])].sort()) });
         } return next;
       };
       if (value.instrumentEpochs != null && (!plain(value.instrumentEpochs) || Object.entries(value.instrumentEpochs).some(([id, epoch]) => !current.instruments.some(instrument => instrument.id === id) || !Number.isSafeInteger(epoch) || epoch < 0 || epoch > current.revision))) throw new Error('Invalid instrument owner epochs.');

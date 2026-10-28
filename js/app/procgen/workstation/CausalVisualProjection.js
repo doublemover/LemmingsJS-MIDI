@@ -75,7 +75,7 @@ export function explainCausalVisual(cause, intentIndex = 0) {
   const stages = [`Physical fact: ${cause.eventId}; ${cause.action || cause.kind || 'unrecorded action'}; source tick ${cause.tick ?? 'unknown'}; actor ${cause.actorId ?? 'shared/unknown'} (${cause.actorState}).`,
     `Source binding: ${cause.sourceKey || 'unrecorded'}; world ${cause.worldId}; generation ${cause.generation}.`,
     `Observed coordinate: ${cause.point ? `${cause.point.x}, ${cause.point.y} (${cause.point.evidence})` : 'unrecorded; no nearest-actor fallback'}.`,
-    `Mapping/eligibility: ${event.mappingId || 'unknown'}; historical graph revision ${event.graphRevision ?? 'unknown'}; individual eligibility receipt unrecorded.`,
+    `Mapping/eligibility: ${event.mappingId || 'unknown'}; historical graph revision ${event.graphRevision ?? 'unknown'}; definition revision ${event.mappingRevision ?? 'unknown'}; ${event.mappingEvidence || 'unrecorded construction'}; individual eligibility receipt unrecorded.`,
     `Intent: ${event.intentId}; ${event.kind}; batch ${event.batchId}; voice ${event.voiceId || 'unknown'}; frozen pitch ${event.pitchCents ?? 'unknown'} cents; velocity ${event.velocity01 ?? 'unknown'}.`,
     `Admission/scheduling: ${causalIntentOutcome(event)}.`,
     ...event.receipts.map(receipt => `${receipt.sinkId || 'Unknown sink'}: ${receipt.status || 'unknown'} / ${receipt.stage || 'unknown'}; ${receipt.reason || 'no reason reported'}; target ${receipt.targetFrame ?? 'unknown'} ${receipt.targetTimeDomain || 'unreported domain'}; execution ${receipt.executionEpoch || 'unknown'}.`),

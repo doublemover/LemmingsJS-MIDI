@@ -30,7 +30,7 @@ const nativeResolution = Object.freeze({
 // Owns only the physical voice session. The ordinary game preview and MIDI
 // router keep their independent leases on the shared output graph.
 export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, now, renderer = null, resourceBudget = null, world = null, getLanes = () => [], isPlaybackEnabled = () => !!audio?.getState?.().enabled,
-  initialMorphMechanism = null, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
+  initialMorphMechanism = null, documentEpoch = 'physical-document-' + (nextEffectStream + 1), onInstrumentState = () => {}, onReceipt = () => {}, onIntentProvenance = null, isEffectCaptureEnabled = () => true, getInstrumentCatalog = getNativeInstrumentCatalog, additionalOutputs = [] } = {}) {
   if (!Array.isArray(additionalOutputs) || additionalOutputs.length > 8 || additionalOutputs.some(output => !Array.isArray(output?.sinks) || typeof output.enabled !== 'function' || typeof output.observe !== 'function' || typeof output.dispose !== 'function')) throw new Error('Invalid physical output owners.');
   const externalEnabled = () => additionalOutputs.some(output => { try { return output.enabled() === true; } catch { return false; } });
   const laneMix = createLaneMixState(); laneMix.synchronize(getLanes());
@@ -170,7 +170,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     if (external) for (const output of additionalOutputs) { try { if (output.enabled()) { const receipt = output.lastOutcome?.(); if (receipt) lastSinkOutcome = { status: receipt.status, stage: receipt.stage, reason: receipt.reason || null }; } } catch { /* One output observer cannot affect the physical score. */ } }
     return { status: external ? 'available' : !prepared || routingUnavailable || initialMorphMechanism && !sceneMorph?.isPrepared() ? 'unavailable' : !session?.getState().enabled ? 'disabled' : 'available', lastSinkOutcome };
   };
-  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, getActivityOutputState: activityOutput,
+  try { unsubscribeEffectReceipts = session?.observeEffectReceipts?.(observeEffectReceipt); engine = createCausalMusicEngine({ getGraph, scoreTimeline, resourceBudget, world, onIntentProvenance, getActivityOutputState: activityOutput,
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,

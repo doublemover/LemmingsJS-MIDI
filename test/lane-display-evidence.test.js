@@ -13,6 +13,14 @@ const snapshot = (store, options = {}) => createLaneDisplaySnapshot({ lane, evid
 const fixture = options => { const store = createLaneDisplayEvidence(options); store.setLanes([lane.id]); return store; };
 
 describe('bounded live lane display evidence', () => {
+  it('joins producer mapping metadata only to the exact constructed intent and never substitutes the current project revision', () => {
+    const store = fixture(), value = input(), provenance = { version: 1, intentId: 'intent-1', batchId: 'world:1:10', generation: 1, mappingId: 'map-1', graphRevision: 3, mappingRevision: 1, evidence: 'canonical-intent-construction' };
+    try { store.observe({ ...value, provenances: [provenance] }); expect(read(store).record.events[0]).to.include({ graphRevision: 3, mappingRevision: 1 }); expect(snapshot(store, { revision: 40 }).detail).to.include('graph revision 3; definition revision 1');
+      for (const changed of [{ batchId: 'foreign' }, { generation: 2 }, { mappingId: 'another' }, { graphRevision: -1 }, { mappingRevision: 4 }]) { store.observe({ ...value, provenances: [{ ...provenance, ...changed }] }); expect(read(store).record.events[0]).to.include({ graphRevision: null, mappingRevision: null, mappingEvidence: 'unrecorded' }); }
+      store.observe({ ...value, provenances: [provenance, { ...provenance, graphRevision: 4 }] }); expect(read(store).record.events[0].graphRevision).to.equal(null);
+      expect(store.observe({ ...value, provenances: null })).to.equal(false);
+    } finally { store.dispose(); }
+  });
   it('retains immutable observed points and a terminal tombstone without looking up current actors', () => {
     const store = fixture(), value = input(); value.batch.worldId = 'world'; value.batch.facts[0].positionBefore = { x: 100, y: 50 };
     try { store.observe(value); value.batch.facts[0].positionBefore.x = 900;

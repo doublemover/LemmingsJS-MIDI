@@ -7459,3 +7459,35 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #997 still requires individually correlated local-render/shared-body/transfer
   qualification and the complete outcome matrix. Historical unknown stages and
   aggregate effects cannot substitute for that evidence.
+
+### Continuation 293 — producer-stamped mapping provenance without take changes
+
+- Add an optional isolated canonical-producer observer for construction evidence.
+  Preserve canonical intent bytes and serialized engine checkpoints, so take
+  replay retains strict intent comparison. Forward the evidence through the
+  existing physical playback owner and bounded per-batch UI observer.
+- Distinguish graph-at-construction revision from the definition's introducing
+  revision. Keep held origins across unrelated graph edits and attribute old-voice
+  termination to its old definition after a replacement. Restore saved owner
+  epochs where present; missing legacy origins remain unknown. Use own-property
+  checks for restored IDs that coincide with Object prototype member names.
+- Cap diagnostic allocation at 512 records per batch plus one omission summary.
+  Observer failure cannot change dispatch. Join metadata only by exact intent,
+  batch, generation and mapping, reject impossible/conflicting revisions, and
+  preserve receiver/render/individual-eligibility uncertainty.
+- Refresh only the first-party background-job-worker component hash after the
+  tracked canonical source change. The 271-file inventory and NOASSERTION terms
+  remain the same; provenance verification still covers 10 components/340 files.
+- Current source and validation scopes are recorded in the canonical receipt.
+  This fills historical mapping provenance for live displays; #997 still retains
+  individually correlated local-render/shared-body/transfer qualification and
+  the complete output-path/eligibility coverage matrix.
+- Fix saved-session receipt ownership at document adoption. Stop hardware MIDI
+  activation on commit while preserving endpoint review; rearm the default route
+  only on an explicit inactive-to-active MIDI transition. Catalog/connection
+  refresh and inactive-device removal do not rearm. The restore regression
+  requires the new source binding, producer provenance and actual API submission.
+- Full CI at 4c389855 passes **6,546 coverage cases / 80 desktop boundaries**, all
+  checks, with a Ready 56,192-frame master capture. **#996 is closed** on the full
+  OLED/projection/ownership qualification; #1072 remains closed. This checkpoint
+  excludes continuation293's additional mapping/session follow-through.

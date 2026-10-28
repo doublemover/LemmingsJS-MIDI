@@ -35,7 +35,7 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
   const patchIdentity = lane.instrumentRef?.definitionHash || lane.instrumentPatchId || null;
   const detail = [lane.name, `${lane.role} · ${lane.mode}; world ${simulation.state || 'unreported'}; output ${words(outputState)}`, top, bottom, receiptText,
     `Requested lane level ${formatLaneGain(lane.gain ?? 1)}; project revision ${revision}; display evidence revision ${evidence?.revision ?? 'unknown'}; current patch ${patchIdentity || 'unknown'}`,
-    event ? `Intent ${event.intentId}; batch ${event.batchId}; mapping ${event.mappingId || 'unknown'}; graph revision ${event.graphRevision ?? 'unknown'}; voice ${event.voiceId || 'unknown'}` : 'Cause unknown',
+    event ? `Intent ${event.intentId}; batch ${event.batchId}; mapping ${event.mappingId || 'unknown'}; graph revision ${event.graphRevision ?? 'unknown'}; definition revision ${event.mappingRevision ?? 'unknown'}; ${event.mappingEvidence || 'unrecorded'}; voice ${event.voiceId || 'unknown'}` : 'Cause unknown',
     event ? `Frozen intent pitch ${event.pitchCents ?? 'unknown'} cents; velocity ${event.velocity01 ?? 'unknown'}` : '',
     ...receipts.map(value => `${value.sinkId || 'Unknown sink'}: ${value.status || 'unknown'} / ${value.stage || 'unknown'}; target ${value.targetFrame ?? 'unknown'} ${value.targetTimeDomain || 'unreported domain'}; execution ${value.executionEpoch || 'unknown'}${value.reason ? '; ' + value.reason : ''}`),
     event ? `Sources ${event.sources.map(value => value.eventId + (value.recorded ? '' : ' (unrecorded)')).join(', ') || 'unknown'}; source tick ${event.tick}; age ${ageTicks ?? 'unknown'} ticks` : '',

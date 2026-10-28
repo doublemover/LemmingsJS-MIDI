@@ -26,10 +26,12 @@ test('actual physical causes project through the accepted world frame and open e
     const snapshot = renderer.presentation.getSnapshot(), values = studio.handlers.laneDisplayState(studio.getProject().procgen.lanes.map(lane => lane.id)), model = projectCausalHistory({ displays: values, presentation: snapshot });
     const button = document.querySelector('.studio-causal-mark'); if (!snapshot || !button || button.closest('[hidden]') || button.dataset.projectionRevision !== String(snapshot.projectionRevision)) return false;
     const mark = model.marks.find(value => value.causes[0].eventId === button.dataset.eventId); if (!mark) return false; const rect = button.getBoundingClientRect();
-    return { accepted: renderer.presentation.valid(snapshot), x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, expectedX: mark.x, expectedY: mark.y, eventId: button.dataset.eventId, sourceIds: mark.causes.map(value => value.eventId), geometrySubscribers: renderer.presentation.geometryListeners.size, entitySubscribers: renderer.presentation.listeners.size, width: rect.width, height: rect.height, font: window.getComputedStyle(button).fontSize };
+    const intent = mark.causes[0].intents[0];
+    return { accepted: renderer.presentation.valid(snapshot), x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, expectedX: mark.x, expectedY: mark.y, eventId: button.dataset.eventId, sourceIds: mark.causes.map(value => value.eventId), geometrySubscribers: renderer.presentation.geometryListeners.size, entitySubscribers: renderer.presentation.listeners.size, width: rect.width, height: rect.height, font: window.getComputedStyle(button).fontSize, graphRevision: intent.graphRevision, mappingRevision: intent.mappingRevision, mappingEvidence: intent.mappingEvidence };
   });
   const geometry = await capture.jsonValue(); await capture.dispose();
   expect(geometry).toMatchObject({ accepted: true, geometrySubscribers: 1, entitySubscribers: 1, width: 44, height: 44, font: '14px' }); expect(geometry.x).toBeCloseTo(geometry.expectedX, 0); expect(geometry.y).toBeCloseTo(geometry.expectedY, 0); expect(geometry.sourceIds).toContain(geometry.eventId);
+  expect(geometry.mappingEvidence).toBe('canonical-intent-construction'); expect(Number.isSafeInteger(geometry.graphRevision)).toBe(true); expect(Number.isSafeInteger(geometry.mappingRevision)).toBe(true); expect(geometry.mappingRevision).toBeLessThanOrEqual(geometry.graphRevision);
   const before = await ownerState(page); const mark = page.locator('.studio-causal-mark').first(); await mark.focus(); await mark.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Physical cause explanation' }); await expect(dialog).toBeVisible(); await expect(dialog).toContainText(geometry.eventId); await expect(dialog).toContainText('Source binding:'); await expect(dialog).toContainText('frozen pitch'); await expect(dialog).toContainText('API submission is not acoustic evidence');
   await expect(dialog.getByRole('button', { name: 'Panic', exact: true })).toBeVisible(); await dialog.getByRole('button', { name: 'Refresh retained evidence' }).click();
@@ -51,6 +53,29 @@ test('same-seed replay retires old projected sources and stale detached marks ca
     window.__oldCausalMark.click(); return { replaced: world !== window.__oldCausalWorld, worldId: world.worldId, generation: world.generation, sources: values.flatMap(value => value.evidence.history.map(event => event.sourceKey)), dialogOpen: document.querySelector('.studio-causal-dialog').open };
   });
   expect(after.replaced).toBe(true); expect(after.worldId).toBe(before.worldId); expect(after.generation).toBe(before.generation); expect(after.sources.every(source => !before.sources.includes(source))).toBe(true); expect(after.dialogOpen).toBe(false);
+});
+
+test('adopting a saved physical session admits only its new document owner provenance and sink receipts', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(60000); await ready(page); await freeze(page);
+  const before = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__; window.__savedCausalSession = studio.capture();
+    return studio.handlers.laneDisplayState(studio.getProject().procgen.lanes.map(lane => lane.id)).flatMap(value => value.evidence.history.map(event => event.sourceKey));
+  });
+  expect(before.length).toBeGreaterThan(0);
+  await page.evaluate(async () => { const studio = window.__PROCGEN_STUDIO__; await studio.loadSession(window.__savedCausalSession); window.__PROCGEN_LANES__.pause(); studio.transport.pause(); });
+  if (await page.locator('#procgenListen').getAttribute('aria-pressed') === 'true') { await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); }
+  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.ports.getOperationalState().outputRoutes.some(route => route.outputId === 'pw-output-1' && route.active))).toBe(true);
+  await page.evaluate(() => { window.__PROCGEN_LANES__.resume(); window.__PROCGEN_STUDIO__.play(); });
+  const captured = await page.waitForFunction(() => {
+    const studio = window.__PROCGEN_STUDIO__, displays = studio.handlers.laneDisplayState(studio.getProject().procgen.lanes.map(lane => lane.id));
+    for (const value of displays) for (const event of value.evidence.history) if (event.mappingEvidence === 'canonical-intent-construction' && event.receipts.some(receipt => receipt.stage === 'submitted')) {
+      window.__PROCGEN_LANES__.pause(); studio.transport.pause(); return { sourceKey: event.sourceKey, graphRevision: event.graphRevision, mappingRevision: event.mappingRevision, receipts: event.receipts };
+    }
+    return false;
+  }, null, { timeout: 20000 });
+  const value = await captured.jsonValue(); await captured.dispose(); expect(before).not.toContain(value.sourceKey); expect(Number.isSafeInteger(value.graphRevision)).toBe(true); expect(Number.isSafeInteger(value.mappingRevision)).toBe(true); await page.locator('#procgenPanic').click();
 });
 
 test('reduced-motion dense causes retain counted identities and keyboard drilldown without animations', { tag: '@boundary' }, async ({ page }) => {

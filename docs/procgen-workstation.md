@@ -513,3 +513,26 @@ unmapped physical facts are not presented as emitted musical intents. The view
 uses the existing dirty display scheduler and a geometry-only presentation
 subscription; it adds no entity-inspection request, timer, flash replay or note
 stream. Reduced motion retains the same static marks and text explanations.
+
+The canonical intent producer can supply construction provenance through a
+separate optional observer. The display distinguishes the graph active when an
+intent was constructed from the revision that introduced its mapping definition.
+An unchanged held definition keeps its origin across unrelated edits; ending an
+old voice after a mapping edit retains that old origin. Saved owner epochs can
+restore this evidence; an absent legacy origin remains unknown.
+
+This observer does not add fields to canonical intents or saved engine
+checkpoints, change replay comparison, or confirm output delivery. It emits at
+most 512 diagnostic records per physical batch plus one omission summary. A
+failed observer cannot interrupt scheduling. The display accepts provenance only
+for the exact batch, generation, intent and mapping; conflicting or invalid
+metadata stays unrecorded. A construction receipt is separate from an individual
+eligibility ledger, local render measurement or receiver acknowledgement.
+
+Loading a saved session adopts a fresh receipt owner at document commit. Its
+callbacks accept the new generation while old callbacks remain fenced out. MIDI
+activation stops at adoption, preserving the reviewed destination and catalog.
+Explicit activation rearms that default route; catalog refresh, inactive-device
+removal and reconnect do not implicitly rearm it. Restored physical intents can
+therefore report their own construction and submission receipts after a fresh
+activation, rather than borrowing the previous document's output state.

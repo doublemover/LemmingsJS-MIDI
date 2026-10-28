@@ -47,16 +47,22 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
       interested = new Set(laneIds); for (const key of records.keys()) if (!interested.has(key)) records.delete(key);
       for (const [key, event] of history) if (!interested.has(event.laneId)) history.delete(key);
     },
-    observe({ sourceKey, batch, intents = [], receipts = [], lanes = [] }) {
-      if (disposed || !id(sourceKey) || !id(batch?.batchId) || integer(batch?.generation) === null || integer(batch?.tick) === null || !Array.isArray(batch?.facts) || !Array.isArray(intents) || !Array.isArray(receipts)) return false;
+    observe({ sourceKey, batch, intents = [], receipts = [], provenances = [], provenanceDropped = 0, lanes = [] }) {
+      if (disposed || !id(sourceKey) || !id(batch?.batchId) || integer(batch?.generation) === null || integer(batch?.tick) === null || !Array.isArray(batch?.facts) || !Array.isArray(intents) || !Array.isArray(receipts) || !Array.isArray(provenances)) return false;
       if (source !== sourceKey) { source = sourceKey; records.clear(); history.clear(); omitted = 0; historyOmitted = 0; historyExpired = 0; latestTick = null; }
       if (latestTick !== null && batch.tick < latestTick) return false;
       latestTick = batch.tick;
       for (const [key, event] of history) if (latestTick - event.tick > historyTicks) { history.delete(key); historyExpired++; }
       if (!interested.size || !ensure()) return false;
-      const facts = new Map(), grouped = new Map(), byIntent = new Map(); let lost = Math.max(0, batch.facts.length - 512) + Math.max(0, intents.length - 512) + Math.max(0, receipts.length - 512);
+      const facts = new Map(), grouped = new Map(), byIntent = new Map(), provenanceByIntent = new Map(); let lost = Math.max(0, batch.facts.length - 512) + Math.max(0, intents.length - 512) + Math.max(0, receipts.length - 512) + Math.max(0, provenances.length - 512) + (integer(provenanceDropped) ?? 0);
       for (let index = 0; index < Math.min(512, batch.facts.length); index++) { const fact = batch.facts[index]; if (id(fact?.eventId)) facts.set(fact.eventId, fact); }
       for (let index = 0; index < Math.min(512, receipts.length); index++) { const receipt = receipts[index]; if (!id(receipt?.intentId)) continue; if (!byIntent.has(receipt.intentId)) byIntent.set(receipt.intentId, []); byIntent.get(receipt.intentId).push(receipt); }
+      for (let index = 0; index < Math.min(512, provenances.length); index++) {
+        const value = provenances[index]; if (value?.version !== 1 || !id(value.intentId)) continue;
+        const previous = provenanceByIntent.get(value.intentId);
+        if (provenanceByIntent.has(value.intentId) && (!previous || ['batchId', 'generation', 'mappingId', 'graphRevision', 'mappingRevision', 'evidence'].some(key => previous[key] !== value[key]))) provenanceByIntent.set(value.intentId, null);
+        else provenanceByIntent.set(value.intentId, value);
+      }
       for (let index = 0; index < Math.min(512, intents.length); index++) {
         const intent = intents[index], laneId = typeof intent?.laneId === 'number' ? lanes[intent.laneId]?.id : intent?.laneId;
         if (!interested.has(laneId)) continue;
@@ -65,13 +71,15 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
         const group = grouped.get(laneId);
         if (group.length >= 4) { lost++; continue; }
         const sources = [], sourceIds = intent.sourceEventIds.slice(0, 4).filter(value => id(value));
+        const observed = provenanceByIntent.get(intent.intentId), provenance = observed?.batchId === batch.batchId && observed?.generation === batch.generation && observed?.mappingId === intent.mappingId && observed?.evidence === 'canonical-intent-construction' && integer(observed?.graphRevision) !== null &&
+          (observed.mappingRevision == null || integer(observed.mappingRevision) !== null && observed.mappingRevision <= observed.graphRevision) ? observed : null;
         for (const eventId of sourceIds) {
           const fact = facts.get(eventId); sources.push(freeze({ eventId, recorded: !!fact, tick: fact ? batch.tick : null, kind: label(fact?.kind), action: label(fact?.action || fact?.operationKind),
             actorId: typeof fact?.actorId === 'number' ? integer(fact.actorId) : id(fact?.actorId), sequence: integer(fact?.causalSequence), laneIndex: integer(fact?.laneId), point: factPoint(fact) }));
         }
         const record = freeze({ intentId: intent.intentId, sourceKey, worldId: id(batch.worldId), laneId, laneIndex: integer(typeof intent.laneId === 'number' ? intent.laneId : procgenLaneIndex(lanes).get(laneId)), batchId: batch.batchId, generation: batch.generation, tick: batch.tick, actorState: 'past-reference', terminationTick: null,
           actorId: typeof intent.actorId === 'number' ? integer(intent.actorId) : id(intent.actorId), voiceId: id(intent.voiceId), mappingId: id(intent.mappingId),
-          graphRevision: integer(intent.graphRevision), kind: label(intent.kind), sourceKind: label(intent.physicalSourceKind), action: label(intent.physicalAction),
+          graphRevision: integer(intent.graphRevision) ?? integer(provenance?.graphRevision), mappingRevision: integer(provenance?.mappingRevision), mappingEvidence: provenance ? 'canonical-intent-construction' : 'unrecorded', kind: label(intent.kind), sourceKind: label(intent.physicalSourceKind), action: label(intent.physicalAction),
           pitchCents: Number.isFinite(intent.pitch?.cents) ? intent.pitch.cents : null, velocity01: Number.isFinite(intent.velocity01) ? intent.velocity01 : null,
           sources: freeze(sources), omittedSources: intent.sourceEventIds.length - sources.length, receipts: freeze([]), omittedReceipts: 0 });
         group.push(attach(record, byIntent.get(intent.intentId) || []));

@@ -818,39 +818,39 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "bfec95754c8f3e07ab322f05ad18bf02fd8b3992",
-    "job": 122554341844,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40608626771/job/122554341844",
-    "passed": 6532,
+    "head": "4c389855a68041b4017acd6ddb36546e1cdbc991",
+    "job": 122566171988,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40612194215/job/122566171988",
+    "passed": 6546,
     "failed": 0,
-    "browserPassed": 75,
+    "browserPassed": 80,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.26,
-      "statements": 90.26,
-      "branches": 83.5,
-      "functions": 88.23
+      "lines": 90.21,
+      "statements": 90.21,
+      "branches": 83.48,
+      "functions": 88.22
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      292
+      293
     ],
     "excludesLaterWork": true,
     "masterCapture": {
       "state": "Ready",
-      "frames": 57600,
-      "capturedFrames": 57600,
+      "frames": 56192,
+      "capturedFrames": 56192,
       "stopReason": "user-stop",
       "clockDiscontinuity": null
     },
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci291-green.log",
-      "bytes": 1100184,
-      "sha256": "4ff768310e2c051e9f8c0f3f8532db13afb41beb442565a554d97de28b1950f4"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci292-green.log",
+      "bytes": 1102950,
+      "sha256": "c1440c0dd081b4ca60f68a8f4a97737ee152071730da9d377ffa5532b74a2f18"
     }
   },
   "continuation264": {
@@ -10765,6 +10765,42 @@
         "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\test-results\\procgen-causal-visual-actu-58e3a-en-exact-read-only-evidence\\desktop-causal-marks.png",
         "bytes": 444606,
         "sha256": "3b0c0ff25175fb28a74de9c827a2f3af83096a49bc598eb33fc225d85f9a37ff"
+      },
+      "remoteCi": {
+        "head": "4c389855a68041b4017acd6ddb36546e1cdbc991",
+        "job": 122566171988,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40612194215/job/122566171988",
+        "passed": 6546,
+        "failed": 0,
+        "browserPassed": 80,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.21,
+          "statements": 90.21,
+          "branches": 83.48,
+          "functions": 88.22
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          293
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 56192,
+          "capturedFrames": 56192,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci292-green.log",
+          "bytes": 1102950,
+          "sha256": "c1440c0dd081b4ca60f68a8f4a97737ee152071730da9d377ffa5532b74a2f18"
+        }
       }
     },
     "source": [
@@ -10860,10 +10896,221 @@
       "reason": "Operational implementation and exact rate correction pass the full bfec9575 CI checkpoint."
     },
     "limitations": [
-      "Current full CI must qualify this continuation; the green bfec9575 checkpoint excludes it.",
+      "Full remote CI is now green at 4c389855: 6546 coverage cases / 80 desktop boundaries, all checks successful. This excludes continuation293.",
       "#997 still needs individually correlated local-render/shared-body/transfer qualification and complete outcome coverage. Unknown stages and aggregate effects are not promoted to individual acoustic proof.",
       "The projected history contains retained physical-to-musical intent references, not an exhaustive journal of unmapped physical facts.",
       "The actual screenshot/virtual-port browser fixtures are not hardware, acoustic or assistive certification. The wider backlog remains open."
+    ]
+  },
+  "continuation293": {
+    "baseHead": "4c389855a68041b4017acd6ddb36546e1cdbc991",
+    "scope": "Producer-stamped mapping provenance without canonical take changes; safe restored document receipt ownership and explicit MIDI route reactivation.",
+    "implemented": [
+      "Add an optional isolated producer callback carrying exact intent/batch/generation/mapping identity, graph-at-construction revision and definition-origin revision. Preserve canonical intent fields and serialized engine checkpoints, strict replay comparison and delivery semantics.",
+      "Keep held definition origins through unrelated graph revisions and preserve the old origin when a new graph ends an old voice. Restore existing saved instrument epochs; absent legacy origins remain unknown. Ignore inherited Object members when reading an epoch by mapping ID.",
+      "Cap producer diagnostic allocation at 512 records per batch plus one omission summary. Bound the controller buffer and join only exact validated identities; reject conflicting or impossible revisions. Observer exceptions cannot interrupt scheduling.",
+      "Expose verified graph/definition construction metadata in OLED and native cause explanations, without promoting it to individual eligibility, sink admission, render or receiver proof.",
+      "Update the new physical receipt owner when a saved document is adopted; old callbacks retain their prior source fence. Stop MIDI activation at adoption while preserving endpoint review. Rearm the default route only on an explicit MIDI inactive-to-active edge; catalog/connection refresh and inactive removal do not rearm it.",
+      "Refresh only the exact first-party worker component hash for the changed tracked source, preserving its 271-file inventory, NOASSERTION and manifest formatting."
+    ],
+    "validation": {
+      "nodePassed": 227,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "16s",
+      "browserFinal": {
+        "passed": 29,
+        "failed": 0,
+        "reportedDuration": "2.4m",
+        "scope": "Actual causal provenance and restored-session driver receipts, all OLED/operational/MIDI parameter cases, physical MIDI, six-native-sound 1000-tick isolation and save/load/history workflows."
+      },
+      "previousCohorts": [
+        {
+          "nodePassed": 224,
+          "nodeFailed": 2,
+          "reason": "New test fixture used invalid ungated MotionCommitted mapping; legacy-origin assertion selected a newly constructed voice instead of the restored old voice. Corrected fixtures retain the exact origin and canonical-equality assertions."
+        },
+        {
+          "browserPassed": 10,
+          "browserFailed": 3,
+          "browserNotRun": 11,
+          "reportedDuration": "41.4s",
+          "reason": "Build beforeAll rejected the stale first-party worker hash after canonical source changed."
+        },
+        {
+          "browserPassed": 10,
+          "browserFailed": 3,
+          "browserNotRun": 11,
+          "reportedDuration": "40.4s",
+          "reason": "A first hash-refresh helper rejected existing manifest formatting; a dependent browser rerun was mistakenly started before that failure was checked. The same provenance gate blocked it. A hash-only update then preserved formatting and passed verification before the next run."
+        },
+        {
+          "nodePassed": 226,
+          "nodeFailed": 0,
+          "browserPassed": 24,
+          "browserFailed": 0,
+          "browserReportedDuration": "2.2m",
+          "scope": "Producer provenance and canonical replay after metadata/manifest fixes, before the additional restored-session owner regression."
+        },
+        {
+          "nodePassed": 226,
+          "nodeFailed": 0,
+          "browserPassed": 6,
+          "browserFailed": 1,
+          "browserReportedDuration": "1.5m",
+          "reason": "New restored-session API-submission regression exposed a disarmed default endpoint while legacy enabled state remained true. The final change stops activation on adoption, rearms only on explicit activation and retains the API-submission requirement."
+        }
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0,
+        "workerFiles": 271,
+        "workerSha256": "026cd2711711036f23ed4f375b658e4abc4a81284105f3bb43e9b2195373724b"
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-node-ready.log",
+          "bytes": 23110,
+          "sha256": "ab513197a4452d677ae3858d7de00efb995f7bc7289b5029918b9f029561d7aa"
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-browser-ready.log",
+          "bytes": 6309,
+          "sha256": "5c74a63487bf07bc49f3f0b3febbab7879a2a1767c9ebf94c028af147d7d1e1f"
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-format-ready.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-types-ready.log",
+          "bytes": 96,
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-undefined-ready.log",
+          "bytes": 111,
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-provenance-ready.log",
+          "bytes": 142,
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+        },
+        "initialNode": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-node.log",
+          "bytes": 24487,
+          "sha256": "89f46798fe13fd7c642ae4ac6384cb203c0aa8696969fef04eb59bd34129e8af"
+        },
+        "initialBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-browser.log",
+          "bytes": 11855,
+          "sha256": "631d3b78d45ebfd001448d8055c454cc88af140856d4b641787e166d4d963e9c"
+        },
+        "manifestBlockedRepeat": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-browser-final.log",
+          "bytes": 11855,
+          "sha256": "c4b376eb241da3e85eae78345b27bcaf3bf529bd76690ce39def2e9473e8073d"
+        },
+        "preSessionBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-browser-complete.log",
+          "bytes": 5350,
+          "sha256": "5e96b0628cf4305ea055184ed0dc3ee0c3e4d78e47457500bb98f34a261a49c2"
+        },
+        "sessionFailure": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-browser-session.log",
+          "bytes": 5972,
+          "sha256": "abd970659cb808971345d9839afb003068814322e69af01c923b3917e3fe79d2"
+        }
+      },
+      "actualProductionCapture": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-desktop-causal-marks.png",
+        "bytes": 448102,
+        "sha256": "e863ccd3cf5c1084ce4912846e9daa1c56259b88d63328c103b8e5c7089f34e8"
+      }
+    },
+    "source": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 33989,
+        "sha256": "481e93d66908f3443f8d3054fd3bfb413dc94bbda3fc0361b9229850a232d153"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 544719,
+        "sha256": "30abbcb672bedca51dfc1891146576b9a73d5c8f229a89b97e9a2c6b8575bcde"
+      },
+      {
+        "path": "e2e/procgen-causal-visual.spec.js",
+        "bytes": 10942,
+        "sha256": "4b2df34227655bd93211dd63f4aeb428a005a12476e4cf2c1857d1a535326df8"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+        "bytes": 82271,
+        "sha256": "47fc8e37e938bcff51a4c892cab6ee9539bc3f1170881c935e3036cd8a45aa8f"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalVisualProjection.js",
+        "bytes": 8026,
+        "sha256": "c4a81c4adda385b035ca5197e7fd5e02c6f52e6c069b44d7c3046a03e885ec14"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplayEvidence.js",
+        "bytes": 12766,
+        "sha256": "7bc0cbd828cfddb39955fba38cb64375250ce314d1fb9a21a9ecd33d52aa3e7d"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplaySnapshot.js",
+        "bytes": 7100,
+        "sha256": "580a2a93877f34429d0399c5070b183bf953ec943e6bc53383d682267ec5bfbc"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "bytes": 33921,
+        "sha256": "f1e8e64ddd21b1a1cb225d62a9319aa6f84b0a682ccbbfa5587c684b76df0b60"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 194355,
+        "sha256": "03f70b3e8b5ffa40722fba13306992a88343d205806aabe6fded576552e827b6"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 20763,
+        "sha256": "20e76a3e93784e13f6dfcc34632b28e6e26dde294398069e8c45c7229f8bf34d"
+      },
+      {
+        "path": "test/causal-intent-provenance.test.js",
+        "bytes": 7229,
+        "sha256": "4a3bc628bddb0969214c7be86cb48052f4e04fa261f527506b4538d83a83c460"
+      },
+      {
+        "path": "test/lane-display-evidence.test.js",
+        "bytes": 17138,
+        "sha256": "dc20c894e06ce4ff229d9c58ddfcd99a621b3ebd48f0422233c9e6800c97f048"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 99285,
+        "sha256": "13e7cb3b4f7970e8f875707b596ab8626141b8e867d5df10bd8a7e473f254c5d"
+      }
+    ],
+    "issueClosure": {
+      "issue": 996,
+      "state": "closed",
+      "reason": "The complete OLED/projection/ownership implementation passes full 4c389855 CI: 6546 coverage cases / 80 desktop boundaries."
+    },
+    "limitations": [
+      "Current full CI must qualify this continuation; the green 4c389855 checkpoint excludes it.",
+      "Construction provenance is not an individual eligibility ledger, local-render correlation or receiver/acoustic acknowledgement. Absent metadata remains unknown.",
+      "#997 retains the complete local/shared-body/transfer/revoice/denied/canceled outcome qualification matrix. No hardware, acoustic or assistive certification is inferred.",
+      "The wider backlog remains open. #1072 and #996 are closed on their fully verified source checkpoints."
     ]
   }
 }
