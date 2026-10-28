@@ -7789,3 +7789,32 @@ export-budget acknowledgments still prevent a false complete receipt.
   contrast, low-effects, greyscale, high-contrast and 1080p/QHD/UHD evidence is
   retained in continuation298. Actual assistive-device qualification remains
   under #1042; this browser run does not claim an acoustic/device/AT pass.
+
+### Continuation 302 — stable lane search, paging and clock-test boundaries
+
+- Add bounded lane-name/role/ID search with sixteen keyed matches per page,
+  exact offscreen selected/solo/armed counts and one-step return. Feed armed
+  targets from the actual fixed MIDI Learn lease and current recording target.
+  Reuse the existing View menu. Jumps focus the selected lane; a replacement
+  document retires old result nodes and query state. No sound/route/world command
+  is dispatched by search, paging or jump.
+- Anchor paging by the first visible stable lane ID through insertion/removal/
+  reorder, and accumulate pixel/line/page wheel deltas with bounded residue,
+  direction and idle reset. Modified zoom gestures retain their native handling.
+  Search buffers/carets/IME and unchanged result focus survive unrelated edits.
+  Index rebuilds occur on project revision, never on every display frame.
+- Focused Node coverage passes 158 cases, including 1/8/64/1024-lane admission,
+  duplicate/long names, removed anchors, exact breadcrumbs, source replacement
+  and bounded mounted results. The motion/native-zoom/view/navigation browser
+  cohort is recorded separately from the operational-status cohort below.
+- Remote ce3a713f passes 22 desktop and 95 workstation cases, then fails a clock
+  fixture that incorrectly demands silence after an explicitly authorized Start
+  and clock pulse. Preserve zero-note assertions during lost/waiting phases;
+  assert running transport after the authorized pulse. All eleven operational
+  journeys pass together. Coverage Node CI was skipped after the browser failure;
+  fully green 1c818cc3 remains the independent baseline.
+- Fresh GitHub inventory contains 222 open issues after closing #993/#1084/#995.
+  #1033 remains open for named group/collapse/pin metadata, visual reorder and
+  arbitrary visible-row projection without physical stripe/route reassignment,
+  retained offscreen edit drafts, and a ten-minute navigation/listener soak.
+  Its search/jump/paging implementation is usable independently of those items.

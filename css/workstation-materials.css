@@ -107,6 +107,12 @@ body.procgen-workstation[data-instrument-motion=frozen] *::after { animation:non
   .procgen-workstation *, .procgen-workstation *::before, .procgen-workstation *::after { animation:none!important; transition:none!important; text-shadow:none!important; box-shadow:none!important; }
   .procgen-workstation .parameter-knob > .parameter-knob-cap { background:var(--material-cap); }
 }
+.procgen-workstation .studio-lane-navigator { display:grid; grid-template-columns:1fr 1fr; gap:6px; width:min(520px,calc(100vw - 32px)); max-width:100%; }
+.procgen-workstation .studio-lane-navigator > label, .procgen-workstation .studio-lane-navigator > output, .procgen-workstation .studio-lane-navigator > div { grid-column:1 / -1; }
+.procgen-workstation .studio-lane-navigator input { width:100%; box-sizing:border-box; }
+.procgen-workstation .studio-lane-navigator > div { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.procgen-workstation .studio-lane-navigator > div button { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; min-width:0; }
+.procgen-workstation .studio-offscreen-lanes { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (prefers-contrast:more) {
   body.procgen-workstation { --material-chassis:#17191d; --material-panel:#1d2025; --material-cap:#272b31; --material-line:#c7cdd6; --material-engraving:#ffffff; --material-secondary:#e0e5ec; --material-muted:#c7cdd6; --state-unavailable:#c7cdd6; }
 }

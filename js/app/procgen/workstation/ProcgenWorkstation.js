@@ -211,7 +211,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
   };
   const cancelInputEdits = reason => {
-    if (inputLease) { inputLease = null; ports?.cancelLearn(); status(`MIDI Learn canceled: ${reason}.`); }
+    if (inputLease) { inputLease = null; ports?.cancelLearn(); view?.refreshLaneNavigation?.(); status(`MIDI Learn canceled: ${reason}.`); }
     noteEntries.clear();
   };
   const beginOperation = kind => {
@@ -1763,6 +1763,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         inputEndpointEpoch: ports.getState().inputLiveness.connectionEpoch, armedAt: now(), policy: 'fixed-target' };
       if (!inputTarget(lease)) return false;
       inputLease = lease;
+      view?.refreshLaneNavigation?.();
       const accept = event => {
         if (inputLease !== lease || lease.documentGeneration !== documentGeneration ||
             lease.inputEndpointEpoch !== ports.getState().inputLiveness.connectionEpoch || !inputTarget(lease)) {
@@ -1771,6 +1772,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         }
         if (event.type !== 'noteOn') { ports.learnNext(accept); return; }
         inputLease = null;
+        view?.refreshLaneNavigation?.();
         inputStep(event, true, lease);
       };
       ports.learnNext(accept); status('Play a MIDI note to learn this step.'); return true;
@@ -1976,7 +1978,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (stageSession && !stageSession.permitsCommand(name, args)) return stageSession.reject();
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
-  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration, dispatch, handlers, canCommand, state });
+  view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration,
+    getArmedLaneIds: () => [inputLease?.laneId, state.recording ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   const expressionOutputKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? state.selectedOutputId ?? null, state.outputGeneration ?? null]);
   const initialOutput = legacy.local.getState();

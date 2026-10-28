@@ -17918,6 +17918,36 @@
       "scripts/runTests.js": "12081d80fb80eb97c0a95d46546e7fb240c07b462db7e1005b2470e3946db16e",
       "test/browser-workflow-catalog.test.js": "66c8840dd5512e0c1238327775b1e925750451f0df552b1747de1e29b7af083b",
       "test/instrument-motion-policy.test.js": "bee3d09d1974c6ea39dd3db5e0a0a84fa19efaaf0143599fd0fa70500c4e89ec"
+    },
+    "remoteCi": {
+      "head": "ce3a713f31022a9c11fda68fec004c68fd3107e1",
+      "status": "failure",
+      "job": 122757201682,
+      "run": 40670932947,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40670932947/job/122757201682",
+      "browserPassed": 117,
+      "browserFailed": 1,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 95,
+        "workstationSmokeFailed": 1
+      },
+      "nodeCoverageExecuted": false,
+      "failure": "Operational-status fixture demands zero note-ons after explicit external MIDI Start and clock pulse authorizes real playback. Corrected at continuation302 to assert zero while lost/waiting, then assert running transport after the authorized pulse.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 105216,
+        "captured": 105216,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.02330303192138672,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci300-failed.log",
+        "bytes": 137101,
+        "sha256": "f567e3ea66011ee2395e42f062b9544771b451fd7703d03303452db99fbca3e1"
+      }
     }
   },
   "continuation301": {
@@ -18077,6 +18107,210 @@
       "test/support/workstation-zoom/background.js": "5e2818bec6b6e7f425c666f64561627fe2e1c0e63bfbf55b483d9d948f373cb5",
       "test/support/workstation-zoom/blank.html": "9333fa41f735fd84c90145f001e847484bde5fc553f90e052dca6e36ec5a7646",
       "test/support/workstation-zoom/manifest.json": "aac0fb795b603f83c957331b1d051e8422806a4418c88d26dcfd2534f0baf22d"
+    }
+  },
+  "continuation302": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Stable bounded lane navigation and truthful authorized MIDI restart fixture",
+    "sourceBase": "2e709ae338d4ba767a8f6e75667fee3d950ad5fd",
+    "issues": [
+      1033,
+      998,
+      1040
+    ],
+    "development": [
+      "Bounded name/role/ID search, sixteen keyed paged matches, selected/solo/armed offscreen summaries and one-step return; real fixed MIDI Learn and current recording target supply armed identity.",
+      "First-visible stable-ID anchor survives insertion/reorder and chooses nearest surviving former neighbor after deletion. Native pixel/line/page wheel accumulation has bounded residue, direction/idle reset and does not consume modified zoom gestures.",
+      "Search input/caret/IME and unchanged keyed results survive unrelated project revisions. Document replacement retires old result nodes/query state; disposal fences callbacks. Jumps close the menu and focus the actual selected lane.",
+      "Reuse owned View/Setup menus instead of constructing duplicate command groups; preserve borrowed native nodes and restore original placement on disposal.",
+      "Keep zero-note assertions before authorized external restart and during waiting. After explicit MIDI Start plus clock pulse, require running transport instead of falsely forbidding legitimate physical music."
+    ],
+    "validation": {
+      "node": {
+        "passed": 158,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "navigatorCoverage": {
+          "lines": 100,
+          "branches": 89.09,
+          "functions": 81.81
+        },
+        "scope": "Navigator, controller/history, compact controls/chrome, browser catalog and Node runner contracts"
+      },
+      "browserFinalNavigationView": {
+        "passed": 28,
+        "failed": 0,
+        "skipped": 1,
+        "durationMs": 38908.498999999996,
+        "scope": "Complete view spec plus all motion, native browser zoom and new real64-lane navigation journeys; includes existing1024-lane virtualization. Explicit benchmark skip retained."
+      },
+      "browserOperational": {
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 55531.738,
+        "scope": "All operational-status journeys together after clock fixture correction, before final navigator-only focus/source-node refinements. No clock runtime changed afterward."
+      },
+      "earlierBrowser": [
+        {
+          "passed": 23,
+          "failed": 5,
+          "skipped": 1,
+          "reason": "Duplicate View menu owner plus hidden-role search fixture lookup; corrected together."
+        },
+        {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 1,
+          "scope": "Before final navigator source-node retirement and focus-return refinement."
+        }
+      ],
+      "collection": {
+        "full": 127,
+        "smoke": 100,
+        "files": 26,
+        "sourceInputs": 1070
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/340 files",
+        "browser collection",
+        "whitespace"
+      ],
+      "scopeLimits": [
+        "Composed focused cohorts are not a single full-workstation run. No full local Node suite repeated.",
+        "Current full-branch CI is pending. Green1c818cc3 remains the independent published Node/browser baseline."
+      ]
+    },
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-motion-465a5-nce-without-resuming-output-workstation-motion-policy-forced-colors.png",
+        "bytes": 93186,
+        "sha256": "732907242f73615b456005b63e05f34b7db3461000a8735184b80b930769832a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-motion-58d18-ing-paused-music-or-physics-workstation-paused-shared-motion-policy.png",
+        "bytes": 124122,
+        "sha256": "7c8a0ffbd6ee522a54ff2fd4e0bcaaa5fc493152df50e73223bee1f58283b8f3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200-forced-colors.png",
+        "bytes": 193037,
+        "sha256": "7167c7eca613709a02b00efe6e8251c4716449b88eeb8c2f0fec6147059f75b7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200.png",
+        "bytes": 203795,
+        "sha256": "9a2b5038f97e6a35ee5ab6469790e5c4a831d4e8ea13668c419547d7f54ce960"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-0.png",
+        "bytes": 163781,
+        "sha256": "971ca23d63c8b3badba0187b234c560d9bb436afd1785d396d4f35e608e1dc54"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-2.png",
+        "bytes": 161901,
+        "sha256": "6f6c28bdb2060e65c02c468d5c457d40f2362be6c1f230249596e9a334690485"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-200-1.png",
+        "bytes": 351215,
+        "sha256": "b450371fd973b524c21b4a1e9179b63d3cb89c4593639a4cc7e33ba8e18dc8de"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-accepted-captures\\procgen-workstation-naviga-fb416-ic-routes-output-or-physics-workstation-large-ensemble-stable-jump.png",
+        "bytes": 125307,
+        "sha256": "5d88d60660e5f5dd8d6b10d37609baf03e42df90f83f251af2d278882998b29b"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-initial-native-results.json",
+        "bytes": 75066,
+        "sha256": "73cba3aba4483ca6ebaaa38cd4dc7e1ef7fbe597c135b9de728407328f3d010b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-native-final-results.json",
+        "bytes": 296187,
+        "sha256": "6e48c64d7e04286439cdf864f2969595d78e4313766e7c2432b28576705ee53f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-native-accepted-results.json",
+        "bytes": 296200,
+        "sha256": "97d896866b685090afda03f11171d437ee1b3b7a8f186e6f47598804bb379941"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-operational-results.json",
+        "bytes": 15936,
+        "sha256": "5c383a708199a9351ca2deb85165229d9b6a11ce5a01e9f690e8ad4aedae9520"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-selection-accepted.json",
+        "bytes": 261411,
+        "sha256": "b0aa0681ccd0ff38d3da5a88e653893e304fef9d498bc9722586e87953b77ce6"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-node.log",
+        "bytes": 550,
+        "sha256": "8c02bb5d875e2ad06cf43187b28e451fac5bccd94f57d57bc5c4cefcdf782473"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-node-accepted.log",
+        "bytes": 551,
+        "sha256": "cac5778a2a42be7cd60809f787edae77d2c745ce537045381237c29925d294c0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-native.log",
+        "bytes": 26145,
+        "sha256": "16be44f73ade8b873abeef926baa65972547672470e35ce5409b3e12d09cae87"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-native-final.log",
+        "bytes": 5335,
+        "sha256": "c65ed0afc3bdf50a9d7fa1f77cdc3b10beeba1dfb900b6011aac2c7d95fb0aa3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-native-accepted.log",
+        "bytes": 5335,
+        "sha256": "f6b7d7936649b0ed0f8601a776ff86a46dd3119242afafba519f7bd288dd8d04"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-operational.log",
+        "bytes": 2447,
+        "sha256": "f7460426c5317492bfbcf0db5ba7dff715c21cfbce04bd589856a15aedaac4c5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog302-collection-accepted.log",
+        "bytes": 1926,
+        "sha256": "3a89f6d0804683e03dbf4ca508e46727fafe5fe0e038c53538fb3ea40dd79387"
+      }
+    ],
+    "issueInventory": {
+      "open": 222,
+      "pages": 3,
+      "scope": "Fresh repository issue API pages, excluding pull requests, after993/1084/995 completed closures."
+    },
+    "scopeLimits": [
+      "1033 remains open for named groups/collapse/pin metadata, undoable visual reorder and arbitrary-row projection separate from physical stripe/route identity.",
+      "Retained offscreen parameter drafts, held-voice group/reorder qualification and ten-minute navigation/listener soak remain."
+    ],
+    "sourceHashes": {
+      "css/workstation-materials.css": "03dccbe57f974c489945584a1b81b282a418feb8fc08eda1d93eb51c4027ab11",
+      "docs/roadmap.md": "6eae9e8a654bdc408b064b27f5b309e6502df695fc37feeb8cd06432b4584ba4",
+      "e2e/procgen-operational-status.spec.js": "cde762dea703790bb30b463db4d71a529f3e1534fd1909ce176ac9ad37f6b3af",
+      "e2e/procgen-workstation-navigation.spec.js": "3bb03d926b628350d36c787286e0c3382e35f53d062c1b2254c6dc43630b5d42",
+      "js/app/procgen/workstation/LaneNavigator.js": "c00d4eff261b0035402be242718ee85fcd5bc3afc0cb702f8f463b653e39f345",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "499eeb42364205338c9870bdc91f6311c199bb6db7c77c9fb02e9116dd6e6ee7",
+      "js/app/procgen/workstation/ProcgenWorkstationView.js": "dcb861d168b0ea06504df2c4d0d4d1412fc99fd3195739a0b117707bdf3fe560",
+      "js/app/procgen/workstation/WorkstationChrome.js": "f99e787050a864cd063021e40f9be6a889ce93e49c118a93d88bca086d0c12b4",
+      "test/compact-instrument-chrome.test.js": "2e0882f56ab2dcc99f3a2d8ed091bcc8ec6bebb9a1e8d4b8a90813696b314b37",
+      "test/procgen-lane-navigator.test.js": "1a2ca2c2940396024b84ee8478c103ed8517ee047322805bff9f046f09a5e4f2"
     }
   }
 }

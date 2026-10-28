@@ -38,7 +38,8 @@ export function createWorkstationChrome({ document, window, topbar, footer, heal
   const viewBody = viewMenu ? register(viewMenu, 'View') : null;
   const statusMenu = health?.querySelector('.studio-operational-details'); if (statusMenu) register(statusMenu, 'Status details');
   for (const field of viewFields) move(field, viewBody || setup.body);
-  const groups = new Map();
+  const groups = new Map([['Setup', setup]]);
+  if (viewBody) groups.set('View', { element: viewMenu, body: viewBody });
   for (const element of [...footer.children]) if (element.dataset.commandGroup) {
     const group = element.dataset.commandGroup;
     if (!groups.has(group)) groups.set(group, create(group, footer)); move(element, groups.get(group).body);

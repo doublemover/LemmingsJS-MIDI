@@ -68,6 +68,15 @@ describe('owned workstation command chrome', () => {
       b.dispose(); b.dispose(); expect(field.parentElement).to.equal(f.options.topbar); expect(save.parentElement).to.equal(f.options.footer); expect(f.document.querySelectorAll('.studio-command-menu')).to.have.length(0); expect(f.document.querySelector('.studio-operational-details > dl')).not.to.equal(null);
     } finally { b.dispose(); f.window.close(); }
   });
+  it('routes new View and Setup controls into their existing owner and restores original placement', () => {
+    const f = mount(), view = f.document.createElement('details'), summary = f.document.createElement('summary'), control = f.document.createElement('input'), setup = f.document.createElement('button');
+    summary.textContent = 'View'; view.append(summary); f.options.topbar.append(view); control.dataset.commandGroup = 'View'; setup.dataset.commandGroup = 'Setup'; f.options.footer.append(control, setup);
+    const chrome = createWorkstationChrome({ ...f.options, viewMenu: view }); try {
+      expect(f.document.querySelectorAll('[data-menu-name=View]')).to.have.length(1); expect(f.document.querySelectorAll('[data-menu-name=Setup]')).to.have.length(1);
+      expect(control.closest('details')).to.equal(view); chrome.reveal(control); expect(view.open).to.equal(true); chrome.reveal(setup); expect(setup.closest('details').dataset.menuName).to.equal('Setup'); expect(view.open).to.equal(false);
+      chrome.dispose(); expect(control.parentElement).to.equal(f.options.footer); expect(setup.parentElement).to.equal(f.options.footer); expect(view.children).to.have.length(1);
+    } finally { chrome.dispose(); f.window.close(); }
+  });
   it('lets native selects handle Escape while text entry closes the menu with explicit focus return', () => {
     const f = mount(), chrome = createWorkstationChrome(f.options); try {
       const field = f.document.querySelector('#field'), input = field.querySelector('input'), select = field.querySelector('select'); chrome.reveal(select);

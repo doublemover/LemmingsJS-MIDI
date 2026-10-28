@@ -115,10 +115,12 @@ test('external clock waiting and loss remain separate from note activation and r
   await expect(strip(page)).toHaveAttribute('data-state', 'clock-lost'); await expect(strip(page)).toHaveAttribute('data-clock-state', 'clock-lost'); await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
   await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xf8])); await expect(strip(page)).toHaveAttribute('data-state', 'clock-lost');
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(false);
+  expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
   await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xfa])); await expect(strip(page)).toHaveAttribute('data-state', 'clock-waiting');
+  expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
   await page.evaluate(() => window.__WEBMIDI_STUB__.sendInput([0xf8])); await expect(strip(page)).toHaveAttribute('data-clock-state', 'locked');
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
-  expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(true);
 });
 
 test('a prepared silent physical scene names its lack of source events and opens an isolated lesson without loading or test notes', { tag: '@boundary' }, async ({ page }) => {
