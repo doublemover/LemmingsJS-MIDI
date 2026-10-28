@@ -35,6 +35,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
     const cause = current().causes.find(value => value.key === causeSelect.value), index = cause?.intents.findIndex(value => value.intentId === intentSelect.value) ?? -1;
     if (!cause || index < 0) { text(frozenStatus, 'This reference is no longer retained. The previous frozen explanation is preserved; no current actor is substituted.'); return; }
     selection = { causeKey: cause.key, intentId: cause.intents[index].intentId };
+    text(heading, cause.referenceKind === 'intent-only' ? 'Intent without a retained physical source' : 'Observed physical cause');
     text(frozenStatus, 'Frozen past evidence. Refresh explicitly for retained receipt changes.'); text(details, explainCausalVisual(cause, index));
   };
   const chooseCause = () => {
@@ -45,7 +46,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
   const open = keys => {
     if (disposed || unavailable || sourceIdentity !== getDocumentIdentity()) return;
     const model = current(), selected = keys && new Set(keys), causes = model.causes.filter(value => !selected || selected.has(value.key));
-    options(causeSelect, causes.map(value => [value.key, `${value.action || value.kind || 'Unrecorded source'} · actor ${value.actorId ?? 'shared/unknown'} · tick ${value.tick ?? 'unknown'} · ${value.eventId.slice(0, 80)}`]));
+    options(causeSelect, causes.map(value => [value.key, value.referenceKind === 'intent-only' ? `Unrooted intent · ${value.intents[0].intentId.slice(0, 80)}` : `${value.action || value.kind || 'Unrecorded source'} · actor ${value.actorId ?? 'shared/unknown'} · tick ${value.tick ?? 'unknown'} · ${value.eventId.slice(0, 80)}`]));
     if (causes.length) chooseCause();
     else { intentSelect.replaceChildren(); selection = null; text(details, keys ? 'The selected past cause is no longer retained. It cannot be rebound to a current actor.' : 'No physical-to-musical cause is retained in the current visible-lane history.'); text(frozenStatus, 'No acoustic or receiver evidence is implied.'); }
     if (!dialog.open) dialog.showModal();
@@ -69,7 +70,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
       const model = current(values), snapshot = renderer?.presentation?.getSnapshot?.(), stageRect = stage.getBoundingClientRect();
       projectionRevision = model.projectionRevision;
       text(historyButton, `Cause history (${model.causes.length})`);
-      const s = model.summary, message = `${model.causes.length} past causes · ${s.unlocated} unlocated · ${s.outside} outside view · ${s.pending} awaiting projection · ${s.sourceMismatch} wrong source · ${s.conflicts} conflicting · ${s.omitted} entry omissions · ${s.historyOmitted} evicted · ${s.expired} expired`;
+      const s = model.summary, message = `${model.causes.length} retained references · ${s.unrooted} unrooted intents · ${s.unlocated} unlocated · ${s.outside} outside view · ${s.pending} awaiting projection · ${s.sourceMismatch} wrong source · ${s.conflicts} conflicting · ${s.omitted} entry omissions · ${s.historyOmitted} evicted · ${s.expired} expired`;
       text(summary, message); summary.title = message;
       const retained = new Set();
       for (const mark of model.marks) {
@@ -81,10 +82,11 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
           button.addEventListener('pointerdown', event => event.stopPropagation()); layer.append(button); buttons.set(mark.key, button);
         }
         button.causeKeys = mark.causes.map(cause => cause.key);
-        const first = mark.causes[0], rejected = mark.causes.some(cause => cause.outcome === 'rejected' || cause.outcome === 'cancelled'), glyph = first.glyph + (rejected ? '×' : mark.causes.some(cause => cause.outcome === 'mixed') ? '±' : mark.causes.some(cause => cause.outcome === 'degraded') ? '!' : '');
+        const first = mark.causes[0], outcomes = new Set(mark.causes.map(cause => cause.outcome)), outcome = outcomes.size > 1 ? 'mixed' : first.outcome;
+        const suppressed = mark.causes.some(cause => cause.suppressed), glyph = first.glyph + (suppressed ? '∅' : '') + ({ rejected: '×', cancelled: '⊘', mixed: '±', degraded: '!', scheduled: '▷', 'api-submitted': '↗', 'api-release-submitted': '↘', 'processor-applied': '▣', unconfirmed: '?', 'release-requested': '↘' }[outcome] || '?');
         text(button, `${glyph}${mark.count > 1 ? '\n' + mark.count : ''}`);
-        const label = `${mark.count} observed past ${mark.count === 1 ? 'cause' : 'causes'}; ${first.action || first.kind}; ${mark.causes.map(cause => cause.outcome).join(', ')}. Open exact cause evidence.`;
-        button.setAttribute('aria-label', label); button.dataset.eventId = first.eventId; button.dataset.outcome = first.outcome; button.dataset.count = String(mark.count); button.dataset.projectionRevision = String(model.projectionRevision);
+        const label = `${mark.count} observed past ${mark.count === 1 ? 'cause' : 'causes'}; ${first.action || first.kind}; ${mark.causes.map(cause => cause.outcome).join(', ')}${suppressed ? '; producer source suppression reported' : ''}. Open exact cause evidence.`;
+        button.setAttribute('aria-label', label); button.dataset.eventId = first.eventId; button.dataset.outcome = outcome; button.dataset.count = String(mark.count); button.dataset.projectionRevision = String(model.projectionRevision);
         button.style.left = (mark.x - stageRect.left - stage.clientLeft) + 'px'; button.style.top = (mark.y - stageRect.top - stage.clientTop) + 'px';
         const row = snapshot?.rows.find(value => value.lane === mark.laneIndex);
         if (row) {

@@ -26,7 +26,8 @@ export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory,
     const record = pending.get(receipt.token);
     if (!record || targetKey(record.body) !== targetKey(receipt)) return;
     report({ ...receipt, source: record.plan.source, command: record.plan.command, intentId: record.plan.source.intentId, batchId: record.batchId, generation: record.execution.generation,
-      sinkId, targetTimeDomain: 'audio-sample-frames', bodyInstanceId: record.body.bodyInstanceId, executionEpoch: record.execution.executionEpoch, sampleRate: record.body.sampleRate });
+      sinkId, targetTimeDomain: 'audio-sample-frames', bodyInstanceId: record.body.bodyInstanceId, executionEpoch: record.execution.executionEpoch, sampleRate: record.body.sampleRate,
+      ...(receipt.stage === 'body-strike-ended' && receipt.reasonCode === 3 ? { terminal: Object.freeze({ state: 'cancelled', reason: 'body-strike-panic' }), reason: 'body-strike-panic' } : {}) });
     if (['body-strike-rejected', 'body-strike-ended'].includes(receipt.stage) || receipt.stage === 'body-strike-dsp-queued' && receipt.status === 'rejected') { pending.delete(receipt.token); settle(); }
   }); if (typeof unsubscribe !== 'function') throw new TypeError('The body observer did not retain a removable subscription.'); }
   catch (error) { storage.release(); throw error; }

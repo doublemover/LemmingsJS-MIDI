@@ -37,7 +37,7 @@ async function fixture() {
   return { graph, profile, body, backend, commands, receipts, deliver: receipt => listener({ ...receipt, owner: body.owner, ownerGeneration: body.ownerGeneration, ownerRouteRevision: body.ownerRouteRevision, graphDefinitionHash: body.graphDefinitionHash, nodeId: 'skin' }), retire() { present = false; } };
 }
 describe('observed contact sources into exact persistent bodies', () => {
-  it('joins actual processor-frame receipts to each shared-body intent without promoting shared PCM to actor audibility', async () => {
+  for (const panic of [false, true]) it(`joins actual processor-frame ${panic ? 'application then panic' : 'application and completion'} to shared-body intents without claiming actor audibility`, async () => {
     const f = await fixture(), { batch, intents } = causesFor(2), execution = f.backend.registerExecution({ executionEpoch: 'execution', generation: 1 }).execution;
     const store = createLaneDisplayEvidence(), lane = { id: 'lane-1', name: 'Shared body', mode: 'physical', gain: 1 }, sourceKey = 'document:world:1', packets = [], faults = [];
     const kernel = new RectangularMembraneKernel({ parameters: createRectangularMembraneRecipe().graph.nodes.find(node => node.kind === 'rectangular-membrane').parameters });
@@ -47,12 +47,14 @@ describe('observed contact sources into exact persistent bodies', () => {
       store.observe({ sourceKey, lanes: [lane], batch, intents, receipts: intents.map(intent => ({ intentId: intent.intentId, batchId: batch.batchId, generation: 1, sinkId: 'physical-shared-body', executionEpoch: 'execution', status: 'accepted', stage: 'scheduled', outputRequested: true, targetFrame: 128, targetTimeDomain: 'audio-sample-frames' })) });
       for (const command of f.commands) transport.enqueue(command);
       for (const packet of packets) { expect(kernel.enqueueStrike(packet.command)).to.equal(true); transport.consume({ type: 'body-strike-admission', revision: f.profile.revision, token: packet.command.token, frame: 0, accepted: true, reasonCode: 0, muted: false }); }
-      for (let frame = 0; frame < 128 + f.profile.pulses[1].frames; frame++) kernel.sample(0, 0);
-      transport.consume({ type: 'body-strike-receipts', revision: f.profile.revision, data: kernel.strikes.drainReceipts() }); transport.assertComplete(); expect(faults).to.have.length(0); expect(kernel.energy).to.be.greaterThan(0);
+      for (let frame = 0; frame < (panic ? 129 : 128 + f.profile.pulses[1].frames); frame++) kernel.sample(0, 0);
+      transport.consume({ type: 'body-strike-receipts', revision: f.profile.revision, data: kernel.strikes.drainReceipts() });
+      if (panic) { kernel.panic(129); transport.consume({ type: 'body-strike-receipts', revision: f.profile.revision, data: kernel.strikes.drainReceipts() }); }
+      transport.assertComplete(); expect(faults).to.have.length(0); if (panic) expect(kernel.energy).to.equal(0); else expect(kernel.energy).to.be.greaterThan(0);
       for (const receipt of f.receipts) { expect(receipt).to.include({ batchId: batch.batchId, generation: 1, sinkId: 'physical-shared-body', targetTimeDomain: 'audio-sample-frames', bodyInstanceId: f.body.bodyInstanceId }); expect(store.receipt(sourceKey, receipt)).to.equal(true); }
-      const evidence = store.read(lane.id, sourceKey), model = projectCausalHistory({ displays: [{ mix: {}, evidence }] }); expect(model.causes).to.have.length(1); expect(model.causes[0].outcome).to.equal('processor-applied'); expect(model.causes[0].intents).to.have.length(2);
+      const evidence = store.read(lane.id, sourceKey), model = projectCausalHistory({ displays: [{ mix: {}, evidence }] }); expect(model.causes).to.have.length(1); expect(model.causes[0].outcome).to.equal(panic ? 'cancelled' : 'processor-applied'); expect(model.causes[0].intents).to.have.length(2);
       for (let index = 0; index < 2; index++) { const text = explainCausalVisual(model.causes[0], index); expect(text).to.include('processor acknowledged frame 128 at 48000 Hz').and.include(f.body.bodyInstanceId).and.include('individual audibility remain unconfirmed'); }
-      expect(createLaneDisplaySnapshot({ lane, evidence, page: 'output' })).to.include({ evidenceClass: 'processor-applied', glyph: '▣' });
+      const snapshot = createLaneDisplaySnapshot({ lane, evidence, page: 'output' }); expect(snapshot).to.include(panic ? { evidenceClass: 'cancelled', glyph: '⊘', top: 'Intent cancelled' } : { evidenceClass: 'processor-applied', glyph: '▣' }); if (panic) expect(snapshot.bottom).to.include('Cancelled: body-strike-panic');
       const foreign = { ...f.receipts.find(receipt => receipt.stage === 'body-strike-applied'), executionEpoch: 'foreign' }; expect(store.receipt(sourceKey, foreign)).to.equal(false); expect(store.receipt('old-document', { ...foreign, executionEpoch: 'execution' })).to.equal(false);
     } finally { store.dispose(); f.retire(); await f.backend.dispose().completion; }
   });

@@ -1,6 +1,8 @@
 import { procgenWorldToScreen } from '../ProcgenPresentationSnapshot.js';
+import { explainCausalIntentLineage, causalSourceSuppression } from './CausalIntentLineage.js';
 
 const freeze = Object.freeze;
+export const isCausalMidiRelease = receipt => receipt.status === 'accepted' && receipt.terminalState === 'release-submitted' && receipt.targetTimeDomain === 'performance-microseconds';
 export const isCausalBodyApplication = receipt => receipt.status === 'accepted' && receipt.stage === 'body-strike-applied' && receipt.targetTimeDomain === 'audio-sample-frames' &&
   receipt.applicationEvidence === 'processor-frame-acknowledged' && Number.isSafeInteger(receipt.appliedFrame) && receipt.appliedFrame >= 0 && receipt.appliedFrame === receipt.targetFrame &&
   Number.isSafeInteger(receipt.sampleRate) && receipt.sampleRate > 0 && /^[a-f0-9]{64}$/.test(receipt.bodyInstanceId || '') && /^[a-f0-9]{64}$/.test(receipt.graphDefinitionHash || '') &&
@@ -14,6 +16,7 @@ export const causalIntentOutcome = event => {
     if (receipts.some(value => value.status === 'rejected')) return 'rejected';
     if (receipts.some(value => value.status === 'degraded')) return 'degraded';
     if (receipts.some(isCausalBodyApplication)) return 'processor-applied';
+    if (receipts.some(isCausalMidiRelease)) return 'api-release-submitted';
     if (receipts.some(value => value.status === 'accepted' && value.stage === 'submitted' && value.targetTimeDomain === 'performance-microseconds')) return 'api-submitted';
     if (receipts.some(value => value.status === 'accepted' && ['queued', 'scheduled'].includes(value.stage) && value.outputRequested)) return 'scheduled';
     return 'unconfirmed';
@@ -31,23 +34,25 @@ export const causalActionGlyph = source => {
 
 export function projectCausalHistory({ displays = [], presentation = null, maximumMarks = 24, cellSize = 48 } = {}) {
   if (!Number.isInteger(maximumMarks) || maximumMarks < 1 || maximumMarks > 64 || !Number.isFinite(cellSize) || cellSize < 44) throw new RangeError('Invalid causal mark bounds.');
-  const causes = new Map(), intentsSeen = new Set(), summary = { unlocated: 0, outside: 0, pending: 0, sourceMismatch: 0, conflicts: 0, omitted: 0, historyOmitted: 0, expired: 0 };
+  const causes = new Map(), intentsSeen = new Set(), summary = { unlocated: 0, unrooted: 0, outside: 0, pending: 0, sourceMismatch: 0, conflicts: 0, omitted: 0, historyOmitted: 0, expired: 0 };
   let inspected = 0;
   for (const display of displays.slice(0, 9)) {
     summary.omitted = Math.max(summary.omitted, display.evidence?.omitted || 0); summary.historyOmitted = Math.max(summary.historyOmitted, display.evidence?.historyOmitted || 0); summary.expired = Math.max(summary.expired, display.evidence?.historyExpired || 0);
     for (const event of display.evidence?.history || []) {
       if (intentsSeen.has(event.intentId)) continue; intentsSeen.add(event.intentId);
       if (++inspected > 128) { summary.omitted++; continue; }
-      for (const source of event.sources.slice(0, 4)) {
-        const key = JSON.stringify([event.sourceKey ?? [event.worldId, event.generation], source.eventId]);
+      const references = event.sources.length ? event.sources.slice(0, 4) : [{ intentOnly: true, eventId: null, recorded: false, tick: null, actorId: null, actorState: 'unrecorded', laneIndex: null, point: null }];
+      for (const source of references) {
+        const binding = event.sourceKey ?? [event.worldId, event.generation], key = JSON.stringify(source.intentOnly ? [binding, 'intent-only', event.intentId] : [binding, source.eventId]);
         const actorState = source.actorState || (source.recorded && source.actorId != null && source.actorId === event.actorId ? event.actorState : 'past-reference');
         let cause = causes.get(key);
         if (!cause) {
           if (causes.size >= 128) { summary.omitted++; continue; }
-          cause = { key, sourceKey: event.sourceKey ?? null, eventId: source.eventId, worldId: event.worldId, generation: event.generation, tick: source.tick, laneIndex: source.recorded ? source.laneIndex ?? null : null,
+          cause = { key, referenceKind: source.intentOnly ? 'intent-only' : 'physical-source', sourceKey: event.sourceKey ?? null, eventId: source.eventId, worldId: event.worldId, generation: event.generation, tick: source.tick, laneIndex: source.recorded ? source.laneIndex ?? null : null,
             actorId: source.recorded ? source.actorId ?? null : null, actorState, action: source.action || null, kind: source.kind || null,
             point: source.recorded ? source.point : null, recorded: source.recorded, identityConflict: false, intents: [], mixes: [] };
           causes.set(key, cause);
+          if (source.intentOnly) summary.unrooted++;
         } else if (!cause.recorded && source.recorded) {
           cause.recorded = true; cause.point = source.point; cause.tick = source.tick; cause.kind = source.kind; cause.action = source.action; cause.laneIndex = source.laneIndex ?? null; cause.actorId = source.actorId ?? null; cause.actorState = actorState;
         } else if (cause.recorded && source.recorded && !cause.identityConflict && (cause.tick !== source.tick || cause.actorId !== (source.actorId ?? null) || cause.laneIndex != null && source.laneIndex != null && cause.laneIndex !== source.laneIndex || cause.point && source.point && (cause.point.x !== source.point.x || cause.point.y !== source.point.y))) {
@@ -61,8 +66,9 @@ export function projectCausalHistory({ displays = [], presentation = null, maxim
   const bundles = new Map(), frozenCauses = [];
   for (const value of causes.values()) {
     const outcomes = [...new Set(value.intents.map(causalIntentOutcome))], outcome = outcomes.length > 1 ? 'mixed' : outcomes[0] || 'unconfirmed';
-    const cause = freeze({ ...value, glyph: causalActionGlyph(value), outcome, intents: freeze(value.intents), mixes: freeze(value.mixes) }); frozenCauses.push(cause);
+    const cause = freeze({ ...value, glyph: causalActionGlyph(value), outcome, suppressed: value.intents.some(causalSourceSuppression), intents: freeze(value.intents), mixes: freeze(value.mixes) }); frozenCauses.push(cause);
     if (cause.identityConflict) { summary.conflicts++; continue; }
+    if (cause.referenceKind === 'intent-only') { summary.unlocated++; continue; }
     if (!presentation) { summary.pending++; continue; }
     if (cause.worldId !== presentation.worldId || cause.generation !== presentation.generation) { summary.sourceMismatch++; continue; }
     if (cause.tick == null || cause.tick > presentation.physicalTick) { summary.pending++; continue; }
@@ -85,14 +91,15 @@ export function explainCausalVisual(cause, intentIndex = 0) {
   const event = cause?.intents[intentIndex];
   if (!cause || !event) return 'This cause or intent is no longer retained. It cannot be rebound to a current actor.';
   const mix = cause.mixes?.[intentIndex], applied = event.receipts.filter(isCausalBodyApplication);
-  const stages = [`Physical fact: ${cause.eventId}; ${cause.recorded ? 'observed source retained' : 'reference only; fact not retained'}; ${cause.action || cause.kind || 'unrecorded action'}; source tick ${cause.tick ?? 'unknown'}; actor ${cause.actorId ?? 'shared/unknown'} (${cause.actorState}).`,
+  const stages = [cause.referenceKind === 'intent-only' ? 'Physical fact: no source event ID retained. This is an unrooted intent reference; no physical event is invented.' : `Physical fact: ${cause.eventId}; ${cause.recorded ? 'observed source retained' : 'reference only; fact not retained'}; ${cause.action || cause.kind || 'unrecorded action'}; source tick ${cause.tick ?? 'unknown'}; actor ${cause.actorId ?? 'shared/unknown'} (${cause.actorState}).`,
     ...(cause.identityConflict ? ['Conflicting retained source copies: physical attribution and projection are unavailable; no actor is substituted.'] : []),
     `Source binding: ${cause.sourceKey || 'unrecorded'}; world ${cause.worldId}; generation ${cause.generation}.`,
     `Observed coordinate: ${cause.point ? `${cause.point.x}, ${cause.point.y} (${cause.point.evidence})` : 'unrecorded; no nearest-actor fallback'}.`,
     `Mapping/eligibility: ${event.mappingId || 'unknown'}; historical graph revision ${event.graphRevision ?? 'unknown'}; definition revision ${event.mappingRevision ?? 'unknown'}; ${event.mappingEvidence || 'unrecorded construction'}; individual eligibility receipt unrecorded.`,
     `Intent: ${event.intentId}; ${event.kind}; batch ${event.batchId}; voice ${event.voiceId || 'unknown'}; target lane ${event.laneId || 'unknown'}; voice owner actor ${event.actorId ?? 'shared/unknown'}; frozen pitch ${event.pitchCents ?? 'unknown'} cents; velocity ${event.velocity01 ?? 'unknown'}.`,
+    ...explainCausalIntentLineage(event),
     `Admission/scheduling: ${causalIntentOutcome(event)}.`,
-    ...event.receipts.map(receipt => `${receipt.sinkId || 'Unknown sink'}: ${receipt.status || 'unknown'} / ${receipt.stage || 'unknown'}; ${receipt.reason || 'no reason reported'}; target ${receipt.targetFrame ?? 'unknown'} ${receipt.targetTimeDomain || 'unreported domain'}; execution ${receipt.executionEpoch || 'unknown'}.`),
+    ...event.receipts.map(receipt => `${receipt.sinkId || 'Unknown sink'}: ${receipt.status || 'unknown'} / ${receipt.stage || 'unknown'}; ${receipt.reason || 'no reason reported'}; target ${receipt.targetFrame ?? 'unknown'} ${receipt.targetTimeDomain || 'unreported domain'}; execution ${receipt.executionEpoch || 'unknown'}${receipt.terminalState ? '; terminal ' + receipt.terminalState : ''}.`),
     ...(applied.length ? applied.map(receipt => `Local command application: processor acknowledged frame ${receipt.appliedFrame} at ${receipt.sampleRate} Hz; body ${receipt.bodyInstanceId}; node ${receipt.nodeId}; graph ${receipt.graphDefinitionHash}; owner ${receipt.owner}, generation ${receipt.ownerGeneration}, route revision ${receipt.ownerRouteRevision}; execution ${receipt.executionEpoch}. Shared-body/tail PCM and individual audibility remain unconfirmed.`) : ['Local command application: no qualified individually correlated processor receipt retained.']),
     'Local render: individual PCM/audibility unrecorded. Shared-body/tail output cannot be attributed to this actor from an aggregate meter.',
     'Receiver/measured sink: unrecorded; API submission is not acoustic evidence.',

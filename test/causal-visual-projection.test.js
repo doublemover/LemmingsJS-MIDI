@@ -12,6 +12,10 @@ const displays = events => [{ lane: { id: 'lane-1' }, mix: {}, evidence: { histo
 const project = (events, options = {}) => projectCausalHistory({ displays: displays(events), presentation: presentation(), ...options });
 
 describe('world-projected historical causal marks', () => {
+  it('retains zero-source recovery and boundary intents as distinct text references without inventing physical IDs or marks', () => {
+    const value = project([intent('boundary', { sources: [], kind: 'end' }), intent('other-boundary', { sources: [], kind: 'end' })]); expect(value.causes).to.have.length(2); expect(new Set(value.causes.map(cause => cause.key)).size).to.equal(2); expect(value.summary).to.include({ unrooted: 2, unlocated: 2 }); expect(value.marks).to.have.length(0);
+    expect(value.causes[0]).to.include({ eventId: null, referenceKind: 'intent-only', actorId: null }); expect(explainCausalVisual(value.causes[0])).to.include('no physical event is invented').and.include('boundary');
+  });
   it('requires the exact processor application, clock, body, graph and owner evidence before describing an applied command', () => {
     const receipt = { status: 'accepted', stage: 'body-strike-applied', applicationEvidence: 'processor-frame-acknowledged', appliedFrame: 128, targetFrame: 128, targetTimeDomain: 'audio-sample-frames', sampleRate: 48000, bodyInstanceId: 'a'.repeat(64), graphDefinitionHash: 'b'.repeat(64), executionEpoch: 'execution', owner: 'owner', ownerGeneration: 0, ownerRouteRevision: 1, nodeId: 'skin' };
     expect(causalIntentOutcome(intent('applied', { receipts: [receipt] }))).to.equal('processor-applied');

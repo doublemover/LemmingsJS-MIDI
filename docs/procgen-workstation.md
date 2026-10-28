@@ -548,3 +548,22 @@ Explicit activation rearms that default route; catalog refresh, inactive-device
 removal and reconnect do not implicitly rearm it. Restored physical intents can
 therefore report their own construction and submission receipts after a fresh
 activation, rather than borrowing the previous document's output state.
+
+Cause explanations also retain the producer's score epoch, simulation tick and
+subtick, beat, precision, source milliseconds and completed tick duration.
+Onset/action IDs, transfer policy, previous lane/voice, requested crossfade and
+termination reason remain historical values. Missing fields stay unknown;
+changing the current transport or mapping does not reconstruct them.
+
+Queued cancellation (⊘), MIDI release API submission (↘), producer-reported
+destination suppression (∅), rejection (×) and degradation (!) have separate
+readouts. A release submitted after an onset does not erase the earlier
+submission. Applied body commands retain their earlier application receipt
+when Panic later cancels their finite exciter. Receiver/audibility evidence
+remains separate from all of these states.
+
+Recovery and mapping-boundary end intents may have no physical-event ID.
+**Cause history** retains these as **Unrooted intent** text entries with their
+actual voice, reason and producer coverage. They have no world mark or invented
+physical event. Source coverage reports the producer's own completeness/drop
+count separately from missing observer references and retained-window expiry.

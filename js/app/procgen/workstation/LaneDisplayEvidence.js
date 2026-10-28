@@ -1,5 +1,6 @@
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { procgenLaneIndex } from './ProcgenProjectIndex.js';
+import { copyCausalIntentLineage } from './CausalIntentLineage.js';
 
 let nextOwner = 0;
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512 ? value : null;
@@ -7,7 +8,7 @@ const label = value => typeof value === 'string' ? value.slice(0, 160) : null;
 const integer = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const freeze = Object.freeze;
 const copyReceipt = receipt => freeze({ intentId: id(receipt.intentId), batchId: id(receipt.batchId), generation: integer(receipt.generation),
-  sinkId: id(receipt.sinkId), executionEpoch: id(receipt.executionEpoch), status: label(receipt.status), stage: label(receipt.stage), reason: label(receipt.reason),
+  sinkId: id(receipt.sinkId), executionEpoch: id(receipt.executionEpoch), status: label(receipt.status), stage: label(receipt.stage), reason: label(receipt.reason || receipt.terminal?.reason),
   targetFrame: integer(receipt.targetFrame), targetTimeDomain: label(receipt.targetTimeDomain), outputId: id(receipt.outputId), terminalState: label(receipt.terminal?.state), outputRequested: receipt.outputRequested !== false,
   appliedFrame: integer(receipt.appliedFrame), applicationEvidence: label(receipt.applicationEvidence), sampleRate: integer(receipt.sampleRate), bodyInstanceId: id(receipt.bodyInstanceId),
   graphDefinitionHash: id(receipt.graphDefinitionHash), nodeId: id(receipt.nodeId), owner: id(receipt.owner), ownerGeneration: integer(receipt.ownerGeneration), ownerRouteRevision: integer(receipt.ownerRouteRevision) });
@@ -80,7 +81,7 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
             actorId: typeof fact?.actorId === 'number' ? integer(fact.actorId) : id(fact?.actorId), actorState: 'past-reference', terminationTick: null, sequence: integer(fact?.causalSequence), laneIndex: integer(fact?.laneId), point: factPoint(fact) }));
         }
         const record = freeze({ intentId: intent.intentId, sourceKey, worldId: id(batch.worldId), laneId, laneIndex: integer(typeof intent.laneId === 'number' ? intent.laneId : procgenLaneIndex(lanes).get(laneId)), batchId: batch.batchId, generation: batch.generation, tick: batch.tick, actorState: 'past-reference', terminationTick: null,
-          actorId: typeof intent.actorId === 'number' ? integer(intent.actorId) : id(intent.actorId), voiceId: id(intent.voiceId), mappingId: id(intent.mappingId),
+          actorId: typeof intent.actorId === 'number' ? integer(intent.actorId) : id(intent.actorId), voiceId: id(intent.voiceId), mappingId: id(intent.mappingId), ...copyCausalIntentLineage(intent, batch),
           graphRevision: integer(intent.graphRevision) ?? integer(provenance?.graphRevision), mappingRevision: integer(provenance?.mappingRevision), mappingEvidence: provenance ? 'canonical-intent-construction' : 'unrecorded', kind: label(intent.kind), sourceKind: label(intent.physicalSourceKind), action: label(intent.physicalAction),
           pitchCents: Number.isFinite(intent.pitch?.cents) ? intent.pitch.cents : null, velocity01: Number.isFinite(intent.velocity01) ? intent.velocity01 : null,
           sources: freeze(sources), omittedSources: intent.sourceEventIds.length - sources.length, receipts: freeze([]), omittedReceipts: 0 });

@@ -7522,3 +7522,40 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Full CI at ac8c23fc is green: **6,554 coverage cases / 81 desktop boundaries**,
   all checks, with Ready master capture at 55,168 frames and no reported clock
   discontinuity. This qualifies all prior work and excludes continuation294.
+
+### Continuation 295 — exact producer lineage and complete outcome distinctions
+
+- Retain bounded immutable score epoch/tick/subtick/beat/precision and source
+  milliseconds/tick duration, onset/action IDs, transfer and prior voice/lane,
+  requested crossfade, termination reason and producer completeness/drop count.
+  Share one copy/explanation adapter between OLED and causal history. Keep
+  missing fields unknown and avoid changes to canonical intent/take bytes.
+- Distinguish queued cancellation, driver release submission, source suppression,
+  rejection, degradation and processor command application. A body Panic keeps
+  its earlier applied frame while reporting the later canceled exciter. Retain
+  typed terminal reasons and keep API release separate from receiver evidence.
+- Preserve zero-source recovery/mapping-boundary ends as explicitly unrooted,
+  text-only intent references. They keep actual voice/reason/time/coverage, with
+  no invented physical source ID, actor or world mark. Native history labels and
+  headings make this distinction visible; all references share existing bounds.
+- Add canonical producer/output/history cases for carry, revoice, release/attack,
+  silent handoff, unavailable destinations, real owned-MIDI voice-budget denial,
+  queued cancellation versus submitted release, observer-missing trace, actual
+  incomplete-source recovery and expiry. Extend actual finite-body kernel/host
+  coverage through Panic; keep shared energy separate from actor audibility.
+- Extend native browser journeys with exact producer time, real shared offline
+  convolution tail output that cannot upgrade individual render evidence, and
+  actual held-mapping replacement with keyboard/text-only old-voice inspection.
+- Scan all 227 remaining open issues for desktop-scope wording and correct the two contradictory original
+  UI acceptance lines: #993's 390px proposal and #1227's unspecified narrow layout.
+  Both now require the established 1920x1080 desktop minimum and larger desktop
+  resolutions. Existing out-of-scope and historical device notes stay explicit.
+- Final grouped qualification passes **433 focused Node / 30 affected desktop
+  browser cases**, plus the preceding wider 51-case browser cohort. Formatting,
+  critical types, undefined calls and unchanged 10-component/340-file provenance
+  pass. Six changed modules record 97.88% lines and 83.63% branches in the focused
+  coverage collection; repository full-suite coverage thresholds stay unchanged.
+- Full CI at 3b0d476a passes **6,561 coverage cases / 81 desktop boundaries**, all
+  checks. Its capture reports Partial after a 128-frame render-clock discontinuity,
+  rather than Ready; the earlier ac8c23fc Ready receipt remains separately valid.
+  This checkpoint excludes continuation295, whose full CI must qualify #997.

@@ -21,6 +21,7 @@ describe('frozen causal view selection', () => {
       select.value = 'original'; select.dispatchEvent(new dom.window.Event('change')); expect(details.textContent).to.include('target lane origin').and.include('Current lane mix: not suppressed; target origin; mix revision 8');
       const frozen = details.textContent; values = []; view.render(values); expect(details.textContent).to.equal(frozen); expect(view.dialog.textContent).to.include('left the retained window');
       view.dialog.querySelectorAll('button')[0].click(); expect(details.textContent).to.equal(frozen); expect(view.dialog.textContent).to.include('previous frozen explanation is preserved');
+      values = [{ evidence: { history: [{ ...event, intentId: 'recovery', kind: 'end', terminationReason: 'incomplete-source', sources: [] }] } }]; view.render(values); view.historyButton.click(); expect(view.layer.querySelector('.studio-causal-mark')).to.equal(null); expect(view.dialog.querySelector('select').textContent).to.include('Unrooted intent'); expect(details.textContent).to.include('no physical event is invented'); expect(view.dialog.querySelector('h2').textContent).to.equal('Intent without a retained physical source');
       identity = 'replacement'; view.render([]); expect(view.dialog.open).to.equal(false); mark.click(); expect(view.dialog.open).to.equal(false); expect(details.textContent).to.equal('');
     } finally { view.dispose(); dom.window.close(); }
   });
