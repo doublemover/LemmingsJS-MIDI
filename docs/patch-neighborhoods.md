@@ -76,10 +76,26 @@ samples. A/B are discrete choices and share the existing explicit monitor route,
 foreground ownership, stop, source fencing and eight-millisecond edge fades.
 The comparison retains both actual PCM hashes and level receipts.
 
+The advanced revision editor changes an explicit user name or unlocked macro
+defaults only. It creates a separate content-derived branch at the next numeric
+revision through compiler `typed-recipes-v15`; it never reruns the neighborhood.
+The pack binds the complete immediate parent reference, original neighborhood,
+and exact previous/new values. Validation reconstructs the expected definition
+and rejects hidden changes to parameters, mappings, bindings, assets or policy.
+Existing v12/v13/v14 content remains supported. Repeated edits retain bounded
+immediate-parent provenance rather than recursively embedding older packs.
+
+Editing a pinned candidate retains that pin and its exact prepared comparison.
+The child starts without Keep or audition admission. Explicit Keep and a fresh
+same-take comparison are required before Apply. Draft edits, Create revision and
+late completions cannot select a new playing sound. A/B choices fence superseded
+asynchronous work; the preview strip reports actual cue playback, including its
+natural completion, separately from the last accepted comparison side.
+
 Compiled candidates remain `compiled-data-not-render-qualified` until the real
 reference path succeeds. This is a new local realization of captured intents;
-historic receiver timbre and acoustic output are not recreated. Editable pinned
-fork revisions, the broader sparse/dense finite-audio corpus, musical-relatedness
-listening review and actual assistive-technology qualification remain open for
-#1112/#1204. Schema validation and numerical diversity alone establish no
-listening result.
+historic receiver timbre and acoustic output are not recreated. The broader
+sparse/dense finite-audio corpus, graft-specific parent replacement journey,
+musical-relatedness listening review and actual assistive-technology
+qualification remain open for #1112/#1204. Schema validation and numerical
+diversity alone establish no listening result.

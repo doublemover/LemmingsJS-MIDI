@@ -336,6 +336,7 @@
         "js/midi/content/OwnedPcmFormat.js",
         "js/midi/content/OwnedStretchCoreIdentity.js",
         "js/midi/content/PairedModalBodyProfile.js",
+        "js/midi/content/PatchForkProvenance.js",
         "js/midi/content/PatchNeighborhoodProvenance.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
@@ -391,8 +392,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 272,
-      "sha256": "f30cef0f97cab6f2eabfa267df7545065ec0f9032ee16c83ceeb732c8e4ff7e1"
+      "fileCount": 273,
+      "sha256": "23b7d2e5d78fd52f84f4f160bfcef47ab1b8fb2a35e995e8f7ce5cf3ac43fb98"
     },
     {
       "id": "lemmings-timing-worker-source",

@@ -11,7 +11,7 @@ const retire = async lease => {
   if (result === false || result?.outcome && result.outcome !== 'complete') throw fail('unknown-retirement', 'Comparison retirement remains unresolved.');
 };
 
-export function createPatchVariationSession({ getSourceIdentity, generate = generatePatchNeighborhood, compare, keep, apply,
+export function createPatchVariationSession({ getSourceIdentity, generate = generatePatchNeighborhood, compare, keep, apply, revise,
   onChange = () => {}, maxRetainedBytes = 16 * 1048576 } = {}) {
   if (typeof getSourceIdentity !== 'function' || typeof generate !== 'function' || !Number.isSafeInteger(maxRetainedBytes) || maxRetainedBytes < 65536 || maxRetainedBytes > 64 * 1048576)
     throw new TypeError('A variation session needs a bounded source identity and generator.');
@@ -26,11 +26,13 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
     qualification: entry.candidate?.qualification || null, compared: comparison?.entry === entry, admitted: !!entry.admission,
     reference: entry.candidate?.reference ? { packHash: entry.candidate.reference.packHash, patchId: entry.candidate.reference.patchId,
       revision: entry.candidate.reference.revision, definitionHash: entry.candidate.reference.definitionHash } : null,
-    provenance: entry.candidate?.provenance || null } );
+    provenance: entry.candidate?.provenance || null, fork: entry.candidate?.fork || null,
+    macros: (entry.candidate?.reference?.definition?.macros || []).map(macro => ({ id: macro.id, name: macro.name, default01: macro.default01,
+      locked: !!entry.candidate.provenance?.locks?.macros?.includes(macro.id) || (macro.targets || []).some(target => entry.candidate.provenance?.locks?.parameters?.includes(target.parameter)) })) } );
   const snapshot = () => freezeData({ generation, parent: binding ? { identity: binding.identity, name: binding.reference.definition.name,
     revision: binding.reference.revision, packHash: binding.reference.packHash, definitionHash: binding.reference.definitionHash } : null,
   rows: rows.map(describe), pins: [...pins.values()].map(describe), generating: !!pending, retiring, retainedBytes, maxRetainedBytes,
-  comparison: comparison ? { id: comparison.entry.id, candidateId: comparison.entry.candidate.id } : null,
+  comparison: comparison ? { id: comparison.entry.id, candidateId: comparison.entry.candidate.id, name: comparison.entry.candidate.name, revision: comparison.entry.candidate.reference?.revision } : null,
   unknownRetirement, unresolvedLeases: unresolved.size, lastOutcome, disposed });
   const publish = () => { if (!disposed) onChange(snapshot()); };
   const collect = () => {
@@ -113,31 +115,46 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
     pins.set(id, entry); publish(); return describe(entry);
   };
   const unpin = id => { const removed = pins.delete(id); collect(); publish(); return removed; };
-  const act = (id, kind) => {
+  const act = (id, kind, changes = null) => {
     const entry = requireEntry(id); check(entry);
     if (retiring || actions.size >= 4) throw fail('action-busy', 'Retire earlier variation actions before starting another.');
     if (entry.busy) throw fail('candidate-busy', 'This candidate already has a pending action.');
-    const callback = { compare, keep, apply }[kind];
+    const callback = { compare, keep, apply, edit: revise }[kind];
     if (typeof callback !== 'function') throw fail('capability-unavailable', 'This source cannot ' + kind + ' candidates yet.');
     if (kind === 'compare' && (!binding.identity.takeId || !Number.isSafeInteger(binding.identity.takeRevision))) throw fail('missing-reference-take', 'Select an immutable captured physical take before comparing.');
     if (kind === 'apply' && (!entry.kept || !entry.admission)) throw fail('not-admitted', 'Keep and qualify this exact candidate before applying it to the lane.');
+    if (kind === 'edit' && pending) throw fail('generation-busy', 'Finish or cancel generation before creating an exact revision.');
     entry.busy = true;
-    const controller = new AbortController(), token = kind === 'compare' ? ++actionSerial : actionSerial, source = binding;
+    const controller = new AbortController(), token = kind === 'compare' ? ++actionSerial : actionSerial, source = binding, editGeneration = generation;
     const operation = { controller, finished: null }; actions.add(operation);
-    const alive = () => current(entry.key) && !controller.signal.aborted && (kind !== 'compare' || token === actionSerial);
+    const alive = () => current(entry.key) && !controller.signal.aborted && (kind !== 'compare' || token === actionSerial) && (kind !== 'edit' || editGeneration === generation);
     operation.finished = (async () => {
       let lease = null;
       try {
         if (kind === 'compare') { const previous = comparison; comparison = null; await retireOwned(previous?.entry, previous?.lease); }
         if (!alive()) throw fail('changed-source', 'The variation action was superseded.');
         const result = await callback({ candidate: entry.candidate, source, signal: controller.signal, isCurrent: alive,
-          kept: entry.kept || null, admission: entry.admission || null });
+          kept: entry.kept || null, admission: entry.admission || null, changes });
         if (kind === 'compare') lease = result;
         if (kind !== 'apply' && !alive()) throw fail('changed-source', 'The completed variation action belongs to an older source.');
         if (kind === 'compare') {
           if (!lease || typeof lease.release !== 'function') throw fail('invalid-comparison', 'Comparison requires an owned cue lease.');
           comparison = { entry, lease }; entry.admission = lease.admission || null; lease = null;
         } else if (kind === 'keep') entry.kept = result;
+        else if (kind === 'edit') {
+          if (result?.state !== 'compiled' || result.id === entry.candidate.id || !(result.reference?.revision > entry.candidate.reference?.revision)) throw fail('invalid-revision', 'An edit must return a distinct complete candidate revision.');
+          const bytes = canonicalDataText(result, { maxBytes: maxRetainedBytes, maxNodes: 800000 }).bytes.byteLength * 2;
+          if (retainedBytes + bytes > maxRetainedBytes) throw fail('capacity', 'Retained revision capacity reached. Unpin an earlier candidate before editing.');
+          const nextId = 'revision:' + result.reference.patchId + '@' + result.reference.revision;
+          if (entries.has(nextId)) throw fail('existing-revision', 'This exact revision is already retained.');
+          if (rows.length !== 4) {
+            rows = Array.from({ length: 4 }, (_, slot) => ({ id: 'generation:' + generation + ':slot:' + slot, slot, generation, key: entry.key, state: 'empty', bytes: 0, candidate: null, busy: false }));
+            for (const row of rows) entries.set(row.id, row);
+          }
+          const next = { id: nextId, slot: entry.slot, generation, key: entry.key,
+            state: 'compiled', bytes, candidate: freezeData(result), busy: false };
+          rows[entry.slot] = next; entries.set(next.id, next); retainedBytes += bytes; report('edit-complete', 'Created exact revision ' + result.reference.revision + ' · ' + result.name + '.'); return describe(next);
+        }
         report(kind + '-complete', kind + ' completed for ' + entry.candidate.name + '.'); return result;
       } catch (error) {
         try { await retireOwned(entry, lease); } catch (retirementError) { report('unknown-retirement', retirementError.message); throw retirementError; }
@@ -148,6 +165,7 @@ export function createPatchVariationSession({ getSourceIdentity, generate = gene
     publish(); return operation.finished;
   };
   return Object.freeze({ bind, generate: start, pin, unpin, compare: id => act(id, 'compare'), keep: id => act(id, 'keep'), apply: id => act(id, 'apply'),
+    revise: (id, changes) => act(id, 'edit', changes),
     drainGeneration: () => Promise.allSettled([...generations].map(operation => operation.finished)),
     stop, cancel() { cancel(); for (const entry of rows) if (entry.state === 'pending') { entry.state = 'canceled'; entry.code = 'canceled'; } publish(); }, snapshot,
     async dispose() {

@@ -1,6 +1,7 @@
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { prepareSoundContentPack } from '../../midi/content/SoundContentPack.js';
 import { generatePatchNeighborhood } from '../../midi/content/PatchNeighborhood.js';
+import { revisePatchCandidate } from '../../midi/content/PatchForkRevision.js';
 import { findPatchNeighborhood } from '../../midi/content/AuthoredPatchNeighborhoods.js';
 import { planPatchComparisonLevels } from '../../midi/content/PatchComparisonLevels.js';
 import { createPatchVariationSession } from './PatchVariationSession.js';
@@ -34,7 +35,7 @@ export function createPatchVariationOwner({ window, audio, resourceBudget, getSo
   const retirement = createProcgenRetirementScope(), reader = createSoundContentReader({ resourceBudget, jobs }), archiver = createSoundContentArchiver({ resourceBudget, jobs });
   const registry = createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget });
   const native = createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs, resourceBudget, getCatalog });
-  const cue = createPreparedWavePrelisten({ audio, resourceBudget });
+  const cue = createPreparedWavePrelisten({ audio, resourceBudget, onState: () => publish() });
   let disposed = false, phase = 'idle', error = null, parentLease = null, preparedSource = null, take = null, serial = 0, preparing = null, retained = null;
   let parentRenderer = null, candidateRenderer = null, activeComparison = null, playing = null;
   const identity = () => {
@@ -72,12 +73,14 @@ export function createPatchVariationOwner({ window, audio, resourceBudget, getSo
   const listen = async side => {
     const record = activeComparison;
     if (!record || !['parent', 'candidate'].includes(side)) throw failure('comparison-unavailable', 'Prepare a candidate comparison first.');
-    check(record.signal, record.isCurrent); await settled(cue.stop()); check(record.signal, record.isCurrent);
+    const choice = (record.choiceSerial || 0) + 1; record.choiceSerial = choice;
+    const currentChoice = () => activeComparison === record && record.choiceSerial === choice && record.isCurrent();
+    check(record.signal, currentChoice); await settled(cue.stop()); check(record.signal, currentChoice);
     const index = side === 'parent' ? 0 : 1, file = record.files[index];
-    const result = await cue.play({ file, level01: record.levels.levels[index], isCurrent: () => activeComparison === record && record.isCurrent(), onReveal,
+    const result = await cue.play({ file, level01: record.levels.levels[index], isCurrent: currentChoice, onReveal,
       source: { name: side === 'parent' ? 'A · ' + record.source.reference.definition.name : 'B · ' + record.sound.name,
         kind: 'same-take-patch-comparison', revision: String(record.sound.reference.revision), sourceRef: file.manifest.pcmHash } });
-    check(record.signal, record.isCurrent); playing = side; publish(); return result;
+    check(record.signal, currentChoice); playing = side; publish(); return result;
   };
   const compare = async ({ candidate: sound, source, signal, isCurrent }) => {
     check(signal, isCurrent);
@@ -114,6 +117,7 @@ export function createPatchVariationOwner({ window, audio, resourceBudget, getSo
     } finally { if (stage) try { await settled(stage.discard()); } catch (caught) { unknown.add(stage); throw caught; } }
   };
   const session = createPatchVariationSession({ getSourceIdentity: identity, generate: options => generatePatchNeighborhood({ ...options, compile }), compare, keep,
+    revise: ({ candidate, source, changes, signal, isCurrent }) => revisePatchCandidate({ ...changes, candidate, descriptor: source.descriptor, signal, isCurrent, compile }),
     apply: async ({ candidate, source, admission, signal, isCurrent }) => {
       check(signal, isCurrent); const owned = admissions.get(admission);
       if (!owned || owned.candidateHash !== candidate.reference.definitionHash || owned.identity !== canonicalDataText(source.identity).text) throw failure('admission-unavailable', 'Re-compare this exact candidate and physical take.');
@@ -124,9 +128,9 @@ export function createPatchVariationOwner({ window, audio, resourceBudget, getSo
   const state = () => Object.freeze({ phase, error, take, sourceCurrent: !!preparedSource && canonicalDataText(preparedSource.identity).text === canonicalDataText(identity()).text,
     parentOptions: preparedSource ? { parameters: preparedSource.descriptor.parameters.map(parameter => parameter.id), macros: preparedSource.reference.definition.macros.map(macro => ({ id: macro.id, name: macro.name })) } : null,
     neighborhood: preparedSource ? findPatchNeighborhood(preparedSource.descriptor.engineId) : null,
-    session: session.snapshot(), playing, comparison: activeComparison ? Object.freeze({ levels: activeComparison.levels, takeId: activeComparison.source.take.takeId,
+    session: session.snapshot(), playing: cue.state().playing ? playing : null, comparison: activeComparison ? Object.freeze({ levels: activeComparison.levels, takeId: activeComparison.source.take.takeId,
       takeRevision: activeComparison.source.take.revision, sourceCanonicalHash: activeComparison.files[0].manifest.sourceCanonicalHash,
-      pcmHashes: Object.freeze(activeComparison.files.map(file => file.manifest.pcmHash)), candidateHash: activeComparison.sound.reference.definitionHash }) : null,
+      pcmHashes: Object.freeze(activeComparison.files.map(file => file.manifest.pcmHash)), candidateHash: activeComparison.sound.reference.definitionHash, selectedSide: playing }) : null,
     unresolvedRetirement: unknown.size, disposed });
   const prepare = async () => {
     if (disposed || unknown.size || operations.size >= 2) throw failure('owner-unavailable', 'Variation preparation is unavailable or busy.');
@@ -169,7 +173,7 @@ export function createPatchVariationOwner({ window, audio, resourceBudget, getSo
     })();
     return operation.finished;
   };
-  return Object.freeze({ state, prepare, listen, revealMonitor: onReveal, pin: session.pin, unpin: session.unpin, keep: session.keep, compare: session.compare, apply: session.apply,
+  return Object.freeze({ state, prepare, listen, revealMonitor: onReveal, pin: session.pin, unpin: session.unpin, keep: session.keep, compare: session.compare, apply: session.apply, revise: session.revise,
     generate: options => { if (phase !== 'ready' || preparing) return Promise.reject(failure('parent-unavailable', 'Prepare the current parent before generating.')); return session.generate(options); },
     cancel: session.cancel, stop: session.stop,
     subscribe(listener) { if (listeners.size >= 4) throw failure('listener-capacity', 'Variation observer capacity reached.'); listeners.add(listener); listener(state()); return () => listeners.delete(listener); },

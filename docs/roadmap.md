@@ -8036,3 +8036,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   retain editable exact fork revisions, broader sparse/dense finite-audio and
   relatedness/listening qualification, additional source/noise/pressure cases
   and actual assistive-technology review. No full local Node suite is repeated.
+
+### Continuation 309 — explicit candidate revisions and truthful cue state
+
+- Create a distinct exact branch for explicit names and unlocked macro defaults.
+  Compiler v15 binds the complete immediate parent, original neighborhood and
+  previous/new values; reconstruct and compare the entire definition to reject
+  hidden changes. Preserve v12/v13/v14 content, exact assets and rights closure.
+  Repeated edits retain bounded ancestry without embedding recursive packs.
+- Add the advanced revision editor with shared exact-entry knobs. Old pins and
+  prepared comparisons survive; a child requires its own Keep and same-take
+  admission before Apply. Fence generation, edit completion and target changes.
+- Report actual cue playback through natural completion. Serialize rapid A/B
+  choices and fence superseded asynchronous work without losing the retained
+  comparison or allowing an old action message to overwrite a newer one.
+- All74 focused Node cases pass under scoped coverage. Both native variation
+  journeys pass; an extended physical-phrase journey also passes with a revised
+  macro/name, unchanged old pin/comparison, fresh child Compare, Apply and Undo.
+  Only the browser fixture changed between those native runs. No full local
+  suite is repeated; exact-head CI remains required after publication.
+- Promote031e0e15 as the latest fully green checkpoint:6712 Node passes,10
+  pre-existing pending,127 browser passes, all14 workstation capabilities,
+  benchmark/static/policy/dependency gates green. Coverage:90.22% lines and
+  statements,83.58% branches,88.27% functions. Its master capture is Ready at
+  107136 finite frames with no clock gap. Preserve earlier partial/failing runs.
+- #970 is closed completed. #1112/#1204 retain the graft-specific replacement
+  journey, broader sparse/dense finite-audio corpus, expanded source/pressure
+  cases, human relatedness/listening and actual assistive-technology review.

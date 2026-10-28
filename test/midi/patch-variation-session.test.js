@@ -8,6 +8,9 @@ reference: { packHash: 'a'.repeat(64), definitionHash: String(revision).repeat(6
 const candidate = (slot, suffix = '', extra = '') => ({ id: 'candidate.' + slot + suffix, slot, state: 'compiled', name: 'Candidate ' + slot,
   provenance: { changes: [{ parameter: 'size', previous: 1, value: 1.1, unit: 'ratio' }] }, compiled: { pack: extra }, qualification: 'compiled-data-not-render-qualified' });
 const generate = async options => { for (let slot = 0; slot < options.count; slot++) options.onCandidate(candidate(slot)); return { counts: { compiled: 4, rejected: 0 } }; };
+const referencedCandidate = (slot, revision = 1, suffix = '') => ({ ...candidate(slot, suffix), reference: { patchId: 'candidate.' + slot + suffix,
+  revision, definitionHash: String(revision).repeat(64), definition: { macros: [] } } });
+const generateReferences = async options => { for (let slot = 0; slot < 4; slot++) options.onCandidate(referencedCandidate(slot)); return { counts: { compiled: 4, rejected: 0 } }; };
 const rejects = async (action, code) => { let error; try { await action(); } catch (failure) { error = failure; } expect(error?.code).to.equal(code); };
 const fixture = async (callbacks = {}) => {
   let current = source(); const session = createPatchVariationSession({ getSourceIdentity: () => current.identity, generate, ...callbacks });
@@ -16,6 +19,41 @@ const fixture = async (callbacks = {}) => {
 };
 
 describe('source-bound bounded variation session', () => {
+  it('creates a distinct unqualified revision while retaining the old exact pin and active comparison', async () => {
+    let comparisonCurrent, releases = 0;
+    const f = await fixture({ generate: generateReferences, keep: async () => ({ kept: true }), compare: async ({ isCurrent }) => { comparisonCurrent = isCurrent; return { admission: {}, release() { releases++; } }; },
+      revise: async ({ candidate: original }) => ({ ...referencedCandidate(original.slot, 2, '.edit'), name: 'Edited exact revision' }), apply: async () => { throw new Error('Unqualified revision must not apply'); } });
+    await f.session.generate({}); const old = f.session.snapshot().rows[0]; f.session.pin(old.id); await f.session.keep(old.id); await f.session.compare(old.id);
+    const edited = await f.session.revise(old.id, { name: 'Edited exact revision' }), state = f.session.snapshot();
+    expect(edited.id).not.to.equal(old.id); expect(edited).to.include({ kept: false, admitted: false, name: 'Edited exact revision' });
+    expect(edited.reference.revision).to.equal(2); expect(state.pins[0].reference).to.deep.equal(old.reference); expect(state.comparison.id).to.equal(old.id);
+    expect(comparisonCurrent()).to.equal(true); expect(releases).to.equal(0); await rejects(() => f.session.apply(edited.id), 'not-admitted');
+    await f.session.dispose(); expect(releases).to.equal(1);
+  });
+  it('refuses an old revision completion after a new batch replaces the slots', async () => {
+    const gate = deferred(), f = await fixture({ generate: generateReferences, revise: async ({ candidate: original }) => { await gate.promise; return referencedCandidate(original.slot, 2, '.late'); } });
+    await f.session.generate({}); const id = f.session.snapshot().rows[0].id, pending = f.session.revise(id, { name: 'Late' });
+    await f.session.generate({}); const newer = f.session.snapshot().rows.map(row => row.id); gate.resolve(); await rejects(() => pending, 'changed-source');
+    expect(f.session.snapshot().rows.map(row => row.id)).to.deep.equal(newer); await f.session.dispose();
+  });
+  it('retains the original row on failed revision admission and bounded data pressure', async () => {
+    for (const mode of ['invalid', 'capacity']) {
+      const f = await fixture({ maxRetainedBytes: 65536, generate: generateReferences, revise: async ({ candidate: original }) => mode === 'invalid' ? original :
+        { ...referencedCandidate(original.slot, 2, '.large'), compiled: { text: 'x'.repeat(40000) } } });
+      await f.session.generate({}); const before = f.session.snapshot().rows[0];
+      await rejects(() => f.session.revise(before.id, {}), mode === 'invalid' ? 'invalid-revision' : 'capacity');
+      expect(f.session.snapshot().rows[0].reference).to.deep.equal(before.reference); expect(f.session.snapshot().rows[0].id).to.equal(before.id); await f.session.dispose();
+    }
+  });
+  it('does not edit a partially generated batch or replace an already retained revision twice', async () => {
+    const gate = deferred(); let ready = false;
+    const f = await fixture({ generate: async options => { options.onCandidate(referencedCandidate(0)); if (!ready) await gate.promise; return { counts: { compiled: 1, rejected: 0 } }; },
+      revise: async ({ candidate: original }) => referencedCandidate(original.slot, 2, '.exact') });
+    const pending = f.session.generate({}); const id = f.session.snapshot().rows[0].id; f.session.pin(id);
+    await rejects(() => f.session.revise(id, {}), 'generation-busy'); gate.resolve(); await pending; ready = true;
+    const revised = await f.session.revise(id, {}); await rejects(() => f.session.revise(id, {}), 'existing-revision');
+    expect(f.session.snapshot().rows[0].id).to.equal(revised.id); expect(f.session.snapshot().pins[0].id).to.equal(id); await f.session.dispose();
+  });
   it('accepts its prepared Apply publication as the intentional document revision boundary', async () => {
     let f;
     f = await fixture({ compare: async () => ({ admission: {}, release() {} }), keep: async () => ({ saved: true }),

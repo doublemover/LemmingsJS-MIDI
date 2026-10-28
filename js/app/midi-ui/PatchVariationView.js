@@ -2,14 +2,15 @@ import { createParameterKnob } from '../controls/ParameterKnob.js';
 
 export function createPatchVariationView({ document, window, owner } = {}) {
   if (!document?.createElement || !owner?.subscribe) throw new TypeError('Invalid variation dock.');
-  const listeners = [], profileListeners = [], controls = [], rowViews = new Map(); let disposed = false, profileKey = null, selected = null, coordinates = {}, amount01 = 0.5;
+  const listeners = [], profileListeners = [], controls = [], editControls = [], rowViews = new Map(); let disposed = false, profileKey = null, selected = null, coordinates = {}, amount01 = 0.5;
+  let editTarget = null, editDefaults = {}, messageSerial = 0;
   let parameterLocks = new Set(), macroLocks = new Set(), lastMessage = null;
   const node = (tag, text, className) => { const element = document.createElement(tag); if (text != null) element.textContent = text; if (className) element.className = className; return element; };
   const on = (element, type, callback, bucket = listeners) => { element.addEventListener(type, callback); bucket.push(() => element.removeEventListener(type, callback)); };
   const element = node('section', null, 'studio-variations'); element.setAttribute('aria-label', 'Authored sound variations');
   const parent = node('div', 'Prepare an exact lane instrument.', 'studio-variations-parent'), knobs = node('div', null, 'studio-variations-knobs');
   const status = node('output', 'Generate changes recipe data. Compare uses a saved physical take. Keep and Apply are separate.'); status.setAttribute('role', 'status'); status.setAttribute('aria-label', 'Variation status');
-  const run = action => async () => { try { await action(); } catch (error) { if (!disposed) status.textContent = String(error.message).slice(0, 1024); } };
+  const run = action => async () => { const token = ++messageSerial; try { await action(); } catch (error) { if (!disposed && token === messageSerial) status.textContent = String(error.message).slice(0, 1024); } };
   const button = (label, action, bucket = listeners) => { const value = node('button', label); value.type = 'button'; on(value, 'click', run(action), bucket); return value; };
   const actions = node('div', null, 'studio-sound-actions');
   const prepare = button('Prepare parent', () => owner.prepare());
@@ -25,7 +26,15 @@ export function createPatchVariationView({ document, window, owner } = {}) {
   const seedLabel = node('label', 'Seed '), seed = node('input'); seed.type = 'number'; seed.min = '-2147483648'; seed.max = '2147483647'; seed.step = '1'; seed.value = '0'; seed.setAttribute('aria-label', 'Variation seed'); seedLabel.append(seed);
   const version = node('p'), lockFields = node('fieldset'), legend = node('legend', 'Keep fields unchanged'), outcomes = node('p'), provenance = node('pre');
   provenance.setAttribute('aria-label', 'Selected variation provenance'); lockFields.append(legend);
-  details.append(seedLabel, version, lockFields, outcomes, provenance); advanced.append(summary, details);
+  const editor = node('fieldset', null, 'studio-variations-editor'), editorTitle = node('legend', 'Create a separate candidate revision'); editor.hidden = true;
+  const nameLabel = node('label', 'Name '), editName = node('input'); editName.type = 'text'; editName.maxLength = 160; editName.setAttribute('aria-label', 'Candidate revision name'); nameLabel.append(editName);
+  const editKnobs = node('div', null, 'studio-variations-knobs studio-variations-edit-knobs');
+  const createRevision = button('Create revision', async () => {
+    const target = selected, result = await owner.revise(target, { name: editName.value, macroDefaults: { ...editDefaults } });
+    if (selected === target) selected = result.id; render(owner.state());
+  });
+  editor.append(editorTitle, node('p', 'Pins and the current comparison retain their exact prior sound.'), nameLabel, editKnobs, createRevision);
+  details.append(seedLabel, version, lockFields, outcomes, editor, provenance); advanced.append(summary, details);
   element.append(parent, knobs, actions, status, list, advanced);
   const resetControls = state => {
     const profile = state.neighborhood, key = profile ? profile.id + '@' + profile.version + ':' + state.session.parent?.definitionHash : null;
@@ -64,7 +73,7 @@ export function createPatchVariationView({ document, window, owner } = {}) {
       buttons.append(pin, compare, keep, apply); item.append(choose, state, deltas, buttons);
       view = { id: row.id, item, choose, state, deltas, pin, compare, keep, apply, removers }; rowViews.set(row.id, view);
     }
-    view.choose.textContent = (row.slot + 1) + ' · ' + row.name; view.choose.setAttribute('aria-pressed', String(row.id === selected));
+    view.choose.textContent = (row.slot + 1) + ' · ' + row.name + (row.reference ? ' · r' + row.reference.revision : ''); view.choose.setAttribute('aria-pressed', String(row.id === selected));
     view.item.dataset.selected = String(row.id === selected); view.item.dataset.candidateId = row.candidateId || row.id;
     view.state.textContent = [row.state, row.pinned ? 'pinned' : null, row.kept ? 'kept' : null, row.admitted ? 'reference qualified' : null, row.duplicateLike ? 'duplicate-like parameter data' : null, row.sourceCurrent ? null : 'older source; inspect only', row.reason].filter(Boolean).join(' · ');
     view.deltas.textContent = row.deltas.map(change => change.parameter + ': ' + Number(change.previous.toPrecision(4)) + ' → ' + Number(change.value.toPrecision(4)) + ' ' + change.unit).join(' · ');
@@ -73,15 +82,34 @@ export function createPatchVariationView({ document, window, owner } = {}) {
     view.compare.disabled = !compiled || !row.sourceCurrent || row.busy;
     view.keep.disabled = !compiled || !row.sourceCurrent || row.busy || row.kept;
     view.apply.disabled = !compiled || !row.sourceCurrent || row.busy || !row.kept || !row.admitted;
-    for (const [control, label] of [[view.pin, row.pinned ? 'Unpin' : 'Pin'], [view.compare, 'Compare'], [view.keep, 'Keep'], [view.apply, 'Apply']]) control.setAttribute('aria-label', label + ' ' + row.name);
+    for (const [control, label] of [[view.pin, row.pinned ? 'Unpin' : 'Pin'], [view.compare, 'Compare'], [view.keep, 'Keep'], [view.apply, 'Apply']]) control.setAttribute('aria-label', label + ' ' + row.name + (row.reference ? ' revision ' + row.reference.revision : ''));
     return view;
+  };
+  const renderEditor = (row, state) => {
+    editor.hidden = !row?.reference || row.state !== 'compiled';
+    const key = editor.hidden ? null : row.id;
+    if (key !== editTarget) {
+      for (const { control } of editControls) control.dispose(); editControls.length = 0; editKnobs.replaceChildren(); editTarget = key;
+      editDefaults = Object.fromEntries((row?.macros || []).map(macro => [macro.id, macro.default01])); editName.value = row?.name || '';
+      if (key) for (const macro of row.macros) {
+        const descriptor = { id: 'variation-edit.' + macro.id, name: macro.name + ' revision default', quantity: 'authored-performance-macro', unit: 'normalized',
+          min: 0, max: 1, defaultValue: macro.default01, step: 0.01, fineStep: 0.001, functionalRole: 'timbre' };
+        const control = createParameterKnob({ document, window, descriptor, value: macro.default01, compact: true, contextName: 'Candidate revision · ' + macro.name,
+          readOnly: macro.locked || !row.sourceCurrent, getIdentity: () => editTarget,
+          commit: value => { if (disposed || editTarget !== key || !owner.state().sourceCurrent) return false; editDefaults[macro.id] = value; return true; } });
+        editControls.push({ control, macro }); editKnobs.append(control.element);
+      }
+    }
+    editName.disabled = !row?.sourceCurrent || row.busy;
+    createRevision.disabled = editor.hidden || !row.sourceCurrent || row.busy || state.session.generating;
+    for (const { control, macro } of editControls) control.setState({ value: editDefaults[macro.id], isReadOnly: macro.locked || !row.sourceCurrent, isPending: row.busy });
   };
   function render(state) {
     if (disposed) return;
     resetControls(state);
     const source = state.session.parent;
     parent.textContent = source ? source.name + ' · revision ' + source.revision + ' · ' + (state.sourceCurrent ? 'CURRENT lane parent' : 'PARENT CHANGED; inspect only') +
-      (state.session.comparison ? ' · PREVIEW ' + (state.playing === 'parent' ? 'A parent' : 'B candidate') + '; lane unchanged' : '') : 'Choose a pinned instrument in the Lane page, then Prepare parent.';
+      (state.session.comparison ? ' · ' + (state.playing === 'parent' ? 'PREVIEW A parent' : state.playing === 'candidate' ? 'PREVIEW B ' + state.session.comparison.name + ' · r' + state.session.comparison.revision : 'Comparison prepared') + '; lane unchanged' : '') : 'Choose a pinned instrument in the Lane page, then Prepare parent.';
     const rows = [...state.session.rows, ...state.session.pins.filter(pin => !state.session.rows.some(row => row.id === pin.id))], ids = new Set(rows.map(row => row.id));
     for (const [id, view] of rowViews) if (!ids.has(id)) { for (const remove of view.removers) remove(); view.item.remove(); rowViews.delete(id); }
     for (let index = 0; index < rows.length; index++) { const view = rowFor(rows[index]); if (list.children[index] !== view.item) list.insertBefore(view.item, list.children[index] || null); }
@@ -90,7 +118,8 @@ export function createPatchVariationView({ document, window, owner } = {}) {
     cancel.disabled = !state.session.generating; a.disabled = b.disabled = !state.session.comparison; stop.disabled = !state.session.comparison;
     for (const control of controls) control.setState({ value: control.descriptor.id === 'variation.amount' ? amount01 : coordinates[control.descriptor.id.slice(10)], isReadOnly: !state.sourceCurrent, isPending: state.phase === 'preparing-parent' });
     const selectedRow = rows.find(row => row.id === selected);
-    provenance.textContent = selectedRow ? JSON.stringify({ reference: selectedRow.reference, provenance: selectedRow.provenance, outcome: { state: selectedRow.state, reason: selectedRow.reason } }, null, 2) : 'Select a numbered candidate to inspect its exact revision, source and clamp/constraint receipt.';
+    renderEditor(selectedRow, state);
+    provenance.textContent = selectedRow ? JSON.stringify({ reference: selectedRow.reference, provenance: selectedRow.provenance, revisionEdit: selectedRow.fork, outcome: { state: selectedRow.state, reason: selectedRow.reason } }, null, 2) : 'Select a numbered candidate to inspect its exact revision, source and clamp/constraint receipt.';
     const message = state.error || state.session.lastOutcome?.message;
     if (message && message !== lastMessage) { status.textContent = message; lastMessage = message; }
     outcomes.textContent = state.take ? 'Reference take ' + state.take.takeId + ' · revision ' + state.take.revision + ' · ' + (state.take.unavailable || 'same first ' + Math.min(8, state.take.seconds) + ' source-clock seconds; selected lane') : 'No saved reference take selected. Generation and exact Keep remain available; Compare reports the missing take.';
@@ -102,6 +131,6 @@ export function createPatchVariationView({ document, window, owner } = {}) {
     event.preventDefault(); if (views[next]) { selected = views[next].id; render(owner.state()); views[next].choose.focus(); }
   });
   const unsubscribe = owner.subscribe(render);
-  return Object.freeze({ element, update: () => render(owner.state()), suspend: () => { for (const control of controls) control.cancel('dock-hidden'); },
-    dispose() { if (disposed) return; disposed = true; unsubscribe(); for (const control of controls) control.dispose(); for (const remove of [...listeners, ...profileListeners]) remove(); for (const view of rowViews.values()) for (const remove of view.removers) remove(); rowViews.clear(); element.remove(); } });
+  return Object.freeze({ element, update: () => render(owner.state()), suspend: () => { for (const control of [...controls, ...editControls.map(entry => entry.control)]) control.cancel('dock-hidden'); },
+    dispose() { if (disposed) return; disposed = true; unsubscribe(); for (const control of [...controls, ...editControls.map(entry => entry.control)]) control.dispose(); for (const remove of [...listeners, ...profileListeners]) remove(); for (const view of rowViews.values()) for (const remove of view.removers) remove(); rowViews.clear(); element.remove(); } });
 }

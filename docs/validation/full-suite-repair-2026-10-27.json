@@ -20449,7 +20449,7 @@
     },
     "issueStatus": {
       "970": {
-        "state": "software-acceptance-complete",
+        "state": "closed-completed",
         "evidence": "Actual six-native-instrument1000-tick physics/event equality and Undo, plus executed migration, slow/cancel/conflict, held renderer/tail, named unsupported policy and hardware-warning contracts."
       },
       "1112": {
@@ -20459,6 +20459,328 @@
       "1204": {
         "state": "open-implemented-partial",
         "remaining": "Editable pinned revisions, expanded source/pressure failures and actual assistive/listening qualification."
+      }
+    },
+    "remoteCi": {
+      "head": "031e0e1576628f2e9690c661fcbc2d4c6e08b232",
+      "status": "success",
+      "run": 40721691211,
+      "job": 122934009334,
+      "nodePassed": 6712,
+      "nodePending": 10,
+      "browserPassed": 127,
+      "desktopPassed": 22,
+      "workstationSmokePassed": 105,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.22,
+        "statements": 90.22,
+        "branches": 83.58,
+        "functions": 88.27
+      },
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 107136,
+        "captured": 107136,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.023317694664001465,
+        "nonfinite": 0
+      },
+      "policy": "success",
+      "dependencyReview": "success",
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40721691211/job/122934009334",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci308-green.log",
+        "bytes": 1146941,
+        "sha256": "0ef919ccb5824a11086c6e1f2f28d38ad44703567c7842d4d5b412fca96196e8"
+      },
+      "excludesLaterWork": true
+    }
+  },
+  "continuation309": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Separate exact name/macro revisions, retained comparisons and actual cue state",
+    "sourceBase": "031e0e1576628f2e9690c661fcbc2d4c6e08b232",
+    "issues": [
+      1112,
+      1204
+    ],
+    "development": [
+      "Compiler v15 binds a complete immediate parent reference, original neighborhood and explicit previous/new name or macro defaults. Reconstruct the entire expected definition; reject hidden parameter/asset/map/binding/policy changes, changed engine artifacts, locked targets, no-op and malformed edits. Preserve older compiler revisions and exact required assets/credits.",
+      "Content-derived branch IDs and increasing numeric revisions retain bounded immediate-parent ancestry without recursive pack embedding or generator reruns. The advanced native editor uses shared exact-entry knobs and explicit Create revision.",
+      "Session generation/target fences preserve old pins, exact Keep and prepared comparisons. Children start without Keep/admission; fresh explicit same-take comparison gates Apply. Retain original selection on reversed/stale edit completion.",
+      "Cue state tracks actual owned playback through natural completion. Per-comparison choice serials fence asynchronous A/B reversal; superseded action messages cannot overwrite a newer action. Retain prepared comparison identity independently from playing state."
+    ],
+    "validation": {
+      "node": {
+        "passed": 74,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "Exact revisions, neighborhood/required-asset closure, variation session, comparison levels, compiler/pack, prepared staging, PCM cue/prelisten and saved sound references.",
+        "scopedCoverage": {
+          "PatchVariationSession.js": {
+            "lines": 96.66,
+            "branches": 85.79,
+            "functions": 93.54
+          },
+          "PatchForkProvenance.js": {
+            "lines": 100,
+            "branches": 100,
+            "functions": 100
+          },
+          "PatchForkRevision.js": {
+            "lines": 100,
+            "branches": 95.55,
+            "functions": 100
+          },
+          "SoundContentCompiler.js": {
+            "lines": 93.66,
+            "branches": 81.54,
+            "functions": 100
+          }
+        }
+      },
+      "browser": {
+        "distinctPassed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "firstCohort": {
+          "passed": 2,
+          "durationMs": 35370.428,
+          "sourceDeltaToFinal": [
+            "e2e/procgen-workstation-variations.spec.js"
+          ]
+        },
+        "extendedPhysicalFollowup": {
+          "passed": 1,
+          "durationMs": 30496.735,
+          "sourceDeltaToPublication": []
+        },
+        "scope": "Native seed/lock/two-batch/pin/Keep and name/macro revision with offline exact reopening; captured physical phrase parent/candidate and edited-child comparisons through actual PRELISTEN, rapid A/B choices and natural completion, independent child Keep/admission, Apply/Undo with old pin/comparison and physics retained."
+      },
+      "earlierNode": [
+        {
+          "passed": 72,
+          "failed": 2,
+          "reason": "Normalize nonfinite draft clone errors to the editor contract; negative fixture changed already-equal voice policy/step data."
+        },
+        {
+          "passed": 73,
+          "failed": 1,
+          "reason": "A remaining negative fixture still wrote an already-equal macro curve; changed to a distinct actual curve."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/342 files; worker component273 files",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "New exact-head CI pending publication; continuation308 is the latest completely green immutable checkpoint.",
+      "scopeLimits": [
+        "No human musical-relatedness or assistive-device qualification is claimed.",
+        "Broader64-seed sparse/dense finite-audio corpus, graft-specific updated-parent/offline journey and expanded integration pressure/refusal cases remain."
+      ],
+      "coverageFollowup": "Fork revision lines/functions100%; provenance branches100%, revision branches95.55%. Continue integration-owner cancellation/retirement/pressure qualification through actual native paths."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-node-initial.log",
+        "bytes": 8718,
+        "sha256": "c45a6173955b5645de107276eb9425573546b79ff8930743b6fbaf66600078b8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-node-second.log",
+        "bytes": 8258,
+        "sha256": "09e71d8b91bbc1077c3386cba037275d28aacec08921184882eb1a87af2331d2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-node.log",
+        "bytes": 7747,
+        "sha256": "7bb70d21fe2f7cbb7cfe313005cd4708edfc26c5be947288854a76c886956b90"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-native-first.log",
+        "bytes": 767,
+        "sha256": "2cecadf77ebff68e74bc0d102fa807b8ff5211678d53d1076db919c129269c3b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-revised-native.log",
+        "bytes": 510,
+        "sha256": "9209467f0163a7bc2342f5fd91f97af96e8bcdfefc2c6349e18985d0dafdd3b6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-provenance.log",
+        "bytes": 142,
+        "sha256": "7166d1bd7ac18877bb3d1b7c63dbb5f55a85d5f93818e5ee1dcf914091c6f214"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-native-first-results.json",
+        "bytes": 34018,
+        "sha256": "b85ad523223973ff476665de2416f3c389488759d2052e9e57f9b2ec0444f5c6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-native-source.json",
+        "bytes": 1768,
+        "sha256": "dd8d837e5c2e829d24bf60c179500f816a49b2d1d315fc210c5c93630eebe1e0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-revised-native-results.json",
+        "bytes": 19494,
+        "sha256": "fa8116801c1b908a3380a1b69b17eb58bf229570188d7334f17dca0b21a6829c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-revised-source.json",
+        "bytes": 1768,
+        "sha256": "cd69ab59a129690e7da6a3fa477227b783b4a11e422ac3d058e5570580ecaeb3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-309-coverage\\coverage-summary.json",
+        "bytes": 89065,
+        "sha256": "f0bcb2454d37ba590192ccd2c2538dd2604a8070d1c35a14fb9fcc7916510f3f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\0-kept-neighborhood-receipt.json",
+        "bytes": 20223,
+        "sha256": "368fbd4a439ead2d22ae0cc17c488faccd341938b5442c0b1cb5892c09066860"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\0-physical-variation-comparison-receipt.json",
+        "bytes": 759,
+        "sha256": "ceaf30aae9aef04ab1d83284bf9da1ec21665b94c673c75db7064a3364c30737"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\1-physical-variation-comparison-receipt.json",
+        "bytes": 759,
+        "sha256": "83d8850e6801eb804f3b437365a39221e9e87a0df15a9843ccfde46311f871b4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\1-revised-physical-comparison-receipt.json",
+        "bytes": 10224,
+        "sha256": "dc099997842f298fdfd1df870c45315827f54840886846e9c3ad1d489aa47707"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\final-variations-physical-comparison-1080p.png",
+        "bytes": 112712,
+        "sha256": "42be20530be8950132308b4f78493629e85cc022f86489879511c87c71c1ee7a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\first-variations-physical-comparison-1080p.png",
+        "bytes": 97800,
+        "sha256": "dc6a8ac60c627dab45476dbd24a8215568f27b9662330133b0fc738ac41858be"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog309-captures\\first-variations-pinned-1080p.png",
+        "bytes": 93998,
+        "sha256": "17d18d91c4f7fc7b6bff614ac1b05ea25fe4709e5bcfd19d747e7a94fafbcc7c"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "css/procgen-workstation.css",
+        "bytes": 48127,
+        "sha256": "b8b45f99da9b925636cb59181c340922132ce87e9fe6a8daf549bca57825dbaa"
+      },
+      {
+        "path": "docs/patch-neighborhoods.md",
+        "bytes": 6537,
+        "sha256": "fc517583b57a4eac4eac05d90c1f64d0a1c7ecb0cd1dcc492e5539a0e8b95591"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 586890,
+        "sha256": "23b06b6c137b1f3c97b5c0f24fdea6f0891c7e17020e3c8551c0cddd13420d8b"
+      },
+      {
+        "path": "e2e/procgen-workstation-variations.spec.js",
+        "bytes": 16062,
+        "sha256": "64eef247b081d98d64a84e65c751fb067ff62d628ef762c2f31436ab6aec91d7"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationOwner.js",
+        "bytes": 18704,
+        "sha256": "3ad622bd84430f291a7ec12af793ecfd8752fa8b9206cd65bf389ecbee501a60"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationSession.js",
+        "bytes": 15240,
+        "sha256": "a66c01a99ce9d7c89eed01b131bd5802261a5032795743d0c047b69baa33f445"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationView.js",
+        "bytes": 15078,
+        "sha256": "34dc381445c66492c32e005ce4e6b796b5eca4791fc19716e80ce263112485ec"
+      },
+      {
+        "path": "js/midi/content/PatchForkProvenance.js",
+        "bytes": 4424,
+        "sha256": "a3dfd54231407ed0d7a5212eb0e116949058fcb590944dddfe8343992d7106fd"
+      },
+      {
+        "path": "js/midi/content/PatchForkRevision.js",
+        "bytes": 4081,
+        "sha256": "35f85a50164ddf1e09b3628fb2db1cf5b08790f141ac381b5c97e872038f733d"
+      },
+      {
+        "path": "js/midi/content/SoundContentCompiler.js",
+        "bytes": 33557,
+        "sha256": "d6c31d6e52ff7bac86ab178481d955defb662370940bea9094b68836e7064a1f"
+      },
+      {
+        "path": "js/midi/content/SoundContentPack.js",
+        "bytes": 26112,
+        "sha256": "585a478b493deed0392f7901bd1d273482be80ac30715b6ef72d5fd036e13f3a"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 20935,
+        "sha256": "38da7f55736dd486fa1557a3b49f606f52995549616ac3d0291087a74dbdd63a"
+      },
+      {
+        "path": "test/midi/patch-fork-revision.test.js",
+        "bytes": 12100,
+        "sha256": "82b83a2b7626acd869fd7036ef5e141737cecb763f3d7fa12422b938b9f25058"
+      },
+      {
+        "path": "test/midi/patch-neighborhood.test.js",
+        "bytes": 17467,
+        "sha256": "2addeacbcb98d2a5b46cd371a0d307ad8e6a2dc149fef59bccf9e1d7c7c17d4b"
+      },
+      {
+        "path": "test/midi/patch-variation-session.test.js",
+        "bytes": 14742,
+        "sha256": "9b0ae4d3f76ec15a8738f68901529511c7bcc1cabb9142ecdfb463a0e69a2afa"
+      }
+    ],
+    "issueStatus": {
+      "1112": {
+        "state": "open-implemented-partial",
+        "remaining": "Broader sparse/dense finite-audio corpus, graft/parent-update/offline journey and human relatedness review."
+      },
+      "1204": {
+        "state": "open-implemented-partial",
+        "remaining": "Expanded source/pressure refusal journeys and actual assistive/listening qualification."
       }
     }
   }

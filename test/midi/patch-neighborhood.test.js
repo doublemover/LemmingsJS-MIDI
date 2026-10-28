@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { readFile } from 'node:fs/promises';
 import { compileSoundContent, createResolvedPatchRecipeSource } from '../../js/midi/content/SoundContentCompiler.js';
 import { generatePatchNeighborhood } from '../../js/midi/content/PatchNeighborhood.js';
+import { revisePatchCandidate } from '../../js/midi/content/PatchForkRevision.js';
 import { AUTHORED_PATCH_NEIGHBORHOODS } from '../../js/midi/content/AuthoredPatchNeighborhoods.js';
 import { validatePatchNeighborhoodProvenance } from '../../js/midi/content/PatchNeighborhoodProvenance.js';
 import { prepareSoundContentPack } from '../../js/midi/content/SoundContentPack.js';
@@ -129,9 +130,13 @@ describe('authored bounded patch neighborhoods', function() {
     const budget = createResourceBudget(), admission = createBackgroundWorkerAdmission(), jobs = createBackgroundJobService({ admission, Worker: null, yieldTask: async () => {} });
     const reader = createSoundContentReader({ resourceBudget: budget, jobs }), archiver = createSoundContentArchiver({ resourceBudget: budget, jobs }); let stage;
     try {
-      stage = await stagePreparedSoundContent({ prepared: candidate.compiled.prepared, reader, archiver, engineDescriptors: descriptors });
-      expect(stage.metadata().contentHash).to.equal(candidate.reference.packHash);
-      const loan = borrowSoundContentStage(stage); expect(loan.prepared.patches[0].definitionHash).to.equal(candidate.reference.definitionHash); loan.release();
+      const revised = await revisePatchCandidate({ candidate, descriptor: parent.descriptor, name: 'Kept exact sample revision' });
+      expect(revised.reference.definition.sampleMap).to.deep.equal(candidate.reference.definition.sampleMap);
+      for (const exact of [candidate, revised]) {
+        stage = await stagePreparedSoundContent({ prepared: exact.compiled.prepared, reader, archiver, engineDescriptors: descriptors });
+        expect(stage.metadata().contentHash).to.equal(exact.reference.packHash);
+        const loan = borrowSoundContentStage(stage); expect(loan.prepared.patches[0].definitionHash).to.equal(exact.reference.definitionHash); loan.release(); stage.discard(); stage = null;
+      }
     } finally { stage?.discard(); await reader.dispose()?.completion; await archiver.dispose()?.completion; await jobs.dispose(); admission.dispose(); }
     expect(budget.diagnostics().accountedBytes).to.equal(0);
   });

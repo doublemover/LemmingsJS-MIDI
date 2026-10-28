@@ -41,6 +41,20 @@ test('four authored slots retain an exact pin through a second batch and reopen 
   const currentFirst = tray.locator('.studio-variation-row').first().locator('button').first(); await currentFirst.focus(); await page.keyboard.press('ArrowDown');
   await expect(tray.locator('.studio-variation-row').nth(1).locator('button').first()).toBeFocused();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.comparison)).toBeNull(); expect(await snapshot(page)).toEqual(before);
+  const pinRow = tray.locator(`[data-candidate-id="${pinned.candidateId}"]`); await pinRow.locator('button').first().click();
+  const editor = tray.getByRole('group', { name: 'Create a separate candidate revision' });
+  await editor.getByLabel('Candidate revision name', { exact: true }).fill('Glass Rivet · kept user revision');
+  await editor.getByRole('button', { name: 'Edit HARDNESS revision default value', exact: true }).click();
+  await editor.getByLabel('HARDNESS revision default numeric value', { exact: true }).fill('0.65'); await editor.getByLabel('HARDNESS revision default numeric value', { exact: true }).press('Enter');
+  await editor.getByRole('button', { name: 'Create revision', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.rows[0].reference?.revision)).toBe(2);
+  const revised = await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.rows[0]);
+  expect(revised.name).toBe('Glass Rivet · kept user revision'); expect(revised.kept).toBe(false); expect(revised.admitted).toBe(false);
+  expect(revised.fork.parentReference.definitionHash).toBe(pinned.reference.definitionHash);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.pins[0].reference)).toEqual(pinned.reference);
+  const revisedRow = tray.locator(`[data-candidate-id="${revised.candidateId}"]`); await revisedRow.getByRole('button', { name: /^Keep / }).click();
+  await expect(revisedRow.locator('output')).toContainText('kept', { timeout: 30000 }); await expect(revisedRow.getByRole('button', { name: /^Apply / })).toBeDisabled();
+  expect(await snapshot(page)).toEqual(before);
   await page.screenshot({ path: testInfo.outputPath('variations-pinned-1080p.png') });
   await page.evaluate(async () => { const studio = window.__PROCGEN_STUDIO__; await studio.handlers.selectNativeSound(studio.getProject().procgen.lanes[0].id, 'forge.copper-tine'); });
   await expect(tray.locator('.studio-variations-parent')).toContainText('PARENT CHANGED');
@@ -51,15 +65,21 @@ test('four authored slots retain an exact pin through a second batch and reopen 
     registry: await import(new URL('js/app/midi-ui/SoundContentRegistry.js', root)), budget: await import(new URL('js/app/resources/ResourceBudget.js', root)),
     catalog: await import(new URL('js/app/midi-ui/NativeInstrumentSchema.js', root)) }; });
   await page.context().setOffline(true);
-  const reopened = await page.evaluate(async reference => {
+  const reopened = await page.evaluate(async references => {
     const modules = window.__variationReopen, budget = modules.budget.createResourceBudget(), catalog = await modules.catalog.getNativeInstrumentCatalog();
     const registry = modules.registry.createSoundContentRegistry({ indexedDB: window.indexedDB, keyRange: window.IDBKeyRange, resourceBudget: budget }); let loan;
-    try { loan = await registry.loadPack(reference.packHash, { engineDescriptors: catalog.descriptors }); const patch = loan.prepared.patches[0];
-      return { hash: loan.prepared.contentHash, definitionHash: patch.definitionHash, provenance: loan.prepared.pack.compilation.artifacts[0].neighborhood }; }
+    const read = async reference => { loan = await registry.loadPack(reference.packHash, { engineDescriptors: catalog.descriptors });
+      try { const patch = loan.prepared.patches[0], artifact = loan.prepared.pack.compilation.artifacts[0];
+        return { hash: loan.prepared.contentHash, definitionHash: patch.definitionHash, name: patch.archivedDefinition.name,
+          provenance: artifact.neighborhood || artifact.fork.neighborhood, fork: artifact.fork || null, hardness: patch.archivedDefinition.macros.find(macro => macro.id === 'hardness').default01 }; }
+      finally { loan.release(); loan = null; } };
+    try { return { original: await read(references.original), edited: await read(references.edited) }; }
     finally { loan?.release(); registry.close(); }
-  }, pinned.reference);
-  expect(reopened).toEqual({ hash: pinned.reference.packHash, definitionHash: pinned.reference.definitionHash, provenance: pinned.provenance });
-  await testInfo.attach('kept-neighborhood-receipt', { body: JSON.stringify({ pinned, reopened }), contentType: 'application/json' });
+  }, { original: pinned.reference, edited: revised.reference });
+  expect(reopened.original).toMatchObject({ hash: pinned.reference.packHash, definitionHash: pinned.reference.definitionHash, provenance: pinned.provenance, fork: null });
+  expect(reopened.edited).toMatchObject({ hash: revised.reference.packHash, definitionHash: revised.reference.definitionHash, name: revised.name,
+    provenance: pinned.provenance, fork: revised.fork, hardness: 0.65 });
+  await testInfo.attach('kept-neighborhood-receipt', { body: JSON.stringify({ pinned, revised, reopened }), contentType: 'application/json' });
   await page.context().setOffline(false);
 });
 
@@ -79,13 +99,33 @@ test('real captured physical phrase renders matched A/B through PRELISTEN and ap
   await tray.getByRole('button', { name: 'Generate four', exact: true }).click(); await expect(tray.getByLabel('Variation status', { exact: true })).toContainText('4 compiled', { timeout: 45000 });
   const row = tray.locator('.studio-variation-row').first(); await row.getByRole('button', { name: /^Keep / }).click(); await expect(row.locator('output')).toContainText('kept', { timeout: 30000 });
   await row.getByRole('button', { name: /^Compare / }).click(); await expect(row.locator('output')).toContainText('reference qualified', { timeout: 60000 });
-  const comparison = await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison);
+  let comparison = await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison);
   await testInfo.attach('physical-variation-comparison-receipt', { body: JSON.stringify(comparison), contentType: 'application/json' });
   expect(comparison.pcmHashes).toHaveLength(2); expect(comparison.pcmHashes[0]).not.toBe(comparison.pcmHashes[1]);
   expect(comparison.levels.levels.every(level => level > 0 && level <= 1)).toBe(true);
   expect(comparison.levels.sourceRms[0] * comparison.levels.levels[0]).toBeCloseTo(comparison.levels.sourceRms[1] * comparison.levels.levels[1], 12);
-  await tray.getByRole('button', { name: 'A · Parent', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().playing)).toBe('parent');
-  await tray.getByRole('button', { name: 'B · Candidate', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().playing)).toBe('candidate');
+  await tray.getByRole('button', { name: 'A · Parent', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison.selectedSide)).toBe('parent');
+  await tray.getByRole('button', { name: 'B · Candidate', exact: true }).click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison.selectedSide)).toBe('candidate');
+  await page.evaluate(() => { const buttons = [...document.querySelectorAll('.studio-variations > .studio-sound-actions button')]; buttons.find(button => button.textContent === 'A · Parent').click(); buttons.find(button => button.textContent === 'B · Candidate').click(); });
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison.selectedSide)).toBe('candidate');
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().playing), { timeout: 10000 }).toBeNull();
+  const originalComparison = comparison;
+  await row.getByRole('button', { name: /^Pin / }).click(); await row.locator('button').first().click(); await tray.locator('summary').click();
+  const editor = tray.getByRole('group', { name: 'Create a separate candidate revision' });
+  await editor.getByLabel('Candidate revision name', { exact: true }).fill('Compared glass · revised hardness');
+  await editor.getByRole('button', { name: 'Edit HARDNESS revision default value', exact: true }).click();
+  await editor.getByLabel('HARDNESS revision default numeric value', { exact: true }).fill('0.7'); await editor.getByLabel('HARDNESS revision default numeric value', { exact: true }).press('Enter');
+  await editor.getByRole('button', { name: 'Create revision', exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.rows[0].reference?.revision)).toBe(2);
+  const revised = await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.rows[0]);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison)).toMatchObject(originalComparison);
+  await expect(row.getByRole('button', { name: /^Apply / })).toBeDisabled();
+  await row.getByRole('button', { name: /^Keep / }).click(); await expect(row.locator('output')).toContainText('kept', { timeout: 30000 });
+  await row.getByRole('button', { name: /^Compare / }).click(); await expect(row.locator('output')).toContainText('reference qualified', { timeout: 60000 });
+  comparison = await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().comparison);
+  expect(comparison.candidateHash).toBe(revised.reference.definitionHash); expect(comparison.takeId).toBe(originalComparison.takeId);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getVariationState().session.pins[0].reference.definitionHash)).toBe(originalComparison.candidateHash);
+  await testInfo.attach('revised-physical-comparison-receipt', { body: JSON.stringify({ originalComparison, comparison, revised }), contentType: 'application/json' });
   expect(await snapshot(page)).toEqual(before); await page.screenshot({ path: testInfo.outputPath('variations-physical-comparison-1080p.png') });
   await row.getByRole('button', { name: /^Apply / }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].instrumentRef.definitionHash)).toBe(comparison.candidateHash);

@@ -491,3 +491,8 @@ body.procgen-workstation {
 .studio-variations-advanced fieldset { display:flex; flex-wrap:wrap; gap:8px; }
 .studio-variations-advanced fieldset label { display:flex; align-items:center; gap:3px; font-size:11px; }
 .studio-variations-advanced pre { max-height:180px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:10px; }
+.studio-variations-advanced .studio-variations-editor { display:grid; grid-template-columns:minmax(160px,320px) minmax(0,1fr); }
+.studio-variations-advanced .studio-variations-editor[hidden] { display:none; }
+.studio-variations-editor > legend,.studio-variations-editor > p { grid-column:1/-1; }
+.studio-variations-editor input[type=text] { width:100%; max-width:300px; }
+.studio-variations-editor .studio-variations-edit-knobs { grid-column:2; grid-row:auto; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); }
