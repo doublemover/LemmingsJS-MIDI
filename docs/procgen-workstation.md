@@ -454,8 +454,8 @@ place across display updates.
 
 Cause and output pages use committed facts, immutable musical intents and exact
 sink receipts. A physical fact, an admitted/scheduled intent and an API submission
-are separate stages. The symbols ○, ◇, ▷, ↗ and × mean unknown, observed intent,
-sink admission, MIDI API submission and rejection respectively; ! marks degraded
+are separate stages. The symbols ○, ◇, ▷, ▣, ↗ and × mean unknown, observed intent,
+sink admission, processor-applied body command, MIDI API submission and rejection respectively; ! marks degraded
 evidence. None establishes audible sound. Local peak/RMS and receiver state stay
 unknown where no qualified measurement/readback exists. Lane gain is a requested
 value rather than a signal meter.
@@ -498,6 +498,18 @@ domain. An unrecorded eligibility decision, render correlation or receiver
 measurement stays unknown. A failed local path and a successful MIDI API path
 produce mixed outcomes; neither silently erases the other. A shared-body or
 reverb meter cannot establish an individual actor's audible contribution.
+
+For finite prepared-body strikes, a matching processor acknowledgment can report
+the exact applied sample frame, sample rate, body/graph identity and output
+owner. This establishes command application; individual PCM, shared-tail energy
+and audibility remain unknown. A queued command or an acknowledgment without
+the matching execution, owner and frame evidence cannot establish application.
+
+A transferred intent keeps its own target lane and current mix explanation.
+Its physical cause retains the original observed actor, coordinate and lane;
+the view never borrows a voice owner's actor ID for a shared physical fact.
+Each source actor can retain its own termination tombstone. Contradictory source
+copies stay available as text with a conflict count and no projected mark.
 
 The dialog freezes its explanation until **Refresh retained evidence** is chosen.
 If its source leaves the retained window, the frozen text remains available and

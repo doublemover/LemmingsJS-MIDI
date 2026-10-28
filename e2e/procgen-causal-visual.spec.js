@@ -84,6 +84,6 @@ test('reduced-motion dense causes retain counted identities and keyboard drilldo
   const count = Number(await bundled.getAttribute('data-count')); expect(count).toBeGreaterThan(1); await bundled.focus(); await bundled.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Physical cause explanation' }); await expect(dialog).toBeVisible(); await expect(dialog.getByLabel('Retained physical cause').locator('option')).toHaveCount(count);
   const ids = await dialog.getByLabel('Retained physical cause').locator('option').evaluateAll(options => options.map(option => option.value)); expect(new Set(ids).size).toBe(count);
-  await dialog.getByLabel('Retained physical cause').selectOption(ids.at(-1)); await expect(dialog).toContainText('Physical fact:'); await expect(dialog).toContainText('no individually correlated render receipt');
+  await dialog.getByLabel('Retained physical cause').selectOption(ids.at(-1)); await expect(dialog).toContainText('Physical fact:'); await expect(dialog).toContainText('individual PCM/audibility unrecorded');
   expect(await page.locator('.studio-causal-mark').evaluateAll(nodes => nodes.every(node => window.getComputedStyle(node).animationName === 'none' && window.getComputedStyle(node).transitionDuration === '0s'))).toBe(true);
 });

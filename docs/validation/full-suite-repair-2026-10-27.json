@@ -818,18 +818,18 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "4c389855a68041b4017acd6ddb36546e1cdbc991",
-    "job": 122566171988,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40612194215/job/122566171988",
-    "passed": 6546,
+    "head": "ac8c23fc47fdb929d8a391eb375f0651d6cc5717",
+    "job": 122579117164,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40616188601/job/122579117164",
+    "passed": 6554,
     "failed": 0,
-    "browserPassed": 80,
+    "browserPassed": 81,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
       "lines": 90.21,
       "statements": 90.21,
-      "branches": 83.48,
+      "branches": 83.49,
       "functions": 88.22
     },
     "minimumDesktopViewport": {
@@ -837,20 +837,20 @@
       "height": 1080
     },
     "excludesContinuations": [
-      293
+      294
     ],
     "excludesLaterWork": true,
     "masterCapture": {
       "state": "Ready",
-      "frames": 56192,
-      "capturedFrames": 56192,
+      "frames": 55168,
+      "capturedFrames": 55168,
       "stopReason": "user-stop",
       "clockDiscontinuity": null
     },
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci292-green.log",
-      "bytes": 1102950,
-      "sha256": "c1440c0dd081b4ca60f68a8f4a97737ee152071730da9d377ffa5532b74a2f18"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci293-green.log",
+      "bytes": 1102000,
+      "sha256": "dacd48c1575eb5bd95df46f74c0d2c9dcf5b99f3e6a9569489e36cda28df2635"
     }
   },
   "continuation264": {
@@ -11032,6 +11032,42 @@
         "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog293-desktop-causal-marks.png",
         "bytes": 448102,
         "sha256": "e863ccd3cf5c1084ce4912846e9daa1c56259b88d63328c103b8e5c7089f34e8"
+      },
+      "remoteCi": {
+        "head": "ac8c23fc47fdb929d8a391eb375f0651d6cc5717",
+        "job": 122579117164,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40616188601/job/122579117164",
+        "passed": 6554,
+        "failed": 0,
+        "browserPassed": 81,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.21,
+          "statements": 90.21,
+          "branches": 83.49,
+          "functions": 88.22
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          294
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 55168,
+          "capturedFrames": 55168,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci293-green.log",
+          "bytes": 1102000,
+          "sha256": "dacd48c1575eb5bd95df46f74c0d2c9dcf5b99f3e6a9569489e36cda28df2635"
+        }
       }
     },
     "source": [
@@ -11107,10 +11143,310 @@
       "reason": "The complete OLED/projection/ownership implementation passes full 4c389855 CI: 6546 coverage cases / 80 desktop boundaries."
     },
     "limitations": [
-      "Current full CI must qualify this continuation; the green 4c389855 checkpoint excludes it.",
+      "Full CI is green at ac8c23fc: 6554 coverage cases / 81 desktop boundaries, all checks successful. This excludes continuation294.",
       "Construction provenance is not an individual eligibility ledger, local-render correlation or receiver/acoustic acknowledgement. Absent metadata remains unknown.",
       "#997 retains the complete local/shared-body/transfer/revoice/denied/canceled outcome qualification matrix. No hardware, acoustic or assistive certification is inferred.",
       "The wider backlog remains open. #1072 and #996 are closed on their fully verified source checkpoints."
+    ]
+  },
+  "continuation294": {
+    "baseHead": "ac8c23fc47fdb929d8a391eb375f0651d6cc5717",
+    "scope": "Transfer-safe physical attribution, independent source tombstones and exact finite-body processor command application in bounded causal history.",
+    "implemented": [
+      "Enrich missing references from observed retained facts independently of lane traversal order. Keep source actor/lane/coordinate separate from target intent/voice ownership. Shared facts do not borrow an actor; conflicting copies retain text and a conflict count but cannot project a selected physical identity.",
+      "Retain current target mix and its revision per intent and use the selected intent in the frozen explanation. Derive only a missing projection row from observed world coordinates, clip by that physical row, and preserve independent source tombstones with their first termination ticks.",
+      "Forward exact intent/batch/generation/sink/execution/body identity with existing finite-body processor receipts without extending the captured strike schema. Bound and copy the frame, sample-rate, body/graph, owner/route and application evidence. Join asynchronous receipts only to the previously retained matching sink/execution.",
+      "Qualify processor application only for an exact acknowledged target sample frame with valid sample-rate/body/graph/owner provenance. Show command application in the Output page and causal explanation while keeping individual PCM, shared tails and audibility unknown."
+    ],
+    "validation": {
+      "nodePassed": 374,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "26s",
+      "browserFinal": {
+        "passed": 50,
+        "failed": 0,
+        "reportedDuration": "3.3m",
+        "scope": "Production causal history, OLEDs, operational/MIDI/source ownership, commands/drafts/DPR, world geometry/junction/fullscreen, six-native-sound 1000-tick isolation and save/load/undo workflows."
+      },
+      "processorIntegration": "Two canonical mappings from one completed contact traverse the actual finite membrane kernel, native command transport, body backend, bounded receipt/history join and Output/causal projection. Exact processor applied/ended frames coexist with retained shared body energy; neither becomes individual actor audibility.",
+      "previousCohorts": [
+        {
+          "nodePassed": 373,
+          "nodeFailed": 1,
+          "reason": "The new DOM fixture used a manually constructed unregistered projection snapshot. Production projection correctly returned no mark; the fixture now uses createProcgenPresentationSnapshot. The partial five-module coverage run also inherited the whole-suite branch threshold; final focused reporting collects coverage without changing repository thresholds."
+        }
+      ],
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0,
+        "manifestChanged": false
+      },
+      "focusedCoverage": {
+        "scope": "Five changed UI/backend modules; repository global coverage gates remain unchanged and are enforced by full CI.",
+        "total": {
+          "lines": {
+            "total": 477,
+            "covered": 466,
+            "skipped": 0,
+            "pct": 97.69
+          },
+          "statements": {
+            "total": 477,
+            "covered": 466,
+            "skipped": 0,
+            "pct": 97.69
+          },
+          "functions": {
+            "total": 60,
+            "covered": 52,
+            "skipped": 0,
+            "pct": 86.66
+          },
+          "branches": {
+            "total": 691,
+            "covered": 549,
+            "skipped": 0,
+            "pct": 79.45
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "files": [
+          {
+            "path": "js/app/procgen/workstation/CausalVisualProjection.js",
+            "lines": {
+              "total": 102,
+              "covered": 102,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 190,
+              "covered": 158,
+              "skipped": 0,
+              "pct": 83.15
+            },
+            "functions": {
+              "total": 5,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/CausalVisualView.js",
+            "lines": {
+              "total": 105,
+              "covered": 101,
+              "skipped": 0,
+              "pct": 96.19
+            },
+            "branches": {
+              "total": 75,
+              "covered": 48,
+              "skipped": 0,
+              "pct": 64
+            },
+            "functions": {
+              "total": 14,
+              "covered": 12,
+              "skipped": 0,
+              "pct": 85.71
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/LaneDisplayEvidence.js",
+            "lines": {
+              "total": 138,
+              "covered": 138,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 206,
+              "covered": 184,
+              "skipped": 0,
+              "pct": 89.32
+            },
+            "functions": {
+              "total": 18,
+              "covered": 18,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/LaneDisplaySnapshot.js",
+            "lines": {
+              "total": 48,
+              "covered": 48,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 156,
+              "covered": 115,
+              "skipped": 0,
+              "pct": 73.71
+            },
+            "functions": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/PreparedBodyStrikeBackend.js",
+            "lines": {
+              "total": 84,
+              "covered": 77,
+              "skipped": 0,
+              "pct": 91.66
+            },
+            "branches": {
+              "total": 64,
+              "covered": 44,
+              "skipped": 0,
+              "pct": 68.75
+            },
+            "functions": {
+              "total": 21,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 71.42
+            }
+          }
+        ],
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-294-coverage-ready\\coverage-summary.json",
+          "bytes": 2125,
+          "sha256": "0ac21b9f81eef003481495533c94127769f2d2c043f48cdc6bc4870c442ea0dd"
+        },
+        "remaining": [
+          "Additional body transport submission-error/panic retirement branches.",
+          "Cause-view admission failure, source disposal and retained-selection refresh branches beyond the production browser cohort.",
+          "Comprehensive producer-to-view transfer/revoice/denied/canceled/shared-effect acceptance matrix remains under #997."
+        ]
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-node-ready.log",
+          "bytes": 38924,
+          "sha256": "ade77216e5a3aaa6b16c07d59d83b16b16b8109e4761aa1b02fad86301e3236c"
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-browser.log",
+          "bytes": 9878,
+          "sha256": "50c595916a09998a81a92850bf0070941bec6739d5807fcfedfb3c25c4ce826c"
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-format-ready.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-types.log",
+          "bytes": 96,
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-undefined.log",
+          "bytes": 111,
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-provenance.log",
+          "bytes": 142,
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+        },
+        "initialNode": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-node.log",
+          "bytes": 39447,
+          "sha256": "ff5a3756ee0de56666c459f1c4f97d5212c31b7e06ec5e583b02010975ef38bd"
+        }
+      },
+      "actualProductionCapture": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog294-desktop-causal-marks.png",
+        "bytes": 445569,
+        "sha256": "6b4139f6e2f691d158431a3ef1855b916d30ccae728e57d329344e6566c46a46"
+      }
+    },
+    "source": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 34806,
+        "sha256": "24ca6c9f88868ac745055551c1b9eb7fbb1b4ce541f041228e0f4ea8a6bea7b0"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 546973,
+        "sha256": "071b98ccf2ed3bc5a6d1af647c4305a39bc6ce8ae2d00e7412d3d200b619bab0"
+      },
+      {
+        "path": "e2e/procgen-causal-visual.spec.js",
+        "bytes": 10937,
+        "sha256": "9070295c021b930746991eb5db84a5f48805d45a3c2b647f222bc9956b103255"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalVisualProjection.js",
+        "bytes": 11454,
+        "sha256": "46ba057fae4fb8c18b696e152d90d1562d103c483b027b37f43b86e7d2c15e9a"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalVisualView.js",
+        "bytes": 10272,
+        "sha256": "6f98a31ab5a42f632e4d9d89430477aae3accff1a6d155848daa7ecb8ad7e80b"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplayEvidence.js",
+        "bytes": 13720,
+        "sha256": "7613b89b11e9765af24e28b10d2d6912eb8fc46f1701afc1933cbb3ab3a171a6"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplaySnapshot.js",
+        "bytes": 7334,
+        "sha256": "b1e6c66a3d4df6548c28c6a8d474467542262b8df4ae5a4a19f12d7b87a3d68f"
+      },
+      {
+        "path": "js/app/procgen/workstation/PreparedBodyStrikeBackend.js",
+        "bytes": 9992,
+        "sha256": "2e1799d2d76c63a7d04bd790a3bece679bf57158de760d062cbd6b464a35d32b"
+      },
+      {
+        "path": "test/causal-visual-projection.test.js",
+        "bytes": 11935,
+        "sha256": "41e1df82ded031cc7d023b948b92aa7fb58dbed04b3d44daa90d2f2f6df2a3d2"
+      },
+      {
+        "path": "test/causal-visual-view.test.js",
+        "bytes": 3841,
+        "sha256": "9d51d9de5dc1c01bf50faeaef75d7ab3e04abeda731726f781b7443c745c84e6"
+      },
+      {
+        "path": "test/lane-display-evidence.test.js",
+        "bytes": 18408,
+        "sha256": "9dac4bc70264e44401293bf99b020a8a16ea4c9184fbeba0774a5f0c533f6e80"
+      },
+      {
+        "path": "test/midi/prepared-body-strikes.test.js",
+        "bytes": 18094,
+        "sha256": "b4c8e29e509f82c8e2eeaf0fe332e1d8de9916f379ed1cf880bf833965f9d8cf"
+      }
+    ],
+    "limitations": [
+      "Full CI must qualify continuation294; ac8c23fc qualifies all prior work only.",
+      "#997 remains open for the complete producer/output/transfer/revoice qualification matrix. Missing individual eligibility, receiver and individual PCM evidence remains unknown.",
+      "The wider development backlog remains open; no hardware, acoustic or assistive-technology certification is inferred."
     ]
   }
 }

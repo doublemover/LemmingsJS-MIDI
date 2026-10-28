@@ -3,8 +3,9 @@ import { createAudioIntervalAdmission } from '../../midi-ui/AudioIntervalAdmissi
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
-export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory, enqueue, panicBody, observe, resourceBudget = null, onReceipt = () => {} }) {
+export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory, enqueue, panicBody, observe, resourceBudget = null, sinkId = 'physical-shared-body', onReceipt = () => {} }) {
   if ([resolveBody, inventory, enqueue, panicBody, observe, onReceipt].some(value => typeof value !== 'function')) throw new TypeError('Finite body sources need the existing body owner, native command transport and receipt observer.');
+  if (typeof sinkId !== 'string' || !sinkId || sinkId.length > 512) throw new TypeError('Finite body sources need a bounded sink identity.');
   const storage = createOwnedResourceReservation({ budget: resourceBudget, owner, kind: 'finite-body-source-metadata-estimate', category: 'audio', bytes: 32768 });
   const intervals = createAudioIntervalAdmission({ maxIntervals: 68 }), pending = new Map(), gates = new Map(), executions = new Set(), retirement = createProcgenRetirementScope({ deadlineMs: 15000 });
   let sequence = 0, disposed = false, timer = null;
@@ -24,7 +25,8 @@ export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory,
     if (receipt.stage === 'body-strike-ownership-unknown') { report({ status: 'rejected', stage: 'effect-performance-capture', reason: 'prepared-body-strike-ownership-unknown', acousticReceipt: false }); return; }
     const record = pending.get(receipt.token);
     if (!record || targetKey(record.body) !== targetKey(receipt)) return;
-    report({ ...receipt, source: record.plan.source, command: record.plan.command, executionEpoch: record.execution.executionEpoch, sampleRate: record.body.sampleRate });
+    report({ ...receipt, source: record.plan.source, command: record.plan.command, intentId: record.plan.source.intentId, batchId: record.batchId, generation: record.execution.generation,
+      sinkId, targetTimeDomain: 'audio-sample-frames', bodyInstanceId: record.body.bodyInstanceId, executionEpoch: record.execution.executionEpoch, sampleRate: record.body.sampleRate });
     if (['body-strike-rejected', 'body-strike-ended'].includes(receipt.stage) || receipt.stage === 'body-strike-dsp-queued' && receipt.status === 'rejected') { pending.delete(receipt.token); settle(); }
   }); if (typeof unsubscribe !== 'function') throw new TypeError('The body observer did not retain a removable subscription.'); }
   catch (error) { storage.release(); throw error; }
@@ -55,7 +57,7 @@ export function createPreparedBodyStrikeBackend({ owner, resolveBody, inventory,
         if (voices.length >= 68 || !intervals.inspect({ voices, first: frame, last: plan.endFrame, limit: 4, cost: 1 }).accepted) return { status: 'rejected', reason: 'finite-body-exciter-capacity' };
         storage.resize(12 * 1048576);
       } catch (error) { return { status: 'rejected', reason: error.message }; }
-      const token = ++sequence, record = { body, plan, execution, start: frame, end: plan.endFrame, renderCost: 1 }; pending.set(token, record);
+      const token = ++sequence, record = { body, plan, execution, batchId: intent.batchId, start: frame, end: plan.endFrame, renderCost: 1 }; pending.set(token, record);
       try {
         const receipt = enqueue(body.nodeId, plan.command, expected(body));
         if (receipt?.status !== 'accepted' || receipt.token !== token || receipt.targetFrame !== frame || receipt.graphDefinitionHash !== body.graphDefinitionHash) throw new Error('The exact prepared body did not acknowledge command submission.');

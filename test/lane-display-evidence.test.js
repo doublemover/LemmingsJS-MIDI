@@ -13,6 +13,14 @@ const snapshot = (store, options = {}) => createLaneDisplaySnapshot({ lane, evid
 const fixture = options => { const store = createLaneDisplayEvidence(options); store.setLanes([lane.id]); return store; };
 
 describe('bounded live lane display evidence', () => {
+  it('tombstones an individual source actor in a shared intent without retiring its other source or voice owner', () => {
+    const store = fixture(), value = input(); value.batch.facts.push({ ...value.batch.facts[0], eventId: 'fact-2', actorId: 9 }); value.intents[0].actorId = null; value.intents[0].sourceEventIds = ['fact-1', 'fact-2'];
+    try { store.observe(value); store.observe(input({ batch: { ...value.batch, batchId: 'terminal', tick: 11, facts: [{ eventId: 'terminal', kind: 'ActorTerminated', actorId: 7 }] }, intents: [], receipts: [] }));
+      const event = read(store).history[0]; expect(event.actorState).to.equal('past-reference'); expect(event.sources[0]).to.include({ actorId: 7, actorState: 'terminated', terminationTick: 11 }); expect(event.sources[1]).to.include({ actorId: 9, actorState: 'past-reference', terminationTick: null });
+      store.observe(input({ batch: { ...value.batch, batchId: 'terminals', tick: 12, facts: [{ eventId: 'repeat-terminal', kind: 'ActorTerminated', actorId: 7 }, { eventId: 'next-terminal', kind: 'ActorTerminated', actorId: 9 }] }, intents: [], receipts: [] }));
+      expect(read(store).history[0].sources.map(source => source.terminationTick)).to.deep.equal([11, 12]);
+    } finally { store.dispose(); }
+  });
   it('joins producer mapping metadata only to the exact constructed intent and never substitutes the current project revision', () => {
     const store = fixture(), value = input(), provenance = { version: 1, intentId: 'intent-1', batchId: 'world:1:10', generation: 1, mappingId: 'map-1', graphRevision: 3, mappingRevision: 1, evidence: 'canonical-intent-construction' };
     try { store.observe({ ...value, provenances: [provenance] }); expect(read(store).record.events[0]).to.include({ graphRevision: 3, mappingRevision: 1 }); expect(snapshot(store, { revision: 40 }).detail).to.include('graph revision 3; definition revision 1');

@@ -10,17 +10,23 @@ import { validateEffectPerformance } from '../../js/midi/content/EffectPerforman
 import { renderCausalOwnedTake } from '../../js/app/midi-ui/CausalOwnedRender.js';
 import { describeNativeInstrumentEngines } from '../../js/app/midi-ui/NativeInstrumentSchema.js';
 import { createEffectPerformanceCapture } from '../../js/app/procgen/workstation/EffectPerformanceCapture.js';
+import { RectangularMembraneKernel } from '../../js/app/midi-ui/worklet/RectangularMembraneKernel.js';
+import { createMembraneStrikeTransport } from '../../js/app/midi-ui/MembraneStrikeTransport.js';
+import { createLaneDisplayEvidence } from '../../js/app/procgen/workstation/LaneDisplayEvidence.js';
+import { createLaneDisplaySnapshot } from '../../js/app/procgen/workstation/LaneDisplaySnapshot.js';
+import { projectCausalHistory, explainCausalVisual } from '../../js/app/procgen/workstation/CausalVisualProjection.js';
 
 const surfaceMap = { id: 'map', revision: 1, regionInstanceId: 'region', sourceEditRevision: 0, boundTopologyRevision: 0, bounds: { x1: 0, y1: 0, x2: 100, y2: 100 } };
 const surface = { schema: 'lemmings-prepared-surface/v1', id: 'skin', revision: 1, surfaceMap, heldContactPolicy: 'keep-old-tail', unknownPolicy: 'release', preparations: [{ id: 'loss', kind: 'touch', sourceLanes: [0], actions: ['blocking'], beginPolicy: 'current-observed-contact', radius01: 0.18, amount01: 0.5 }] };
 const strikeMapping = { surfaceId: 'skin', surfaceRevision: 1, pulseMilliseconds: 8, amplitudeScale01: 0.8, pitchPolicy: 'fixed-prepared-body' };
 const instrument = id => ({ id, sourceKind: 'ContactSpanBegan', pitchCents: 6000, velocity01: 0.6, role: 'finite-contact', route: 'prepared-body', preparedBodyStrike: strikeMapping });
-function intentsFor(count = 1) {
+function causesFor(count = 1) {
   const mapping = { version: 1, revision: 1, preparedSurfaces: [surface], instruments: Array.from({ length: count }, (_, index) => instrument('strike-' + index)) }, engine = createCausalMusicEngine({ getGraph: () => mapping });
   const batch = { version: 1, worldId: 'world', generation: 1, batchId: 'batch', tick: 1, sourceTimeMs: 100, tickDurationMs: 40, terrainRevisionBefore: 0, terrainRevisionAfter: 0, completeness: { status: 'complete', dropped: 0 },
     facts: [{ kind: 'ContactSpanBegan', eventId: 'contact', causalSequence: 1, actorId: 7, laneId: 0, worldId: 'world', generation: 1, spanId: 'span', action: 'blocking', actionInstanceId: 'action', observedTick: 1, causeKind: 'support', surfaceRevision: 0, anchor: { x: 25, y: 70 }, positionAfter: { x: 25, y: 69 }, physicalPayload: { evidence: 'completed-support-cell' } }] };
-  const intents = engine.processBatch(batch); engine.dispose(); return intents.filter(intent => intent.kind === 'begin');
+  const intents = engine.processBatch(batch); engine.dispose(); return { batch, intents: intents.filter(intent => intent.kind === 'begin') };
 }
+const intentsFor = count => causesFor(count).intents;
 async function fixture() {
   const graph = await createOwnedEffectGraphKernel({ definition: createRectangularMembraneRecipe().graph }), profile = graph.plan.nodes.find(node => node.membrane).membrane;
   const identity = await preparedBodyIdentity({ documentEpoch: 'document', executionEpoch: 'execution', worldId: 'world', generation: 1, surfaceId: 'skin', surfaceRevision: 1, surfaceMap, owner: 'owner', ownerGeneration: 0, ownerRouteRevision: 1, graphDefinitionHash: graph.hash, nodeId: 'skin', processorRevision: profile.revision });
@@ -31,6 +37,25 @@ async function fixture() {
   return { graph, profile, body, backend, commands, receipts, deliver: receipt => listener({ ...receipt, owner: body.owner, ownerGeneration: body.ownerGeneration, ownerRouteRevision: body.ownerRouteRevision, graphDefinitionHash: body.graphDefinitionHash, nodeId: 'skin' }), retire() { present = false; } };
 }
 describe('observed contact sources into exact persistent bodies', () => {
+  it('joins actual processor-frame receipts to each shared-body intent without promoting shared PCM to actor audibility', async () => {
+    const f = await fixture(), { batch, intents } = causesFor(2), execution = f.backend.registerExecution({ executionEpoch: 'execution', generation: 1 }).execution;
+    const store = createLaneDisplayEvidence(), lane = { id: 'lane-1', name: 'Shared body', mode: 'physical', gain: 1 }, sourceKey = 'document:world:1', packets = [], faults = [];
+    const kernel = new RectangularMembraneKernel({ parameters: createRectangularMembraneRecipe().graph.nodes.find(node => node.kind === 'rectangular-membrane').parameters });
+    const transport = createMembraneStrikeTransport({ profile: f.profile, node: { port: { postMessage: packet => packets.push(packet) } }, context: { currentTime: 0, sampleRate: 48000 }, nodeId: 'skin', graphDefinitionHash: f.graph.hash, onReceipt: f.deliver, onUnknown: error => faults.push(error) });
+    try {
+      store.setLanes([lane.id]); for (const intent of intents) expect(f.backend.begin(intent, 128, execution).status).to.equal('accepted');
+      store.observe({ sourceKey, lanes: [lane], batch, intents, receipts: intents.map(intent => ({ intentId: intent.intentId, batchId: batch.batchId, generation: 1, sinkId: 'physical-shared-body', executionEpoch: 'execution', status: 'accepted', stage: 'scheduled', outputRequested: true, targetFrame: 128, targetTimeDomain: 'audio-sample-frames' })) });
+      for (const command of f.commands) transport.enqueue(command);
+      for (const packet of packets) { expect(kernel.enqueueStrike(packet.command)).to.equal(true); transport.consume({ type: 'body-strike-admission', revision: f.profile.revision, token: packet.command.token, frame: 0, accepted: true, reasonCode: 0, muted: false }); }
+      for (let frame = 0; frame < 128 + f.profile.pulses[1].frames; frame++) kernel.sample(0, 0);
+      transport.consume({ type: 'body-strike-receipts', revision: f.profile.revision, data: kernel.strikes.drainReceipts() }); transport.assertComplete(); expect(faults).to.have.length(0); expect(kernel.energy).to.be.greaterThan(0);
+      for (const receipt of f.receipts) { expect(receipt).to.include({ batchId: batch.batchId, generation: 1, sinkId: 'physical-shared-body', targetTimeDomain: 'audio-sample-frames', bodyInstanceId: f.body.bodyInstanceId }); expect(store.receipt(sourceKey, receipt)).to.equal(true); }
+      const evidence = store.read(lane.id, sourceKey), model = projectCausalHistory({ displays: [{ mix: {}, evidence }] }); expect(model.causes).to.have.length(1); expect(model.causes[0].outcome).to.equal('processor-applied'); expect(model.causes[0].intents).to.have.length(2);
+      for (let index = 0; index < 2; index++) { const text = explainCausalVisual(model.causes[0], index); expect(text).to.include('processor acknowledged frame 128 at 48000 Hz').and.include(f.body.bodyInstanceId).and.include('individual audibility remain unconfirmed'); }
+      expect(createLaneDisplaySnapshot({ lane, evidence, page: 'output' })).to.include({ evidenceClass: 'processor-applied', glyph: '▣' });
+      const foreign = { ...f.receipts.find(receipt => receipt.stage === 'body-strike-applied'), executionEpoch: 'foreign' }; expect(store.receipt(sourceKey, foreign)).to.equal(false); expect(store.receipt('old-document', { ...foreign, executionEpoch: 'execution' })).to.equal(false);
+    } finally { store.dispose(); f.retire(); await f.backend.dispose().completion; }
+  });
   it('keeps two intentional mappings from one contact as two sources and uses their actual mapped point', async () => {
     const f = await fixture(), intents = intentsFor(2), execution = f.backend.registerExecution({ executionEpoch: 'execution', generation: 1 }).execution;
     expect(intents).to.have.length(2);

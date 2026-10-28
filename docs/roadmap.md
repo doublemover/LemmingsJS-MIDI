@@ -7491,3 +7491,34 @@ export-budget acknowledgments still prevent a false complete receipt.
   checks, with a Ready 56,192-frame master capture. **#996 is closed** on the full
   OLED/projection/ownership qualification; #1072 remains closed. This checkpoint
   excludes continuation293's additional mapping/session follow-through.
+
+### Continuation 294 — transfer-safe source attribution and processor receipts
+
+- Keep physical source identity separate from intent target identity and current
+  mix. Missing references can be enriched by a retained observed fact regardless
+  of lane traversal order. Shared facts never borrow the voice owner's actor;
+  derive only the projection row from an observed coordinate when its lane is
+  absent. Conflicting copies retain text and counts without selecting an actor
+  or coordinate for a mark. Clip marks against the physical row.
+- Retain current target mix per owned intent, rather than per shared cause, and
+  show the selected lane/revision separately from historical admission. Keep
+  independent source-actor tombstones and preserve their first termination tick.
+- Forward exact batch/intent/generation, sink, execution and body identity with
+  existing finite-strike processor receipts. Preserve the existing captured
+  strike schema. Join late receipts only against the already retained matching
+  sink/execution; qualify applied-frame, sample-rate, graph and owner evidence.
+  Explain command application without claiming individual PCM or audibility.
+- Cover two mapped sources into one shared body through the actual finite
+  kernel, command transport, backend, bounded history and display adapter. Cover
+  reversed transfer traversal, unknown/shared actors, conflicting copies,
+  invalid application evidence and frozen selected-intent/missing-window text.
+- Keep the full output/eligibility/transfer/revoice acceptance matrix for #997
+  explicit until its remaining producer and production journeys are qualified.
+  All browser journeys retain the 1920x1080 desktop minimum.
+- The grouped pass finishes with **374 focused Node / 50 desktop browser cases**
+  passing, plus format, critical types, undefined calls and unchanged provenance.
+  Targeted coverage records 97.69% lines across the five changed UI/backend
+  modules; remaining retirement/error and observer branches stay explicit.
+- Full CI at ac8c23fc is green: **6,554 coverage cases / 81 desktop boundaries**,
+  all checks, with Ready master capture at 55,168 frames and no reported clock
+  discontinuity. This qualifies all prior work and excludes continuation294.

@@ -69,7 +69,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
       const model = current(values), snapshot = renderer?.presentation?.getSnapshot?.(), stageRect = stage.getBoundingClientRect();
       projectionRevision = model.projectionRevision;
       text(historyButton, `Cause history (${model.causes.length})`);
-      const s = model.summary, message = `${model.causes.length} past causes · ${s.unlocated} unlocated · ${s.outside} outside view · ${s.pending} awaiting projection · ${s.sourceMismatch} wrong source · ${s.omitted + s.historyOmitted} omitted · ${s.expired} expired`;
+      const s = model.summary, message = `${model.causes.length} past causes · ${s.unlocated} unlocated · ${s.outside} outside view · ${s.pending} awaiting projection · ${s.sourceMismatch} wrong source · ${s.conflicts} conflicting · ${s.omitted} entry omissions · ${s.historyOmitted} evicted · ${s.expired} expired`;
       text(summary, message); summary.title = message;
       const retained = new Set();
       for (const mark of model.marks) {
@@ -86,7 +86,7 @@ export function createCausalVisualView({ document, stage, actions, parent, resou
         const label = `${mark.count} observed past ${mark.count === 1 ? 'cause' : 'causes'}; ${first.action || first.kind}; ${mark.causes.map(cause => cause.outcome).join(', ')}. Open exact cause evidence.`;
         button.setAttribute('aria-label', label); button.dataset.eventId = first.eventId; button.dataset.outcome = first.outcome; button.dataset.count = String(mark.count); button.dataset.projectionRevision = String(model.projectionRevision);
         button.style.left = (mark.x - stageRect.left - stage.clientLeft) + 'px'; button.style.top = (mark.y - stageRect.top - stage.clientTop) + 'px';
-        const row = snapshot?.rows.find(value => value.lane === first.laneIndex);
+        const row = snapshot?.rows.find(value => value.lane === mark.laneIndex);
         if (row) {
           const top = snapshot.rect.top + row.destinationY / snapshot.logicalSize.height * snapshot.rect.height, bottom = top + row.destinationHeight / snapshot.logicalSize.height * snapshot.rect.height;
           button.style.clipPath = `inset(${Math.max(0, top - (mark.y - 22))}px 0 ${Math.max(0, mark.y + 22 - bottom)}px 0)`;

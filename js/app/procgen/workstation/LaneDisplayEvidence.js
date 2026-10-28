@@ -8,7 +8,9 @@ const integer = value => Number.isSafeInteger(value) && value >= 0 ? value : nul
 const freeze = Object.freeze;
 const copyReceipt = receipt => freeze({ intentId: id(receipt.intentId), batchId: id(receipt.batchId), generation: integer(receipt.generation),
   sinkId: id(receipt.sinkId), executionEpoch: id(receipt.executionEpoch), status: label(receipt.status), stage: label(receipt.stage), reason: label(receipt.reason),
-  targetFrame: integer(receipt.targetFrame), targetTimeDomain: label(receipt.targetTimeDomain), outputId: id(receipt.outputId), terminalState: label(receipt.terminal?.state), outputRequested: receipt.outputRequested !== false });
+  targetFrame: integer(receipt.targetFrame), targetTimeDomain: label(receipt.targetTimeDomain), outputId: id(receipt.outputId), terminalState: label(receipt.terminal?.state), outputRequested: receipt.outputRequested !== false,
+  appliedFrame: integer(receipt.appliedFrame), applicationEvidence: label(receipt.applicationEvidence), sampleRate: integer(receipt.sampleRate), bodyInstanceId: id(receipt.bodyInstanceId),
+  graphDefinitionHash: id(receipt.graphDefinitionHash), nodeId: id(receipt.nodeId), owner: id(receipt.owner), ownerGeneration: integer(receipt.ownerGeneration), ownerRouteRevision: integer(receipt.ownerRouteRevision) });
 const factPoint = fact => {
   for (const [key, evidence] of [['anchor', 'observed-contact-anchor'], ['positionAfter', 'observed-endpoint'], ['positionBefore', 'observed-startpoint']]) {
     const value = fact?.[key]; if (Number.isFinite(value?.x) && Number.isFinite(value?.y)) return freeze({ x: value.x, y: value.y, evidence });
@@ -75,7 +77,7 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
           (observed.mappingRevision == null || integer(observed.mappingRevision) !== null && observed.mappingRevision <= observed.graphRevision) ? observed : null;
         for (const eventId of sourceIds) {
           const fact = facts.get(eventId); sources.push(freeze({ eventId, recorded: !!fact, tick: fact ? batch.tick : null, kind: label(fact?.kind), action: label(fact?.action || fact?.operationKind),
-            actorId: typeof fact?.actorId === 'number' ? integer(fact.actorId) : id(fact?.actorId), sequence: integer(fact?.causalSequence), laneIndex: integer(fact?.laneId), point: factPoint(fact) }));
+            actorId: typeof fact?.actorId === 'number' ? integer(fact.actorId) : id(fact?.actorId), actorState: 'past-reference', terminationTick: null, sequence: integer(fact?.causalSequence), laneIndex: integer(fact?.laneId), point: factPoint(fact) }));
         }
         const record = freeze({ intentId: intent.intentId, sourceKey, worldId: id(batch.worldId), laneId, laneIndex: integer(typeof intent.laneId === 'number' ? intent.laneId : procgenLaneIndex(lanes).get(laneId)), batchId: batch.batchId, generation: batch.generation, tick: batch.tick, actorState: 'past-reference', terminationTick: null,
           actorId: typeof intent.actorId === 'number' ? integer(intent.actorId) : id(intent.actorId), voiceId: id(intent.voiceId), mappingId: id(intent.mappingId),
@@ -96,8 +98,10 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
       const terminated = new Set(); for (const fact of facts.values()) if (fact.kind === 'ActorTerminated' && fact.actorId != null) terminated.add(fact.actorId);
       if (terminated.size) {
         const tombstones = new Map(), terminal = event => {
-          if (!terminated.has(event.actorId) || event.actorState === 'terminated') return event;
-          if (!tombstones.has(event.intentId)) tombstones.set(event.intentId, freeze({ ...event, actorState: 'terminated', terminationTick: batch.tick })); return tombstones.get(event.intentId);
+          const ownerEnded = terminated.has(event.actorId) && event.actorState !== 'terminated', sourceEnded = event.sources.some(source => source.recorded && terminated.has(source.actorId) && source.actorState !== 'terminated');
+          if (!ownerEnded && !sourceEnded) return event;
+          if (!tombstones.has(event.intentId)) tombstones.set(event.intentId, freeze({ ...event, actorState: ownerEnded ? 'terminated' : event.actorState, terminationTick: ownerEnded ? batch.tick : event.terminationTick,
+            sources: freeze(event.sources.map(source => source.recorded && terminated.has(source.actorId) && source.actorState !== 'terminated' ? freeze({ ...source, actorState: 'terminated', terminationTick: batch.tick }) : source)) })); return tombstones.get(event.intentId);
         };
         for (const [key, event] of history) history.set(key, terminal(event));
         for (const [key, value] of records) records.set(key, freeze({ ...value, events: freeze(value.events.map(terminal)) }));

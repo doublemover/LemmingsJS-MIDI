@@ -1,5 +1,5 @@
 import { formatLaneGain } from './LaneMixState.js';
-import { causalIntentOutcome } from './CausalVisualProjection.js';
+import { causalIntentOutcome, isCausalBodyApplication } from './CausalVisualProjection.js';
 
 export const LANE_DISPLAY_PAGES = Object.freeze(['identity', 'cause', 'parameter', 'output']);
 const words = value => String(value || '').replaceAll('-', ' ');
@@ -12,6 +12,7 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
   const outcome = event ? causalIntentOutcome(event) : 'unconfirmed', fullyRejected = outcome === 'rejected' || outcome === 'cancelled';
   const submitted = receipts.find(value => value.status === 'accepted' && value.stage === 'submitted' && value.targetTimeDomain === 'performance-microseconds');
   const admitted = receipts.find(value => value.status === 'accepted' && value.outputRequested && ['queued', 'scheduled'].includes(value.stage));
+  const applied = receipts.find(isCausalBodyApplication);
   let outputState = !evidence?.available ? 'unavailable' : mix?.outputState || 'unreported';
   if (outputState === 'output-disconnected' && operational) {
     const route = operational.noteOutput?.state, local = operational.localBackend;
@@ -20,8 +21,8 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
   }
   const inactive = ['local-output-off', 'midi-output-off', 'output-preparing'].includes(outputState);
   const blocked = ['output-disconnected', 'local-output-error', 'self-muted', 'solo-suppressed', 'zero-gain'].includes(outputState);
-  const evidenceClass = outcome === 'mixed' ? 'mixed' : rejected ? 'rejected' : degraded ? 'degraded' : submitted ? 'api-submitted' : admitted ? 'sink-admitted' : event ? 'intent-observed' : 'unknown';
-  const decisionText = rejected ? `${outcome === 'mixed' ? 'One sink rejected' : 'Rejected'}: ${rejected.reason || 'unreported reason'}` : degraded ? `Degraded: ${degraded.reason || 'unreported reason'}` : submitted ? '' : admitted ? `Sink ${admitted.stage}; render unknown` : event ? 'Intent observed; output unknown' : 'No intent observed';
+  const evidenceClass = outcome === 'mixed' ? 'mixed' : rejected ? 'rejected' : degraded ? 'degraded' : applied ? 'processor-applied' : submitted ? 'api-submitted' : admitted ? 'sink-admitted' : event ? 'intent-observed' : 'unknown';
+  const decisionText = rejected ? `${outcome === 'mixed' ? 'One sink rejected' : 'Rejected'}: ${rejected.reason || 'unreported reason'}` : degraded ? `Degraded: ${degraded.reason || 'unreported reason'}` : applied ? `Body command applied at frame ${applied.appliedFrame}; shared output unknown` : submitted ? '' : admitted ? `Sink ${admitted.stage}; render unknown` : event ? 'Intent observed; output unknown' : 'No intent observed';
   const receiptText = [decisionText, submitted ? 'MIDI API submitted; receiver unknown' : ''].filter(Boolean).join('; ');
   const causeText = event ? `${event.action || event.sourceKind || 'Physical fact'} · actor ${event.actorId ?? 'shared/unknown'}` : lane.mode === 'pattern' ? 'Pattern lane; physical trace unavailable' : 'No physical intent observed';
   let top = `${lane.role || lane.family} · ${lane.mode === 'pattern' ? 'PAT' : 'PHYS'}${inactive ? ' OFF' : ''}`, bottom = `${formatLaneGain(lane.gain ?? 1)} · requested`, priority = 'ordinary';
@@ -40,7 +41,7 @@ export function createLaneDisplaySnapshot({ lane, revision = 0, page = 'identity
     ...receipts.map(value => `${value.sinkId || 'Unknown sink'}: ${value.status || 'unknown'} / ${value.stage || 'unknown'}; target ${value.targetFrame ?? 'unknown'} ${value.targetTimeDomain || 'unreported domain'}; execution ${value.executionEpoch || 'unknown'}${value.reason ? '; ' + value.reason : ''}`),
     event ? `Sources ${event.sources.map(value => value.eventId + (value.recorded ? '' : ' (unrecorded)')).join(', ') || 'unknown'}; source tick ${event.tick}; age ${ageTicks ?? 'unknown'} ticks` : '',
     `Coverage ${record?.completeness || 'unrecorded'}; omitted ${evidence?.omitted ?? 0}; acoustic evidence unknown`].filter(Boolean).join('\n');
-  const glyph = priority === 'blocked' && evidenceClass !== 'rejected' ? '!' : { mixed: '±', rejected: '×', degraded: '!', 'api-submitted': '↗', 'sink-admitted': '▷', 'intent-observed': '◇', unknown: '○' }[evidenceClass];
+  const glyph = priority === 'blocked' && evidenceClass !== 'rejected' ? '!' : { mixed: '±', rejected: '×', degraded: '!', 'processor-applied': '▣', 'api-submitted': '↗', 'sink-admitted': '▷', 'intent-observed': '◇', unknown: '○' }[evidenceClass];
   return Object.freeze({ version: 1, laneId: lane.id, revision, projectRevision: revision, evidenceRevision: evidence?.revision ?? null, patchIdentity, name: lane.name, role: lane.role, mode: lane.mode, displayPage: page, glyph,
     sourceTick: record?.sourceTick ?? null, ageTicks, stale, outputState, evidenceClass, completeness: record?.completeness || 'unrecorded', priority, top, bottom, detail,
     recentCause: event, meter: Object.freeze({ source: 'unavailable', peak: null, rms: null }) });

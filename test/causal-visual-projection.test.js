@@ -12,6 +12,35 @@ const displays = events => [{ lane: { id: 'lane-1' }, mix: {}, evidence: { histo
 const project = (events, options = {}) => projectCausalHistory({ displays: displays(events), presentation: presentation(), ...options });
 
 describe('world-projected historical causal marks', () => {
+  it('requires the exact processor application, clock, body, graph and owner evidence before describing an applied command', () => {
+    const receipt = { status: 'accepted', stage: 'body-strike-applied', applicationEvidence: 'processor-frame-acknowledged', appliedFrame: 128, targetFrame: 128, targetTimeDomain: 'audio-sample-frames', sampleRate: 48000, bodyInstanceId: 'a'.repeat(64), graphDefinitionHash: 'b'.repeat(64), executionEpoch: 'execution', owner: 'owner', ownerGeneration: 0, ownerRouteRevision: 1, nodeId: 'skin' };
+    expect(causalIntentOutcome(intent('applied', { receipts: [receipt] }))).to.equal('processor-applied');
+    for (const change of [{ applicationEvidence: null }, { appliedFrame: null }, { appliedFrame: 129 }, { targetTimeDomain: 'performance-microseconds' }, { sampleRate: 0 }, { bodyInstanceId: null }, { graphDefinitionHash: null }, { executionEpoch: null }, { owner: null }, { ownerGeneration: null }, { ownerRouteRevision: null }, { nodeId: null }]) {
+      const value = project([intent('unqualified', { receipts: [{ ...receipt, ...change }] })]); expect(value.causes[0].outcome).to.equal('unconfirmed'); expect(explainCausalVisual(value.causes[0])).to.include('no qualified individually correlated processor receipt retained');
+    }
+    expect(causalIntentOutcome(intent('mixed', { receipts: [receipt, { status: 'rejected', sinkId: 'midi', executionEpoch: 'execution' }] }))).to.equal('mixed');
+    expect(causalIntentOutcome(intent('cancelled', { receipts: [receipt, { ...receipt, terminalState: 'cancelled' }] }))).to.equal('cancelled');
+  });
+  it('keeps the physical lane and each selected target mix independent of reversed transfer lane order', () => {
+    const original = intent('original', { laneId: 'lane-2', laneIndex: 1, sources: [source('physical', { laneIndex: 1, point: { x: 100, y: 120, evidence: 'observed-endpoint' } })] });
+    const transferred = intent('transferred', { laneId: 'lane-1', laneIndex: 0, tick: 11, sources: [source('physical', { recorded: false, tick: null, laneIndex: null, actorId: null, point: null })] });
+    const rows = presentation({ rows: [{ lane: 1, sourceY: 100, sourceHeight: 100, destinationY: 0, destinationHeight: 180 }] });
+    const values = [{ mix: { mute: true, soloSuppressed: false, revision: 9 }, evidence: { history: [transferred] } }, { mix: { mute: false, soloSuppressed: false, revision: 8 }, evidence: { history: [original] } }];
+    const a = projectCausalHistory({ displays: values, presentation: rows }), b = projectCausalHistory({ displays: [...values].reverse(), presentation: rows });
+    for (const value of [a, b]) { expect(value.marks).to.have.length(1); expect(value.marks[0].laneIndex).to.equal(1); expect(value.causes[0]).to.include({ laneIndex: 1, actorId: 7 });
+      const index = value.causes[0].intents.findIndex(event => event.intentId === 'transferred'); expect(explainCausalVisual(value.causes[0], index)).to.include('target lane lane-1').and.include('Current lane mix: muted; target lane-1; mix revision 9'); }
+    expect(a.marks[0].x).to.equal(b.marks[0].x); expect(a.marks[0].y).to.equal(b.marks[0].y);
+  });
+  it('never borrows a voice owner for a shared physical fact and derives only the row from observed world coordinates', () => {
+    const value = project([intent('shared', { actorId: 99, sources: [source('shared-source', { actorId: null, laneIndex: null })] })]);
+    expect(value.causes[0]).to.include({ actorId: null, laneIndex: null }); expect(value.marks[0].laneIndex).to.equal(0);
+    expect(explainCausalVisual(value.causes[0])).to.include('actor shared/unknown').and.include('voice owner actor 99');
+  });
+  it('retains conflicting copies as text but refuses to choose one coordinate or actor for a mark', () => {
+    const a = intent('a'), b = intent('b', { sources: [source('fact-1', { actorId: 9, point: { x: 180, y: 20 } })] });
+    const value = project([a, b]); expect(value.causes).to.have.length(1); expect(value.causes[0]).to.include({ identityConflict: true, actorId: null, point: null }); expect(value.marks).to.have.length(0); expect(value.summary.conflicts).to.equal(1);
+    expect(explainCausalVisual(value.causes[0])).to.include('Conflicting retained source copies');
+  });
   it('uses observed coordinates through the accepted CSS-scaled row projection rather than current actor pose', () => {
     const value = project([intent()]); expect(value.marks).to.have.length(1); expect(value.marks[0]).to.include({ x: 420, y: 102, count: 1 });
     expect(value.marks[0].causes[0]).to.include({ eventId: 'fact-1', actorId: 7, glyph: '▱' }); expect(value.marks[0].causes[0].point).to.deep.equal(source().point);
