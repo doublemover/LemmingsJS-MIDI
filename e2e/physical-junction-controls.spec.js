@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 
@@ -20,7 +21,7 @@ const setup = async (page, lanes = 8) => {
     studio.dispatch({ type: 'procgen/junctions', junctions: [definition] }); window.junctionFixture = { definition, floorY, lane };
   });
   await page.locator('#procgenStep').click();
-  await page.getByRole('button', { name: 'Junctions…', exact: true }).click();
+  await useWorkstationControl(page, page.getByRole('button', { name: 'Junctions…', exact: true }), {'button':'Junctions…'}, 'click');
   const dock = page.getByRole('region', { name: 'Selected physical junction', exact: true });
   await expect(dock.getByLabel('Inspect physical junction')).toHaveValue('browser-switch');
   await dock.getByRole('button', { name: 'Switch request', exact: true }).click(); await page.locator('#procgenStep').click();

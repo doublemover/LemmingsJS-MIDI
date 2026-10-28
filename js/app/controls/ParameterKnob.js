@@ -1,8 +1,10 @@
 import { getPointerGestureArbiter } from './PointerGestureArbiter.js';
 import { normalizeParameterDescriptor, parameterUnitPosition, parameterValueAt, quantizeParameter, parseParameterValue, formatParameterValue } from './ParameterDescriptor.js';
+import { createParameterEntryPopover } from './ParameterEntryPopover.js';
 
 export function createParameterKnob({ document, window = document.defaultView, descriptor: input, value, getIdentity = () => input,
-  commit, preview = () => {}, onCancel = () => {}, onFinish = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob' } = {}) {
+  commit, preview = () => {}, onCancel = () => {}, onFinish = () => {}, readOnly = false, pending = false, momentary = false, presentation = 'knob',
+  compact = false, contextName, focusFallback, onEntryActivity, compactFormat, compactLabel } = {}) {
   if (!['knob', 'fader'].includes(presentation)) throw new Error('Invalid parameter presentation.');
   const descriptor = normalizeParameterDescriptor(input), arbiter = getPointerGestureArbiter(document), listeners = [];
   const node = (tag, cls, text) => { const element = document.createElement(tag); element.className = cls; if (text != null) element.textContent = text; return element; };
@@ -11,14 +13,21 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const effective = node('span', 'parameter-knob-effective'), pickup = node('span', 'parameter-knob-pickup'), error = node('output', 'parameter-knob-error'), textConflict = node('div', 'parameter-knob-text-conflict');
   textConflict.hidden = true; const actionButtons = [], conflictButtons = new Map();
   root.dataset.presentation = presentation;
+  root.dataset.parameterRole = descriptor.functionalRole;
+  if (compact && compactLabel) label.textContent = compactLabel;
   effective.hidden = pickup.hidden = true; cap.type = 'button'; cap.setAttribute('role', 'slider'); cap.setAttribute('aria-label', descriptor.name); cap.setAttribute('aria-orientation', 'vertical');
   cap.setAttribute('aria-valuemin', String(descriptor.min)); cap.setAttribute('aria-valuemax', String(descriptor.max));
   entry.type = 'text'; entry.inputMode = 'decimal'; entry.setAttribute('aria-label', descriptor.name + ' numeric value'); error.setAttribute('aria-live', 'polite');
   root.dataset.parameterId = descriptor.id; root.dataset.quantity = descriptor.quantity; cap.append(indicator, effective, pickup); root.append(label, cap, output, entry);
-  let authored = value == null ? null : quantizeParameter(descriptor, value, true), draft = authored, gesture = null, disposed = false, wheelTimer = null, entryDirty = false, entryConflict = false, entryComposing = false;
+  let authored = value == null ? null : quantizeParameter(descriptor, value, true), draft = authored, gesture = null, disposed = false, wheelTimer = null, entryDirty = false, entryConflict = false, entryComposing = false, exactPopover = null;
   const on = (target, type, fn, options) => { target?.addEventListener?.(type, fn, options); listeners.push(() => target?.removeEventListener?.(type, fn, options)); };
   const paint = () => {
-    const text = formatParameterValue(descriptor, draft); if (output.textContent !== text) output.textContent = text; cap.setAttribute('aria-valuetext', text);
+    const text = formatParameterValue(descriptor, draft), display = compact && compactFormat && draft != null ? compactFormat(draft) : text;
+    if (output.textContent !== display) {
+      if (output.firstChild?.nodeType === 3 && output.childNodes.length === 1) output.firstChild.nodeValue = display;
+      else output.textContent = display;
+    }
+    cap.setAttribute('aria-valuetext', text);
     if (draft == null) { cap.removeAttribute?.('aria-valuenow'); root.dataset.unknown = 'true'; }
     else { cap.setAttribute('aria-valuenow', String(draft)); delete root.dataset.unknown; indicator.style.transform = presentation === 'fader' ? 'none' : `rotate(${-135 + parameterUnitPosition(descriptor, draft) * 270}deg)`; if (presentation === 'fader') indicator.style.top = `${(1 - parameterUnitPosition(descriptor, draft)) * 90}%`; }
     if (document.activeElement !== entry && !entryDirty && !entryConflict) entry.value = draft == null ? '' : descriptor.formatInput ? descriptor.formatInput(draft) : String(draft);
@@ -86,7 +95,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   };
   const clearTextConflict = () => { entryConflict = false; textConflict.hidden = true; delete entry.dataset.editConflict; entry.removeAttribute('aria-invalid'); error.textContent = ''; };
   const acceptText = () => {
-    if (disposed || entryComposing) return;
+    if (disposed || entryComposing || compact && !exactPopover?.isOpen()) return;
     if (entryConflict) { showTextConflict(); return; }
     try {
       const next = parseParameterValue(descriptor, entry.value);
@@ -98,14 +107,14 @@ export function createParameterKnob({ document, window = document.defaultView, d
   };
   for (const [label, keep] of [['Keep my edit', true], ['Use current value', false]]) {
     const button = node('button', 'parameter-knob-action', label); button.type = 'button';
-    on(button, 'click', () => { if (disposed || !entryConflict || keep && (readOnly || pending)) return; clearTextConflict(); if (keep) acceptText(); else { entryDirty = false; entry.value = acceptedText(); paint(); } entry.focus?.({ preventScroll: true }); });
+    on(button, 'click', () => { if (disposed || !entryConflict || keep && (readOnly || pending)) return; entry.focus?.({ preventScroll: true }); clearTextConflict(); if (keep) acceptText(); else { entryDirty = false; entry.value = acceptedText(); paint(); } });
     textConflict.append(button); conflictButtons.set(keep, button);
   }
   root.append(textConflict);
   on(entry, 'compositionstart', () => { entryComposing = true; });
   on(entry, 'compositionend', () => { entryComposing = false; entryDirty = entry.value !== acceptedText(); });
   on(entry, 'input', () => { entryDirty = entry.value !== acceptedText(); });
-  on(entry, 'change', acceptText);
+  on(entry, 'change', () => { if (!compact) acceptText(); });
   on(entry, 'keydown', event => {
     if (entryComposing || event.isComposing) return;
     if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); acceptText(); }
@@ -113,8 +122,11 @@ export function createParameterKnob({ document, window = document.defaultView, d
   });
   on(cap, 'blur', () => gesture?.lease.cancel('blur')); on(window, 'blur', () => gesture?.lease.cancel('window-blur'));
   on(document, 'visibilitychange', () => { if (document.hidden) gesture?.lease.cancel('hidden'); });
-  const observer = typeof window?.MutationObserver === 'function' ? new window.MutationObserver(() => { if (!root.isConnected) gesture?.lease.cancel('removed'); }) : null;
+  const observer = typeof window?.MutationObserver === 'function' ? new window.MutationObserver(() => { if (!root.isConnected) { gesture?.lease.cancel('removed'); exactPopover?.close({ focus: true }); } }) : null;
   observer?.observe(document.documentElement, { childList: true, subtree: true }); paint();
+  if (compact) exactPopover = createParameterEntryPopover({ document, window, root, cap, label, output, entry, controls: [entry, ...actionButtons, error, textConflict],
+    name: descriptor.name, contextName, getIdentity, isComposing: () => entryComposing, focusFallback, onActivity: onEntryActivity,
+    resetDraft() { if (!entryDirty && !entryConflict) return false; entryDirty = false; clearTextConflict(); entry.value = acceptedText(); paint(); return true; } });
   const observations = ({ effectiveValue = null, pickupValue = null } = {}) => {
     if (disposed) return;
     for (const [mark, position] of [[effective, effectiveValue], [pickup, pickupValue]]) {
@@ -123,7 +135,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
         if (presentation === 'fader') mark.style.top = `${(1 - parameterUnitPosition(descriptor, position)) * 90}%`; }
     }
   };
-  return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null }),
+  return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null, exactOpen: !!exactPopover?.isOpen(), textDirty: entryDirty || entryConflict || entryComposing }),
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
       if (disposed) return;
       const incoming = next == null ? null : quantizeParameter(descriptor, next, true), unavailable = isReadOnly && !readOnly || isPending && !pending, conflict = entryDirty && (incoming !== authored || unavailable);
@@ -133,5 +145,5 @@ export function createParameterKnob({ document, window = document.defaultView, d
       if (!gesture) draft = authored;
       observations({ effectiveValue, pickupValue });
       if (conflict) showTextConflict(); else paint();
-    }, setObservations: observations, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; observer?.disconnect(); for (const remove of listeners) remove(); listeners.length = 0; } });
+    }, setObservations: observations, cancel(reason) { gesture?.lease.cancel(reason); exactPopover?.close(); }, dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; exactPopover?.dispose(); observer?.disconnect(); for (const remove of listeners) remove(); listeners.length = 0; } });
 }

@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
@@ -7,7 +8,7 @@ const ready = async page => {
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2&output=midi');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   await inspectLane(page, 'MIDI');
 };
@@ -44,11 +45,11 @@ test('MIDI requests retain exact values through rerenders, inspector pages, firs
 test('endpoint reuse and a stale pre-route input never imply a receiver reset or dispatch the old request to the new route', { tag: '@boundary' }, async ({ page }) => {
   await ready(page); const sustain = () => page.getByLabel('Sustain', { exact: true }); await sustain().fill('127'); await sustain().press('Enter');
   await sustain().fill('42'); await page.evaluate(() => { window.__OLD_EXPRESSION_INPUT__ = document.querySelector('.studio-midi-expression input'); });
-  await page.locator('#procgenMidiDevice').selectOption('pw-output-2'); await expect(sustain()).toHaveValue('');
+  await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-2'); await expect(sustain()).toHaveValue('');
   const before = await page.evaluate(() => window.__WEBMIDI_STUB__.metrics().sent);
   await page.evaluate(() => { const input = window.__OLD_EXPRESSION_INPUT__; input.value = '0'; input.dispatchEvent(new Event('change', { bubbles: true })); });
   expect(await page.evaluate(() => window.__WEBMIDI_STUB__.metrics().sent)).toBe(before); await expect(page.getByLabel('Sustain request evidence')).toContainText('No request observed');
-  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); await expect(sustain()).toHaveValue('');
+  await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); await expect(sustain()).toHaveValue('');
   expect(await sustainOn(page)).toBe(1); await page.evaluate(() => window.__WEBMIDI_STUB__.disconnectOutput('pw-output-1')); await expect(sustain()).toHaveValue('');
   await page.evaluate(() => window.__WEBMIDI_STUB__.reconnectOutput('pw-output-1')); await expect(sustain()).toHaveValue(''); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
 });

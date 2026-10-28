@@ -20,7 +20,7 @@ export function checkBrowserCategories({ output = '.tmp/browser-category-selecti
   const full = collect(false), smoke = collect(true), selection = validateWorkstationCollection({ full, smoke, expectedFiles });
   const git = args => { const result = run('git', args, { cwd: root, encoding: 'utf8' }); if (result.status !== 0) throw new Error('Cannot bind browser selection to its Git source.'); return result.stdout.trim(); };
   const helperFiles = readdirSync(path.join(root, 'e2e/helpers'), { recursive: true }).map(file => file.replace(/\\/g, '/')).filter(file => file.endsWith('.js')).sort().map(file => 'e2e/helpers/' + file);
-  const runtimeFiles = git(['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', 'js', 'css', 'procgen.html', 'provenance/runtime-artifacts.json']).split('\0').filter(Boolean);
+  const runtimeFiles = git(['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', 'js', 'css', 'test/support', 'procgen.html', 'provenance/runtime-artifacts.json']).split('\0').filter(Boolean);
   const sourceFiles = [...new Set(['playwright.config.js', 'package.json', 'scripts/BrowserTestCatalog.js', 'scripts/check-browser-categories.js', 'scripts/check-browser-results.js', 'scripts/qualify-workstation-gates.js', ...expectedFiles.map(file => 'e2e/' + file), ...helperFiles, ...runtimeFiles])].sort();
   const receipt = { ...selection, source: { head: git(['rev-parse', 'HEAD']), dirty: !!git(['status', '--porcelain']), node: process.version,
     files: sourceFiles.map(file => ({ file, sha256: createHash('sha256').update(readFileSync(path.join(root, file))).digest('hex') })) }, full, smoke,

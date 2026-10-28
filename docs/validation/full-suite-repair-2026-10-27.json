@@ -818,40 +818,50 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "86d89b8224b45b297bcbcd700d67ab0b4bbe70d8",
-    "job": 122595849153,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40621340455/job/122595849153",
-    "passed": 6575,
+    "head": "3705b1a5040bca2dfdcf2a6739ee5f8d16842816",
+    "job": 122638690423,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40634649407/job/122638690423",
+    "passed": 6591,
     "failed": 0,
-    "browserPassed": 83,
+    "browserPassed": 102,
     "browserFailed": 0,
+    "browserGroups": {
+      "desktop": 22,
+      "workstationSmoke": 80,
+      "fullWorkstationCollected": 107,
+      "workstationFiles": 21,
+      "smokeSkipped": 0,
+      "allRequiredCapabilitiesPassed": true
+    },
     "allChecksGreen": true,
     "coverage": {
-      "lines": 90.28,
-      "statements": 90.28,
-      "branches": 83.55,
-      "functions": 88.25
+      "lines": 90.24,
+      "statements": 90.24,
+      "branches": 83.54,
+      "functions": 88.23
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      296,
-      297
+      298
     ],
     "excludesLaterWork": true,
     "masterCapture": {
       "state": "Ready",
       "frames": 53888,
-      "capturedFrames": 53888,
+      "captured": 53888,
       "stopReason": "user-stop",
-      "clockDiscontinuity": null
+      "clockDiscontinuity": null,
+      "peak": 0.0227358341217041,
+      "nonfinite": 0,
+      "capturedFrames": 53888
     },
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci295-green.log",
-      "bytes": 1107423,
-      "sha256": "cda2b51a5f5a176a4930c398f0845e2a402505ade3eb9a8324e78aa9e83f0280"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci297-green.log",
+      "bytes": 1121837,
+      "sha256": "74e8eafd558a5f8a4d252949f24c113d874c9162b7842671d2aff1e599a39cc4"
     }
   },
   "continuation264": {
@@ -13485,17 +13495,4146 @@
       }
     ],
     "issueStatus": {
-      "1084": "Required projects/selection/execution/CI/changed-source and deliberate-fault gates implemented; current-source CI pending.",
-      "1031": "Combined accepted-actor/mapping/lane/Undo acceptance now passes alongside the scoped dock/curves; current-source CI pending.",
+      "1084": "CI collection/execution/source/fault gates implemented; green 80-workflow smoke and 6591 full Node cases; complete maintained-project receipt remains open.",
+      "1031": "Closed completed after exact-source green CI, including the combined accepted-actor/mapping/lane/Undo journey.",
       "1086": "Actual unavailable-display startup/retry and replacement refusal qualified on Chromium; multi-engine/GPU/device matrix remains open.",
       "993": "Joined terrain-first dock implemented; quiet global controls/materials/fast shaping remain open."
     },
     "limitations": [
-      "Current-head full CI must qualify this batch; 86d89b82 remains the last fully green checkpoint.",
+      "Full CI is green at 3705b1a5 and excludes uncommitted continuation298.",
       "The expanded 107-case cohort preceded the final redundant-label repair; the final 19 affected cases and four fault gates have their own exact source receipts. No single all-107 pass is claimed for the final source.",
       "The opt-in benchmark was explicitly skipped, never counted as a passed production test.",
       "No receiver, acoustic, hardware, multi-engine or actual screen-reader certification is inferred.",
       "The wider 226-issue backlog remains open."
-    ]
+    ],
+    "remoteCi": {
+      "head": "3705b1a5040bca2dfdcf2a6739ee5f8d16842816",
+      "job": 122638690423,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40634649407/job/122638690423",
+      "passed": 6591,
+      "failed": 0,
+      "browserPassed": 102,
+      "browserFailed": 0,
+      "browserGroups": {
+        "desktop": 22,
+        "workstationSmoke": 80,
+        "fullWorkstationCollected": 107,
+        "workstationFiles": 21,
+        "smokeSkipped": 0,
+        "allRequiredCapabilitiesPassed": true
+      },
+      "allChecksGreen": true,
+      "coverage": {
+        "lines": 90.24,
+        "statements": 90.24,
+        "branches": 83.54,
+        "functions": 88.23
+      },
+      "minimumDesktopViewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "excludesContinuations": [
+        298
+      ],
+      "excludesLaterWork": true,
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 53888,
+        "captured": 53888,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.0227358341217041,
+        "nonfinite": 0,
+        "capturedFrames": 53888
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci297-green.log",
+        "bytes": 1121837,
+        "sha256": "74e8eafd558a5f8a4d252949f24c113d874c9162b7842671d2aff1e599a39cc4"
+      }
+    }
+  },
+  "continuation298": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Quiet desktop instrument chrome, owned exact entry and semantic materials",
+    "sourceBase": "3705b1a5040bca2dfdcf2a6739ee5f8d16842816",
+    "issues": [
+      993,
+      994,
+      995,
+      998,
+      1042,
+      1084
+    ],
+    "development": [
+      "Reuse the original global controls and listeners in owned Setup/View/Edit/Project/World tools/Sound tools menus. Keep transport, output activation, Panic, live warnings and retained/prepared-file errors reachable. Status details are anchored without consuming another bar row. Restore borrowed nodes once on replacement/disposal; outside clicks cannot consume the target action.",
+      "Retain compact Level fader and Pan owners only for visible rows. Original typed inputs/actions move into owned exact-entry popovers; retain invalid/IME/conflict buffers, explicit confirmation, two-stage Escape and source leases. Blur/change/outside/resize cannot publish buffered text. Native focus settles before closing, preserving actual conflict-button clicks. Close removed owners and return focus safely.",
+      "Preserve numeric text nodes during real parameter changes, so retained lane subtrees and pointer gestures remain stable. Use canonical gain/pan commands and Undo with unchanged physical world and output ownership.",
+      "Add coherent dark material/function/state tokens, fixed cap lighting, legible OLED/numeric engraving and redundant selected/queued/stale/error marks. Keep lane identity separate from known parameter functions; unknown macros remain neutral. High-contrast, low-effects and forced-colors preserve geometry. Use platform UI/monospace stacks and original CSS without new image/font dependencies.",
+      "Add a real-control material contact sheet and production captures at desktop 1920x1080/QHD/UHD, DPR1/1.5/2, contrast/effects/greyscale and explicitly labeled CSS enlargement. Gate actual rendered text contrast, conservative required-mark contrast, hit interception and unchanged bounds. Extend source-binding to test/support fixtures."
+    ],
+    "validation": {
+      "node": {
+        "passed": 161,
+        "failed": 0
+      },
+      "browser": {
+        "workstation": {
+          "passed": 117,
+          "failed": 0,
+          "skipped": 1,
+          "skipReason": "explicit opt-in benchmark"
+        },
+        "desktopBoundaries": {
+          "passed": 22,
+          "failed": 0
+        },
+        "fullCollected": 118,
+        "smokeCollected": 91,
+        "sourceInputs": 1060,
+        "allRequiredCapabilitiesPassed": true
+      },
+      "cohorts": [
+        {
+          "phase": "initial",
+          "passed": 101,
+          "failed": 16,
+          "skipped": 1
+        },
+        {
+          "phase": "batched correction",
+          "passed": 115,
+          "failed": 2,
+          "skipped": 1
+        },
+        {
+          "phase": "native focus diagnostic",
+          "passed": 2,
+          "failed": 1
+        },
+        {
+          "phase": "final complete project",
+          "passed": 117,
+          "failed": 0,
+          "skipped": 1
+        }
+      ],
+      "focusedCoverage": {
+        "AnchoredControlPosition.js": {
+          "lines": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 1,
+            "covered": 1,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 17,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 76.47
+          }
+        },
+        "ParameterEntryPopover.js": {
+          "lines": {
+            "total": 54,
+            "covered": 54,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 10,
+            "covered": 8,
+            "skipped": 0,
+            "pct": 80
+          },
+          "statements": {
+            "total": 54,
+            "covered": 54,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 46,
+            "covered": 35,
+            "skipped": 0,
+            "pct": 76.08
+          }
+        },
+        "ParameterKnob.js": {
+          "lines": {
+            "total": 149,
+            "covered": 146,
+            "skipped": 0,
+            "pct": 97.98
+          },
+          "functions": {
+            "total": 26,
+            "covered": 24,
+            "skipped": 0,
+            "pct": 92.3
+          },
+          "statements": {
+            "total": 149,
+            "covered": 146,
+            "skipped": 0,
+            "pct": 97.98
+          },
+          "branches": {
+            "total": 188,
+            "covered": 148,
+            "skipped": 0,
+            "pct": 78.72
+          }
+        },
+        "WorkstationChrome.js": {
+          "lines": {
+            "total": 80,
+            "covered": 78,
+            "skipped": 0,
+            "pct": 97.5
+          },
+          "functions": {
+            "total": 13,
+            "covered": 11,
+            "skipped": 0,
+            "pct": 84.61
+          },
+          "statements": {
+            "total": 80,
+            "covered": 78,
+            "skipped": 0,
+            "pct": 97.5
+          },
+          "branches": {
+            "total": 56,
+            "covered": 45,
+            "skipped": 0,
+            "pct": 80.35
+          }
+        }
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "whitespace",
+        "10-component/340-file provenance"
+      ],
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 53760,
+        "captured": 53760,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.0228269100189209,
+        "nonfinite": 0
+      }
+    },
+    "visualMeasurements": [
+      {
+        "case": "production material contact sheet preserves geometry and contrast across desktop effects and enlargement",
+        "name": "material-measurements",
+        "value": {
+          "dpr": 1,
+          "contrasts": {
+            "engraving": 7.720231607607514,
+            "secondary": 7.941035228209774,
+            "unavailable": 6.233731733164469,
+            "mark": 3.9551368321227525,
+            "focus": 6.811801879259684,
+            "active": 11.758088804321464,
+            "rendered": [
+              {
+                "text": "Production instrument materials \u00b7 shared CSS and",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Platform UI and monospace fonts; original CSS su",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "idle \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "idle \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "hover \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "hover \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "focus \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "focus \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "queued \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Queued \u00b7 awaiting acceptance",
+                "ratio": 11.927790123869869
+              },
+              {
+                "text": "stale \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Stale \u00b7 last observation only",
+                "ratio": 10.361949926423142
+              },
+              {
+                "text": "disabled \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "Latch",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "disabled \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "error \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Error \u00b7 value refused",
+                "ratio": 10.79880633045273
+              },
+              {
+                "text": "Outside exact entry",
+                "ratio": 9.447724506786642
+              }
+            ],
+            "intercepted": 0,
+            "actualBodyBackground": "rgb(21, 24, 28)"
+          },
+          "bounds": [
+            [
+              35,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              129,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              663,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              757,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1291,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1385,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              35,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              129,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              665,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              759,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1291,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1385,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              35,
+              581.125,
+              32,
+              32
+            ],
+            [
+              129,
+              581.125,
+              32,
+              32
+            ],
+            [
+              663,
+              581.125,
+              32,
+              32
+            ],
+            [
+              757,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1291,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1385,
+              581.125,
+              32,
+              32
+            ]
+          ],
+          "enlargement": {
+            "method": "CSS zoom 2, 3840x2160 desktop viewport; logical 1920x1080",
+            "popup": {
+              "x": 326,
+              "y": 466.796875,
+              "width": 640,
+              "height": 404.75
+            }
+          }
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-no-preference",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-more",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-no-preference",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-more",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-no-preference",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-more",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 1
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "production material contact sheet preserves geometry and contrast across desktop effects and enlargement",
+        "name": "material-measurements",
+        "value": {
+          "dpr": 1.5,
+          "contrasts": {
+            "engraving": 7.720231607607514,
+            "secondary": 7.941035228209774,
+            "unavailable": 6.233731733164469,
+            "mark": 3.9551368321227525,
+            "focus": 6.811801879259684,
+            "active": 11.758088804321464,
+            "rendered": [
+              {
+                "text": "Production instrument materials \u00b7 shared CSS and",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Platform UI and monospace fonts; original CSS su",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "idle \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "idle \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "hover \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "hover \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "focus \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "focus \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "queued \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Queued \u00b7 awaiting acceptance",
+                "ratio": 11.927790123869869
+              },
+              {
+                "text": "stale \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Stale \u00b7 last observation only",
+                "ratio": 10.361949926423142
+              },
+              {
+                "text": "disabled \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "Latch",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "disabled \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "error \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Error \u00b7 value refused",
+                "ratio": 10.79880633045273
+              },
+              {
+                "text": "Outside exact entry",
+                "ratio": 9.447724506786642
+              }
+            ],
+            "intercepted": 0,
+            "actualBodyBackground": "rgb(21, 24, 28)"
+          },
+          "bounds": [
+            [
+              35,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              129,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              663,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              757,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1291,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1385,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              35,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              129,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              665,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              759,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1291,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1385,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              35,
+              581.125,
+              32,
+              32
+            ],
+            [
+              129,
+              581.125,
+              32,
+              32
+            ],
+            [
+              663,
+              581.125,
+              32,
+              32
+            ],
+            [
+              757,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1291,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1385,
+              581.125,
+              32,
+              32
+            ]
+          ],
+          "enlargement": {
+            "method": "CSS zoom 2, 3840x2160 desktop viewport; logical 1920x1080",
+            "popup": {
+              "x": 326,
+              "y": 466.796875,
+              "width": 640,
+              "height": 404.75
+            }
+          }
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-no-preference",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-more",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-no-preference",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-more",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-no-preference",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-more",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 1.5
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "production material contact sheet preserves geometry and contrast across desktop effects and enlargement",
+        "name": "material-measurements",
+        "value": {
+          "dpr": 2,
+          "contrasts": {
+            "engraving": 7.720231607607514,
+            "secondary": 7.941035228209774,
+            "unavailable": 6.233731733164469,
+            "mark": 3.9551368321227525,
+            "focus": 6.811801879259684,
+            "active": 11.758088804321464,
+            "rendered": [
+              {
+                "text": "Production instrument materials \u00b7 shared CSS and",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Platform UI and monospace fonts; original CSS su",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "idle \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "idle \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "hover \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "hover \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "focus \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "focus \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "pressed \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "selected \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "queued \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Queued \u00b7 awaiting acceptance",
+                "ratio": 11.927790123869869
+              },
+              {
+                "text": "stale \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Stale \u00b7 last observation only",
+                "ratio": 10.361949926423142
+              },
+              {
+                "text": "disabled \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "Latch",
+                "ratio": 6.233731733164469
+              },
+              {
+                "text": "disabled \u00b7 authored control",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "error \u00b7 0 dB",
+                "ratio": 17.286764685656152
+              },
+              {
+                "text": "Level",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "1",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Pan",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "0",
+                "ratio": 15.877469664125648
+              },
+              {
+                "text": "Momentary",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Latch",
+                "ratio": 9.447724506786642
+              },
+              {
+                "text": "Error \u00b7 value refused",
+                "ratio": 10.79880633045273
+              },
+              {
+                "text": "Outside exact entry",
+                "ratio": 9.447724506786642
+              }
+            ],
+            "intercepted": 0,
+            "actualBodyBackground": "rgb(21, 24, 28)"
+          },
+          "bounds": [
+            [
+              35,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              129,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              663,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              757,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1291,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              1385,
+              198.5625,
+              32,
+              32
+            ],
+            [
+              35,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              129,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              665,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              759,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1291,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              1385,
+              388.34375,
+              32,
+              32
+            ],
+            [
+              35,
+              581.125,
+              32,
+              32
+            ],
+            [
+              129,
+              581.125,
+              32,
+              32
+            ],
+            [
+              663,
+              581.125,
+              32,
+              32
+            ],
+            [
+              757,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1291,
+              581.125,
+              32,
+              32
+            ],
+            [
+              1385,
+              581.125,
+              32,
+              32
+            ]
+          ],
+          "enlargement": {
+            "method": "CSS zoom 2, 3840x2160 desktop viewport; logical 1920x1080",
+            "popup": {
+              "x": 326,
+              "y": 466.796875,
+              "width": 640,
+              "height": 404.75
+            }
+          }
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-no-preference",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-1920-more",
+        "value": {
+          "viewport": {
+            "width": 1920,
+            "height": 1080,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 1900,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 1716,
+            "height": 944.8125,
+            "right": 1910,
+            "bottom": 1020
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 1900,
+            "height": 57.1875,
+            "right": 1910,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1028,
+            "width": 1900,
+            "height": 42,
+            "right": 1910,
+            "bottom": 1070
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-no-preference",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-2560-more",
+        "value": {
+          "viewport": {
+            "width": 2560,
+            "height": 1440,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 2540,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 2356,
+            "height": 1304.8125,
+            "right": 2550,
+            "bottom": 1380
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 2540,
+            "height": 57.1875,
+            "right": 2550,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 1388,
+            "width": 2540,
+            "height": 42,
+            "right": 2550,
+            "bottom": 1430
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-no-preference",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      },
+      {
+        "case": "eight-lane production instrument retains terrain priority and readable control bounds",
+        "name": "instrument-3840-more",
+        "value": {
+          "viewport": {
+            "width": 3840,
+            "height": 2160,
+            "dpr": 2
+          },
+          "workspace": {
+            "x": 10,
+            "y": 75.1875,
+            "width": 3820,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "world": {
+            "x": 194,
+            "y": 75.1875,
+            "width": 3636,
+            "height": 2024.8125,
+            "right": 3830,
+            "bottom": 2100
+          },
+          "topbar": {
+            "x": 10,
+            "y": 10,
+            "width": 3820,
+            "height": 57.1875,
+            "right": 3830,
+            "bottom": 67.1875
+          },
+          "footer": {
+            "x": 10,
+            "y": 2108,
+            "width": 3820,
+            "height": 42,
+            "right": 3830,
+            "bottom": 2150
+          },
+          "rows": 8,
+          "caps": [
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            },
+            {
+              "width": 32,
+              "height": 32
+            }
+          ]
+        }
+      }
+    ],
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\000-desktop-command-reference.png",
+        "case": "procgen-workstation-comman-3fe49-to-the-selected-deep-editor-workstation",
+        "bytes": 166329,
+        "sha256": "7efd0583b33191999bd3d8b80fbe5e3d82e4d4ebc360b138456980460d8da258"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\001-desktop-parameter-controls.png",
+        "case": "procgen-workstation-comman-a5c0f-ment-cancels-the-next-draft-workstation",
+        "bytes": 135903,
+        "sha256": "2fdb535246140ea8d44b98c2ce69926228285ab2d7b3412e17a07340fe646c21"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\002-joined-workstation-1920.png",
+        "case": "procgen-workstation-dock-d-3af10-coped-dock-resize-and-close-workstation",
+        "bytes": 138209,
+        "sha256": "2fc46e67c78f632f059cc1e4955ecf4d53bf8b3cbf8d63e154362621b899c4ed"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\003-joined-workstation-open-1920.png",
+        "case": "procgen-workstation-dock-d-3af10-coped-dock-resize-and-close-workstation",
+        "bytes": 130943,
+        "sha256": "ab53a4affd13a74d876be8d078606195f696bdaf08ff8fdb565ee26a646600b1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\004-desktop-dock-enlarged-text.png",
+        "case": "procgen-workstation-dock-d-52c4d--inside-one-scrollable-dock-workstation",
+        "bytes": 123380,
+        "sha256": "09d8f94dff1c0646b271427dbdfe61e3fa120062f130b850e008118aaa050dc7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\005-joined-workstation-2560.png",
+        "case": "procgen-workstation-dock-d-5f91b-coped-dock-resize-and-close-workstation",
+        "bytes": 147544,
+        "sha256": "aa99e47522193350c7342780d02ca39d3feceba5722e6cfef8536121878641ad"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\006-joined-workstation-open-2560.png",
+        "case": "procgen-workstation-dock-d-5f91b-coped-dock-resize-and-close-workstation",
+        "bytes": 175316,
+        "sha256": "bb9e29f6edafbc4a55f1e7b78a8ed7b9d9668bca9de37764c5b35aae483ece5e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\007-joined-workstation-3840.png",
+        "case": "procgen-workstation-dock-d-9f0af-coped-dock-resize-and-close-workstation",
+        "bytes": 172253,
+        "sha256": "60f4f268493f7335b4c63a3192732f299b4b715e35a05006f973041edaa501e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\008-joined-workstation-open-3840.png",
+        "case": "procgen-workstation-dock-d-9f0af-coped-dock-resize-and-close-workstation",
+        "bytes": 200984,
+        "sha256": "8c3a9bc34410b79712a9cb608bf208e5c56d539b3c1d743cdf05fdf459f73f12"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\009-materials-1-css-enlargement-200.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 243261,
+        "sha256": "e7f1c8d7e82016ce015a4a03f49f39525805ed29b892c31fd7f59051dbeb281c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\010-materials-1-forced-colors.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 51170,
+        "sha256": "6d65d0134d24a1c27178ada810ffbb5308d6ff2a6c18fda5fd1201965d657e73"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\011-materials-1-greyscale.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 71830,
+        "sha256": "dcc93dc44199f48533034ff478b2cbc66136f67696b960ab880dcae2e62733fc"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\012-materials-1-high-contrast.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 64311,
+        "sha256": "c1a226435cadc8363fda2c3c3ec351aeb9ad9bffceb83a39151149ffa2ec5117"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\013-materials-1-low-effects.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 62827,
+        "sha256": "f9cf320df61a5dfeb7708bda5d55c005dc4fdb41a256f70ff21d4317aa34a5db"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\014-materials-1-normal.png",
+        "case": "procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation",
+        "bytes": 71338,
+        "sha256": "78de8a9748d7c4cd7e22b35d7775688da9b4f3e612c9892eed8ee8bc49b1dc4e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\015-materials-1.5-css-enlargement-200.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 431058,
+        "sha256": "ee6bdd49e62a5a2a994b6092637f7b2b061bf9d5815d4a669d78985164f6051d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\016-materials-1.5-forced-colors.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 108450,
+        "sha256": "653f0b01be2d72521453411d1849ef82baeebdaba67345362c7f9a86653d4afa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\017-materials-1.5-greyscale.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 149813,
+        "sha256": "375297a59b3534bd6cfd7e9ad162bf69b4d46eedd932d5656b5679087f141c3e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\018-materials-1.5-high-contrast.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 131510,
+        "sha256": "ab60d511d90c84706d98c6bf0a4b4e2553f443f14e71680f4ddcfd70e66186cb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\019-materials-1.5-low-effects.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 128657,
+        "sha256": "9e4047f4885d36a64052190a6f2da1454ad5329fc48c3df05859b24b3b717cbd"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\020-materials-1.5-normal.png",
+        "case": "procgen-workstation-materi-48129-top-effects-and-enlargement-workstation",
+        "bytes": 147382,
+        "sha256": "6f759e0f051c4ae5e4532383c71bfd4ee557c15b0aecc4053b55a2b1ce448c97"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\021-instrument-1920-dpr-1-more.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 118920,
+        "sha256": "af9f72ef4f626623b62682abdd516a8aeaf5883c6fc3793cb6541d69570fcbc2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\022-instrument-1920-dpr-1-no-preference.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 136785,
+        "sha256": "9a3601434b7b9dd1d3bda98a8a4370d4307149d9611f64a019fa520c0ea79028"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\023-instrument-2560-dpr-1-more.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 128431,
+        "sha256": "2cc73329cbc51bfe7c1e20c3aba9e63df826c7ea045d43e3d94e22587eefde3e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\024-instrument-2560-dpr-1-no-preference.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 147691,
+        "sha256": "c6cc545c718c1a4d6e610c85de80540bb69545864c8f87e2c72e2abab5402aa3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\025-instrument-3840-dpr-1-more.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 151765,
+        "sha256": "4e5ed68442ec2a408dc23c344d8598a8d0615c2f2f8cf04deefd1d92b28ab78b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\026-instrument-3840-dpr-1-no-preference.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 171713,
+        "sha256": "1571ff5d8a0e69c4dc531f665b82bd6b8ecc588bed6b71ac05f83e5488c7ab17"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\027-instrument-css-enlargement-200-dpr-1.png",
+        "case": "procgen-workstation-materi-4b150-and-readable-control-bounds-workstation",
+        "bytes": 202131,
+        "sha256": "b6ca1aa65458c4ca8b2c07be8a0facbfcccfc092db9fcf5402522dad999840f0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\028-instrument-1920-dpr-2-more.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 315390,
+        "sha256": "b1cb11eeac57789e45f0d82237e7042635d8456e74ec56241a118cf93da99514"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\029-instrument-1920-dpr-2-no-preference.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 373624,
+        "sha256": "27305916e7de54d4989e80321dc540d8ed27ff1a6fbffd7fc373ddd8095004ad"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\030-instrument-2560-dpr-2-more.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 340514,
+        "sha256": "35d445df17185dd872bc5ff3f7785dc759e091a0f40c5bfc32874298e7f41441"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\031-instrument-2560-dpr-2-no-preference.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 400302,
+        "sha256": "c3200f0af5c7b734c36ddfaa65ced9c4c8221d7a1835726b018967044e3e5882"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\032-instrument-3840-dpr-2-more.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 404270,
+        "sha256": "532e9717d8187d129ce7518cf6c5a5aa39ff2c32d2e64241149bc2d4d05bdc7b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\033-instrument-3840-dpr-2-no-preference.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 466990,
+        "sha256": "a1d423fdd87f0d8ff9151f82b3c335fe091666b1028505589df0110e62c26eec"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\034-instrument-css-enlargement-200-dpr-2.png",
+        "case": "procgen-workstation-materi-753c2-and-readable-control-bounds-workstation",
+        "bytes": 481649,
+        "sha256": "31e20342467cd0da14a8d03ec13bf43918a430bd77a9e4e78fe6229df0d9c469"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\035-instrument-1920-dpr-1.5-more.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 200192,
+        "sha256": "870ef28441de32d1de2ccfb61de4bb8862981a746a900f335d714d20427e6f64"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\036-instrument-1920-dpr-1.5-no-preference.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 235213,
+        "sha256": "5a61ee0863f1de41c3cb920daaeb089efa838e2161d3713e1faaee0b4e437b1e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\037-instrument-2560-dpr-1.5-more.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 221201,
+        "sha256": "49bd2effea7d4721a515a7871344643cbb48c8845d60da14c169d8b913ff234c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\038-instrument-2560-dpr-1.5-no-preference.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 256703,
+        "sha256": "2e62b08fa174231b2d4d2829888cc989125c1ad6a89a8dea115ec623355c36c2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\039-instrument-3840-dpr-1.5-more.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 260171,
+        "sha256": "08325613ee635be024058202b1cf5cc70982636985629f66c3a26c6be4beb87b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\040-instrument-3840-dpr-1.5-no-preference.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 296814,
+        "sha256": "12eb5bebefd5aaaa28284e3eba18869e78a4ea108f4643dd3678aacd17284aa2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\041-instrument-css-enlargement-200-dpr-1.5.png",
+        "case": "procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation",
+        "bytes": 349375,
+        "sha256": "bede65b70032f2b5e1742d2419932c590aa21d27ff902dd19a02b7b1e2127d7e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\042-materials-2-css-enlargement-200.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 673692,
+        "sha256": "853d4c04a08f81b503d09bad4e60c7d9fb6f6074491ae6720f80cbc5f8c02502"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\043-materials-2-forced-colors.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 148828,
+        "sha256": "e821143f594f3b37abef62e91b958af7232b0cd2cd8170b9c60ed34c32c0d65e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\044-materials-2-greyscale.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 211848,
+        "sha256": "6a8fb61281444361bf7dcd985f976e39e2b9ff094d676f4f1b324cc41fa20a9d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\045-materials-2-high-contrast.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 177481,
+        "sha256": "0ef7e0ceb3154bbf3795a681abb0bf68df71fe444f75f8637ee734a16f26726b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\046-materials-2-low-effects.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 177085,
+        "sha256": "cf852b0a0fbe9eaf1211dfd54c3d68ca71e9b070779930e0cc506063493b3837"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-captures\\047-materials-2-normal.png",
+        "case": "procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation",
+        "bytes": 204797,
+        "sha256": "832f86848651dc6456033023e082035e2fae8b703dfdafa1566d8cf91208a4a9"
+      }
+    ],
+    "artifacts": {
+      "selection": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-final-selection.json",
+        "bytes": 252603,
+        "sha256": "a27e8243baee8628c5fd40b2a96c915d5a12db1655d745a33ddc8a710d7ea186"
+      },
+      "fullResults": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-final-fullResults.json",
+        "bytes": 235164,
+        "sha256": "5f91b5a4f39231a7c2878bd2e1938e64843cadb989cec7b5977ee9e1fe604f8e"
+      },
+      "qualification": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-final-qualification.json",
+        "bytes": 170899,
+        "sha256": "c73c0ccfc214e7e7ef1a5207eea6f8ee66b849bd2849192ac545e593b231fe44"
+      }
+    },
+    "logs": {
+      "lemmings-rook-backlog298-node-final.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-node-final.log",
+        "bytes": 554,
+        "sha256": "92eaacf9f82cbf2661bf29a37b1f7741531d8da3e0d1ec639ddb5a127ff46fb3"
+      },
+      "lemmings-rook-backlog298-workstation.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-workstation.log",
+        "bytes": 101844,
+        "sha256": "1d685a33c6500c20a725020aa07b566078fbb54225ea51da017693522e14f615"
+      },
+      "lemmings-rook-backlog298-workstation-retest.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-workstation-retest.log",
+        "bytes": 43564,
+        "sha256": "aa49b2163bbbd9364d2f5f46d208369a641fa584dec0a560f4a790a8bd03f84c"
+      },
+      "lemmings-rook-backlog298-native-diagnostic.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-native-diagnostic.log",
+        "bytes": 5633,
+        "sha256": "b021cbec04b202cf5525c44a61664c1c740a2747806d64d651d0124b5f07e9c8"
+      },
+      "lemmings-rook-backlog298-workstation-final.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-workstation-final.log",
+        "bytes": 35318,
+        "sha256": "55b98a977528deb59ef8c8f7b9eba9b645f063540397dd11944aaae7a3151e3b"
+      },
+      "lemmings-rook-backlog298-desktop.log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog298-desktop.log",
+        "bytes": 16167,
+        "sha256": "56ea9b5480f9c425682c2390221913d8215d8d75f9eaa5ea3a3a18c77be7e347"
+      }
+    },
+    "sourceHashes": {
+      "css/procgen-workstation.css": "e1a839db1b3f258fc817b645ce00e147d863fa96e16e575f42dc7937311f040a",
+      "css/workstation-materials.css": "51f20c5096cca0d6040a2e6cb6564fd0c5491764b7f3d15a9239b6b5430be0f1",
+      "docs/roadmap.md": "c4d944b623fbd3963b00b592c3dac430edcc47679c35540b5004999cabfa01dd",
+      "e2e/helpers/workstationChrome.js": "40303ced6a2d8a0026e1e694885dbfab0da355d2a4fc9a78e4a61bdbd2b5a880",
+      "e2e/physical-junction-controls.spec.js": "3f07376bafc31f0e0466c0a0bdc5e2ccbb45a68511882fa0c26a44029777eb95",
+      "e2e/procgen-causal-visual.spec.js": "cf4e107df6d3f46eedb8bb0acdba5d807f5ab6710c7172b05baa7dd0b7c75271",
+      "e2e/procgen-lane-display.spec.js": "e3ab986274009b371647673ffe7b78e3a3ef8d07cb4d155d8928bf8afd67ea45",
+      "e2e/procgen-midi-parameter-evidence.spec.js": "fc002dc222e4bdc50974e5ba1951d30eae06fc3474c9ebc2428110a355bf5909",
+      "e2e/procgen-operational-status.spec.js": "4c6e9364fb0e31e498a889da81546c0b96128c6bf526340c9565ee97d0be18d7",
+      "e2e/procgen-physical-midi.spec.js": "f3c3a2144d0f091de3e29e4d5cbaafffb80e0af54afe975861178a26e3983849",
+      "e2e/procgen-workstation-commands.spec.js": "8eefff01b1154477accd845158f81b9e7a112be36e706674b1e1701f3e9b9a71",
+      "e2e/procgen-workstation-dock.spec.js": "92017a06be43419c4eb7496d259d3c1415bbff9a902fee666d649458a32c2989",
+      "e2e/procgen-workstation-materials.spec.js": "7f8b88548a7a28190e17882b6aa58eed8e6d2ca0619736c8ee44b3f90aa6e1fd",
+      "e2e/procgen-workstation-view.spec.js": "654f4698ed1c430dc7f63f378196390291b8f984885697192494bd0ea4d39dd6",
+      "e2e/procgen-workstation-workflow.spec.js": "36feff955754d374587b68eb4e1445c49fa3173aff59d1df7364f16f1d4ab414",
+      "e2e/procgen.spec.js": "262e7346cdab729aa8699b3cba4dca556e47ae08d4fe188b191ce131da48dddb",
+      "e2e/sound-content-workstation.spec.js": "ec7db963a89e28bc1652e8630a7e9a806a7705ee5117f98fc8de729832542c29",
+      "js/app/controls/AnchoredControlPosition.js": "7044a2a96e97c2e06dce7e3d34b946fb8fb88ec73dc588ca58d67c77d2093718",
+      "js/app/controls/ParameterDescriptor.js": "95ff0a55f5fc2ae5acbbb5a49831fe3926780835c22680df8094bd026f22f0a4",
+      "js/app/controls/ParameterEntryPopover.js": "76fa247a8dcabd16d10aa1c9e0cd8585df270fd656d104eb6eaf4e8501e87756",
+      "js/app/controls/ParameterKnob.js": "9ba35c98f9ca275adb616efabb690d9741360f6628db70ade964c6085a0de4e2",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "048125c7c7bd335a307b35308ddf838864d354071a647abe8645627be630cbb0",
+      "js/app/procgen/workstation/ProcgenWorkstationView.js": "6a44ef35d5dcf444e4bf4e5a3b1e5d0dcadfc3094ac543da35c6da6ba379daf0",
+      "js/app/procgen/workstation/WorkstationChrome.js": "374bf4ef0cd0726f0cb5767e077ef1aeb942116267df356280d00dcb6739d91e",
+      "js/app/procgen/workstation/WorkstationDock.js": "5952c2d46fc9e833bcc9a43d80acce63a74e652e68f5f64b4b5bd9933e8948be",
+      "procgen.html": "961caeb2ff893e8a881871e3e88142c2baed284447700abbfcce0c435ee1b8d8",
+      "scripts/check-browser-categories.js": "bb6d4302a307aac8c842d1354a212e592152642156e0610e80657432c29d6010",
+      "test/anchored-control-position.test.js": "a272f3af362a7233a2bc9437ba80f1d269201c73bac58f25e9c7d1c633abe9cf",
+      "test/compact-instrument-chrome.test.js": "ac5a15c744eab5d09f52aacd236224bc4927cab15c325dae2dc3a52dbc21212a",
+      "test/support/workstation-materials.html": "0b33841914cc4d557adb10e3f4f4079e4f0a03138eb43b546df61104bfbb71bd"
+    },
+    "scopeLimits": [
+      "Desktop minimum1920x1080; no phone/tablet/native mobile qualification.",
+      "DPR and CSS zoom2 captures are distinct from native browser UI zoom200 and actual assistive-device qualification.",
+      "Material changes do not assert new DSP, receiver, individual PCM or acoustic evidence.",
+      "Current-source remote CI remains pending until published head completes; green3705b1a5 remains separate."
+    ],
+    "remoteCi": {
+      "status": "pending"
+    }
   }
 }

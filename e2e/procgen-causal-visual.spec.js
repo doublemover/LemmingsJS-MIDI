@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
@@ -5,7 +6,7 @@ const ready = async page => {
   await installWebMidiStub(page, { trackOutput: true }); await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=2&output=midi');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.ports.configure({ recording: true }); window.__PROCGEN_LANES__.resume(); window.__PROCGEN_STUDIO__.play(); });
 };
@@ -66,7 +67,7 @@ test('adopting a saved physical session admits only its new document owner prove
   expect(before.length).toBeGreaterThan(0);
   await page.evaluate(async () => { const studio = window.__PROCGEN_STUDIO__; await studio.loadSession(window.__savedCausalSession); window.__PROCGEN_LANES__.pause(); studio.transport.pause(); });
   if (await page.locator('#procgenListen').getAttribute('aria-pressed') === 'true') { await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); }
-  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.ports.getOperationalState().outputRoutes.some(route => route.outputId === 'pw-output-1' && route.active))).toBe(true);
   await page.evaluate(() => { window.__PROCGEN_LANES__.resume(); window.__PROCGEN_STUDIO__.play(); });
@@ -127,7 +128,7 @@ test('an actual mapping replacement retains its unrooted old-voice end in native
     return reference ? { key: reference.key, intentId: reference.intents[0].intentId, voiceId: reference.intents[0].voiceId } : false;
   });
   const value = await capture.jsonValue(); await capture.dispose(); await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); }); await page.locator('#procgenPanic').click(); const before = await ownerState(page);
-  await page.locator('summary').filter({ hasText: 'View actions' }).click(); await page.getByRole('button', { name: /^Cause history/ }).click();
+  await page.locator('summary[aria-label="View actions"]').click(); await page.getByRole('button', { name: /^Cause history/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Physical cause explanation' }); await dialog.getByLabel('Retained physical cause').selectOption(value.key);
   await expect(dialog.getByRole('heading', { name: 'Intent without a retained physical source' })).toBeVisible(); await expect(dialog).toContainText(value.intentId); await expect(dialog).toContainText(value.voiceId); await expect(dialog).toContainText('termination mapping-changed'); await expect(dialog).toContainText('no physical event is invented');
   await dialog.getByRole('button', { name: 'Close cause explanation' }).click(); expect(await ownerState(page)).toEqual(before);

@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 
 const ready = async (page, count = 8, steps = 16) => {
@@ -144,7 +145,7 @@ test('selecting another lane edits its displayed phrase and supports fixed note 
 
 test('palette changes preserve global key and expose direct CC editing and event masks', async ({ page }) => {
   await ready(page);
-  await page.getByLabel('Global key').selectOption('9');
+  await useWorkstationControl(page, page.getByLabel('Global key'), {}, 'selectOption', '9');
   await page.getByLabel('Sound collection').selectOption('dirt');
   await expect(page.getByLabel('Global key')).toHaveValue('9');
   await page.getByLabel('build', { exact: true }).uncheck();
@@ -264,7 +265,7 @@ test('virtualizes 1024 lanes and exposes observer controls without losing the ca
 test('draw and erase gestures commit one reducer action for an entire stroke', async ({ page }) => {
   await ready(page);
   const stroke = async tool => {
-    await page.getByLabel('Step editing tool').selectOption(tool);
+    await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', tool);
     await page.locator('.studio-sequence').first().locator('.studio-cell').first().scrollIntoViewIfNeeded();
     const first = await page.locator('.studio-sequence').first().locator('.studio-cell').nth(0).boundingBox();
     const last = await page.locator('.studio-sequence').first().locator('.studio-cell').nth(3).boundingBox();
@@ -368,7 +369,7 @@ test('project naming retains invalid draft and keyboard cancellation returns no 
 });
 
 test('foreign pointer release cannot commit pattern painting and owner cancellation leaves zero edits @boundary', async ({ page }) => {
-  await ready(page, 1); await page.getByLabel('Step editing tool').selectOption('draw');
+  await ready(page, 1); await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', 'draw');
   await page.evaluate(() => { const f = window.workstationViewTest; f.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { enabled: false } }); f.actions.length = 0;
     document.querySelector('.studio-sequences').addEventListener('pointerdown', event => { f.pointerId = event.pointerId; }, { once: true }); });
   const box = await page.locator('.studio-cell').first().boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();

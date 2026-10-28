@@ -7675,3 +7675,47 @@ export-budget acknowledgments still prevent a false complete receipt.
   to 1,036 source inputs. Formatting, critical types, undefined calls and unchanged
   runtime provenance pass. Current-source CI remains pending; the final targeted
   run is not presented as a single all-107 pass for the final source.
+- Full CI at **3705b1a5 is green: 6,591 coverage / 102 browser cases** (22 other
+  desktop, 80 required workstation smoke), with every capability/source gate
+  passing and no smoke skips. Coverage is 90.24% lines/statements, 83.54% branches
+  and 88.23% functions. Its separate master capture is Ready at 53,888 frames,
+  finite nonzero PCM and no reported discontinuity. **#1031 is closed** against
+  this source. #1084 retains the complete maintained-project receipt. This
+  checkpoint excludes the new continuation298 composition work.
+
+### Continuation 298 — quiet instrument chrome, compact lane shaping and materials
+
+- Implemented one shared semantic chassis/cap/glass/engraving and functional/state
+  palette, with fixed light direction and high-contrast/reduced-effects/forced
+  color variants. Keep lane identity separate from parameter function; require
+  explicit known roles and retain neutral treatment for unknown macro semantics.
+- Reused typed parameter controls for compact retained Level/Pan controls with
+  one owned exact-entry popover per visible control, independent of the dock.
+  Move the original input/actions rather than copying value owners; retain
+  partial/IME/conflict buffers and prevent hide/resize from publishing a draft.
+  Keep source leases, two-stage Escape, focus return, bounded virtualization and
+  scale-aware anchored geometry; no new audio or simulation clock.
+- Grouped advanced/project/library/edit controls into native keyboard-reachable
+  menus, keeping live health, Panic, trusted output activation, warnings and
+  actual prepared-file status outside collapsed menus. Preserve the original
+  control nodes/listeners and source ownership. Native focus settling prevents
+  a body focus gap from dismissing a conflict choice before its click. Numeric
+  updates retain their existing text nodes. Original borrowed controls restore
+  once, including Status details, without consuming an outside action.
+- Final grouped validation passes 161 focused Node cases, the complete required
+  workstation project (117 pass, one explicit benchmark skip), all fourteen
+  required capability gates and 22 other desktop boundaries. Collection binds
+  22 files and 1,060 inputs, including the material HTML fixture. Earlier cohorts
+  (101/16/1 and 115/2/1) remain separate from this final source. The actual master
+  capture is Ready at 53,760 frames with finite nonzero PCM and no discontinuity.
+- Archived 48 captures cover production eight-lane 1080p/QHD/UHD layouts, DPR
+  1/1.5/2, normal/high-contrast, a shared real-control contact sheet with reduced
+  effects/forced colors/greyscale, and explicitly labeled CSS enlargement.
+  Actual rendered text meets 4.5:1 and conservative required marks meet 3:1;
+  effects preserve hit bounds and decoration does not intercept controls.
+  Native browser UI zoom and actual assistive-device qualification remain
+  distinct work. Platform font stacks and original CSS add no bundled assets.
+- Formatting, critical types, undefined calls, whitespace and unchanged
+  10-component/340-file provenance pass. Current-source remote CI is pending;
+  published green 3705b1a5 remains separate. Follow through on motion-policy,
+  large-lane navigation and remaining desktop assistive qualification next.

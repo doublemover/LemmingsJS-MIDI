@@ -1,3 +1,4 @@
+import { revealWorkstationControl, useWorkstationControl } from './helpers/workstationChrome.js';
 import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { enableComplementaryPatterns } from './helpers/procgenPatterns.js';
@@ -36,7 +37,7 @@ test('desktop native controls, modal actions and composition never dispatch an u
   const native = await snapshot(page); expect(native.hash).toBe(before.hash); expect(native.step).toEqual(before.step); expect(native.selectedStep).toBe(before.selectedStep);
   await page.keyboard.press('Space'); const naming = page.getByRole('dialog', { name: 'Project name', exact: true }); await expect(naming).toBeVisible();
   await naming.getByRole('button', { name: 'Cancel', exact: true }).focus(); await page.keyboard.press('Shift+T'); await page.keyboard.press('Escape'); await expect(naming).toHaveCount(0);
-  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }).click();
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), {'button':'Load'}, 'click');
   const saved = page.getByRole('dialog', { name: 'Saved projects', exact: true }); await expect(saved).toBeVisible();
   await saved.getByRole('button', { name: 'Close', exact: true }).focus(); await page.keyboard.press('Shift+T');
   expect((await snapshot(page)).hash).toBe(before.hash); await page.keyboard.press('Escape'); await expect(saved).not.toBeVisible();
@@ -176,7 +177,7 @@ test('empty and out-of-range numeric entry never becomes a canonical zero and na
   const bpm = page.getByRole('spinbutton', { name: 'BPM', exact: true }); await expect(bpm).toHaveValue('120');
   for (const value of ['', '0', '401']) { await bpm.fill(value); await bpm.press('Enter'); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().bpm)).toBe(120); await expect(bpm).toHaveAttribute('aria-invalid', 'true'); }
   await bpm.press('Escape'); await expect(bpm).toHaveValue('120');
-  const linked = page.getByRole('checkbox', { name: 'Link world', exact: true }); await expect(linked).not.toBeChecked(); await linked.check();
+  const linked = page.getByLabel('Link world', { exact: true }); await revealWorkstationControl(page, linked); await expect(linked).not.toBeChecked(); await linked.check();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
   await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ linked: false })); await expect(linked).not.toBeChecked(); await linked.check();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
@@ -191,7 +192,7 @@ for (const dpr of [1, 2]) test.describe('desktop knob precision at DPR ' + dpr, 
   test('sixty captured pointer samples publish one edit without replacing lane DOM and lane reassignment cancels the next draft', { tag: '@boundary' }, async ({ page }) => {
     test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Lane', exact: true }).click();
     if (dpr === 1) { await page.getByRole('separator', { name: 'Resize instrument dock' }).focus(); for (let index = 0; index < 4; index++) await page.keyboard.press('ArrowUp'); }
-    const cap = page.getByRole('slider', { name: 'Pan', exact: true }); await cap.scrollIntoViewIfNeeded(); const bounds = await cap.boundingBox();
+    const cap = page.locator('#procgenDeepDock').getByRole('slider', { name: 'Pan', exact: true }); await cap.scrollIntoViewIfNeeded(); const bounds = await cap.boundingBox();
     const geometry = await cap.evaluate(element => {
       const root = element.closest('.parameter-knob'), panel = element.closest('.studio-inspector').getBoundingClientRect(), cap = element.getBoundingClientRect();
       const controls = [...root.querySelectorAll('button,input')].map(control => control.getBoundingClientRect()).filter(rect => rect.width > 0);

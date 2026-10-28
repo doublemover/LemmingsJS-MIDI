@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
@@ -8,7 +9,7 @@ const ready = async (page, lanes = 8, output = 'midi') => {
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
 };
-const activate = async page => { await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); };
+const activate = async page => { await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); };
 const ownerState = page => page.evaluate(async () => {
   const { captureProcgenCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
   const { hashProcgenPhysicsCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpointProvenance.js');
@@ -18,16 +19,16 @@ const ownerState = page => page.evaluate(async () => {
 test('intentional browser output-off keeps lane pages readable and a lost MIDI destination becomes a distinct blocker', { tag: '@boundary' }, async ({ page }) => {
   await ready(page, 2, 'synth'); const display = page.locator('.studio-lane-display').first();
   await expect(display).toHaveAttribute('data-priority', 'ordinary'); await expect(display).toContainText('OFF');
-  await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await expect(display).toHaveAttribute('data-page', 'cause'); await expect(display).not.toContainText('World paused');
+  await page.locator('summary[aria-label="View actions"]').click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await expect(display).toHaveAttribute('data-page', 'cause'); await expect(display).not.toContainText('World paused');
   await page.getByRole('button', { name: 'Read selected lane display', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Selected lane display details' });
   await expect(dialog).toContainText('output local output off'); await expect(dialog).toContainText('project revision'); await page.getByRole('button', { name: 'Close lane display', exact: true }).click();
-  await page.getByText('View actions', { exact: true }).click(); await page.locator('#procgenOutput').selectOption('midi'); await activate(page);
+  await page.locator('summary[aria-label="View actions"]').click(); await useWorkstationControl(page, page.locator('#procgenOutput'), {}, 'selectOption', 'midi'); await activate(page);
   await page.evaluate(() => window.__WEBMIDI_STUB__.disconnectOutput('pw-output-1')); await expect(display).toHaveAttribute('data-priority', 'blocked'); await expect(display).toContainText('output disconnected');
 });
 
 test('desktop lane displays expose manual pages and complete text without changing project, world or MIDI', { tag: '@boundary' }, async ({ page }) => {
   await ready(page); await expect(page.locator('.studio-lane-display').first()).toBeVisible(); const before = await ownerState(page);
-  await page.getByText('View actions', { exact: true }).click();
+  await page.locator('summary[aria-label="View actions"]').click();
   for (const value of ['cause', 'parameter', 'output', 'identity']) { await page.getByLabel('Selected lane display page').selectOption(value); await expect(page.locator('.studio-lane-display').first()).toHaveAttribute('data-page', value); }
   await page.getByRole('button', { name: 'Read selected lane display', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Selected lane display details' }); await expect(dialog).toBeVisible(); await expect(dialog).toContainText('acoustic evidence unknown');
@@ -35,16 +36,16 @@ test('desktop lane displays expose manual pages and complete text without changi
   await expect(dialog.getByRole('button', { name: 'Panic', exact: true })).toBeVisible(); await page.getByRole('button', { name: 'Close lane display', exact: true }).click();
   expect(await ownerState(page)).toEqual(before);
   const geometry = await page.locator('.studio-lane-display').evaluateAll(nodes => nodes.map(node => { const rect = node.getBoundingClientRect(), header = node.closest('.studio-lane-header').getBoundingClientRect(); return { width: rect.width, height: rect.height, font: window.getComputedStyle(node).fontSize, fits: rect.left >= header.left && rect.right <= header.right && rect.bottom <= header.bottom }; }));
-  expect(geometry.length).toBeGreaterThan(0); expect(geometry.length).toBeLessThanOrEqual(8); for (const row of geometry) { expect(row).toMatchObject({ height: 32, font: '11px', fits: true }); expect(row.width).toBeGreaterThanOrEqual(150); }
+  expect(geometry.length).toBeGreaterThan(0); expect(geometry.length).toBeLessThanOrEqual(8); for (const row of geometry) { expect(row).toMatchObject({ height: 32, font: '12px', fits: true }); expect(row.width).toBeGreaterThanOrEqual(150); }
   expect(await page.evaluate(() => [window.innerWidth, window.innerHeight, document.documentElement.scrollWidth])).toEqual([1920, 1080, 1920]);
 });
 
 test('focused lane parameter drafts temporarily override a stable manual page and never replace the OLED nodes', { tag: '@boundary' }, async ({ page }) => {
-  await ready(page, 2); await inspectLane(page); await activate(page); await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause');
-  await page.getByText('View actions', { exact: true }).click(); const before = await ownerState(page), display = page.locator('.studio-lane-display').first();
+  await ready(page, 2); await inspectLane(page); await activate(page); await page.locator('summary[aria-label="View actions"]').click(); await page.getByLabel('Selected lane display page').selectOption('cause');
+  await page.locator('summary[aria-label="View actions"]').click(); const before = await ownerState(page), display = page.locator('.studio-lane-display').first();
   await display.evaluate(element => { window.__laneDisplayNodes = [...element.children]; window.__laneDisplayMutations = []; window.__laneDisplayObserver = new MutationObserver(records => window.__laneDisplayMutations.push(...records.filter(record => record.type === 'childList').map(record => record.type))); window.__laneDisplayObserver.observe(element, { childList: true, subtree: true }); });
-  const input = page.locator('.studio-lane-header').first().locator('.parameter-knob-number'); await input.fill('-'); await expect(display).toHaveAttribute('data-priority', 'edit'); await expect(display).toContainText('- · draft');
-  await input.press('Escape'); await page.locator('.studio-lane-title').first().focus(); await expect(display).toHaveAttribute('data-page', 'cause'); await expect(display).toHaveAttribute('data-priority', 'ordinary');
+  const input = page.locator('.studio-lane-header').first().locator('.studio-lane-fader .parameter-knob-number'); await useWorkstationControl(page, input, {}, 'fill', '-'); await expect(display).toHaveAttribute('data-priority', 'edit'); await expect(display).toContainText('- · draft');
+  await useWorkstationControl(page, input, {}, 'press', 'Escape'); await page.locator('.studio-lane-title').first().focus(); await expect(display).toHaveAttribute('data-page', 'cause'); await expect(display).toHaveAttribute('data-priority', 'ordinary');
   expect(await ownerState(page)).toEqual(before); expect(await display.evaluate(element => ({ stable: window.__laneDisplayNodes.every((node, index) => node === element.children[index]), mutations: window.__laneDisplayMutations.length }))).toEqual({ stable: true, mutations: 0 });
   await page.evaluate(() => window.__laneDisplayObserver.disconnect());
 });
@@ -61,7 +62,7 @@ test('actual mute and solo suppression override OLED activity without altering p
 });
 
 test('paging real desktop lane displays bounds mounted rows and restores the manual page without replaying output', { tag: '@boundary' }, async ({ page }) => {
-  await ready(page, 12); const before = await ownerState(page); await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await page.getByText('View actions', { exact: true }).click();
+  await ready(page, 12); const before = await ownerState(page); await page.locator('summary[aria-label="View actions"]').click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await page.locator('summary[aria-label="View actions"]').click();
   const first = await page.locator('.studio-lane-display').first().getAttribute('data-lane-display'); await page.getByTitle('Show next lanes').click();
   await expect(page.locator(`.studio-lane-display[data-lane-display="${first}"]`)).toHaveCount(0); expect(await page.locator('.studio-lane-display').count()).toBeLessThanOrEqual(8);
   await page.getByTitle('Show previous lanes').click(); await expect(page.locator('.studio-lane-display').first()).toHaveAttribute('data-lane-display', first); await expect(page.locator('.studio-lane-display').first()).toHaveAttribute('data-page', 'cause');
@@ -83,7 +84,7 @@ test('live physical lane evidence joins real recorded MIDI IDs and leaves receiv
   const value = await evidence.jsonValue(); await evidence.dispose(); expect(value.event.sources.some(source => source.recorded)).toBe(true); expect(value.event.intentId).toBe(value.note.intentId); expect(value.event.voiceId).toBe(value.note.voiceId); expect(value.event.intentId.startsWith(value.event.batchId + ':')).toBe(true);
   expect(value.event.receipts.some(receipt => receipt.stage === 'submitted' && receipt.targetTimeDomain === 'performance-microseconds')).toBe(true);
   await page.locator(`.studio-lane-header[data-lane-id="${value.display.lane.id}"] .studio-lane-title`).click();
-  await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('output');
+  await page.locator('summary[aria-label="View actions"]').click(); await page.getByLabel('Selected lane display page').selectOption('output');
   await page.getByRole('button', { name: 'Read selected lane display', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Selected lane display details' });
   await expect(dialog).toContainText('receiver unknown'); await expect(dialog).toContainText('acoustic evidence unknown'); await expect(dialog).toContainText('Frozen intent pitch'); await expect(dialog).toContainText('execution'); await dialog.getByRole('button', { name: 'Panic', exact: true }).click();
 });

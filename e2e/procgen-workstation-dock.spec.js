@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import { inspectLane } from './helpers/workstationDock.js';
@@ -50,7 +51,7 @@ test('curve drafts retain exact lane ownership through invalid text, lane switch
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2); await page.mouse.down(); await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 10, { steps: 20 });
   await page.locator('.studio-curve-editor svg').evaluate(element => element.dispatchEvent(new window.PointerEvent('pointerup', { pointerId: 999, bubbles: true }))); await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2 - 16, { steps: 10 }); await page.mouse.up(); expect(await ownerState(page)).toEqual(beforeDrag);
   await page.getByRole('button', { name: 'Apply curve', exact: true }).click(); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].ccAutomation[0].points[1].value)).toBeGreaterThan(100); await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Undo', exact: true }).click();
-  await middle.scrollIntoViewIfNeeded(); const cancelledBounds = await middle.boundingBox(); await page.mouse.move(cancelledBounds.x + cancelledBounds.width / 2, cancelledBounds.y + cancelledBounds.height / 2); await page.mouse.down(); await page.mouse.move(cancelledBounds.x + cancelledBounds.width / 2, cancelledBounds.y + cancelledBounds.height / 2 - 12, { steps: 10 }); await page.getByLabel('Workspace mode', { exact: true }).selectOption('overview'); await page.mouse.up(); await inspectLane(page, 'Automation'); await expect(points).toHaveValue('0:33, 2:100, 4:32');
+  await middle.scrollIntoViewIfNeeded(); const cancelledBounds = await middle.boundingBox(); await page.mouse.move(cancelledBounds.x + cancelledBounds.width / 2, cancelledBounds.y + cancelledBounds.height / 2); await page.mouse.down(); await page.mouse.move(cancelledBounds.x + cancelledBounds.width / 2, cancelledBounds.y + cancelledBounds.height / 2 - 12, { steps: 10 }); await useWorkstationControl(page, page.getByLabel('Workspace mode', { exact: true }), {}, 'selectOption', 'overview'); await page.mouse.up(); await inspectLane(page, 'Automation'); await expect(points).toHaveValue('0:33, 2:100, 4:32');
   await points.fill('0:'); await points.press('Escape'); await expect(page.locator('#procgenDeepDock')).toBeVisible(); await expect(points).toHaveValue('0:33, 2:100, 4:32'); await points.press('Escape'); await expect(page.locator('#procgenDeepDock')).toBeHidden();
 });
 

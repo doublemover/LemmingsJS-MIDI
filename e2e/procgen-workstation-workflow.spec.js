@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { inspectLane } from './helpers/workstationDock.js';
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from './helpers/workstationValidation.js';
@@ -25,9 +26,9 @@ test('workstation boots eight instrument lanes and switches sequence layouts wit
   expect(visible).toBeGreaterThan(0); expect(visible).toBeLessThanOrEqual(8);
   await expect(page.getByLabel('Visible lane range')).toHaveText(`1–${visible} of 8`);
   await page.evaluate(() => { window.workstationWorldBefore = window.__PROCGEN_LANES__.world; });
-  await page.getByLabel('Sequencer layout').selectOption('overlay');
+  await useWorkstationControl(page, page.getByLabel('Sequencer layout'), {}, 'selectOption', 'overlay');
   await expect(page.locator('#procgenStudio')).toHaveAttribute('data-layout', 'overlay');
-  await page.getByLabel('Sequencer layout').selectOption('strip');
+  await useWorkstationControl(page, page.getByLabel('Sequencer layout'), {}, 'selectOption', 'strip');
   expect(await page.evaluate(() => window.workstationWorldBefore === window.__PROCGEN_LANES__.world)).toBe(true);
   const zoom = await page.evaluate(() => {
     const renderer = window.__PROCGEN_LANES__.renderer;
@@ -42,7 +43,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   test.setTimeout(90000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page, { patterns: true });
-  await page.getByLabel('Global key', { exact: true }).selectOption('9');
+  await useWorkstationControl(page, page.getByLabel('Global key', { exact: true }), {}, 'selectOption', '9');
   await page.locator('#procgenListen').click();
   await page.evaluate(() => { window.soundSelectionWorld = window.__PROCGEN_LANES__.world; });
   await page.getByLabel('Sound collection', { exact: true }).selectOption('bubble');
@@ -67,7 +68,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   await expect(page.locator('.studio-status')).toContainText('Saved Acceptance session');
   const saved = await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, seed: window.__PROCGEN_LANES__.world.seed, project: window.__PROCGEN_STUDIO__.getProject().procgen }));
   await page.getByLabel('Scale degree', { exact: true }).fill('9'); await page.getByLabel('Scale degree', { exact: true }).dispatchEvent('change');
-  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }).click();
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), {'button':'Load'}, 'click');
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Acceptance session/ }).click();
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
   expect(await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, seed: window.__PROCGEN_LANES__.world.seed, project: window.__PROCGEN_STUDIO__.getProject().procgen }))).toEqual(saved);
@@ -81,7 +82,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   await page.waitForFunction(() => window.replayWorld !== window.__PROCGEN_LANES__.world);
   expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.seed)).toBe(rerollSeed);
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].patterns[0].steps[0].chord.inversion)).toBe(1);
-  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'New', exact: true }).click();
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'New', exact: true }), {'button':'New'}, 'click');
   await expect(page.locator('.studio-status')).toContainText('New project ready');
   expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.seed)).not.toBe(rerollSeed);
   expect(errors).toEqual([]);
@@ -92,11 +93,11 @@ test('records an input note into the selected phrase and exports a MIDI performa
   await page.getByRole('tab', { name: 'MIDI', exact: true }).filter({ hasNot: page.locator('#procgenStudioFooter') }).first().click();
   await page.getByRole('button', { name: 'Connect MIDI', exact: true }).click();
   await page.getByLabel('MIDI input', { exact: true }).selectOption('pw-input-1');
-  await page.locator('#studioRecord').click();
+  await useWorkstationControl(page, page.locator('#studioRecord'), {}, 'click');
   await page.evaluate(() => { window.__WEBMIDI_STUB__.sendInput([0x90, 67, 101]); window.__WEBMIDI_STUB__.sendInput([0x80, 67, 0]); });
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].patterns[0].steps[0])).toMatchObject({ enabled: true, note: 67, velocity: 101 });
   const download = page.waitForEvent('download');
-  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'MIDI', exact: true }).click();
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'MIDI', exact: true }), {'button':'MIDI'}, 'click');
   expect((await download).suggestedFilename()).toBe('procgen-performance.mid');
 });
 

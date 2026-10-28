@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 import { fileURLToPath } from 'node:url';
@@ -36,8 +37,8 @@ test('MIDI first use discovers two same-name destinations without activation, pr
   expect(await metrics(page)).toMatchObject({ requests: 0, sent: 0 }); await page.locator('#procgenListen').click();
   await expect(strip(page)).toContainText('Choose a named destination'); await expect(page.locator('#procgenMidiDevice')).toHaveValue(''); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
   expect(await metrics(page)).toMatchObject({ requests: 1, sent: 0 });
-  await expect(page.locator('#procgenMidiDevice').getByRole('option', { name: 'Identical keyboard · pw-output-1', exact: true })).toHaveCount(1);
-  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); expect((await metrics(page)).sent).toBe(0);
+  await expect(page.locator('#procgenMidiDevice').getByRole('option', { name: 'Identical keyboard · pw-output-1', exact: true, includeHidden: true })).toHaveCount(1);
+  await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); expect((await metrics(page)).sent).toBe(0);
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
   const activated = await metrics(page); expect(activated.messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
   await page.evaluate(() => window.__WEBMIDI_STUB__.disconnectOutput('pw-output-2')); expect((await metrics(page)).sent).toBe(activated.sent); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true');
@@ -62,7 +63,7 @@ test('an empty MIDI catalog explains silence after explicit discovery and never 
 
 test('native dialogs keep canonical Panic reachable without saving drafts or rearming a reconnected endpoint', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
   const before = await projectWorldState(page);
   await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }).click();
@@ -80,7 +81,7 @@ test('native dialogs keep canonical Panic reachable without saving drafts or rea
 
 test('paused controller evidence refreshes independently of the activated note route and internal clock', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
   const before = await metrics(page); await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.input('pw-input-1'); studio.ports.configure({ activeSensingVisibility: 'filtered' }); });
   await expect(strip(page)).toHaveAttribute('data-state', 'controller-observation'); await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active'); await expect(strip(page)).toHaveAttribute('data-clock-state', 'internal');
@@ -107,7 +108,7 @@ test('a real suspended browser context updates paused status and requires explic
 
 test('external clock waiting and loss remain separate from note activation and require explicit MIDI restart', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(strip(page)).toHaveAttribute('data-note-output-state', 'active');
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.input('pw-input-1'); studio.handlers.transport({ linked: false, clockSource: 'external' }); window.__WEBMIDI_STUB__.sendInput([0xfa]); });
   await expect(strip(page)).toHaveAttribute('data-state', 'clock-waiting'); await expect(strip(page)).toHaveAttribute('data-clock-state', 'waiting');
@@ -122,7 +123,7 @@ test('external clock waiting and loss remain separate from note activation and r
 
 test('a prepared silent physical scene names its lack of source events and opens an isolated lesson without loading or test notes', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi', '/dist/browser');
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
   await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page)).toContainText('No eligible physical source event');
@@ -136,7 +137,7 @@ test('a prepared silent physical scene names its lack of source events and opens
 
 test('source preview offers an available mapping review instead of an unverified isolated lesson', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi');
-  await page.locator('#procgenListen').click(); await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
   await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true })).toHaveCount(0);

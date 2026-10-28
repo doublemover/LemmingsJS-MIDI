@@ -1,0 +1,113 @@
+body.procgen-workstation {
+  --material-chassis:#23262b; --material-panel:#2a2e34; --material-cap:#3a3f47;
+  --material-cap-hover:#464c55; --material-rubber:#15181c; --material-glass:#090e12;
+  --material-engraving:#f0f2f5; --material-secondary:#c0c6cf; --material-muted:#a8b0bb;
+  --material-line:#a8b0bb; --material-highlight:#ffffff26; --material-shadow:#00000055;
+  --function-pitch:#ecc492; --function-time:#aacdf3; --function-timbre:#d1baf2;
+  --function-level:#b4dbbb; --function-space:#9fd9dc; --function-danger:#ffb8b0;
+  --state-focus:#ffe28e; --state-selected:#eef1f7; --state-queued:#f5ce88;
+  --state-error:#ffb8b0; --state-unavailable:#a8b0bb; --parameter-accent:var(--material-engraving);
+  --instrument-label-font:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --instrument-number-font:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  color-scheme:dark; color:var(--material-engraving); background:var(--material-rubber);
+  font-family:var(--instrument-label-font); font-size:13px;
+}
+.procgen-workstation [data-parameter-role=pitch] { --parameter-accent:var(--function-pitch); }
+.procgen-workstation [data-parameter-role=time] { --parameter-accent:var(--function-time); }
+.procgen-workstation [data-parameter-role=timbre] { --parameter-accent:var(--function-timbre); }
+.procgen-workstation [data-parameter-role=level] { --parameter-accent:var(--function-level); }
+.procgen-workstation [data-parameter-role=space] { --parameter-accent:var(--function-space); }
+.procgen-workstation [data-parameter-role=danger] { --parameter-accent:var(--function-danger); }
+.procgen-workstation .procgen-presentation-root { background:var(--material-rubber); }
+.procgen-workstation #procgenTopbar, .procgen-workstation .studio-footer, .procgen-workstation .studio-inspector,
+.procgen-workstation .studio-lane-headers, .procgen-workstation .studio-command-menu-body,
+.procgen-workstation .parameter-entry-popover, .procgen-workstation dialog {
+  color:var(--material-engraving); background:var(--material-panel); border-color:var(--material-line);
+  box-shadow:inset 0 1px var(--material-highlight),0 1px 2px var(--material-shadow);
+}
+.procgen-workstation [hidden] { display:none!important; }
+.procgen-workstation .studio-lane-header { border-color:var(--material-line); box-shadow:inset 0 1px var(--material-highlight); padding:3px 6px; }
+.procgen-workstation .studio-lane-display { color:var(--material-engraving); background:var(--material-glass); border-color:var(--material-line); font:12px/14px var(--instrument-number-font); }
+.procgen-workstation .studio-lane-header.selected { background:var(--material-cap); }
+.procgen-workstation .studio-lane-header.selected::before { background:var(--state-selected); width:3px; top:8%; bottom:8%; opacity:1; }
+.procgen-workstation .studio-lane-header::before { opacity:.45; }
+.procgen-workstation button, .procgen-workstation summary, .procgen-workstation select,
+.procgen-workstation input:not([type=range]):not([type=checkbox]), .procgen-workstation textarea,
+.procgen-workstation #procgenTopbar button, .procgen-workstation #procgenTopbar select,
+.procgen-workstation #procgenTopbar input:not([type=range]):not([type=checkbox]), .procgen-workstation #procgenTopbar .procgen-advanced > summary {
+  color:var(--material-engraving); background:var(--material-cap); border-color:var(--material-line);
+  box-shadow:inset 0 1px var(--material-highlight),0 1px 1px var(--material-shadow); font-family:var(--instrument-label-font);
+}
+.procgen-workstation button:hover, .procgen-workstation summary:hover { color:var(--material-engraving); background:var(--material-cap-hover); border-color:var(--material-secondary); }
+.procgen-workstation button:active { box-shadow:inset 0 2px 2px var(--material-shadow); }
+.procgen-workstation [data-material-state=queued] .specimen-state { border-style:dashed; color:var(--state-queued); }
+.procgen-workstation [data-material-state=stale] .specimen-state { border-style:dotted; color:var(--material-secondary); }
+.procgen-workstation [data-material-state=error] .specimen-state { border-left:3px solid var(--state-error); padding-left:6px; color:var(--state-error); }
+.procgen-workstation [data-material-state=selected] { border-left:3px solid var(--state-selected); }
+.procgen-workstation button:disabled { opacity:1; color:var(--state-unavailable); background:var(--material-panel); box-shadow:none; border-style:dashed; }
+.procgen-workstation :focus-visible { outline:2px solid var(--state-focus); outline-offset:2px; }
+.procgen-workstation button[aria-pressed=true], .procgen-workstation .studio-deep-dock [aria-selected=true] {
+  color:var(--material-engraving); background:var(--material-rubber); border-color:var(--state-selected); font-weight:700;
+  box-shadow:inset 3px 0 var(--state-selected),inset 0 2px 2px var(--material-shadow);
+}
+.procgen-workstation .studio-role, .procgen-workstation .studio-hint, .procgen-workstation .studio-eyebrow,
+.procgen-workstation .procgen-section-label, .procgen-workstation .studio-brand span, .procgen-workstation .studio-clock-status,
+.procgen-workstation .studio-clock-source-status, .procgen-workstation .studio-storage-status,
+.procgen-workstation .studio-recovery-status, .procgen-workstation .studio-status { color:var(--material-secondary); }
+.procgen-workstation .studio-brand strong { color:var(--material-engraving); letter-spacing:.16em; font-weight:650; }
+.procgen-workstation .studio-lane-title { color:var(--material-engraving); }
+.procgen-workstation .studio-lane-title:hover { background:transparent; text-decoration:underline; }
+.procgen-workstation .studio-lane-title[aria-pressed=true] { background:transparent; box-shadow:none; text-decoration:underline; text-underline-offset:3px; }
+.procgen-workstation .studio-physical-row { color:var(--material-secondary); background:var(--material-chassis); border-color:var(--material-line); }
+.procgen-workstation .studio-physical-label, .procgen-workstation .studio-physical-badge { color:var(--material-secondary); }
+.procgen-workstation .studio-sequence { background:var(--material-rubber); border-color:var(--material-line); }
+.procgen-workstation .studio-cell { color:var(--material-secondary); background:var(--material-panel); border-color:var(--material-line); box-shadow:none; }
+.procgen-workstation .studio-cell.enabled { color:var(--material-engraving); background:var(--material-cap); border-color:var(--material-secondary); font-weight:700; }
+.procgen-workstation .studio-cell.playing { color:var(--material-rubber); background:var(--function-time); border-color:var(--function-time); box-shadow:none; }
+.procgen-workstation .studio-cell.selected { outline:2px solid var(--state-selected); box-shadow:inset 0 -3px var(--state-selected); }
+.procgen-workstation .studio-slots button.queued { border:2px dashed var(--state-queued); background:var(--material-rubber); color:var(--state-queued); }
+.procgen-workstation .parameter-knob > .parameter-knob-cap {
+  background:radial-gradient(circle at 32% 24%,var(--material-cap-hover),var(--material-cap) 72%);
+  border-color:var(--material-line); box-shadow:inset 0 1px var(--material-highlight),inset 0 -1px var(--material-shadow),0 2px 2px var(--material-shadow);
+}
+.procgen-workstation .parameter-knob-indicator::before { background:var(--parameter-accent); width:3px; }
+.procgen-workstation .parameter-knob-effective { border-color:var(--parameter-accent); }
+.procgen-workstation .parameter-knob-pickup { border-color:var(--state-queued); }
+.procgen-workstation .parameter-knob[data-presentation=fader] .parameter-knob-cap { background:linear-gradient(90deg,var(--material-cap) 42%,var(--material-glass) 43%,var(--material-glass) 57%,var(--material-cap) 58%); }
+.procgen-workstation .parameter-knob[data-presentation=fader] .parameter-knob-indicator { background:var(--parameter-accent); box-shadow:0 1px 1px var(--material-shadow); }
+.procgen-workstation .parameter-knob[data-pending=true] .parameter-knob-cap { border-style:dashed; }
+.procgen-workstation .parameter-knob-error, .procgen-workstation [aria-invalid=true] { color:var(--state-error); border-color:var(--state-error); }
+.procgen-workstation .parameter-knob-text-conflict, .procgen-workstation .studio-field-conflict { color:var(--state-queued); background:var(--material-rubber); border-color:var(--state-queued); }
+.procgen-workstation [data-edit-conflict] { outline:2px dashed var(--state-queued); }
+.procgen-workstation .parameter-knob-value, .procgen-workstation .parameter-knob-number, .procgen-workstation .studio-clock-status { font-family:var(--instrument-number-font); font-variant-numeric:tabular-nums; }
+.procgen-workstation .parameter-entry-toggle { background:var(--material-rubber); border-color:transparent; box-shadow:none; }
+.procgen-workstation .parameter-entry-toggle[aria-expanded=true] { border-color:var(--state-selected); }
+.procgen-workstation .studio-curve-editor > svg { background:var(--material-glass); border-color:var(--material-line); }
+.procgen-workstation .studio-curve-editor circle { fill:var(--material-cap); stroke:var(--function-time); }
+.procgen-workstation .studio-curve-editor circle[aria-pressed=true] { fill:var(--state-focus); stroke:var(--material-engraving); }
+.procgen-workstation .studio-curve-draft { stroke:var(--function-time); }
+.procgen-workstation .studio-curve-accepted { stroke:var(--material-muted); }
+.procgen-workstation .studio-operational { background:var(--material-chassis); color:var(--material-engraving); border-color:var(--material-line); }
+.procgen-workstation .studio-operational-message { color:var(--material-engraving); }
+.procgen-workstation .studio-health-band[data-severity=error] { border-left:3px solid var(--state-error); }
+.procgen-workstation .studio-health-band[data-severity=warning] { border-left:3px dashed var(--state-queued); }
+.procgen-workstation .studio-command-menu-body .procgen-control-section { border-color:var(--material-line); }
+.procgen-workstation #procgenNukeStatus:not(:empty) { color:var(--state-error); }
+.procgen-workstation .studio-operational-atoms span { border-color:var(--material-line); color:var(--material-secondary); }
+.procgen-workstation #procgenTopbar #procgenPanic, .procgen-workstation #procgenPanic { color:#ffe7e3; background:#6d302e; border-color:var(--function-danger); }
+.procgen-workstation #procgenTopbar #procgenPause { color:#e4f7e9; background:#304737; border-color:var(--function-level); }
+.procgen-workstation #procgenTopbar input[type=range], .procgen-workstation input[type=checkbox] { accent-color:var(--function-level); }
+@media (prefers-reduced-motion:reduce), (prefers-contrast:more) {
+  body.procgen-workstation { --material-highlight:transparent; --material-shadow:transparent; }
+  .procgen-workstation *, .procgen-workstation *::before, .procgen-workstation *::after { animation:none!important; transition:none!important; text-shadow:none!important; box-shadow:none!important; }
+  .procgen-workstation .parameter-knob > .parameter-knob-cap { background:var(--material-cap); }
+}
+@media (prefers-contrast:more) {
+  body.procgen-workstation { --material-chassis:#17191d; --material-panel:#1d2025; --material-cap:#272b31; --material-line:#c7cdd6; --material-engraving:#ffffff; --material-secondary:#e0e5ec; --material-muted:#c7cdd6; --state-unavailable:#c7cdd6; }
+}
+@media (forced-colors:active) {
+  body.procgen-workstation { --material-chassis:Canvas; --material-panel:Canvas; --material-cap:ButtonFace; --material-cap-hover:ButtonFace; --material-rubber:Canvas; --material-glass:Canvas; --material-engraving:CanvasText; --material-secondary:CanvasText; --material-muted:GrayText; --material-line:ButtonText; --material-shadow:transparent; --material-highlight:transparent; --state-focus:Highlight; --state-selected:Highlight; --state-queued:LinkText; --state-error:LinkText; --state-unavailable:GrayText; --parameter-accent:ButtonText; }
+  .procgen-workstation .parameter-knob-indicator::before, .procgen-workstation .parameter-knob[data-presentation=fader] .parameter-knob-indicator { background:ButtonText; }
+  .procgen-workstation .parameter-knob-effective, .procgen-workstation .parameter-knob-pickup { border-color:ButtonText; }
+  .procgen-workstation #procgenTopbar #procgenPanic, .procgen-workstation #procgenPanic, .procgen-workstation #procgenTopbar #procgenPause { background:ButtonFace; color:ButtonText; border-color:ButtonText; }
+}

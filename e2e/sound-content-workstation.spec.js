@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 import { inspectLane } from './helpers/workstationDock.js';
 import { fileURLToPath } from 'node:url';
@@ -245,12 +246,12 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   });
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=2');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
-  await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
+  await useWorkstationControl(page, page.getByRole('button', { name: 'Record audio…', exact: true }), {'button':'Record audio…'}, 'click');
   const dialog = page.getByRole('dialog', { name: 'Record browser master', exact: true });
   await expect(dialog.getByRole('button', { name: 'Start master capture', exact: true })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Close', exact: true }).click(); await page.locator('#procgenListen').click();
   await page.evaluate(() => window.__PROCGEN_STUDIO__.play());
-  await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
+  await useWorkstationControl(page, page.getByRole('button', { name: 'Record audio…', exact: true }), {'button':'Record audio…'}, 'click');
   await dialog.getByRole('button', { name: 'Start master capture', exact: true }).click();
   await expect.poll(async () => `${await dialog.getByRole('status').textContent()}\n${(await dialog.locator('p').allTextContents()).join('\n')}`, { timeout: 15000 })
     .toMatch(/^(recording|partial) ·/);

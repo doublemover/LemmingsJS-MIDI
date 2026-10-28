@@ -1,3 +1,4 @@
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { DESKTOP_VIEWPORTS } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { PROCGEN_GAME_EVENT_MIDI_PRESETS } from '../js/midi/project/ProcgenMidiDefaults.js';
@@ -56,7 +57,7 @@ test('legacy: drawer keyboard/repeated controls keep stable appearance and expos
 test('legacy: 1024 lane count clamps and restarts without multiplying renderers', async ({ page }) => {
   await page.goto('/procgen.html?workstation=0&e2e=1&seed=42&lanes=2'); await ready(page);
   await page.locator('#procgenTab').click();
-  await page.locator('#procgenLanes').fill('2048'); await page.locator('#procgenLanes').dispatchEvent('change');
+  await useWorkstationControl(page, page.locator('#procgenLanes'), {}, 'fill', '2048'); await page.locator('#procgenLanes').dispatchEvent('change');
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.getState?.().lanes === 1024);
   await page.evaluate(() => { window.__PROCGEN_LANES__.pause(); window.__PROCGEN_LANES__.step(12); });
   const state = await page.evaluate(() => window.__PROCGEN_LANES__.getState());
@@ -122,7 +123,7 @@ test('legacy: procgen selected MIDI destination connects explicitly, sends actua
   expect(await page.evaluate(() => window.__procgenMidiRequests)).toBe(0); await expect(page.locator('#procgenMasterVolume')).toBeDisabled();
   await page.locator('#procgenListen').click(); await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#procgenMidiDevice')).toHaveValue(''); expect(await page.evaluate(() => window.__procgenMidiBytes.length)).toBe(0);
-  await page.locator('#procgenMidiDevice').selectOption('pw-output-1'); await page.locator('#procgenListen').click();
+  await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'true'); await expect(page.locator('#procgenMidiDevice')).toHaveValue('pw-output-1');
   await page.evaluate(() => window.__PROCGEN_LANES__.step(80));
   await expect.poll(() => page.evaluate(() => window.__procgenMidiBytes.filter(bytes => (bytes[0] & 240) === 144 && bytes[2] > 0).length)).toBeGreaterThan(0);
@@ -130,7 +131,7 @@ test('legacy: procgen selected MIDI destination connects explicitly, sends actua
   await page.locator('#procgenTab').click(); await expect(page.locator('#procgenAudioStatus')).toContainText('Playwright Output');
   await page.evaluate(() => window.__WEBMIDI_STUB__.disconnectOutput());
   await expect(page.locator('#procgenListen')).toHaveAttribute('aria-pressed', 'false'); await expect(page.locator('#procgenAudioStatus')).toContainText('disconnected');
-  await page.locator('#procgenOutput').selectOption('synth'); await expect(page.locator('#procgenListen')).toHaveText('Listen locally');
+  await useWorkstationControl(page, page.locator('#procgenOutput'), {}, 'selectOption', 'synth'); await expect(page.locator('#procgenListen')).toHaveText('Listen locally');
   await expect(page.locator('#procgenMasterVolume')).toBeEnabled(); expect(await page.evaluate(() => window.__procgenMidiRequests)).toBe(1);
 });
 
@@ -181,7 +182,7 @@ test('legacy: paused seed review survives regeneration and manual steps refresh 
   await expect(page.locator('#procgenPause')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('#procgenSeedControls > summary').click();
   await page.locator('#procgenSeed').fill('123');
-  await page.locator('#procgenLanes').click(); await page.locator('#procgenLanes').fill('3'); await page.locator('#procgenLanes').press('Tab');
+  await useWorkstationControl(page, page.locator('#procgenLanes'), {}, 'click'); await useWorkstationControl(page, page.locator('#procgenLanes'), {}, 'fill', '3'); await useWorkstationControl(page, page.locator('#procgenLanes'), {}, 'press', 'Tab');
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.world?.laneCount === 3);
   expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.seed)).toBe(42);
   await expect(page.locator('#procgenPause')).toHaveAttribute('aria-pressed', 'true');

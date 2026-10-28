@@ -1474,7 +1474,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (action === 'exit-stage') return handlers.stageExit();
       if (action === 'startup-fresh') { const control = document.getElementById('procgenStartupFresh'); if (!control) return false; control.click(); return true; }
       if (action === 'review-output' || action === 'review-backend') {
-        const control = document.getElementById(action === 'review-output' ? 'procgenMidiDevice' : 'procgenOutput'); control?.focus?.({ preventScroll: true }); return !!control;
+        const control = document.getElementById(action === 'review-output' ? 'procgenMidiDevice' : 'procgenOutput'); if (control) view.revealGlobalControl?.(control); control?.focus?.({ preventScroll: true }); return !!control;
       }
       if (action === 'inspect-midi' || action === 'inspect-clock') { state.tab = 'MIDI'; view.openInspector(); return true; }
       if (action === 'inspect-physical' || action === 'inspect-mix') { state.tab = action === 'inspect-mix' ? 'Lane' : selected().mode === 'pattern' ? 'Lane' : 'Physical'; view.openInspector(); return true; }
