@@ -338,4 +338,24 @@ describe('procgenBoot helpers', function () {
     expect(canvas.style.width).to.equal('320px');
     expect(canvas.style.height).to.equal('200px');
   });
+
+  it('delegates workstation backing allocation to its renderer without clearing a budgeted surface', function () {
+    let assignments = 0;
+    const canvas = { style: {}, get width() { return 960; }, set width(_value) { assignments++; }, get height() { return 540; }, set height(_value) { assignments++; } };
+    const requests = [];
+    globalThis.window = { devicePixelRatio: 2, innerWidth: 1920, innerHeight: 1080 };
+    globalThis.document = { getElementById: id => id === 'gameCanvas' ? canvas : id === 'procgenStudioStage' ? { clientWidth: 1714, clientHeight: 776 } : null };
+    const runtime = { lanes: { renderer: { canvas, resize: request => requests.push(request) } } };
+    procgenBoot.resizeCanvas(runtime); procgenBoot.resizeCanvas(runtime);
+    expect(requests).to.deep.equal([{ width: 3428, height: 1552 }, { width: 3428, height: 1552 }]);
+    expect(assignments).to.equal(0); expect(canvas.style.width).to.equal('1714px');
+  });
+
+  it('leaves unchanged fallback backing dimensions intact on repeated resize observations', function () {
+    let assignments = 0;
+    const canvas = { style: {}, get width() { return 1920; }, set width(_value) { assignments++; }, get height() { return 1080; }, set height(_value) { assignments++; } };
+    globalThis.window = { devicePixelRatio: 1, innerWidth: 1920, innerHeight: 1080 };
+    globalThis.document = { getElementById: id => id === 'gameCanvas' ? canvas : null };
+    procgenBoot.resizeCanvas(); procgenBoot.resizeCanvas(); expect(assignments).to.equal(0);
+  });
 });

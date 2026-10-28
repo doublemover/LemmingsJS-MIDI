@@ -10,7 +10,7 @@ const ready = async (page, count = 8, steps = 16) => {
     let project = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, (_, index) =>
       createProcgenLane(index, { mode: 'pattern', patternPurpose: 'Complement the physical world in this view fixture',
         ...(steps === 16 ? {} : { patterns: Array.from({ length: 4 }, () => ({ length: steps })) }) })) });
-    const state = { laneId: 'lane-1', slot: 0, step: 0 }, calls = [], actions = [];
+    const state = { laneId: 'lane-1', slot: 0, step: 0, workspaceMode: 'inspect' }, calls = [], actions = [];
     const runtime = {};
     const handlers = Object.fromEntries(['copy', 'paste', 'undo', 'redo', 'observe', 'record'].map(name => [name, value => calls.push({ name, value })]));
     const dispatch = action => { actions.push(action); project = reduceMidiProject(project, action);
@@ -149,9 +149,9 @@ test('palette changes preserve global key and expose direct CC editing and event
   await expect(page.getByLabel('Global key')).toHaveValue('9');
   await page.getByLabel('build', { exact: true }).uncheck();
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].eventMask.build)).toBe(false);
-  await page.getByRole('button', { name: 'Automation', exact: true }).click();
+  await page.getByRole('tab', { name: 'Automation', exact: true }).click();
   await page.getByRole('button', { name: 'Add CC curve' }).click();
-  await page.getByLabel('Points', { exact: true }).fill('0:10, 2:120, 4:10'); await page.getByLabel('Points', { exact: true }).dispatchEvent('change');
+  await page.getByLabel('Points', { exact: true }).fill('0:10, 2:120, 4:10'); await page.getByRole('button', { name: 'Apply curve', exact: true }).click();
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].ccAutomation[0].points[1])).toEqual({ beat: 2, value: 120 });
   await page.getByRole('button', { name: 'Remove curve' }).click();
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].ccAutomation)).toEqual([]);
@@ -228,11 +228,11 @@ test('single-step edits keep visible rows and other cells mounted', async ({ pag
 
 test('inspector arrow keys resize only the inspector and view disposal detaches its renderer callback', async ({ page }) => {
   await ready(page);
-  const separator = page.getByRole('separator', { name: 'Resize inspector' });
-  await separator.focus(); await page.keyboard.press('ArrowRight');
-  expect(await page.evaluate(() => ({ width: window.workstationViewTest.state.inspectorWidth,
-    step: window.workstationViewTest.state.step, tab: window.workstationViewTest.state.tab }))).toEqual({ width: 288, step: 0, tab: 'Lane' });
-  expect(await separator.getAttribute('aria-valuenow')).toBe('288');
+  const separator = page.getByRole('separator', { name: 'Resize instrument dock' });
+  await separator.focus(); await page.keyboard.press('ArrowUp');
+  expect(await page.evaluate(() => ({ height: window.workstationViewTest.state.dockHeight,
+    step: window.workstationViewTest.state.step, tab: window.workstationViewTest.state.tab }))).toEqual({ height: 304, step: 0, tab: 'Lane' });
+  expect(await separator.getAttribute('aria-valuenow')).toBe('304');
   expect(await page.evaluate(() => {
     const { view, runtime } = window.workstationViewTest;
     const renderer = { resize() {} }; runtime.lanes = { renderer }; view.render();
@@ -251,7 +251,7 @@ test('virtualizes 1024 lanes and exposes observer controls without losing the ca
   await expect(page.getByLabel('Visible lane range')).toHaveText(`${visible + 1}–${visible * 2} of 1024`);
   await page.locator('.studio-lane-headers').focus(); await page.keyboard.press('PageUp');
   await expect(page.getByLabel('Visible lane range')).toHaveText(`1–${visible} of 1024`);
-  await page.getByRole('button', { name: 'World', exact: true }).click();
+  await page.getByRole('tab', { name: 'World', exact: true }).click();
   await page.getByLabel('Observer mode').selectOption('director');
   expect(await page.evaluate(() => window.workstationViewTest.calls.at(-1))).toEqual({ name: 'observe', value: { mode: 'director' } });
   await page.locator('.studio-lane-headers').dispatchEvent('wheel', { deltaY: 50 });
@@ -405,11 +405,11 @@ test('external edits retain an explicit draft conflict and support both named re
 });
 
 test('removing an active schema field announces focus return and fences its retired callback', async ({ page }) => {
-  await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true }).click(); const condition = page.getByLabel('Step condition', { exact: true });
+  await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Step', exact: true }).click(); const condition = page.getByLabel('Step condition', { exact: true });
   await condition.selectOption('event'); const every = page.getByLabel('Every', { exact: true }); await every.focus();
   await every.evaluate(element => { window.removedField = element; });
   await page.evaluate(() => window.workstationViewTest.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { condition: null } }));
-  await expect(every).toHaveCount(0); await expect(page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true })).toBeFocused();
+  await expect(every).toHaveCount(0); await expect(page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Step', exact: true })).toBeFocused();
   const count = await page.evaluate(() => window.workstationViewTest.actions.length);
   await page.evaluate(() => { window.removedField.value = '9'; window.removedField.dispatchEvent(new Event('change', { bubbles: true })); });
   expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(count); await expect(page.locator('.studio-status')).toContainText('no longer available');

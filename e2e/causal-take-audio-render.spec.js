@@ -1,3 +1,4 @@
+import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
@@ -21,7 +22,7 @@ test('an immutable worker renders a real captured physical phrase and dry stem w
       instruments: [{ id: 'render-crossing', sourceKind: 'MotionCommitted', gateX: 40, crossingDirection: 'positive', pitchCents: 6012.34567,
         velocity01: 0.8, role: 'crossing', route: 'local' }] } });
   });
-  await page.getByRole('button', { name: 'Physical', exact: true }).click();
+  await inspectLane(page, 'Physical');
   await page.getByLabel('Take name', { exact: true }).fill('Actual physical sine revoice'); await page.getByLabel('Take name', { exact: true }).blur();
   await page.getByRole('button', { name: 'Record causal take', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.causalTakeState().recording)).toBe(true);

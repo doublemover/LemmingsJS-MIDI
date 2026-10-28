@@ -4,10 +4,12 @@ import { createLaneDisplayView } from './LaneDisplayView.js';
 import { createCausalVisualView } from './CausalVisualView.js';
 import { createModalOutputSafety } from '../../controls/ModalOutputSafety.js';
 import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
+import { createAutomationCurveEditor } from '../../controls/AutomationCurveEditor.js';
+import { createWorkstationDock } from './WorkstationDock.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
 import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
-import { procgenLane } from './ProcgenProjectIndex.js';
+import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
 import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
@@ -30,9 +32,9 @@ const rendererLeases = new WeakMap(), mountedViews = new WeakMap();
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
   mountedViews.get(document.getElementById('gameCanvas'))?.dispose();
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
-  const listeners = [], parameterControls = [], laneMixControls = new Map(), parameterCache = new Map();
+  const listeners = [], parameterControls = [], laneMixControls = new Map(), parameterCache = new Map(), curveEditors = new Map();
   const laneDisplays = new Map(), laneDisplayPages = new Map();
-  let parameterScope = null, parameterSeen = null, viewRevision = 0;
+  let parameterScope = null, parameterSeen = null, viewRevision = 0, curveDocumentIdentity = getDocumentIdentity();
   let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
   const retirement = createProcgenRetirementScope(), displayScheduler = createInstrumentDisplayScheduler({ document, window, resourceBudget });
@@ -89,6 +91,23 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     else wrap.append(node('span', label), control);
     parent.append(wrap); return control;
   };
+  const automationEditor = (lane, curve) => {
+    const key = JSON.stringify([lane.id, curve.id]), documentIdentity = getDocumentIdentity(); let entry = curveEditors.get(key);
+    if (!entry) {
+      if (curveEditors.size >= 32) {
+        const retired = [...curveEditors].find(([, value]) => !value.control.inspect().dirty && value.laneId !== state.laneId);
+        if (retired) { retired[1].control.dispose(); curveEditors.delete(retired[0]); }
+      }
+      if (curveEditors.size >= 32) return node('p', 'Curve draft storage is full. Apply or discard an existing lane curve draft before opening another editor.', 'studio-hint');
+      entry = { laneId: lane.id, curveId: curve.id, token: {}, control: null };
+      const current = () => !disposed && getDocumentIdentity() === documentIdentity && state.laneId === lane.id && state.tab === 'Automation' && dock.visible() && procgenLane(getProject().procgen.lanes, lane.id)?.ccAutomation.some(value => value.id === curve.id);
+      try { entry.control = createAutomationCurveEditor({ document, window, curve, resourceBudget, getIdentity: () => current() ? entry.token : null, onStatus: text => { status.textContent = text; },
+        commit: points => { if (!current()) return false; const target = procgenLane(getProject().procgen.lanes, lane.id); dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { ccAutomation: target.ccAutomation.map(value => value.id === curve.id ? { ...value, points } : value) } }); return true; } }); }
+      catch (failure) { return node('p', 'Curve editor unavailable: ' + failure.message, 'studio-hint'); }
+      curveEditors.set(key, entry);
+    }
+    entry.control.update(curve); return entry.control.element.isConnected ? controlTree.retain(entry.control.element) : entry.control.element;
+  };
   const byId = id => document.getElementById(id);
   const topbar = byId('procgenTopbar'), topbarParent = topbar.parentNode, topbarSibling = topbar.nextSibling;
   const presentationRoot = node('div', null, 'procgen-presentation-root'); presentationRoot.id = 'procgenPresentationRoot';
@@ -102,11 +121,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const canvas = byId('gameCanvas'), canvasParent = canvas.parentNode, canvasSibling = canvas.nextSibling; stage.append(canvas);
   const grid = node('div', null, 'studio-sequences'); grid.setAttribute('aria-label', 'Lane sequencers'); stage.append(grid);
   const inspector = node('aside', null, 'studio-inspector'); inspector.setAttribute('aria-label', 'Selected lane inspector');
-  const resize = node('div', null, 'studio-resize'); resize.setAttribute('role', 'separator'); resize.setAttribute('aria-label', 'Resize inspector'); resize.tabIndex = 0;
+  const resize = node('div', null, 'studio-resize'); resize.setAttribute('role', 'separator'); resize.tabIndex = 0;
   const tabs = node('div', null, 'studio-inspector-tabs');
   const fields = node('div', null, 'studio-inspector-fields'); fields.id = 'procgenInspectorFields';
-  resize.setAttribute('aria-controls', fields.id); resize.setAttribute('aria-valuemin', '250'); resize.setAttribute('aria-valuemax', '480');
-  resize.setAttribute('aria-valuenow', String(state.inspectorWidth));
   const conflictHost = node('div', null, 'studio-field-conflict'); conflictHost.hidden = true; conflictHost.setAttribute('role', 'status');
   inspector.append(resize, tabs, conflictHost, fields);
   shell.append(lanes, stage, inspector); topbar.after(shell);
@@ -121,12 +138,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const recoveryStatus = node('output', 'Recovery unsaved', 'studio-recovery-status'); recoveryStatus.setAttribute('aria-label', 'Crash recovery status');
   const legacyNotice = node('div', null, 'studio-legacy-conversion'); legacyNotice.hidden = true;
   footer.append(legacyNotice);
-  const controlTree = createKeyedControlTree({ document, conflictHost, onStatus: text => { status.textContent = text; }, focusFallback: () => tabs.querySelector('button[aria-pressed="true"]') });
+  const controlTree = createKeyedControlTree({ document, conflictHost, onStatus: text => { status.textContent = text; }, focusFallback: () => tabs.querySelector('[role="tab"][aria-selected="true"]') || dock.toggle });
   const cueStrip = node('div', null, 'studio-scene-cue'); cueStrip.setAttribute('aria-label', 'Prepared physical scene transition'); cueStrip.hidden = true;
   const currentCue = node('span', 'CURRENT · Physical world'), nextCue = node('span', 'NEXT · No candidate'), cueState = node('output'); cueState.setAttribute('aria-live', 'polite');
   const cueGo = button('GO · stop and load', () => handlers.stageGo?.()); cueGo.disabled = true;
   cueStrip.append(currentCue, nextCue, cueState, button('Choose NEXT', () => handlers.scenes?.()), cueGo, button('Play', () => handlers.stagePlay?.()), button('Pause', () => handlers.stagePause?.()), button('Stop', () => handlers.stopOutput?.()), button('Panic', () => handlers.panicOutput?.()), button('Exit stage', () => handlers.stageExit?.())); shell.before(cueStrip);
-  let projection, dragging = null, stroke = null, layoutKey = null, queuedBeat = null;
+  let projection, stroke = null, layoutKey = null, queuedBeat = null;
   const currentLaneIndex = () => ({ get: id => procgenLane(getProject().procgen.lanes, id) });
   let attachedRenderer = null, disposed = false, superseded = false, stageActive = false;
   const operationalView = createProcgenOperationalView({ document, readSnapshot: () => handlers.operationalState?.() || null,
@@ -157,7 +174,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   const beginGeometry = () => {
     if (disposed) return;
-    stroke = null; dragging = null; geometryPending = true; state.presentationTransition = true;
+    cancelPresentationGestures('geometry-transition'); stroke = null; geometryPending = true; state.presentationTransition = true;
     grid.inert = true; stage.dataset.presentation = 'preparing';
     geometryRelease?.(); geometryRelease = null;
     geometryUnsubscribe?.(); geometryUnsubscribe = null;
@@ -172,20 +189,21 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getRuntime()?.lanes?.renderer?.render?.(false);
     finishGeometry();
   };
-  let resizeLease = null, resizeStartWidth = null;
-  on(resize, 'pointerdown', event => {
-    if ((event.button ?? 0) !== 0) return;
-    const identity = getProject(); resizeStartWidth = state.inspectorWidth;
-    resizeLease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'inspector-resize', identity, getIdentity: getProject,
-      onCancel: () => { dragging = null; resizeLease = null; setInspectorWidth(resizeStartWidth); } });
-    if (resizeLease) { dragging = event.pointerId; resize.setPointerCapture(event.pointerId); }
-  });
-  const setInspectorWidth = width => { state.inspectorWidth = Math.max(250, Math.min(480, width)); resize.setAttribute('aria-valuenow', String(state.inspectorWidth)); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px'); layout(); };
-  on(resize, 'pointermove', event => { if (dragging === event.pointerId && resizeLease?.owns(event)) setInspectorWidth(window.innerWidth - event.clientX); });
-  on(resize, 'pointerup', event => { if (!resizeLease?.finish(event)) return; dragging = null; resizeLease = null; handlers.preferences?.(); });
-  for (const type of ['pointercancel', 'lostpointercapture']) on(resize, type, event => { if (resizeLease?.owns(event)) resizeLease.cancel(type); });
-  on(window, 'blur', () => resizeLease?.cancel('blur'));
-  on(resize, 'keydown', event => { if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); setInspectorWidth(state.inspectorWidth + (event.key === 'ArrowLeft' ? 16 : -16)); });
+  const dock = createWorkstationDock({ document, window, shell, inspector, resize, tabs, fields, state, getIdentity: getDocumentIdentity,
+    getContext: () => {
+      const lane = selected(), renderer = getRuntime()?.lanes?.renderer, snapshot = renderer?.presentation?.getSnapshot?.(), selectedIndex = procgenLaneIndex(getProject().procgen.lanes).get(lane.id);
+      const entity = renderer?.selectedWorldEntityId && snapshot?.entities?.find(value => value.id === renderer.selectedWorldEntityId && (state.tab === 'Selection' || value.lane === selectedIndex));
+      return { laneId: lane.id, laneName: lane.name, editorKind: state.tab, targetScope: state.tab === 'Physical' ? 'physical-graph' : ['World', 'Selection'].includes(state.tab) ? 'world' : 'lane', targetId: document.activeElement?.closest?.('.studio-curve-editor')?.dataset.curveId || (state.tab === 'Physical' ? 'procgen.physicalGraph' : state.tab === 'Selection' ? entity?.id || snapshot?.worldId || null : state.tab === 'World' ? snapshot?.worldId || null : null),
+        selectedEntity: entity ? { id: entity.id, kind: entity.kind, worldId: snapshot.worldId, generation: snapshot.generation } : null,
+        dirtyBuffer: [...curveEditors.values()].filter(value => value.laneId === lane.id).map(value => ({ curveId: value.curveId, ...value.control.inspect() })) };
+    }, isSuspended: () => stageActive,
+    onOpen: () => render(), onClose: () => cancelPresentationGestures('dock-closed'), onModeChange: () => cancelPresentationGestures('workspace-mode'),
+    onLayout: reflowGeometry, onPreferences: () => handlers.preferences?.(), onStatus: text => { status.textContent = text; } });
+  on(inspector, 'focusin', () => dock.update());
+  on(inspector, 'input', () => dock.update());
+  on(inspector, 'click', () => dock.update());
+  on(stage, 'pointerup', () => dock.update()); on(stage, 'keydown', event => { if (event.key === 'Escape') dock.update(); });
+  function cancelPresentationGestures(reason) { stroke?.lease.cancel(reason); dock.cancel(reason); for (const control of parameterControls) control.cancel(reason); for (const control of laneMixControls.values()) control.cancel(reason); for (const entry of curveEditors.values()) entry.control.cancel(reason); }
   const layoutMode = select([['strip', 'Strip'], ['overlay', 'Overlay']], state.layout, value => { state.layout = value; render(); handlers.preferences?.(); }, 'Sequencer layout');
   const bpm = input(120, value => handlers.transport?.({ bpm: value, baseBpm: value }), { min: 20, max: 400, step: 0.01 }); bpm.setAttribute('aria-label', 'BPM');
   bpm.title = 'Base musical tempo. Linked game-speed mode multiplies it by the world speed; Status details show effective tempo.';
@@ -235,7 +253,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   labeled('View', layoutMode, transport); labeled('Speed', speedMode, transport); labeled('BPM', bpm, transport); labeled('Link world', linked, transport);
   labeled('Key', root, transport); labeled('Scale', scale, transport); labeled('Clock', clock, transport);
-  transport.append(stopOutput, stageModeButton, clockStatus, clockHealth, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
+  transport.append(stopOutput, dock.toggle, dock.mode, stageModeButton, clockStatus, clockHealth, displayStatus, retryDisplay, fullscreenMenu, fullscreenExit);
   fullscreenSession = createProcgenFullscreenSession({ document, root: presentationRoot, control: fullscreenAction,
     getGeneration: () => handlers.presentationGeneration?.() ?? 0,
     onTransition: () => { beginGeometry(); syncFullscreen(); },
@@ -360,8 +378,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const refreshMacroState = () => { for (const [key, control] of macroControls) { const [laneId, macroId] = JSON.parse(key), receipt = handlers.macroGestureState?.(laneId, macroId); if (receipt) control.setObservations({ pickupValue: receipt.pickup01 }); } };
   const showProjects = (entries, load) => showProjectPage({ items: entries, nextCursor: null }, load);
   const selected = () => { const project = getProject(), lane = project.procgen.lanes.find(item => item.id === state.laneId) || project.procgen.lanes[0]; state.laneId = lane.id; return lane; };
-  const viewLease = () => Object.freeze({ revision: viewRevision, selectionKey: parameterScope, documentIdentity: getDocumentIdentity() });
-  const currentViewLease = lease => !disposed && lease.revision === viewRevision && lease.selectionKey === parameterScope && lease.documentIdentity === getDocumentIdentity();
+  const viewLease = () => Object.freeze({ revision: viewRevision, selectionKey: parameterScope, laneId: state.laneId, tab: state.tab, slot: state.slot, step: state.step, documentIdentity: getDocumentIdentity() });
+  const currentViewLease = lease => !disposed && lease.revision === viewRevision && lease.selectionKey === parameterScope && lease.documentIdentity === getDocumentIdentity() && lease.laneId === state.laneId && lease.tab === state.tab && lease.slot === state.slot && lease.step === state.step;
   const selectSound = (laneId, patch) => {
     renderInspector(); const lease = viewLease(); handlers.status?.('Preparing native sound; the accepted sound and physical world are unchanged.');
     Promise.resolve().then(() => currentViewLease(lease) ? handlers.selectSoundAlias(laneId, patch) : null).catch(error => {
@@ -381,6 +399,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   };
   function renderInspector() {
     if (disposed) return;
+    if (!dock.visible()) { viewRevision++; parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]); return; }
     const nextFields = node('div'), nextTabs = node('div'); macroControls.clear(); parameterSeen = new Set(); viewRevision++;
     if (state.tab !== 'MIDI') { midiRouteView?.dispose(); midiRouteView = null; }
     const lane = selected(); state.slot = Math.max(0, Math.min(3, state.slot));
@@ -389,7 +408,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const step = pattern?.steps[state.step];
     if (!pattern && ['Step', 'Chord'].includes(state.tab)) state.tab = 'Lane';
     parameterScope = JSON.stringify([getDocumentIdentity(), state.laneId, state.tab, state.slot, state.tab === 'Step' || state.tab === 'Chord' ? state.step : null]);
-    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); }); el.setAttribute('aria-pressed', String(state.tab === tab)); nextTabs.append(el); }
+    for (const tab of (pattern ? ['Lane', 'Step', 'Chord', 'MIDI', 'World', 'Selection', 'Automation'] : ['Lane', 'Physical', 'MIDI', 'World', 'Selection', 'Automation'])) { const el = button(tab, () => { state.tab = tab; render(); handlers.preferences?.(); }); el.id = 'procgen-dock-tab-' + tab; el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', String(state.tab === tab)); el.setAttribute('aria-controls', dock.panelId(tab)); el.tabIndex = state.tab === tab ? 0 : -1; nextTabs.append(el); }
+    fields.setAttribute('aria-labelledby', 'procgen-dock-tab-' + state.tab);
     nextFields.replaceChildren(node('div', `${lane.family.toUpperCase()} / ${lane.role}`, 'studio-eyebrow'), node('h2', state.tab === 'Step' || state.tab === 'Chord' ? `Step ${state.step + 1} · Phrase ${state.slot + 1}` : lane.name));
     if (state.tab === 'Lane') {
       labeled('Name', input(lane.name, name => changeLane({ name }), { type: 'text' }), nextFields);
@@ -676,31 +696,30 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Follow lane', select(getProject().procgen.lanes.map(item => [item.id, item.name]), state.observerLane || lane.id, laneId => observe({ laneId }), 'Observer lane'), nextFields);
       labeled('Director hold / seconds', input(state.observerHold || 8, holdSeconds => observe({ holdSeconds }), { min: 2, max: 60 }), nextFields);
       nextFields.append(node('p', 'Scenery grows ahead through a dithered reveal. The world is shared; each lane keeps its own visual and musical character.', 'studio-hint'), button('Advanced world controls', () => byId('procgenTab')?.click()));
-    } else {
+    } else if (state.tab === 'Automation') {
       nextFields.append(node('p', 'Controller curves repeat with musical beats or the observed lane frontier. Points are position:value pairs.', 'studio-hint'));
       const curves = lane.ccAutomation || [];
       const update = (id, patch) => changeLane({ ccAutomation: curves.map(curve => curve.id === id ? { ...curve, ...patch } : curve) });
       for (const curve of curves) {
-        const group = node('fieldset', null, 'studio-automation-curve'); group.dataset.controlKey = 'curve:' + curve.id; group.append(node('legend', `CC ${curve.controller}`));
+        const group = node('fieldset', null, 'studio-automation-curve'); group.dataset.controlKey = 'curve:' + curve.id; group.append(node('legend', `CC ${curve.controller} · ${curve.id}`));
         labeled('Enabled', input(curve.enabled, enabled => update(curve.id, { enabled }), { type: 'checkbox' }), group);
         labeled('Controller', input(curve.controller, controller => update(curve.id, { controller }), { min: 0, max: 127 }), group);
         labeled('Position', select([['beat', 'Beats'], ['distance', 'World pixels']], curve.axis, axis => update(curve.id, { axis }), 'Automation position'), group);
         labeled('Loop length', input(curve.length, length => update(curve.id, { length }), { min: 0.25, max: 65536, step: 0.25 }), group);
         labeled('Curve', select(['linear', 'step'], curve.mode, mode => update(curve.id, { mode }), 'Automation curve'), group);
-        labeled('Points', input(curve.points.map(point => `${point.beat}:${point.value}`).join(', '), value => {
-          const points = value.split(',').map(pair => pair.trim().split(':').map(Number));
-          if (points.some(pair => pair.length !== 2 || pair.some(number => !Number.isFinite(number)))) { status.textContent = 'Use points such as 0:32, 2:110, 4:32.'; return; }
-          update(curve.id, { points: points.map(([beat, value]) => ({ beat, value })) });
-        }, { type: 'text', placeholder: '0:32, 2:110, 4:32' }), group);
+        group.append(automationEditor(lane, curve));
         group.append(button('Remove curve', () => changeLane({ ccAutomation: curves.filter(item => item.id !== curve.id) }))); nextFields.append(group);
       }
       if (curves.length < 16) nextFields.append(button('Add CC curve', () => { let index = 1; while (curves.some(curve => curve.id === `cc-${index}`)) index++; changeLane({ ccAutomation: [...curves, { id: `cc-${index}`, controller: 74, length: 4, points: [{ beat: 0, value: 32 }, { beat: 2, value: 100 }, { beat: 4, value: 32 }] }] }); }));
       const automation = byId('procgenSpanControls') || byId('procgenSpanFields');
       if (automation) nextFields.append(button('Open automation editor', () => { byId('procgenTab')?.click(); automation.scrollIntoView?.({ block: 'center' }); }));
       nextFields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
+    } else if (state.tab === 'Selection') {
+      nextFields.append(node('p', 'World selection uses the accepted physical presentation. No accepted inspection source is attached to this view.', 'studio-hint'));
     }
     controlTree.reconcile(tabs, nextTabs, 'tabs:' + JSON.stringify([getDocumentIdentity(), !!pattern]));
     controlTree.reconcile(fields, nextFields, parameterScope);
+    for (const entry of curveEditors.values()) if (entry.laneId === state.laneId) { const curve = lane.ccAutomation.find(curve => curve.id === entry.curveId); if (curve) entry.control.update(curve); }
     for (const [id, entry] of parameterCache) if (!parameterSeen.has(id)) {
       entry.control.dispose(); parameterControls.splice(parameterControls.indexOf(entry.control), 1); parameterCache.delete(id);
     }
@@ -713,13 +732,13 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const laneCount = getProject().procgen.lanes.length, physicalHeight = getRuntime()?.world?.laneHeight || 144;
     const minimumRow = Math.max(getProject().procgen.lanes.some(lane => lane.mode === 'pattern') ? 120 : 96, state.minimumRow);
-    const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.inspectorWidth]);
+    const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
     const changed = key !== layoutKey;
     if (changed) {
       projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow });
       state.firstLane = projection.firstLane;
-      layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.inspectorWidth]);
-      shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px'); shell.style.setProperty('--inspector-width', state.inspectorWidth + 'px');
+      layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
+      shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px');
       canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     }
     const renderer = getRuntime()?.lanes?.renderer || null;
@@ -832,6 +851,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function render({ partial = false } = {}) {
     if (disposed) return;
+    if (curveDocumentIdentity !== getDocumentIdentity()) { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); curveDocumentIdentity = getDocumentIdentity(); }
+    for (const [key, entry] of curveEditors) if (!procgenLane(getProject().procgen.lanes, entry.laneId)?.ccAutomation.some(curve => curve.id === entry.curveId)) { entry.control.dispose(); curveEditors.delete(key); }
+    dock.update();
     selected(); handlers.reconcileSoundPreview?.(); controlTree.update(layoutMode, state.layout, { identity: getDocumentIdentity() }); controlTree.update(root, String(getProject().global.scale.root), { identity: getDocumentIdentity() });
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
@@ -999,6 +1021,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     commands.push({ id: 'workstation.' + action, label, contexts: ['selected-lane'], enabled: () => canCommand(action), execute: () => handlers[action]?.() });
   }
   commands.push({ id: 'workstation.import', label: 'Import a performance file', contexts: ['project'], enabled: () => canCommand('import'), execute: () => importInput.click() });
+  commands.push({ id: 'workstation.inspectLane', label: 'Inspect the selected lane in the instrument dock', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => dock.open() },
+    { id: 'workstation.perform', label: 'Return to performance and close the instrument dock', contexts: ['selected-lane'], enabled: () => !stageActive, execute: () => dock.choose('perform') });
   const commandRegistration = commandDispatcher.register({ commands, priority: 100, getContext: commandContext, isCurrent: commandCurrent,
     accepts: (_event, input) => !projectList.open && (!input.interactive || input.path.some(target => target?.classList?.contains('studio-cell'))) && !input.path.some(target => target?.id === 'gameCanvas'),
     onError: error => { status.textContent = error.message; } });
@@ -1009,6 +1033,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const commandPalette = createProcgenCommandPalette({ document, dispatcher: commandDispatcher, getScopeLabel: () => 'Selected lane: ' + (selected().name || selected().id),
     onStatus: message => { status.textContent = message; } });
   fullscreenMenu.append(button('Commands…', () => commandPalette.open(), 'Find a desktop action and inspect its actual shortcuts'));
+  fullscreenMenu.append(button('Inspect world selection', () => { state.tab = 'Selection'; if (dock.visible()) render(); else dock.open(); }, 'Read selected actors and physical objects without changing their world'));
 
   let stageFocus = null; const stageHidden = new Map();
   const setStageMode = enabled => {
@@ -1016,13 +1041,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     shell.dataset.stageMode = String(stageActive); presentationRoot.dataset.stageMode = String(stageActive); cueStrip.hidden = !stageActive;
     stageModeButton.textContent = stageActive ? 'Exit stage' : 'Stage mode'; stageModeButton.setAttribute('aria-pressed', String(stageActive));
     if (stageActive) {
+      cancelPresentationGestures('stage-mode');
       stageFocus = document.activeElement;
-      const roots = [inspector, footer, panel, grid, root.parentElement, scale.parentElement, clock.parentElement, layoutMode.parentElement,
+      const roots = [inspector, footer, panel, grid, dock.toggle, dock.mode, root.parentElement, scale.parentElement, clock.parentElement, layoutMode.parentElement,
         ...topbar.querySelectorAll('.procgen-world-controls'), byId('procgenOutput')?.parentElement, byId('procgenMidiDevice')];
       for (const element of roots) if (element && !stageHidden.has(element)) { stageHidden.set(element, { hidden: element.hidden, inert: element.inert }); element.hidden = true; element.inert = true; }
       stopOutput.focus();
     } else { for (const [element, previous] of stageHidden) { element.hidden = previous.hidden; element.inert = previous.inert; } stageHidden.clear(); stageFocus?.focus?.(); stageFocus = null; }
-    reflowGeometry();
+    dock.update(); reflowGeometry();
   };
   const sceneCue = (value, current, active = stageActive) => {
     currentCue.textContent = 'CURRENT · ' + (current?.title || 'Physical world'); nextCue.textContent = 'NEXT · ' + (value?.selection?.title || 'No candidate');
@@ -1041,11 +1067,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (control.target.startsWith('patch-macro:')) {
         if (stageActive) { status.textContent = 'Exit stage to open the lane macro editor.'; return; }
         const macroId = control.target.split(';')[0].slice('patch-macro:'.length), lane = getProject().procgen.lanes.find(lane => scene.patchRefs.some(patch => patch.laneId === lane.id) && lane.instrumentRef?.definition.macros?.some(macro => macro.id === macroId));
-        if (!lane) throw new Error('This score macro is unavailable in the current lane instruments.'); state.laneId = lane.id; state.tab = 'Lane'; render(); return;
+        if (!lane) throw new Error('This score macro is unavailable in the current lane instruments.'); state.laneId = lane.id; state.tab = 'Lane'; dock.open(); render(); return;
       }
       return handlers.openPhysicalScene?.();
     } });
-  const api = { render, patchStep, patchProject, layout, viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
+  const api = { render, patchStep, patchProject, layout, dock, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -1114,7 +1140,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
         { name: 'geometry-subscription', run: () => geometryUnsubscribe?.() }, { name: 'geometry-transition', run: () => { geometryRelease?.(); state.presentationTransition = false; } },
-        { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
+        { name: 'instrument-dock', run: () => dock.dispose() }, { name: 'curve-editors', run: () => { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
         { name: 'causal-visual-view', run: () => causalView.dispose() },

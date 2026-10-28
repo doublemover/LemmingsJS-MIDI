@@ -818,45 +818,39 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "3b0d476ad765fa21b1591b4a14adda595749a2d3",
-    "job": 122586153060,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40618387427/job/122586153060",
-    "passed": 6561,
+    "head": "86d89b8224b45b297bcbcd700d67ab0b4bbe70d8",
+    "job": 122595849153,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40621340455/job/122595849153",
+    "passed": 6575,
     "failed": 0,
-    "browserPassed": 81,
+    "browserPassed": 83,
     "browserFailed": 0,
     "allChecksGreen": true,
     "coverage": {
       "lines": 90.28,
       "statements": 90.28,
-      "branches": 83.51,
-      "functions": 88.24
+      "branches": 83.55,
+      "functions": 88.25
     },
     "minimumDesktopViewport": {
       "width": 1920,
       "height": 1080
     },
     "excludesContinuations": [
-      295
+      296
     ],
     "excludesLaterWork": true,
     "masterCapture": {
-      "state": "Partial",
-      "frames": 73856,
-      "captured": 73856,
-      "stopReason": "noncontiguous-render-clock",
-      "clockDiscontinuity": {
-        "actualFrame": 96512,
-        "expectedFrame": 96640,
-        "frames": 128
-      },
-      "capturedFrames": 73856
+      "state": "Ready",
+      "frames": 53888,
+      "capturedFrames": 53888,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null
     },
-    "captureQualification": "This run reports Partial after a 128-frame noncontiguous-render-clock gap. All CI checks pass; this receipt does not relabel the capture Ready. The prior ac8c23fc checkpoint retains its separate Ready 55168-frame receipt.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci294-green.log",
-      "bytes": 1105932,
-      "sha256": "f0bd81f89d3f9671e5bd75e257ed905f257254ee7f9f8a79ca0959dca15108ff"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci295-green.log",
+      "bytes": 1107423,
+      "sha256": "cda2b51a5f5a176a4930c398f0845e2a402505ade3eb9a8324e78aa9e83f0280"
     }
   },
   "continuation264": {
@@ -11793,6 +11787,42 @@
         "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog295-desktop-causal-marks.png",
         "bytes": 449894,
         "sha256": "4ae3a276c7bd563f69b65e0c410082472bef674aa0c35557336e98ba0dce846f"
+      },
+      "remoteCi": {
+        "head": "86d89b8224b45b297bcbcd700d67ab0b4bbe70d8",
+        "job": 122595849153,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40621340455/job/122595849153",
+        "passed": 6575,
+        "failed": 0,
+        "browserPassed": 83,
+        "browserFailed": 0,
+        "allChecksGreen": true,
+        "coverage": {
+          "lines": 90.28,
+          "statements": 90.28,
+          "branches": 83.55,
+          "functions": 88.25
+        },
+        "minimumDesktopViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "excludesContinuations": [
+          296
+        ],
+        "excludesLaterWork": true,
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 53888,
+          "capturedFrames": 53888,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci295-green.log",
+          "bytes": 1107423,
+          "sha256": "cda2b51a5f5a176a4930c398f0845e2a402505ade3eb9a8324e78aa9e83f0280"
+        }
       }
     },
     "source": [
@@ -11869,14 +11899,913 @@
     ],
     "issueStatus": {
       "issue": 997,
-      "implementation": "Ordered evidence path and requested output/transfer/revoice/denied/canceled/shared-tail/missing-trace matrix implemented; full CI for this source still pending.",
-      "state": "open"
+      "state": "closed",
+      "reason": "Complete ordered evidence path and requested producer/output matrix verified by full 86d89b82 CI: 6575 coverage cases / 83 desktop boundaries, all checks green and Ready master capture."
     },
     "limitations": [
-      "Full CI must qualify continuation295; 3b0d476a qualifies prior work only.",
+      "Full 86d89b82 CI is green: 6575 coverage cases / 83 desktop boundaries, all checks passing. Master capture is Ready at 53888 frames without discontinuity. This excludes continuation296.",
       "Individual eligibility, unsupported per-actor PCM, receiver readback and audibility remain explicitly unknown. Shared-tail output and requested crossfade values cannot establish applied individual acoustic behavior.",
       "The native shared-convolution fixture uses a private offline context; it is evidence against false individual attribution, not a live hardware/reverb certification.",
       "The wider development backlog remains open; no hardware or assistive-technology certification is inferred."
+    ]
+  },
+  "continuation296": {
+    "title": "Scoped bottom dock and transactional graphical curves",
+    "agent": "rook",
+    "sourceBase": "86d89b8224b45b297bcbcd700d67ab0b4bbe70d8",
+    "issues": [
+      993,
+      1031
+    ],
+    "development": [
+      "Join endcap/world rows; default closed Perform, explicit Inspect/Overview, one bounded bottom dock with real tabs, pointer/keyboard resizing, return focus and independent migrated UI preferences.",
+      "Retain exact document/lane/editor/curve/qualified entity context, label shared physical graph/world scope, preserve passive closed state and cancel captured presentation gestures on ownership or geometry changes.",
+      "Use one stable graphical/numeric/exact curve draft owner with snap, keyboard point movement, foreign-pointer fencing, explicit Apply/Discard, two-stage Escape, invalid partial text/IME retention and conflict resolution.",
+      "Cap curve cache at 32 with 256 KiB resource admission per editor; reclaim clean contexts first, retain dirty drafts across lane switching and guard stale/detached commits.",
+      "Portal the existing world inspector into an explicit Selection tab without extra source/entity owners; preserve full curve scroll space and deliberate junction/actor inspection.",
+      "Fix real paused-world blanking after dock geometry changes: boot observers delegate backing allocation to the renderer, preserve unchanged fallback dimensions and respect renderer allocation budgets.",
+      "Migrate existing deep-editor browser workflows to explicit dock entry and add all seven production dock journeys to required CI boundaries."
+    ],
+    "validation": {
+      "node": {
+        "passed": 348,
+        "failed": 0,
+        "scope": "22 focused DOM/pure/controller/transport/music/boot/renderer lifecycle files"
+      },
+      "browserFinal": {
+        "passed": 10,
+        "failed": 0,
+        "reportedDuration": "44.3s",
+        "scope": "Seven production dock journeys, both physical switchyard journeys and fullscreen geometry."
+      },
+      "previousCohorts": [
+        {
+          "nodePassed": 293,
+          "browserPassed": 77,
+          "browserFailed": 2,
+          "browserSkipped": 1,
+          "reason": "Both switchyard entry points remained inside the collapsed dock. Fixed deliberate entry. Visual review also exposed the old world-inspection region consuming curve space; moved it to Selection."
+        },
+        {
+          "nodePassed": 293,
+          "browserPassed": 79,
+          "browserFailed": 1,
+          "browserSkipped": 1,
+          "reason": "Nested destination SELECT Escape bubbled into the outer dock. Fixed native select/IME handling. Screenshot review exposed same-size boot canvas clears after renderer draw; fixed allocation ownership and added actual pixel checks."
+        }
+      ],
+      "skipped": "Existing synthetic opt-in view benchmark requires LEMMINGS_BENCH=1; no production journey is represented by that skip.",
+      "static": {
+        "formatExit": 0,
+        "criticalTypesExit": 0,
+        "undefinedExit": 0,
+        "diffCheckExit": 0,
+        "provenance": {
+          "components": 10,
+          "files": 340,
+          "exitCode": 0,
+          "manifestChanged": false
+        }
+      },
+      "desktopLayout": {
+        "minimumViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "measurements": [
+          {
+            "viewport": {
+              "width": 1920,
+              "height": 1080
+            },
+            "closed": {
+              "workspace": {
+                "x": 10,
+                "y": 207,
+                "width": 1900,
+                "height": 778,
+                "top": 207,
+                "right": 1910,
+                "bottom": 985,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 207,
+                "width": 1716,
+                "height": 778,
+                "top": 207,
+                "right": 1910,
+                "bottom": 985,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 207,
+                "width": 184,
+                "height": 778,
+                "top": 207,
+                "right": 194,
+                "bottom": 985,
+                "left": 10
+              },
+              "dock": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "open": {
+              "workspace": {
+                "x": 10,
+                "y": 207,
+                "width": 1900,
+                "height": 778,
+                "top": 207,
+                "right": 1910,
+                "bottom": 985,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 207,
+                "width": 1716,
+                "height": 490,
+                "top": 207,
+                "right": 1910,
+                "bottom": 697,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 207,
+                "width": 184,
+                "height": 490,
+                "top": 207,
+                "right": 194,
+                "bottom": 697,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 697,
+                "width": 1900,
+                "height": 288,
+                "top": 697,
+                "right": 1910,
+                "bottom": 985,
+                "left": 10
+              },
+              "rows": 5,
+              "actors": 8
+            },
+            "resized": {
+              "workspace": {
+                "x": 10,
+                "y": 207,
+                "width": 1900,
+                "height": 778,
+                "top": 207,
+                "right": 1910,
+                "bottom": 985,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 207,
+                "width": 1716,
+                "height": 474,
+                "top": 207,
+                "right": 1910,
+                "bottom": 681,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 207,
+                "width": 184,
+                "height": 474,
+                "top": 207,
+                "right": 194,
+                "bottom": 681,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 681,
+                "width": 1900,
+                "height": 304,
+                "top": 681,
+                "right": 1910,
+                "bottom": 985,
+                "left": 10
+              },
+              "rows": 4,
+              "actors": 8
+            },
+            "terrainWidthFraction": 0.9031578947368422
+          },
+          {
+            "viewport": {
+              "width": 2560,
+              "height": 1440
+            },
+            "closed": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 2540,
+                "height": 1206,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 2356,
+                "height": 1206,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 1206,
+                "top": 172,
+                "right": 194,
+                "bottom": 1378,
+                "left": 10
+              },
+              "dock": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "open": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 2540,
+                "height": 1206,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 2356,
+                "height": 918,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1090,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 918,
+                "top": 172,
+                "right": 194,
+                "bottom": 1090,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 1090,
+                "width": 2540,
+                "height": 288,
+                "top": 1090,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 10
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "resized": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 2540,
+                "height": 1206,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 2356,
+                "height": 902,
+                "top": 172,
+                "right": 2550,
+                "bottom": 1074,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 902,
+                "top": 172,
+                "right": 194,
+                "bottom": 1074,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 1074,
+                "width": 2540,
+                "height": 304,
+                "top": 1074,
+                "right": 2550,
+                "bottom": 1378,
+                "left": 10
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "terrainWidthFraction": 0.9275590551181102
+          },
+          {
+            "viewport": {
+              "width": 3840,
+              "height": 2160
+            },
+            "closed": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 3820,
+                "height": 1926,
+                "top": 172,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 3636,
+                "height": 1926,
+                "top": 172,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 1926,
+                "top": 172,
+                "right": 194,
+                "bottom": 2098,
+                "left": 10
+              },
+              "dock": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0,
+                "top": 0,
+                "right": 0,
+                "bottom": 0,
+                "left": 0
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "open": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 3820,
+                "height": 1926,
+                "top": 172,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 3636,
+                "height": 1638,
+                "top": 172,
+                "right": 3830,
+                "bottom": 1810,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 1638,
+                "top": 172,
+                "right": 194,
+                "bottom": 1810,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 1810,
+                "width": 3820,
+                "height": 288,
+                "top": 1810,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 10
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "resized": {
+              "workspace": {
+                "x": 10,
+                "y": 172,
+                "width": 3820,
+                "height": 1926,
+                "top": 172,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 10
+              },
+              "world": {
+                "x": 194,
+                "y": 172,
+                "width": 3636,
+                "height": 1622,
+                "top": 172,
+                "right": 3830,
+                "bottom": 1794,
+                "left": 194
+              },
+              "endcaps": {
+                "x": 10,
+                "y": 172,
+                "width": 184,
+                "height": 1622,
+                "top": 172,
+                "right": 194,
+                "bottom": 1794,
+                "left": 10
+              },
+              "dock": {
+                "x": 10,
+                "y": 1794,
+                "width": 3820,
+                "height": 304,
+                "top": 1794,
+                "right": 3830,
+                "bottom": 2098,
+                "left": 10
+              },
+              "rows": 8,
+              "actors": 8
+            },
+            "terrainWidthFraction": 0.9518324607329843
+          }
+        ],
+        "receipt": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-layout-metrics.json",
+          "bytes": 7844,
+          "sha256": "bfc3ac2c483a8a1fd6d75c40a2e6bb36779d906be22ff23749a8cad7c575f880"
+        },
+        "captures": [
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-1920.png",
+            "bytes": 304729,
+            "sha256": "7f22a410ee79715dec515c56c0967e206dd804edfa00ebd2ca69d6e377db0364"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-open-1920.png",
+            "bytes": 546271,
+            "sha256": "665bce3fcb1c642661e2c37018d857423456a9888e203fadfd904c3809011694"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-desktop-dock-enlarged-text.png",
+            "bytes": 629568,
+            "sha256": "cbe1f7a6a1d909bd895cdecf09cd72f61bf5e8033ffbb05007e9e97ceb650197"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-2560.png",
+            "bytes": 331013,
+            "sha256": "eba9def80aa3eef8839810a5547a7eec2e5d7cae1cb668a65cca25a31e82b15c"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-open-2560.png",
+            "bytes": 680185,
+            "sha256": "f2d1c0bd0dd74ee1156c0df7295a65123000b090e126e0422725f8e918a1b564"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-3840.png",
+            "bytes": 421893,
+            "sha256": "37d89099a8cb2f9db2a8a043ddac5b7e8ae725937b38e43f35865901a511b342"
+          },
+          {
+            "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-joined-workstation-open-3840.png",
+            "bytes": 901850,
+            "sha256": "e06819fd12aa71b62248eb4c71c1fb0603f3c9621b3b356960b69b3b5fbfb7a1"
+          }
+        ],
+        "review": "Reviewed populated 1080p open dock and enlarged exact/graphical editor, plus joined layout. Pixel assertions require actual canvas colors after open/resize/close; no subminimum viewport or device emulation."
+      },
+      "focusedNodeCoverage": {
+        "total": {
+          "lines": {
+            "total": 4265,
+            "covered": 2238,
+            "skipped": 0,
+            "pct": 52.47
+          },
+          "statements": {
+            "total": 4265,
+            "covered": 2238,
+            "skipped": 0,
+            "pct": 52.47
+          },
+          "functions": {
+            "total": 396,
+            "covered": 277,
+            "skipped": 0,
+            "pct": 69.94
+          },
+          "branches": {
+            "total": 1761,
+            "covered": 1222,
+            "skipped": 0,
+            "pct": 69.39
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "files": [
+          {
+            "path": "js/app/procgenBoot.js",
+            "lines": {
+              "total": 761,
+              "covered": 346,
+              "skipped": 0,
+              "pct": 45.46
+            },
+            "branches": {
+              "total": 140,
+              "covered": 101,
+              "skipped": 0,
+              "pct": 72.14
+            },
+            "functions": {
+              "total": 43,
+              "covered": 35,
+              "skipped": 0,
+              "pct": 81.39
+            }
+          },
+          {
+            "path": "js/app/controls/AutomationCurveDraft.js",
+            "lines": {
+              "total": 28,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 38,
+              "covered": 36,
+              "skipped": 0,
+              "pct": 94.73
+            },
+            "functions": {
+              "total": 4,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          {
+            "path": "js/app/controls/AutomationCurveEditor.js",
+            "lines": {
+              "total": 94,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "branches": {
+              "total": 104,
+              "covered": 78,
+              "skipped": 0,
+              "pct": 75
+            },
+            "functions": {
+              "total": 21,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 76.19
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+            "lines": {
+              "total": 2139,
+              "covered": 1723,
+              "skipped": 0,
+              "pct": 80.55
+            },
+            "branches": {
+              "total": 1438,
+              "covered": 978,
+              "skipped": 0,
+              "pct": 68.01
+            },
+            "functions": {
+              "total": 322,
+              "covered": 218,
+              "skipped": 0,
+              "pct": 67.7
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+            "lines": {
+              "total": 1163,
+              "covered": 32,
+              "skipped": 0,
+              "pct": 2.75
+            },
+            "branches": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 1,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 0
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/WorkstationDock.js",
+            "lines": {
+              "total": 57,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 7.01
+            },
+            "branches": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 1,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 0
+            }
+          },
+          {
+            "path": "js/app/procgen/workstation/WorkstationDockState.js",
+            "lines": {
+              "total": 23,
+              "covered": 23,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 38,
+              "covered": 26,
+              "skipped": 0,
+              "pct": 68.42
+            },
+            "functions": {
+              "total": 4,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 100
+            }
+          }
+        ],
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-296-coverage-final\\coverage-summary.json",
+          "bytes": 2772,
+          "sha256": "4630beea1b1da2e775bb8eac2e3b0aa96ba44c16380e428d689618ebf71ce635"
+        },
+        "scope": "Node-focused collection is not full UI coverage. View/dock are qualified through native production journeys; global repository thresholds remain unchanged and full CI is pending.",
+        "remaining": [
+          "Additional curve editor allocation-denial/conflict and pointer cancellation branches.",
+          "Dock controller ownership and native select/IME keyboard combinations beyond current native journeys."
+        ]
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-node-final.log",
+          "bytes": 35992,
+          "sha256": "0660a4e2d163db090d5399db6f588d4f10b387027b916c5dfb3d883f6117b491"
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-browser-final.log",
+          "bytes": 1947,
+          "sha256": "ee615095e1ca9bb30ab3ed7ac33d342993cf36cb7a71ec349d6b44a54fbcb9b8"
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-types-final.log",
+          "bytes": 96,
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-undefined-final.log",
+          "bytes": 111,
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-provenance-final.log",
+          "bytes": 142,
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+        },
+        "initialBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-browser.log",
+          "bytes": 21581,
+          "sha256": "fa7444cdc0526e612c88d21a410a2df93bb34d2282be7b46bbd9a85d356f6616"
+        },
+        "reviewedBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-browser-reviewed.log",
+          "bytes": 17728,
+          "sha256": "874cbda160c04acaf5e195e25e68fe57045d306831dd7f0663aa05712eea0418"
+        },
+        "reviewedNode": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog296-node-reviewed.log",
+          "bytes": 30488,
+          "sha256": "5870b2aa23181a13392d7c381e82c566400de2206ef9401c278471f78e73f874"
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "css/procgen-workstation.css",
+        "bytes": 38641,
+        "sha256": "c19c98efea7e23c89fa71a672403c91765793aeb0870f18afb67a72c25ff3c0b"
+      },
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 38076,
+        "sha256": "c31af74f86e373304c7f56e0788881db2d7c3856185b1ec9b9df492b7a0e3c1b"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 553244,
+        "sha256": "63dbaf8183934ee012395e8505988731ce20e060e1e90503ffd7acabcf5fc24e"
+      },
+      {
+        "path": "e2e/causal-take-audio-render.spec.js",
+        "bytes": 5884,
+        "sha256": "d05611eed389d2daad16fe30e4b1d6dee10e49025d8fa156b70e841bcfc1953e"
+      },
+      {
+        "path": "e2e/helpers/workstationDock.js",
+        "bytes": 413,
+        "sha256": "185ddeb5348bfe8f4cf8daf06d91f9710c1096424b612500b9f5ea7dc38c5abf"
+      },
+      {
+        "path": "e2e/procgen-lane-display.spec.js",
+        "bytes": 11698,
+        "sha256": "89eef11e0bd71a89837a9653347161a421a9dbb9de09c4e10ac7c6e58a2c5c75"
+      },
+      {
+        "path": "e2e/procgen-midi-parameter-evidence.spec.js",
+        "bytes": 7500,
+        "sha256": "80a2f4c92ea1485b248dbdfe850cec2c6b05108a7a95b5b2855f593e5b45689e"
+      },
+      {
+        "path": "e2e/procgen-take-workbench.spec.js",
+        "bytes": 4181,
+        "sha256": "853eaa37848091c7784915f8a0b6c132a75e8f5919042f16e2dcb8f966161a13"
+      },
+      {
+        "path": "e2e/procgen-workstation-commands.spec.js",
+        "bytes": 23695,
+        "sha256": "fc92bbd3a696cf994c9879c89d0accdc6cb776fc8ff3ea2415c2903c39ff2c9d"
+      },
+      {
+        "path": "e2e/procgen-workstation-dock.spec.js",
+        "bytes": 14500,
+        "sha256": "84b2338231c45663e4eb861cfbd57bee6ecf61ecb80eec6fec99b9882a60ca56"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 35714,
+        "sha256": "e9f22909aed15175e2332ab8a58a1cac5926a0004fcf7662f2c607f4bb572a21"
+      },
+      {
+        "path": "e2e/procgen-workstation-workflow.spec.js",
+        "bytes": 13354,
+        "sha256": "8413949ebce6a324446040d8f0c843538147a5eb18fc368337d55dec0c85108e"
+      },
+      {
+        "path": "js/app/controls/AutomationCurveDraft.js",
+        "bytes": 2584,
+        "sha256": "49284ac7a1f4cbb3ee1559f1376e3b7866e421b6432ffb11d48287933aee7a66"
+      },
+      {
+        "path": "js/app/controls/AutomationCurveEditor.js",
+        "bytes": 15044,
+        "sha256": "f249fa05fb662649330263ea990e647c6c9572f2df512361ed187d1eecb3ca85"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 194568,
+        "sha256": "67d72c7543f7c26023d71ecb89618cb08cc8cec5fd0cf7bba2813c19d1105468"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 118427,
+        "sha256": "f4a3a65dcb9a7c7ecae041c87b2e3ec8c4ed3547d8c3b5d4bf09f5baeab77e45"
+      },
+      {
+        "path": "js/app/procgen/workstation/WorkstationDock.js",
+        "bytes": 8978,
+        "sha256": "e102f1662002345ad7bb7d68779e33d5bfc0afb637481962b1c5aed9132bb8ac"
+      },
+      {
+        "path": "js/app/procgen/workstation/WorkstationDockState.js",
+        "bytes": 2292,
+        "sha256": "506842070ef395080ad5fb3d55d8d4b16dba0e6a410500dca1d987e7208b1288"
+      },
+      {
+        "path": "js/app/procgenBoot.js",
+        "bytes": 40274,
+        "sha256": "2ac6e2b8d299369a37c39cd14031dac8ebcc2b9ceb1250cf3cfa3893800eae4e"
+      },
+      {
+        "path": "package.json",
+        "bytes": 8893,
+        "sha256": "baf34cb0ad3826dcb0c31cd75e9647454854e067236ff80cda42812b4c57c053"
+      },
+      {
+        "path": "test/automation-curve-draft.test.js",
+        "bytes": 1322,
+        "sha256": "b220339ac2ce27b0a020f69527463ff5047c7242c14d5c1549c46827bae6be0e"
+      },
+      {
+        "path": "test/automation-curve-editor.test.js",
+        "bytes": 4688,
+        "sha256": "d3090b5ed78ed047a89471022f1885d316d9fac3a37903afaedb8dab8847f720"
+      },
+      {
+        "path": "test/procgen-boot.test.js",
+        "bytes": 13190,
+        "sha256": "85d5d852ac945794683fd80c830641450538f340cb6c8274a137ddd22ecaf2f0"
+      },
+      {
+        "path": "test/workstation-dock-state.test.js",
+        "bytes": 1941,
+        "sha256": "f9c8afb6215b7951f01a38712242ba94b5450f8f59322a957ffa10a9230e44a5"
+      }
+    ],
+    "issueStatus": {
+      "993": "Open: quiet global bar, additional fast macros, coherent dark materials and remaining state/contact-sheet qualification.",
+      "1031": "Implementation in this batch; final source CI and actor mapping switch/Undo acceptance must be reviewed before closure."
+    },
+    "limitations": [
+      "Full CI at 86d89b82 qualifies prior work only; continuation296 is pending.",
+      "No hardware, acoustics or actual assistive-technology certification is inferred from browser semantics.",
+      "The wider backlog remains open."
     ]
   }
 }

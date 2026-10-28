@@ -717,8 +717,13 @@ const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const height = studioStage?.clientHeight > 0 ? studioStage.clientHeight : Number.isFinite(heightValue) && heightValue > 0
     ? Math.max(1, heightValue - barHeight)
     : (Number.isFinite(fallbackHeight) && fallbackHeight > 0 ? fallbackHeight : 1);
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
+  const surfaceWidth = Math.max(1, Math.floor(width * dpr)), surfaceHeight = Math.max(1, Math.floor(height * dpr));
+  const renderer = runtime?.lanes?.renderer;
+  if (renderer?.canvas === canvas && typeof renderer.resize === 'function') renderer.resize({ width: surfaceWidth, height: surfaceHeight });
+  else {
+    if (canvas.width !== surfaceWidth) canvas.width = surfaceWidth;
+    if (canvas.height !== surfaceHeight) canvas.height = surfaceHeight;
+  }
   document.body?.style?.setProperty?.('--procgen-bar-height', `${barHeight}px`);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;

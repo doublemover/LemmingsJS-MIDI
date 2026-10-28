@@ -1,3 +1,4 @@
+import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 
 test.setTimeout(120000);
@@ -10,7 +11,7 @@ test('stored-take comparison and explicit branch stepping use real detached worl
   await page.goto('/procgen.html?e2e=1&workstation=1&seed=42&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.renderer?.getDisplayState().state === 'ready');
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.getByRole('button', { name: 'Physical', exact: true }).click();
+  await inspectLane(page, 'Physical');
   await page.getByLabel('Take name', { exact: true }).fill('Isolated branch fixture'); await page.getByLabel('Take name', { exact: true }).blur();
   await page.getByRole('button', { name: 'Record causal take', exact: true }).click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.causalTakeState().recording)).toBe(true);

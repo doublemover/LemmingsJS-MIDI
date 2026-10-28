@@ -1,3 +1,4 @@
+import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
@@ -39,7 +40,7 @@ test('desktop lane displays expose manual pages and complete text without changi
 });
 
 test('focused lane parameter drafts temporarily override a stable manual page and never replace the OLED nodes', { tag: '@boundary' }, async ({ page }) => {
-  await ready(page, 2); await activate(page); await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause');
+  await ready(page, 2); await inspectLane(page); await activate(page); await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause');
   await page.getByText('View actions', { exact: true }).click(); const before = await ownerState(page), display = page.locator('.studio-lane-display').first();
   await display.evaluate(element => { window.__laneDisplayNodes = [...element.children]; window.__laneDisplayMutations = []; window.__laneDisplayObserver = new MutationObserver(records => window.__laneDisplayMutations.push(...records.filter(record => record.type === 'childList').map(record => record.type))); window.__laneDisplayObserver.observe(element, { childList: true, subtree: true }); });
   const input = page.locator('.studio-lane-header').first().locator('.parameter-knob-number'); await input.fill('-'); await expect(display).toHaveAttribute('data-priority', 'edit'); await expect(display).toContainText('- · draft');

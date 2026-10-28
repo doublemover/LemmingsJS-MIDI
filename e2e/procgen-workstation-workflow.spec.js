@@ -1,3 +1,4 @@
+import { inspectLane } from './helpers/workstationDock.js';
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,7 @@ const ready = async (page, { patterns = false } = {}) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=8');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
-  if (patterns) await enableComplementaryPatterns(page);
+  if (patterns) { await enableComplementaryPatterns(page); await inspectLane(page); }
 };
 
 test('workstation boots eight instrument lanes and switches sequence layouts without replacing the world', async ({ page }) => {
@@ -70,7 +71,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
   await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Acceptance session/ }).click();
   await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
   expect(await page.evaluate(() => ({ tick: window.__PROCGEN_LANES__.world.tickIndex, seed: window.__PROCGEN_LANES__.world.seed, project: window.__PROCGEN_STUDIO__.getProject().procgen }))).toEqual(saved);
-  await page.getByRole('button', { name: 'World', exact: true }).click();
+  await page.getByRole('tab', { name: 'World', exact: true }).click();
   await page.getByRole('button', { name: 'Reroll world', exact: true }).click();
   await page.waitForFunction(seed => window.__PROCGEN_LANES__?.world.seed !== seed, saved.seed);
   await expect(page.locator('.studio-status')).toContainText('World rebuilt');
@@ -88,7 +89,7 @@ test('live musical edits undo and survive save/load, reroll and same-seed replay
 
 test('records an input note into the selected phrase and exports a MIDI performance', async ({ page }) => {
   await installWebMidiStub(page); await ready(page, { patterns: true });
-  await page.getByRole('button', { name: 'MIDI', exact: true }).filter({ hasNot: page.locator('#procgenStudioFooter') }).first().click();
+  await page.getByRole('tab', { name: 'MIDI', exact: true }).filter({ hasNot: page.locator('#procgenStudioFooter') }).first().click();
   await page.getByRole('button', { name: 'Connect MIDI', exact: true }).click();
   await page.getByLabel('MIDI input', { exact: true }).selectOption('pw-input-1');
   await page.locator('#studioRecord').click();
@@ -136,7 +137,7 @@ test('browser synth produces measurable audio from the authoritative pattern clo
 
 test('shared automation editor updates the canonical project and resolves spans on workstation notes', async ({ page }) => {
   await ready(page, { patterns: true });
-  await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Automation', exact: true }).click();
+  await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Automation', exact: true }).click();
   await page.getByRole('button', { name: 'Open automation editor', exact: true }).click();
   await page.locator('#procgenSpanFields > summary').click();
   await page.locator('#procgenSpanAdd').click();

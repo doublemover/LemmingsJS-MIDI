@@ -20,6 +20,26 @@ Physical lanes show a live cause strip. Select a lane header to edit its
 collection, role, routing, and physical mapping. Mute and Solo remain lane
 controls. Global key and scale are in the transport header.
 
+The resting **Perform** workspace gives terrain the full remaining width beside
+its joined lane modules. **Inspect selected lane** opens one editor below the
+world; **Overview** keeps the lane identity/readouts and removes the secondary
+fader bank. The dock breadcrumb names the actual lane ID, editor and selected
+curve, with a selected world entity labeled as a reference where available.
+Opening, closing or resizing the dock preserves the physical world and music
+history. Fewer rows remain visible when space is needed for the editor.
+
+Tabs use arrow/Home/End navigation. Resize the dock with its top separator,
+Up/Down keys, or **Smaller dock** / **Larger dock**. Closing returns focus to the
+opening control. Visibility/mode and height are UI preferences, independent of
+project history and an explicit new world seed; old side-column preferences
+start in Perform. All layouts target a 1920×1080 desktop minimum.
+
+**Selection** contains the existing read-only world inspector. It stays out of
+unrelated Lane/MIDI/Automation editors; **View actions → Inspect world selection**
+opens it directly. World and Physical tabs label their shared world/graph scope
+separately from the selected lane context. Junctions explicitly opens its scoped
+controls, and inspecting an observed actor returns to Selection.
+
 Use **Complementary pattern** only when you want an authored clocked layer.
 Each such lane records its physical purpose and has four phrase slots. Draw and
 Erase edit cells; double-click toggles a trigger. With pattern focus, the default
@@ -36,8 +56,19 @@ Action matches include current living actors; terrain matches sample the foremos
 living actor's support and nearby contacts. Unbuilt terrain is not classified as
 a gap. Available matches are labeled in the inspector.
 
-The Automation inspector edits controller curves as `position:value` points,
-with beat or world-distance positioning. Mute and Solo operate on whole lanes.
+The Automation tab edits controller curves graphically and as exact
+`position:value` text, with beat or world-distance positioning. The diagram has
+keyboard-selectable points, position/value fields, snap/unsnap and labeled axes.
+**Apply curve** publishes one validated edit. Incomplete, unordered, duplicate or
+out-of-range points stay in the draft with a localized error. Empty fields are
+not coerced to zero. A first Escape discards the draft; a subsequent Escape
+closes the dock. Mute and Solo operate on whole lanes.
+
+An external edit requires **Use current curve** or **Keep my curve draft**.
+Lane changes retain up to 32 curve editors per document; dirty drafts are never
+silently evicted to make space. If all retained slots are occupied, apply or
+discard an existing draft before opening another. A stale detached editor cannot
+publish to another lane or document. Draft buffers are not saved as music state.
 Imported spatial curves retain their normalized physical-world coordinates.
 The endless world's horizontal extent is very large, so use distance spans or
 distance-based CC curves for changes over a short terrain run.
@@ -436,7 +467,7 @@ Pending or read-only parameter controls cancel active gestures, disable mutation
 actions and preserve a focusable read-only numeric value. Their two states remain
 distinct in the accessibility tree. At desktop DPR 1 and 2, the rotary cap retains
 a 44px interaction region; decrement, increment and Reset remain inside the
-supported inspector widths.
+supported desktop dock widths.
 
 ## Lane displays
 

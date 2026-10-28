@@ -7559,3 +7559,49 @@ export-budget acknowledgments still prevent a false complete receipt.
   checks. Its capture reports Partial after a 128-frame render-clock discontinuity,
   rather than Ready; the earlier ac8c23fc Ready receipt remains separately valid.
   This checkpoint excludes continuation295, whose full CI must qualify #997.
+
+### Continuation 296 — scoped bottom dock and transactional graphical curves
+
+- Replace the permanent right column with a closed-by-default Perform workspace,
+  explicit Inspect/Overview modes and one resizable bottom dock. Join module/world
+  row geometry, preserve physical lane height and let virtualization reduce the
+  visible row count instead of shrinking readable controls.
+- Keep layout migration/height/mode in UI preferences, independent of explicit
+  seed startup and canonical history. Name actual lane/editor/curve targets and
+  qualified selected-entity references. Preserve source leases when closed and
+  cancel gestures on geometry, Stage, blur, removal and document replacement.
+- Add proper tab semantics/navigation, return focus, pointer/keyboard resize and
+  accessible size controls. Keep passive backend/receipt refresh from opening a
+  deep editor. Remove obsolete subminimum Stage/browser styling.
+- Replace comma-only CC editing with one bounded graphical/exact draft owner:
+  stable diagram points, labeled axes, native point selection/numeric fallback,
+  snap/unsnap, pointer/keyboard edits and one explicit Apply transaction. Keep
+  invalid/IME and partial numeric drafts, require explicit conflict resolution,
+  preserve drafts across lane changes and never redirect stale callbacks.
+- Cap retained editors at 32 and reserve 256 KiB per editor. Reclaim clean old
+  contexts first; disclose a full dirty cache instead of silently dropping edits.
+  Persist only accepted canonical curves, with no second note/audio clock.
+- Move the existing world inspector into one explicit Selection tab, leaving
+  the other editor's full scroll area available. Keep its existing source owner
+  and entity demand. Mark shared graph/world scope explicitly, open the dock for
+  deliberate junction inspection and route observed-actor inspection to Selection.
+  Cancel every captured presentation gesture before workspace/Stage/geometry
+  changes; preserve invalid numeric/IME buffers and do not publish a draft.
+- Frontload new pure/DOM cases and native journeys at 1920x1080, QHD and UHD,
+  including text enlargement, geometry/physics/output invariance, scoped Undo,
+  partial drafts, keyboard/foreign-pointer ownership and independent preferences.
+  Final qualification passes **348 focused Node / 10 affected desktop browser
+  cases**, after a wider 79-pass/one-failure/one-opt-in-skip browser cohort.
+  Fix the remaining nested-select Escape propagation and a real paused-canvas
+  clearing bug: boot resize observers now defer backing allocation to the renderer
+  and leave unchanged fallback dimensions intact. Actual canvas pixel assertions
+  prevent blank terrain from qualifying as a successful layout capture.
+  Measured closed terrain width is 90.32%, 92.76% and 95.18% at the three desktop
+  resolutions, with eight visible rows; the open dock reduces rows at 1080p.
+  Formatting, types, undefined calls and unchanged runtime provenance pass.
+  Add all seven dock journeys to the required boundary command. Full CI for this
+  continuation remains pending; #993's material/quiet-bar work remains open.
+- Full CI at 86d89b82 is green: **6,575 coverage cases / 83 desktop boundaries**,
+  all checks, 90.28% lines/statements, 83.55% branches, 88.25% functions; master
+  capture Ready at 53,888 frames with no reported discontinuity. **#997 is closed**
+  against that exact source. This checkpoint excludes continuation296.

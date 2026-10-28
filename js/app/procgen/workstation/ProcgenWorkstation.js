@@ -1,4 +1,5 @@
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
+import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
 import { createMidiParameterEvidence } from './MidiParameterEvidence.js';
 import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
 import { prepareSceneMacroAction } from './SceneMacroAction.js';
@@ -122,7 +123,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let project = sealMidiProjectSnapshot(markCanonicalMidiProject(startupPlan.project));
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
-    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}) };
+    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}), ...normalizeWorkstationDockPreferences(saved?.ui) };
   let acceptedWorldSettings = { ...legacy.settings, hazardSpacing: legacy.settings.hazardSpacing ?? state.hazardSpacing };
   state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
@@ -1475,8 +1476,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (action === 'review-output' || action === 'review-backend') {
         const control = document.getElementById(action === 'review-output' ? 'procgenMidiDevice' : 'procgenOutput'); control?.focus?.({ preventScroll: true }); return !!control;
       }
-      if (action === 'inspect-midi' || action === 'inspect-clock') { state.tab = 'MIDI'; view.renderInspector(); return true; }
-      if (action === 'inspect-physical' || action === 'inspect-mix') { state.tab = action === 'inspect-mix' ? 'Lane' : selected().mode === 'pattern' ? 'Lane' : 'Physical'; view.renderInspector(); return true; }
+      if (action === 'inspect-midi' || action === 'inspect-clock') { state.tab = 'MIDI'; view.openInspector(); return true; }
+      if (action === 'inspect-physical' || action === 'inspect-mix') { state.tab = action === 'inspect-mix' ? 'Lane' : selected().mode === 'pattern' ? 'Lane' : 'Physical'; view.openInspector(); return true; }
       if (action === 'lesson') { await openPerformanceScenes({ showBrowser: false }); if (disposed || getOperationalSnapshot().identity !== identity) return false;
         if (!physicalLessonView || !physicalLessonDefaultId) throw new Error('No installed isolated lesson is available. The current world is unchanged.');
         physicalLessonView.open(physicalLessonDefaultId); return true; }
@@ -1568,11 +1569,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       });
     },
     openPhysicalJunctions() {
+      view?.openInspector?.();
       physicalJunctionView ||= createPhysicalJunctionView({ document, window, getRuntime: runtime, displayScheduler: view?.displayScheduler,
         canRequest: () => !disposed && !worldBusy && !pendingHistory && !physicalAuthoringAbort && !causalTakeStart && !causalTakeStop,
         canAuthor: () => !disposed && !stageSession?.active() && !worldBusy && !pendingHistory && !physicalAuthoringAbort,
         onRevealLane: lane => { state.firstLane = lane; state.laneId = project.procgen.lanes[lane]?.id || state.laneId; state.tab = 'Physical'; view?.renderInspector?.(); view?.layout?.(); view?.launched?.(); },
-        onObserveCrossing: crossing => { runtime()?.lanes?.renderer?.render?.(true); if (worldInspector?.select(`${crossing.generation}:actor:${crossing.actorId}`)) worldInspector.reveal(); else status('This observed actor is no longer in the current visible actor index.'); },
+        onObserveCrossing: crossing => { runtime()?.lanes?.renderer?.render?.(true); if (worldInspector?.select(`${crossing.generation}:actor:${crossing.actorId}`)) { worldInspector.reveal(); state.tab = 'Selection'; view?.openInspector?.(); } else status('This observed actor is no longer in the current visible actor index.'); },
         getDefinitions: () => project.procgen.junctions || [], query: id => runtime()?.world?.queryJunction?.(id, { includeDefinition: false }),
         save: junctions => { if (stageSession?.active()) throw new Error('Exit Stage before editing junction definitions.'); if (worldBusy || pendingHistory || physicalAuthoringAbort) throw new Error('Wait for the world/history transaction.'); const result = dispatch({ type: 'procgen/junctions', junctions }); if (result === false) throw new Error('Junction definitions were not admitted. Finish the current edit operation.'); return result; },
         request: (junctionId, configurationId, policy) => handlers.requestJunction(junctionId, configurationId, policy), cancel: id => handlers.cancelJunctionRequest(id), onStatus: status });

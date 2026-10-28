@@ -1,3 +1,4 @@
+import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 import { enableComplementaryPatterns } from './helpers/procgenPatterns.js';
 
@@ -6,7 +7,7 @@ const ready = async page => {
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=8');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await enableComplementaryPatterns(page);
+  await enableComplementaryPatterns(page); await inspectLane(page);
   await page.evaluate(() => { const { world, renderer } = window.__PROCGEN_LANES__; for (let tick = 0; tick < 32; tick++) world.step(); renderer.render(true); if (!world.actors.length) throw new Error('Command safety needs a populated physical world.'); });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { enabled: true, note: 60 } }));
   await page.locator('.studio-cell').first().click();
@@ -121,7 +122,7 @@ test('custom desktop bindings publish together after neutral loading and remain 
 
 
 test('production inspector retains exact text/IME and signed numeric drafts through unrelated edits, resize, help and Undo', { tag: '@boundary' }, async ({ page }) => {
-  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Lane', exact: true }).click();
   const name = page.getByLabel('Name', { exact: true }); await name.fill('Composing lane');
   await name.evaluate(element => { window.productionField = element; element.setSelectionRange(3, 6); element.dispatchEvent(new window.CompositionEvent('compositionstart', { bubbles: true })); });
   await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { name: 'Other lane edit' } }));
@@ -138,7 +139,7 @@ test('production inspector retains exact text/IME and signed numeric drafts thro
 });
 
 test('production external text conflicts require explicit intent and current canonical Undo', { tag: '@boundary' }, async ({ page }) => {
-  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Lane', exact: true }).click();
   const name = page.getByLabel('Name', { exact: true }); await name.fill('Local draft');
   await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'External name' } }));
   await expect(name).toHaveValue('Local draft'); await expect(name).toHaveAttribute('data-edit-conflict', 'true'); await name.dispatchEvent('change');
@@ -149,7 +150,7 @@ test('production external text conflicts require explicit intent and current can
 
 
 test('production numeric entry protects its draft from an external parameter change', async ({ page }) => {
-  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
+  test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Lane', exact: true }).click();
   const numeric = page.getByRole('textbox', { name: 'Pan numeric value', exact: true }); await numeric.fill('-25');
   await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { pan: 60 } }));
   await expect(numeric).toHaveValue('-25'); await expect(numeric).toHaveAttribute('data-edit-conflict', 'true'); await numeric.press('Enter');
@@ -179,7 +180,7 @@ test('empty and out-of-range numeric entry never becomes a canonical zero and na
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
   await page.evaluate(() => window.__PROCGEN_STUDIO__.handlers.transport({ linked: false })); await expect(linked).not.toBeChecked(); await linked.check();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().linked)).toBe(true);
-  await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Step', exact: true }).click();
+  await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Step', exact: true }).click();
   const note = page.getByLabel('Fixed MIDI note', { exact: true }); await note.fill('0'); await note.press('Enter'); expect((await snapshot(page)).step.note).toBe(0);
   await note.fill(''); await note.press('Enter'); expect((await snapshot(page)).step.note).toBe(null);
 });
@@ -188,8 +189,8 @@ test('empty and out-of-range numeric entry never becomes a canonical zero and na
 for (const dpr of [1, 2]) test.describe('desktop knob precision at DPR ' + dpr, () => {
   test.use({ deviceScaleFactor: dpr });
   test('sixty captured pointer samples publish one edit without replacing lane DOM and lane reassignment cancels the next draft', { tag: '@boundary' }, async ({ page }) => {
-    test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('button', { name: 'Lane', exact: true }).click();
-    if (dpr === 1) { await page.getByRole('separator', { name: 'Resize inspector' }).focus(); for (let index = 0; index < 4; index++) await page.keyboard.press('ArrowRight'); }
+    test.setTimeout(90000); await ready(page); await page.locator('.studio-inspector-tabs').getByRole('tab', { name: 'Lane', exact: true }).click();
+    if (dpr === 1) { await page.getByRole('separator', { name: 'Resize instrument dock' }).focus(); for (let index = 0; index < 4; index++) await page.keyboard.press('ArrowUp'); }
     const cap = page.getByRole('slider', { name: 'Pan', exact: true }); await cap.scrollIntoViewIfNeeded(); const bounds = await cap.boundingBox();
     const geometry = await cap.evaluate(element => {
       const root = element.closest('.parameter-knob'), panel = element.closest('.studio-inspector').getBoundingClientRect(), cap = element.getBoundingClientRect();
