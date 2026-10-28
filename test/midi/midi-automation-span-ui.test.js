@@ -299,16 +299,48 @@ describe('musical span editing and lane rectangles', () => {
     const pointer = type => canvas.dispatchEvent({ type, clientX: type === 'pointerdown' ? 100 : 200, clientY: 50, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
     try {
       overlay.sync(); expect(overlay.setEditing(true)).to.equal(false);
+      expect(overlay.snapshot().inputListeners).to.equal(0); expect(renderer.midiSpanOverlay).not.to.equal(overlay);
       pointer('pointerdown'); pointer('pointermove'); pointer('pointerup');
       expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false); expect(overlay.snapshot().rectangles).to.deep.equal([]);
       renderer.workstationLayout = null;
       expect(overlay.setEditing(true)).to.equal(true);
+      expect(overlay.snapshot().inputListeners).to.be.greaterThan(0);
       pointer('pointerdown'); pointer('pointermove');
       renderer.workstationLayout = { firstLane: 0, count: 8 }; overlay.sync(); pointer('pointerup');
       expect(added).to.have.length(0); expect(overlay.snapshot().editing).to.equal(false);
+      expect(overlay.snapshot().inputListeners).to.equal(0); expect(renderer.midiSpanOverlay).to.equal(null);
       renderer.workstationLayout = null; expect(overlay.setEditing(true)).to.equal(true);
       pointer('pointerdown'); pointer('pointermove'); renderer.originX = 40; pointer('pointerup');
       expect(added).to.have.length(0); expect(overlay.snapshot().dragging).to.equal(false);
+      expect(overlay.snapshot().editing).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+    } finally { overlay.dispose(); }
+  });
+  it('owns input only after a presented frame and cannot rearm after generation replacement, render loss or disposal', () => {
+    const document = new TestDocument(), canvas = document.createElement('canvas'); document.registerElement('gameCanvas', canvas);
+    canvas.width = 800; canvas.height = 608; canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
+    const context = { save() {}, restore() {}, scale() {}, fillRect() {}, strokeRect() {}, setLineDash() {}, fillText() {} }, added = [], notifications = [], project = { transport: { bpmBase: 120 }, automation: [] };
+    const renderer = { canvas, window: { devicePixelRatio: 1 }, world: { laneCount: 8, laneHeight: 76, generation: 1, tickIndex: 0 }, originX: 0, originY: 0, viewWidth: 800, viewHeight: 608, render() {} };
+    let host = renderer;
+    const overlay = createProcgenMidiSpanOverlay({ document, getRuntime: () => ({ lanes: { renderer: host } }), getProject: () => project,
+      getDomain: () => 'distance', getTarget: () => 'velocity', onUpdate() {}, onSelect() {}, onAdd: span => added.push(span), onPresentation: state => notifications.push(state) });
+    const pointer = type => canvas.dispatchEvent({ type, clientX: type === 'pointerdown' ? 100 : 200, clientY: 50, pointerId: 7, preventDefault() {}, stopImmediatePropagation() {} });
+    try {
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      pointer('pointerdown'); pointer('pointermove'); pointer('pointerup'); expect(added).to.have.length(0);
+      const draw = () => overlay.draw(context, renderer, 1); renderer.render = draw;
+      expect(overlay.setEditing(true)).to.equal(true); const announcements = notifications.length;
+      for (let frame = 0; frame < 4; frame++) renderer.render(); expect(notifications).to.have.length(announcements);
+      pointer('pointerdown'); pointer('pointermove');
+      renderer.world.generation++; overlay.sync(); pointer('pointerup'); expect(overlay.snapshot()).to.include({ editing: false, dragging: false, inputListeners: 0 });
+      expect(overlay.setEditing(true)).to.equal(true); host = null; overlay.sync(); expect(renderer.midiSpanOverlay).to.equal(null); expect(overlay.snapshot().inputListeners).to.equal(0);
+      host = { ...renderer, canvas: document.createElement('canvas') }; overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      host = renderer; expect(overlay.setEditing(true)).to.equal(true); pointer('pointerdown'); renderer.render = () => { throw new Error('renderer lost'); };
+      expect(() => pointer('pointermove')).to.throw('renderer lost'); expect(overlay.snapshot()).to.include({ editing: false, dragging: false, inputListeners: 0 });
+      renderer.render = draw; expect(overlay.setEditing(true)).to.equal(true); overlay.setVisible(false); expect(overlay.snapshot().inputListeners).to.equal(0);
+      overlay.setVisible(true); expect(overlay.snapshot().editing).to.equal(false);
+      renderer.render = draw; expect(overlay.setEditing(true)).to.equal(true); pointer('pointerdown'); overlay.dispose(); pointer('pointermove'); pointer('pointerup');
+      overlay.sync(); expect(overlay.setEditing(true)).to.equal(false); expect(overlay.snapshot()).to.include({ disposed: true, editing: false, dragging: false, inputListeners: 0 });
+      expect(renderer.midiSpanOverlay).to.equal(null); expect(added).to.have.length(0);
     } finally { overlay.dispose(); }
   });
   it('projects only resolved note winners and holds their phase/value while the transport and origin observations advance', () => {

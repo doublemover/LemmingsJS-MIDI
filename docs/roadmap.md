@@ -8100,3 +8100,35 @@ export-budget acknowledgments still prevent a false complete receipt.
   functions. Its master is Partial at63232 finite frames after a128-frame gap;
   keep the prior031e0e15 Ready107136-frame receipt separate. New-head CI remains
   required after publication. No full local Node suite is repeated.
+
+### Continuation 311 — presented canvas authority and retired span inputs
+
+- Retired workstation span overlays no longer install renderer hooks or canvas
+  input listeners. Supported legacy drawing binds input only while explicitly
+  armed against a current presented frame. Hide, generation/projection/surface
+  replacement, renderer loss and disposal cancel drafts and detach input.
+  A disposed owner cannot rearm; a render exception cancels its pending gesture.
+- Publish bounded presentation-state changes to the legacy controls. Default
+  HTML fields are disabled before the first capability check. Workstation view
+  acquisition/release explicitly refreshes that same owner after installing its
+  projection, fixing the startup interval where Draw on lanes stayed enabled.
+  Identical frames do not repeat authority announcements.
+- All178 grouped Node cases pass under scoped coverage, including the original
+  no-frame/unsupported negative gesture, mid-drag mode/generation/projection/
+  renderer/surface loss, teardown, notification stability and real physical
+  authoring/history/controller transactions. Earlier37/1 was a new fixture's
+  null-versus-absent hook assertion; the initial two missing window qualifiers
+  were caught by formatting before any Node execution.
+- All3 native browser cases pass across12 strip/overlay, first/last-page and
+  dock scenarios:1920×1080 at DPR1/2 plus actual200% Chromium zoom. At200%, the
+  CSS viewport remains1992×1152; the3984×2305 screenshot captures the full native
+  viewport. Disabled-tool attempts and real pointer drags retain project,
+  document, physics, event sequence and MIDI-stub output exactly.
+- Preserve the first native3 failures that exposed stale enabled controls, and
+  the next3 fixture failures that searched without selecting Lane64. Final
+  source, result JSON, native geometry and screenshots are hashed. Basic type,
+  undefined-call, runtime-provenance and whitespace checks pass. #1169 has
+  completed its concrete software acceptance and can close after publication.
+- Continue #1117: its active/future MIDI cleanup is indexed, but canceling an
+  outer retained event marks range metadata dirty and getState still scans all
+  retained history. Replace that final scan before large-history qualification.

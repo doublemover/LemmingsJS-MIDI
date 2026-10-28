@@ -1678,6 +1678,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
     },
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
+    canvasToolAuthorityChanged() { legacy.refreshCanvasToolAuthority?.(); },
     selectNativeSound(laneId, patchId) {
       if (!resourceBudget || !window.fetch) return Promise.reject(new Error('Native sound source ownership is unavailable. Keep the previous sound.'));
       nativeSoundSelection ||= createNativeSoundSelection({ fetch: window.fetch.bind(window), jobs: backgroundJobs, resourceBudget, ...(getInstrumentCatalog ? { getCatalog: getInstrumentCatalog } : {}) });

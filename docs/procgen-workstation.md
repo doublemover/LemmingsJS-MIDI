@@ -70,8 +70,10 @@ silently evicted to make space. If all retained slots are occupied, apply or
 discard an existing draft before opening another. A stale detached editor cannot
 publish to another lane or document. Draft buffers are not saved as music state.
 Imported spatial curves retain their normalized physical-world coordinates.
-The endless world's horizontal extent is very large, so use distance spans or
-distance-based CC curves for changes over a short terrain run.
+The endless world's horizontal extent is very large, so use distance-based CC
+curves for changes over a short terrain run. Canvas span drawing is unavailable
+in workstation strip/overlay layouts; use the Physical dock for world mappings.
+The retired span overlay owns no workstation renderer hook or input handlers.
 The physical height remains 144 pixels by default; display row sizing does not
 change the world. Larger projects retain all lanes while editing controls are
 virtualized.

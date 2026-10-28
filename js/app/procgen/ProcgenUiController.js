@@ -153,6 +153,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     onUpdate: (automationId, patch) => dispatchAutomation({ type: 'automation.update', automationId, patch }),
     onBatchUpdate: updates => dispatchAutomation({ type: 'automation.batch.update', updates }),
     onStatus: message => { automationStatus = message; syncAutomationHistory(); },
+    onPresentation: () => syncSpanTool(),
     onAdd: (span, target) => spanControls.addSpan(span, target), onSelect: (id, options) => { spanControls.select(id, options); setOpen(true); } });
   const restoreAutomation = action => {
     spanOverlay.cancelDraft();
@@ -167,14 +168,13 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   musicControls = createProcgenMusicControls({ document, getState: () => procgenMusicState(project, settings),
     onChange: command => commitAutomation(editProcgenMusicProject(project, settings, command)) });
   syncTargetHelp = () => spanControls.syncTargetHelp();
-  const syncSpanTool = () => {
+  function syncSpanTool() {
     const control = byId('procgenSpanEdit'), visibleControl = byId('procgenSpanVisible'), status = byId('procgenSpanToolStatus');
-    const reason = spanOverlay.presentationStatus();
-    const unavailable = !!getRuntime()?.lanes?.renderer?.workstationLayout;
-    if (control) { control.disabled = unavailable; control.checked = spanOverlay.snapshot().editing; }
-    if (visibleControl) visibleControl.disabled = unavailable;
-    if (status) status.textContent = reason;
-  };
+    const reason = spanOverlay.presentationStatus(), presentation = spanOverlay.snapshot();
+    if (control) { control.disabled = !presentation.presented; control.checked = presentation.editing; }
+    if (visibleControl) { visibleControl.disabled = !presentation.presentationSupported; visibleControl.checked = presentation.visible; }
+    if (status && status.textContent !== reason) status.textContent = reason;
+  }
   const setSpanEditing = enabled => {
     const active = spanOverlay.setEditing(enabled);
     if (active) setNukeArmed(false);
@@ -495,6 +495,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   };
   const syncActiveCount = count => { if (byId('procgenAliveCount')) byId('procgenAliveCount').textContent = Math.max(0, count).toLocaleString() + ' alive'; };
   return { settings, local, outputCapture, captureControls, getShareUrl, getShareDescriptor, syncActiveCount,
+    refreshCanvasToolAuthority() { if (!disposed) { spanOverlay.sync(); syncSpanTool(); } },
     getOperationalMetrics: () => operationalMetrics,
     getProject: () => project,
     setProject: (next, { persist = true } = {}) => commitAutomation(next, false, persist),

@@ -195,6 +195,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     rendererLeases.delete(renderer);
     if (renderer.onWorkstationFrame === frame) renderer.onWorkstationFrame = lease.baseFrame;
     if (renderer.workstationLayout === projection) renderer.workstationLayout = lease.baseLayout;
+    handlers.canvasToolAuthorityChanged?.();
     renderer.resize();
   };
   const finishGeometry = () => {
@@ -830,7 +831,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         causalView.bind(renderer);
         bindMotion(renderer.motionPolicy || null);
       }
-      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
+      renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; handlers.canvasToolAuthorityChanged?.(); if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
     }
     return changed || rendererChanged;
   }
