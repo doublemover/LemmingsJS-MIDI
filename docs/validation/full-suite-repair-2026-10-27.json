@@ -17747,7 +17747,8 @@
         300,
         301,
         302,
-        303
+        303,
+        304
       ],
       "excludesLaterWork": true,
       "passed": 6603
@@ -18974,6 +18975,209 @@
       "test/procgen-lane-navigator.test.js": "8211faeb8fbff444bdc4cb0416c6ae0185e1a090b0ee3edcdd98aa9a06035cfe",
       "test/procgen-lane-organization.test.js": "fdcc2ee023ea5f6dc55a0439f3f702250f7597d00868ba560a2aa0fc70bcd070",
       "test/procgen-lane-renderer.test.js": "cfbf6283b9d111b87674beb2d30afd78c35f90b39fe86c39e0ec9ff3132acde8"
+    }
+  },
+  "continuation304": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Ten-minute navigation qualification and pinned physical actor reveal",
+    "sourceBase": "e4257a80ee76e969a6d9407eb74010b48455a23e",
+    "issues": [
+      1033,
+      1207
+    ],
+    "development": [
+      "Inspector reveal resolves canonical physical lane through its stable ID and the navigator owner, expanding a collapsed group and clearing an excluding search. It does not retarget musical selection or enable camera follow.",
+      "Share the same reveal helper with navigation jumps and persist preferences once. Add actual physical source-art pointer pin, nine visual moves, group collapse/search exclusion and native Reveal regression."
+    ],
+    "validation": {
+      "soak": {
+        "passed": 1,
+        "failed": 0,
+        "sourceHead": "e4257a80ee76e969a6d9407eb74010b48455a23e",
+        "sourceScope": "Clean published checkout at launch, no runtime/e2e changes until the owned runner completed. Later reveal changes are excluded.",
+        "elapsedMs": 600646,
+        "cycles": 570,
+        "browser": "153.0.8010.12",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "hardwareConcurrency": 16,
+        "interactionMs": {
+          "p50": 10.399999998509884,
+          "p95": 18.200000002980232,
+          "p99": 21.299999997019768
+        },
+        "domNodes": {
+          "minimum": 866,
+          "maximum": 1306,
+          "baseline": 1306,
+          "final": 1306
+        },
+        "registeredDisplaySurfaces": [
+          8
+        ],
+        "maxRasterViews": 8,
+        "maxHistoryBytes": 247426,
+        "maxRasterReservationBytes": 22285512,
+        "rasterBudgetBytes": 67108864,
+        "postGcHeap": {
+          "samples": 9,
+          "minimumUsedBytes": 52178416,
+          "maximumUsedBytes": 52754656,
+          "firstBackingBytes": 55497580,
+          "lastBackingBytes": 58790658
+        },
+        "limits": [
+          "Paused physics and no note output; synthetic production DOM-input/organization commands. Separate native pointer/key journeys qualify interactions.",
+          "This measures one Windows/Chromium machine, not live-audio/receiver/acoustic/device performance. Backing storage increased across samples; no flat-memory claim."
+        ],
+        "physicsProjectHistoryRoutesOutputInvariant": true
+      },
+      "nativeNavigation": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 1,
+        "durationMs": 23642.078,
+        "skip": "Explicit ten-minute benchmark executed separately at sourceBase.",
+        "scope": "Complete navigation file including actual physical actor pin/reveal in a mapped arbitrary row; all existing jump, held API note/raster identity, group/draft and wheel/focus journeys pass together."
+      },
+      "node": {
+        "passed": 125,
+        "failedAssertions": 0,
+        "durationSeconds": 2,
+        "scope": [
+          "test/procgen-lane-navigator.test.js",
+          "test/procgen-lane-organization.test.js",
+          "test/procgen-workstation-controller.test.js"
+        ],
+        "coverageInstrumentation": true,
+        "processExitCode": 1,
+        "coverageGate": "Whole-suite thresholds applied to an intentionally partial file selection:34.47% lines/statements,27.85% functions,60.3% branches. All125 assertions passed. This is not a full coverage-gate pass."
+      },
+      "initialNative": {
+        "passed": 4,
+        "failed": 1,
+        "skipped": 1,
+        "reason": "New fixture pressed Escape after opening the selection dock, closing it before Reveal. Removed the extra Escape and reran all navigation journeys."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "whitespace"
+      ],
+      "remoteCi": {
+        "status": "pending",
+        "head": "e4257a80ee76e969a6d9407eb74010b48455a23e",
+        "job": 122819233464,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40689163911/job/122819233464",
+        "scope": "Published303 only; policy/dependency and desktop boundaries passed, workstation smoke in progress at last observed steps. Excludes local304 reveal changes."
+      }
+    },
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-captures\\procgen-workstation-naviga-27a34-on-remain-presentation-only-workstation-grouped-pinned-draft-restored.png",
+        "bytes": 105815,
+        "sha256": "b69920d1a2914b06767ea580b2a7c646fc97bb9ea3af8b75ec70f9247e6cd3c6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-captures\\procgen-workstation-naviga-bc5d9-collapsed-and-filtered-rows-workstation-pinned-actor-mapped-reveal.png",
+        "bytes": 112081,
+        "sha256": "8e98682800d9cf0092df0553b81ee8eea1d3367a5a2dbfc1a20e8686c825b3d5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-captures\\procgen-workstation-naviga-f8831-d-canonical-source-receipts-workstation-organized-physical-rows.png",
+        "bytes": 125461,
+        "sha256": "0c6aac368784214b7d5c2122bd92a70334358dde3185b3549cec983e251c353a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-captures\\procgen-workstation-naviga-fb416-ic-routes-output-or-physics-workstation-large-ensemble-stable-jump.png",
+        "bytes": 125312,
+        "sha256": "53ad00b9dfe175d9937fe3a7f39108ecff6d31cf4a0eb0e3ceda387862719cd6"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-navigation-soak-results.json",
+        "bytes": 2984059,
+        "sha256": "51c66e901cbecb6315d1ad05b8869610eda86693b043b9447f2a6787974fe34e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-navigation-soak-qualification.json",
+        "bytes": 2234613,
+        "sha256": "61cfd9e6b4766191e755768049b04642f3fef51be46153a0e0e13b4076df0f1b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-navigation-initial-results.json",
+        "bytes": 224632,
+        "sha256": "620844e7a42a70e25706857e2ea18abaa2a19309d801ff764cd735be14f62dee"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-navigation-final-results.json",
+        "bytes": 309363,
+        "sha256": "fa61577d5e9a8461044fcdaa668f1d989fabe96625020329dac4c65827f64d34"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-navigation-soak.log",
+        "bytes": 652,
+        "sha256": "a8bdf9aa8b96fc75cb9906cac0230b287b16b0364c66104b3b72eedd2d9a981f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-navigation.log",
+        "bytes": 5400,
+        "sha256": "802e11bb8f170ba206f4c560161cfbc5870b74ae4671bcf9510f08ad9f1b7a47"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-navigation-final.log",
+        "bytes": 1448,
+        "sha256": "c871532d77f1fde0507007aec6e61ca8c2d4324f69004f5e2e182cfbffe41015"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-node.log",
+        "bytes": 12332,
+        "sha256": "266adfa569463ecc512a1b9d90bf6363050811f8661b71a4179c65d9d128c1de"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog304-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "issueStatus": {
+      "1033": {
+        "state": "completed-software-acceptance",
+        "evidence": "Core303, full workstation128/14capabilities, focused125 assertions, final5native navigation journeys and separate real-wall-clock10minute1024-lane soak. Physical actor reveal now resolves stable lane identity through grouping/reorder/filter."
+      },
+      "1207": {
+        "state": "open",
+        "verified": "All19 unchanged artifact-owner Node cases have passing records in green1c818cc3. Current full workstation browser capture preserves prepared Partial PCM across controlled picker cancellation/retry.",
+        "remaining": "Dedicated browser-download/Blob-sink execution and trusted native picker support, reverse archive/project preparation and pending discard/dispose/stale rejection integration matrix."
+      }
+    },
+    "inventory": {
+      "freshOpenBefore1033Closure": 221,
+      "pages": 3,
+      "pullRequestsExcluded": true
+    },
+    "sourceHashes": {
+      "docs/roadmap.md": "2f9dab5d2877e174e8f0d318faa32b84857decb7f3ebb83e0bcee063ea57bc38",
+      "e2e/procgen-workstation-navigation.spec.js": "10e3a85b3a7d1efdcdf9fe1373bed630eaebb5cbe123f1d4871183b2f4654d4f",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "f8e2892e80d3e8c0369579707d1662049de5e081addab81a3acfdaef4f374d14",
+      "js/app/procgen/workstation/ProcgenWorkstationView.js": "ce1e89318fc31a8fb16a84356eeacd85a9d9c65c1d84aa7b9af8acd6950ef5d2"
     }
   }
 }

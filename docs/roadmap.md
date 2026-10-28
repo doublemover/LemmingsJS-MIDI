@@ -7860,3 +7860,35 @@ export-budget acknowledgments still prevent a false complete receipt.
   open for the authored real-wall-clock ten-minute 1024-lane navigation/DOM/
   surface/history/listener/heap soak and pinned-physical-actor follow-through.
   No long-duration or acoustic/device/assistive-technology pass is claimed yet.
+
+### Continuation 304 — qualified navigation lifetime and physical actor return
+
+- Complete the real-wall-clock 1024-lane navigation soak at published e4257a80:
+  600,646 ms, 570 cycles, 1920×1080 Chromium 153 and sixteen reported hardware
+  threads. Query changes, visual moves and pins retain eight display scheduler
+  registrations, at most eight raster views and at most 247,426 bytes of history.
+  DOM varies from 866 to 1,306 nodes and returns to 1,306. Raster reservations peak
+  at 22,285,512 of 67,108,864 admitted bytes. Interaction costs are p50 10.4 ms,
+  p95 18.2 ms and p99 21.3 ms. Post-GC used heap samples span 52.18–52.75 MB;
+  backing storage grows from 55.50 to 58.79 MB, so no flat-backing-memory claim is
+  made. Paused physics, canonical source, routes and MIDI metrics remain exact.
+- Correct the inspector Reveal callback to resolve the physical stripe through
+  its stable canonical lane ID and the navigator owner. Writing a physical index
+  directly into visual firstLane could not reveal reordered, collapsed or filtered
+  rows. Shared reveal expands the target group and clears an excluding search
+  without replacing the musical selection or enabling camera follow.
+- All five native navigation journeys pass together; the ten-minute benchmark
+  explicitly skips in this short cohort because its separate wall-clock run is
+  recorded above. An actual physical actor selected through its presented art
+  remains pinned through nine visual moves, group collapse and an excluding
+  search, then returns via the native Reveal action in the correct mapped row.
+  World/project/history/routes/output remain unchanged. Archive four captures.
+- The focused Node cohort passes all 125 assertions. Its c8 process exits one
+  because whole-suite coverage thresholds apply to this intentionally partial
+  file selection; preserve that diagnostic rather than claiming a full coverage
+  gate. Critical types, formatting, undefined calls and whitespace pass.
+- #1033 implementation and its named software acceptance are complete. Keep the
+  broader motion/audio/device/assistive qualification under their owning issues.
+  Fresh inventory before this closure is 221 open issues. #1207 now distinguishes
+  nineteen already passing unchanged artifact-owner cases from its remaining
+  dedicated browser/native-picker and reverse-preparation integration matrix.

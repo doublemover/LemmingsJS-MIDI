@@ -321,11 +321,17 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const previousLanes = button('↑', () => moveLanes(-projection.count), 'Show previous lanes');
   const nextLanes = button('↓', () => moveLanes(projection.count), 'Show next lanes');
   const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation, button('Clear all solos', () => handlers.clearSolos?.(), 'Clear solo on every lane; does not change self-mute or level'));
+  function revealLane(id, { selectLane = false } = {}) {
+    if (disposed || !procgenLane(getProject().procgen.lanes, id)) return false;
+    navigationMetadata.reveal(id);
+    if (!navigationMetadata.visible(state.laneQuery).lanes.some(lane => lane.id === id)) { state.laneQuery = ''; laneQueryAnchor = null; laneNavigator.setQuery('', false); }
+    syncLaneNavigation(); if (navigator.jump(id) == null) return false;
+    if (selectLane) { state.laneId = id; state.slot = procgenLane(getProject().procgen.lanes, id)?.activeSlot || 0; }
+    beginGeometry(); reflowGeometry(); if (selectLane) renderInspector(); handlers.preferences?.(); return true;
+  }
   const laneNavigator = createLaneNavigatorView({ document, navigator, getSelection: () => state.laneId, getArmed: getArmedLaneIds, onQuery: changeLaneQuery,
-    onJump: id => { if (disposed || !procgenLane(getProject().procgen.lanes, id)) return; navigationMetadata.reveal(id);
-      if (!navigationMetadata.visible(state.laneQuery).lanes.some(lane => lane.id === id)) { state.laneQuery = ''; laneQueryAnchor = null; laneNavigator.setQuery('', false); }
-      syncLaneNavigation(); if (navigator.jump(id) == null) return; state.laneId = id; state.slot = procgenLane(getProject().procgen.lanes, id)?.activeSlot || 0; beginGeometry(); reflowGeometry(); renderInspector(); chrome.close();
-      [...lanes.children].find(element => element.dataset.laneId === id)?.querySelector('.studio-lane-title')?.focus({ preventScroll: true }); handlers.preferences?.(); } });
+    onJump: id => { if (!revealLane(id, { selectLane: true })) return; chrome.close();
+      [...lanes.children].find(element => element.dataset.laneId === id)?.querySelector('.studio-lane-title')?.focus({ preventScroll: true }); } });
   const laneGroups = createLaneNavigatorGroupsView({ document, metadata: navigationMetadata, getSelection: () => state.laneId,
     onChange: ({ revealLaneId } = {}) => { if (disposed) return; beginGeometry(); syncLaneNavigation(); if (revealLaneId) navigator.jump(revealLaneId); reflowGeometry(); handlers.preferences?.(); } });
   laneNavigator.element.append(laneGroups.element);
@@ -1187,7 +1193,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       }
       return handlers.openPhysicalScene?.();
     } });
-  const api = { render, patchStep, patchProject, layout, dock, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
+  const api = { render, patchStep, patchProject, layout, dock, revealLane, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     navigationDiagnostics() { const organization = navigationMetadata.getState(); return { ...navigator.summary(state.laneId, getArmedLaneIds()), mountedHeads: laneMixControls.size, mountedPans: lanePanControls.size, mountedDisplays: laneDisplays.size,
       retainedDrafts: retainedLaneDrafts.size, organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped } }; },
     offerLegacyConversion(report, convert) {

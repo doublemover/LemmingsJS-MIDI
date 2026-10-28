@@ -1041,7 +1041,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     syncPorts(); view?.render(); view?.transport(transport.getState());
     worldInspector = createProcgenWorldInspector({ renderer: display, document, window,
       parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
-      onRevealLane: lane => { state.firstLane = lane; view?.layout?.(); view?.launched?.(); } });
+      onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
     if (!session && !pendingResume) play();
     if (!startupCommitted && startupPlan.mode === 'document') {

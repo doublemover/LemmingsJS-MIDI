@@ -88,6 +88,37 @@ test('visual reorder preserves an owned MIDI hold, physical raster rows, stable 
   await page.locator('#procgenPanic').click(); expect(await page.evaluate(() => window.__WEBMIDI_STUB__.metrics().messages.some(message => (message.bytes[0] & 240) === 128 && message.bytes[1] === 60))).toBe(true);
 });
 
+test('a pinned physical actor reveals its stable lane through reordered, collapsed and filtered rows', { tag: '@boundary' }, async ({ page }, testInfo) => {
+  test.setTimeout(90000); await ready(page);
+  const landmark = async () => page.evaluate(() => {
+    const renderer = window.__PROCGEN_LANES__.renderer, snapshot = renderer.presentation.getSnapshot(), actor = snapshot?.entities.find(entity => entity.kind === 'actor'), region = actor?.regions[0];
+    return actor && region ? { id: actor.id, actorId: actor.actorId, lane: actor.lane, laneId: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[actor.lane].id,
+      x: snapshot.rect.left + (region.x + region.width / 2) / snapshot.logicalSize.width * snapshot.rect.width,
+      y: snapshot.rect.top + (region.y + region.height / 2) / snapshot.logicalSize.height * snapshot.rect.height } : null;
+  });
+  await page.evaluate(() => { const api = window.__PROCGEN_LANES__; api.renderer.follow = false;
+    for (let i = 0; i < 256 && !api.renderer.presentation.getSnapshot()?.entities.some(entity => entity.kind === 'actor'); i++) { api.world.step(); api.renderer.render(true); } });
+  const target = await landmark(); expect(target).not.toBeNull(); const before = await scope(page);
+  await page.mouse.click(target.x, target.y);
+  expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getWorldInspector().getState().selection.actorId)).toBe(target.actorId);
+  await page.locator('.studio-lane-header[data-lane-id="' + target.laneId + '"] .studio-lane-title').click();
+  for (let i = 0; i < 9; i++) await organization(page, 'Move selected lane down');
+  await useWorkstationControl(page, page.getByLabel('Lane group name', { exact: true }), {}, 'fill', 'Pinned actor');
+  await organization(page, 'Create lane group'); await organization(page, 'Assign selected lane'); await organization(page, 'Toggle lane group visibility');
+  await useWorkstationControl(page, page.getByLabel('Lane search', { exact: true }), {}, 'fill', 'Lane 64'); await page.keyboard.press('Escape');
+  await expect(page.locator('.studio-lane-header[data-lane-id="' + target.laneId + '"]')).toHaveCount(0);
+  await expect(page.locator('.studio-world-selection')).toContainText('Offscreen');
+  await useWorkstationControl(page, page.getByRole('button', { name: 'Inspect world selection', exact: true, includeHidden: true }), {}, 'click');
+  await page.getByRole('button', { name: 'Reveal selected', exact: true }).click();
+  await expect(page.locator('.studio-lane-header[data-lane-id="' + target.laneId + '"]')).toHaveCount(1);
+  const revealed = await page.evaluate(id => { const r = window.__PROCGEN_LANES__.renderer; return { selected: r.selectedWorldEntityId, mapped: r.workstationLayout.mapped,
+    lanes: r.workstationLayout.laneIndices, entity: r.presentation.getSnapshot()?.entities.find(entity => entity.id === id), follow: r.follow }; }, target.id);
+  expect(revealed.selected).toBe(target.id); expect(revealed.mapped).toBe(true); expect(revealed.lanes).toContain(target.lane); expect(revealed.entity?.actorId).toBe(target.actorId); expect(revealed.follow).toBe(false);
+  await expect(page.locator('.studio-world-selection')).not.toContainText('Offscreen'); expect(await scope(page)).toEqual(before);
+  await page.screenshot({ path: testInfo.outputPath('pinned-actor-mapped-reveal.png') });
+  await testInfo.attach('pinned-physical-actor-reveal', { body: JSON.stringify({ target, revealed, before, method: 'Actual physical actor and presented source-art hit target; native pointer pin, lane/group/search commands and Reveal selected. No invented actor or musical onset.' }), contentType: 'application/json' });
+});
+
 test('group collapse, pins, unknown search and offscreen draft restoration remain presentation-only', { tag: '@boundary' }, async ({ page }, testInfo) => {
   test.setTimeout(90000); await ready(page, 8); await page.locator('#procgenListen').click(); await expect(page.locator('#procgenMidiDevice option[value="pw-output-1"]')).toHaveCount(1);
   expect(await page.evaluate(async () => {
