@@ -77,7 +77,8 @@ export function createLaneDisplayEvidence({ resourceBudget = null, maximumLanes 
       for (const [laneId, record] of records) {
         const eligible = event => receiptFor(event, receipt) && event.receipts.some(value => value.executionEpoch === receipt.executionEpoch && value.sinkId === receipt.sinkId);
         if (!record.events.some(eligible)) continue;
-        records.set(laneId, freeze({ ...record, revision: ++revision, events: freeze(record.events.map(event => eligible(event) ? attach(event, [receipt]) : event)) })); changed = true;
+        const events = record.events.map(event => eligible(event) ? attach(event, [receipt]) : event);
+        records.set(laneId, freeze({ ...record, revision: ++revision, events: freeze(events), completeness: events.some(event => event.omittedReceipts) ? 'partial' : record.completeness })); changed = true;
       }
       return changed;
     },

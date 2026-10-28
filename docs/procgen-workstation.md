@@ -473,3 +473,10 @@ receipts per collection; omissions and missing ranges are disclosed. Admission
 of its owned storage can fail independently of musical output. Hiding a display
 coalesces obsolete visual work through the existing shared scheduler; it creates
 no additional clock, note stream, event flash replay or physical-state writes.
+
+Intentional local/MIDI output-off and preparation remain distinct from lost
+destinations; choosing a Cause or Parameter page still works with output off.
+The expanded explanation separates the current project/patch from the frozen
+intent pitch/velocity, unknown historical graph revision, and each retained
+receipt's execution epoch and target time domain. A later receipt exceeding the
+retained cap makes coverage Partial rather than silently preserving Complete.

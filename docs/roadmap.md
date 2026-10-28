@@ -7410,3 +7410,21 @@ export-budget acknowledgments still prevent a false complete receipt.
   recorded separately in the canonical validation receipt. #997 still needs
   world-projected counted causal marks, drilldown and its complete output matrix;
   an OLED cause page alone does not close that issue.
+
+### Continuation 291 — output-off truth and exact receipt explanation
+
+- Visual inspection found intentional browser output-off inheriting the mixer's
+  generic disconnected state and masking all lane pages. Readouts now consume
+  canonical operational context: intentional local/MIDI off, preparation, local
+  failure and endpoint loss stay distinct. Cause/Parameter/Output pages remain
+  selected while paused; the Identity page retains the paused indication.
+- Expanded details separate current project/evidence revisions and patch identity
+  from frozen intent pitch/velocity, historical graph revision and each retained
+  sink receipt's target frame/time domain/execution epoch. API submission with a
+  degraded representation remains both degraded and explicitly receiver-unknown.
+- A late receipt overflowing the bounded retained range now makes coverage Partial.
+  Rejection uses its explicit cross glyph; inactive or failed output cannot reuse
+  an admission glyph as a current activity signal.
+- The focused follow-through passes 181 Node cases / four OLED desktop browser
+  cases. The preceding grouped pass is 178/37; these are separate overlapping
+  cohorts. Full remote CI must qualify the current published head before closure.

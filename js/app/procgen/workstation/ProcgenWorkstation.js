@@ -1451,7 +1451,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         const lane = procgenLane(project.procgen.lanes, laneId); if (!lane) return null;
         const parameters = ['sustain', 'bend', 'pressure'].map(type => { const target = expressionTarget({ type, laneId, channel: lane.channel, outputId: lane.outputId }, { requireSelected: false, output, midi }); return target && midiParameterEvidence.read(target); }).filter(value => value?.revision);
         const parameter = parameters.reduce((latest, value) => !latest || value.revision > latest.revision ? value : latest, null);
-        return { lane, revision: projectRevision, simulation: operational.simulation, mix: physicalPlayback?.laneMixView(laneId) || null, evidence: laneDisplayEvidence.read(laneId, sourceKey), parameter };
+        return { lane, revision: projectRevision, simulation: operational.simulation, operational, mix: physicalPlayback?.laneMixView(laneId) || null, evidence: laneDisplayEvidence.read(laneId, sourceKey), parameter };
       }).filter(Boolean);
     },
     operationalState: getOperationalSnapshot,

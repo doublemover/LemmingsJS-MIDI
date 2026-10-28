@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
-const ready = async (page, lanes = 8) => {
+const ready = async (page, lanes = 8, output = 'midi') => {
   await installWebMidiStub(page, { trackOutput: true });
-  await page.goto(`/procgen.html?e2e=1&recipe=1&seed=42&lanes=${lanes}&output=midi`);
+  await page.goto(`/procgen.html?e2e=1&recipe=1&seed=42&lanes=${lanes}&output=${output}`);
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
 };
@@ -12,6 +12,16 @@ const ownerState = page => page.evaluate(async () => {
   const { captureProcgenCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
   const { hashProcgenPhysicsCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpointProvenance.js');
   return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), physics: await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(window.__PROCGEN_LANES__.world)), sent: window.__WEBMIDI_STUB__.metrics().sent };
+});
+
+test('intentional browser output-off keeps lane pages readable and a lost MIDI destination becomes a distinct blocker', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page, 2, 'synth'); const display = page.locator('.studio-lane-display').first();
+  await expect(display).toHaveAttribute('data-priority', 'ordinary'); await expect(display).toContainText('OFF');
+  await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await expect(display).toHaveAttribute('data-page', 'cause'); await expect(display).not.toContainText('World paused');
+  await page.getByRole('button', { name: 'Read selected lane display', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Selected lane display details' });
+  await expect(dialog).toContainText('output local output off'); await expect(dialog).toContainText('project revision'); await page.getByRole('button', { name: 'Close lane display', exact: true }).click();
+  await page.getByText('View actions', { exact: true }).click(); await page.locator('#procgenOutput').selectOption('midi'); await activate(page);
+  await page.evaluate(() => window.__WEBMIDI_STUB__.disconnectOutput('pw-output-1')); await expect(display).toHaveAttribute('data-priority', 'blocked'); await expect(display).toContainText('output disconnected');
 });
 
 test('desktop lane displays expose manual pages and complete text without changing project, world or MIDI', { tag: '@boundary' }, async ({ page }) => {
@@ -55,5 +65,5 @@ test('live physical lane evidence joins real recorded MIDI IDs and leaves receiv
   await page.locator(`.studio-lane-header[data-lane-id="${value.display.lane.id}"] .studio-lane-title`).click();
   await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('output');
   await page.getByRole('button', { name: 'Read selected lane display', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Selected lane display details' });
-  await expect(dialog).toContainText('receiver unknown'); await expect(dialog).toContainText('acoustic evidence unknown'); await dialog.getByRole('button', { name: 'Panic', exact: true }).click();
+  await expect(dialog).toContainText('receiver unknown'); await expect(dialog).toContainText('acoustic evidence unknown'); await expect(dialog).toContainText('Frozen intent pitch'); await expect(dialog).toContainText('execution'); await dialog.getByRole('button', { name: 'Panic', exact: true }).click();
 });

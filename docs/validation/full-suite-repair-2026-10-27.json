@@ -837,7 +837,8 @@
       "height": 1080
     },
     "excludesContinuations": [
-      290
+      290,
+      291
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -10545,6 +10546,109 @@
       "#997 world-projected counted marks, interactive fanout/fanin drilldown and complete rendered/shared-body/transfer/missing-window qualification remain development.",
       "Unknown receiver readback, absent render measurements and missing graph revisions remain unknown. No hardware, listening or assistive certification is inferred.",
       "#996 wider overlap/suppression/visibility/source-retirement qualification remains before issue closure."
+    ]
+  },
+  "continuation291": {
+    "baseHead": "487f8c0d4f7f1cda2ab1dca44f3c5c6a8fb836a9",
+    "scope": "Distinguish intentional output-off/preparation from genuine loss and preserve exact bounded receipt explanations.",
+    "implemented": [
+      "Consume existing operational context so intentional browser/MIDI off and preparation do not become a false disconnected blocker masking every manual page. Real endpoint loss, local failure, mute and solo suppression keep blocker priority.",
+      "Paused identity remains explicit while Cause/Parameter/Output retain their own selected content. Expanded text separates current project/evidence revisions and patch from frozen intent pitch/velocity and each receipt target frame/domain/execution epoch.",
+      "A degraded representation and a successful API submission remain distinct simultaneous facts; receiver/audibility stays unknown. Rejection retains a cross glyph and blocked inactive output does not borrow an admission glyph.",
+      "Late receipt overflow marks retained coverage Partial; no new receipt can attach across an unknown sink/execution/source identity."
+    ],
+    "validation": {
+      "nodePassed": 181,
+      "nodeFailed": 0,
+      "nodeReportedDuration": "1s",
+      "browserPassed": 4,
+      "browserFailed": 0,
+      "browserReportedDuration": "11.7s",
+      "scope": "Current frozen model/controller/DOM/ownership cases and four production OLED journeys. These overlap continuation290; counts are not summed.",
+      "formatExit": 0,
+      "criticalTypesExit": 0,
+      "undefinedExit": 0,
+      "diffCheckExit": 0,
+      "provenance": {
+        "components": 10,
+        "files": 340,
+        "exitCode": 0
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-node-final.log",
+          "bytes": 17575,
+          "sha256": "f2756b8e092e5ac9b945c6b60766030199dce1697f3de2f049f7f99a22086f93"
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-browser-final.log",
+          "bytes": 963,
+          "sha256": "62d94035666925fcd7a4e1000a75e8d763741a24aa32c7d86afaf78b923118d6"
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-types-final.log",
+          "bytes": 96,
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-undefined-final.log",
+          "bytes": 111,
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog291-provenance.log",
+          "bytes": 142,
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+        }
+      }
+    },
+    "source": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 30294,
+        "sha256": "bfb36e5506c125d103de10d1288e0882a6bc43d664a363afa07ff388fe620ed6"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 540122,
+        "sha256": "66793acdda2331c202665d377e56b9944de411e41c020185e4239502eeb4997b"
+      },
+      {
+        "path": "e2e/procgen-lane-display.spec.js",
+        "bytes": 8881,
+        "sha256": "bb5d9a85bdd6ee4972f440d7401ec1c91215e2c1f385799e766da0ba0fd6f869"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplayEvidence.js",
+        "bytes": 8101,
+        "sha256": "846a20f2dbfe10e9f506cb0cb6ef9dd6cf04cf4a5b1e5ec72fd738ff54fd99aa"
+      },
+      {
+        "path": "js/app/procgen/workstation/LaneDisplaySnapshot.js",
+        "bytes": 6696,
+        "sha256": "01a753ce0b716ea640976951c6393a8cb639ff00c26170e57f63ccc3738a13c9"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 193182,
+        "sha256": "93f67177762baec3cd5b629a074c34538ccdd31c7ab0bccf42ce66c3b1f44f1c"
+      },
+      {
+        "path": "test/lane-display-evidence.test.js",
+        "bytes": 12373,
+        "sha256": "79daef5c7b8154b2dc124dc514000dd1b34d75ee0ab172ee0a174d19cfd15059"
+      }
+    ],
+    "limitations": [
+      "Current full CI is pending and must qualify this head before closure. The aefa1709 green checkpoint excludes continuations290/291.",
+      "Broader actual OLED overlap/suppression/visibility/source-retirement qualification remains under #996.",
+      "World-projected counted causal marks, fanout/fanin drilldown and complete rendered/shared-body/transfer coverage remain under #997.",
+      "No receiver, acoustic, hardware or assistive certification is inferred from requested/observed/API evidence."
     ]
   }
 }

@@ -55,6 +55,12 @@ describe('bounded live lane display evidence', () => {
     try { store.observe(value); expect(read(store).record.events[0].receipts).to.have.length(4); expect(read(store).record.events[0].omittedReceipts).to.equal(6); expect(read(store).record.completeness).to.equal('partial'); }
     finally { store.dispose(); }
   });
+  it('marks a newly capped late receipt range partial without rebinding to a different execution', () => {
+    const store = fixture(), value = input(); value.receipts = Array.from({ length: 4 }, (_, index) => ({ ...value.receipts[0], stage: 'stage-' + index }));
+    try { store.observe(value); expect(read(store).record.completeness).to.equal('complete'); expect(store.receipt(value.sourceKey, { ...value.receipts[0], stage: 'submitted' })).to.equal(true);
+      expect(read(store).record.completeness).to.equal('partial'); expect(read(store).record.events[0].omittedReceipts).to.equal(1); expect(read(store).record.events[0].receipts).to.have.length(4); }
+    finally { store.dispose(); }
+  });
   it('admits owned storage lazily and retires it without modifying input data or output owners', () => {
     const budget = createResourceBudget({ limitBytes: 1048576, costFactors: { checkpoint: 1 } }), store = fixture({ resourceBudget: budget, maximumLanes: 1 });
     const value = input(), before = JSON.stringify(value); expect(budget.diagnostics().residentBytes).to.equal(0);
@@ -68,6 +74,26 @@ describe('bounded live lane display evidence', () => {
 });
 
 describe('truthful lane display pages', () => {
+  it('keeps intentional output-off and preparation distinct from lost output without masking manual pages', () => {
+    const store = fixture();
+    try {
+      store.observe(input()); const options = { page: 'cause', simulation: { state: 'paused' }, mix: { outputState: 'output-disconnected' }, operational: { noteOutput: { state: 'not-selected' }, localBackend: { enabled: false, state: 'idle' } } };
+      const off = snapshot(store, options); expect(off).to.include({ priority: 'ordinary', outputState: 'local-output-off' }); expect(off.top).to.include('actor 7'); expect(off.detail).to.include('world paused; output local output off');
+      expect(snapshot(store, { ...options, page: 'identity' }).top).to.equal('World paused · OFF');
+      expect(snapshot(store, { ...options, operational: { noteOutput: { state: 'not-selected' }, localBackend: { enabled: false, state: 'starting' } } })).to.include({ priority: 'ordinary', outputState: 'output-preparing' });
+      expect(snapshot(store, { ...options, operational: { noteOutput: { state: 'selected' } } })).to.include({ priority: 'ordinary', outputState: 'midi-output-off' });
+      expect(snapshot(store, { ...options, operational: { noteOutput: { state: 'lost' } } })).to.include({ priority: 'blocked', outputState: 'output-disconnected' });
+      expect(snapshot(store, { ...options, operational: { noteOutput: { state: 'not-selected' }, localBackend: { state: 'interrupted', enabled: false } } })).to.include({ priority: 'blocked', outputState: 'local-output-error' });
+    } finally { store.dispose(); }
+  });
+  it('exposes the frozen target, source revisions and qualified receipt timing without substituting the current patch', () => {
+    const store = fixture();
+    try {
+      store.observe(input()); const value = snapshot(store, { revision: 40, lane: { ...lane, instrumentPatchId: 'new-current-patch' } });
+      expect(value).to.include({ projectRevision: 40, evidenceRevision: 1, patchIdentity: 'new-current-patch' });
+      expect(value.detail).to.include('Frozen intent pitch 6000 cents; velocity 0.7').and.include('target 400 audio-frame; execution audio:1').and.include('graph revision unknown');
+    } finally { store.dispose(); }
+  });
   it('restores a manually selected page after an active parameter draft ends', () => {
     const store = fixture(); try { store.observe(input()); const selected = { page: 'cause' };
       expect(snapshot(store, selected).top).to.include('actor 7'); expect(snapshot(store, { ...selected, activeControl: { name: 'Level', value: '-' } })).to.include({ priority: 'edit', top: 'Level', bottom: '- · draft', displayPage: 'cause' });
@@ -76,7 +102,7 @@ describe('truthful lane display pages', () => {
   });
   it('prioritizes output blockers and rejected admission over an active edit', () => {
     const store = fixture(), value = input(); value.receipts[0] = { ...value.receipts[0], status: 'rejected', reason: 'voice-budget' };
-    try { store.observe(value); const result = snapshot(store, { activeControl: { name: 'Level', value: '2' } }); expect(result).to.include({ priority: 'blocked', evidenceClass: 'rejected', top: 'Intent rejected' }); expect(result.bottom).to.equal('Rejected: voice-budget');
+    try { store.observe(value); const result = snapshot(store, { activeControl: { name: 'Level', value: '2' } }); expect(result).to.include({ priority: 'blocked', evidenceClass: 'rejected', top: 'Intent rejected', glyph: '×' }); expect(result.bottom).to.equal('Rejected: voice-budget');
       expect(snapshot(store, { mix: { outputState: 'solo-suppressed' } }).top).to.equal('solo suppressed'); }
     finally { store.dispose(); }
   });
