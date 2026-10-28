@@ -8201,3 +8201,33 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #1117 retains actual pause/Panic button-tail latency, active-ledger reference
   qualification and durable-write failure scope. #1092 retains its actual
   10,000-tick storage/replay/branch and recording document-boundary acceptance.
+
+### Continuation 314 — actual ProcGen completed-work soak observations
+
+- Replace the retired classic __E2E__.game adapter and target frameTime samples
+  in bench-procgen-soak with actual workstation ownership, completed world-step
+  and all-render-call durations, RAF gaps and available long-task observations.
+  Refuse zero work, failed steps, changed generations/owners and unbound builds.
+- Bound each observation stream to4096 samples and host receipts to16384.
+  Percentiles identify their retained window; counts/means/maxima cover all
+  observations. Reset warmup explicitly and ignore earlier long-task entries.
+  Restore owned wrappers/listeners on teardown without clobbering later owners.
+- Bind receipts to the actual executing immutable generation, harness hashes,
+  source/diff hash, browser/OS/CPU, viewport/DPR, seed, lane/visible-row count and
+  selected output. Record actual births/live population and observed tick rate.
+  Heap is an allocator estimate; a requested limit cannot pass without readings.
+- All8 focused Node cases pass, covering bounded distributions, synthetic100ms
+  long-task observation, missing/stale adapters, failed physical steps, retirement
+  and rejected receipt/timing bounds. The native smoke passes at1920×1080 against
+  build aa636c45:100 observed physical steps match100 completed ticks over about
+  two seconds,18 host samples,9 births and123 actual render calls. Step p95/p99
+  2.3/3.5ms; all-render p95/p99 3.8/4.6ms;121 RAF gaps p95/p99 about16.8ms. These
+  are short smoke observations, not stable-runner performance budgets.
+- Preserve the initial native refusal for an invented capability profile; use
+  the existing browser-survey-core profile without broadening its contract.
+  Catalog collection passes141 full/112 PR cases across32 files and14 required
+  capabilities. Formatting, critical types, undefined calls and provenance pass.
+- #1087 remains open for8/128/1024-lane controlled workloads, real100ms persistence
+  stalls, Save/New and concurrent preparation, observer overhead A/B, physical
+  event hashes and end-to-end input/audio tails. Next address the recording
+  document-boundary gap under #1092 while remote313 full CI continues.

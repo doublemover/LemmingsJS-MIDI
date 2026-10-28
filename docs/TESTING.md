@@ -18,6 +18,9 @@ npm run bench-long-session-smoke # explicit long-session smoke profile
 npm run bench-performance-soak # long perf soak run (explicit opt-in)
 npm run bench-history-soak # long history soak run (explicit opt-in)
 npm run bench-long-session-soak # long replay/memory/event-queue soak run
+npm run build:browser # immutable generation for ProcGen browser profiling
+# Start the repository HTTP/HTTPS server, then use its actual origin:
+npm run bench-procgen-soak -- --name=rook --url=http://127.0.0.1:8080/dist/browser/procgen.html?seed=42 --duration=60000
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
@@ -28,6 +31,18 @@ npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
 npm run release-readiness # release checklist gate (strict by default)
 ```
+The ProcGen soak uses the actual workstation adapter and bound executing browser
+generation. It reports completed step and all-render-call durations, actual RAF
+gaps, lifetime births and observed population. It rejects zero completed work,
+failed steps or a changed world owner. Each timing stream retains at most4096
+samples; percentiles explicitly distinguish the full observation set from the
+last bounded window, while counts/means/maxima cover the complete window. Host
+receipts retain at most16,384 observations. Heap is Chromium's allocator estimate;
+a requested heap limit fails qualification when those observations are absent.
+This probe does not establish input/audio tails, fixed-population comparisons,
+instrumentation overhead or native GPU/device performance; #1087 tracks those
+broader scenarios.
+
 Categories map to the ownership groups in `scripts/runTests.js`: `game` includes
 shared action, lemming, terrain, command, history and input checks; `midi` and
 `procgen` cover their complete domain suites. Unknown/shared source changes

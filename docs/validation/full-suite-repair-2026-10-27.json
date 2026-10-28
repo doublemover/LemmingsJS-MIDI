@@ -23031,5 +23031,414 @@
         "remaining": "Actual pause/Panic button-tail latency, active-ledger reference evaluation and durable-backpressure/document-boundary qualification under1092/1087."
       }
     }
+  },
+  "continuation314": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Measure actual completed ProcGen workstation work in the soak runner",
+    "sourceBase": "c783c7d51064affa2bed0df067c395c6dc557efd",
+    "issues": [
+      1087
+    ],
+    "development": [
+      "Replace retired classic-game state and requested frameTime with actual workstation step/render ownership and observed RAF gaps. Reject failed/zero work and changed owner/generation.",
+      "Bound each stream to4096 retained values and host samples to16384. Explicitly label percentile windows and preserve all-observation counts/means/maxima. Reset warmup, exclude earlier long-task entries and restore owned hooks without clobbering later owners.",
+      "Capture the actual executing immutable generation plus harness/source/diff hashes, browser/OS/CPU, viewport/DPR, seed/lanes/visible rows and output. Record actual lifetime births/live population and completed tick rate. Heap estimates cannot silently pass a requested limit when unavailable."
+    ],
+    "validation": {
+      "node": {
+        "passed": 8,
+        "failed": 0,
+        "scope": "Completed-work observation, bounded rolling storage, synthetic100ms long-task observation, missing/stale owners, failed steps, no-clobber retirement and invalid timing/receipt admission.",
+        "scopedCoverage": {
+          "ProcgenSoakProbe.js": {
+            "lines": 100,
+            "branches": 89.23,
+            "functions": 100
+          },
+          "bench-procgen-soak.js": {
+            "lines": 68.84,
+            "branches": 88.88,
+            "functions": 71.42
+          }
+        }
+      },
+      "browser": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 23225.517,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "measurement": {
+          "schema": "procgen-completed-work-probe/v1",
+          "capacity": 4096,
+          "baseline": {
+            "tick": 11,
+            "generation": 1,
+            "activeCount": 7,
+            "totalCount": 7,
+            "spawnTotal": 7,
+            "observationTime": 2806,
+            "memory": {
+              "usedJSHeapSize": 116000000,
+              "totalJSHeapSize": 177000000,
+              "jsHeapSizeLimit": 3760000000
+            }
+          },
+          "end": {
+            "tick": 111,
+            "generation": 1,
+            "activeCount": 16,
+            "totalCount": 16,
+            "spawnTotal": 16,
+            "observationTime": 4845.29999999702,
+            "memory": {
+              "usedJSHeapSize": 116000000,
+              "totalJSHeapSize": 177000000,
+              "jsHeapSizeLimit": 3760000000
+            }
+          },
+          "completedTicks": 100,
+          "failedSteps": 0,
+          "worldTickDelta": 100,
+          "observedStepCalls": 100,
+          "clock": "browser-performance-now",
+          "stepMs": {
+            "samples": 100,
+            "retainedSamples": 100,
+            "overwritten": 0,
+            "p50": 1,
+            "p95": 2.2999999970197678,
+            "p99": 3.5,
+            "maximum": 5.299999997019768,
+            "mean": 1.0760000002384187,
+            "percentileScope": "all-observations"
+          },
+          "renderMs": {
+            "samples": 123,
+            "retainedSamples": 123,
+            "overwritten": 0,
+            "p50": 1.7000000029802322,
+            "p95": 3.800000011920929,
+            "p99": 4.5999999940395355,
+            "maximum": 5.9000000059604645,
+            "mean": 1.7463414635115522,
+            "percentileScope": "all-observations"
+          },
+          "rafIntervalMs": {
+            "samples": 121,
+            "retainedSamples": 121,
+            "overwritten": 0,
+            "p50": 16.699999999999818,
+            "p95": 16.799999999999272,
+            "p99": 16.800000000000182,
+            "maximum": 16.800000000000182,
+            "mean": 16.666115702479342,
+            "percentileScope": "all-observations"
+          },
+          "longTaskMs": {
+            "samples": 0,
+            "retainedSamples": 0,
+            "overwritten": 0,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "maximum": null,
+            "mean": null,
+            "percentileScope": "all-observations"
+          },
+          "scope": "actual-completed-world-step-and-all-render-call-durations;RAF-gaps-are-observed;percentiles-use-explicit-bounded-window;no-input-or-audio-latency-claim"
+        },
+        "source": {
+          "revision": "c783c7d51064affa2bed0df067c395c6dc557efd",
+          "dirtyDiffSha256": "60692cdc38fad58fe570c8b95a7b7f1058f6a2c349206ccbcc0e004d1de92f31",
+          "harness": [
+            {
+              "file": "scripts/bench-procgen-soak.js",
+              "sha256": "4e5a3e1e63bd204b8d0de02691a50a0f637282305871c0203d70c944e6ad5f80"
+            },
+            {
+              "file": "scripts/ProcgenSoakProbe.js",
+              "sha256": "6b43b5f217cccb630e9b0dca15185633c14608bb705eee813a794fd08ceae528"
+            }
+          ]
+        },
+        "environment": {
+          "executionIdentity": {
+            "receiptVersion": 3,
+            "activeExecution": "bound",
+            "buildId": "aa636c458427c358c5f2f5b2b2eb931597879d3f3f4d2ee6bca41958f2e72114",
+            "closureDigest": "949a2ab21286cdd6fa4edc2e77e787c5127ede43c06476cdab8941f2be4ce9fc",
+            "assetDigest": "2ade4e24ca073697afee35eeec43ae6ef55962f9b40f9a84900852de0deda9ba",
+            "codeDigest": "ff14019faa41820dd658fe33e28d651e0303a36325d936f1df07263179fac5ab",
+            "harnessVersion": "browser-survey-v1",
+            "identityRecipe": "normalized-data-slot-v2-instruments",
+            "instrumentArtifacts": [
+              {
+                "engineId": "native-fm",
+                "engineVersion": 1,
+                "artifactHash": "7847948272b0e173f015843db7043a54d86eb5caa3792679ae4d976646848b3d"
+              },
+              {
+                "engineId": "native-modal",
+                "engineVersion": 1,
+                "artifactHash": "f1adfed29846f4506b3fcaaa8e76062494cf22a60459413722186f725c494f69"
+              },
+              {
+                "engineId": "native-oscillator",
+                "engineVersion": 1,
+                "artifactHash": "a9cdc694548ecef9c586d1a48be839af04a83788e96780ad888cb4f1e5ab83b3"
+              },
+              {
+                "engineId": "native-sample",
+                "engineVersion": 1,
+                "artifactHash": "9893eff482394383495206530952e36ea706fceda856c122cb9e3dc2c1af6757"
+              },
+              {
+                "engineId": "worklet-choir",
+                "engineVersion": 1,
+                "artifactHash": "4d58d0678c8ce39d4c2ae7ce89e2da09338bd3e32d2eb85f6bb0d307a519a697"
+              },
+              {
+                "engineId": "worklet-friction",
+                "engineVersion": 1,
+                "artifactHash": "d1d3ccebe6bfd397b4b0772e49eca807bcf2871638f49234a0d892bda26684c4"
+              },
+              {
+                "engineId": "worklet-granular",
+                "engineVersion": 1,
+                "artifactHash": "381cc1ccd489d3f517d2288ff488a7167fb46dc78b376db7b7ca2bc9f25f4f84"
+              },
+              {
+                "engineId": "worklet-pluck",
+                "engineVersion": 1,
+                "artifactHash": "b18fa01db0c3c7e52de63fcd689fdba7b9b4881d24e9e94291c310051553c609"
+              },
+              {
+                "engineId": "worklet-sample",
+                "engineVersion": 1,
+                "artifactHash": "2bf178e979ce0590f3cb5f450897760b0a78f8659dd5c74cba72e357df703ad3"
+              },
+              {
+                "engineId": "worklet-seed-layers",
+                "engineVersion": 1,
+                "artifactHash": "db3078571c90bc600335a8328cc3d931c9133c745de4fc8be181d78545ad7fb0"
+              },
+              {
+                "engineId": "worklet-sine",
+                "engineVersion": 1,
+                "artifactHash": "3b018896016be98b4b73c57868a8c8316daa351140053a385fa828e08642999c"
+              },
+              {
+                "engineId": "worklet-spectrum",
+                "engineVersion": 1,
+                "artifactHash": "317a06a85976df4be6e6f319b0897c00bfc413b8a54db896b38095300cb4e7c7"
+              },
+              {
+                "engineId": "worklet-texture",
+                "engineVersion": 1,
+                "artifactHash": "c5f2ff062d5620a4dce3d8e966016381dafbef26da6c66737638f0b582b61e2c"
+              },
+              {
+                "engineId": "worklet-wind",
+                "engineVersion": 1,
+                "artifactHash": "a4ae25189f0bba736ab96f10f1aba1218f7d56b6dc401b7f48e8a6935e6e9126"
+              }
+            ],
+            "stateSchema": 3,
+            "realmId": "2db9abeb-f910-4427-9e80-b3366702e3d1",
+            "capabilityProfile": "browser-survey-core",
+            "binding": "immutable-application-generation"
+          },
+          "seed": 42,
+          "lanes": 8,
+          "initialTick": 0,
+          "rendererMode": "strip",
+          "visibleRows": 8,
+          "viewport": {
+            "width": 1920,
+            "height": 1080
+          },
+          "dpr": 1,
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+          "hardwareConcurrency": 16,
+          "deviceMemoryGiB": 32,
+          "scope": "private headless browser; no native GPU, receiver or acoustic equivalence",
+          "browserVersion": "153.0.8010.12",
+          "os": {
+            "platform": "win32",
+            "release": "10.0.26300",
+            "architecture": "x64",
+            "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+            "logicalProcessors": 16,
+            "totalMemoryBytes": 137345265664
+          }
+        },
+        "sampleCount": 18,
+        "growth": {
+          "tickDelta": 100,
+          "spawnDelta": 9,
+          "activeDelta": 9,
+          "totalCountDelta": 9
+        },
+        "observedTicksPerSecond": 49.036434070586054,
+        "maxHeapMb": 110.626220703125,
+        "memoryScope": "Chromium performance.memory allocator estimate; native/GPU memory and collected retained heap are not established",
+        "sourceDeltaToPublication": []
+      },
+      "earlierBrowser": [
+        {
+          "passed": 0,
+          "failed": 1,
+          "reason": "Runner requested an invented capability profile. Actual execution owner correctly refused; use existing browser-survey-core without changing supported profiles."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/345 files",
+        "whitespace",
+        "browser collection:141 full/112 smoke/all14 capabilities"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Exact-head CI pending publication.313 has passed static and desktop boundaries and is running workstation smoke; latest complete green remains311.",
+      "scopeLimits": [
+        "Short8-lane native smoke proves the repaired measurement path, not8/128/1024 fixed-live-population or long-session qualification.",
+        "The100ms long-task case is a deterministic observer fixture, not an actual injected persistence stall.",
+        "Input/audio tail latency, exact physical/event hashes, real persistence/concurrent preparation and observer-overhead A/B remain1087 acceptance. No stable-runner/native GPU or receiver claim."
+      ],
+      "coverageFollowup": "Probe100% lines/functions,89.23% branches. Native runner lifecycle is exercised by the actual browser smoke; additional timeout, unavailable-memory and long native failure paths remain explicit fault-injection work."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-categories-final.log",
+        "bytes": 2347,
+        "sha256": "d74291e448baa487f82e6c94fd62ba20a9dbe0b535d5a6b336424d645bc8ac8a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-categories.log",
+        "bytes": 2347,
+        "sha256": "d74291e448baa487f82e6c94fd62ba20a9dbe0b535d5a6b336424d645bc8ac8a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-format-verified.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-native-final.log",
+        "bytes": 451,
+        "sha256": "2aa2e2009a51d246dbaba9c505220828728b672d735112435176a1ea4edb764f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-native.log",
+        "bytes": 3788,
+        "sha256": "64b787d8a0788fc9e9ea1cfaca7f1e419ff0d4ca17d15ddbcca3896aaa0fc235"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-node-final.log",
+        "bytes": 771,
+        "sha256": "8f75213c1f618719e2f9faae72432bc8c4b115f326c3816fbd2700513be0bb71"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-node.log",
+        "bytes": 770,
+        "sha256": "679b1d0cbbb2d7dd9f883ad4659dccca63956145d0d9b93e2a3359b655a55125"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-provenance.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-browser-selection.json",
+        "bytes": 277314,
+        "sha256": "70c6be2ab2530d93db798ea0fb9e4b9b040a39f3ef846fbc3960ebe3095bb914"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-soak-final-results.json",
+        "bytes": 19897,
+        "sha256": "b98def6dbaf82a69e3c37e8ebe94bf45764d01dc147f16966712a413919fa005"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-soak-results.json",
+        "bytes": 8867,
+        "sha256": "806ce79759bcaaea8e5ab1dc01ff8f644ed6721578e9240bbd42cbbb48de7491"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-314-coverage\\coverage-summary.json",
+        "bytes": 1316,
+        "sha256": "6da37dbd94bbbf21595545eaaf5c40a7c031e795bb3493b6abbb12b8705bfc4d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog314-captures\\final-completed-work-soak-receipt.json",
+        "bytes": 11469,
+        "sha256": "f490e732301296094982f689a18290b159a01da6c337b8ee13b51a134d1369ae"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/TESTING.md",
+        "bytes": 15188,
+        "sha256": "8c004869e6736707b064e761b789d428aabf677ab36a1d5d13ca8a7f4db83914"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 599250,
+        "sha256": "9c65ea00bc4a26c2ed53b8d4bf7e51c4e0a06d7e4aadaa197547c1b23e6376fe"
+      },
+      {
+        "path": "e2e/procgen-workstation-soak-probe.spec.js",
+        "bytes": 1702,
+        "sha256": "7c1d521f19cbc932bed2d6f33e6f3681704a9e51cf38efa0399712f2ac8612a1"
+      },
+      {
+        "path": "scripts/ProcgenSoakProbe.js",
+        "bytes": 5592,
+        "sha256": "6b43b5f217cccb630e9b0dca15185633c14608bb705eee813a794fd08ceae528"
+      },
+      {
+        "path": "scripts/bench-procgen-soak.js",
+        "bytes": 13253,
+        "sha256": "4e5a3e1e63bd204b8d0de02691a50a0f637282305871c0203d70c944e6ad5f80"
+      },
+      {
+        "path": "test/bench-procgen-soak.test.js",
+        "bytes": 7053,
+        "sha256": "b7f9df3b0bdc28f64c0484f39b159e2a8cef9500ecac6e6848084d72c9bebce7"
+      }
+    ],
+    "issueStatus": {
+      "1087": {
+        "state": "open-implemented-partial",
+        "remaining": "Controlled8/128/1024-lane workloads, real persistence stalls/Save-New/concurrent preparation, observer overhead A/B, physical event hashes and end-to-end input/audio tails."
+      }
+    }
   }
 }
