@@ -9,6 +9,7 @@ import { queryCausalCoverage } from './CausalCoverage.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { borrowCausalCheckpoint, borrowCausalPage, retireCausalRead } from './CausalReadLeases.js';
 import { createCausalPerformanceState, validateCausalPerformanceState } from './CausalPerformanceState.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const equal = (left, right) => canonicalJournalText(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text ===
@@ -17,16 +18,36 @@ const EXECUTION_IDENTITY = Object.freeze({ status: 'unbound', reason: 'active-mo
 const worldTick = checkpoint => checkpoint?.graph?.owners?.find(owner => owner.name === 'world')?.props?.tickIndex;
 
 const createCausalReperformance = ({ journal, createWorld, sourceVersions, assetRefs = [], liveWorld = null,
-  maxTicks = 10000, pageRecords = 256, maxQualifiedCheckpoints = 16, yieldEveryTicks = 64, resourceBudget = null,
+  maxTicks = 10000, pageRecords = 256, maxQualifiedCheckpoints = 16, maxQualifiedCheckpointBytes = 4 * 1048576, yieldEveryTicks = 64, resourceBudget = null,
   yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) => {
   if (!journal || ['openTake', 'verify', 'readCheckpoint', 'query'].some(key => typeof journal[key] !== 'function') ||
       typeof createWorld !== 'function' || !sourceVersions || !Array.isArray(assetRefs) || typeof yieldControl !== 'function' ||
       ![maxTicks, pageRecords, maxQualifiedCheckpoints, yieldEveryTicks].every(value => Number.isSafeInteger(value) && value > 0) ||
-      maxTicks > 1000000 || pageRecords > 4096 || maxQualifiedCheckpoints > 256 || yieldEveryTicks > 4096) throw new Error('Invalid causal re-performance runtime.');
+      maxTicks > 1000000 || pageRecords > 4096 || maxQualifiedCheckpoints > 256 || yieldEveryTicks > 4096 ||
+      !Number.isSafeInteger(maxQualifiedCheckpointBytes) || maxQualifiedCheckpointBytes < 4096 || maxQualifiedCheckpointBytes > 16 * 1048576) throw new Error('Invalid causal re-performance runtime.');
   const runtimeVersions = cloneJournalData(sourceVersions), runtimeAssets = cloneJournalData(assetRefs);
+  const liveWorldReference = liveWorld && typeof WeakRef === 'function' ? new WeakRef(liveWorld) : null;
+  if (liveWorldReference) liveWorld = null;
   const usedWorlds = new WeakSet(), checkpointQualifications = new Map(), sessions = new Set();
   const retirement = createProcgenRetirementScope(), pendingRuns = new Set();
   let disposed = false;
+  let cacheReservation = null, cacheBytes = 0, cacheRefusals = 0, cacheFailure = null;
+  const cacheState = () => Object.freeze({ entries: checkpointQualifications.size, maximumEntries: maxQualifiedCheckpoints, estimatedBytes: cacheBytes,
+    maximumBytes: maxQualifiedCheckpointBytes, refusals: cacheRefusals, failure: cacheFailure, reservation: cacheReservation?.receipt() || null });
+  const forgetCheckpoint = key => { const old = checkpointQualifications.get(key); if (old) { cacheBytes -= old.retainedEstimate; checkpointQualifications.delete(key); } };
+  const rememberCheckpoint = (key, entry) => {
+    let retainedEstimate;
+    try { retainedEstimate = canonicalJournalText(entry, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text.length * 64 + 1024; }
+    catch (error) { cacheFailure = String(error.message).slice(0, 512); cacheRefusals++; return; }
+    if (retainedEstimate > maxQualifiedCheckpointBytes || cacheReservation && !cacheReservation.isActive()) { cacheRefusals++; return; }
+    try { cacheReservation ||= createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-reperformance-checkpoint-cache', kind: 'qualified-replay-checkpoints',
+      category: 'checkpoint', bytes: maxQualifiedCheckpointBytes + 4096 }); }
+    catch (error) { cacheFailure = String(error.message).slice(0, 512); cacheRefusals++; return; }
+    forgetCheckpoint(key);
+    while (checkpointQualifications.size && (checkpointQualifications.size >= maxQualifiedCheckpoints || cacheBytes + retainedEstimate > maxQualifiedCheckpointBytes))
+      forgetCheckpoint(checkpointQualifications.keys().next().value);
+    checkpointQualifications.set(key, { ...entry, retainedEstimate }); cacheBytes += retainedEstimate;
+  };
   const check = signal => { if (disposed || signal?.aborted) throw journalError('cancelled', 'Causal re-performance canceled.'); };
   const reserveWorkspace = manifest => {
     const checkpointBytes = Math.max(...[manifest.initialCheckpoint, ...manifest.checkpoints].map(ref => ref.bytes || 32 * 1048576));
@@ -96,6 +117,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     const scope = `${takeId}:${manifest.canonicalHash}:`, qualified = useValidatedCheckpoint
       ? [...checkpointQualifications.values()].filter(item => item.scope === scope && item.ref.sequence <= target).sort((a, b) => b.ref.sequence - a.ref.sequence)[0] : null;
     const ref = qualified?.ref || manifest.initialCheckpoint;
+    if (qualified) { const key = scope + qualified.ref.id; checkpointQualifications.delete(key); checkpointQualifications.set(key, qualified); }
     let initial = null, initialSource = null, initialProducer = null, initialProducerPending = false;
     const current = { graph: qualified?.graph || validateCausalInstrumentGraph(manifest.mapping), bpm: null, playing: true };
     let world = null, engine = null, clock = null, performance = null, listener = null, callbackError = null, released = false, worldOwned = false, disposeWorld = null;
@@ -168,8 +190,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         if (!matched) return { sequence: checkpointRef.sequence, tick: world.tickIndex, causeId: null, kind: 'component-checkpoint', detail: result };
         const key = scope + checkpointRef.id;
         if (generated.length || expectedIntents.size) return null;
-        checkpointQualifications.delete(key); checkpointQualifications.set(key, { scope, ref: checkpointRef, graph: current.graph, physicalHash: actualHash, inventory: inventory() });
-        if (checkpointQualifications.size > maxQualifiedCheckpoints) checkpointQualifications.delete(checkpointQualifications.keys().next().value);
+        rememberCheckpoint(key, { scope, ref: checkpointRef, graph: current.graph, physicalHash: actualHash, inventory: inventory() });
         return null;
       } finally { retireCausalRead(source); }
     };
@@ -183,7 +204,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       worldProducerPending = true;
       worldProducer = Promise.resolve().then(() => { check(signal); return createWorld({ checkpoint: initial.world, sourceVersions: runtimeVersions, assetRefs: runtimeAssets, signal, executionEpoch }); }).then(candidate => {
         world = candidate?.world || candidate;
-        if (!world || world === liveWorld || usedWorlds.has(world) || world._disposed || typeof world.step !== 'function' || typeof world.dispose !== 'function') throw journalError('world-ownership', 'Re-performance requires a fresh isolated world.');
+        if (!world || world === (liveWorldReference?.deref() || liveWorld) || usedWorlds.has(world) || world._disposed || typeof world.step !== 'function' || typeof world.dispose !== 'function') throw journalError('world-ownership', 'Re-performance requires a fresh isolated world.');
         disposeWorld = candidate?.world && typeof candidate.dispose === 'function' ? () => candidate.dispose() : () => world.dispose();
         usedWorlds.add(world); worldOwned = true;
       }).finally(() => { worldProducerPending = false; });
@@ -269,8 +290,14 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
               current.bpm = record.payload.bpm;
             } else if (record.kind === 'input-observation') {
               const input = record.payload;
-              if (record.tick !== world.tickIndex || record.generation !== world.generation || input?.version !== 1) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
-              if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
+              if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
+              if (input?.version !== 1 && !(input?.version === 2 && input.kind === 'transport-state')) throw journalError('unsupported-recorded-input', 'Unknown input version cannot be substituted during replay.', { firstSequence: record.sequence });
+              if (input.version === 2) {
+                if (initial.replay.version !== 2 || typeof input.playing !== 'boolean' || !Number.isFinite(input.speedFactor) || input.speedFactor < 0 || input.speedFactor > 1000000 ||
+                    Object.keys(input).some(key => !['version', 'kind', 'playing', 'speedFactor'].includes(key))) throw journalError('unsupported-recorded-input', 'A transport observation requires its finite physical clock state.', { firstSequence: record.sequence });
+                current.playing = input.playing; world.timer.speedFactor = input.speedFactor;
+              }
+              else if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
               else if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
               else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
               else if (input.kind === 'instrument-performance' && performance) {
@@ -354,14 +381,14 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     try { return await work; }
     finally { pendingRuns.delete(work); if (!owned) release(); }
   };
-  return { preflight, reperform, qualifiedCheckpoints: () => cloneJournalData([...checkpointQualifications.values()].map(({ ref }) => ref)),
+  return { preflight, reperform, cacheState, qualifiedCheckpoints: () => cloneJournalData([...checkpointQualifications.values()].map(({ ref }) => ref)),
     dispose: () => {
-      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; checkpointQualifications.clear();
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; checkpointQualifications.clear(); cacheBytes = 0;
       return retirement.retire([...[...sessions].map((release, index) => ({ name: 'session-' + index, run: release })),
         ...(pendingRuns.size ? [{ name: 'pending-reperformances', run: async () => {
           await Promise.allSettled([...pendingRuns]); const receipt = createProcgenRetirementScope().retire([...sessions].map((release, index) => ({ name: 'session-' + index, run: release })));
           await receipt.completion; return receipt;
-        } }] : [])]);
+        } }] : []), { name: 'qualified-checkpoint-cache', run: async () => { await Promise.allSettled([...pendingRuns]); cacheReservation?.release(); } }]);
     } };
 };
 

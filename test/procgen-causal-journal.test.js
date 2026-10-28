@@ -5,6 +5,7 @@ import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
+import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
 const definition = takeId => ({ takeId, documentId: 'doc:test', sourceVersions: { generator: 'procgen-workstation-1', numeric: 'finite-f64-minus-zero-v1' },
   captureProfile: { version: 1, id: 'test', factKinds: ['MotionCommitted'], descriptorKinds: [], stateKinds: [] },
@@ -82,6 +83,51 @@ describe('durable causal take journal', function() {
     const captured = (await journal.query({ takeId: 'take:nested' })).records[0].payload;
     expect(captured).to.deep.equal(payload); expect(Object.is(captured.expression.body.anchor.x, -0)).to.equal(true);
     expect(canonicalJournalText({ x: -0 }).text).not.to.equal(canonicalJournalText({ x: 0 }).text);
+  });
+
+  it('splits dense queued chunks at the structural bound without splitting atomic groups', async () => {
+    const budget = createResourceBudget(), jobs = createTestBackgroundJobs();
+    const { journal, chunks } = setup({ resourceBudget: budget, jobs }), writer = await journal.createTake(definition('take:dense'));
+    const dense = tick => ({ ...marker(tick), payload: { samples: Array(80000).fill(0) } });
+    for (let tick = 1; tick <= 6; tick += 2) expect(writer.appendMany([dense(tick), dense(tick + 1)]).status).to.equal('accepted');
+    expect((await writer.stop()).state).to.equal('finalized');
+    expect(chunks.size).to.equal(3);
+    for (const chunk of chunks.values()) {
+      const body = JSON.parse(chunk.canonical), encoded = canonicalJournalText(body, { maxBytes: 4198400 });
+      expect(encoded.nodes).to.equal(chunk.nodes); expect(encoded.nodes).to.be.at.most(200000);
+      expect(body.records).to.have.length(2);
+      expect(body.records[0].admissionGroup).to.deep.equal(body.records[1].admissionGroup);
+    }
+    expect((await journal.verify('take:dense')).verifiedThroughSequence).to.equal(6);
+    const query = await journal.queryOwned({ takeId: 'take:dense', firstSequence: 3, lastSequence: 4, limit: 2 });
+    expect(query.value.records.map(record => record.tick)).to.deep.equal([3, 4]);
+    expect(query.value.records[1].payload.samples).to.have.length(80000); query.release();
+    await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); jobs.dispose();
+  });
+
+  it('refuses an indivisible group above the structural bound before advancing its durable prefix', async () => {
+    const budget = createResourceBudget(), { journal, chunks } = setup({ resourceBudget: budget });
+    const writer = await journal.createTake(definition('take:dense-refusal')); writer.append(marker(1)); await writer.flush();
+    const dense = tick => ({ ...marker(tick), payload: { samples: Array(100000).fill(0) } });
+    expect(writer.appendMany([dense(2), dense(3)])).to.include({ status: 'rejected', reason: 'capacity', durableSequence: 1, admittedSequence: 1, pendingBytes: 0 });
+    expect(chunks.size).to.equal(1); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect((await writer.stop()).state).to.equal('partial');
+    expect((await journal.verify('take:dense-refusal')).verifiedThroughSequence).to.equal(1);
+  });
+
+  it('shares admitted immutable coverage above 64KiB across pages while retaining query ownership', async () => {
+    const budget = createResourceBudget(), { journal } = setup({ resourceBudget: budget });
+    const writer = await journal.createTake(definition('take:coverage-pages')); writer.appendMany([marker(1), marker(2)]);
+    const coverage = { status: 'complete', gaps: Array.from({ length: 1200 }, (_, index) => ({ kind: 'effect-performance',
+      firstTick: index * 2, lastTick: index * 2, generation: 1, reason: 'effect-performance-not-in-capture-profile' })) };
+    expect(canonicalJournalText(coverage).bytes.length).to.be.greaterThan(65536); await writer.stop({ coverage });
+    const first = await journal.queryOwned({ takeId: 'take:coverage-pages', limit: 1 });
+    const second = await journal.queryOwned({ takeId: 'take:coverage-pages', firstSequence: first.value.nextSequence, limit: 1 });
+    expect(first.value.coverage).to.deep.equal(coverage); expect(second.value.coverage).to.equal(first.value.coverage);
+    expect(() => { first.value.coverage.gaps.length = 0; }).to.throw(TypeError);
+    first.release(); await journal.releaseQualifications().completion;
+    expect(second.value.coverage.gaps).to.have.length(1200); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    second.release(); expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
   it('keeps the exact durable prefix on quota failure and releases pending memory only on explicit discard', async () => {

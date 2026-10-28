@@ -183,6 +183,18 @@ clears that window and allows a fresh recording. Prepared files and causal takes
 remain available. Held input notes at the boundary mark an incomplete window;
 a later release is not invented in the old log. The MIDI window remains in
 memory and is not included in a project checkpoint; export it before closing.
+
+Physical-take comparisons retain up to16 verified checkpoint proofs within a
+4MiB metadata reservation. Repeated seeks can reuse a checkpoint only after
+replaying and matching it, with the same take, source versions, assets and live
+world owner. Resource pressure skips this optimization and permits a full replay.
+Closing the workbench retires the reservation. Comparisons and branches remain
+silent and report current-runtime physical compatibility; archived execution and
+acoustic equivalence require separate qualification. Accepted pause/resume and
+tempo changes are recorded in order, including the paused physical clock value.
+Durable chunks obey byte, record and structural limits together. An indivisible
+admission group above a limit is refused without advancing the stored prefix.
+
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the
 browser's downloads before relying on a local copy.

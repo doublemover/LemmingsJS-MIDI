@@ -11,6 +11,9 @@ const RECORD_KINDS = new Set(['physical-batch', 'musical-intents', 'intervention
 const validRange = value => value && Number.isSafeInteger(value.firstSequence) && Number.isSafeInteger(value.lastSequence) &&
   value.firstSequence > 0 && value.lastSequence >= value.firstSequence;
 const makeChunkId = (takeId, ordinal) => JSON.stringify([takeId, 'chunk', ordinal]);
+// Match the canonical encoder's finite structural bound. The chunk envelope
+// owns eight nodes in addition to its records, including the records array.
+const MAX_CHUNK_NODES = 200000, CHUNK_ENVELOPE_NODES = 8;
 const readAuthorities = new WeakMap();
 const inspectCausalReadOwnership = (handle, resourceBudget) => {
   const authority = readAuthorities.get(handle);
@@ -104,7 +107,7 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       if (state !== 'recording' || finishing) return Object.freeze({ status: 'rejected', reason: 'take-not-recording', ...status() });
       if (!Array.isArray(inputs) || !inputs.length || inputs.length > maxChunkRecords) throw new Error('Invalid causal journal admission group.');
       const prepared = [], firstSequence = admittedSequence + 1;
-      let bytes = 0, release = null;
+      let bytes = 0, nodes = CHUNK_ENVELOPE_NODES, release = null;
       try {
         const estimate = inputs.reduce((sum, input) => sum + estimateJournalBytes(input, { maxBytes: maxRecordBytes }), 0);
         release = reserve(estimate * 4, inputs[0]?.generation ?? 0);
@@ -113,16 +116,16 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
               !Number.isSafeInteger(input.generation) || input.generation < 0) throw new Error('Invalid causal journal record identity.');
           const record = cloneJournalData({ ...input, sequence: firstSequence + prepared.length,
             admissionGroup: { version: 1, firstSequence, lastSequence: firstSequence + inputs.length - 1 } }, { maxBytes: maxRecordBytes });
-          const size = canonicalJournalText(record, { maxBytes: maxRecordBytes }).bytes.length;
-          prepared.push({ record, bytes: size }); bytes += size;
+          const encoded = canonicalJournalText(record, { maxBytes: maxRecordBytes });
+          prepared.push({ record, bytes: encoded.bytes.length }); bytes += encoded.bytes.length; nodes += encoded.nodes;
         }
-        if (bytes > maxChunkBytes || pendingBytes + bytes > maxPendingBytes) throw journalError('capacity', 'Causal journal pending capacity reached.');
+        if (bytes > maxChunkBytes || nodes > MAX_CHUNK_NODES || pendingBytes + bytes > maxPendingBytes) throw journalError('capacity', 'Causal journal admission group exceeds its byte or structural capacity.');
       } catch (error) {
         release?.();
         fail(error, { firstSequence, tick: inputs[0]?.tick ?? null, generation: inputs[0]?.generation ?? null, reason: 'admission-failed' }, true);
         return Object.freeze({ status: 'rejected', reason: error.code || 'unsupported-record', ...status() });
       }
-      const group = { entries: prepared, bytes, release };
+      const group = { entries: prepared, bytes, nodes: nodes - CHUNK_ENVELOPE_NODES, release };
       pending.push(group); pendingBytes += bytes; admittedSequence += prepared.length;
       notify();
       void flush().catch(() => {});
@@ -148,14 +151,14 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       while (pending.length) {
         if (manifest.chunkCount >= maxChunks) throw journalError('capacity', 'Causal journal chunk limit reached.');
         const groups = [], records = [];
-        let bytes = 0;
+        let bytes = 0, nodes = CHUNK_ENVELOPE_NODES;
         for (const group of pending) {
-          if (groups.length && (records.length + group.entries.length > maxChunkRecords || bytes + group.bytes > maxChunkBytes - 2048)) break;
-          groups.push(group); records.push(...group.entries.map(entry => entry.record)); bytes += group.bytes;
+          if (groups.length && (records.length + group.entries.length > maxChunkRecords || bytes + group.bytes > maxChunkBytes - 2048 || nodes + group.nodes > MAX_CHUNK_NODES)) break;
+          groups.push(group); records.push(...group.entries.map(entry => entry.record)); bytes += group.bytes; nodes += group.nodes;
         }
         const ordinal = manifest.chunkCount + 1, firstSequence = records[0].sequence, lastSequence = records.at(-1).sequence;
         const body = { version: 1, takeId: manifest.takeId, ordinal, firstSequence, lastSequence, previousHash: manifest.canonicalHash, records };
-        const release = reserve((bytes + 4096) * 5, records[0].generation);
+        const release = reserve((bytes + 4096) * 5 + nodes * 64, records[0].generation);
         try {
           const encoded = canonicalJournalText(body, { maxBytes: maxChunkBytes + 4096 }), canonical = encoded.text;
           const hash = await hashJournalText(canonical), chunkId = makeChunkId(manifest.takeId, ordinal);
@@ -381,7 +384,9 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     let resultBytes = 0, completed = false;
     const finish = async nextSequence => {
       await checkQualifiedRevision(qualifiedTake, signal); result.nextSequence = nextSequence;
-      result.coverage = cloneJournalData(manifest.coverage, { maxBytes: 65536, maxNodes: 8192 });
+      // The qualified manifest is immutable and charged to this query's index
+      // lease. Share its admitted coverage instead of recloning it per page.
+      result.coverage = manifest.coverage;
       Object.freeze(records); Object.freeze(recordBytes); Object.freeze(result); completed = true;
       return ownedQueryResult(result, sources, releaseIndex, { resourceBudget });
     };

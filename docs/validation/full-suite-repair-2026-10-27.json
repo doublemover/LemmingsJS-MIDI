@@ -22796,7 +22796,50 @@
         "browser collection:140 full/111 smoke/all14 capabilities"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Exact-head CI pending publication; latest complete full green remains311. Preserve312 catalog failure separately.",
+      "remoteCi": {
+        "head": "c783c7d51064affa2bed0df067c395c6dc557efd",
+        "status": "success",
+        "run": 40747539620,
+        "job": 123025221363,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40747539620/job/123025221363",
+        "nodePassed": 6763,
+        "nodePending": 10,
+        "browserPassed": 133,
+        "desktopPassed": 22,
+        "workstationSmokePassed": 111,
+        "workstationCapabilities": 14,
+        "benchmark": {
+          "measurementValid": true,
+          "historyRatio": 0.5858333333333333
+        },
+        "coverage": {
+          "lines": 90.24,
+          "statements": 90.24,
+          "branches": 83.69,
+          "functions": 88.33
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 107136,
+          "captured": 107136,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.023317694664001465,
+          "nonfinite": 0
+        },
+        "policy": "success",
+        "dependencyReview": "success",
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci313-green-report.json",
+          "bytes": 850,
+          "sha256": "30e1cb24e1084412bd56a8fb0f6df4a331348794053709d5a0cca8cd2b975e10"
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci313-green.log",
+          "bytes": 1157500,
+          "sha256": "385025683f4c3bb2532397ad0a129f29acdbdb7f2165aa268ed7b960fa278706"
+        }
+      },
       "scopeLimits": [
         "Panic timing is one actual owner call during preparation cancellation, not end-to-end button p95/p99 or hardware output.",
         "MIDI exports retain explicit partial-window/evidence semantics. They do not establish durable causal-tape capture, exact physical-device lifecycles or acoustic equivalence.",
@@ -23498,7 +23541,50 @@
         "browser collection:142 full/113 smoke/all14 capabilities"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Exact-head CI pending publication.313 test job is running workstation smoke; latest completely green remains311.",
+      "remoteCi": {
+        "head": "eaa2ff67860fc1176d26eb7397a6d593941c0a9e",
+        "status": "success",
+        "run": 40750691950,
+        "job": 123036252188,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40750691950/job/123036252188",
+        "nodePassed": 6771,
+        "nodePending": 10,
+        "browserPassed": 135,
+        "desktopPassed": 22,
+        "workstationSmokePassed": 113,
+        "workstationCapabilities": 14,
+        "benchmark": {
+          "measurementValid": true,
+          "historyRatio": 0.5855
+        },
+        "coverage": {
+          "lines": 90.28,
+          "statements": 90.28,
+          "branches": 83.7,
+          "functions": 88.34
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 103296,
+          "captured": 103296,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02330303192138672,
+          "nonfinite": 0
+        },
+        "policy": "success",
+        "dependencyReview": "success",
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci315-green-report.json",
+          "bytes": 836,
+          "sha256": "bf2c0f9b79c65d1564865989bf69303a63dfde9978ef4326cc4fc16259228dfb"
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci315-green.log",
+          "bytes": 1161154,
+          "sha256": "5f22cd7a591fbfd4410e7134869d30f7f0707cf79ffab51389a9d3d1c23a3d04"
+        }
+      },
       "scopeLimits": [
         "The earlier MIDI window is retained in memory and deliberately exportable. A project checkpoint does not contain it and no durable tape claim follows.",
         "Full10000-tick physical tape replay/seek/branch, corrupt/mismatched durable sources and native storage failures remain1092 acceptance.",
@@ -23614,6 +23700,415 @@
       "1117": {
         "state": "open-implemented-partial",
         "remaining": "Actual button-tail latency, active-ledger reference evaluation and durable failure scope."
+      }
+    }
+  },
+  "continuation316": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Bound qualified seek proofs and preserve long durable physical tapes",
+    "sourceBase": "eaa2ff67860fc1176d26eb7397a6d593941c0a9e",
+    "issues": [
+      1092,
+      1162
+    ],
+    "development": [
+      "Keep verified checkpoint proofs across repeated comparisons only for the same canonical take, runtime versions/assets and live world identity. Limit metadata to16 entries/4MiB by default, reserve before retention, evict oldest, and retire on owner/runtime changes. Use a weak live-world reference. Admission/size refusal falls back to full replay; unknown retirement remains charged.",
+      "Record accepted transport state before the physical pump: version2 combines playing and finite physical speed, including paused zero. Capture direct/stage/clock transitions and tempo once, preserving legacy version1 semantics. This repairs actual native source/replay clock-state disagreement.",
+      "Count canonical nodes at admission and bound chunk grouping by bytes, record count and the existing200000-node structural limit. Preserve atomic groups; refuse an oversized group before advancing the prefix. Include dense object overhead in the transient reservation.",
+      "Query pages borrow the qualified immutable coverage under their existing index reservation, avoiding repeated serialization and the mismatched64KiB limit. Readers keep the inventory alive/charged after qualification-cache retirement until their own release."
+    ],
+    "validation": {
+      "node": {
+        "passed": 192,
+        "failed": 0,
+        "scope": "Grouped replay/cache/branch/journal/resource/archive/controller/transport cohorts, including dense chunk worker verification, atomic structural refusal, >64KiB immutable coverage ownership and actual accepted pause/tempo clock edges."
+      },
+      "browser": {
+        "passed": 1,
+        "failed": 0,
+        "pending": 1,
+        "skipped": 0,
+        "durationMs": null,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "longTape": null,
+        "smoke": null,
+        "sourceDeltaToPublication": [],
+        "scope": "Actual production IndexedDB64-tick record/finalize/full physical replay, zero-tick validated final-checkpoint reuse, offline midpoint seek, independently stored32-tick branch and unchanged parent/live world/project through offline reopen passed in the current cohort log. The10000-tick case recorded/finalized all ticks and is still in full stored replay at publication; no successful long replay is claimed."
+      },
+      "earlierResults": [
+        {
+          "nodePassed": 56,
+          "nativePassed": 1,
+          "nativeFailed": 1,
+          "failure": "Initial64-tick journey exposed actual final source speed0 versus replay3. Fixed accepted version2 transport capture; preserve original smoke JSON/log."
+        },
+        {
+          "nodePassed": 189,
+          "nativePassed": 2,
+          "nativeFailed": 0,
+          "scope": "64-tick fixed-clock journey plus existing legacy24-tick journey."
+        },
+        {
+          "nativePassed": 0,
+          "nativeFailed": 1,
+          "failure": "Initial10000-tick journey stopped around tick6763 with durableSequence16380/admitted16442: a dense byte-admissible chunk exceeded the canonical structural budget. Fixed structural grouping, without raising the limit."
+        },
+        {
+          "nodePassed": 190,
+          "nodeFailed": 1,
+          "failure": "New dense worker-read fixture used Worker:null and correctly hit oversized-fallback refusal; switch the fixture to the production worker endpoint/transport adapter."
+        },
+        {
+          "nodePassed": 191,
+          "nodeFailed": 0,
+          "nativePassed": 1,
+          "nativeFailed": 1,
+          "failure": "All10000 ticks finalized after the chunk fix; replay hit the query coverage64KiB clone cap. Borrow admitted immutable coverage under owned query accounting."
+        }
+      ],
+      "coverage": {
+        "CausalReperformance.js": {
+          "lines": {
+            "total": 395,
+            "covered": 389,
+            "skipped": 0,
+            "pct": 98.48
+          },
+          "functions": {
+            "total": 48,
+            "covered": 43,
+            "skipped": 0,
+            "pct": 89.58
+          },
+          "statements": {
+            "total": 395,
+            "covered": 389,
+            "skipped": 0,
+            "pct": 98.48
+          },
+          "branches": {
+            "total": 352,
+            "covered": 270,
+            "skipped": 0,
+            "pct": 76.7
+          }
+        },
+        "CausalTakeWorkbench.js": {
+          "lines": {
+            "total": 87,
+            "covered": 83,
+            "skipped": 0,
+            "pct": 95.4
+          },
+          "functions": {
+            "total": 17,
+            "covered": 12,
+            "skipped": 0,
+            "pct": 70.58
+          },
+          "statements": {
+            "total": 87,
+            "covered": 83,
+            "skipped": 0,
+            "pct": 95.4
+          },
+          "branches": {
+            "total": 68,
+            "covered": 48,
+            "skipped": 0,
+            "pct": 70.58
+          }
+        },
+        "ProcgenCausalJournal.js": {
+          "lines": {
+            "total": 501,
+            "covered": 490,
+            "skipped": 0,
+            "pct": 97.8
+          },
+          "functions": {
+            "total": 56,
+            "covered": 52,
+            "skipped": 0,
+            "pct": 92.85
+          },
+          "statements": {
+            "total": 501,
+            "covered": 490,
+            "skipped": 0,
+            "pct": 97.8
+          },
+          "branches": {
+            "total": 396,
+            "covered": 327,
+            "skipped": 0,
+            "pct": 82.57
+          }
+        }
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Exact-head316 CI pending publication.315 and313 full CI are now confirmed green in their own entries.",
+      "scopeLimits": [
+        "Compatibility replay is qualified against the currently installed implementation. Exact archived execution identity remains unbound; exactQualified remainsfalse.",
+        "The10000-tick journey is pending at publication; full terrain intervention/transfer/tempo/external-input and corrupted/missing/version-mismatch acceptance remains open.",
+        "Silent physical/intent parity does not establish acoustic or hardware equivalence."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-categories-published.log",
+        "bytes": 2576,
+        "sha256": "27ab2f85a81b3a7c3d17b6e5a9e093b2a0fed5e30f07c1a53deabeb5b490a1b0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-categories.log",
+        "bytes": 2477,
+        "sha256": "223ada207d9791035b2986d04da908395cdf39aadb04b1d6550d9f7305a35572"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format-clock-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format-long.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format-qualified.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format-transport.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-native-clock.log",
+        "bytes": 653,
+        "sha256": "e149b0572813477fc519d701756b302556feba23908585909453f57dba01df6f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-native-long-second.log",
+        "bytes": 4327,
+        "sha256": "85b8a48524e79fbd132506c5e1c2b206b8d2dd2397cdf5d046f03a8a3329778e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-native-long-third.log",
+        "bytes": 1196,
+        "sha256": "a775dc0f87c50e30c0c08e0f2193b0ec7076b3aff99fb5dbacd08fb1ce71dc49"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-native-long.log",
+        "bytes": 88304,
+        "sha256": "5aede26c0e310bcff45731bdae134cf275023795d74a2f8b64507f29835faa8a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-native-smoke.log",
+        "bytes": 7197,
+        "sha256": "9ed9c109320c00053e25c4aae79309620523b3b202a3438de2d76a3019799bb2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-node-final.log",
+        "bytes": 20130,
+        "sha256": "8afa3b4f8c168ef7d0d0254dd3a8dbee9cbdaadd5f5acb38b794f17564faf301"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-node-published.log",
+        "bytes": 19042,
+        "sha256": "891d6953445734c1fe5cb3f0389e17d92553b2e2805c40f1ddcdcf059771bdf2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-node-qualified.log",
+        "bytes": 18932,
+        "sha256": "e9beb83659fcc7a025b51e999d2d0d73a767d5e536023877d314edde1513d39f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-node-transport.log",
+        "bytes": 18754,
+        "sha256": "eff69942ccc411d77da330b522074cf433b3ea36907ef710f5e68e0436873add"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-node.log",
+        "bytes": 6051,
+        "sha256": "ae0ae417b7d6d5b329d47de562e6ff726b4a7af7a129d8c1eed10cf4b13a7391"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-provenance-final.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-provenance-published.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-provenance.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-types-final.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-types-published.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-types-transport.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-undefined-final.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-undefined-published.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-undefined-transport.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-durable-clock-results.json",
+        "bytes": 18321,
+        "sha256": "d55c9183d5eefac90d33d262e36b11763c25f61b682b2345df4036841fb65a7f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-durable-long-results.json",
+        "bytes": 294972,
+        "sha256": "311a2d3583578555e034baa41eafffbe9628e7d22b06b25cfebe6fe9dad73d24"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-durable-long-second-results.json",
+        "bytes": 22840,
+        "sha256": "73360bb3d7b54c0cd1df9f5d5b7c329b1313c85dbb812187fedb6b0f7e6f3073"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-durable-smoke-results.json",
+        "bytes": 20759,
+        "sha256": "8483b20cf20d442b83ff488f37dcb40edddaccdb4f75b2e10df0c45026357727"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog316-open-inventory.json",
+        "bytes": 63139,
+        "sha256": "eb661ce3adced51f0f7ecbdeb6af084f71337281a970221db03e8e7b4a699f9b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-316-coverage-published\\coverage-summary.json",
+        "bytes": 255007,
+        "sha256": "a28611a2bdeefe24a3f646ad17d0ada7d0829c28111129d2436f86679aa3e9f8"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 43974,
+        "sha256": "299d82c200327a501c6b1e2671dd482733b4f16c0a0cd8b05d6e86865a52744a"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 603507,
+        "sha256": "c747ea11555f93b6e9927f73c4288f28e524f849c44fe506138f8422f23d44de"
+      },
+      {
+        "path": "e2e/procgen-workstation-durable-tape.spec.js",
+        "bytes": 8620,
+        "sha256": "21a0bb2dfed31da0b012c18e8e0d03c6f07efdb96ebdb1a57ecf0f8a3d0e54ca"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalReperformance.js",
+        "bytes": 37502,
+        "sha256": "79528db5d18d3fb0c58396263a58cf2765542a18587b0ebed3006f4712aba8af"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalTakeWorkbench.js",
+        "bytes": 7817,
+        "sha256": "a218fefa5b1daee19e76709d72240e662626c21e7e1f309582e463088ec6607d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+        "bytes": 41247,
+        "sha256": "657d6bf7db91876beb588b8fa17c09ec85fa74786d001fb2fc4ff8daced529ca"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 200826,
+        "sha256": "f8f723621ab09a6e8e344a71c6a2c644a9f8c4f0d9cf15a0f644baec730849f8"
+      },
+      {
+        "path": "test/procgen-causal-journal.test.js",
+        "bytes": 23873,
+        "sha256": "8a97d674d5c8301e7c03a452b59a34a710bfc16ba1e202f09ad686da000412ed"
+      },
+      {
+        "path": "test/procgen-causal-physical-branch.test.js",
+        "bytes": 14795,
+        "sha256": "e504221e4864d1a6c6419abc0894a67870dd5689c5978d2de9f72ed0ab20a0b8"
+      },
+      {
+        "path": "test/procgen-causal-reperformance.test.js",
+        "bytes": 31885,
+        "sha256": "fb3ae1ffb3c16ee47f95c0485620928dd1053b3f2ae2a4ccbfdb14dd7dbb54b4"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 108423,
+        "sha256": "c92a2b56efc8fd29f8c45eb8f0c551518def9f25b72a05e826eb9733410665c4"
+      }
+    ],
+    "issueStatus": {
+      "1092": {
+        "state": "open-implemented-partial",
+        "remaining": "Complete actual terrain/transfer/tempo/external-input and corruption/missing/version mismatch journeys; qualify archived execution separately."
+      },
+      "1162": {
+        "state": "open-implemented-partial",
+        "progress": "Owned finite checkpoint metadata, dense writer overhead and immutable query coverage lifetime; broader resource acceptance remains."
       }
     }
   }

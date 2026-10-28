@@ -1,16 +1,30 @@
 import { createCausalReperformance } from './CausalReperformance.js';
 import { createCausalPhysicalBranch } from './CausalPhysicalBranch.js';
-import { cloneJournalData } from './CausalJournalCanonical.js';
+import { cloneJournalData, canonicalJournalText } from './CausalJournalCanonical.js';
 
 export function createCausalTakeWorkbench({ journal, createWorld, getRuntimeIdentity, resourceBudget, onState = () => {} } = {}) {
   if (!journal?.openTake || typeof createWorld !== 'function' || typeof getRuntimeIdentity !== 'function' || typeof onState !== 'function') throw new TypeError('Invalid take workbench owner.');
-  const unknown = new Set(); let active = null, pending = null, last = null, disposed = false, closing = false, ordinal = 0, phase = 'idle';
+  const unknown = new Set(); let active = null, pending = null, last = null, retainedRuntime = null, disposed = false, closing = false, ordinal = 0, phase = 'idle';
   const state = () => Object.freeze({ phase, busy: !!pending || closing && !disposed, active: active?.branch.status() || null, receipt: last,
     canStep: !!active && !pending && !closing && !unknown.size && active.branch.status().phase === 'paused', unknownRetirement: unknown.size,
-    paused: true, hardware: false, audio: false, thru: false });
+    checkpointCache: retainedRuntime?.runtime.cacheState() || null, paused: true, hardware: false, audio: false, thru: false });
   const retireRuntime = async runtime => {
+    if (retainedRuntime?.runtime === runtime) retainedRuntime = null;
     const receipt = runtime.dispose(); await receipt?.completion;
     if (receipt && receipt.outcome !== 'complete') { unknown.add(runtime); throw Object.assign(new Error('Take workbench retirement is unresolved.'), { retirement: receipt }); }
+  };
+  const replayRuntime = async (manifest, identity) => {
+    let key = null;
+    try { key = canonicalJournalText({ takeId: manifest.takeId, canonicalHash: manifest.canonicalHash, sourceVersions: identity.sourceVersions, assetRefs: identity.assetRefs },
+      { maxBytes: 131072, maxNodes: 16384 }).text; } catch { /* Oversized identity metadata uses a fresh, uncached service. */ }
+    if (identity.liveWorld && typeof WeakRef !== 'function') key = null;
+    const sameWorld = identity.liveWorld == null ? retainedRuntime?.world == null : retainedRuntime?.world?.deref() === identity.liveWorld;
+    if (key && retainedRuntime?.key === key && sameWorld) return retainedRuntime.runtime;
+    if (retainedRuntime) await retireRuntime(retainedRuntime.runtime);
+    const runtime = createCausalReperformance({ journal, createWorld, sourceVersions: identity.sourceVersions, assetRefs: identity.assetRefs,
+      liveWorld: identity.liveWorld, resourceBudget, maxTicks: 10000, yieldEveryTicks: 32 });
+    if (key) retainedRuntime = { key, world: identity.liveWorld ? new WeakRef(identity.liveWorld) : null, runtime };
+    return runtime;
   };
   const report = () => { try { onState(state()); } catch { /* UI state cannot publish a physical branch. */ } };
   const run = (nextPhase, work) => {
@@ -22,9 +36,9 @@ export function createCausalTakeWorkbench({ journal, createWorld, getRuntimeIden
   const open = ({ takeId, throughSequence = null, branchTakeId = null, takeName = null } = {}) => run(branchTakeId ? 'preparing-branch' : 'comparing', async operation => {
     if (active) throw new Error('Finish and save the current branch first.');
     const manifest = await journal.openTake(takeId); operation.controller.signal.throwIfAborted(); const identity = getRuntimeIdentity(manifest);
-    const runtime = createCausalReperformance({ journal, createWorld, sourceVersions: identity.sourceVersions, assetRefs: identity.assetRefs,
-      liveWorld: identity.liveWorld, resourceBudget, maxTicks: 10000, yieldEveryTicks: 32 });
+    const runtime = await replayRuntime(manifest, identity);
     try {
+      operation.controller.signal.throwIfAborted();
       const options = { takeId, throughSequence, mode: 'compatibility', executionEpoch: 'take-workbench:' + (++ordinal), signal: operation.controller.signal };
       if (branchTakeId) {
         const result = await createCausalPhysicalBranch({ journal, reperformance: runtime, parentTakeId: takeId, throughSequence,
@@ -36,7 +50,7 @@ export function createCausalTakeWorkbench({ journal, createWorld, getRuntimeIden
           phase = 'branch-paused';
         } else { await retireRuntime(runtime); options.signal.throwIfAborted(); phase = 'unsupported'; }
       } else {
-        const result = await runtime.reperform(options); last = cloneJournalData(result.receipt); await retireRuntime(runtime); options.signal.throwIfAborted(); phase = result.receipt.compatibilityMatch ? 'compared' : 'unsupported';
+        const result = await runtime.reperform(options); last = cloneJournalData(result.receipt); if (retainedRuntime?.runtime !== runtime) await retireRuntime(runtime); options.signal.throwIfAborted(); phase = result.receipt.compatibilityMatch ? 'compared' : 'unsupported';
       }
       return state();
     } catch (error) { if (!active) { try { await retireRuntime(runtime); } catch (cleanup) { error.retirement = cleanup.retirement; } } throw error; }
@@ -66,7 +80,7 @@ export function createCausalTakeWorkbench({ journal, createWorld, getRuntimeIden
     cancel() { if (!pending) return false; phase = 'canceling'; pending.controller.abort(new Error('Take workbench canceled.')); report(); return true; },
     async dispose() {
       if (disposed) return; closing = true; phase = 'closing'; pending?.controller.abort(new Error('Take workbench retired.')); report();
-      try { await pending?.promise.catch(() => {}); if (active) await finishOwned(); if (unknown.size) throw new Error('Take workbench retirement remains unresolved.'); disposed = true; phase = 'disposed'; }
+      try { await pending?.promise.catch(() => {}); if (active) await finishOwned(); if (retainedRuntime) await retireRuntime(retainedRuntime.runtime); if (unknown.size) throw new Error('Take workbench retirement remains unresolved.'); disposed = true; phase = 'disposed'; }
       catch (error) { closing = false; phase = 'recovery-required'; throw error; } finally { report(); }
     }
   });

@@ -10,7 +10,7 @@ import { createCausalReperformance } from '../js/app/procgen/workstation/CausalR
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, migrateProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
-import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { captureCausalPerformanceState, createCausalPerformanceState, diffCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
 
 const sourceVersions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
@@ -24,7 +24,8 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
-  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false, performanceInputs = false } = {}) => {
+  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false, performanceInputs = false, transportClock = false, invalidTransportClock = false } = {}) => {
+    playbackAdmission ||= transportClock;
     const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage }), world = make();
     let bpm = 120, playing = !playbackAdmission; const versions = { ...sourceVersions, ...(playbackAdmission ? { physicalPlaybackAdmission: 1 } : {}) };
     const performance = performanceInputs ? createCausalPerformanceState(captureCausalPerformanceState([{ id: 'lane-a', instrumentControls: { macros: { hardness: 0.2 } } }, { id: 'lane-b' }])) : null;
@@ -48,7 +49,12 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
         const next = captureCausalPerformanceState([{ id: 'lane-a', instrumentControls: { macros: { hardness: 0.8 }, variationSeed: 19 } }, { id: 'lane-b' }]);
         const change = diffCausalPerformanceState(performance.snapshot(), next); expect(recorder.recordPerformance(change, boundary).status).to.equal('accepted'); performance.apply(change);
       }
-      if (tick === 13) { recorder.recordInput({ version: 1, kind: 'transport-state', playing: false }, boundary); recorder.recordInput({ version: 1, kind: 'transport-state', playing: true }, boundary); if (playbackAdmission) playing = true; }
+      if (tick === 13) {
+        if (transportClock) {
+          playing = false; world.timer.speedFactor = 0; recorder.recordInput({ version: 2, kind: 'transport-state', playing: false, speedFactor: 0 }, boundary);
+          playing = true; world.timer.speedFactor = 6; recorder.recordInput({ version: 2, kind: 'transport-state', playing: true, speedFactor: 6 }, boundary);
+        } else { recorder.recordInput({ version: 1, kind: 'transport-state', playing: false }, boundary); recorder.recordInput({ version: 1, kind: 'transport-state', playing: true }, boundary); if (playbackAdmission) playing = true; }
+      }
       if (tick === 14) recorder.recordInput(unknownInput ? { version: 1, kind: 'live-device-unknown', bytes: [0x90, 60, 1] }
         : { version: 1, kind: 'external-observation', sourceId: 'recorded-midi-port', effect: 'observation-only', timestamp: 1234.567, bytes: [0x90, 60, 1] }, boundary);
       if (tick === 20 || tick % 2500 === 0) {
@@ -58,6 +64,7 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
       }
       if (tick % 128 === 0) await recorder.flush();
     }
+    if (transportClock) { playing = false; world.timer.speedFactor = 0; recorder.recordInput({ version: 2, kind: 'transport-state', playing: false, speedFactor: invalidTransportClock ? -1 : 0 }, { tick: world.tickIndex, generation: world.generation }); }
     const finalCheckpoint = snapshot(), finalHash = await hashProcgenPhysicsCheckpoint(finalCheckpoint.world);
     const stopped = await recorder.stop({ ...(final ? { finalCheckpoint } : {}), boundaryState: { voices: engine.snapshot().active, timeline: clock.snapshot() } });
     const source = await journal.openTake('take:reperform');
@@ -94,6 +101,50 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'exact:refused', mode: 'exact' });
     expect(result.receipt.status).to.equal('unsupported'); expect(result.receipt.reasons).to.include('active-execution-unbound');
     expect(allocations).to.equal(0); service.dispose();
+  });
+  it('replays accepted pause/resume clock observations and a final paused checkpoint without changing legacy input semantics', async () => {
+    const { runtime, source, finalHash } = await record({ transportClock: true }), service = runtime();
+    try {
+      const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'transport-clock:paused-final' });
+      expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, finalWorldParity: 'matched-at-captured-component-checkpoint', actualPhysicsHash: finalHash });
+      expect(result.receipt.comparedIntents).to.be.greaterThan(0);
+    } finally { await service.dispose().completion; }
+  });
+  it('refuses a correctly hashed transport observation whose physical clock is invalid', async () => {
+    const { runtime, source } = await record({ transportClock: true, invalidTransportClock: true }), service = runtime();
+    try {
+      const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'transport-clock:invalid' });
+      expect(result.receipt.status).to.equal('unsupported-or-incomplete'); expect(result.receipt.failure.code).to.equal('unsupported-recorded-input');
+    } finally { await service.dispose().completion; }
+  });
+  it('bounds and accounts for qualified checkpoint reuse, and releases it with the replay owner', async () => {
+    const { runtime, source } = await record(), budget = createResourceBudget(), service = runtime({ resourceBudget: budget, maxQualifiedCheckpoints: 1 });
+    try {
+      const first = await service.reperform({ takeId: source.takeId, executionEpoch: 'cache:first' }); expect(first.receipt.compatibilityMatch).to.equal(true);
+      const cache = service.cacheState(); expect(cache.entries).to.equal(1); expect(cache.estimatedBytes).to.be.at.most(cache.maximumBytes);
+      expect(cache.reservation.state).to.equal('reserved'); expect(budget.diagnostics().accountedBytes).to.equal(cache.reservation.declaredBytes);
+      const second = await service.reperform({ takeId: source.takeId, executionEpoch: 'cache:again' }); expect(second.receipt.ticksExecuted).to.equal(0); expect(second.receipt.actualPhysicsHash).to.equal(first.receipt.actualPhysicsHash);
+    } finally { await service.dispose().completion; }
+    expect(budget.diagnostics().accountedBytes).to.equal(0); expect(service.cacheState().reservation.state).to.equal('released');
+  });
+  it('continues full replay when cache admission or its byte bound refuses an optimization', async () => {
+    const { runtime, source } = await record();
+    for (const small of [false, true]) {
+      const budget = createResourceBudget(), adapter = { reserve(value) { if (!small && value.kind === 'qualified-replay-checkpoints') throw new ResourceBudgetError('checkpoint', value.bytes, 0); return budget.reserve(value); }, release: value => budget.release(value) };
+      const service = runtime({ resourceBudget: adapter, ...(small ? { maxQualifiedCheckpointBytes: 4096 } : {}) });
+      try {
+        for (let run = 0; run < 2; run++) { const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'cache-refused:' + run }); expect(result.receipt.compatibilityMatch).to.equal(true); expect(result.receipt.ticksExecuted).to.equal(40); }
+        expect(service.cacheState().entries).to.equal(0); expect(service.cacheState().refusals).to.be.greaterThan(0); expect(service.cacheState().reservation).to.equal(null);
+      } finally { await service.dispose().completion; }
+      expect(budget.diagnostics().accountedBytes).to.equal(0);
+    }
+  });
+  it('keeps a failed cache release charged after replay retirement', async () => {
+    const { runtime, source } = await record(), budget = createResourceBudget();
+    const service = runtime({ resourceBudget: { reserve: value => budget.reserve(value), release: value => value.owner === 'causal-reperformance-checkpoint-cache' ? false : budget.release(value) } });
+    await service.reperform({ takeId: source.takeId, executionEpoch: 'cache:unknown-release' });
+    const receipt = service.dispose(); await receipt.completion; expect(receipt.outcome).to.equal('partial'); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
+    expect(service.cacheState().reservation.state).to.equal('failed-or-unknown');
   });
 
   it('checks source/assets before allocation and reports unsupported external effects without querying a live device', async () => {
@@ -211,8 +262,9 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     expect(result.receipt.compatibilityMatch).to.equal(true); const receipt = result.session.dispose();
     expect(disposed).to.equal(1); expect(sources).to.equal(1); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0); expect(receipt.state).to.equal('retiring');
     expect(() => result.session.replayState()).to.throw('retired');
-    acknowledge(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(sources).to.equal(0); expect(budget.diagnostics().accountedBytes).to.equal(0);
-    await service.dispose().completion;
+    acknowledge(); await receipt.completion; expect(receipt.outcome).to.equal('complete'); expect(sources).to.equal(0); expect(service.cacheState().entries).to.be.greaterThan(0);
+    expect(budget.diagnostics().accountedBytes).to.equal(service.cacheState().reservation.declaredBytes);
+    await service.dispose().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
   it('retires a checkpoint lease that arrives after cancellation before accepting any world', async () => {

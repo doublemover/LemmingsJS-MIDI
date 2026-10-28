@@ -8261,3 +8261,32 @@ export-budget acknowledgments still prevent a false complete receipt.
   corruption/source-mismatch journey. In-memory MIDI preservation is not a
   durable tape or evidence that project checkpoints contain MIDI. #1117 retains
   actual button-tail latency, active-ledger reference and durable failure scope.
+
+### Continuation 316 — bounded seek proofs and long durable physical tapes
+
+- Retain verified component-checkpoint proofs only across the same immutable
+  take/runtime versions/assets/live world owner. Bound metadata to16 entries and
+  4MiB, reserve before retaining, evict oldest and retire on owner/source changes.
+  Weak live-world references avoid keeping an obsolete performance alive.
+  Admission/size refusal falls back to full replay; unknown retirement stays
+  charged. Comparisons remain silent and exact archived execution stays unbound.
+- Capture accepted transport edges before pumping physics. Version2 combines
+  playing and finite physical speed, including paused zero. Direct, stage and
+  clock transitions and tempo enter the tape once in accepted order. Preserve
+  legacy version1 semantics. This fixes a native final clock-state mismatch.
+- Bound chunk grouping by canonical nodes as well as bytes/record count, keeping
+  the existing200000-node limit and atomic admission groups. Refuse an oversized
+  indivisible group before advancing its prefix and account for dense temporary
+  objects. Query pages share already admitted immutable coverage under their
+  index lease; no repeated copy or mismatched64KiB coverage cap remains.
+- All192 grouped replay/cache/branch/journal/archive/resource/controller/transport
+  cases pass. Dense worker verification, oversized atomic-group refusal and
+  >64KiB coverage lifetime are explicit regressions. Static checks pass. Native
+  long-run qualification is being finalized before publication; preserve earlier
+  clock, dense-chunk and query-coverage failures with their exact receipts.
+- Promote313 and315 full CI to green in the canonical receipt:6763/6771 Node,
+  133/135 browser and all14 capabilities respectively. Latest315 coverage is
+  90.28% lines/statements,83.70% branches,88.34% functions. Master capture Ready,
+  103296 finite frames without a clock gap. Fresh GitHub inventory:216 open
+  issues; #1092 remains open for the full intervention/input/corruption and
+  archived-runtime qualification corpus. No full local suite is repeated.

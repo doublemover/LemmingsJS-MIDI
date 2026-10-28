@@ -394,10 +394,11 @@ describe('ProcGen workstation orchestration', () => {
       batchId: 'world:fixture:1:1:0', sourceTimeMs: 20, tickDurationMs: 20,
       completeness: { status: 'complete', dropped: 0 }, facts: [] });
     const receipt = await f.studio.stopCausalTake({ reason: 'test-stop' });
-    expect(receipt).to.include({ takeId, complete: true, durableSequence: 4 });
+    expect(receipt).to.include({ takeId, complete: true, durableSequence: 3 });
     const journal = createProcgenCausalJournal({ storage });
     const records = await journal.query({ takeId });
-    expect(records.records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'physical-batch', 'musical-intents']);
+    expect(records.records.map(record => record.kind)).to.deep.equal(['input-observation', 'physical-batch', 'musical-intents']);
+    expect(records.records[0].payload).to.include({ version: 2, kind: 'transport-state', playing: true, speedFactor: f.studio.transport.getState().effectiveSpeed });
     expect((await journal.verify(takeId)).status).to.equal('complete');
     const score = await f.studio.handlers.readPhysicalScore();
     expect(score).to.include({ takeId, generation: 1, timeDomain: 'physical-source-time' });
@@ -421,6 +422,21 @@ describe('ProcGen workstation orchestration', () => {
       const journal = createProcgenCausalJournal({ storage }), result = await journal.query({ takeId }), mappings = result.records.filter(record => record.kind === 'mapping');
       expect(mappings.map(record => record.payload.revision)).to.deep.equal([before.revision + 1, before.revision + 2, before.revision + 3]);
       expect(mappings.map(record => record.payload.pickups?.length || 0)).to.deep.equal([1, 0, 1]); expect((await journal.verify(takeId)).status).to.equal('complete');
+    } finally { await f.studio.dispose().completion; world.dispose(); }
+  });
+  it('records each accepted transport clock edge once, including direct pause and stage controls', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage, physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); const world = f.runtime.world;
+    try {
+      const armed = await f.studio.handlers.startCausalTake(); world.step(0);
+      f.studio.transport.pause(); f.studio.handlers.stagePause(); f.studio.play(); f.studio.handlers.transport({ gameSpeed: 2 }); f.studio.handlers.stagePause();
+      const receipt = await f.studio.stopCausalTake({ reason: 'accepted-transport-edges' }); expect(receipt.complete).to.equal(true);
+      const journal = createProcgenCausalJournal({ storage }), rows = await journal.query({ takeId: armed.takeId, limit: 64 });
+      const transitions = rows.records.filter(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state').map(record => record.payload);
+      expect(transitions.map(record => record.playing)).to.deep.equal([true, false, true, true, false]);
+      expect(transitions.every(record => record.version === 2)).to.equal(true); expect(transitions.filter(record => !record.playing).every(record => record.speedFactor === 0)).to.equal(true);
+      expect(transitions.at(-2).speedFactor).to.equal(2); expect(rows.records.filter(record => record.kind === 'timeline')).to.have.length(1);
     } finally { await f.studio.dispose().completion; world.dispose(); }
   });
 
@@ -462,11 +478,12 @@ describe('ProcGen workstation orchestration', () => {
     const memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
     const f = setup({ storageOverride: storage }); f.studio.bindRuntime();
     const takeId = (await f.studio.handlers.startCausalTake()).takeId;
-    f.studio.handlers.transport({ bpm: 180 });
+    f.studio.handlers.transport({ bpm: 180, gameSpeed: 2, speedMode: 'bpm' });
     await f.studio.stopCausalTake();
     const records = (await createProcgenCausalJournal({ storage }).query({ takeId })).records;
-    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'input-observation', 'timeline']);
-    expect(records[2].payload).to.deep.equal({ version: 1, kind: 'tempo', bpm: 180 });
+    expect(records.map(record => record.kind)).to.deep.equal(['input-observation', 'timeline', 'input-observation']);
+    expect(records[1].payload).to.deep.equal({ version: 1, kind: 'tempo', bpm: 180 });
+    expect(records[2].payload).to.deep.equal({ version: 2, kind: 'transport-state', playing: true, speedFactor: 1.5 });
     await f.studio.dispose().completion;
   });
   it('commits and releases local CC reservations after channel submission', async () => {

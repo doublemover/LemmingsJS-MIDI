@@ -136,6 +136,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let recordingOrigin = null;
+  let lastCausalTransport = null;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
   const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
@@ -457,6 +458,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (disposed) return;
       if (physicalAuthoringAbort && position.playing) { transport.pause(); return; }
       if (position.playing !== lastPlaying) { lastPlaying = position.playing; legacy.setPaused(!position.playing); }
+      recordAcceptedCausalTransport(position);
       if (position.playing) runtime()?.lanes?.pump?.(position.timestamp);
       syncWorldSeed(); observeFrame(position.timestamp);
       if (position.bpm !== lastTempo) { lastTempo = position.bpm; ports?.recordTempo(position.bpm, position.beat, position.timestamp); }
@@ -611,24 +613,26 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
   };
   let pageLifecycle = null;
+  function recordAcceptedCausalTransport(position) {
+    if (!lastCausalTransport || !causalTake || causalTakeStop) return;
+    const previous = lastCausalTransport;
+    if (previous.bpm !== position.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: position.bpm });
+    if (previous.playing !== position.playing || previous.speedFactor !== position.effectiveSpeed)
+      recordCausalControl('input', { version: 2, kind: 'transport-state', playing: position.playing, speedFactor: position.effectiveSpeed });
+    if (previous.bpm !== position.bpm || previous.playing !== position.playing || previous.speedFactor !== position.effectiveSpeed)
+      lastCausalTransport = { playing: position.playing, bpm: position.bpm, speedFactor: position.effectiveSpeed };
+  }
   const play = () => {
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
     if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
     transport.play(); if (held?.length) engine.resume({ ...transport.getState(), timestamp: now(), activeNotes: held });
-    if (causalTake) {
-      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: transport.getState().effectiveSpeed });
-      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: true });
-    }
     return transport.getState();
   };
   const configureTransport = patch => {
     const previous = transport.getState(), held = previous.playing ? engine.snapshot().active : null;
     transport.configure(patch);
     const next = transport.getState();
-    if (causalTake && previous.bpm !== next.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: next.bpm });
-    if (causalTake && next.playing && (previous.effectiveSpeed !== next.effectiveSpeed || previous.gameSpeed !== next.gameSpeed))
-      recordCausalControl('input', { version: 1, kind: 'world-speed', speedFactor: next.effectiveSpeed });
     if (held && previous.bpm !== next.bpm) { pendingResume = false; if (held.length) engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
@@ -846,6 +850,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
       }
       causalTake = recorder; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes); sampledMacroRevision = macroGestures.revision();
+      lastCausalTransport = { playing: wasPlaying, bpm: transport.getState().bpm, speedFactor: sourceRuntime.world.timer.speedFactor };
       lastCausalInspection = null;
       causalTakeErrorReported = false;
       status(`Causal take ${takeId} recording committed world facts and musical intents.`);
@@ -1787,7 +1792,6 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     stopOutput() {
       soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm();
       transport.stop(); pendingResume = false;
-      recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false });
       status('Transport stopped and output flushed.');
       return transport.getState();
     },
@@ -1798,7 +1802,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       const result = await (stageSession.active() ? stageSession.exit() : stageSession.enter()); legacy.refreshShortcutHints?.(); view?.sceneCue?.(sceneLoader?.state(), project.procgen.sceneOrigin?.manifest || null, stageSession.active()); return result;
     }),
     stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
-    stagePlay: () => play(), stagePause() { transport.pause(); recordCausalControl('input', { version: 1, kind: 'transport-state', playing: false }); },
+    stagePlay: () => play(), stagePause() { transport.pause(); },
     panicOutput() { soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
     scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },

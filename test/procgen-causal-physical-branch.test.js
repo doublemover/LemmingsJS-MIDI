@@ -62,6 +62,20 @@ describe('replay-qualified physical branch orchestration', function() {
     expect((await journal.verify('take:workbench')).verifiedThroughSequence).to.be.greaterThan(fork);
     expect(states).to.include.members(['comparing', 'preparing-branch', 'stepping', 'saving-branch']); await workbench.dispose();
   });
+  it('retains qualified seek checkpoints only for the same immutable take, runtime versions, assets and live-world owner', async () => {
+    const { journal, budget } = await fixture(), parent = await journal.openTake('take:parent'), original = JSON.stringify(parent);
+    let liveWorld = {}, sourceVersions = versions;
+    const workbench = createCausalTakeWorkbench({ journal, createWorld: make, resourceBudget: budget,
+      getRuntimeIdentity: () => ({ sourceVersions, assetRefs: parent.assetRefs, liveWorld }) });
+    try {
+      const first = await workbench.open({ takeId: parent.takeId }); expect(first.receipt.ticksExecuted).to.equal(20); expect(first.checkpointCache.entries).to.be.greaterThan(0);
+      const again = await workbench.open({ takeId: parent.takeId }); expect(again.receipt.ticksExecuted).to.equal(0); expect(again.receipt.actualPhysicsHash).to.equal(first.receipt.actualPhysicsHash);
+      liveWorld = {}; expect((await workbench.open({ takeId: parent.takeId })).receipt.ticksExecuted).to.equal(20);
+      sourceVersions = { ...versions, physicalMusic: 99 }; expect((await workbench.open({ takeId: parent.takeId })).phase).to.equal('unsupported'); expect(workbench.state().checkpointCache.entries).to.equal(0);
+      expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);
+    } finally { await workbench.dispose(); await journal.releaseQualifications().completion; }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
 
   it('starts paused from a replayed marker, clips future gaps/revisions and replays the continued branch without altering its parent', async () => {
     const { journal, reperformance, fork, open, budget } = await fixture({ futureGap: true });
