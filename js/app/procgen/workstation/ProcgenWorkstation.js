@@ -273,7 +273,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (Number.isFinite(seed) && seed !== project.procgen.seed) { project = sealMidiProjectSnapshot(markCanonicalMidiProject({ ...project, procgen: { ...project.procgen, seed } })); legacy.settings.seed = seed; setLegacyProject(project); persist(); }
   };
   const observeFrame = timestamp => {
-    if (state.presentationTransition || renderer()?.junctionInspectionOwner || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
+    timestamp = renderer()?.motionPolicy?.presentationTime() ?? timestamp;
+    if (state.presentationTransition || renderer()?.junctionInspectionOwner || renderer()?.motionPolicy?.automaticCamera === false || state.observerMode !== 'director' || timestamp - lastObserverAt < Math.max(2, Number(state.observerHold) || 6) * 1000) return;
     lastObserverAt = timestamp;
     const world = runtime()?.world, render = renderer(); if (!world || !render) return;
     const ranked = project.procgen.lanes.map((lane, index) => ({ index, distance: world.stall?.lanes?.[index]?.maxX || world.frontiers?.[index] || 0 })).sort((a, b) => b.distance - a.distance || a.index - b.index);

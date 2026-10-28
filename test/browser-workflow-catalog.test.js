@@ -6,7 +6,7 @@ describe('required workstation browser collection', () => {
   const cases = () => REQUIRED_WORKSTATION_CATEGORIES.map((category, index) => ({ file: 'procgen-workstation-workflow.spec.js', line: index + 1, title: category, tags: ['@boundary', '@workstation-' + category], project: 'workstation' }));
   const validate = (full, smoke = full, expectedFiles = ['procgen-workstation-workflow.spec.js']) => validateWorkstationCollection({ full, smoke, expectedFiles });
   it('discovers future workstation specs and keeps unrelated browser projects separate', () => {
-    for (const file of ['C:\\repo\\e2e\\procgen-workstation-future.spec.js', '/repo/e2e/procgen-action-chains.spec.js', 'procgen-project-naming.spec.js', 'causal-take-audio-render.spec.js', 'sound-content-workstation.spec.js', 'nested/future-workstation-flow.spec.js']) expect(WORKSTATION_TEST_MATCH.test(file), file).to.equal(true);
+    for (const file of ['C:\\repo\\e2e\\procgen-workstation-future.spec.js', '/repo/e2e/procgen-action-chains.spec.js', 'procgen-project-naming.spec.js', 'procgen-actor-effects.spec.js', 'causal-take-audio-render.spec.js', 'sound-content-workstation.spec.js', 'nested/future-workstation-flow.spec.js']) expect(WORKSTATION_TEST_MATCH.test(file), file).to.equal(true);
     for (const file of ['harness.game.spec.js', 'midi-ui.spec.js', 'helpers/workstationDock.js']) expect(WORKSTATION_TEST_MATCH.test(file), file).to.equal(false);
   });
   it('fails empty projects, missing capability categories and a new file without a PR smoke case', () => {
@@ -32,9 +32,10 @@ describe('required workstation browser collection', () => {
     report.suites[0].suites[0].specs.push(spec); expect(() => collectBrowserCases(report, 'workstation')).to.throw('Duplicate browser case');
   });
   it('routes workstation, future worker and storage schema edits to both procgen contracts and nested music integration', () => {
-    for (const file of ['js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/storage/FutureSchema.js', 'js/app/procgen/workers/FutureWorker.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/procgenBoot.js']) {
+    for (const file of ['js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/storage/FutureSchema.js', 'js/app/procgen/workers/FutureWorker.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/procgenBoot.js', 'js/app/resources/InstrumentMotionPolicy.js', 'test/instrument-motion-policy.test.js']) {
       const categories = inferCategoriesFromChangedFiles([file]), args = buildMochaArgsForCategories(categories);
       expect(categories, file).to.include('procgen'); expect(args, file).to.include.members(['test/procgen-*.test.js', 'test/midi/procgen-workstation-music.test.js']);
+      expect(args, file).to.include('test/instrument-motion-policy.test.js');
     }
     expect(buildMochaArgsForCategories(['midi2'])).to.include.members(['test/midi/ump-packet-codec.test.js', 'test/midi/ump-stream-decoder.test.js', 'test/midi/midi-protocol-lowering.test.js']);
   });

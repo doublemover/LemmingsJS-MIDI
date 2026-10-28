@@ -818,53 +818,47 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "3705b1a5040bca2dfdcf2a6739ee5f8d16842816",
-    "job": 122638690423,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40634649407/job/122638690423",
-    "passed": 6591,
-    "failed": 0,
-    "browserPassed": 102,
-    "browserFailed": 0,
+    "head": "1c818cc3a94ff645fd8cdbbea8718ce8c84e5371",
+    "job": 122714203298,
+    "run": 40658161711,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40658161711/job/122714203298",
+    "status": "success",
+    "nodePassed": 6603,
+    "nodeFailed": 0,
+    "browserPassed": 113,
     "browserGroups": {
       "desktop": 22,
-      "workstationSmoke": 80,
-      "fullWorkstationCollected": 107,
-      "workstationFiles": 21,
+      "workstationSmoke": 91,
+      "fullCollected": 118,
+      "files": 22,
       "smokeSkipped": 0,
-      "allRequiredCapabilitiesPassed": true
+      "allCapabilitiesPassed": true
     },
-    "allChecksGreen": true,
     "coverage": {
-      "lines": 90.24,
-      "statements": 90.24,
+      "lines": 90.23,
+      "statements": 90.23,
       "branches": 83.54,
-      "functions": 88.23
+      "functions": 88.24
     },
-    "minimumDesktopViewport": {
-      "width": 1920,
-      "height": 1080
+    "masterCapture": {
+      "state": "Ready",
+      "frames": 106112,
+      "captured": 106112,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null,
+      "peak": 0.023242831230163574,
+      "nonfinite": 0
+    },
+    "log": {
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci299-green.log",
+      "bytes": 1129476,
+      "sha256": "125bd8180e0289c8e23cad2f2ba30acad9bc9d53f9e5e19f6d0609a2a217a27d"
     },
     "excludesContinuations": [
-      298,
-      299,
       300
     ],
     "excludesLaterWork": true,
-    "masterCapture": {
-      "state": "Ready",
-      "frames": 53888,
-      "captured": 53888,
-      "stopReason": "user-stop",
-      "clockDiscontinuity": null,
-      "peak": 0.0227358341217041,
-      "nonfinite": 0,
-      "capturedFrames": 53888
-    },
-    "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci297-green.log",
-      "bytes": 1121837,
-      "sha256": "74e8eafd558a5f8a4d252949f24c113d874c9162b7842671d2aff1e599a39cc4"
-    }
+    "passed": 6603
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -17671,6 +17665,11 @@
         "bytes": 1125953,
         "sha256": "48984b88df1d1949e4b391742c680f6cdb20e10c50c4974f8ccb5747734adbdf"
       }
+    },
+    "issueStatus": {
+      "993": "closed completed after green1c818cc3",
+      "995": "open native browser zoom/art review; executed material matrix retained",
+      "1084": "closed completed after green1c818cc3 plus complete maintained-project receipt"
     }
   },
   "continuation299": {
@@ -17683,7 +17682,7 @@
     ],
     "development": [
       "Signal readiness from both independent Node processes before releasing immutable publication, retaining exactly one winner and one immutable conflict.",
-      "Use an explicit10-second process deadline and15-second instrumented test allowance rather than the generic2-second Mocha default. Bound output to32KiB per stream, abort/kill unfinished owners and await closed pipes before fixture filesystem cleanup.",
+      "Use an explicit10-second process deadline and15-second instrumented test allowance rather than the generic2-second Mocha default. Bound output to32K characters per stream, abort/kill unfinished owners and await closed pipes before fixture filesystem cleanup.",
       "Keep production evidence-store semantics and validated UI source unchanged."
     ],
     "validation": {
@@ -17708,8 +17707,217 @@
       "docs/roadmap.md": "3bde3a1387dc0b7ac82ed8b3921f7ecd6a21427303d2d71df00b242e5f4fba88"
     },
     "remoteCi": {
-      "status": "pending"
+      "head": "1c818cc3a94ff645fd8cdbbea8718ce8c84e5371",
+      "job": 122714203298,
+      "run": 40658161711,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40658161711/job/122714203298",
+      "status": "success",
+      "nodePassed": 6603,
+      "nodeFailed": 0,
+      "browserPassed": 113,
+      "browserGroups": {
+        "desktop": 22,
+        "workstationSmoke": 91,
+        "fullCollected": 118,
+        "files": 22,
+        "smokeSkipped": 0,
+        "allCapabilitiesPassed": true
+      },
+      "coverage": {
+        "lines": 90.23,
+        "statements": 90.23,
+        "branches": 83.54,
+        "functions": 88.24
+      },
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 106112,
+        "captured": 106112,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.023242831230163574,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci299-green.log",
+        "bytes": 1129476,
+        "sha256": "125bd8180e0289c8e23cad2f2ba30acad9bc9d53f9e5e19f6d0609a2a217a27d"
+      },
+      "excludesContinuations": [
+        300
+      ],
+      "excludesLaterWork": true,
+      "passed": 6603
     },
-    "excludesLocalContinuation": 300
+    "excludesLocalContinuation": 300,
+    "issueStatus": {
+      "993": "closed completed",
+      "1084": "closed completed"
+    }
+  },
+  "continuation300": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Share bounded instrument motion policy across DOM, effects and automatic views",
+    "sourceBase": "1c818cc3a94ff645fd8cdbbea8718ce8c84e5371",
+    "issues": [
+      1039,
+      1040,
+      1227,
+      1042
+    ],
+    "development": [
+      "One system/reduce/freeze policy owns live OS preference, pause/visibility, finite continuous transitions and a presentation timeline on the existing render clock; no new RAF or timer.",
+      "Lazy bounded budget-accounted transitions, independent fenced observer leases, exact endpoints, reversal/retarget continuity, backwards-clock containment and disposal release.",
+      "Renderer, actor effects, automatic cameras, CCTV, persisted View preference and DOM share the same owner. Explicit view gestures remain usable; live source expiry uses raw time and static causal evidence remains legible.",
+      "Physical simulation, canonical music/project history, output scheduling and actual sample age remain outside the presentation clock. Source replacement cannot publish from a retired policy.",
+      "Workstation collection includes actor-effect DPR boundaries and the three new motion journeys; source provenance already includes native test/support fixtures."
+    ],
+    "validation": {
+      "node": {
+        "passed": 225,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "Focused motion, actor effects, CCTV/director, camera, renderer/lifecycle, runtime clock, controller and browser/Node catalog regressions",
+        "coverage": {
+          "js/app/procgen/ProcgenActorEffectDisplay.js": {
+            "lines": 96.48,
+            "branches": 82.99,
+            "functions": 92.59
+          },
+          "js/app/procgen/ProcgenCctv.js": {
+            "lines": 96.44,
+            "branches": 73.68,
+            "functions": 100
+          },
+          "js/app/procgen/workstation/ProcgenWorkstationView.js": {
+            "lines": 2.67,
+            "branches": 100,
+            "functions": 0
+          },
+          "js/app/resources/InstrumentMotionPolicy.js": {
+            "lines": 100,
+            "branches": 87.85,
+            "functions": 95.83
+          }
+        }
+      },
+      "browserBroad": {
+        "project": "workstation",
+        "collected": 123,
+        "passed": 120,
+        "failed": 2,
+        "skipped": 1,
+        "files": 24,
+        "smokeCollected": 96,
+        "scope": "Complete project before two new fixture corrections; benchmark skip explicit. Both failures are retained in original report.",
+        "failures": [
+          "E2E debug wrapper intentionally omits getOperationalState; read studio.handlers.operationalState() instead.",
+          "Legacy seed controls intentionally hidden; use the actual World Replay seed action instead."
+        ]
+      },
+      "browserFinalAffected": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 11139.48,
+        "scope": "All new native motion journeys together, after fixture corrections and removal of two unused legacy-seed CSS rules."
+      },
+      "runtimeJavaScriptIdentityAcrossBrowserCohorts": {
+        "filesCompared": 988,
+        "changed": []
+      },
+      "masterCaptureBroad": {
+        "state": "Ready",
+        "frames": 55296,
+        "captured": 55296,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.0228269100189209,
+        "nonfinite": 0
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance: 10 components / 340 files",
+        "whitespace"
+      ],
+      "scopeLimits": [
+        "The composed cohorts are not a single final-source full-project pass.",
+        "No local full Node suite repeated; latest green remote CI is continuation299 and excludes this development.",
+        "Broad-run captures were cleaned by the targeted runner before archival; the embedded broad JSON measurements remain. Only the final targeted PNGs are archived here.",
+        "Focused Node View line coverage does not represent native browser execution coverage."
+      ]
+    },
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-captures\\procgen-workstation-motion-465a5-nce-without-resuming-output-workstation-motion-policy-forced-colors.png",
+        "bytes": 93186,
+        "sha256": "732907242f73615b456005b63e05f34b7db3461000a8735184b80b930769832a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-captures\\procgen-workstation-motion-58d18-ing-paused-music-or-physics-workstation-paused-shared-motion-policy.png",
+        "bytes": 124120,
+        "sha256": "a8380d5bd840babf807edd839bda96e1b48ae21ecf39b025102032d8999d3ecb"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-initial-selection.json",
+        "bytes": 257107,
+        "sha256": "999072d15344c2551f51e78eed69f031974f1a6d94b357014e717427f6f1a4e1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-initial-results.json",
+        "bytes": 429556,
+        "sha256": "43c857386857c889d8c1b0cb2c4d2cc2916a97324a8aed947eeb17934efc73b0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-final-motion-results.json",
+        "bytes": 42813,
+        "sha256": "271b50e2abdd2ea5fc95028560d92bee336a0fe50b56a1df625d9fb2a122ab40"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-node-pass.log",
+        "bytes": 626,
+        "sha256": "9189a04d37bc069eef9c893c10b0ac21bf94e878f3c6b768450e0de48adf1cf0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-workstation.log",
+        "bytes": 44262,
+        "sha256": "8240b79ad0a869a1a28c5e9861ef0588402d0b7c0a06628de1ed68edef7d023f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog300-motion-final.log",
+        "bytes": 873,
+        "sha256": "495bbc23dd47fbd535e0b639c7d87dafa29ae31f592cb1af9ea03c3b2d02091e"
+      }
+    ],
+    "scopeLimits": [
+      "Viewport-flash and maximum simultaneous effects qualification remain.",
+      "Independent held-tail/device, long-duration performance, native browser UI zoom and assistive-device matrices remain."
+    ],
+    "sourceHashes": {
+      "css/workstation-materials.css": "757e2e60c969a5c039f21518d4f9631cbe231bd98dae12cb3f035c5ace718d65",
+      "docs/roadmap.md": "aa9e77cc312afda6e15fbd63996d87d48200eed07bcfb60203415386b23a70b5",
+      "e2e/procgen-actor-effects.spec.js": "0cba4bb823b0d536d07752eb3a4192e4f4004442af2db74a65626eae8fa1c716",
+      "e2e/procgen-workstation-materials.spec.js": "5e7855a8de1ca78d61623314f539ba91c277eaa71c506cf0146598e2d73a18f6",
+      "e2e/procgen-workstation-motion.spec.js": "34d6457f0546636f4564c91aa8cd994d99678b5030d564b3af3b5a967d79ff51",
+      "js/app/procgen/ProcgenActorEffectDisplay.js": "989a25e3f0f2eb4aa743333bd8aba70edc4a5153a5adf666e4afe88ed448ba4e",
+      "js/app/procgen/ProcgenCameraController.js": "bd0308142ed5ca00cc453b26bf4cb469d6be9c5f5052533f69153dd57acf7e9a",
+      "js/app/procgen/ProcgenCctv.js": "cc2b69f5c0cd9cc5471c8ecb2665e59119dc4101a534468f3c190b2c4e9dbba9",
+      "js/app/procgen/ProcgenLaneRenderer.js": "e67969bc408632c71bddf9ac8293efa616f910e294ec1e413195d8f4da68d07c",
+      "js/app/procgen/ProcgenLaneRuntime.js": "8195ee758220bddfd8637aa3fa9c009a4155d5edc4ef0fe745a0b738d86ce332",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "2f838399905cf9eceecac0e7d7d9441cffa41dbf62ffdaf2ae431ef0997c33da",
+      "js/app/procgen/workstation/ProcgenWorkstationView.js": "23d68dbb34fd7d22c6a35247907cfd192ddd8eb3921da932dfe89b07bc704216",
+      "js/app/resources/InstrumentMotionPolicy.js": "6ee1afd624db36ce9b82d5eba8d0e852eafa2e97ca50988b2a5cf7ff90a21ff8",
+      "scripts/BrowserTestCatalog.js": "2820797b1f0ac041a7deebf72ccf561abe61c85e9b82eaac7cdbeaca2907789b",
+      "scripts/runTests.js": "12081d80fb80eb97c0a95d46546e7fb240c07b462db7e1005b2470e3946db16e",
+      "test/browser-workflow-catalog.test.js": "66c8840dd5512e0c1238327775b1e925750451f0df552b1747de1e29b7af083b",
+      "test/instrument-motion-policy.test.js": "bee3d09d1974c6ea39dd3db5e0a0a84fa19efaaf0143599fd0fa70500c4e89ec"
+    }
   }
 }

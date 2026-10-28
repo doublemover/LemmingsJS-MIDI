@@ -8,7 +8,7 @@ const ready = async page => {
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); window.__materialWorld = window.__PROCGEN_LANES__.world; window.__PROCGEN_LANES__.renderer.render(true); });
 };
 const specimen = async page => { await page.goto('/test/support/workstation-materials.html'); await page.waitForFunction(() => window.materialSpecimen); };
-const scope = page => page.evaluate(() => ({ world: window.__materialWorld === window.__PROCGEN_LANES__.world, tick: window.__PROCGEN_LANES__.world.tick,
+const scope = page => page.evaluate(() => ({ world: window.__materialWorld === window.__PROCGEN_LANES__.world, tick: window.__PROCGEN_LANES__.world.tickIndex,
   routes: window.__PROCGEN_STUDIO__.ports.getState().outputRoutes, sent: window.__WEBMIDI_STUB__.metrics().sent }));
 
 test('compact exact entry owns invalid drafts, composition, conflict and two-stage Escape', { tag: ['@boundary', '@typed-controls'] }, async ({ page }) => {

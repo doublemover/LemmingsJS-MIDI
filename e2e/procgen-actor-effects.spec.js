@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 for (const deviceScaleFactor of [1, 2]) test.describe(`actor effect presentation at DPR ${deviceScaleFactor}`, () => {
   test.use({ deviceScaleFactor });
-  test('qualified fixture samples affect action art while physical picking and event state stay unchanged', async ({ page, browser }, testInfo) => {
+  test('qualified fixture samples affect action art while physical picking and event state stay unchanged', { tag: '@boundary' }, async ({ page, browser }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto('/procgen.html?e2e=1&seed=42&lanes=8');
     await page.waitForFunction(() => window.__PROCGEN_LANES__?.renderer?.getDisplayState().state === 'ready' && window.__PROCGEN_STUDIO__?.getWorldInspector?.());

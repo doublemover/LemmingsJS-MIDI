@@ -36,14 +36,14 @@ class ProcgenCctv {
     this.generation = -1; this.actorScans = 0; this.director = new ProcgenCctvDirector(); this.onChange = null; this.lastSelectionKey = '';
   }
   getState() {
-    return { enabled: this.enabled, mode: this.director.mode, pins: [...this.director.pins], slots: this.slots.map(lane => ({ lane, rank: this.views.get(lane)?.rank,
+    return { enabled: this.enabled, mode: this.director.mode, motion: this.renderer.motionPolicy?.automaticCamera === false ? 'held' : 'automatic', pins: [...this.director.pins], slots: this.slots.map(lane => ({ lane, rank: this.views.get(lane)?.rank,
       reason: this.director.mode === 'director' ? this.director.reasons.get(lane) || 'Distance leader' : 'Distance leader', pinned: this.director.pins.has(lane) })) };
   }
   setEnabled(enabled) { if (this.enabled === !!enabled) return; this.enabled = !!enabled; this.lastStateKey = ''; this.renderKey = ''; this.renderer.render(); this.onChange?.(this.getState()); }
   setMode(mode) { if (this.director.setMode(mode)) { if (mode === 'leaders') this.slots = []; this.lastStateKey = ''; this.renderer.render(); } }
   setPins(lanes) { if (this.director.setPins(lanes, this.renderer.world.laneCount)) { this.lastStateKey = ''; this.renderer.render(); } }
   togglePin(lane) { const changed = this.director.togglePin(lane, this.renderer.world.laneCount); if (changed) { this.lastStateKey = ''; this.renderer.render(); } return changed; }
-  prepare() {
+  prepare(presentationMs) {
     const r = this.renderer, dpr = r.presentationDpr || Math.min(2, r.window.devicePixelRatio || 1);
     const width = r.canvas.width / dpr, height = r.canvas.height / dpr;
     const count = Math.min(CCTV_MAX_WINDOWS, r.world.laneCount);
@@ -52,14 +52,16 @@ class ProcgenCctv {
     }
     r.overviewBandHeight = this.enabled && r.overviewActive ? this.layout.bandHeight : 0;
     if (!this.enabled || !r.overviewActive) return;
-    const now = r.window.performance?.now?.() || 0, world = r.world;
+    const now = presentationMs ?? r.window.performance?.now?.() ?? 0, world = r.world;
+    const directorTime = r.motionPolicy?.presentationTime(now) ?? now;
     const key = [world.generation, world.tickIndex, world.terrainRevision, world.frontierRevision, width, height, world.sprites?.activePreference, this.director.revision].join(':');
     const resized = this.width !== width || this.height !== height || this.lastAppearance !== world.sprites?.activePreference || this.lastSprites !== world.sprites;
     const controlsChanged = this.lastDirectorRevision !== this.director.revision;
     if (!controlsChanged && (!resized && key === this.lastStateKey || !resized && now - this.lastUpdateMs < CCTV_INTERVAL_MS)) return;
     if (this.generation !== world.generation) { this.slots = []; this.releaseViews(); this.generation = world.generation; }
     const ranked = rankCctvLanes(world);
-    this.slots = this.director.mode === 'director' ? this.director.select(world, ranked, this.slots, now) : selectCctvLanes(world, this.slots);
+    if (r.motionPolicy?.automaticCamera !== false || controlsChanged || !this.slots.length) this.slots = this.director.mode === 'director' ? this.director.select(world, ranked, this.slots, directorTime) : selectCctvLanes(world, this.slots);
+    else this.slots = this.slots.filter(lane => lane >= 0 && lane < world.laneCount);
     const selected = new Set(this.slots), leaders = new Map(), actorsByLane = new Map();
     const visit = actor => {
       this.actorScans++;
@@ -114,8 +116,12 @@ class ProcgenCctv {
       r.resources.replaceImage(view.terrainContext, width, height, view.imageKey, ({ image, pixels, key }) => { view.image = image; view.pixels = pixels; view.imageKey = key; }); view.lastTerrainKey = '';
     }
     view.viewWidth = width; view.viewHeight = height;
-    view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));
-    view.originY = lane * (world.laneHeight || 96) + Math.max(0, Math.min((world.laneHeight || 96) - height, Math.floor((leader?.y ?? lane * (world.laneHeight || 96) + 60) - lane * (world.laneHeight || 96) - height * 0.6)));
+    const motionOriginKey = [this.director.revision, width, height, world.generation].join(':');
+    if (r.motionPolicy?.automaticCamera !== false || view.motionOriginKey !== motionOriginKey) {
+      view.originX = Math.max(0, Math.floor((leader?.x ?? world.stall.lanes[lane].maxX ?? 36) - width * 0.55));
+      view.originY = lane * (world.laneHeight || 96) + Math.max(0, Math.min((world.laneHeight || 96) - height, Math.floor((leader?.y ?? lane * (world.laneHeight || 96) + 60) - lane * (world.laneHeight || 96) - height * 0.6)));
+      view.motionOriginKey = motionOriginKey;
+    }
     const geometry = [lane, view.originX, view.originY, width, height, world.generation].join(':');
     const terrainKey = geometry + ':' + world.terrainRevision + ':' + world.frontierRevision;
     if (terrainKey !== view.lastTerrainKey) { view._terrainPixels(width, height, geometry !== view.lastGeometryKey); view.lastTerrainKey = terrainKey; view.lastGeometryKey = geometry; }
@@ -139,7 +145,7 @@ class ProcgenCctv {
       context.save?.(); context.beginPath?.(); context.rect?.(x * dpr, y * dpr, (tileWidth - 8) * dpr, tileHeight * dpr); context.clip?.();
       context.fillStyle = this.director.pins.has(lane) ? '#ffcc38' : '#aab7c5';
       context.fillText?.('LANE ' + (lane + 1) + '  #' + view.rank + '  ' + view.distance + (view.leaderId == null ? '  NO LIVE ACTOR' : '  ' + view.actionLabel), x * dpr, y * dpr);
-      const reason = this.director.mode === 'director' ? this.director.reasons.get(lane) : 'Distance leader';
+      const reason = (r.motionPolicy?.automaticCamera === false ? 'Motion held · ' : '') + (this.director.mode === 'director' ? this.director.reasons.get(lane) : 'Distance leader');
       context.font = 9 * dpr + 'px monospace'; context.fillText?.((this.director.pins.has(lane) ? '[PIN] ' : '') + reason, x * dpr, (y + 13) * dpr); context.font = 11 * dpr + 'px monospace';
       const imageWidth = Math.max(1, tileWidth - 8), imageHeight = Math.max(1, tileHeight - 30);
       // The integer raster may round or hit its cap. Fit it uniformly instead of stretching either axis.

@@ -1,4 +1,4 @@
-export const WORKSTATION_TEST_MATCH = /(?:^|[/\\])(?:[^/\\]*workstation[^/\\]*|procgen-(?:action-chains|physical-midi|causal-visual|lane-display|midi-parameter-evidence|operational-status|sound-world-isolation|import-admission|take-workbench|project-naming|project-paging)|physical-junction-controls|causal-take-audio-render)\.spec\.js$/;
+export const WORKSTATION_TEST_MATCH = /(?:^|[/\\])(?:[^/\\]*workstation[^/\\]*|procgen-(?:actor-effects|action-chains|physical-midi|causal-visual|lane-display|midi-parameter-evidence|operational-status|sound-world-isolation|import-admission|take-workbench|project-naming|project-paging)|physical-junction-controls|causal-take-audio-render)\.spec\.js$/;
 export const WORKSTATION_SMOKE_GREP = /@boundary/;
 export const REQUIRED_WORKSTATION_CATEGORIES = Object.freeze([
   'boot', 'physical-music', 'local-audio', 'transport', 'storage', 'import-refusal',

@@ -70,7 +70,7 @@ const createProcgenCameraController = (renderer, { deferBinding = false } = {}) 
     if (disposed) return;
     if (world._stepping && world._musicCompletedTick !== world.tickIndex) return;
     clamp();
-    if (!renderer.follow) { lastFollowMs = null; return; }
+    if (!renderer.follow || !immediate && renderer.motionPolicy?.automaticCamera === false) { lastFollowMs = null; return; }
     const projection = renderer.workstationLayout, selected = Number.isInteger(renderer.followLaneIndex) ? renderer.followLaneIndex : null;
     const firstLane = projection ? selected ?? projection.firstLane : 0, lastLane = projection ? selected == null ? firstLane + projection.count : selected + 1 : world.laneCount ?? Infinity;
     const visibleWindow = `${firstLane}:${lastLane}`;

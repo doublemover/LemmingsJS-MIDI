@@ -7733,9 +7733,14 @@ export-budget acknowledgments still prevent a false complete receipt.
 - All 27 evidence-store cases pass under c8, including independent publication,
   killed writers and both hard-link recovery boundaries. Production storage
   semantics and the validated desktop UI remain unchanged. Formatting and
-  whitespace pass; current-source remote full CI is pending.
+  whitespace pass. Published 1c818cc3 is fully green: 6,603 coverage Node cases
+  and 113 browser cases (22 desktop / 91 required workstation smoke), every
+  capability passing and no smoke skips. Coverage is 90.23/83.54/88.24 percent.
+  Master capture is Ready at 106,112 frames with finite nonzero PCM and no
+  discontinuity. Closed #993/#1084 on that checkpoint and the archived complete
+  workstation receipt. Local continuation300 is excluded from this result.
 
-### Continuation 300 — shared instrument motion policy (in development)
+### Continuation 300 — shared instrument motion policy
 
 - Frontload one bounded, observable presentation policy for system reduction,
   explicit reduced/frozen modes, pause/visibility and interruptible finite
@@ -7743,7 +7748,21 @@ export-budget acknowledgments still prevent a false complete receipt.
   the same owner, retaining static evidence and live data. Keep physical clocks,
   output, actual source age and canonical history outside this presentation
   timeline. Fence replacement/disposal and release listeners/transition leases.
-- The motion module and initial renderer/runtime/actor/CCTV wiring are local
-  uncommitted development. Complete View preferences, rendering lifetime and
-  exact-time/native regression coverage before grouped validation. Strengthen
-  compact shaping probes to use actual tick/checkpoint identity as well.
+- Persist the View preference and share its owner with actor effects, CCTV and
+  automatic cameras. Use the existing render clock, lazy bounded transition
+  storage and fenced subscriptions; reduced/frozen views retain static evidence
+  while source expiry uses actual time. Explicit camera gestures remain usable.
+- Grouped validation passes 225 focused Node cases under c8. The full workstation
+  project collects 123 cases: 120 pass, two new fixture assumptions fail and one
+  benchmark is explicitly skipped. Correct the fixtures to use canonical
+  operational status and the actual World Replay seed action; all three affected
+  motion journeys then pass together. Production JavaScript is identical across
+  these browser cohorts. Do not represent the combined evidence as a single
+  final-source full-project run. The broad run's actual master capture is Ready
+  at 55,296 frames with finite nonzero PCM and no discontinuity.
+- Motion-policy line coverage is 100 percent; actor effects and CCTV exceed
+  96 percent in the focused Node cohort. Native captures confirm the paused
+  eight-lane desktop and forced-color reduced presentation. Format, critical
+  types, undefined calls, provenance and whitespace checks pass. Viewport flash,
+  maximum simultaneous effects, held-tail/device qualification, actual browser
+  UI zoom and assistive-device checks remain separate acceptance work.

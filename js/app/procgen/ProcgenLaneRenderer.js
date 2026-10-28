@@ -8,6 +8,7 @@ import { ProcgenActorEffectDisplay } from './ProcgenActorEffectDisplay.js';
 import { ProcgenActorEffectPass } from './ProcgenActorEffectPass.js';
 import { ProcgenPresentationHost } from './ProcgenPresentationHost.js';
 import { peekProcgenTileRevision } from './ProcgenTerrainRetention.js';
+import { createInstrumentMotionPolicy } from '../resources/InstrumentMotionPolicy.js';
 
 const unprepared = state => state?.complete === false && state.active?.length === 0 && !state.plan;
 
@@ -20,8 +21,9 @@ class ProcgenLaneRenderer {
     this.resources = new ProcgenRenderResources(canvas.ownerDocument, renderBudget);
     try {
       this.objectTileCache = new ProcgenObjectPlacementCache(world, this.resources);
+      this.motionPolicy = createInstrumentMotionPolicy({ document: canvas.ownerDocument, window: windowRef, budget: this.resources, maxTransitions: 1280 });
       this.presentation = new ProcgenPresentationHost(this); this.selectedWorldEntityId = null; this.selectionRevision = 0;
-      this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set(); this.effectTelemetryActors = new Set();
+      this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources, motionPolicy: this.motionPolicy }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set(); this.effectTelemetryActors = new Set();
       this.presentedActorBounds = new Map(); this.presentationEntities = []; this._presentationActor = null;
       this.buffer = this.resources.canvas(); this.terrainBuffer = this.resources.canvas(); this.objectBuffer = this.resources.canvas();
       this.imageKey = {}; this.sceneryImageKey = {}; this.lifecycleState = 'recovering'; this.recoveryAttempts = 0; this.recoveryLimit = 3; this.nextRecoveryMs = 0; this.qualityDivisor = 1;
@@ -36,7 +38,12 @@ class ProcgenLaneRenderer {
       this.frameCacheHits = 0; this.lastFrameKey = null; this.lastAppearance = null; this.lastSprites = null; this.lastHud = null; this.lastHudSprites = null; this.lastDecorationLayer = null;
       this.camera = createProcgenCameraController(this, { deferBinding: deferPresentation });
       this.decorationLayer = assets.decorationPack ? new DecorationLayer(canvas.ownerDocument, assets.decorationPack, this.resources) : null;
-      this.reducedMotion = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
+      this.reducedMotion = this.motionPolicy;
+      this.releaseMotion = this.motionPolicy.subscribe(() => {
+        if (!this.presentationActive || this.lifecycleState !== 'ready' || this.window.document?.hidden === true) return;
+        this.camera?.resetPresentationClock(); this.lastFrameKey = null;
+        if (!this.world._stepping || this.world._musicCompletedTick === this.world.tickIndex) this.render(true);
+      });
       this.markerDash = [4, 4]; this.markerSolidDash = [];
       this.cctv = new ProcgenCctv(this);
       const lost = event => { event.preventDefault?.(); if (this.lifecycleState !== 'disposed') this._failDisplay(new Error('Canvas context lost'), true); };
@@ -47,7 +54,7 @@ class ProcgenLaneRenderer {
       if (!deferPresentation) this.activatePresentation();
       this._acquireContexts();
     } catch (error) {
-      this.actorEffects?.dispose(); this.actorEffectPass?.dispose(); this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); if (this.presentationActive) this.resources.release(canvas); this.resources.dispose();
+      this.actorEffects?.dispose(); this.releaseMotion?.(); this.motionPolicy?.dispose(); this.actorEffectPass?.dispose(); this.actorVisibility.dispose(); this.camera?.dispose(); this.cctv?.dispose(); this.decorationLayer?.dispose(); this.objectTileCache?.dispose(); if (this.presentationActive) this.resources.release(canvas); this.resources.dispose();
       throw error;
     }
   }
@@ -105,7 +112,7 @@ class ProcgenLaneRenderer {
     this._releasePresentation(); this.camera.resetPresentationClock?.();
     const ready = this._acquireContexts(); if (ready) this._displayState('ready'); return ready;
   }
-  getDisplayState() { return { state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
+  getDisplayState() { return { motion: this.motionPolicy?.getState() || null, state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
   resize(request = null) {
     if (!this.presentationActive) return false;
     if (this.lifecycleState === 'disposed') return false;
@@ -435,7 +442,7 @@ class ProcgenLaneRenderer {
     this.resources.resize(this.canvas, Math.max(1, Math.floor(this.surfaceWidth * mainLimit)), Math.max(1, Math.floor(this.surfaceHeight * mainLimit)), { observeContext: false });
     this.managedWidth = this.canvas.width; this.managedHeight = this.canvas.height;
     this.presentationDpr = Math.min(2, this.window.devicePixelRatio || 1) * mainLimit;
-    this.cctv.prepare(); this.camera.update(false, !force, start);
+    this.cctv.prepare(start); this.camera.update(false, !force, start);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1) * mainLimit, scale = this.scale * dpr;
     const layout = this.workstationLayout;
     this.rasterStep = (layout ? 1 : Math.max(1, 1 / scale)) * this.qualityDivisor;
@@ -525,7 +532,7 @@ class ProcgenLaneRenderer {
     this._displayState('disposed');
     for (const [event, listener] of this.contextListeners) this.canvas.removeEventListener?.(event, listener);
     this.contextListeners.length = 0; this.pendingContextListeners.length = 0;
-    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.releaseMotion?.(); this.motionPolicy.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null;

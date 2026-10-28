@@ -28,7 +28,7 @@ import { createMidiRouteDiagnostics } from './MidiRouteDiagnostics.js';
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
-const rendererLeases = new WeakMap(), mountedViews = new WeakMap();
+const rendererLeases = new WeakMap(), mountedViews = new WeakMap(), motionOwners = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
   mountedViews.get(document.getElementById('gameCanvas'))?.dispose();
@@ -155,8 +155,34 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     write: () => operationalView.render(handlers.operationalState?.() || null) }); operationalSurface.invalidate();
   let geometryPending = false, geometryRelease = null, geometryUnsubscribe = null;
   const owner = {};
+  let motionControl = null, motionStatus = null, motionPolicy = null, motionUnsubscribe = null;
+  if (!['system', 'reduce', 'freeze'].includes(state.motionMode)) state.motionMode = 'system';
+  const priorMotionOwner = motionOwners.get(document), motionLease = { owner, baseline: priorMotionOwner ? priorMotionOwner.baseline : document.body?.getAttribute?.('data-instrument-motion') };
+  motionOwners.set(document, motionLease);
+  function paintMotion() {
+    if (disposed || superseded) return;
+    const value = motionPolicy?.getState(), mode = value?.state || (state.motionMode === 'reduce' ? 'reduced' : state.motionMode === 'freeze' ? 'frozen' : 'full');
+    presentationRoot.dataset.instrumentMotion = mode;
+    if (motionOwners.get(document) === motionLease && document.body?.dataset) document.body.dataset.instrumentMotion = mode;
+    if (motionControl && motionControl.value !== state.motionMode) motionControl.value = state.motionMode;
+    const text = !value ? 'Motion starts with the world display.' : mode === 'reduced' ? 'Reduced motion · static effect marks; automatic views held.' : mode === 'frozen' ? 'Decorative motion held; data remains live.' : 'Motion follows instrument state.';
+    if (motionStatus && motionStatus.textContent !== text) motionStatus.textContent = text;
+    operationalSurface.invalidate();
+  }
+  function bindMotion(policy) {
+    if (motionPolicy === policy) return;
+    motionUnsubscribe?.(); motionUnsubscribe = null; motionPolicy = policy;
+    policy?.configure({ mode: state.motionMode });
+    motionUnsubscribe = policy?.subscribe(() => { if (motionPolicy === policy) paintMotion(); }) || null; paintMotion();
+  }
+  const releaseMotion = () => { motionUnsubscribe?.(); motionUnsubscribe = null; motionPolicy = null; };
+  const retireMotion = () => {
+    releaseMotion(); if (motionOwners.get(document) !== motionLease) return; motionOwners.delete(document);
+    if (motionLease.baseline == null) document.body?.removeAttribute?.('data-instrument-motion'); else document.body?.setAttribute?.('data-instrument-motion', motionLease.baseline);
+  };
   const detachRenderer = () => {
     const renderer = attachedRenderer; attachedRenderer = null;
+    releaseMotion();
     causalView.bind(null);
     if (!renderer) return;
     const lease = rendererLeases.get(renderer);
@@ -754,9 +780,10 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const previous = rendererLeases.get(renderer);
         previous?.relinquish();
         rendererLeases.set(renderer, { owner, baseLayout: previous ? previous.baseLayout : renderer.workstationLayout,
-          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { superseded = true; cancelPresentationGestures('view-replaced'); causalView.bind(null); attachedRenderer = null; } });
+          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { superseded = true; releaseMotion(); cancelPresentationGestures('view-replaced'); causalView.bind(null); attachedRenderer = null; } });
         attachedRenderer = renderer;
         causalView.bind(renderer);
+        bindMotion(renderer.motionPolicy || null);
       }
       renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
     }
@@ -1065,10 +1092,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const setupMusicalFields = [speedMode.parentElement, linked.parentElement, root.parentElement, scale.parentElement, clock.parentElement, clockHealth];
   for (const field of setupMusicalFields) setupMusic.append(field);
   const workspaceField = node('label', null, 'studio-menu-field'); workspaceField.append(node('span', 'Workspace mode'), dock.mode);
+  motionControl = select([['system', 'System preference'], ['reduce', 'Reduced motion'], ['freeze', 'Freeze decorative motion']], state.motionMode, mode => {
+    state.motionMode = mode; motionPolicy?.configure({ mode }); paintMotion(); handlers.preferences?.();
+  }, 'Instrument motion');
+  motionStatus = node('output', null, 'studio-motion-status'); motionStatus.setAttribute('aria-live', 'polite');
+  const motionField = node('label', null, 'studio-menu-field'); motionField.append(node('span', 'Motion'), motionControl, motionStatus); paintMotion();
   const worldControls = topbar.querySelector('.procgen-world-controls');
   const chrome = createWorkstationChrome({ document, window, topbar, footer, health: operationalView.element, viewMenu: fullscreenMenu,
     setupFields: [worldControls, byId('procgenAudioControls'), setupMusic, topbar.querySelector('.procgen-status-strip')],
-    viewFields: [layoutMode.parentElement, workspaceField, byId('procgenFollow')?.parentElement, byId('procgenHelp')], stageRestricted: [worldControls, setupMusic] });
+    viewFields: [layoutMode.parentElement, workspaceField, motionField, byId('procgenFollow')?.parentElement, byId('procgenHelp')], stageRestricted: [worldControls, setupMusic] });
   fullscreenSummary.textContent = 'View'; fullscreenSummary.setAttribute('aria-label', 'View actions');
 
   let stageFocus = null; const stageHidden = new Map();
@@ -1173,7 +1205,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     dispose() {
       midiRouteView?.dispose(); midiRouteView = null;
       if (stageActive) setStageMode(false);
-      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true;
+      if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; retireMotion();
       if (mountedViews.get(canvas) === api) mountedViews.delete(canvas);
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },

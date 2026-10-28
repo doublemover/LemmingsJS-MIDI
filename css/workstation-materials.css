@@ -19,6 +19,11 @@ body.procgen-workstation {
 .procgen-workstation [data-parameter-role=space] { --parameter-accent:var(--function-space); }
 .procgen-workstation [data-parameter-role=danger] { --parameter-accent:var(--function-danger); }
 .procgen-workstation .procgen-presentation-root { background:var(--material-rubber); }
+.procgen-workstation .studio-motion-status { display:block; color:var(--material-secondary); font-size:12px; line-height:1.4; }
+body.procgen-workstation[data-instrument-motion=reduced] *, body.procgen-workstation[data-instrument-motion=reduced] *::before,
+body.procgen-workstation[data-instrument-motion=reduced] *::after,
+body.procgen-workstation[data-instrument-motion=frozen] *, body.procgen-workstation[data-instrument-motion=frozen] *::before,
+body.procgen-workstation[data-instrument-motion=frozen] *::after { animation:none!important; transition:none!important; text-shadow:none!important; box-shadow:none!important; }
 .procgen-workstation #procgenTopbar, .procgen-workstation .studio-footer, .procgen-workstation .studio-inspector,
 .procgen-workstation .studio-lane-headers, .procgen-workstation .studio-command-menu-body,
 .procgen-workstation .parameter-entry-popover, .procgen-workstation dialog {

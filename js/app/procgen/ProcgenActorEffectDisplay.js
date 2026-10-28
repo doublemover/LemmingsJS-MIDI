@@ -12,8 +12,9 @@ const shape = (value, curve) => Math.sign(value) * (curve === 'square' ? value *
 // A renderer-side admission boundary for a future AudioDisplaySample adapter.
 // It does not derive actor measurements from a shared mix or create a clock.
 class ProcgenActorEffectDisplay {
-  constructor({ maxActors = MAX_ACTORS, budget = null, onChange = null } = {}) {
+  constructor({ maxActors = MAX_ACTORS, budget = null, onChange = null, motionPolicy = null } = {}) {
     this.maxActors = Math.max(1, Math.min(MAX_ACTORS, Math.trunc(maxActors) || MAX_ACTORS)); this.budget = budget; this.onChange = onChange;
+    this.motionPolicy = motionPolicy;
     this.mailboxes = new Map(); this.actorProfiles = new Map(); this.patchProfiles = new Map(); this.profile = normalizeActorEffectVisualProfile({ version: 1 });
     this.profileToken = {}; this.profileEstimatedBytes = 0;
     this.epoch = null; this.revision = 0; this.skipped = 0; this.rejected = 0; this.retired = false; this.aggregateSamples = 0; this.visible = true; this.subscription = null; this.inspectedActorId = null;
@@ -122,9 +123,22 @@ class ProcgenActorEffectDisplay {
   }
   evaluate(actorId, now, { reducedMotion = false, dense = false, patchId = null } = {}) {
     const box = this.mailboxes.get(actorId), profile = this.getProfile(actorId, patchId);
-    if (!box || !profile.enabled || !Number.isFinite(now)) return EMPTY;
+    if (!box || !Number.isFinite(now)) return EMPTY;
+    if (!profile.enabled) {
+      for (const key of box.motionKeys || []) this.motionPolicy?.release(key);
+      for (const channel of TARGET_CHANNELS) box.smooth[channel] = EMPTY[channel];
+      box.policyStatic = true; box.result = EMPTY; box.resultMs = null; return EMPTY;
+    }
+    reducedMotion ||= this.motionPolicy?.matches === true;
     const resultKey = `${now}:${this.revision}:${reducedMotion}:${dense}:${patchId}`;
     if (box.resultMs === resultKey) return box.result;
+    const still = reducedMotion || dense;
+    if (box.policyStatic && !reducedMotion) {
+      for (const channel of TARGET_CHANNELS) box.smooth[channel] = box.result[channel];
+      for (const key of box.motionKeys || []) this.motionPolicy?.release(key);
+      box.smoothMs = now;
+    }
+    box.policyStatic = reducedMotion;
     const target = { x: 0, y: 0, scale: 1, inner: 0, outer: 0 }, sources = [], trails = []; let state = 'unknown';
     for (const binding of profile.bindings) {
       const matches = [...box.sources.values()].filter(source => source.effectId === binding.effectId && source.quantity === binding.quantity);
@@ -150,27 +164,36 @@ class ProcgenActorEffectDisplay {
         if (fade && now >= tap.presentationMs - 50) trails.push(Object.freeze({ x: tap.sourcePosition.x, y: tap.sourcePosition.y, alpha: Math.max(0, Math.min(0.2, tap.value * fade * profile.intensity * 0.2)), tapId: tap.tapId }));
       }
     }
-    const delta = box.smoothMs == null ? Infinity : Math.max(0, Math.min(50, now - box.smoothMs)), alpha = profile.smoothingMs ? 1 - Math.exp(-delta / profile.smoothingMs) : 1;
-    for (const channel of TARGET_CHANNELS) box.smooth[channel] += (target[channel] - box.smooth[channel]) * alpha;
+    if (this.motionPolicy) {
+      box.motionKeys ||= TARGET_CHANNELS.map(() => ({}));
+      box.motionOptions ||= { from: 0, durationMs: 0, timestamp: 0 }; box.motionOptions.durationMs = profile.smoothingMs; box.motionOptions.timestamp = now;
+      for (let index = 0; index < TARGET_CHANNELS.length; index++) {
+        const channel = TARGET_CHANNELS[index], key = box.motionKeys[index];
+        box.motionOptions.from = box.smooth[channel]; box.smooth[channel] = this.motionPolicy.retarget(key, target[channel], box.motionOptions);
+      }
+    } else {
+      const delta = box.smoothMs == null ? Infinity : Math.max(0, Math.min(50, now - box.smoothMs)), alpha = profile.smoothingMs ? 1 - Math.exp(-delta / profile.smoothingMs) : 1;
+      for (const channel of TARGET_CHANNELS) box.smooth[channel] += (target[channel] - box.smooth[channel]) * alpha;
+    }
     box.smoothMs = Math.max(box.smoothMs ?? now, now); box.resultMs = resultKey;
-    const still = reducedMotion || dense;
+    const staticSignal = target.x !== 0 || target.y !== 0 || target.scale !== 1 || trails.length > 0;
     box.result = Object.freeze({ state, x: still ? 0 : Math.max(-3, Math.min(3, box.smooth.x)), y: still ? 0 : Math.max(-3, Math.min(3, box.smooth.y)), scale: still ? 1 : Math.max(0.96, Math.min(1.08, box.smooth.scale)),
-      inner: reducedMotion && target.inner ? 0.5 : Math.max(0, Math.min(1, box.smooth.inner)), outer: reducedMotion && target.outer ? 0.5 : Math.max(0, Math.min(1, box.smooth.outer)),
+      inner: still ? target.inner > 0 || staticSignal ? 0.5 : 0 : Math.max(0, Math.min(1, box.smooth.inner)), outer: still ? target.outer > 0 ? 0.5 : 0 : Math.max(0, Math.min(1, box.smooth.outer)),
       trails: Object.freeze(still ? [] : trails.slice(-MAX_TRAILS)), sources: Object.freeze(sources) }); return box.result;
   }
   frameKey(now, visibleActors = null) {
-    let active = false;
+    let active = false, fresh = 0;
     for (const [actorId, box] of this.mailboxes) {
       const profile = this.getProfile(actorId);
-      let last = -Infinity; for (const source of box.sources.values()) last = Math.max(last, source.presentationMs);
+      let last = -Infinity; for (const source of box.sources.values()) { last = Math.max(last, source.presentationMs); if (now >= source.presentationMs - 50 && now <= Math.min(source.validUntilMs, source.presentationMs + profile.holdMs + profile.decayMs)) fresh++; }
       if (now > last + profile.holdMs + profile.decayMs + 1000) { this.removeActor(actorId); continue; }
       if (profile.enabled && (!visibleActors || visibleActors.has(actorId)) && now <= last + profile.holdMs + profile.decayMs + 1000) active = true;
     }
-    return `${this.revision}:${active ? Math.floor(now / 16) : 'quiet'}`;
+    return `${this.revision}:${this.motionPolicy?.revision ?? 0}:${fresh}:${active ? Math.floor(now / (this.motionPolicy?.frameIntervalMs ?? 16)) : 'quiet'}`;
   }
-  removeActor(actorId, { profile = false } = {}) { const box = this.mailboxes.get(actorId); if (box) { this.budget?.release(box.reservation); this.mailboxes.delete(actorId); this.revision++; } if (profile && this.actorProfiles.delete(actorId)) this._shrinkProfiles(); }
+  removeActor(actorId, { profile = false } = {}) { const box = this.mailboxes.get(actorId); if (box) { for (const key of box.motionKeys || []) this.motionPolicy?.release(key); this.budget?.release(box.reservation); this.mailboxes.delete(actorId); this.revision++; } if (profile && this.actorProfiles.delete(actorId)) this._shrinkProfiles(); }
   clear({ profiles = true } = {}) { for (const actorId of this.mailboxes.keys()) this.removeActor(actorId); if (profiles) { this.actorProfiles.clear(); this._shrinkProfiles(); } }
   getDiagnostics() { return Object.freeze({ epoch: this.epoch, visible: this.visible, revision: this.revision, actors: this.mailboxes.size, maxActors: this.maxActors, sources: [...this.mailboxes.values()].reduce((count, box) => count + box.sources.size, 0), skipped: this.skipped, rejected: this.rejected, aggregateSamples: this.aggregateSamples, estimatedHistoryBytes: this.mailboxes.size * MAILBOX_BYTES, profileEstimatedBytes: this.profileEstimatedBytes, acousticReceipt: false }); }
-  dispose() { if (this.retired) return; this.subscription?.(); this.subscription = null; this.clear(); this.patchProfiles.clear(); this.budget?.release(this.profileToken); this.profileEstimatedBytes = 0; this.retired = true; this.budget = this.onChange = this.epoch = null; }
+  dispose() { if (this.retired) return; this.subscription?.(); this.subscription = null; this.clear(); this.patchProfiles.clear(); this.budget?.release(this.profileToken); this.profileEstimatedBytes = 0; this.retired = true; this.motionPolicy = this.budget = this.onChange = this.epoch = null; }
 }
 export { ProcgenActorEffectDisplay, EMPTY as EMPTY_ACTOR_EFFECT_VISUAL };

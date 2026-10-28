@@ -26,6 +26,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
       particleTable: new ParticleTable(assets.groundPieces[0].image.palette) });
     renderer = new ProcgenLaneRenderer({ canvas, world, assets, windowRef, renderBudget, deferPresentation: initiallySuspended });
     let paused = initiallySuspended, activated = !initiallySuspended;
+    renderer.motionPolicy.configure({ paused });
     let clockDriven = false, clockTime = null;
     let running = true, frame = null, lastTime = null, elapsed = 0, previewRouter = null, lastMetrics = null, lastMetricTick = 0, achievedTicksPerSecond = null;
     let displayedActiveCount = -1;
@@ -66,7 +67,7 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
     };
     const visibilityChanged = () => {
       lastTime = null; clockTime = null; elapsed = 0; renderer.camera.resetPresentationClock(); renderer.actorEffects?.setVisible(!windowRef.document.hidden);
-      if (windowRef.document.hidden) { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); }
+      if (windowRef.document.hidden) { paused = true; renderer.motionPolicy.configure({ paused: true }); previewRouter?.resetClock?.({ preserveGamePhrases: true }); }
     };
     const activate = () => {
       if (!running) return false; if (constructionVisibility) return true;
@@ -90,8 +91,8 @@ const createProcgenLaneRuntime = ({ canvas, resources, resourceLease = null, ren
           () => world.step(time), () => windowRef.performance?.now?.() ?? Date.now());
         clockTime = time; reportActiveCount();
       },
-      pause() { paused = true; previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
-      resume() { if (!activated || !running) return false; paused = false; lastTime = null; clockTime = null; return true; },
+      pause() { paused = true; renderer.motionPolicy.configure({ paused: true }); previewRouter?.resetClock?.({ preserveGamePhrases: true }); },
+      resume() { if (!activated || !running) return false; paused = false; renderer.motionPolicy.configure({ paused: false }); lastTime = null; clockTime = null; return true; },
       step(count = 1) {
         if (!activated || !running) throw new Error('A prepared world cannot step before publication.');
         const now = windowRef.performance?.now?.() ?? world.eventTimeMs;
