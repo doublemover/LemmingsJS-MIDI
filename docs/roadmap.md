@@ -7892,3 +7892,29 @@ export-budget acknowledgments still prevent a false complete receipt.
   Fresh inventory before this closure is 221 open issues. #1207 now distinguishes
   nineteen already passing unchanged artifact-owner cases from its remaining
   dedicated browser/native-picker and reverse-preparation integration matrix.
+
+### Continuation 305 — ordered relative controller algebra
+
+- Add a bounded raw-32-bit controller mutation owner using the existing UMP codec,
+  with endpoint/epoch/group/channel/type/bank/index identity, explicit provenance,
+  revision tickets, ordered saturation and retained fine-step precision. Derive
+  step/enum/significant-bit presentation without discarding the raw accumulator.
+- Connect explicit verified-baseline policy to the existing port lowering,
+  reservation and recording owners. Resolve relative requests to absolute packets;
+  retain original gestures only as diagnostics. Reject unknown/stale/out-of-order
+  state without writes. Retire uncertain partial writes and route/profile/program/
+  Panic baselines; do not synthesize CC96/97 or imply receiver confirmation.
+- Frontload arithmetic, precision, replay, namespace, late report, capacity and
+  real port lifecycle regressions before one grouped check: 85 cases pass, with
+  controller owner 100% line/function and 92.37% branch coverage. Critical types
+  and undefined calls pass. Add this owner to the explicit MIDI2 test category.
+  #1200 remains open
+  for native relative sending, verified PE discovery and end-to-end input/parameter
+  mapping; these depend on #978/#979/#981/#1022/#1091/#1201.
+- Both e4257a80 and c4faaed8 CI pass every required browser case (22 desktop plus
+  102/103 workstation smoke respectively), then fail before executing Node tests:
+  recursive Mocha discovery imports the browser-only zoom extension background
+  script. Central Node discovery now ignores test/support while explicit test
+  imports remain supported. A real Mocha subprocess regression passes, and one
+  whole-suite dry collection registers 6,673 tests with zero browser helper
+  discoveries. These are collection counts, not executed-suite pass counts.

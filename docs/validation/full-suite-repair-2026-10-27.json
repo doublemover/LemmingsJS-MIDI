@@ -17748,7 +17748,8 @@
         301,
         302,
         303,
-        304
+        304,
+        305
       ],
       "excludesLaterWork": true,
       "passed": 6603
@@ -18975,6 +18976,35 @@
       "test/procgen-lane-navigator.test.js": "8211faeb8fbff444bdc4cb0416c6ae0185e1a090b0ee3edcdd98aa9a06035cfe",
       "test/procgen-lane-organization.test.js": "fdcc2ee023ea5f6dc55a0439f3f702250f7597d00868ba560a2aa0fc70bcd070",
       "test/procgen-lane-renderer.test.js": "cfbf6283b9d111b87674beb2d30afd78c35f90b39fe86c39e0ec9ff3132acde8"
+    },
+    "remoteCi": {
+      "head": "e4257a80ee76e969a6d9407eb74010b48455a23e",
+      "status": "failure",
+      "run": 40689163911,
+      "job": 122819233464,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40689163911/job/122819233464",
+      "browserPassed": 124,
+      "browserFailed": 0,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 102
+      },
+      "nodeTestBodiesExecuted": false,
+      "failure": "Recursive Mocha discovery imports test/support/workstation-zoom/background.js as a Node test and throws on missing chrome.runtime before executing test bodies. Subsequent low coverage is not an executed-suite coverage result.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 109568,
+        "captured": 109568,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.02335798740386963,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci303-failed.log",
+        "bytes": 289127,
+        "sha256": "662592058eaddb190e14d3bcdde32a9b9f9133ed2249ee74ef88c2cc8fc46a5c"
+      }
     }
   },
   "continuation304": {
@@ -19069,11 +19099,34 @@
         "whitespace"
       ],
       "remoteCi": {
-        "status": "pending",
         "head": "e4257a80ee76e969a6d9407eb74010b48455a23e",
+        "status": "failure",
+        "run": 40689163911,
         "job": 122819233464,
         "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40689163911/job/122819233464",
-        "scope": "Published303 only; policy/dependency and desktop boundaries passed, workstation smoke in progress at last observed steps. Excludes local304 reveal changes."
+        "browserPassed": 124,
+        "browserFailed": 0,
+        "browserGroups": {
+          "desktopPassed": 22,
+          "workstationSmokePassed": 102
+        },
+        "nodeTestBodiesExecuted": false,
+        "failure": "Recursive Mocha discovery imports test/support/workstation-zoom/background.js as a Node test and throws on missing chrome.runtime before executing test bodies. Subsequent low coverage is not an executed-suite coverage result.",
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 109568,
+          "captured": 109568,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02335798740386963,
+          "nonfinite": 0
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci303-failed.log",
+          "bytes": 289127,
+          "sha256": "662592058eaddb190e14d3bcdde32a9b9f9133ed2249ee74ef88c2cc8fc46a5c"
+        },
+        "scope": "Published303 only; excludes304 pinned actor reveal."
       }
     },
     "captures": [
@@ -19159,8 +19212,10 @@
     ],
     "issueStatus": {
       "1033": {
-        "state": "completed-software-acceptance",
-        "evidence": "Core303, full workstation128/14capabilities, focused125 assertions, final5native navigation journeys and separate real-wall-clock10minute1024-lane soak. Physical actor reveal now resolves stable lane identity through grouping/reorder/filter."
+        "state": "closed",
+        "evidence": "Core303, full workstation128/14capabilities, focused125 assertions, final5native navigation journeys and separate real-wall-clock10minute1024-lane soak. Physical actor reveal now resolves stable lane identity through grouping/reorder/filter.",
+        "reason": "completed",
+        "publishedHead": "c4faaed8e47658c1356f644622690aaf261f52cb"
       },
       "1207": {
         "state": "open",
@@ -19178,6 +19233,189 @@
       "e2e/procgen-workstation-navigation.spec.js": "10e3a85b3a7d1efdcdf9fe1373bed630eaebb5cbe123f1d4871183b2f4654d4f",
       "js/app/procgen/workstation/ProcgenWorkstation.js": "f8e2892e80d3e8c0369579707d1662049de5e081addab81a3acfdaef4f374d14",
       "js/app/procgen/workstation/ProcgenWorkstationView.js": "ce1e89318fc31a8fb16a84356eeacd85a9d9c65c1d84aa7b9af8acd6950ef5d2"
+    },
+    "remoteCi": {
+      "head": "c4faaed8e47658c1356f644622690aaf261f52cb",
+      "status": "failure",
+      "run": 40691854691,
+      "job": 122828389534,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40691854691/job/122828389534",
+      "browserPassed": 125,
+      "browserFailed": 0,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 103
+      },
+      "nodeTestBodiesExecuted": false,
+      "failure": "Recursive Mocha discovery imports test/support/workstation-zoom/background.js as a Node test and throws on missing chrome.runtime before executing test bodies. Subsequent low coverage is not an executed-suite coverage result.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 106241,
+        "captured": 106241,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.02335798740386963,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci304-failed.log",
+        "bytes": 285707,
+        "sha256": "6254c8760448d8515b4958ead616daae406cb475829f13a98a25b0be2dfecae5"
+      }
+    }
+  },
+  "continuation305": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Ordered verified relative controller algebra and Node/browser fixture discovery boundary",
+    "sourceBase": "c4faaed8e47658c1356f644622690aaf261f52cb",
+    "issues": [
+      1200,
+      1063,
+      980,
+      1022
+    ],
+    "development": [
+      "Bounded raw32 controller mutation state uses endpoint/connection epoch/group/one-based source channel/registered-or-assignable kind/bank/index identity. Explicit authoritative provenance, expected baseline revisions and opaque one-shot mutation tickets reject delayed reports or newer mutations. Unknown baselines never start from zero or last submitted output.",
+      "Preserve signed32 deltas, per-operation saturation and the full raw accumulator through declared significant-bit/step/enum projection. Absolute interleaves reset the same accumulator; old sequence/timestamp mutations refuse. Capacity pressure refuses without evicting an authoritative baseline; no queue, timer or gesture history is added.",
+      "Explicit resolve-verified-baseline policy integrates with existing port route grants, group/channel lowering, reservations and recording. Resolved absolute packets are recorded separately from raw relative diagnostic gestures. Stateless lowering continues to refuse relative packets; no CC96/97 equivalence or receiver acceptance is claimed.",
+      "Route/connection/policy changes, Panic, raw program/compound-controller writes and real scheduler program submission invalidate affected baselines. Partial or uncertain submission retires state; admission refusal before any write leaves it intact. Public binding requires the exact current route connection epoch.",
+      "Central Mocha configuration excludes browser support fixture discovery while normal explicit helper imports continue to work. Real Mocha subprocess regression prevents the browser extension background script from loading as a Node test. Add controller mutation cases to the existing MIDI2 category."
+    ],
+    "validation": {
+      "nodeAccepted": {
+        "passed": 114,
+        "failed": 0,
+        "durationMs": 643,
+        "coverageInstrumentation": true,
+        "coverageThresholdPolicy": "Focused report only, explicitly disables whole-suite thresholds; full CI retains unchanged global thresholds.",
+        "controllerOwnerCoverage": {
+          "lines": 100,
+          "branches": 92.37,
+          "functions": 100
+        },
+        "scope": "Controller algebra, explicit real port/vendored WebMidi submission, codec/stream/lowering, Procgen MIDI outputs/defaults, input safety, actual Mocha discovery subprocess and test-runner selection contracts."
+      },
+      "nodeEarlier": [
+        {
+          "passed": 34,
+          "failed": 12,
+          "reason": "New boundary initially used zero-based codec channel as one-based public address; fixed conversion."
+        },
+        {
+          "passed": 85,
+          "failed": 0,
+          "scope": "Before direct scheduler-program observer follow-through."
+        },
+        {
+          "passed": 113,
+          "failed": 1,
+          "reason": "Direct scheduler test used raw-only output fixture without channel methods, refusing before program submission. Replaced fixture with actual vendored WebMidi Output wrapper."
+        }
+      ],
+      "wholeNodeCollection": {
+        "registered": 6673,
+        "suites": 886,
+        "testBodiesExecuted": 0,
+        "browserSupportFixturesDiscovered": 0,
+        "mode": "dry-run only; do not interpret Mocha dry-run passes as executed assertions"
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance",
+        "whitespace"
+      ],
+      "scopeLimits": [
+        "No full local Node suite repeated; new immutable CI must execute full coverage. Prior303/304 required browser gates all passed, then Node bootstrap failed before test execution.",
+        "Native UMP sending, PE descriptor discovery, isolated MIDI-CI reports and actual expressive ingress-to-parameter mappings remain separate missing capabilities. This closes neither1200 nor native/device qualification.",
+        "Port regression uses actual vendored WebMidi software adapter with controlled output bytes; no receiver/acoustic/physical-device evidence is inferred."
+      ]
+    },
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-305-accepted-coverage\\coverage-summary.json",
+        "bytes": 53268,
+        "sha256": "7217816f60145aad32a0873965b57d6bf57e444994fbba4238e348a07200d109"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-collection-summary.json",
+        "bytes": 341,
+        "sha256": "750e7913772bafd7697a72a57473f5ef527b9f02ddc0a2dc4c56590e8b661cbd"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-collection.json",
+        "bytes": 5637976,
+        "sha256": "1d3d8efa8d3ad9e1fe2fa1102b97e07ef426148b17fd3d364bb7ab6fd210d522"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-initial.log",
+        "bytes": 11168,
+        "sha256": "b34e866511bae5148858ec0f4abe94ed2fd1d6aeca0c98528a50b29dc694e577"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-final.log",
+        "bytes": 7974,
+        "sha256": "a4d8bbccba4c9788a5afd0f5be28974f1437d5d0266284b79e7a7c907d7b3c09"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-published.log",
+        "bytes": 10948,
+        "sha256": "6d6ccaa48a1915d177190e76622eca4cb73ca1252673ec9447e14d8e5f436663"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-node-accepted.log",
+        "bytes": 9971,
+        "sha256": "ad291afe2455a1f8f9e58c366a3c63c0354c9f5e0fc6da0975af04d77f42cf22"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-types-published.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-undefined-published.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-format-final-accepted.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog305-provenance.log",
+        "bytes": 142,
+        "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+      }
+    ],
+    "issueStatus": {
+      "1200": {
+        "state": "open",
+        "implemented": "Ordered verified baseline/saturation/precision/replay algebra plus explicit stateful MIDI1 lowering and epoch/partial-write invalidation.",
+        "remaining": "Native relative sending with unknown absolute state, verified PE capability ownership and end-to-end expressive ingress/parameter automation integration."
+      }
+    },
+    "inventory": {
+      "priorFreshOpen": 221,
+      "closedSinceInventory": [
+        1033
+      ],
+      "impliedOpen": 220,
+      "scope": "Arithmetic from prior fresh inventory, not a newly fetched count."
+    },
+    "sourceHashes": {
+      ".mocharc.json": "4408e7389fdb9ad0e9eb12e2fbc02388b440ad57e358c2548ee6b9d64150fbf6",
+      "docs/midi-controller-mutations.md": "df19bc456a74fcf6a61baf45f5531422fcdc9d149635bfcb51839c89024988b9",
+      "docs/roadmap.md": "259522013d344cc9f9f3c49a6d90ee8e6d4a981890f7b350a10df831f24d53c6",
+      "js/app/procgen/workstation/ProcgenMidiPorts.js": "996710a20f5c56972fea6efaafe8e41fac1df6fe271bad4e75de87464ac0c934",
+      "js/midi/protocol/MidiControllerMutations.js": "a3d62384d2713d8c3d97d19bca73592723aa9dda890c32a58e88e097fb793267",
+      "scripts/runTests.js": "9d22b4cef387b913bc18e0ead860de220be61274f7ef63077d80670b8601db94",
+      "test/midi/midi-controller-mutations.test.js": "5bdd82e4ef5150bd52c0539ad63b259f238b22263a2e8a6de5bbf8f8d7cea290",
+      "test/mocha-fixture-discovery.test.js": "7dc88f9a166d0fbb527c48f1a459ec48706e810bf761db5b0600b8a2d067f1ea"
     }
   }
 }

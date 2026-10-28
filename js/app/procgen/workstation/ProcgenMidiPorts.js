@@ -1,5 +1,6 @@
 import { MidiScheduler } from '../../../midi/MidiScheduler.js';
 import { lowerMidi2ChannelVoice } from '../../../midi/protocol/MidiProtocolLowering.js';
+import { createMidiControllerMutations } from '../../../midi/protocol/MidiControllerMutations.js';
 import { createMpeZonePlan } from '../../../midi/scheduler/MpeZonePlan.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
 
@@ -7,6 +8,8 @@ const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)))
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
 const ACTIVE_SENSING_TIMEOUT_MS = 300;
 const HOST_OBSERVATION_GAP_MS = 600;
+const BASELINE_RESET_CONTROLLERS = new Set([0, 6, 32, 38, 96, 97, 98, 99, 100, 101, 121]);
+const resetsControllerBaseline = data => (data[0] & 0xf0) === 0xc0 || (data[0] & 0xf0) === 0xb0 && BASELINE_RESET_CONTROLLERS.has(data[1]);
 const isReleasePacket = data => (data[0] & 0xf0) === 0x80 || ((data[0] & 0xf0) === 0x90 && data[2] === 0) ||
   ((data[0] & 0xf0) === 0xb0 && [64, 120, 123].includes(data[1]) && !data[2]);
 const snapshotIntent = intent => Object.freeze({ ...intent,
@@ -69,6 +72,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     try { return callback(value); } catch (error) { lastCallbackError = Object.freeze({ source, message: error?.message || String(error), timestamp: now() }); }
   };
   let protocolLowering = null, lastLowering = null, rawDispatchDepth = 0;
+  const controllerMutations = createMidiControllerMutations();
   const inputLiveness = { mode: 'unobserved', lastTrafficTime: null, deadline: null, evidence: 'no-active-sensing-observed', reason: null };
   const thruNotes = new Map();
   let retainedEvents = 0, eventSequence = 0, firstLostSequence = null, incompleteReason = null, intentRenderSequence = 0;
@@ -94,7 +98,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     scheduler.setOutput(selected || null);
     for (const [id, route] of activeOutputs) {
       const state = scheduler.getOutputRouteState?.(id);
-      if (state?.connectionEpoch != null) { route.connectionEpoch = state.connectionEpoch; route.routeRevision = state.routeRevision; }
+      if (state?.connectionEpoch != null) { if (route.connectionEpoch !== state.connectionEpoch) controllerMutations.invalidateEndpoint(id); route.connectionEpoch = state.connectionEpoch; route.routeRevision = state.routeRevision; }
     }
   };
   const activateOutput = (port, intent = {}) => {
@@ -125,6 +129,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     const route = activeOutputs.get(String(id));
     if (!route) return;
     flushRawPort(route.port, reason);
+    controllerMutations.invalidateEndpoint(String(id));
     activeOutputs.delete(String(id)); retiredPorts.add(route.port); routeRevision++;
     retiredOutputIds.add(String(id));
     for (const [key, voice] of thruNotes) if (voice.port === route.port) thruNotes.delete(key);
@@ -278,6 +283,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (disposed || !event.accepted || event.backend !== 'midi-output-api' || !event.midiBytes) return;
     const { output, channel, scheduledMs, submittedMs, midiBytes: data } = event;
     const family = data[0] & 0xf0;
+    if (resetsControllerBaseline(data)) controllerMutations.invalidateEndpoint(String(event.outputId ?? output?.id));
     if ([0x80, 0x90].includes(family)) {
       const addressedChannel = (data[0] & 15) + 1;
       forgetThruGate(output, addressedChannel, data[1]);
@@ -354,6 +360,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     usedChannels.delete(port);
     sustainedChannels.delete(port);
     lastCleanup = Object.freeze(cleanup);
+    controllerMutations.invalidateEndpoint(String(port?.id));
     return lastCleanup;
   }
   const raw = (data, timestamp = now(), meta = {}, capture = true) => {
@@ -370,6 +377,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     let ownedReservationId = null;
     try {
       const family = data[0] & 0xf0;
+      if (!meta.sourceUmp && resetsControllerBaseline(data)) controllerMutations.invalidateEndpoint(String(port.id));
       const release = isReleasePacket(data), phase = meta.reservationPhase ?? (release ? 'off' : 'on');
       if (meta.source === 'thru' && [0x80, 0x90].includes(family) && release &&
           ![...thruNotes.values()].some(entry => entry.port === port && entry.channel === channel && entry.note === data[1] && entry.inputEpoch === inputEpoch)) return false;
@@ -432,6 +440,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       if (result.sharedPedalHeld) cleanup.sharedPedalHeld = true;
     }
     lastCleanup = Object.freeze(cleanup);
+    controllerMutations.clear();
     for (const route of activeOutputs.values()) route.loweredVoices.clear();
     usedChannels.clear();
   }
@@ -608,7 +617,17 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     const eventTime = event.timestamp ?? event.timeMs ?? now(), observedTime = now();
     if (existing) for (const [key, voice] of existing.loweredVoices) if (voice.endAt != null && voice.endAt <= observedTime) existing.loweredVoices.delete(key);
     const policy = existing?.intent.protocolLowering || protocolLowering;
-    const words = event.umpWords, first = words?.[0] || 0;
+    let words = event.umpWords; const first = words?.[0] || 0, opcode = first >>> 20 & 15;
+    let mutation = null;
+    if (existing && [2, 3, 4, 5].includes(opcode) && policy?.relativeControllers === 'resolve-verified-baseline') {
+      mutation = controllerMutations.prepare(words, { endpointId: id, connectionEpoch: existing.connectionEpoch, sequence: event.controllerSequence,
+        timestamp: eventTime, baselineRevision: event.baselineRevision });
+      if (mutation.ok) words = mutation.absoluteWords;
+      else if ([4, 5].includes(opcode) || mutation.reason !== 'unknown-controller-baseline') {
+        lastLowering = Object.freeze({ outputId: id, mode: 'stateful-controller-resolution', ok: false, reason: mutation.reason, losses: Object.freeze([]),
+          sourceProtocol: 'midi2', destinationProtocol: 'midi1', submittedMessages: 0, receiverValue: null }); report(); return false;
+      } else mutation = null;
+    }
     const sourceKey = `${(first >>> 24) & 15}:${((first >>> 16) & 15) + 1}:${(first >>> 8) & 255}`;
     const ownedAddress = existing?.loweredVoices.get(sourceKey);
     let plan = lowerMidi2ChannelVoice(words, policy || {}, { ownedAddress, soundingPitch: event.soundingPitch });
@@ -622,7 +641,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (victimKey != null) plan = lowerMidi2ChannelVoice(words, policy, { ownedAddress, soundingPitch: event.soundingPitch, conflictingVoice: true });
     lastLowering = Object.freeze({ outputId: id, mode: plan.mode, ok: plan.ok, reason: plan.reason, losses: plan.losses,
       sourceProtocol: 'midi2', destinationProtocol: 'midi1', sourceGroup: plan.address?.group ?? null,
-      destinationChannel: plan.address?.channel ?? null, submittedMessages: 0 });
+      destinationChannel: plan.address?.channel ?? null, submittedMessages: 0,
+      ...(mutation ? { controllerResolution: Object.freeze({ operation: 'set', sourceOperation: mutation.sourceOperation, rawValue: mutation.rawValue,
+        parameterValue: mutation.parameterValue, rawRemainder: mutation.rawRemainder, baselineRevision: mutation.baselineRevision, receiverValue: null,
+        policy: 'verified-stateful-absolute-lowering;not-a-standards-equivalent-relative-translation' }) } : {}) });
     if (!plan.ok) { report(); return false; }
     const port = outputForIntent(event.outputId), route = activeOutputs.get(id), timestamp = event.timestamp ?? event.timeMs ?? now();
     if (!port || !route) { lastLowering = Object.freeze({ ...lastLowering, ok: false, reason: 'route-unavailable' }); report(); return false; }
@@ -634,21 +656,28 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (reservation && !reservation.ok) {
       lastLowering = Object.freeze({ ...lastLowering, ok: false, reason: reservation.reason }); report(); return false;
     }
-    let submittedMessages = 0;
+    let submittedMessages = 0, attemptedMessages = 0, mutationCommitted = false, completionFailure = null;
     try {
       for (const data of plan.messages) {
+        attemptedMessages++;
         if (!raw(data, timestamp, { ...event, umpWords: plan.sourceWords, outputId: port.id, sourceProtocol: 'midi2', sourceUmp: plan.sourceWords,
-          sourceGroup: plan.address.group, loweringLosses: plan.losses, reservationId: reservation?.reservationId }, false)) return false;
+          sourceGroup: plan.address.group, loweringLosses: plan.losses, ...(mutation ? { rawRelativeGesture: mutation.rawGestureWords, controllerOperation: 'set', controllerRawValue: mutation.rawValue } : {}), reservationId: reservation?.reservationId }, false)) return false;
         submittedMessages++;
         if (victimKey != null && submittedMessages === 1) route.loweredVoices.delete(victimKey);
+      }
+      if (mutation) {
+        const receipt = activeOutputs.get(id) === route && route.connectionEpoch === mutation.address.connectionEpoch && controllerMutations.commit(mutation);
+        if (!receipt?.ok) { completionFailure = 'controller-baseline-changed-during-submission'; return false; }
+        mutationCommitted = true;
       }
       if (plan.action === 'begin') route.loweredVoices.set(sourceKey, { note: plan.note, channel: plan.address.channel, soundingPitch: plan.soundingPitch, startAt: timestamp, endAt: null });
       else if (plan.action === 'end') { const voice = route.loweredVoices.get(sourceKey); if (voice) voice.endAt = timestamp; if (timestamp <= now()) route.loweredVoices.delete(sourceKey); }
       return true;
     } finally {
+      if (mutation && !mutationCommitted && attemptedMessages) controllerMutations.invalidate(mutation.address);
       scheduler._releaseReservation?.(reservation?.reservationId, true);
-      lastLowering = Object.freeze({ ...lastLowering, submittedMessages, ok: submittedMessages === plan.messages.length,
-        reason: submittedMessages === plan.messages.length ? null : 'partial-submission' }); report();
+      lastLowering = Object.freeze({ ...lastLowering, submittedMessages, ok: submittedMessages === plan.messages.length && !completionFailure,
+        reason: completionFailure || (submittedMessages === plan.messages.length ? null : 'partial-submission') }); report();
     }
   }
   function recordOutput(spec, meta = {}) {
@@ -678,6 +707,19 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   }
   return {
     getState, getOperationalState, receiveMidi, flush, panic, recordOutput,
+    bindControllerBaseline(options) {
+      const id = String(options?.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(id);
+      if (disposed || !route || options?.connectionEpoch !== route.connectionEpoch) return Object.freeze({ ok: false, reason: 'route-epoch-mismatch' });
+      const policy = route.intent.protocolLowering || protocolLowering;
+      if (policy?.relativeControllers !== 'resolve-verified-baseline') return Object.freeze({ ok: false, reason: 'stateful-controller-policy-required' });
+      return controllerMutations.bind({ ...options, address: { ...options.address, endpointId: id, connectionEpoch: route.connectionEpoch } });
+    },
+    getControllerBaseline(options) {
+      const id = String(options?.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(id);
+      if (disposed || !route || options?.connectionEpoch !== route.connectionEpoch) return Object.freeze({ known: false, rawValue: null, receiverValue: null, revision: null });
+      return controllerMutations.read({ ...options.address, endpointId: id, connectionEpoch: route.connectionEpoch });
+    },
+    invalidateControllerBaselines(outputId) { return controllerMutations.invalidateEndpoint(String(outputId ?? noteOutput?.id ?? '')); },
     setInput: replaceInput,
     setNoteOutput(port, { rearm = false } = {}) {
       if (disposed || !rearm && noteOutput === port && (!port || resolveOutput() === port)) return;
@@ -761,7 +803,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       }
       if (settings.schedulerConfig) {
         if (scheduler.setConfig?.(settings.schedulerConfig) === false) lastConfigurationFailure = scheduler.lastConfigurationFailure || { reason: 'scheduler-configuration-rejected', outputIds: [], retained: true };
-        else { lastConfigurationFailure = null; syncSchedulerOutputs(); }
+        else { lastConfigurationFailure = null; controllerMutations.clear(); syncSchedulerOutputs(); }
       }
       report(); return getState();
     },
@@ -886,6 +928,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       panic(); removeInput?.(); removeInput = null; input = null; noteOutput = null; clockOutput = null;
       noteOutputs.clear();
       activeOutputs.clear(); routeIntents.clear(); rawVoices.clear();
+      controllerMutations.dispose();
       removeSubmissionObserver?.();
       if (!suppliedScheduler) scheduler.dispose(); disposed = true;
     }
