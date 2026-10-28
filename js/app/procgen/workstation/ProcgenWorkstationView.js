@@ -788,7 +788,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (curves.length < 16) nextFields.append(button('Add CC curve', () => { let index = 1; while (curves.some(curve => curve.id === `cc-${index}`)) index++; changeLane({ ccAutomation: [...curves, { id: `cc-${index}`, controller: 74, length: 4, points: [{ beat: 0, value: 32 }, { beat: 2, value: 100 }, { beat: 4, value: 32 }] }] }); }));
       const automation = byId('procgenSpanControls') || byId('procgenSpanFields');
       if (automation) nextFields.append(button('Open automation editor', () => { byId('procgenTab')?.click(); automation.scrollIntoView?.({ block: 'center' }); }));
-      nextFields.append(button('Record MIDI CC', () => { handlers.record?.(true); handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
+      nextFields.append(button('Record MIDI CC', () => { if (handlers.record?.(true)) handlers.status?.('MIDI recording armed. CC events are captured with the performance.'); }));
     } else if (state.tab === 'Selection') {
       nextFields.append(node('p', 'World selection uses the accepted physical presentation. No accepted inspection source is attached to this view.', 'studio-hint'));
     }

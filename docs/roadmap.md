@@ -8132,3 +8132,36 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Continue #1117: its active/future MIDI cleanup is indexed, but canceling an
   outer retained event marks range metadata dirty and getState still scans all
   retained history. Replace that final scan before large-history qualification.
+
+### Continuation 312 — recording ranges independent of retained history
+
+- Replace dirty full-history range replay with a bounded128-event chunk tree.
+  Append updates aggregates; cancellation refreshes affected chunks only. Keep
+  exact sequence/time extrema through out-of-order timestamps, repeated extrema,
+  clearing, stale cancellation and finalization. Private index positions never
+  appear in serialized events. Reserve storage before allocation; unresolved
+  release remains charged and retired owners cannot rearm.
+- Pass the workstation resource budget to the recording owner. Admission refusal
+  keeps Record off and reports pressure, including the inspector's Record MIDI CC
+  action. Reject nonfinite clocks before creating pending cleanup entries.
+- All177 grouped Node cases pass. The new range owner measures100% lines/functions
+  and91.8% branches. The actual built Chromium runtime passes the opt-in benchmark
+  at1920×1080:64 alternating flush/Panic samples at each1k/10k/100k/1m CC history,
+  with one active and one future note. Every history survives, with at most132
+  event visits per cleanup. Browser p95 is approximately0.1ms at every size;
+  p99 is at most0.2ms, at the browser clock's coarse resolution. This times the
+  actual ports owner plus state reporting, not end-to-end buttons or hardware.
+- Reserve/retire receipts return to zero. At1m events browser collected heap
+  rises from42.09MB to155.44MB and returns to42.19MB; Node rises to232.08MB and
+  returns to5.58MB. The index's64.63MB reservation includes a conservative private
+  metadata estimate; total event-object heap is measured separately. Preserve
+  the initial175-case/native run and the fixture lifetime correction before the
+  final measurements. No flat whole-application memory or acoustic claim follows.
+- Full CI at018329d8 and8408b95c is green. Latest8408b95c passes6744 Node cases,
+  ten pre-existing pending,131 browser cases, all14 workstation capabilities and
+  benchmark/static/policy/dependency gates. Coverage90.21% lines/statements,
+  83.65% branches,88.31% functions. Its master is Ready with52864 finite frames
+  and no clock gap. #1169 is closed. Current312 CI requires publication.
+- #1117 stays open: worker/streamed MIDI export, pause/Panic button latency,
+  full-reference voice/route/sustain comparisons and disk-backpressure/disposal
+  qualification remain. Continue development on the synchronous export path.

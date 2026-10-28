@@ -11,6 +11,7 @@ import { EventHandler } from '../js/util/EventHandler.js';
 import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetirement.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
+import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 
 function target() {
   const events = new Map();
@@ -18,7 +19,7 @@ function target() {
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
 function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
-  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe } = {}) {
+  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe, resourceBudget = null } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
@@ -52,7 +53,7 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
     restart: async request => { restarts.push(request); if (!request.session) studio.prepareSettings(); if (restartGate) await restartGate; if (request.lease?.signal.aborted || returnFalseRestart) return false; if (rejectRestart) throw new Error('Assets unavailable'); runtime = makeRuntime(); runtime.world.laneCount = request.session?.world.laneCount || legacy.settings.laneCount; runtime.world.seed = request.session?.world.seed ?? legacy.settings.seed; },
     createView: props => { viewProps = props; return view; }, storage,
     captureCheckpoint: world => { captures.push(world); return world instanceof ProcgenLaneWorld ? captureProcgenCheckpoint(world) : { version: 2, laneCount: world.laneCount, seed: world.seed, clock: { ...world.timer } }; },
-    getInstrumentCatalog, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
+    getInstrumentCatalog, resourceBudget, transportOptions: { driver: { start() {}, stop() {} }, lookaheadMs }, historyBytesLimit, ...(backgroundJobs ? { backgroundJobs } : {})
   });
   return { studio, legacy, view, storage, calls, positions, statuses, storageReceipts, exportStates, restarts, stored, captures, elements, document, window, get runtime() { return runtime; }, get physicalOwner() { return physicalOwner; }, get viewProps() { return viewProps; }, get saveCalls() { return saveCalls; },
     enable() { enabled = true; }, time(value) { time = value; studio.transport.pump(); }, failRestart(value = true) { rejectRestart = value; }, cancelRestart() { returnFalseRestart = true; }, failSave() { rejectSave = true; }, allowSave() { rejectSave = false; },
@@ -60,6 +61,20 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('keeps recording disarmed and reports index admission pressure, then retries after resources return', async () => {
+    const budget = createResourceBudget(), f = setup({ resourceBudget: budget }), token = {};
+    const before = budget.diagnostics(); budget.reserve({ token, owner: 'recording-pressure-fixture', bytes: before.limitBytes - before.accountedBytes });
+    try {
+      expect(f.studio.handlers.record(true)).to.equal(false); expect(f.studio.ports.getState().recording).to.equal(false);
+      expect(f.statuses.at(-1)).to.include('MIDI recording not started:'); expect(f.studio.ports.getRecording()).to.have.length(0);
+      expect(f.studio.ports.getRecordingIndexState().typedBytes).to.equal(0);
+      budget.release({ token, owner: 'recording-pressure-fixture' });
+      expect(f.studio.handlers.record(true)).to.equal(true); expect(f.studio.ports.getRecording()).to.have.length(1);
+      expect(f.studio.handlers.record(false)).to.equal(false); f.studio.ports.clearRecording();
+      expect(budget.diagnostics().accountedBytes).to.equal(before.accountedBytes);
+    } finally { await f.studio.dispose().completion; }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
   it('rearms the reviewed default MIDI route only on an explicit activation edge', async () => {
     let notify, current = { selectedBackend: 'midi', enabled: false, outputId: 'output:reviewed' };
     const f = setup({ backend: 'midi', outputId: current.outputId, outputSubscribe: listener => { notify = listener; return () => {}; } }), calls = [];

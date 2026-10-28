@@ -493,7 +493,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { historyGroup: start.group.historyGroup });
     }
   };
-  ports = createProcgenMidiPorts({ transport, now, schedulerConfig: projectToMidiConfig(project),
+  ports = createProcgenMidiPorts({ transport, now, resourceBudget, schedulerConfig: projectToMidiConfig(project),
     onMonitor(event) { const endpoint = ports?.getState(); if (endpoint?.inputId) macroGestures.observeController(event, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch }); state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
       const endpoint = { id: midiState.inputId, epoch: midiState.inputLiveness.connectionEpoch }, prior = macroInputEndpoint; macroInputEndpoint = endpoint;
@@ -1773,7 +1773,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     undo: safe(() => historyMove(undo, redo)),
     redo: safe(() => historyMove(redo, undo)),
     resetPattern() { if (!selected().patterns?.[state.slot]) return false; dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); return true; },
-    record(value) { const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear(); view.recording(state.recording, midiState); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat); },
+    record(value) { const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear(); view.recording(state.recording, midiState); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat);
+    else if (value && midiState.lastConfigurationFailure?.reason === 'recording-index-budget') status('MIDI recording not started: ' + midiState.lastConfigurationFailure.message); return state.recording; },
     learn() {
       if (inputLease) { cancelInputEdits('canceled by user'); return false; }
       const lane = selected(), lease = { id: ++inputGestureSerial, documentGeneration, projectRevision,

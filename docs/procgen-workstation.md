@@ -160,6 +160,13 @@ capture evidence and unmatched note counts. Unmatched Note Ons and Note Offs
 are omitted from the exported window; the exporter does not invent releases.
 Stopping while input or output notes remain open likewise marks the take
 incomplete. A near-cap state appears on the Record control at 80% capacity.
+Recording first reserves its bounded range index and a conservative estimate for
+private event metadata. If admission fails, Record stays off and reports why;
+playback and Panic remain available. Flush/Panic reconcile active and future
+ownership. Range refresh visits only affected 128-event chunks, including when a
+canceled event was the first/last sequence or timestamp. Explicit MIDI export
+still copies the retained window; its separate streaming/worker migration and
+end-to-end button-latency qualification remain tracked in #1117.
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the
 browser's downloads before relying on a local copy.

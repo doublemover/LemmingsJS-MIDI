@@ -3,6 +3,7 @@ import { lowerMidi2ChannelVoice } from '../../../midi/protocol/MidiProtocolLower
 import { createMidiControllerMutations } from '../../../midi/protocol/MidiControllerMutations.js';
 import { createMpeZonePlan } from '../../../midi/scheduler/MpeZonePlan.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
+import { createMidiRecordingRangeIndex } from './MidiRecordingRangeIndex.js';
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
@@ -60,7 +61,7 @@ export function encodeProcgenMidi(event) {
 }
 
 export function createProcgenMidiPorts({ transport, now = () => performance.now(), scheduler: suppliedScheduler, schedulerConfig = { defaultChannel: 1 },
-  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000 } = {}) {
+  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000, resourceBudget = null } = {}) {
   const scheduler = suppliedScheduler || new MidiScheduler(schedulerConfig);
   let input = null, noteOutput = null, clockOutput = null, removeInput = null;
   let thru = false, recording = false, learn = null, disposed = false, records = [], droppedRecords = 0;
@@ -77,8 +78,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const thruNotes = new Map();
   let retainedEvents = 0, eventSequence = 0, firstLostSequence = null, incompleteReason = null, intentRenderSequence = 0;
   const incompleteReasons = new Set();
-  let firstRetainedSequence = null, lastRetainedSequence = null, firstRetainedMs = null, lastRetainedMs = null;
-  let retainedRangeDirty = false;
+  const recordingRange = createMidiRecordingRangeIndex({ getRecords: () => records, capacity: maxRecordedEvents, resourceBudget });
   let droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
   let nearCapReported = false;
   const intentRenderEntries = new Set(), intentExpiry = [], activeTrace = new Map();
@@ -148,17 +148,6 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (!usedChannels.has(port)) usedChannels.set(port, new Set());
     usedChannels.get(port).add(channel);
   };
-  const refreshRetainedRange = () => {
-    if (!retainedRangeDirty) return;
-    firstRetainedSequence = null; lastRetainedSequence = null; firstRetainedMs = null; lastRetainedMs = null;
-    for (const event of records) {
-      if (event.cancelled) continue;
-      firstRetainedSequence ??= event.sequence; lastRetainedSequence = event.sequence;
-      firstRetainedMs = firstRetainedMs == null ? event.timestamp : Math.min(firstRetainedMs, event.timestamp);
-      lastRetainedMs = lastRetainedMs == null ? event.timestamp : Math.max(lastRetainedMs, event.timestamp);
-    }
-    retainedRangeDirty = false;
-  };
   const outputRouteState = () => [...new Set([...noteOutputs.keys(), ...activeOutputs.keys(), ...routeIntents.keys(), ...(noteOutput ? [String(noteOutput.id)] : [])])].map(id => {
     const active = activeOutputs.get(id), selected = String(noteOutput?.id) === id;
     const port = noteOutputs.get(id) || active?.port || (selected ? noteOutput : null);
@@ -174,7 +163,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     inputPortConnected: input ? input.state !== 'disconnected' : null,
     inputLiveness: Object.freeze({ sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', activeSensingVisibility, ...inputLiveness }),
     routeRevision, outputRoutes: outputRouteState(), pressure: scheduler.getOutputPressure?.(now(), noteOutput?.id) || null });
-  const getState = () => { refreshRetainedRange(); return ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
+  const getState = () => { const retainedRange = recordingRange.snapshot(); return ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
     clockOutputId: clockOutput?.id || null, thru, recording, learning: !!learn,
     inputPortConnected: input ? input.state !== 'disconnected' : null,
     inputLiveness: { sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', activeSensingVisibility, ...inputLiveness },
@@ -188,8 +177,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
     outputRoutes: outputRouteState(), recordedEvents: retainedEvents, droppedRecords,
     recordingComplete: !incompleteReason, incompleteReason, incompleteReasons: [...incompleteReasons], firstLostSequence,
-    retainedRange: { firstSequence: firstRetainedSequence, lastSequence: lastRetainedSequence,
-      firstTimestamp: firstRetainedMs, lastTimestamp: lastRetainedMs },
+    retainedRange,
     droppedCategories: { ...droppedCategories },
     recordingCapacity: maxRecordedEvents,
     recordingPressure: maxRecordedEvents > 0 ? records.length / maxRecordedEvents : records.length ? 1 : 0,
@@ -211,25 +199,23 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     markIncomplete('recording-cap-reached');
   };
   const record = event => {
-    if (!recording) return false;
+    if (disposed || !recording) return false;
     if (records.length >= maxRecordedEvents) {
       drop(1, event.direction === 'input' ? 'input' : event.direction === 'output' ? 'output' : event.type === 'tempo' ? 'transport' : 'other');
       return false;
     }
-    const sequence = ++eventSequence;
     const state = transport?.getState(), timestamp = event.timestamp ?? now();
+    if (!Number.isFinite(timestamp)) return false;
+    const sequence = ++eventSequence;
     const processingMs = now(), sourceIsPast = event.direction === 'input' && timestamp < processingMs;
     const beat = event.beat ?? (sourceIsPast ? null : (state?.beat || 0) + (timestamp - processingMs) * (state?.bpm || 120) / 60000);
     const stored = { ...event, sequence, beat, timestamp, data: Object.freeze([...event.data]),
       ...(sourceIsPast ? { processedMs: processingMs, processingBeat: state?.beat ?? null, timingUncertainty: 'source-clock-unmapped' } : {}) };
-    records.push(stored); retainedEvents++;
+    recordingRange.append(stored); records.push(stored); retainedEvents++;
     if (!nearCapReported && maxRecordedEvents > 0 && records.length >= maxRecordedEvents * 0.8) {
       nearCapReported = true;
       report();
     }
-    firstRetainedSequence ??= sequence; lastRetainedSequence = sequence;
-    firstRetainedMs = firstRetainedMs == null ? timestamp : Math.min(firstRetainedMs, timestamp);
-    lastRetainedMs = lastRetainedMs == null ? timestamp : Math.max(lastRetainedMs, timestamp);
     if (event.evidence !== 'intent-render' && (event.direction === 'input' || event.direction === 'output')) {
       const [status, note, velocity] = stored.data;
       const family = status & 0xf0, key = `${event.direction}:${event.outputId || ''}:${status & 15}:${note}`;
@@ -243,10 +229,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return stored;
   };
   const cancelRecorded = event => {
-    if (!event || event.cancelled) return;
-    event.cancelled = true; retainedEvents--;
-    if (event.sequence === firstRetainedSequence || event.sequence === lastRetainedSequence ||
-        event.timestamp === firstRetainedMs || event.timestamp === lastRetainedMs) retainedRangeDirty = true;
+    if (recordingRange.cancel(event)) retainedEvents--;
   };
   const pruneIntentEntries = timestamp => {
     while (intentExpiry.length && intentExpiry[0].end.timestamp <= timestamp) {
@@ -684,6 +667,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (disposed || !recording || !Number.isFinite(spec.note)) return false;
     pruneIntentEntries(now());
     const timestamp = spec.timeMs ?? meta.timestamp ?? now(), durationMs = duration(spec);
+    if (!Number.isFinite(timestamp) || !Number.isFinite(timestamp + durationMs)) return false;
     const state = transport?.getState(), bpm = meta.bpm ?? state?.bpm ?? 120;
     const beat = meta.beat ?? ((state?.beat || 0) + (timestamp - now()) * bpm / 60000);
     const outputId = spec.outputId ?? meta.outputId ?? noteOutput?.id ?? null;
@@ -706,7 +690,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return true;
   }
   return {
-    getState, getOperationalState, receiveMidi, flush, panic, recordOutput,
+    getState, getOperationalState, receiveMidi, flush, panic, recordOutput, getRecordingIndexState: () => recordingRange.diagnostics(),
     bindControllerBaseline(options) {
       const id = String(options?.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(id);
       if (disposed || !route || options?.connectionEpoch !== route.connectionEpoch) return Object.freeze({ ok: false, reason: 'route-epoch-mismatch' });
@@ -769,6 +753,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       clockOutput = port || null; report();
     },
     configure(settings = {}) {
+      if (disposed) return getState();
       if (settings.schedulerConfig) {
         const config = settings.schedulerConfig, plan = createMpeZonePlan(config.mpe, scheduler._ensembleChannels?.(config) || new Set());
         const required = config.mpe?.enabled ? [plan.managerChannel, ...plan.memberChannels] : [];
@@ -796,6 +781,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         protocolLowering = settings.protocolLowering == null ? null : JSON.parse(JSON.stringify(settings.protocolLowering));
       }
       if (settings.recording !== undefined) {
+        if (settings.recording) {
+          try { recordingRange.prepare(); if (lastConfigurationFailure?.reason === 'recording-index-budget') lastConfigurationFailure = null; }
+          catch (error) { lastConfigurationFailure = Object.freeze({ reason: 'recording-index-budget', message: String(error.message).slice(0, 512), outputIds: [], retained: true }); report(); return getState(); }
+        }
         if (recording && !settings.recording && (activeTrace.size || [...intentRenderEntries].some(entry => !entry.end || entry.end.timestamp > now()))) {
           markIncomplete('open-notes-at-stop');
         }
@@ -893,7 +882,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     recordEvent(event, meta = {}) {
       const messages = encodeProcgenMidi(event);
-      if (!recording || !messages.length) return false;
+      if (disposed || !recording || !messages.length || !Number.isFinite(event.timestamp ?? event.timeMs ?? now())) return false;
       if (records.length + messages.length > maxRecordedEvents) { drop(messages.length, 'output'); return false; }
       for (const data of messages) record({ ...meta, ...event, data, direction: 'output', source: meta.source || 'output',
         evidence: 'intent-render', timestamp: event.timestamp ?? event.timeMs ?? now() });
@@ -903,8 +892,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     clearRecording() {
       records = []; droppedRecords = 0; retainedEvents = 0; eventSequence = 0; firstLostSequence = null; incompleteReason = null;
       incompleteReasons.clear();
-      firstRetainedSequence = null; lastRetainedSequence = null; firstRetainedMs = null; lastRetainedMs = null;
-      retainedRangeDirty = false;
+      recordingRange.clear({ release: !recording });
       droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
       nearCapReported = false;
       intentRenderEntries.clear(); intentExpiry.length = 0; activeTrace.clear(); report();
@@ -930,7 +918,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       activeOutputs.clear(); routeIntents.clear(); rawVoices.clear();
       controllerMutations.dispose();
       removeSubmissionObserver?.();
-      if (!suppliedScheduler) scheduler.dispose(); disposed = true;
+      if (!suppliedScheduler) scheduler.dispose(); recording = false; recordingRange.dispose(); disposed = true;
     }
   };
 }
