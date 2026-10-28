@@ -3,13 +3,14 @@ const integer = value => Number.isFinite(value) ? Math.trunc(value) : 0;
 
 export function createLaneNavigator({ firstLane = 0 } = {}) {
   let lanes = [], indices = new Map(), names = [], identity, initialized = false, disposed = false, anchor = null, first = Math.max(0, integer(firstLane)), count = 8;
+  let all = [], allIndices = new Map();
   let remainder = 0, wheelTime = null;
   const locate = index => { first = Math.max(0, Math.min(Math.max(0, lanes.length - count), integer(index))); anchor = lanes[first]?.id ?? null; return first; };
   return {
-    sync(next, documentIdentity) {
+    sync(next, documentIdentity, { allLanes = next } = {}) {
       if (disposed) return first;
-      if (next.length > MAX_LANES) throw new RangeError('Lane navigator exceeds the admitted lane count.');
-      if (initialized && next === lanes && identity === documentIdentity) return first;
+      if (next.length > MAX_LANES || allLanes.length > MAX_LANES) throw new RangeError('Lane navigator exceeds the admitted lane count.');
+      if (initialized && next === lanes && all === allLanes && identity === documentIdentity) return first;
       const changedDocument = initialized && identity !== documentIdentity, previous = lanes, previousFirst = first;
       const nextIndices = new Map(next.map((lane, index) => [lane.id, index]));
       if (nextIndices.size !== next.length) throw new Error('Lane navigator requires unique lane IDs.');
@@ -21,7 +22,7 @@ export function createLaneNavigator({ firstLane = 0 } = {}) {
           for (const index of [previousFirst + distance, previousFirst - distance]) if (indices.has(previous[index]?.id)) { anchor = previous[index].id; break; }
         }
       }
-      lanes = next; names = lanes.map(lane => `${lane.name || ''} ${lane.role || ''} ${lane.id}`.toLocaleLowerCase()); identity = documentIdentity; initialized = true;
+      lanes = next; all = allLanes; allIndices = new Map(all.map((lane, index) => [lane.id, index])); names = all.map(lane => `${lane.name || ''} ${lane.role || ''} ${lane.id}`.toLocaleLowerCase()); identity = documentIdentity; initialized = true;
       return locate(anchor && indices.has(anchor) ? indices.get(anchor) : first);
     },
     window(visibleCount) { if (disposed) return first; count = Math.max(1, Math.min(8, integer(visibleCount))); return locate(first); },
@@ -39,24 +40,24 @@ export function createLaneNavigator({ firstLane = 0 } = {}) {
     },
     search(query = '', page = 0) {
       const terms = String(query).slice(0, 256).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean), matches = [];
-      if (!disposed) for (let index = 0; index < lanes.length; index++) if (terms.every(term => names[index].includes(term))) matches.push(index);
+      if (!disposed) for (let index = 0; index < all.length; index++) if (terms.every(term => names[index].includes(term))) matches.push(index);
       const offset = Math.max(0, Math.min(Math.max(0, Math.ceil(matches.length / PAGE_SIZE) - 1), integer(page))) * PAGE_SIZE;
-      return { total: matches.length, page: offset / PAGE_SIZE, pageSize: PAGE_SIZE, items: matches.slice(offset, offset + PAGE_SIZE).map(index => ({ id: lanes[index].id, name: String(lanes[index].name || ''), ordinal: index + 1 })) };
+      return { total: matches.length, page: offset / PAGE_SIZE, pageSize: PAGE_SIZE, items: matches.slice(offset, offset + PAGE_SIZE).map(index => ({ id: all[index].id, name: String(all[index].name || ''), ordinal: index + 1 })) };
     },
     summary(selectedId, armedIds = []) {
-      const visible = new Set(lanes.slice(first, first + count).map(lane => lane.id)), armed = new Set(armedIds), selected = indices.has(selectedId) && !visible.has(selectedId) ? selectedId : null;
+      const visible = new Set(lanes.slice(first, first + count).map(lane => lane.id)), armed = new Set(armedIds), selected = allIndices.has(selectedId) && !visible.has(selectedId) ? selectedId : null;
       let soloCount = 0, armedCount = 0, soloId = null, armedId = null;
-      for (const lane of lanes) if (!visible.has(lane.id)) {
+      for (const lane of all) if (!visible.has(lane.id)) {
         if (lane.solo) { soloCount++; soloId ??= lane.id; }
         if (armed.has(lane.id)) { armedCount++; armedId ??= lane.id; }
       }
-      return { selected, soloCount, armedCount, target: selected || armedId || soloId, firstVisibleId: anchor, firstLane: first, visibleCount: Math.min(count, lanes.length), total: lanes.length };
+      return { selected, soloCount, armedCount, target: selected || armedId || soloId, firstVisibleId: anchor, firstLane: first, visibleCount: Math.min(count, lanes.length), visibleTotal: lanes.length, total: all.length };
     },
-    dispose() { disposed = true; lanes = []; indices.clear(); names = []; anchor = null; remainder = 0; wheelTime = null; }
+    dispose() { disposed = true; lanes = []; all = []; indices.clear(); allIndices.clear(); names = []; anchor = null; remainder = 0; wheelTime = null; }
   };
 }
 
-export function createLaneNavigatorView({ document, navigator, onJump, getSelection, getArmed = () => [] }) {
+export function createLaneNavigatorView({ document, navigator, onJump, onQuery = () => false, getSelection, getArmed = () => [] }) {
   const element = document.createElement('section'), label = document.createElement('label'), search = document.createElement('input'), status = document.createElement('output'), results = document.createElement('div'), previous = document.createElement('button'), next = document.createElement('button'), breadcrumb = document.createElement('button');
   element.className = 'studio-lane-navigator'; element.setAttribute('aria-label', 'Lane navigator'); search.type = 'search'; search.maxLength = 256; search.setAttribute('aria-label', 'Lane search'); label.append('Find lane ', search);
   results.setAttribute('role', 'group'); results.setAttribute('aria-label', 'Matching lanes'); status.setAttribute('aria-live', 'polite'); status.setAttribute('aria-atomic', 'true');
@@ -82,14 +83,15 @@ export function createLaneNavigatorView({ document, navigator, onJump, getSelect
       button.textContent = `${item.ordinal} · ${item.name}`; button.setAttribute('aria-pressed', String(item.id === getSelection())); if (results.children[index] !== button) results.insertBefore(button, results.children[index] || null);
     }
     breadcrumb.hidden = !target; breadcrumb.textContent = [summary.selected ? 'Selected offscreen' : '', summary.soloCount ? `Solo ${summary.soloCount} offscreen` : '', summary.armedCount ? `Armed ${summary.armedCount} offscreen` : ''].filter(Boolean).join(' · ');
+    breadcrumb.setAttribute('aria-label', 'Jump to offscreen lane' + (breadcrumb.textContent ? ' · ' + breadcrumb.textContent : ''));
     return summary;
   };
-  const input = event => { if (disposed || composing || event.isComposing) return; page = 0; update(documentIdentity); };
+  const input = event => { if (disposed || composing || event.isComposing) return; page = 0; if (onQuery(search.value) !== true) update(documentIdentity); };
   const compositionStart = () => { composing = true; }, compositionEnd = () => { composing = false; input({}); };
   const click = event => { if (disposed) return; const id = event.target.closest?.('[data-jump-lane-id]')?.dataset.jumpLaneId; if (id) onJump(id); };
   const prev = () => { if (!disposed && page > 0) { page--; update(documentIdentity); } }, more = () => { if (!disposed && !next.disabled) { page++; update(documentIdentity); } }, jump = () => { if (!disposed && target) onJump(target); };
   search.addEventListener('input', input); search.addEventListener('compositionstart', compositionStart); search.addEventListener('compositionend', compositionEnd); results.addEventListener('click', click); previous.addEventListener('click', prev); next.addEventListener('click', more); breadcrumb.addEventListener('click', jump);
-  return { element, breadcrumb, update, dispose() {
+  return { element, breadcrumb, update, getQuery: () => search.value, setQuery(value, notify = true) { if (disposed) return; search.value = String(value).slice(0, 256); page = 0; if (!notify || onQuery(search.value) !== true) update(documentIdentity); }, dispose() {
     if (disposed) return; disposed = true; search.removeEventListener('input', input); search.removeEventListener('compositionstart', compositionStart); search.removeEventListener('compositionend', compositionEnd); results.removeEventListener('click', click); previous.removeEventListener('click', prev); next.removeEventListener('click', more); breadcrumb.removeEventListener('click', jump); buttons.clear(); element.remove(); breadcrumb.remove(); navigator.dispose();
   } };
 }

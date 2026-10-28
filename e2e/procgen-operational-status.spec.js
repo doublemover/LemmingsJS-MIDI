@@ -3,8 +3,20 @@ import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
+
+const operationalCheckpoints = new WeakMap(), diagnosticSessions = new WeakMap();
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
+test.beforeEach(async ({ page }, testInfo) => {
+  if (process.env.LEMMINGS_OPERATIONAL_DIAGNOSTICS === '1' && testInfo.title.startsWith('a prepared silent')) {
+    testInfo.setTimeout(90000);
+    const session = await page.context().newCDPSession(page); await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    diagnosticSessions.set(page, session);
+    testInfo.annotations.push({ type: 'stress', description: 'Isolated desktop CPU throttling4x; viewport remains1920x1080.' });
+  }
+});
+test.afterEach(async ({ page }) => { operationalCheckpoints.delete(page); const session = diagnosticSessions.get(page); diagnosticSessions.delete(page); if (session) await session.detach().catch(() => {}); });
 const ready = async (page, suffix = '', root = '') => {
   await page.goto(root + '/procgen.html?e2e=1&recipe=1&seed=42&lanes=8' + suffix);
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
@@ -12,11 +24,16 @@ const ready = async (page, suffix = '', root = '') => {
 };
 const strip = page => page.getByRole('region', { name: 'World, music and output status', exact: true });
 const metrics = page => page.evaluate(() => window.__WEBMIDI_STUB__.metrics());
-const projectWorldState = page => page.evaluate(async () => {
-  const { captureProcgenCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
-  const { hashProcgenPhysicsCheckpoint } = await import('/js/app/procgen/workstation/ProcgenCheckpointProvenance.js');
-  return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), hash: await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(window.__PROCGEN_LANES__.world)), id: window.__PROCGEN_STUDIO__.getDocumentState().id };
-});
+const projectWorldState = async page => {
+  const value = await page.evaluate(async () => {
+    const { captureProcgenCheckpointCooperative } = await import('/js/app/procgen/workstation/ProcgenCheckpoint.js');
+    const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, project = studio.getProject(), tick = world.tickIndex;
+    const checkpoint = await captureProcgenCheckpointCooperative(world, { sliceMs: 3, isCurrent: () => window.__PROCGEN_LANES__.world === world && world.tickIndex === tick && studio.getProject() === project });
+    return { project: JSON.stringify(project), checkpoint, id: studio.getDocumentState().id };
+  });
+  const saved = operationalCheckpoints.get(page) || []; saved.push(value.checkpoint); if (saved.length > 2) saved.shift(); operationalCheckpoints.set(page, saved);
+  return { project: value.project, hash: await hashProcgenPhysicsCheckpoint(value.checkpoint), id: value.id };
+};
 
 test('desktop status separates world/music/output, keeps blockers and Panic visible and reveals exact timing details', { tag: '@boundary' }, async ({ page }) => {
   await installWebMidiStub(page, { trackOutput: true }); await ready(page);
@@ -123,17 +140,22 @@ test('external clock waiting and loss remain separate from note activation and r
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(true);
 });
 
-test('a prepared silent physical scene names its lack of source events and opens an isolated lesson without loading or test notes', { tag: '@boundary' }, async ({ page }) => {
+test('a prepared silent physical scene names its lack of source events and opens an isolated lesson without loading or test notes', { tag: '@boundary' }, async ({ page }, testInfo) => {
+  test.setTimeout(90000);
   await installWebMidiStub(page, { trackOutput: true }); await ready(page, '&output=midi', '/dist/browser');
   await page.locator('#procgenListen').click(); await useWorkstationControl(page, page.locator('#procgenMidiDevice'), {}, 'selectOption', 'pw-output-1'); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPhysicalOutputDiagnostics().prepared)).toBe(true);
+  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Scenes', exact: true }).click();
+  const catalog = page.getByRole('dialog', { name: 'Playable physical scores', exact: true }); await expect(catalog).toBeVisible({ timeout: 30000 }); await page.keyboard.press('Escape'); await expect(catalog).toBeHidden();
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.handlers.transport({ linked: false }); studio.transport.play(); window.__PROCGEN_LANES__.pause(); });
   await expect(strip(page)).toHaveAttribute('data-state', 'no-source-events'); await expect(strip(page)).toContainText('No eligible physical source event');
   await expect(strip(page)).toHaveAttribute('data-world-state', 'paused');
   const before = await projectWorldState(page), output = await metrics(page);
   await strip(page).getByRole('button', { name: 'Open an isolated lesson', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Learn physical music', exact: true })).toBeVisible();
-  expect(await projectWorldState(page)).toEqual(before); expect((await metrics(page)).sent).toBe(output.sent);
+  const after = await projectWorldState(page);
+  if (after.hash !== before.hash) await testInfo.attach('silent-lesson-checkpoint-difference', { contentType: 'application/json', body: JSON.stringify(await compareProcgenPhysicsCheckpoints(...operationalCheckpoints.get(page))) });
+  expect(after.hash).toBe(before.hash); expect(after.id).toBe(before.id); expect(after.project).toBe(before.project); expect((await metrics(page)).sent).toBe(output.sent);
   expect((await metrics(page)).messages.filter(message => (message.bytes[0] & 240) === 144 && message.bytes[2] > 0)).toHaveLength(0);
 });
 

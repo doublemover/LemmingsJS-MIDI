@@ -53,6 +53,23 @@ describe('compact instrument edit ownership', () => {
   it('keeps numeric text nodes stable when actual authored observations change', () => {
     const f = setup(); try { const output = f.control.element.querySelector('output'), text = output.firstChild; f.control.setState({ value: 32 }); expect(output.firstChild).to.equal(text); expect(output.textContent).to.equal('32'); } finally { f.close(); }
   });
+  it('restores only a matching logical draft lease and requires explicit conflict acknowledgement after source changes', () => {
+    const f = setup(); try {
+      f.toggle.click(); f.type('-32'); const snapshot = f.control.snapshotDraft(); f.control.dispose(); f.control.element.remove();
+      const control = createParameterKnob({ document: f.document, window: f.window, descriptor: snapshot.descriptor, value: 48, compact: true, getIdentity: () => snapshot.identity, commit: value => f.commits.push(value) });
+      f.document.getElementById('controls').append(control.element); expect(control.restoreDraft(snapshot)).to.equal(true); expect(control.inspect().exactOpen).to.equal(false); expect(f.commits).to.deep.equal([]);
+      const toggle = control.element.querySelector('.parameter-entry-toggle'); toggle.click(); const panel = f.document.getElementById(toggle.getAttribute('aria-controls')), input = panel.querySelector('.parameter-knob-number'); expect(input.value).to.equal('-32'); input.dispatchEvent(new f.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); expect(f.commits).to.deep.equal([]);
+      [...panel.querySelectorAll('button')].find(button => button.textContent === 'Keep my edit').click(); expect(f.commits).to.deep.equal([-32]);
+      expect(control.restoreDraft({ ...snapshot, identity: {} })).to.equal(false); expect(control.restoreDraft({ ...snapshot, signature: 'old schema' })).to.equal(false); control.dispose();
+    } finally { f.close(); }
+  });
+  it('retains composing text as a reviewable conflict without resuming an old native composition', () => {
+    const f = setup(); try {
+      f.toggle.click(); f.type('32'); f.input.dispatchEvent(new f.window.Event('compositionstart')); const snapshot = f.control.snapshotDraft(); f.control.dispose(); f.control.element.remove();
+      const control = createParameterKnob({ document: f.document, window: f.window, descriptor: snapshot.descriptor, value: 0, compact: true, getIdentity: () => snapshot.identity, commit: value => f.commits.push(value) }); f.document.getElementById('controls').append(control.element);
+      expect(control.restoreDraft(snapshot)).to.equal(true); const toggle = control.element.querySelector('.parameter-entry-toggle'); toggle.click(); expect(f.document.getElementById(toggle.getAttribute('aria-controls')).textContent).to.include('Composition ended'); expect(f.commits).to.deep.equal([]); control.dispose();
+    } finally { f.close(); }
+  });
 });
 
 describe('owned workstation command chrome', () => {

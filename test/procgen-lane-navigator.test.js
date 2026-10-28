@@ -72,7 +72,7 @@ describe('bounded lane navigator DOM ownership', () => {
   });
   it('keeps offscreen navigation reachable and fences retired controls and replacement query state', () => {
     const f = setup(); try {
-      f.select('lane-64'); f.arm(['lane-63']); f.update(); expect(f.view.breadcrumb.hidden).to.equal(false); expect(f.view.breadcrumb.textContent).to.include('Armed 1'); f.view.breadcrumb.click(); expect(f.jumps).to.deep.equal(['lane-64']);
+      f.select('lane-64'); f.arm(['lane-63']); f.update(); expect(f.view.breadcrumb.hidden).to.equal(false); expect(f.view.breadcrumb.textContent).to.include('Armed 1'); expect(f.view.breadcrumb.getAttribute('aria-label')).to.include('Selected offscreen · Armed 1 offscreen'); f.view.breadcrumb.click(); expect(f.jumps).to.deep.equal(['lane-64']);
       const input = f.document.querySelector('input'), priorDocumentButton = f.document.querySelector('[data-jump-lane-id]'); input.value = 'old query'; priorDocumentButton.focus(); f.replace(); expect(input.value).to.equal(''); expect(f.document.activeElement).to.equal(input); priorDocumentButton.click(); expect(f.jumps).to.deep.equal(['lane-64']);
       const stale = f.document.querySelector('[data-jump-lane-id]'), breadcrumb = f.view.breadcrumb; f.view.dispose(); stale.click(); breadcrumb.click(); input.dispatchEvent(new f.dom.window.Event('input')); expect(f.jumps).to.deep.equal(['lane-64']);
     } finally { f.close(); }

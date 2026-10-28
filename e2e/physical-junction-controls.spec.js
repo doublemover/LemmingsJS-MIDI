@@ -6,7 +6,7 @@ const setup = async (page, lanes = 8) => {
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=' + lanes);
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
   await page.evaluate(async () => {
-    const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world; studio.transport.pause();
+    const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world; studio.transport.pause(); window.__PROCGEN_LANES__.pause();
     for (let tick = 0; tick < 180; tick++) world.step();
     const walker = world.actors.find(actor => actor.action?.actionName === 'walk'); if (!walker) throw new Error('The controlled starter needs a real walking actor.');
     const lane = walker.laneIndex, floorY = world.surfaceAt(lane, 96), firstX = 72, lastX = 120;
@@ -26,6 +26,11 @@ const setup = async (page, lanes = 8) => {
   await expect(dock.getByLabel('Inspect physical junction')).toHaveValue('browser-switch');
   await dock.getByRole('button', { name: 'Switch request', exact: true }).click(); await page.locator('#procgenStep').click();
   await expect(dock.locator('[data-configuration="direct"][data-applied=true]')).toHaveCount(1);
+  for (let attempt = 0; attempt < 8; attempt++) {
+    if (await page.evaluate(() => window.__PROCGEN_LANES__.renderer.workstationLayout.laneIndices.includes(window.junctionFixture.lane))) break;
+    await page.getByTitle('Show next lanes').click();
+  }
+  await page.evaluate(() => { const r = window.__PROCGEN_LANES__.renderer, f = window.junctionFixture; r.follow = false; r.cameraX = 0; r.inspectionRowAnchor = { lane: f.lane, worldY: f.floorY + 8 }; r.render(true); });
   return dock;
 };
 const pausedTick = page => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex);

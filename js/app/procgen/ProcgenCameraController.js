@@ -73,14 +73,21 @@ const createProcgenCameraController = (renderer, { deferBinding = false } = {}) 
     if (!renderer.follow || !immediate && renderer.motionPolicy?.automaticCamera === false) { lastFollowMs = null; return; }
     const projection = renderer.workstationLayout, selected = Number.isInteger(renderer.followLaneIndex) ? renderer.followLaneIndex : null;
     const firstLane = projection ? selected ?? projection.firstLane : 0, lastLane = projection ? selected == null ? firstLane + projection.count : selected + 1 : world.laneCount ?? Infinity;
-    const visibleWindow = `${firstLane}:${lastLane}`;
+    const visibleLanes = projection?.mapped ? selected == null ? projection.laneIndices : [selected] : null;
+    const visibleWindow = visibleLanes ? visibleLanes.join(',') : `${firstLane}:${lastLane}`;
     if (!reuseLeader || cachedLeader?.failureReason || cachedLeader?.removed || leaderTick !== world.tickIndex || leaderGeneration !== world.generation || leaderActors !== world.actors || leaderCount !== world.actors.length || leaderWindow !== visibleWindow) {
-      if (renderer.actorVisibility?.physicalLeader) cachedLeader = renderer.actorVisibility.physicalLeader(firstLane, lastLane, immediate);
+      if (renderer.actorVisibility?.physicalLeader) {
+        if (!visibleLanes) cachedLeader = renderer.actorVisibility.physicalLeader(firstLane, lastLane, immediate);
+        else {
+          cachedLeader = null;
+          for (const lane of visibleLanes) { const actor = renderer.actorVisibility.physicalLeader(lane, lane + 1, immediate); if (actor && (!cachedLeader || actor.x > cachedLeader.x || actor.x === cachedLeader.x && actor.id < cachedLeader.id)) cachedLeader = actor; }
+        }
+      }
       else {
         cachedLeader = null;
         for (const actor of world.actors) {
           const lane = Math.floor(actor.y / (renderer.laneHeight || world.laneHeight || 96));
-          if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && lane >= firstLane && lane < lastLane &&
+          if (!actor.failureReason && !actor.removed && Number.isFinite(actor.x) && Number.isFinite(actor.y) && (visibleLanes ? visibleLanes.includes(lane) : lane >= firstLane && lane < lastLane) &&
               (!cachedLeader || actor.x > cachedLeader.x || actor.x === cachedLeader.x && actor.id < cachedLeader.id)) cachedLeader = actor;
         }
       }

@@ -17744,7 +17744,10 @@
         "sha256": "125bd8180e0289c8e23cad2f2ba30acad9bc9d53f9e5e19f6d0609a2a217a27d"
       },
       "excludesContinuations": [
-        300
+        300,
+        301,
+        302,
+        303
       ],
       "excludesLaterWork": true,
       "passed": 6603
@@ -18107,6 +18110,16 @@
       "test/support/workstation-zoom/background.js": "5e2818bec6b6e7f425c666f64561627fe2e1c0e63bfbf55b483d9d948f373cb5",
       "test/support/workstation-zoom/blank.html": "9333fa41f735fd84c90145f001e847484bde5fc553f90e052dca6e36ec5a7646",
       "test/support/workstation-zoom/manifest.json": "aac0fb795b603f83c957331b1d051e8422806a4418c88d26dcfd2534f0baf22d"
+    },
+    "remoteCi": {
+      "head": "2e709ae338d4ba767a8f6e75667fee3d950ad5fd",
+      "status": "failure",
+      "job": 122760433141,
+      "run": 40671881115,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40671881115/job/122760433141",
+      "failedStage": "required workstation smoke",
+      "nodeCoverageExecuted": false,
+      "scope": "Failure stage verified from job steps; case counts and master result were not inspected."
     }
   },
   "continuation302": {
@@ -18311,6 +18324,656 @@
       "js/app/procgen/workstation/WorkstationChrome.js": "f99e787050a864cd063021e40f9be6a889ce93e49c118a93d88bca086d0c12b4",
       "test/compact-instrument-chrome.test.js": "2e0882f56ab2dcc99f3a2d8ed091bcc8ec6bebb9a1e8d4b8a90813696b314b37",
       "test/procgen-lane-navigator.test.js": "1a2ca2c2940396024b84ee8478c103ed8517ee047322805bff9f046f09a5e4f2"
+    },
+    "remoteCi": {
+      "head": "5772218d37bd4d53f67323118a6712a55292443d",
+      "status": "failure",
+      "job": 122769340297,
+      "run": 40674499114,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40674499114/job/122769340297",
+      "browserPassed": 120,
+      "browserFailed": 2,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 98,
+        "workstationSmokeFailed": 2
+      },
+      "nodeCoverageExecuted": false,
+      "failures": [
+        "Junction fixture did not frame its paused world lever.",
+        "Silent lesson fixture starved the live musical clock during synchronous checkpoint/hash and cold catalog preparation."
+      ],
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 105600,
+        "captured": 105600,
+        "clockDiscontinuity": null,
+        "peak": 0.02335798740386963,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci302-failed.log",
+        "bytes": 166112,
+        "sha256": "569fbde1764c72bfded88968680819d3f1f70865995fe2b9667e1001d755cd8f"
+      }
+    }
+  },
+  "continuation303": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Independent lane organization, mapped physical-row rendering and bounded logical edit drafts",
+    "sourceBase": "5772218d37bd4d53f67323118a6712a55292443d",
+    "issues": [
+      1033,
+      1197
+    ],
+    "development": [
+      "Independent UI metadata stores names/groups/collapse/pins/visual order with 1024 lanes,128 groups,64 pins and32 combined history entries/256KiB. It never mutates canonical lane order, world, routes or musical history. Source replacement retires prior metadata/history and accepts explicitly supplied incoming organization.",
+      "Search filters actual visible rows. Stable ID colors, anchors, full-project selected/solo/armed breadcrumbs and explicit pin reveal survive grouping and reorder. Fixed Learn targets and actual pattern recording targets retain truthful identities.",
+      "Arbitrary visible physical rows share the original world, evidence, motion and scheduler owners through at most8 budgeted raster views. Default contiguous projection retains its original renderer. Camera and inspection mapping use actual physical stripe IDs; retirement/disposal release surfaces and image reservations.",
+      "At most16 logical parameter draft snapshots preserve bounded text/caret/error without detached DOM or descriptor closures. Restoration verifies authored value, descriptor signature/function identity and source lease. Composition and conflicting values require explicit review before publication.",
+      "Repair prior-head browser fixtures by framing a paused junction, capturing checkpoints cooperatively under unchanged world/tick/project ownership, hashing in Node and preparing the lesson catalog while stopped. Complete physical-state equality remains asserted."
+    ],
+    "validation": {
+      "node": {
+        "distinctPassed": 222,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "cohorts": [
+          {
+            "passed": 167,
+            "scope": "Organization, navigator, compact controls, parameter controls, renderer, camera and workstation controller"
+          },
+          {
+            "passed": 55,
+            "scope": "Render lifecycle, runtime clock, actor effects, CCTV/director and provider runtime leases"
+          }
+        ],
+        "finalAccessibleNameRecheckPassed": 12,
+        "finalRecheckOverlapsDistinctCount": true,
+        "scopedCoverage": {
+          "ParameterKnob.js": {
+            "lines": 97.57,
+            "branches": 76.99,
+            "functions": 92.85
+          },
+          "ProcgenProjectedRows.js": {
+            "lines": 97.7,
+            "branches": 32.69,
+            "functions": 100
+          },
+          "LaneNavigationMetadata.js": {
+            "lines": 100,
+            "branches": 85.83,
+            "functions": 88.88
+          },
+          "LaneNavigator.js": {
+            "lines": 100,
+            "branches": 88.59,
+            "functions": 76
+          },
+          "LaneNavigatorGroupsView.js": {
+            "lines": 100,
+            "branches": 67.5,
+            "functions": 100
+          },
+          "LaneParameterDescriptors.js": {
+            "lines": 100,
+            "branches": 100,
+            "functions": 0
+          }
+        },
+        "coverageLimit": "Focused Node instrumentation only. Descriptor factories execute in native journeys but their Node function coverage is0%; browser execution is not a coverage percentage."
+      },
+      "fullWorkstation": {
+        "passed": 128,
+        "failed": 0,
+        "skipped": 2,
+        "durationMs": 550367.1519999999,
+        "allFourteenCapabilitiesPassed": true,
+        "scope": "One complete project run before the final accessible-name and matching spec-only refinement.",
+        "sourceDeltaToFinal": [
+          "e2e/procgen-workstation-navigation.spec.js",
+          "js/app/procgen/workstation/LaneNavigator.js"
+        ],
+        "unchangedInputs": 1072,
+        "sourceBindingPreserved": true
+      },
+      "finalAccessibleNameNative": {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 9034.85,
+        "scope": "Both affected native navigation journeys after exact offscreen counts were appended to the accessible name."
+      },
+      "silentLessonStress": {
+        "passed": 1,
+        "failed": 0,
+        "cpuThrottleRate": 4,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Owned desktop page; cooperative full physics checkpoint capture and prepared cold catalog. No mobile emulation."
+      },
+      "collection": {
+        "full": 130,
+        "smoke": 102,
+        "files": 26,
+        "sourceInputs": 1074
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 44672,
+        "captured": 44672,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 59904,
+          "expectedFrame": 60032,
+          "frames": 128
+        },
+        "peak": 0.0228269100189209,
+        "nonfinite": 0,
+        "scope": "Actual finite nonzero master PCM from full workstation cohort; explicitly not Ready or gap-free."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/340 files",
+        "browser collection",
+        "whitespace"
+      ],
+      "earlierBrowserCohorts": [
+        {
+          "passed": 15,
+          "failed": 2,
+          "skipped": 1,
+          "reason": "Silent fixture clock starvation and Learn target refused on physical-only lane."
+        },
+        {
+          "passed": 0,
+          "failed": 2,
+          "reason": "Silent clock starvation and pinned lane left above preserved anchor."
+        },
+        {
+          "passed": 1,
+          "failed": 1,
+          "reason": "Pin reveal repaired; silent fixture clock starvation remained."
+        },
+        {
+          "passed": 0,
+          "failed": 1,
+          "reason": "Cooperative capture repaired hash starvation; cold catalog preparation still expired musical source context."
+        }
+      ],
+      "scopeLimits": [
+        "No local full Node suite repeated. Immutable current-head CI will supply full Node coverage and required browser smoke.",
+        "Ten-minute soak is authored but not run at this checkpoint. Pinned physical actor follow-through remains under1033.",
+        "API-owned held MIDI evidence does not prove physical causation, receiver acceptance or acoustic output. Actual assistive-device and long-duration audio/performance qualification remain separate."
+      ]
+    },
+    "captures": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\physical-junction-controls-3d8b0-out-changing-paused-physics-workstation-switchyard-wide.png",
+        "bytes": 184162,
+        "sha256": "8d10e546b359a4c952c3f79611de8a18b847ab2e5f0f4847c8a732d428e44286"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\physical-junction-controls-e588f-use-and-definition-gestures-workstation-switchyard-desktop-controls.png",
+        "bytes": 92149,
+        "sha256": "82a9bd13622005cf0634e03bdd7bb05dfcf16639c0010c6085c51057c07c1e33"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-causal-visual-actu-58e3a-en-exact-read-only-evidence-workstation-desktop-causal-marks.png",
+        "bytes": 66080,
+        "sha256": "17dface12f2ef5b4d975f45e981821cde061fa96d1ef1b666c7c31cf35eb6250"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-operational-status-49580-eveals-exact-timing-details-workstation-desktop-operational-status.png",
+        "bytes": 158432,
+        "sha256": "f27a0950e827227aad8a131a2f53222cc7f707dccc2bac8a93bd2cedae7277be"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-comman-3fe49-to-the-selected-deep-editor-workstation-desktop-command-reference.png",
+        "bytes": 146634,
+        "sha256": "b46e1bfb9ad3499a54c1d6c511e9373ee143605d416dbf5bc1499549ffcae200"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-comman-a5c0f-ment-cancels-the-next-draft-workstation-desktop-parameter-controls.png",
+        "bytes": 120130,
+        "sha256": "8618bbb750c18ba28baf7277620df63f1501aeb6912934e55c6519bdd658c692"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-3af10-coped-dock-resize-and-close-workstation-joined-workstation-1920.png",
+        "bytes": 123886,
+        "sha256": "9c4af09c3552a598944c606be5cca0699ffc242c3fdf039bd902cee5f8c39bfa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-3af10-coped-dock-resize-and-close-workstation-joined-workstation-open-1920.png",
+        "bytes": 116412,
+        "sha256": "f33b83400f7fa1eb2b13d2254e6ec7ac1ad515914d802143b74cfdde81f3a3e8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-52c4d--inside-one-scrollable-dock-workstation-desktop-dock-enlarged-text.png",
+        "bytes": 111325,
+        "sha256": "d3bd753d0d5e077b9137aa3b9184e1c194ada26a3da1908782209d0228b7c3d3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-5f91b-coped-dock-resize-and-close-workstation-joined-workstation-2560.png",
+        "bytes": 132894,
+        "sha256": "0bcc7324be1a7a3cd77a02dcf1aeb15d9543b96544c200129b36b75010662406"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-5f91b-coped-dock-resize-and-close-workstation-joined-workstation-open-2560.png",
+        "bytes": 157947,
+        "sha256": "251525e7eaf99e9b8d09f231218793ec336ac409ff51f64c901aa29857014358"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-9f0af-coped-dock-resize-and-close-workstation-joined-workstation-3840.png",
+        "bytes": 156834,
+        "sha256": "610e796290a4702036e1a04f3bfcfb5e159cdf3e18884d080ffa6e0c16496873"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-dock-d-9f0af-coped-dock-resize-and-close-workstation-joined-workstation-open-3840.png",
+        "bytes": 182453,
+        "sha256": "76db91d369a09cf5eadb41127ddfdf8ffa54d2f16da2050f5bbca69f53ca93f3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-css-enlargement-200.png",
+        "bytes": 243261,
+        "sha256": "e7f1c8d7e82016ce015a4a03f49f39525805ed29b892c31fd7f59051dbeb281c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-forced-colors.png",
+        "bytes": 51170,
+        "sha256": "6d65d0134d24a1c27178ada810ffbb5308d6ff2a6c18fda5fd1201965d657e73"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-greyscale.png",
+        "bytes": 71830,
+        "sha256": "dcc93dc44199f48533034ff478b2cbc66136f67696b960ab880dcae2e62733fc"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-high-contrast.png",
+        "bytes": 64311,
+        "sha256": "c1a226435cadc8363fda2c3c3ec351aeb9ad9bffceb83a39151149ffa2ec5117"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-low-effects.png",
+        "bytes": 62827,
+        "sha256": "f9cf320df61a5dfeb7708bda5d55c005dc4fdb41a256f70ff21d4317aa34a5db"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-009e0-top-effects-and-enlargement-workstation-materials-1-normal.png",
+        "bytes": 71338,
+        "sha256": "78de8a9748d7c4cd7e22b35d7775688da9b4f3e612c9892eed8ee8bc49b1dc4e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-css-enlargement-200.png",
+        "bytes": 431058,
+        "sha256": "ee6bdd49e62a5a2a994b6092637f7b2b061bf9d5815d4a669d78985164f6051d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-forced-colors.png",
+        "bytes": 108450,
+        "sha256": "653f0b01be2d72521453411d1849ef82baeebdaba67345362c7f9a86653d4afa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-greyscale.png",
+        "bytes": 149813,
+        "sha256": "375297a59b3534bd6cfd7e9ad162bf69b4d46eedd932d5656b5679087f141c3e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-high-contrast.png",
+        "bytes": 131510,
+        "sha256": "ab60d511d90c84706d98c6bf0a4b4e2553f443f14e71680f4ddcfd70e66186cb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-low-effects.png",
+        "bytes": 128657,
+        "sha256": "9e4047f4885d36a64052190a6f2da1454ad5329fc48c3df05859b24b3b717cbd"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-48129-top-effects-and-enlargement-workstation-materials-1.5-normal.png",
+        "bytes": 147382,
+        "sha256": "6f759e0f051c4ae5e4532383c71bfd4ee557c15b0aecc4053b55a2b1ce448c97"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-1920-dpr-1-more.png",
+        "bytes": 118919,
+        "sha256": "edd7d357c05ca0d37d3a1e277b8971c33c282579065284be67d7398f931e24e4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-1920-dpr-1-no-preference.png",
+        "bytes": 123540,
+        "sha256": "8ed915daa735a2a37983599c5fff819c3351468679f3f6d6fb882f69e302c92e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-2560-dpr-1-more.png",
+        "bytes": 128423,
+        "sha256": "c7415202703c289b3cd6de2780052434094e726baf623640da45f5cd5d7fea20"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-2560-dpr-1-no-preference.png",
+        "bytes": 133073,
+        "sha256": "02b673c7dacfc73231ed16b7f3399e14b84be16988210aa2bb17e7ca302df78a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-3840-dpr-1-more.png",
+        "bytes": 151760,
+        "sha256": "98d65317d5c0bffd1724995060af7eca446a2aeba62765aa0d1452f9eca3b105"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-3840-dpr-1-no-preference.png",
+        "bytes": 156357,
+        "sha256": "4fc77c2498c682b1e7ac2bfdd9981cf8f755e75036547ca53109cf3475037665"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-4b150-and-readable-control-bounds-workstation-instrument-css-enlargement-200-dpr-1.png",
+        "bytes": 202135,
+        "sha256": "103288ae3fe905a16ad5997b996b86b3c17055aca69401b75afa17e466c955c7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-1920-dpr-2-more.png",
+        "bytes": 315388,
+        "sha256": "a69702b729b461788ba45bec2c369905c61fafed13f3422dc7b394e34c2041ad"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-1920-dpr-2-no-preference.png",
+        "bytes": 336170,
+        "sha256": "17e4320ac38a08f8fd78f37cd9d35d7c840b3c0ed155a5b067b267c674ecd802"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-2560-dpr-2-more.png",
+        "bytes": 340516,
+        "sha256": "3295c0a5a74df64de5ebb56c58d0fc48c155cb3fa705591fc6e3c3d94f6375da"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-2560-dpr-2-no-preference.png",
+        "bytes": 362121,
+        "sha256": "94172ba3b1f5c72af7618b5fca9ff6bba348a4cd0640aa059b2be96ca1d61789"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-3840-dpr-2-more.png",
+        "bytes": 404273,
+        "sha256": "f5ecfe5faa3fb142295439e7bfcde39e783395682bf8917c72acfe5f72be557b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-3840-dpr-2-no-preference.png",
+        "bytes": 427846,
+        "sha256": "bd74e245175e42aed1d4eaf3aa9fb041f5ef36bd0d5fef8df31679e58da5becb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-753c2-and-readable-control-bounds-workstation-instrument-css-enlargement-200-dpr-2.png",
+        "bytes": 491169,
+        "sha256": "29a9908f67391bfae357c4938980f31b64cebd7992843ba081c4b691dddef5dc"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-1920-dpr-1.5-more.png",
+        "bytes": 200185,
+        "sha256": "428d59d790ffb6484f37c0697c57e8babe741d92b416efad39f150d9041c40ec"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-1920-dpr-1.5-no-preference.png",
+        "bytes": 208164,
+        "sha256": "d4c4a76fb5b6210d2bec89b3fa8c3778e2a8ea037a6440d9bec0c47134959e07"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-2560-dpr-1.5-more.png",
+        "bytes": 221191,
+        "sha256": "ea140b8a35418a7bd564b02cd91401ed283054e89af89f576b776356fe16ec3f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-2560-dpr-1.5-no-preference.png",
+        "bytes": 229125,
+        "sha256": "191bc253ec1d319ddadb460f00c8c2442779ff0ff750439015e0d805c1365734"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-3840-dpr-1.5-more.png",
+        "bytes": 260169,
+        "sha256": "96e36b55f41ea4e0bc080aafb1ad354db88216e76f05ef8e592df3f6d3e7d76c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-3840-dpr-1.5-no-preference.png",
+        "bytes": 268501,
+        "sha256": "31efda79f5669feb273299a6a85ffaf59440e025f13ae6339a99c2371b09e28c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-e77f4-and-readable-control-bounds-workstation-instrument-css-enlargement-200-dpr-1.5.png",
+        "bytes": 349327,
+        "sha256": "722893038f53de557bdd6c43c5d7c829843ad5aa6d1ba9b7aa9a34242abc54ab"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-css-enlargement-200.png",
+        "bytes": 673692,
+        "sha256": "853d4c04a08f81b503d09bad4e60c7d9fb6f6074491ae6720f80cbc5f8c02502"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-forced-colors.png",
+        "bytes": 148828,
+        "sha256": "e821143f594f3b37abef62e91b958af7232b0cd2cd8170b9c60ed34c32c0d65e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-greyscale.png",
+        "bytes": 211848,
+        "sha256": "6a8fb61281444361bf7dcd985f976e39e2b9ff094d676f4f1b324cc41fa20a9d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-high-contrast.png",
+        "bytes": 177481,
+        "sha256": "0ef7e0ceb3154bbf3795a681abb0bf68df71fe444f75f8637ee734a16f26726b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-low-effects.png",
+        "bytes": 177085,
+        "sha256": "cf852b0a0fbe9eaf1211dfd54c3d68ca71e9b070779930e0cc506063493b3837"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-materi-fb6f6-top-effects-and-enlargement-workstation-materials-2-normal.png",
+        "bytes": 204797,
+        "sha256": "832f86848651dc6456033023e082035e2fae8b703dfdafa1566d8cf91208a4a9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-motion-465a5-nce-without-resuming-output-workstation-motion-policy-forced-colors.png",
+        "bytes": 93186,
+        "sha256": "732907242f73615b456005b63e05f34b7db3461000a8735184b80b930769832a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-motion-58d18-ing-paused-music-or-physics-workstation-paused-shared-motion-policy.png",
+        "bytes": 124117,
+        "sha256": "c00c9085ee533dd51da10016f00a16a9209efa2d38b31f0abaf47a96c31a69d3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200-forced-colors.png",
+        "bytes": 193037,
+        "sha256": "7167c7eca613709a02b00efe6e8251c4716449b88eeb8c2f0fec6147059f75b7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-native-0a925-s-and-forced-color-geometry-workstation-materials-native-zoom-200.png",
+        "bytes": 203795,
+        "sha256": "9a2b5038f97e6a35ee5ab6469790e5c4a831d4e8ea13668c419547d7f54ce960"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-0.png",
+        "bytes": 162044,
+        "sha256": "a314894ecf109c2bd1b2085db8f79d7251d9f4caf93950d39349b9fb16479453"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-100-2.png",
+        "bytes": 161899,
+        "sha256": "0fbe5dbe4d6d124f97347a6740cdb876cc9200e4254fda411e04ce0633949ca5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-native-6ce14-ct-entry-and-dock-ownership-workstation-production-native-zoom-200-1.png",
+        "bytes": 351211,
+        "sha256": "a8d2be741a1686bb38a9e81a9835c4db8eecb378732955afb05778c700b00289"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-naviga-27a34-on-remain-presentation-only-workstation-grouped-pinned-draft-restored.png",
+        "bytes": 105815,
+        "sha256": "b69920d1a2914b06767ea580b2a7c646fc97bb9ea3af8b75ec70f9247e6cd3c6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-naviga-f8831-d-canonical-source-receipts-workstation-organized-physical-rows.png",
+        "bytes": 125461,
+        "sha256": "0c6aac368784214b7d5c2122bd92a70334358dde3185b3549cec983e251c353a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-captures\\procgen-workstation-naviga-fb416-ic-routes-output-or-physics-workstation-large-ensemble-stable-jump.png",
+        "bytes": 125282,
+        "sha256": "7181a2d571fe54b52daf5ce6e9dc86c1cf8842720710963711ae599a55759145"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-workstation-results.json",
+        "bytes": 726431,
+        "sha256": "921365bfe1842257ab168830133596c099f5a7419898cffdf002c8c2a2ed735d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-workstation-result-qualification.json",
+        "bytes": 173356,
+        "sha256": "1c815a5b939b7440d0890e4aa25ccc4f02cf043e3cef9f7817ce72c0298753e1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-browser-category-selection.json",
+        "bytes": 264026,
+        "sha256": "cd4842dd5ee64e0edcf406c6a7f735e17501200dabdf928006fb8c2b338bb2c4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-full-capture-index.json",
+        "bytes": 22167,
+        "sha256": "381176e7e5283e64db2dedc74c4dd359a694bea26c0d327e5d6a7de7ca06c929"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-native-initial-results.json",
+        "bytes": 245155,
+        "sha256": "f3186229a82af9900fe0e24ff93278ca73651ba0c76c420c5e1eafdd0f428b4f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-diagnostic-results.json",
+        "bytes": 13136,
+        "sha256": "300b6c6a9df4e0c83f7f2c949885353cfc6380c84e44b903cb43ced1e61a91b2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-second-results.json",
+        "bytes": 9367,
+        "sha256": "b04072e1711f792c5fc011ec02f15c7ac716e3cbb5fe084d5d2ac8622ff8646c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-silent-cooperative-results.json",
+        "bytes": 10699,
+        "sha256": "b0e371eb11ddbdc06b1e9e0ff44afd44ced77036ef0f43902dc4c145500afa7a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-silent-prepared-results.json",
+        "bytes": 4757,
+        "sha256": "042b00822783322c6b35c3df6b52a017ebce38e7bbcfa1479e7d60dd835281ed"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-accessible-counts-results.json",
+        "bytes": 179651,
+        "sha256": "a652b5df90a17e9e8df7d5a5120aa3138e6be6fbdc6edb7709b357d104cf4a51"
+      }
+    ],
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-node-second.log",
+        "bytes": 560,
+        "sha256": "3a9160281a87e823d35926e1a7ef4fb949c8a452768e09effea0021e61a47e62"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-lifecycle.log",
+        "bytes": 89,
+        "sha256": "08f0ba4b49cdd8a851cc40a05440082f95dfd409173e8e4341fd52d0b221095a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-workstation-full.log",
+        "bytes": 38031,
+        "sha256": "e059e4b59e0dff6260d6335ece7c3bd79c34426f56d6bb86b2d6af529dee019e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-accessible-counts-node.log",
+        "bytes": 46,
+        "sha256": "303939d3f8306169c84d78f4451178e7205ae086aed5f899e4a40a69aa4c35a6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-accessible-counts-native.log",
+        "bytes": 659,
+        "sha256": "6228956389414c8837a4e2db1cb685d21bd6191c2385a0c5a88cd1fda46f28d0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-native-initial.log",
+        "bytes": 11859,
+        "sha256": "149b3477b5894dd9d1ad701f938e8f62d0ab5e9a9b46dc762b3e15f69e14e761"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-diagnostics.log",
+        "bytes": 8861,
+        "sha256": "97bd1eb9d7bbb16271fc16d49e960b44adca5d2f4d7a529a7d7a381b3f659ce8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-second.log",
+        "bytes": 4620,
+        "sha256": "9ae58d3150bb00ea5269678635b960041bb1aaefb444fedb51d50ed770731b9b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-silent-cooperative.log",
+        "bytes": 4487,
+        "sha256": "ab360b9f845954ce034e2b9e6cd6e12a29ceb17e28127625e0a69658722f9699"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog303-silent-prepared.log",
+        "bytes": 487,
+        "sha256": "0f94e9aeaff44fa74e7ff080aa5dae2972722781f372c238f1e4c25b3e83cf63"
+      }
+    ],
+    "issueStatus": {
+      "1197": {
+        "state": "closed",
+        "reason": "completed",
+        "evidence": "Provider sources and three ownership/revalidation/runtime-lease fixtures unchanged from fully green1c818cc3. Ten named ETag/304/failure/cancellation/stale-probe regression records verified in its full CI log; current55-case lifecycle cohort also passes runtime-lease regressions."
+      },
+      "1033": {
+        "state": "open",
+        "remaining": [
+          "Real-wall-clock ten-minute1024-lane navigation/DOM/surface/history/listener/heap soak",
+          "Pinned physical actor follow-through across mapped row reorder/paging"
+        ]
+      }
+    },
+    "inventory": {
+      "priorFreshOpen": 222,
+      "closedSinceInventory": [
+        1197
+      ],
+      "impliedOpen": 221,
+      "scope": "Arithmetic from prior fresh inventory; not a newly fetched count."
+    },
+    "sourceHashes": {
+      "css/workstation-materials.css": "87af770e9713aae3f77e4d21d2d1cc2fe963474946712dea456c1dacb8aef57c",
+      "docs/roadmap.md": "803599ee24f9a8a1459d875da8f3d37bc67eee3d070e13666a12fd8a2b44b274",
+      "e2e/physical-junction-controls.spec.js": "b416cb7751b9d68675a88418bbc2bc8c7f0045281e47c108c5a0c3c05340ffa8",
+      "e2e/procgen-operational-status.spec.js": "cc5058923027a8fd5781de9387b4c1bca0bc5ed05490b311a8b951ec3586d521",
+      "e2e/procgen-workstation-navigation.spec.js": "730e9b3a77872d139cef644a35e0804c595cb21e954ea20b334758e8d610c50e",
+      "js/app/controls/ParameterKnob.js": "cb88ee7b19e8f5b556c37ede63f5efe8e15bb7dbb9368c8bccc4aa39226ecd7f",
+      "js/app/procgen/ProcgenCameraController.js": "d09b0153edf1ef1a42bbd4ded12a4891b89b5cf496640cb18685771f54cd6078",
+      "js/app/procgen/ProcgenLaneRenderer.js": "eeff0ec892c6137487736a1b07b4bd055303e416bd4191e5cc417dded32ed82b",
+      "js/app/procgen/ProcgenPresentationHost.js": "9d04bf0ac26ede44a694bace0059ba543c3f5df89596d336591b6dfa0c5bac35",
+      "js/app/procgen/ProcgenProjectedRows.js": "057c953371afdf65b2a7e36f33c99c20092b99258b2eba44efc45b00d8607f0d",
+      "js/app/procgen/workstation/LaneNavigationMetadata.js": "c3edab1f41ddf4d1cdf1996139e2d0578cb41e9ea5fbfed83283b26cb0ec17bc",
+      "js/app/procgen/workstation/LaneNavigator.js": "a7eef17978b26867a59d7606dffe7b389eb2c92b6c34ecc28f25d0fcaa9e3c3b",
+      "js/app/procgen/workstation/LaneNavigatorGroupsView.js": "8e2f90ec3e587b9a2635ea8bcb0d19ca60c3b97318db8041ffcd56dc6415db42",
+      "js/app/procgen/workstation/LaneParameterDescriptors.js": "9cdd0eb5fe84cea6db52686f0749dc882931b8d6e3c8ada4f8dc53ef677a904e",
+      "js/app/procgen/workstation/ProcgenLaneProjection.js": "ca13e115730956fe036a70b7938f7a988483d1e59829881fc9558a79bdfd2106",
+      "js/app/procgen/workstation/ProcgenWorkstation.js": "7738e171fb2ac1e4d2e84b932484ce04a572d1c62091f63558cc06f4887ca373",
+      "js/app/procgen/workstation/ProcgenWorkstationView.js": "adfe6ea1a4fde5032d45ea56650048b46b25e89299268ad1f25635513e576033",
+      "test/compact-instrument-chrome.test.js": "41b95473b3c1b894d89eab274a22a185dc9f741c2fa1e10565a2feca0d31b4b9",
+      "test/procgen-camera-timing.test.js": "111a6cda87ca9424cbd5326267e4cfde2487efc037fe9a3b59d8db76f2eb0a19",
+      "test/procgen-lane-navigator.test.js": "8211faeb8fbff444bdc4cb0416c6ae0185e1a090b0ee3edcdd98aa9a06035cfe",
+      "test/procgen-lane-organization.test.js": "fdcc2ee023ea5f6dc55a0439f3f702250f7597d00868ba560a2aa0fc70bcd070",
+      "test/procgen-lane-renderer.test.js": "cfbf6283b9d111b87674beb2d30afd78c35f90b39fe86c39e0ec9ff3132acde8"
     }
   }
 }

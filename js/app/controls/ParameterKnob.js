@@ -17,7 +17,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   if (compact && compactLabel) label.textContent = compactLabel;
   effective.hidden = pickup.hidden = true; cap.type = 'button'; cap.setAttribute('role', 'slider'); cap.setAttribute('aria-label', descriptor.name); cap.setAttribute('aria-orientation', 'vertical');
   cap.setAttribute('aria-valuemin', String(descriptor.min)); cap.setAttribute('aria-valuemax', String(descriptor.max));
-  entry.type = 'text'; entry.inputMode = 'decimal'; entry.setAttribute('aria-label', descriptor.name + ' numeric value'); error.setAttribute('aria-live', 'polite');
+  entry.type = 'text'; entry.maxLength = 2048; entry.inputMode = 'decimal'; entry.setAttribute('aria-label', descriptor.name + ' numeric value'); error.setAttribute('aria-live', 'polite');
   root.dataset.parameterId = descriptor.id; root.dataset.quantity = descriptor.quantity; cap.append(indicator, effective, pickup); root.append(label, cap, output, entry);
   let authored = value == null ? null : quantizeParameter(descriptor, value, true), draft = authored, gesture = null, disposed = false, wheelTimer = null, entryDirty = false, entryConflict = false, entryComposing = false, exactPopover = null;
   const on = (target, type, fn, options) => { target?.addEventListener?.(type, fn, options); listeners.push(() => target?.removeEventListener?.(type, fn, options)); };
@@ -89,11 +89,13 @@ export function createParameterKnob({ document, window = document.defaultView, d
     on(button, 'click', () => { if (begin(null)) { change(operation(), null); finish(null); } }); root.append(button); actionButtons.push(button); return button; };
   action('−', () => draft - descriptor.step); action('+', () => draft + descriptor.step); action('Reset', () => descriptor.defaultValue); root.append(error);
   const acceptedText = () => authored == null ? '' : descriptor.formatInput ? descriptor.formatInput(authored) : String(authored);
-  const showTextConflict = () => {
+  let conflictMessage = null;
+  const showTextConflict = message => {
+    if (message) conflictMessage = message;
     entryConflict = true; entry.dataset.editConflict = 'true'; entry.setAttribute('aria-invalid', 'true'); textConflict.hidden = false;
-    error.textContent = 'This control changed while you were typing. Keep your edit or use the current value.'; paint();
+    error.textContent = conflictMessage || 'This control changed while you were typing. Keep your edit or use the current value.'; paint();
   };
-  const clearTextConflict = () => { entryConflict = false; textConflict.hidden = true; delete entry.dataset.editConflict; entry.removeAttribute('aria-invalid'); error.textContent = ''; };
+  const clearTextConflict = () => { entryConflict = false; conflictMessage = null; textConflict.hidden = true; delete entry.dataset.editConflict; entry.removeAttribute('aria-invalid'); error.textContent = ''; };
   const acceptText = () => {
     if (disposed || entryComposing || compact && !exactPopover?.isOpen()) return;
     if (entryConflict) { showTextConflict(); return; }
@@ -136,6 +138,20 @@ export function createParameterKnob({ document, window = document.defaultView, d
     }
   };
   return Object.freeze({ element: root, descriptor, inspect: () => Object.freeze({ authored, draft, gestureId: gesture?.lease.id ?? null, exactOpen: !!exactPopover?.isOpen(), textDirty: entryDirty || entryConflict || entryComposing }),
+    snapshotDraft() {
+      if (disposed || !getIdentity() || !(entryDirty || entryConflict || entryComposing) || entry.value.length > 2048) return null;
+      return Object.freeze({ version: 1, identity: getIdentity(), descriptor: input, signature: JSON.stringify(descriptor), parse: input.parse, format: input.format, formatInput: input.formatInput,
+        text: entry.value, authored, conflict: entryConflict, composing: entryComposing, error: String(error.textContent).slice(0, 512), invalid: entry.getAttribute('aria-invalid') === 'true', start: entry.selectionStart, end: entry.selectionEnd });
+    },
+    restoreDraft(snapshot) {
+      if (disposed || !snapshot || snapshot.version !== 1 || !snapshot.identity || snapshot.identity !== getIdentity() || snapshot.descriptor !== input || snapshot.signature !== JSON.stringify(descriptor) ||
+        snapshot.parse !== input.parse || snapshot.format !== input.format || snapshot.formatInput !== input.formatInput || typeof snapshot.text !== 'string' || snapshot.text.length > 2048) return false;
+      entry.value = snapshot.text; entryDirty = true; entryComposing = false; entry.setSelectionRange?.(Math.max(0, Math.min(entry.value.length, snapshot.start || 0)), Math.max(0, Math.min(entry.value.length, snapshot.end || 0)));
+      if (snapshot.composing) showTextConflict('Composition ended when this lane was hidden. Review the draft or use the current value.');
+      else if (snapshot.conflict || snapshot.authored !== authored || readOnly || pending) showTextConflict();
+      else { if (snapshot.invalid) entry.setAttribute('aria-invalid', 'true'); error.textContent = snapshot.error || ''; paint(); }
+      onEntryActivity?.(); return true;
+    },
     setState({ value: next = authored, effectiveValue = null, pickupValue = null, isReadOnly = readOnly, isPending = pending } = {}) {
       if (disposed) return;
       const incoming = next == null ? null : quantizeParameter(descriptor, next, true), unavailable = isReadOnly && !readOnly || isPending && !pending, conflict = entryDirty && (incoming !== authored || unavailable);

@@ -6,6 +6,7 @@ import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { hashProcgenPhysicsCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
+import { createProcgenLaneProjection } from '../js/app/procgen/workstation/ProcgenLaneProjection.js';
 const canvasFixture = () => {
   const pixels = [];
   const context = { globalAlpha: 1, fillRect(x, y, w, h) { pixels.push({ x, y, w, h, color: this.fillStyle, alpha: this.globalAlpha }); }, createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
@@ -32,6 +33,15 @@ describe('read-only runtime throughput observation', () => {
   });
 });
 describe('bounded shared-lane renderer', () => {
+  it('rasterizes arbitrary physical rows with bounded pooled surfaces and retires them on contiguous return', async () => {
+    const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 8 }), renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });
+    const before = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
+    renderer.workstationLayout = createProcgenLaneProjection({ laneCount: 8, height: 450, laneIndices: [7, 0, 6, 1] }); expect(renderer.render(true), renderer.getDisplayState().reason).to.equal(true);
+    expect(renderer.workstationRows.map(row => row.lane)).to.deep.equal([7, 0, 6, 1]); expect(renderer.projectedRows.views).to.have.length(4); expect(renderer.resources.bytes).to.be.at.most(renderer.resources.budgetBytes);
+    expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world))).to.equal(before);
+    renderer.workstationLayout = createProcgenLaneProjection({ laneCount: 8, height: 450 }); expect(renderer.render(true)).to.equal(true); expect(renderer.projectedRows.views).to.have.length(0);
+    renderer.dispose(); expect(renderer.resources.bytes).to.equal(0);
+  });
   it('publishes a completed actor index before drawing without running sprite bounds in the physical tick', async () => {
     const world = new ProcgenLaneWorld({ masks: await loadProcgenMasks(), laneCount: 8 });
     const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(), world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } });

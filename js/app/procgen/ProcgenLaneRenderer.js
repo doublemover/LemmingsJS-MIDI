@@ -7,6 +7,7 @@ import { ProcgenObjectPlacementCache } from './ProcgenObjectPlacementCache.js';
 import { ProcgenActorEffectDisplay } from './ProcgenActorEffectDisplay.js';
 import { ProcgenActorEffectPass } from './ProcgenActorEffectPass.js';
 import { ProcgenPresentationHost } from './ProcgenPresentationHost.js';
+import { ProcgenProjectedRows } from './ProcgenProjectedRows.js';
 import { peekProcgenTileRevision } from './ProcgenTerrainRetention.js';
 import { createInstrumentMotionPolicy } from '../resources/InstrumentMotionPolicy.js';
 
@@ -23,6 +24,7 @@ class ProcgenLaneRenderer {
       this.objectTileCache = new ProcgenObjectPlacementCache(world, this.resources);
       this.motionPolicy = createInstrumentMotionPolicy({ document: canvas.ownerDocument, window: windowRef, budget: this.resources, maxTransitions: 1280 });
       this.presentation = new ProcgenPresentationHost(this); this.selectedWorldEntityId = null; this.selectionRevision = 0;
+      this.projectedRows = new ProcgenProjectedRows(this);
       this.actorEffects = new ProcgenActorEffectDisplay({ budget: this.resources, motionPolicy: this.motionPolicy }); this.actorEffectPass = new ProcgenActorEffectPass(this); this._effectActor = null; this.effectVisibleActors = new Set(); this.effectTelemetryActors = new Set();
       this.presentedActorBounds = new Map(); this.presentationEntities = []; this._presentationActor = null;
       this.buffer = this.resources.canvas(); this.terrainBuffer = this.resources.canvas(); this.objectBuffer = this.resources.canvas();
@@ -89,7 +91,7 @@ class ProcgenLaneRenderer {
   _releasePresentation() {
     this.presentation?.invalidate('The world display is preparing a new projection.');
     this.actorEffects?.clear({ profiles: false }); this.actorEffectPass?.reset(); this.effectVisibleActors?.clear(); this.effectTelemetryActors?.clear();
-    for (const release of [() => this.decorationLayer?.reset?.(), () => this.objectTileCache.clear(), () => this.cctv?.releaseViews()]) {
+    for (const release of [() => this.projectedRows?.clear(), () => this.decorationLayer?.reset?.(), () => this.objectTileCache.clear(), () => this.cctv?.releaseViews()]) {
       try { release(); } catch { this.resources.retirementFailures++; }
     }
     this.resources.clear({ preserveKinds: ['effect-profile'] }); if (this.presentationActive) this.resources.release(this.canvas);
@@ -112,7 +114,7 @@ class ProcgenLaneRenderer {
     this._releasePresentation(); this.camera.resetPresentationClock?.();
     const ready = this._acquireContexts(); if (ready) this._displayState('ready'); return ready;
   }
-  getDisplayState() { return { motion: this.motionPolicy?.getState() || null, state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
+  getDisplayState() { return { motion: this.motionPolicy?.getState() || null, projectedRowSurfaces: this.projectedRows?.views.length || 0, state: this.lifecycleState, reason: this.displayError, attempts: this.recoveryAttempts, qualityDivisor: this.qualityDivisor, ...this.resources.getStats() }; }
   resize(request = null) {
     if (!this.presentationActive) return false;
     if (this.lifecycleState === 'disposed') return false;
@@ -120,7 +122,7 @@ class ProcgenLaneRenderer {
       if (!Number.isSafeInteger(request.width) || request.width < 1 || !Number.isSafeInteger(request.height) || request.height < 1) throw new Error('Invalid requested display dimensions.');
       this.surfaceWidth = request.width; this.surfaceHeight = request.height; this.requestedSurface = true;
     }
-    const key = `${this.requestedSurface ? this.surfaceWidth : this.canvas.width}:${this.requestedSurface ? this.surfaceHeight : this.canvas.height}:${this.window.devicePixelRatio}:${this.workstationLayout?.firstLane}:${this.workstationLayout?.count}:${this.workstationLayout?.rowHeight}:${this.workstationLayout?.stripHeight}`;
+    const key = `${this.requestedSurface ? this.surfaceWidth : this.canvas.width}:${this.requestedSurface ? this.surfaceHeight : this.canvas.height}:${this.window.devicePixelRatio}:${this.workstationLayout?.laneIndices?.join(',') || this.workstationLayout?.firstLane}:${this.workstationLayout?.count}:${this.workstationLayout?.rowHeight}:${this.workstationLayout?.stripHeight}`;
     if (key === this.lastResizeKey && this.canvas.width === this.managedWidth && this.canvas.height === this.managedHeight && this.lifecycleState === 'ready') return false;
     this.lastTerrainKey = ''; this.lastGeometryKey = '';
     const rendered = this.render(true); this.lastResizeKey = rendered ? key : null; return rendered;
@@ -445,6 +447,8 @@ class ProcgenLaneRenderer {
     this.cctv.prepare(start); this.camera.update(false, !force, start);
     const dpr = Math.min(2, this.window.devicePixelRatio || 1) * mainLimit, scale = this.scale * dpr;
     const layout = this.workstationLayout;
+    if (layout?.mapped) return this.projectedRows.render(layout, start, force);
+    if (this.projectedRows?.active) this.projectedRows.clear();
     this.rasterStep = (layout ? 1 : Math.max(1, 1 / scale)) * this.qualityDivisor;
     const mainHeight = Math.max(1, this.canvas.height - (this.overviewBandHeight || 0) * dpr);
     let width = Math.max(1, Math.ceil(this.canvas.width / scale / this.rasterStep)), height = layout ? Math.ceil(layout.count * this.laneHeight / this.rasterStep) : Math.max(1, Math.ceil(mainHeight / scale / this.rasterStep));
@@ -532,7 +536,7 @@ class ProcgenLaneRenderer {
     this._displayState('disposed');
     for (const [event, listener] of this.contextListeners) this.canvas.removeEventListener?.(event, listener);
     this.contextListeners.length = 0; this.pendingContextListeners.length = 0;
-    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.releaseMotion?.(); this.motionPolicy.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
+    this.actorVisibility.dispose(); this.camera.dispose(); this._releasePresentation(); this.projectedRows.dispose(); this.actorEffects.dispose(); this.actorEffectPass.dispose(); this.releaseMotion?.(); this.motionPolicy.dispose(); this.presentation.dispose(); this.cctv.dispose(); this.decorationLayer?.dispose?.(); this.objectTileCache.dispose(); this.resources.dispose(); this.decorationLayer = null; this.midiSpanOverlay = null; this.frames = new WeakMap(); this.objectFrames = new WeakMap();
     this.dotColors = new WeakMap(); this.actorDots = new Map(); this.objectDots = new Map(); this.image = null; this.pixels = null; this.lastFrameKey = null;
     this.sceneryBuffer = this.sceneryContext = this.sceneryImage = this.sceneryPixels = null;
     this.lastAppearance = this.lastSprites = this.lastHud = this.lastHudSprites = this.lastDecorationLayer = null;

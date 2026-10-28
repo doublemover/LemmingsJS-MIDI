@@ -113,6 +113,8 @@ body.procgen-workstation[data-instrument-motion=frozen] *::after { animation:non
 .procgen-workstation .studio-lane-navigator > div { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
 .procgen-workstation .studio-lane-navigator > div button { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; min-width:0; }
 .procgen-workstation .studio-offscreen-lanes { max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.procgen-workstation .studio-lane-organization { grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr; gap:4px; border-top:1px solid var(--material-line); padding-top:6px; }
+.procgen-workstation .studio-lane-organization > strong, .procgen-workstation .studio-lane-organization > output { grid-column:1 / -1; }
 @media (prefers-contrast:more) {
   body.procgen-workstation { --material-chassis:#17191d; --material-panel:#1d2025; --material-cap:#272b31; --material-line:#c7cdd6; --material-engraving:#ffffff; --material-secondary:#e0e5ec; --material-muted:#c7cdd6; --state-unavailable:#c7cdd6; }
 }

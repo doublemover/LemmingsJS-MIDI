@@ -2,7 +2,7 @@ import { createProcgenPresentationSnapshot, readProcgenCanvasRect, sameProcgenRe
 
 const layoutKey = renderer => {
   const layout = renderer.workstationLayout;
-  return layout ? [layout.mode, layout.firstLane, layout.count, layout.rowHeight, layout.stripHeight].join(':') : 'world';
+  return layout ? [layout.mode, layout.laneIndices?.join(',') || layout.firstLane, layout.count, layout.rowHeight, layout.stripHeight].join(':') : 'world';
 };
 
 class ProcgenPresentationHost {

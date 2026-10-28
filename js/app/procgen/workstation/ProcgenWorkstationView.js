@@ -9,7 +9,6 @@ import { createWorkstationDock } from './WorkstationDock.js';
 import { createWorkstationChrome } from './WorkstationChrome.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
 import { createProcgenCommandPalette } from '../../controls/ProcgenCommandPalette.js';
-import { formatLaneGain, parseLaneGain } from './LaneMixState.js';
 import { procgenLane, procgenLaneIndex } from './ProcgenProjectIndex.js';
 import { createProjectNameDialog } from '../../controls/ProjectNameDialog.js';
 import { createParameterKnob } from '../../controls/ParameterKnob.js';
@@ -25,10 +24,14 @@ import { createPerformanceSceneControlView } from './PerformanceSceneControlView
 import { readSceneMacroControl } from './SceneMacroAction.js';
 import { createMidiRouteDiagnostics } from './MidiRouteDiagnostics.js';
 import { createLaneNavigator, createLaneNavigatorView } from './LaneNavigator.js';
+import { createLaneNavigationMetadata } from './LaneNavigationMetadata.js';
+import { createLaneNavigatorGroupsView } from './LaneNavigatorGroupsView.js';
+import { createLaneLevelDescriptor, createLanePanDescriptor } from './LaneParameterDescriptors.js';
 
 const NOTES = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
 const SCALES = { Major: [0, 2, 4, 5, 7, 9, 11], Minor: [0, 2, 3, 5, 7, 8, 10], Dorian: [0, 2, 3, 5, 7, 9, 10], Lydian: [0, 2, 4, 6, 7, 9, 11], Pentatonic: [0, 2, 4, 7, 9], Chromatic: Array.from({ length: 12 }, (_, i) => i) };
 const COLORS = ['#289fd1', '#6daa43', '#9362c9', '#ac855a', '#ef7440', '#dc639e', '#58aec6', '#99ac37'];
+const laneColor = id => { let hash = 2166136261; for (const character of String(id)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619); return COLORS[(hash >>> 0) % COLORS.length]; };
 const rendererLeases = new WeakMap(), mountedViews = new WeakMap(), motionOwners = new WeakMap();
 
 function createProcgenWorkstationView({ document, window, resourceBudget = null, getProject, getRuntime, getDocumentIdentity = () => null, getArmedLaneIds = () => [], dispatch, handlers = {}, canCommand = name => typeof handlers[name] === 'function', state = {} }) {
@@ -36,6 +39,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   for (const [key, value] of Object.entries({ slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip', firstLane: 0, minimumRow: 96, inspectorWidth: 304, hazardSpacing: 160 })) if (state[key] == null) state[key] = value;
   const listeners = [], parameterControls = [], laneMixControls = new Map(), lanePanControls = new Map(), parameterCache = new Map(), curveEditors = new Map();
   const laneDisplays = new Map(), laneDisplayPages = new Map();
+  const retainedLaneDrafts = new Map();
   let parameterScope = null, parameterSeen = null, viewRevision = 0, curveDocumentIdentity = getDocumentIdentity();
   let midiRouteView = null, midiRouteState = null, mixDocumentIdentity = null;
   const pointerArbiter = getPointerGestureArbiter(document), nameDialog = createProjectNameDialog({ document, window });
@@ -296,13 +300,35 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const tool = select(['select', 'draw', 'erase'], state.tool, value => { state.tool = value; }, 'Step editing tool');
   const laneRange = node('output', '', 'studio-lane-range'); laneRange.setAttribute('aria-label', 'Visible lane range');
   const navigator = createLaneNavigator({ firstLane: state.firstLane });
+  const navigationMetadata = createLaneNavigationMetadata({ getState: () => state.laneNavigation, setState: value => { state.laneNavigation = value; } });
+  let navigationProjection = null, navigationIdentity, navigationInitialized = false, laneQueryAnchor = null;
+  state.laneQuery = String(state.laneQuery || '').slice(0, 256);
+  function syncLaneNavigation() {
+    const source = getProject().procgen.lanes, identity = getDocumentIdentity();
+    if (navigationInitialized && navigationIdentity !== identity) { state.laneQuery = ''; laneQueryAnchor = null; }
+    navigationIdentity = identity; navigationInitialized = true; navigationMetadata.sync(source, identity);
+    const next = navigationMetadata.visible(state.laneQuery), changed = !navigationProjection || navigationProjection.laneIndices.join(',') !== next.laneIndices.join(',');
+    navigationProjection = next; navigator.sync(next.lanes, identity, { allLanes: source }); return changed;
+  }
+  function changeLaneQuery(value) {
+    if (disposed) return true;
+    const next = String(value).slice(0, 256); if (!state.laneQuery && next) laneQueryAnchor = navigator.summary(state.laneId).firstVisibleId;
+    state.laneQuery = next; beginGeometry(); syncLaneNavigation();
+    if (!next && laneQueryAnchor) { navigator.jump(laneQueryAnchor); laneQueryAnchor = null; }
+    reflowGeometry(); handlers.preferences?.(); return true;
+  }
   const moveLanes = delta => { navigator.move(delta); layout(); renderRows(); handlers.preferences?.(); };
   const previousLanes = button('↑', () => moveLanes(-projection.count), 'Show previous lanes');
   const nextLanes = button('↓', () => moveLanes(projection.count), 'Show next lanes');
   const laneNavigation = node('span', null, 'studio-lane-navigation'); laneNavigation.append(previousLanes, laneRange, nextLanes); footer.append(laneNavigation, button('Clear all solos', () => handlers.clearSolos?.(), 'Clear solo on every lane; does not change self-mute or level'));
-  const laneNavigator = createLaneNavigatorView({ document, navigator, getSelection: () => state.laneId, getArmed: getArmedLaneIds,
-    onJump: id => { if (disposed || navigator.jump(id) == null) return; state.laneId = id; state.slot = procgenLane(getProject().procgen.lanes, id)?.activeSlot || 0; layout(); renderRows(); renderInspector(); chrome.close();
+  const laneNavigator = createLaneNavigatorView({ document, navigator, getSelection: () => state.laneId, getArmed: getArmedLaneIds, onQuery: changeLaneQuery,
+    onJump: id => { if (disposed || !procgenLane(getProject().procgen.lanes, id)) return; navigationMetadata.reveal(id);
+      if (!navigationMetadata.visible(state.laneQuery).lanes.some(lane => lane.id === id)) { state.laneQuery = ''; laneQueryAnchor = null; laneNavigator.setQuery('', false); }
+      syncLaneNavigation(); if (navigator.jump(id) == null) return; state.laneId = id; state.slot = procgenLane(getProject().procgen.lanes, id)?.activeSlot || 0; beginGeometry(); reflowGeometry(); renderInspector(); chrome.close();
       [...lanes.children].find(element => element.dataset.laneId === id)?.querySelector('.studio-lane-title')?.focus({ preventScroll: true }); handlers.preferences?.(); } });
+  const laneGroups = createLaneNavigatorGroupsView({ document, metadata: navigationMetadata, getSelection: () => state.laneId,
+    onChange: ({ revealLaneId } = {}) => { if (disposed) return; beginGeometry(); syncLaneNavigation(); if (revealLaneId) navigator.jump(revealLaneId); reflowGeometry(); handlers.preferences?.(); } });
+  laneNavigator.element.append(laneGroups.element);
   footer.append(inMenu('View', laneNavigator.element), laneNavigator.breadcrumb);
   footer.append(inMenu('Edit', button('+ Lane', () => handlers.addLane?.())), inMenu('Edit', button('− Lane', () => handlers.removeLane?.())), inMenu('Edit', button('Duplicate', () => handlers.duplicate?.())), inMenu('Edit', button('Clear', () => handlers.clear?.())), inMenu('Edit', tool),
     inMenu('Edit', button('Copy', () => handlers.copy?.())), inMenu('Edit', button('Paste', () => handlers.paste?.())), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
@@ -768,15 +794,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const width = Math.max(1, measured?.width ?? stage.clientWidth), height = Math.max(1, measured?.height ?? stage.clientHeight);
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const laneCount = getProject().procgen.lanes.length, physicalHeight = getRuntime()?.world?.laneHeight || 144;
-    navigator.sync(getProject().procgen.lanes, getDocumentIdentity()); state.firstLane = navigator.window(projection?.count || 8);
-    const minimumRow = Math.max(getProject().procgen.lanes.some(lane => lane.mode === 'pattern') ? 144 : 116, state.minimumRow);
-    const key = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
+    syncLaneNavigation(); state.firstLane = navigator.window(projection?.count || 8);
+    const minimumRow = Math.max(navigationProjection.lanes.some(lane => lane.mode === 'pattern') ? 144 : 116, state.minimumRow);
+    const key = JSON.stringify([width, height, dpr, laneCount, navigationProjection.laneIndices, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
     const changed = key !== layoutKey;
     if (changed) {
-      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, mode: state.layout, physicalHeight, minimumRow });
-      state.firstLane = projection.firstLane;
+      projection = createProcgenLaneProjection({ laneCount, height, firstLane: state.firstLane, laneIndices: navigationProjection.laneIndices, mode: state.layout, physicalHeight, minimumRow });
+      state.firstLane = projection.firstVisible;
       navigator.window(projection.count);
-      layoutKey = JSON.stringify([width, height, dpr, laneCount, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
+      layoutKey = JSON.stringify([width, height, dpr, laneCount, navigationProjection.laneIndices, state.firstLane, state.layout, physicalHeight, minimumRow, state.workspaceMode, state.dockHeight]);
       shell.dataset.layout = state.layout; shell.style.setProperty('--row-height', projection.rowHeight + 'px');
       canvas.style.width = width + 'px'; canvas.style.height = height + 'px';
     }
@@ -798,32 +824,37 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     return changed || rendererChanged;
   }
   const createLaneFader = (laneId, value, documentIdentity) => {
-    const token = {};
-    return createParameterKnob({ document, window, presentation: 'fader', value, compact: true, contextName: laneId + ' · Level', compactLabel: 'Level / dB',
+    const key = 'level:' + laneId, retained = retainedLaneDrafts.get(key), token = retained?.snapshot.identity || {}; retainedLaneDrafts.delete(key);
+    const control = createParameterKnob({ document, window, presentation: 'fader', value, compact: true, contextName: laneId + ' · Level', compactLabel: 'Level / dB',
       compactFormat: gain => gain === 0 ? '−∞' : (20 * Math.log10(gain)).toFixed(1),
       focusFallback: () => lanes.querySelector('.selected .studio-lane-title') || dock.toggle, onEntryActivity: () => { if (!disposed) laneMixSurface.invalidate(); },
-      descriptor: { id: 'lane-fader:' + laneId, name: 'Level', quantity: 'lane-gain', unit: 'dB', min: 0, max: 2, step: 0.01, fineStep: 0.001, defaultValue: 1, detents: [1],
-        format: formatLaneGain, formatInput: value => value === 0 ? '-inf' : (20 * Math.log10(value)).toFixed(2), parse: parseLaneGain },
+      descriptor: retained?.snapshot.descriptor || createLaneLevelDescriptor(laneId),
       getIdentity: () => !disposed && !superseded && getDocumentIdentity() === documentIdentity && procgenLane(getProject().procgen.lanes, laneId) ? token : null,
       onCancel: reason => { if (reason === 'external-edit') status.textContent = 'Lane level changed outside this gesture; its draft was canceled.'; }, commit: gain => dispatch({ type: 'procgen/lane', laneId, patch: { gain } }) });
-
+    if (retained?.documentIdentity === documentIdentity) control.restoreDraft(retained.snapshot); return control;
   };
   const createLanePan = (laneId, value, documentIdentity) => {
-    const token = {};
-    return createParameterKnob({ document, window, value, compact: true, contextName: laneId + ' · Pan',
-      descriptor: { id: 'lane-pan:' + laneId, name: 'Pan', quantity: 'stereo-position', unit: 'pan units', min: -127, max: 127, step: 1, fineStep: 0.1, defaultValue: 0, detents: [0],
-        format: pan => pan === 0 ? 'Center' : `${Math.abs(Number(pan.toFixed(1)))} ${pan < 0 ? 'L' : 'R'}`,
-        parse: text => { if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) throw new Error('Enter a signed decimal pan position.'); return Number(text); } },
+    const key = 'pan:' + laneId, retained = retainedLaneDrafts.get(key), token = retained?.snapshot.identity || {}; retainedLaneDrafts.delete(key);
+    const control = createParameterKnob({ document, window, value, compact: true, contextName: laneId + ' · Pan',
+      descriptor: retained?.snapshot.descriptor || createLanePanDescriptor(laneId),
       getIdentity: () => !disposed && !superseded && getDocumentIdentity() === documentIdentity && procgenLane(getProject().procgen.lanes, laneId) ? token : null,
       focusFallback: () => lanes.querySelector('.selected .studio-lane-title') || dock.toggle, onEntryActivity: () => { if (!disposed) laneMixSurface.invalidate(); },
       onCancel: reason => { if (reason === 'external-edit') status.textContent = 'Lane pan changed outside this gesture; its draft was canceled.'; },
       commit: pan => dispatch({ type: 'procgen/lane', laneId, patch: { pan } }) });
+    if (retained?.documentIdentity === documentIdentity) control.restoreDraft(retained.snapshot); return control;
+  };
+  const retainLaneDraft = (kind, laneId, control, documentIdentity) => {
+    const snapshot = control.snapshotDraft(); if (!snapshot) return;
+    const key = kind + ':' + laneId; retainedLaneDrafts.delete(key);
+    if (retainedLaneDrafts.size >= 16) { retainedLaneDrafts.delete(retainedLaneDrafts.keys().next().value); status.textContent = 'An older offscreen parameter draft was discarded.'; }
+    retainedLaneDrafts.set(key, { laneId, documentIdentity, snapshot });
   };
   function renderRows({ laneIds = null } = {}) {
     if (!projection) return;
     queuedBeat = null; playheadSurface.invalidate();
     const nextLanes = node('div'), nextGrid = node('div'), visibleIds = new Set(), documentIdentity = getDocumentIdentity();
     if (mixDocumentIdentity !== documentIdentity) {
+      retainedLaneDrafts.clear();
       for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear();
       for (const control of lanePanControls.values()) control.dispose(); lanePanControls.clear();
       for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear();
@@ -832,16 +863,18 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const place = (parent, child) => (parent === lanes ? nextLanes : nextGrid).append(child);
     const project = getProject();
     laneNavigator.update(getDocumentIdentity());
-    laneRange.textContent = `${projection.firstLane + 1}–${projection.firstLane + projection.count} of ${project.procgen.lanes.length}`;
-    previousLanes.disabled = projection.firstLane === 0; nextLanes.disabled = projection.firstLane + projection.count >= project.procgen.lanes.length;
+    if (laneNavigator.getQuery() !== state.laneQuery) laneNavigator.setQuery(state.laneQuery, false); laneGroups.update(getDocumentIdentity());
+    const shown = navigationProjection.lanes.length;
+    laneRange.textContent = shown ? `${projection.firstVisible + 1}–${projection.firstVisible + projection.count} of ${shown}${shown === project.procgen.lanes.length ? '' : ` shown · ${project.procgen.lanes.length} total`}` : `No matching rows · ${project.procgen.lanes.length} total`;
+    previousLanes.disabled = projection.firstVisible === 0; nextLanes.disabled = projection.firstVisible + projection.count >= shown;
     for (let row = 0; row < projection.count; row++) {
-      const laneIndex = projection.firstLane + row, lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
+      const laneIndex = projection.laneIndices[row], lane = project.procgen.lanes[laneIndex], displaySlot = state.laneId === lane.id ? state.slot : lane.activeSlot, pattern = lane.mode === 'pattern' ? lane.patterns[displaySlot] : null;
       visibleIds.add(lane.id);
       if (laneIds && !laneIds.includes(lane.id)) {
         const previousHeader = [...lanes.children].find(item => item.dataset.laneId === lane.id), previousRow = [...grid.children].find(item => item.dataset.laneId === lane.id);
         if (previousHeader && previousRow) { nextLanes.append(controlTree.retain(previousHeader)); nextGrid.append(controlTree.retain(previousRow)); continue; }
       }
-      const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.dataset.controlKey = 'lane:' + lane.id; header.style.setProperty('--lane-color', COLORS[laneIndex % 8]); header.classList.toggle('selected', state.laneId === lane.id);
+      const header = node('section', null, 'studio-lane-header'); header.dataset.laneId = lane.id; header.dataset.controlKey = 'lane:' + lane.id; header.style.setProperty('--lane-color', laneColor(lane.id)); header.classList.toggle('selected', state.laneId === lane.id);
       const label = button(`${laneIndex + 1} · ${lane.name}`, () => { state.laneId = lane.id; state.slot = lane.activeSlot; state.tab = 'Lane'; render(); }, lane.name); label.className = 'studio-lane-title'; label.setAttribute('aria-label', `Lane ${laneIndex + 1}: ${lane.name}`); label.setAttribute('aria-pressed', String(state.laneId === lane.id));
       const controls = node('div', null, 'studio-lane-mini');
       for (const [key, text] of [['solo', 'S'], ['mute', 'M']]) { const el = button(text, () => dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { [key]: !procgenLane(getProject().procgen.lanes, lane.id)?.[key] } }), `${key} ${lane.name}`); el.dataset.laneControl = key; el.setAttribute('aria-pressed', String(lane[key])); controls.append(el); }
@@ -858,7 +891,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       const performance = node('div', null, 'studio-lane-performance'); performance.dataset.controlKey = 'performance:' + lane.id;
       performance.append(display.element.isConnected ? controlTree.retain(display.element) : display.element, fader.element.isConnected ? controlTree.retain(fader.element) : fader.element, pan.element.isConnected ? controlTree.retain(pan.element) : pan.element);
       header.append(label, controls, performance, slots); place(lanes, header);
-      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.controlKey = 'row:' + lane.id + ':' + displaySlot; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', COLORS[laneIndex % 8]); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
+      const sequence = node('div', null, 'studio-sequence'); sequence.dataset.laneId = lane.id; sequence.dataset.controlKey = 'row:' + lane.id + ':' + displaySlot; sequence.dataset.slot = displaySlot; sequence.style.setProperty('--lane-color', laneColor(lane.id)); sequence.style.gridTemplateColumns = `repeat(${pattern?.length || 1}, minmax(0, 1fr))`;
       sequence.style.top = (row * projection.rowHeight + projection.rowHeight - (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48))) + 'px';
       sequence.style.height = (state.layout === 'strip' ? 25 : Math.min(44, projection.rowHeight * 0.48)) + 'px';
       if (!pattern) {
@@ -886,8 +919,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
     const identity = 'rows:' + JSON.stringify(documentIdentity);
     controlTree.reconcile(lanes, nextLanes, identity); controlTree.reconcile(grid, nextGrid, identity);
-    for (const [id, control] of laneMixControls) if (!visibleIds.has(id)) { control.dispose(); laneMixControls.delete(id); }
-    for (const [id, control] of lanePanControls) if (!visibleIds.has(id)) { control.dispose(); lanePanControls.delete(id); }
+    for (const [id, control] of laneMixControls) if (!visibleIds.has(id)) { retainLaneDraft('level', id, control, documentIdentity); control.dispose(); laneMixControls.delete(id); }
+    for (const [id, control] of lanePanControls) if (!visibleIds.has(id)) { retainLaneDraft('pan', id, control, documentIdentity); control.dispose(); lanePanControls.delete(id); }
+    for (const [key, retained] of retainedLaneDrafts) if (!procgenLane(getProject().procgen.lanes, retained.laneId)) retainedLaneDrafts.delete(key);
     for (const [id, display] of laneDisplays) if (!visibleIds.has(id)) { display.dispose(); laneDisplays.delete(id); }
     paintLaneDisplays();
   }
@@ -915,7 +949,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     for (const [key, entry] of curveEditors) if (!procgenLane(getProject().procgen.lanes, entry.laneId)?.ccAutomation.some(curve => curve.id === entry.curveId)) { entry.control.dispose(); curveEditors.delete(key); }
     dock.update();
     selected(); handlers.reconcileSoundPreview?.(); controlTree.update(layoutMode, state.layout, { identity: getDocumentIdentity() }); controlTree.update(root, String(getProject().global.scale.root), { identity: getDocumentIdentity() });
-    navigator.sync(getProject().procgen.lanes, getDocumentIdentity()); laneNavigator.update(getDocumentIdentity());
+    const navigationChanged = syncLaneNavigation(); laneNavigator.update(getDocumentIdentity()); laneGroups.update(getDocumentIdentity()); if (partial && navigationChanged) reflowGeometry();
     const current = getProject().global.scale;
     const matched = Object.keys(SCALES).find(name => JSON.stringify(SCALES[name]) === JSON.stringify(current.degrees));
     if (!matched && ![...scale.options].some(option => option.value === current.name)) { const option = node('option', current.name); option.value = current.name; scale.append(option); }
@@ -946,7 +980,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (disposed || !action) return;
     if (action.type === 'procgen/step') { patchStep(action); return; }
     if (change.structural || action.type === 'procgen/seed') { render(); return; }
-    navigator.sync(getProject().procgen.lanes, getDocumentIdentity()); laneNavigator.update(getDocumentIdentity());
+    const navigationChanged = syncLaneNavigation(); laneNavigator.update(getDocumentIdentity()); laneGroups.update(getDocumentIdentity()); if (navigationChanged) { beginGeometry(); reflowGeometry(); }
     if (['procgen/palette', 'procgen/pattern'].includes(action.type) || change.fields.some(key => ['family', 'role', 'mode', 'patterns'].includes(key))) {
       const geometryChanged = layout(); renderRows(geometryChanged ? {} : { laneIds: change.laneIds });
     }
@@ -1154,6 +1188,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       return handlers.openPhysicalScene?.();
     } });
   const api = { render, patchStep, patchProject, layout, dock, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
+    navigationDiagnostics() { const organization = navigationMetadata.getState(); return { ...navigator.summary(state.laneId, getArmedLaneIds()), mountedHeads: laneMixControls.size, mountedPans: lanePanControls.size, mountedDisplays: laneDisplays.size,
+      retainedDrafts: retainedLaneDrafts.size, organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped } }; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -1228,7 +1264,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'workstation-chrome', run: () => chrome.dispose() }, { name: 'instrument-dock', run: () => dock.dispose() }, { name: 'curve-editors', run: () => { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); } },
         { name: 'lane-navigator', run: () => laneNavigator.dispose() },
-        { name: 'lane-mix-controls', run: () => { for (const control of [...laneMixControls.values(), ...lanePanControls.values()]) control.dispose(); laneMixControls.clear(); lanePanControls.clear(); } },
+        { name: 'lane-organization', run: () => { laneGroups.dispose(); navigationMetadata.dispose(); } },
+        { name: 'lane-mix-controls', run: () => { for (const control of [...laneMixControls.values(), ...lanePanControls.values()]) control.dispose(); laneMixControls.clear(); lanePanControls.clear(); retainedLaneDrafts.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
         { name: 'causal-visual-view', run: () => causalView.dispose() },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },

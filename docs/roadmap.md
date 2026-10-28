@@ -7818,3 +7818,45 @@ export-budget acknowledgments still prevent a false complete receipt.
   arbitrary visible-row projection without physical stripe/route reassignment,
   retained offscreen edit drafts, and a ten-minute navigation/listener soak.
   Its search/jump/paging implementation is usable independently of those items.
+
+### Continuation 303 — lane organization and arbitrary physical-row presentation
+
+- Frontload group/collapse/pin and visual-order metadata with independent
+  count/byte-bounded undo, source namespaces, stable lane colors, full-project
+  offscreen breadcrumbs and search filtering that never changes canonical lane
+  order, physical stripe IDs, routing or world state. Default contiguous windows
+  retain the original renderer path. Arbitrary windows share one world/evidence/
+  motion owner through at most eight budgeted raster surfaces, with explicit
+  physical-row mapping and projection invalidation on changes.
+- Retain at most sixteen logical exact-entry drafts across row virtualization;
+  descriptors live outside DOM closures, and restoration checks source lease,
+  descriptor signature/functions and current authored value. Native composition
+  resumes as an explicit review conflict. No hidden draft publishes or retains
+  a detached control. Track organization/draft/surface diagnostics separately.
+- Grouped validation passes 222 distinct focused Node cases (167 core/control/
+  renderer and 55 lifecycle/effect/CCTV/provider-lease cases). The complete
+  workstation project passes 128 cases with two explicit benchmark skips and all
+  fourteen capability gates. Archive 62 captures and the source-bound full report.
+  Its master PCM is finite/nonzero but explicitly Partial: a 128-frame render-clock
+  gap stopped the capture after 44,672 retained frames. Do not relabel it Ready.
+- A final accessible-name refinement exposes exact offscreen selected/solo/armed
+  counts. All twelve navigator Node cases and both affected native journeys pass
+  afterward. The archived full cohort precedes only that label/spec refinement;
+  its source binding stays distinct from the final focused cohort.
+- Native fixtures prove physical raster equality and stable colors through visual
+  reorder, an owned MIDI API hold/route identity (receiver/acoustic state unknown),
+  fixed Learn target breadcrumbs, collapse/pins, empty searches and typed draft
+  restoration. Pinning explicitly reveals its lane instead of leaving it above a
+  preserved paging anchor. Physical-only lanes are not falsely marked as armed
+  pattern-recording targets. Explicit incoming saved organization restores while
+  old document history retires.
+- Repair both prior-head CI browser failures: frame a paused junction explicitly,
+  and keep validation checkpoint work from starving a live musical clock. Capture
+  cooperatively under unchanged-world/tick/project ownership, hash in Node, and
+  prepare the lesson catalog while stopped. The complete physics assertion remains;
+  the isolated lesson journey passes at normal and four-times desktop CPU stress.
+- Close #1197 using its unchanged provider sources, passing named regression
+  records in green 1c818cc3, and current runtime-lease regression. #1033 remains
+  open for the authored real-wall-clock ten-minute 1024-lane navigation/DOM/
+  surface/history/listener/heap soak and pinned-physical-actor follow-through.
+  No long-duration or acoustic/device/assistive-technology pass is claimed yet.

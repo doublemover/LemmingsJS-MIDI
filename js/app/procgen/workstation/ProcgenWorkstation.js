@@ -1979,7 +1979,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     try { const result = action(...args); refreshSceneCue(); return result?.then ? Promise.resolve(result).finally(refreshSceneCue) : result; } catch (error) { refreshSceneCue(); throw error; }
   };
   view = createView({ document, window, resourceBudget, getProject: () => project, getRuntime, getDocumentIdentity: () => documentGeneration,
-    getArmedLaneIds: () => [inputLease?.laneId, state.recording ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });
+    getArmedLaneIds: () => [inputLease?.laneId, state.recording && procgenLane(project.procgen.lanes, state.laneId)?.mode === 'pattern' ? state.laneId : null].filter(Boolean), dispatch, handlers, canCommand, state });
   const outputRouteKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? null]);
   const expressionOutputKey = state => JSON.stringify([state.selectedBackend, state.enabled === true, state.outputId ?? state.selectedOutputId ?? null, state.outputGeneration ?? null]);
   const initialOutput = legacy.local.getState();
@@ -2063,6 +2063,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
+    getNavigationDiagnostics: () => view.navigationDiagnostics?.() || null,
     getPreferenceState: () => preferenceWriter?.state() || null,
     getDocumentState: () => Object.freeze({ id: documentId, revision: documentRevision, editRevision, savedRevision,
       dirty: editRevision !== savedRevision, savedAt: lastSavedAt }),

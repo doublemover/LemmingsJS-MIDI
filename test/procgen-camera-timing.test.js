@@ -9,6 +9,11 @@ const fixture = () => {
 };
 
 describe('monotonic ProcGen camera presentation time', () => {
+  it('chooses an automatic leader only from the mapped physical rows', () => {
+    const f = fixture(), calls = []; f.renderer.workstationLayout = { firstLane: 7, count: 2, mapped: true, laneIndices: [7, 1] };
+    f.renderer.actorVisibility = { physicalLeader(first, last) { calls.push([first, last]); return { id: first, x: first === 7 ? 600 : 700, y: first * 96 + 64 }; } };
+    f.camera.update(true); expect(calls).to.deep.equal([[7, 8], [1, 2]]); expect(f.renderer.cameraX).to.be.greaterThan(0); f.camera.dispose();
+  });
   it('does not count a backward timestamp again in a later camera update', () => {
     const reference = fixture(), reordered = fixture();
     for (const timestamp of [100, 150, 160]) reference.camera.update(false, true, timestamp);
