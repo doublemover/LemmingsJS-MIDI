@@ -837,7 +837,8 @@
       "height": 1080
     },
     "excludesContinuations": [
-      296
+      296,
+      297
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -12806,6 +12807,695 @@
       "Full CI at 86d89b82 qualifies prior work only; continuation296 is pending.",
       "No hardware, acoustics or actual assistive-technology certification is inferred from browser semantics.",
       "The wider backlog remains open."
+    ],
+    "remoteCi": {
+      "head": "fc42e9b0b98d004737e48ba674cffe62011c3645",
+      "job": 122623174911,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40629764958/job/122623174911",
+      "allChecksGreen": false,
+      "browserPassed": 89,
+      "browserFailed": 1,
+      "nodeCoverage": "not-run: browser gate failed",
+      "failure": "sound-content-workstation.spec.js pinned-worklet actor-view journey did not explicitly open the new closed dock before clicking Sound library. Other boundaries passed; repair is included in continuation297.",
+      "staticStages": "provenance, audit, undefined, lint, critical types, release readiness, dependency check and MCP clients passed; policy and dependency-review passed.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 53632,
+        "captured": 53632,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci296-failed.log",
+        "bytes": 122606,
+        "sha256": "d7402b111f24fd6bfb7c563048218bbe50131991dffee0e846c844ef5e00174f"
+      }
+    }
+  },
+  "continuation297": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Required workstation workflow collection, execution and fault gates",
+    "sourceBase": "fc42e9b0b98d004737e48ba674cffe62011c3645",
+    "issues": [
+      1084,
+      1031,
+      1086
+    ],
+    "development": [
+      "Partition native browser workflows into declarative workstation/desktop Playwright projects without duplicates. Discover workstation-named future and nested specs, plus physical/import/project contracts; every discovered workstation file must contribute a PR boundary.",
+      "Collect actual full and smoke cases, normalize real reporter tags and parameterized suite identities, reject missing files/capabilities or zero selection, then require the identical executed case set, source hashes and actual passing capabilities. Permit only the explicitly tagged opt-in benchmark skip.",
+      "Make standalone PR/full npm commands collect, own an ephemeral server, run the real project and qualify results. PR CI runs bounded smoke; immutable-source maintenance runs the complete matrix. Preserve selection/result/qualification receipts outside Playwright cleanup and upload receipts plus failure evidence.",
+      "Route workstation/worker/storage-schema/boot edits to ProcGen contracts and nested music integration; expose a separate selectable MIDI2 UMP codec/stream/lowering group. Add negative selection, skip, duplication and changed-source routing meta-fixtures.",
+      "Add a real candidate-display preparation failure and intact session/world/history/route/checkpoint/retry journey. The fixture exposed publication of an unavailable replacement; refuse before retiring a live runtime while preserving cold-start display fallback and in-place retry.",
+      "Qualify accepted actor mapping edits across lane switch/Undo and display the exact shared mapping ID in the dock. Remove duplicate generic macro labels while retaining named groups and operative slider/numeric names; gate real typed-control audition/application in smoke.",
+      "Migrate all sound-library and held-preview journeys to deliberate dock entry. Add isolated fetched-source/wiring mutations for Save Cancel, failed-load project rollback, causal delivery and local signal silence, requiring unique applied-fault proof and exactly one expected behavioral failure."
+    ],
+    "validation": {
+      "node": {
+        "passed": 126,
+        "failed": 0,
+        "scope": "Catalog, Node/CI selection, server ownership, config, UMP codec/stream/lowering, dock/curve drafts, boot and capture kernel/controller/provenance contracts."
+      },
+      "collection": {
+        "project": "workstation",
+        "full": 107,
+        "smoke": 80,
+        "files": 21,
+        "sourceFiles": 1036,
+        "categories": [
+          {
+            "category": "boot",
+            "tag": "@workstation-boot",
+            "count": 1,
+            "files": [
+              "procgen-workstation-workflow.spec.js"
+            ]
+          },
+          {
+            "category": "physical-music",
+            "tag": "@workstation-physical-music",
+            "count": 1,
+            "files": [
+              "procgen-physical-midi.spec.js"
+            ]
+          },
+          {
+            "category": "local-audio",
+            "tag": "@workstation-local-audio",
+            "count": 1,
+            "files": [
+              "procgen-workstation-workflow.spec.js"
+            ]
+          },
+          {
+            "category": "transport",
+            "tag": "@workstation-transport",
+            "count": 1,
+            "files": [
+              "procgen-workstation-transport.spec.js"
+            ]
+          },
+          {
+            "category": "storage",
+            "tag": "@workstation-storage",
+            "count": 1,
+            "files": [
+              "procgen-workstation-workflow.spec.js"
+            ]
+          },
+          {
+            "category": "import-refusal",
+            "tag": "@workstation-import-refusal",
+            "count": 1,
+            "files": [
+              "procgen-import-admission.spec.js"
+            ]
+          },
+          {
+            "category": "world-undo",
+            "tag": "@workstation-world-undo",
+            "count": 1,
+            "files": [
+              "procgen-workstation-workflow.spec.js"
+            ]
+          },
+          {
+            "category": "world-rollback",
+            "tag": "@workstation-world-rollback",
+            "count": 1,
+            "files": [
+              "procgen-workstation-recovery.spec.js"
+            ]
+          },
+          {
+            "category": "save-cancel",
+            "tag": "@workstation-save-cancel",
+            "count": 1,
+            "files": [
+              "procgen-project-naming.spec.js"
+            ]
+          },
+          {
+            "category": "queued-launch",
+            "tag": "@workstation-queued-launch",
+            "count": 1,
+            "files": [
+              "procgen-workstation-workflow.spec.js"
+            ]
+          },
+          {
+            "category": "clock-fallback",
+            "tag": "@workstation-clock-fallback",
+            "count": 1,
+            "files": [
+              "procgen-workstation-transport.spec.js"
+            ]
+          },
+          {
+            "category": "dock",
+            "tag": "@workstation-dock",
+            "count": 1,
+            "files": [
+              "procgen-workstation-dock.spec.js"
+            ]
+          },
+          {
+            "category": "typed-controls",
+            "tag": "@workstation-typed-controls",
+            "count": 1,
+            "files": [
+              "sound-content-workstation.spec.js"
+            ]
+          },
+          {
+            "category": "physical-route",
+            "tag": "@workstation-physical-route",
+            "count": 1,
+            "files": [
+              "procgen-action-chains.spec.js"
+            ]
+          }
+        ],
+        "receipt": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-selection-receipt.json",
+          "bytes": 240142,
+          "sha256": "62ec0367182b1b4dd6402a25acb83c3f840426ccf8c238ac277d5a8c5a4af17a"
+        }
+      },
+      "browserFinalAffected": {
+        "passed": 19,
+        "failed": 0,
+        "scope": "All nine built sound-content journeys, eight dock/context cases and both real startup/load-display recovery journeys. Final macro-label changes are qualified here; full current-source CI remains pending.",
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-affectedResults-receipt.json",
+          "bytes": 32860,
+          "sha256": "3282f5d7faf0958e00e19b6debad53c55e2bb7d9370fe0865cdc8fb69bff9ee5"
+        }
+      },
+      "previousCohorts": [
+        {
+          "full": 97,
+          "passed": 94,
+          "failed": 2,
+          "skipped": 1,
+          "reportedDuration": "9.3m",
+          "reason": "Held-preview fixture omitted dock entry; the real replacement-display failure journey exposed publication of an unavailable candidate. Both repaired before the expanded run."
+        },
+        {
+          "full": 107,
+          "passed": 103,
+          "failed": 3,
+          "skipped": 1,
+          "reportedDuration": "8.2m",
+          "reason": "The three newly collected native sound auditions reached Apply but found duplicate accessible macro names on wrapper and generic inner control. Removed the redundant generic labels; all three are included in the final affected cohort."
+        },
+        {
+          "full": 19,
+          "passed": 18,
+          "failed": 1,
+          "reportedDuration": "2.3m",
+          "reason": "Native master capture correctly refused an early repeated 128-frame boundary after a 640-frame prefix. The test accepted Partial only after observing a long Recording interval; corrected the early-terminal race with exact prefix/clock/WAV checks, retaining long/nonzero Ready requirements."
+        }
+      ],
+      "faultQualification": {
+        "detected": 4,
+        "missed": 0,
+        "runId": "d88ad3d7-297e-4e92-bb99-5b46a82d4200",
+        "mutations": [
+          {
+            "id": "save-cancel",
+            "file": "procgen-project-naming.spec.js",
+            "applied": true,
+            "gateRejectedMutation": true,
+            "status": "failed",
+            "module": "/js/app/controls/ProjectNameDialog.js",
+            "sourceSha256": "b4d1f8455b28d143eba6d6385b01639b2f7eb1a8ba265817f35b621ed6bacec6"
+          },
+          {
+            "id": "world-rollback",
+            "file": "procgen-workstation-recovery.spec.js",
+            "applied": true,
+            "gateRejectedMutation": true,
+            "status": "failed",
+            "module": "/js/app/procgen/workstation/ProcgenWorkstation.js",
+            "sourceSha256": "67d72c7543f7c26023d71ecb89618cb08cc8cec5fd0cf7bba2813c19d1105468"
+          },
+          {
+            "id": "causal-output",
+            "file": "procgen-physical-midi.spec.js",
+            "applied": true,
+            "gateRejectedMutation": true,
+            "status": "failed",
+            "module": "/js/app/procgen/workstation/CausalMusicEngine.js",
+            "sourceSha256": "47fc8e37e938bcff51a4c892cab6ee9539bc3f1170881c935e3036cd8a45aa8f"
+          },
+          {
+            "id": "local-audio",
+            "file": "procgen-workstation-workflow.spec.js",
+            "applied": true,
+            "gateRejectedMutation": true,
+            "status": "failed"
+          }
+        ],
+        "receipt": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-faults-receipt.json",
+          "bytes": 6519,
+          "sha256": "e8be9f0597030b1782febf2693caea393fa86d5c6c2068732a2ac7d5656904db"
+        },
+        "scope": "Expected-red behavioral qualification in fresh private browser contexts, not a normal failing product suite or hardware/acoustic certification."
+      },
+      "static": {
+        "formatExit": 0,
+        "criticalTypesExit": 0,
+        "undefinedExit": 0,
+        "diffCheckExit": 0,
+        "provenance": {
+          "components": 10,
+          "files": 340,
+          "exitCode": 0,
+          "manifestChanged": false
+        }
+      },
+      "focusedNodeCoverage": {
+        "total": {
+          "lines": {
+            "total": 1806,
+            "covered": 1317,
+            "skipped": 0,
+            "pct": 72.92
+          },
+          "statements": {
+            "total": 1806,
+            "covered": 1317,
+            "skipped": 0,
+            "pct": 72.92
+          },
+          "functions": {
+            "total": 121,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 87.6
+          },
+          "branches": {
+            "total": 660,
+            "covered": 510,
+            "skipped": 0,
+            "pct": 77.27
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "files": [
+          {
+            "path": "js/app/procgenBoot.js",
+            "lines": {
+              "total": 761,
+              "covered": 346,
+              "skipped": 0,
+              "pct": 45.46
+            },
+            "branches": {
+              "total": 140,
+              "covered": 101,
+              "skipped": 0,
+              "pct": 72.14
+            },
+            "functions": {
+              "total": 43,
+              "covered": 35,
+              "skipped": 0,
+              "pct": 81.39
+            }
+          },
+          {
+            "path": "js/app/midi-ui/OwnedMasterCapture.js",
+            "lines": {
+              "total": 280,
+              "covered": 274,
+              "skipped": 0,
+              "pct": 97.85
+            },
+            "branches": {
+              "total": 210,
+              "covered": 153,
+              "skipped": 0,
+              "pct": 72.85
+            },
+            "functions": {
+              "total": 34,
+              "covered": 30,
+              "skipped": 0,
+              "pct": 88.23
+            }
+          },
+          {
+            "path": "js/app/midi-ui/worklet/OwnedPcmCaptureProcessor.js",
+            "lines": {
+              "total": 120,
+              "covered": 114,
+              "skipped": 0,
+              "pct": 95
+            },
+            "branches": {
+              "total": 85,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 84.7
+            },
+            "functions": {
+              "total": 12,
+              "covered": 11,
+              "skipped": 0,
+              "pct": 91.66
+            }
+          },
+          {
+            "path": "scripts/BrowserTestCatalog.js",
+            "lines": {
+              "total": 63,
+              "covered": 63,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 72,
+              "covered": 64,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "functions": {
+              "total": 4,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          {
+            "path": "scripts/runTests.js",
+            "lines": {
+              "total": 582,
+              "covered": 520,
+              "skipped": 0,
+              "pct": 89.34
+            },
+            "branches": {
+              "total": 153,
+              "covered": 120,
+              "skipped": 0,
+              "pct": 78.43
+            },
+            "functions": {
+              "total": 28,
+              "covered": 26,
+              "skipped": 0,
+              "pct": 92.85
+            }
+          }
+        ],
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-297-coverage-pass\\coverage-summary.json",
+          "bytes": 2033,
+          "sha256": "39e5740ccc3a196315906e67f282209aeea364ab2cd64e0bec8259d83f8f6276"
+        },
+        "scope": "Focused Node measurement; native boot/graphics and script CLI execution are separately qualified through actual browser/collection runs. Global repository coverage thresholds remain unchanged.",
+        "remaining": [
+          "Additional catalog malformed-report fallback branches.",
+          "Node runner guard/error branches; browser-only boot construction remains measured in native journeys, not inferred from low Node boot coverage."
+        ]
+      },
+      "logs": {
+        "node": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-node-pass.log",
+          "bytes": 12251,
+          "sha256": "e839f6b4bdbf86fe5b4b6949d31ab811cb18ff97ddfa6e0d9b80abe2d5c0c311"
+        },
+        "browser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-browser-pass.log",
+          "bytes": 4071,
+          "sha256": "aa95870039f5e2016bfd2753bae7bc85cae7ba2aa102ff5e38da0c27e7d16e1f"
+        },
+        "collection": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-collection-pass.log",
+          "bytes": 1777,
+          "sha256": "ca850513ee7d07a775ecbd4d43482aad1b99c12da7b9f78b3e1edbac3bdcc785"
+        },
+        "faults": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-faults.log",
+          "bytes": 534,
+          "sha256": "d8170fa797e956359ef5cabed3fad7b6f2c7e44664dc9d282873897547fcb0d1"
+        },
+        "format": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-format-pass.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        "types": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-types-pass.log",
+          "bytes": 96,
+          "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+        },
+        "undefined": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-undefined-pass.log",
+          "bytes": 111,
+          "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+        },
+        "provenance": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-provenance-pass.log",
+          "bytes": 142,
+          "sha256": "ed2e98d0197422c479c81c19cc02fdb5e3c6f3e069710d6b918fba6ef2c63bdf"
+        },
+        "firstBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-browser.log",
+          "bytes": 38151,
+          "sha256": "67fc2654db1d680aeeb59d0fe97eb695f9fb6a0c9dbdd4339f6181cc1b081d11"
+        },
+        "expandedBrowser": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-browser-repair.log",
+          "bytes": 46658,
+          "sha256": "eb1f9a7b06d125bca477a6caea6cff3d53b3b17b06efc2932b8414b757cacb11"
+        }
+      },
+      "captures": [
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-0-joined-workstation-1920.png",
+          "bytes": 304729,
+          "sha256": "7f22a410ee79715dec515c56c0967e206dd804edfa00ebd2ca69d6e377db0364"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-1-joined-workstation-open-1920.png",
+          "bytes": 546271,
+          "sha256": "665bce3fcb1c642661e2c37018d857423456a9888e203fadfd904c3809011694"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-2-desktop-dock-enlarged-text.png",
+          "bytes": 629568,
+          "sha256": "cbe1f7a6a1d909bd895cdecf09cd72f61bf5e8033ffbb05007e9e97ceb650197"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-3-joined-workstation-2560.png",
+          "bytes": 331013,
+          "sha256": "eba9def80aa3eef8839810a5547a7eec2e5d7cae1cb668a65cca25a31e82b15c"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-4-joined-workstation-open-2560.png",
+          "bytes": 680185,
+          "sha256": "f2d1c0bd0dd74ee1156c0df7295a65123000b090e126e0422725f8e918a1b564"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-5-joined-workstation-3840.png",
+          "bytes": 421893,
+          "sha256": "37d89099a8cb2f9db2a8a043ddac5b7e8ae725937b38e43f35865901a511b342"
+        },
+        {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog297-capture-6-joined-workstation-open-3840.png",
+          "bytes": 901850,
+          "sha256": "e06819fd12aa71b62248eb4c71c1fb0603f3c9621b3b356960b69b3b5fbfb7a1"
+        }
+      ],
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 101760,
+        "captured": 101760,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.0227358341217041,
+        "nonfinite": 0
+      }
+    },
+    "source": [
+      {
+        "path": ".github/workflows/maintenance-full.yml",
+        "bytes": 4109,
+        "sha256": "62789ba44c7c708c16f7f5ba52d01858b3c6cd807719616336a995ccfca3eb85"
+      },
+      {
+        "path": ".github/workflows/test.yml",
+        "bytes": 4491,
+        "sha256": "7aee7a2fc00ca3322b50442247caf71eff8f94b46d19516b7d4413631d9c3e08"
+      },
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 41246,
+        "sha256": "87d41d3920f52b0b93910600c0cd8ed76e64486d1a5b4489b0340ea2bf577539"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 558524,
+        "sha256": "ec8f654d5710a709104c6eac915c1025c086300c628cad471069277e755e2432"
+      },
+      {
+        "path": "e2e/causal-take-audio-render.spec.js",
+        "bytes": 5908,
+        "sha256": "9072d406524b21d3e1e11e88a3dda87fe8ae06718f0f7a5890cb8c23b0317428"
+      },
+      {
+        "path": "e2e/helpers/workstationValidation.js",
+        "bytes": 3186,
+        "sha256": "d80111fb7093c3c71c92d3592779a32127db83b133445bd8713a65da99715358"
+      },
+      {
+        "path": "e2e/procgen-action-chains.spec.js",
+        "bytes": 3153,
+        "sha256": "3e1011fedbed0580284fbe095bb730d8030ebcc117cf7ca51eeb2dcebad24805"
+      },
+      {
+        "path": "e2e/procgen-import-admission.spec.js",
+        "bytes": 7141,
+        "sha256": "e7833b920f0129071dfe3e56cb6fe7509ca34656a63e09ea589dc6aedeb78277"
+      },
+      {
+        "path": "e2e/procgen-physical-midi.spec.js",
+        "bytes": 3239,
+        "sha256": "e8bfd6c923e2fa70567c17ef438ca64fab8a46d6d2fecd820841a2f705119b56"
+      },
+      {
+        "path": "e2e/procgen-project-naming.spec.js",
+        "bytes": 6480,
+        "sha256": "5ba335a5c1c69d448aca256d5f653a1c1342ea9da1ba843bb6d1a1a79d1fd715"
+      },
+      {
+        "path": "e2e/procgen-sound-world-isolation.spec.js",
+        "bytes": 8531,
+        "sha256": "35268853a5f5752732f8f932649083b5e3faf75e9ab3b1eb7b57cfff6e92f673"
+      },
+      {
+        "path": "e2e/procgen-take-workbench.spec.js",
+        "bytes": 4205,
+        "sha256": "85a1a60cf99242e1006dccaa32e5742781da47437c92d7be78e23da098d44e70"
+      },
+      {
+        "path": "e2e/procgen-workstation-dock.spec.js",
+        "bytes": 17160,
+        "sha256": "747199b3d9576fdac3b97f29c70e050b72c5cea0b584e4d8204715d2e710584c"
+      },
+      {
+        "path": "e2e/procgen-workstation-fullscreen.spec.js",
+        "bytes": 3327,
+        "sha256": "c0bedce4cd1a80be6207e22459507086943dba555b93321a7d34b26fd7cdf474"
+      },
+      {
+        "path": "e2e/procgen-workstation-recovery.spec.js",
+        "bytes": 4658,
+        "sha256": "c2bcd38d11ac72b134909bd642edefaadf72e77c138c430cf46c1c8d5f9bd840"
+      },
+      {
+        "path": "e2e/procgen-workstation-transport.spec.js",
+        "bytes": 6503,
+        "sha256": "435b9e1feb502b413aacb80173e48bd21d8889736aba35e29caa249480b17639"
+      },
+      {
+        "path": "e2e/procgen-workstation-workflow.spec.js",
+        "bytes": 13576,
+        "sha256": "7a7603712b6db1b24920d7ec7ea8cb0700de471ef54912e3bbc914f7f85eddd0"
+      },
+      {
+        "path": "e2e/sound-content-workstation.spec.js",
+        "bytes": 28177,
+        "sha256": "d157b7182e93c214919de7aaffb1b12c25ab4b4f856d2ecda9fcf205d12a69a2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 118689,
+        "sha256": "8a952b29629807e439d0df307eef9f76a6c768dc2213c8ef259d04b171280d50"
+      },
+      {
+        "path": "js/app/procgenBoot.js",
+        "bytes": 40300,
+        "sha256": "cb44814990e3658516e79594514fdb7c65cac2e492de0200f8dd7cc0ac6cd4e0"
+      },
+      {
+        "path": "package.json",
+        "bytes": 9082,
+        "sha256": "53a95f0e85fbaa16d3fe0367cd4ff68794584f022e4f40f7dc6812d46cf80687"
+      },
+      {
+        "path": "playwright.config.js",
+        "bytes": 2711,
+        "sha256": "6d1081693538e34b49c3496c0875ddb4c1a9bccfd00bd60b4d141f6c2ad1cbf2"
+      },
+      {
+        "path": "scripts/BrowserTestCatalog.js",
+        "bytes": 4745,
+        "sha256": "7bdde76b16a460e7468db739ee69cbc995b5837c1acecfb44544c24e28816eb2"
+      },
+      {
+        "path": "scripts/check-browser-categories.js",
+        "bytes": 4118,
+        "sha256": "9ab1ca81425d900d25785c52a8fd0c22ab87cf6fe76e724a222367f0f6430281"
+      },
+      {
+        "path": "scripts/check-browser-results.js",
+        "bytes": 2369,
+        "sha256": "07ddd013a551395ea3c25c4b6379c0389008176cef60047c5e73bb89b8935e07"
+      },
+      {
+        "path": "scripts/qualify-workstation-gates.js",
+        "bytes": 3074,
+        "sha256": "9867f88ee9cf7e0466a280fd36440819aef03dc9b82b9335efbccf25c0a1c8d0"
+      },
+      {
+        "path": "scripts/runTests.js",
+        "bytes": 16712,
+        "sha256": "338b83580a090850c4b6c580a554b1c909b4400431cb47601636f40ca49f7600"
+      },
+      {
+        "path": "test/browser-workflow-catalog.test.js",
+        "bytes": 6231,
+        "sha256": "0e3e68737da38024953bd4ea35426a6b19c63cfbce3ea566b7b89358ffb249ec"
+      },
+      {
+        "path": "test/midi/owned-master-capture.test.js",
+        "bytes": 10358,
+        "sha256": "4fb6a2c1822f85d3237e6c4817874dbe4c71e5b6bfce22c8a2777afd2554b922"
+      },
+      {
+        "path": "test/midi/owned-pcm-capture-kernel.test.js",
+        "bytes": 7849,
+        "sha256": "9dcb2eecdc1f89f0051b87b6b3c8a1b8df79870282f8953172c044bc1bcb2f2c"
+      },
+      {
+        "path": "test/workflow.test.js",
+        "bytes": 3338,
+        "sha256": "750cbd0b89ba40af27184194304333deb92db4b00ae97d99339577f403f33c76"
+      }
+    ],
+    "issueStatus": {
+      "1084": "Required projects/selection/execution/CI/changed-source and deliberate-fault gates implemented; current-source CI pending.",
+      "1031": "Combined accepted-actor/mapping/lane/Undo acceptance now passes alongside the scoped dock/curves; current-source CI pending.",
+      "1086": "Actual unavailable-display startup/retry and replacement refusal qualified on Chromium; multi-engine/GPU/device matrix remains open.",
+      "993": "Joined terrain-first dock implemented; quiet global controls/materials/fast shaping remain open."
+    },
+    "limitations": [
+      "Current-head full CI must qualify this batch; 86d89b82 remains the last fully green checkpoint.",
+      "The expanded 107-case cohort preceded the final redundant-label repair; the final 19 affected cases and four fault gates have their own exact source receipts. No single all-107 pass is claimed for the final source.",
+      "The opt-in benchmark was explicitly skipped, never counted as a passed production test.",
+      "No receiver, acoustic, hardware, multi-engine or actual screen-reader certification is inferred.",
+      "The wider 226-issue backlog remains open."
     ]
   }
 }

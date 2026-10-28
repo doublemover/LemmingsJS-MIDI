@@ -1,6 +1,6 @@
 import { inspectLane } from './helpers/workstationDock.js';
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/workstationValidation.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
@@ -14,7 +14,7 @@ const ready = async (page, { patterns = false } = {}) => {
   if (patterns) { await enableComplementaryPatterns(page); await inspectLane(page); }
 };
 
-test('workstation boots eight instrument lanes and switches sequence layouts without replacing the world', async ({ page }) => {
+test('workstation boots eight instrument lanes and switches sequence layouts without replacing the world', { tag: ['@boundary', '@workstation-boot'] }, async ({ page }) => {
   await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page);
@@ -38,7 +38,7 @@ test('workstation boots eight instrument lanes and switches sequence layouts wit
   expect(errors).toEqual([]);
 });
 
-test('live musical edits undo and survive save/load, reroll and same-seed replay', { tag: '@boundary' }, async ({ page }) => {
+test('live musical edits undo and survive save/load, reroll and same-seed replay', { tag: ['@boundary', '@workstation-storage', '@workstation-world-undo'] }, async ({ page }) => {
   test.setTimeout(90000);
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page, { patterns: true });
@@ -100,7 +100,7 @@ test('records an input note into the selected phrase and exports a MIDI performa
   expect((await download).suggestedFilename()).toBe('procgen-performance.mid');
 });
 
-test('launches a selected phrase at a musical bar and updates its header state', async ({ page }) => {
+test('launches a selected phrase at a musical bar and updates its header state', { tag: ['@boundary', '@workstation-queued-launch'] }, async ({ page }) => {
   await ready(page, { patterns: true });
   await page.locator('.studio-lane-header').first().getByTitle('Launch phrase 2 on next bar').click();
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].queuedSlot)).toBe(1);
@@ -111,7 +111,7 @@ test('launches a selected phrase at a musical bar and updates its header state',
   expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.engine.getLanePosition('lane-1').origin % 4)).toBe(0);
 });
 
-test('browser synth produces measurable audio from the authoritative pattern clock', async ({ page }) => {
+test('browser synth produces measurable audio from the authoritative pattern clock', { tag: ['@boundary', '@workstation-local-audio'] }, async ({ page }) => {
   await page.addInitScript(() => {
     window.workstationAudioMeters = [];
     const connect = window.AudioNode.prototype.connect;

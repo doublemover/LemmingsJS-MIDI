@@ -20,6 +20,13 @@ for (const file of ['test.yml', 'maintenance-full.yml']) {
         expect(runs.filter(run => run === command), command).to.have.length(1);
       }
       expect(runs.some(run => run.includes('git diff --check'))).to.equal(true);
+      const workstation = file === 'test.yml' ? 'npm run test-e2e:workstation:smoke' : 'npm run test-e2e:workstation';
+      expect(runs.filter(run => run === workstation)).to.have.length(1);
+      const script = JSON.parse(fs.readFileSync('package.json', 'utf8')).scripts[workstation.slice('npm run '.length)];
+      expect(script).to.match(/^node scripts\/check-browser-categories\.js && /);
+      expect(script).to.include(' && node scripts/check-browser-results.js');
+      const receiptUpload = steps.find(step => step.with?.name === 'workstation-browser-receipts');
+      expect(receiptUpload.if).to.equal('always()'); expect(receiptUpload.with.path).to.include('browser-category-selection.json').and.include('workstation-results.json');
       expect(runs.some(run => run.includes('git checkout origin/master -- tools'))).to.equal(false);
       const browser = steps.findIndex(step => step.run === 'npm run test-e2e:boundaries');
       const start = steps.findIndex(step => step.name === 'Start HTTPS server');

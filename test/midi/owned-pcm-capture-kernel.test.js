@@ -30,6 +30,7 @@ describe('bounded read-only PCM capture kernel', () => {
     const capture = kernel(), output = receiver(capture, { recycle: true }); capture.process(signal(128), 128, 0, output.emit);
     expect(capture.process(signal(128, firstFrame), 128, firstFrame, output.emit)).to.equal(false);
     expect(capture).to.include({ sourceStartFrame: 0, lastFrame: 128, capturedFrames: 128, stopReason: 'noncontiguous-render-clock' });
+    expect(capture.clockDiscontinuity).to.deep.equal({ expectedFrame: 128, actualFrame: firstFrame, frames: 128 });
     expect(output.packets).to.have.length(1); expect(output.packets[0].frameCount).to.equal(128);
   });
   it('captures the exact requested frame interval across variable render block sizes', () => {

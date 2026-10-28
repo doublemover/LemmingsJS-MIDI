@@ -36,7 +36,7 @@ for (const viewport of DESKTOP_VIEWPORTS) test(`desktop ${viewport.width}x${view
   await expect.poll(() => presentedColors(page)).toBeGreaterThan(8); await page.screenshot({ path: testInfo.outputPath(`joined-workstation-${viewport.width}.png`) });
 });
 
-test('curve drafts retain exact lane ownership through invalid text, lane switch, Undo, graphical edits and two-stage Escape', { tag: '@boundary' }, async ({ page }) => {
+test('curve drafts retain exact lane ownership through invalid text, lane switch, Undo, graphical edits and two-stage Escape', { tag: ['@boundary', '@workstation-dock'] }, async ({ page }) => {
   test.setTimeout(90000); await ready(page); await enableComplementaryPatterns(page); await inspectLane(page, 'Automation'); await page.getByRole('button', { name: 'Add CC curve', exact: true }).click();
   const points = page.getByLabel('Points', { exact: true }); await points.fill('0:32, 2:'); await points.evaluate(element => { window.__curveDraftInput = element; }); await expect(points).toHaveAttribute('aria-invalid', 'true'); await expect(page.getByRole('button', { name: 'Apply curve', exact: true })).toBeDisabled();
   await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-2', patch: { gain: 0.5 } })); await expect(points).toHaveValue('0:32, 2:');
@@ -70,6 +70,30 @@ test('dock preferences survive an explicit new seed without restoring the previo
   await page.waitForFunction(height => Object.keys(localStorage).some(key => { try { const value = JSON.parse(localStorage.getItem(key)); return value?.ui?.workspaceMode === 'inspect' && value.ui.dockHeight === height; } catch { return false; } }), height);
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=43&lanes=8&output=midi'); await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain); await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
   await expect(page.locator('#procgenDeepDock')).toBeVisible(); await expect(resize).toHaveAttribute('aria-valuenow', String(height)); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.seed)).toBe(43); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes.length)).toBe(8);
+});
+
+test('selected actors and shared mapping commands retain their actual target through lane switching and Undo', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page); await inspectLane(page, 'Selection');
+  const actorIds = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__, entities = window.__PROCGEN_LANES__.renderer.presentation.getSnapshot().entities;
+    const ids = [0, 1].map(lane => entities.find(entity => entity.kind === 'actor' && entity.lane === lane)?.id);
+    if (ids.some(id => !id) || !studio.getWorldInspector().select(ids[0])) throw new Error('Mapping qualification requires two actually presented lane actors.');
+    return ids;
+  });
+  await page.getByRole('tab', { name: 'Physical', exact: true }).click();
+  const group = page.locator('.studio-physical-instrument').first(), pitch = group.getByLabel('Pitch / cents', { exact: true });
+  const mappingId = await group.getAttribute('data-mapping-id'), initial = await pitch.inputValue(), changed = String(Number(initial) + 100);
+  await pitch.focus(); await expect(page.getByLabel('Current editor target')).toContainText('Shared physical graph');
+  await expect(page.getByLabel('Current editor target')).toContainText(mappingId); await expect(page.getByLabel('Current editor target')).toContainText(actorIds[0]);
+  await pitch.fill(changed); await pitch.press('Enter');
+  await expect.poll(() => page.evaluate(id => window.__PROCGEN_STUDIO__.getProject().procgen.physicalGraph.instruments.find(value => value.id === id).pitchCents, mappingId)).toBe(Number(changed));
+  await page.locator('.studio-lane-header').nth(1).locator('.studio-lane-title').click();
+  await page.evaluate(id => { if (!window.__PROCGEN_STUDIO__.getWorldInspector().select(id)) throw new Error('The second actor reference was not accepted.'); }, actorIds[1]);
+  await page.getByRole('tab', { name: 'Physical', exact: true }).click();
+  await expect(page.getByLabel('Current editor target')).toContainText('lane-2'); await expect(page.getByLabel('Current editor target')).toContainText(actorIds[1]); await expect(page.getByLabel('Current editor target')).not.toContainText(actorIds[0]);
+  await page.locator('#procgenStudioFooter').getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect.poll(() => page.evaluate(id => window.__PROCGEN_STUDIO__.getProject().procgen.physicalGraph.instruments.find(value => value.id === id).pitchCents, mappingId)).toBe(Number(initial));
+  await expect(page.getByLabel('Current editor target')).toContainText('lane-2'); await expect(page.getByLabel('Current editor target')).not.toContainText(actorIds[0]);
 });
 
 test('desktop text enlargement keeps graphical and exact curve controls reachable inside one scrollable dock', { tag: '@boundary' }, async ({ page }, testInfo) => {

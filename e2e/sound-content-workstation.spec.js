@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { inspectLane } from './helpers/workstationDock.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { readFile } from 'node:fs/promises';
@@ -8,11 +9,11 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
-test('liquid tables and drawbars use real worklet audition before installing the chosen source revision', async ({ page }) => {
+test('liquid tables and drawbars use real worklet audition before installing the chosen source revision', { tag: ['@boundary', '@workstation-typed-controls'] }, async ({ page }) => {
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare liquid tables / drawbars', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(6, { timeout: 30000 });
   await revisions.selectOption('spectrum.pipe-crew@1'); await expect(dialog.getByLabel('Instrument source model')).toContainText('8 authored additive partials');
@@ -32,7 +33,7 @@ test('Artificial Choir stages four recipes and only applies a real auditioned wo
     window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
     return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
   });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare artificial choir', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
@@ -53,7 +54,7 @@ test('Plucked Garden requires real worklet application before Install and Apply'
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare plucked garden', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
@@ -78,7 +79,7 @@ test('struck materials audition real native mode children and expose saved onset
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare struck materials', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(5, { timeout: 30000 });
@@ -101,7 +102,7 @@ test('FM Forge stages original source recipes and only applies the auditioned in
     window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
     return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
   });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare FM Forge', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
@@ -130,7 +131,7 @@ test('built sound library keeps world/project state unchanged through staging, a
     window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
     return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
   });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision');
@@ -162,7 +163,7 @@ test('a pinned worklet lane sends actual voice measurements through physical pla
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=911&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision');
@@ -211,7 +212,7 @@ test('selected control WAV rendering uses a real immutable worker without enabli
     window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause();
     return { project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex };
   });
-  await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
+  await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click(); const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   const revisions = dialog.getByLabel('Saved instrument revision'); await expect(revisions.locator('option')).toHaveCount(4, { timeout: 30000 });
   await revisions.selectOption('foundation.held-sine@2'); await dialog.getByLabel('Rendered reference sample rate').selectOption('44100');
@@ -252,10 +253,10 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   await page.getByRole('button', { name: 'Record audio…', exact: true }).click();
   await dialog.getByRole('button', { name: 'Start master capture', exact: true }).click();
   await expect.poll(async () => `${await dialog.getByRole('status').textContent()}\n${(await dialog.locator('p').allTextContents()).join('\n')}`, { timeout: 15000 })
-    .toMatch(/^recording ·/);
+    .toMatch(/^(recording|partial) ·/);
   await expect.poll(async () => {
-    const text = await dialog.getByRole('status').textContent(); return Number(text.match(/([\d,]+) received frames/)?.[1].replaceAll(',', '') || 0);
-  }, { timeout: 15000 }).toBeGreaterThan(24000);
+    const text = await dialog.getByRole('status').textContent(); return /^partial ·/.test(text) || Number(text.match(/([\d,]+) received frames/)?.[1].replaceAll(',', '') || 0) > 24000;
+  }, { timeout: 15000 }).toBe(true);
   try { await dialog.getByRole('button', { name: 'Stop capture', exact: true }).click({ timeout: 1500 }); }
   catch (error) { if (!/^(ready|partial) ·/.test(await dialog.getByRole('status').textContent())) throw error; }
   await expect(dialog.getByRole('status')).toContainText(/ready|partial/);
@@ -271,9 +272,17 @@ test('master recording uses the real capture worklet and keeps PCM after a cance
   expect(manifest).toMatchObject({ schema: 'lemmings-master-pcm/v1', tap: 'post-protection-shared-browser-master', channels: 2,
     includesCurrentMasterOwnersAndAuditions: true, acousticEvidence: false, terminalAcknowledged: true, format: 'float32-le' });
   expect(['Ready', 'Partial']).toContain(manifest.state);
-  console.log('Master capture receipt ' + JSON.stringify({ state: manifest.state, frames: manifest.timelineFrames, captured: manifest.capturedFrames, stopReason: manifest.stopReason, clockDiscontinuity: manifest.clockDiscontinuity }));
+  expect(manifest.timelineFrames).toBeGreaterThan(0);
+  if (manifest.state === 'Partial') {
+    expect(manifest.stopReason).toBe('noncontiguous-render-clock'); expect(manifest.gaps).toEqual([]);
+    expect(manifest.capturedFrames).toBe(manifest.timelineFrames); expect(manifest.clockDiscontinuity.expectedFrame).toBe(manifest.endFrameExclusive);
+    expect(manifest.clockDiscontinuity.actualFrame).not.toBe(manifest.clockDiscontinuity.expectedFrame);
+    expect(Number.isSafeInteger(manifest.clockDiscontinuity.actualFrame)).toBe(true);
+    expect(manifest.clockDiscontinuity.frames).toBeGreaterThan(0); expect(manifest.clockDiscontinuity.frames).toBeLessThanOrEqual(8192);
+  } else { expect(manifest.timelineFrames).toBeGreaterThan(24000); expect(manifest.clockDiscontinuity).toBeNull(); }
   let peak = 0, nonfinite = 0;
   for (let at = 0; at < samples.length; at += 4) { const sample = samples.readFloatLE(at); if (!Number.isFinite(sample)) nonfinite++; else peak = Math.max(peak, Math.abs(sample)); }
-  expect(nonfinite).toBe(0); expect(peak).toBeGreaterThan(0);
+  expect(nonfinite).toBe(0); if (manifest.state === 'Ready') expect(peak).toBeGreaterThan(0);
+  console.log('Master capture receipt ' + JSON.stringify({ state: manifest.state, frames: manifest.timelineFrames, captured: manifest.capturedFrames, stopReason: manifest.stopReason, clockDiscontinuity: manifest.clockDiscontinuity, peak, nonfinite }));
   await dialog.getByRole('button', { name: 'Discard captured PCM', exact: true }).click(); await expect(dialog.getByRole('button', { name: 'Save captured WAV', exact: true })).toBeDisabled();
 });

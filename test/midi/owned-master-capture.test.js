@@ -40,12 +40,12 @@ function fixture({ addModule = async () => {}, provenance = false } = {}) {
 }
 
 describe('owned browser master PCM capture', () => {
-  it('retains a verified prefix and bounded clock discontinuity in its partial manifest', async () => {
+  for (const actualFrame of [0, 128]) it(`retains a verified prefix and bounded clock discontinuity at ${actualFrame} in its partial manifest`, async () => {
     const f = fixture(); await f.owner.start({ seconds: 1 }); const node = f.nodes[0]; node.ready(); node.pcm();
-    node.end({ reason: 'noncontiguous-render-clock', clockDiscontinuity: { expectedFrame: 4, actualFrame: 128, frames: 128 } });
+    node.end({ reason: 'noncontiguous-render-clock', clockDiscontinuity: { expectedFrame: 4, actualFrame, frames: 128 } });
     const result = f.owner.state(); expect(result.state).to.equal('partial');
     expect(result.manifest).to.include({ terminalAcknowledged: true, timelineFrames: 4, capturedFrames: 4 });
-    expect(result.manifest.clockDiscontinuity).to.deep.equal({ expectedFrame: 4, actualFrame: 128, frames: 128 });
+    expect(result.manifest.clockDiscontinuity).to.deep.equal({ expectedFrame: 4, actualFrame, frames: 128 });
     result.artifact.discard(); await f.owner.dispose().completion; expect(f.budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('retains route observations and exact PCM segment bounds through finalization', async () => {

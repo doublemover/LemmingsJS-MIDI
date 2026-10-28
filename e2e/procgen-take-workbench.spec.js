@@ -2,7 +2,7 @@ import { inspectLane } from './helpers/workstationDock.js';
 import { expect, test } from '@playwright/test';
 
 test.setTimeout(120000);
-test('stored-take comparison and explicit branch stepping use real detached worlds without enabling output', async ({ page }) => {
+test('stored-take comparison and explicit branch stepping use real detached worlds without enabling output', { tag: ['@boundary'] }, async ({ page }) => {
   await page.addInitScript(() => {
     window.takeAudioOpens = 0; window.takeMidiRequests = 0; const NativeContext = window.AudioContext;
     window.AudioContext = class extends NativeContext { constructor(options) { window.takeAudioOpens++; super(options); } };

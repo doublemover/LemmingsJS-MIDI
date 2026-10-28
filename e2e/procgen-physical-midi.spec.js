@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/workstationValidation.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
 test.use({ permissions: [] });
-test('default physical scene sends causal MIDI without pattern cells or a browser audio clock and stops owned gates @boundary', async ({ page }) => {
+test('default physical scene sends causal MIDI without pattern cells or a browser audio clock and stops owned gates @boundary', { tag: ['@boundary', '@workstation-physical-music'] }, async ({ page }) => {
   test.setTimeout(60000); await installWebMidiStub(page);
   await page.addInitScript(() => {
     const request = navigator.requestMIDIAccess; window.__physicalMidiRequests = 0; window.__physicalMidiBytes = [];

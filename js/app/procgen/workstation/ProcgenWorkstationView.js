@@ -193,7 +193,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     getContext: () => {
       const lane = selected(), renderer = getRuntime()?.lanes?.renderer, snapshot = renderer?.presentation?.getSnapshot?.(), selectedIndex = procgenLaneIndex(getProject().procgen.lanes).get(lane.id);
       const entity = renderer?.selectedWorldEntityId && snapshot?.entities?.find(value => value.id === renderer.selectedWorldEntityId && (state.tab === 'Selection' || value.lane === selectedIndex));
-      return { laneId: lane.id, laneName: lane.name, editorKind: state.tab, targetScope: state.tab === 'Physical' ? 'physical-graph' : ['World', 'Selection'].includes(state.tab) ? 'world' : 'lane', targetId: document.activeElement?.closest?.('.studio-curve-editor')?.dataset.curveId || (state.tab === 'Physical' ? 'procgen.physicalGraph' : state.tab === 'Selection' ? entity?.id || snapshot?.worldId || null : state.tab === 'World' ? snapshot?.worldId || null : null),
+      const mappingId = document.activeElement?.closest?.('.studio-physical-instrument')?.dataset.mappingId;
+      const mappingTarget = state.tab === 'Physical' && getProject().procgen.physicalGraph?.instruments.some(value => value.id === mappingId) ? mappingId : null;
+      return { laneId: lane.id, laneName: lane.name, editorKind: state.tab, targetScope: state.tab === 'Physical' ? 'physical-graph' : ['World', 'Selection'].includes(state.tab) ? 'world' : 'lane', targetId: document.activeElement?.closest?.('.studio-curve-editor')?.dataset.curveId || (state.tab === 'Physical' ? mappingTarget || 'procgen.physicalGraph' : state.tab === 'Selection' ? entity?.id || snapshot?.worldId || null : state.tab === 'World' ? snapshot?.worldId || null : null),
         selectedEntity: entity ? { id: entity.id, kind: entity.kind, worldId: snapshot.worldId, generation: snapshot.generation } : null,
         dirtyBuffer: [...curveEditors.values()].filter(value => value.laneId === lane.id).map(value => ({ curveId: value.curveId, ...value.control.inspect() })) };
     }, isSuspended: () => stageActive,
@@ -438,7 +440,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
             ? meta.normalizedPressure * (macro.bipolar && value < baseline ? -1 : 1) : null;
           handlers.previewMacroGesture(begin(), value, pressure); } catch (error) { cancel(); handlers.status?.(error.message); }
         }, onCancel: cancel, onFinish: cancel });
-        control.title = macro.perceptualDirection; control.setAttribute('aria-label', macro.name + ' · next onset');
+        control.title = macro.perceptualDirection;
         labeled(macro.name + ' · next onset', control, nextFields); nextFields.append(node('p', macro.perceptualDirection, 'studio-hint'));
         labeled('Momentary ' + macro.name, input(mode.momentary, momentary => { macroModes.set(macroKey, { ...mode, momentary }); renderInspector(); }, { type: 'checkbox' }), nextFields);
         labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), nextFields);
@@ -590,7 +592,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         list.replaceChildren(node('p', `Showing ${visible.length} of ${matching.length} matching instruments${matching.length > visible.length ? ' · refine the search' : ''}.`, 'studio-hint'));
         for (const instrument of visible) {
           const group = node('fieldset', null, 'studio-physical-instrument');
-          group.dataset.controlKey = 'instrument:' + instrument.id; group.append(node('legend', instrument.id));
+          group.dataset.controlKey = 'instrument:' + instrument.id; group.dataset.mappingId = instrument.id; group.append(node('legend', instrument.id));
           labeled('Source · all actors', select(sourceChoices, instrument.sourceKind,
             sourceKind => changePhysicalInstrument(instrument.id, sourcePatch(instrument, sourceKind)), 'Physical source'), group);
           if (instrument.sourceKind === 'TerrainWorkCommitted') labeled('Work kind', input(instrument.operationKind || '',

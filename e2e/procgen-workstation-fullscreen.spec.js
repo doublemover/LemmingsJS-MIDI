@@ -1,7 +1,7 @@
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
 
-test('production workstation reaccepts the same world and canvas after fullscreen geometry changes', async ({ page }) => {
+test('production workstation reaccepts the same world and canvas after fullscreen geometry changes', { tag: ['@boundary'] }, async ({ page }) => {
   test.setTimeout(90000);
   await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=3');

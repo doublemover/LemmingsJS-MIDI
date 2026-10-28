@@ -7,7 +7,7 @@ async function ready(page) {
   await page.evaluate(() => window.__PROCGEN_STUDIO__.transport.pause());
 }
 
-test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', { tag: '@boundary' }, async ({ page }) => {
+test('sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices', { tag: ['@boundary', '@workstation-transport'] }, async ({ page }) => {
   test.setTimeout(90000); const errors = []; page.on('pageerror', error => errors.push(error.message));
   await ready(page); await page.locator('#procgenListen').click();
   await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState().enabled)).toBe(true);
@@ -37,7 +37,7 @@ test('sustained synth gate and queued phrase survive a paused checkpoint without
   expect(errors).toEqual([]);
 });
 
-test('external clock input locks transport, follows SPP, stops on loss and stays stopped after reconnect', async ({ page }) => {
+test('external clock input locks transport, follows SPP, stops on loss and stays stopped after reconnect', { tag: ['@boundary', '@workstation-clock-fallback'] }, async ({ page }) => {
   await installWebMidiStub(page); await ready(page);
   const measured = await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__; await studio.handlers.connect(); studio.handlers.input('pw-input-1'); studio.handlers.clockOutput('pw-output-1'); studio.handlers.transport({ clockSource: 'external', linked: false, gameSpeed: 0.05 });

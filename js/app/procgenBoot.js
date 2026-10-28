@@ -428,7 +428,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
       onMetrics: state => procgenUi?.syncMetrics(state), onActiveCount: count => procgenUi?.syncActiveCount(count), windowRef: window });
     resourceLease = null;
     lanes.renderer.hud = new ProcgenBitmapHud({ canvas, sprites: hudSprites });
-    if (prepareOnly && lanes.renderer.getDisplayState().state !== 'ready') throw new Error('The candidate display is unavailable. The live world remains active.');
+    if ((prepareOnly || activeProcgenRuntime) && lanes.renderer.getDisplayState().state !== 'ready') throw new Error('The candidate display is unavailable. The live world remains active.');
     if (!canCommit()) return false;
     const publish = ({ isCurrent = () => true } = {}) => {
       if (!canCommit() || !isCurrent() || committed) throw new Error('The prepared world is stale or already published.');

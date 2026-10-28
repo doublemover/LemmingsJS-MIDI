@@ -598,3 +598,49 @@ Recovery and mapping-boundary end intents may have no physical-event ID.
 actual voice, reason and producer coverage. They have no world mark or invented
 physical event. Source coverage reports the producer's own completeness/drop
 count separately from missing observer references and retained-window expiry.
+
+## Browser workflow validation
+
+Playwright's `workstation` project discovers the workstation workflow, transport,
+recovery, editing, dock, causal, import, project and physical-route specifications.
+The `desktop` project owns the other browser suites; the two projects do not
+duplicate tests. `npm run check:browser-categories` collects the actual project
+and PR smoke selection, prints file/category counts, and rejects missing files,
+missing required capabilities or zero selection. Every discovered workstation
+specification must contribute a tagged PR boundary case, including future files.
+The source-bound selection receipt includes the current commit, dirty status,
+Node version and hashes of configuration, selected specifications and helpers.
+After execution, the result gate verifies the same collected cases and source
+hashes, and requires actual passing cases for every capability. Skipping a
+required workflow cannot produce a green qualification; only the explicitly
+tagged opt-in benchmark may be skipped.
+Native capture checks keep a verified early render-clock refusal as Partial,
+including its exact prefix/end-frame and discontinuity receipt. They still
+exercise canceled-save retention and WAV delivery. Ready requires the normal
+long interval and finite nonzero PCM; a short or silent Partial prefix does not
+establish continuous recording, individual source output or acoustic evidence.
+
+- `npm run test-e2e:workstation:smoke` runs the PR boundary selection.
+- `npm run test-e2e:workstation` runs the complete maintained matrix, including
+  transport/recovery, physical action chains and the opt-in benchmark's explicit
+  skipped status when `LEMMINGS_BENCH` is unset.
+- `npm run qualify:workstation-gates` deliberately breaks Save Cancel, failed
+  world-load project rollback, causal delivery and the local audio signal graph
+  in isolated browser contexts. It requires exactly one behavioral failure per
+  applied fault, records its source/proof and rejects collection/setup failures.
+  These mutations alter fetched responses or browser test wiring only; repository
+  production files are never rewritten. This qualification runs deliberately,
+  separately from the normal green matrix.
+- `npm test procgen` includes the nested workstation music integration contract.
+  `npm test --changed` selects it for workstation, worker, storage-schema and boot
+  changes. `npm test midi2` selects the UMP codec/stream/lowering contract group.
+
+Both PR and full maintenance CI validate collection before browser execution.
+PR CI runs the bounded smoke selection; maintenance runs the full project at its
+requested immutable source SHA. Selection and JSON result receipts live in
+`.tmp/` so subsequent Playwright output cleanup cannot erase them, and CI uploads
+them even after failure. Each browser command owns an ephemeral server and fresh
+contexts; it requires no previously running local server or saved user state.
+Fixtures use the supported 1920×1080 minimum and larger desktop resolutions.
+Hardware, receiver/acoustic output and actual assistive technology remain
+explicit manual/not-run qualification; browser/protocol passes do not certify them.

@@ -8,7 +8,7 @@ test.use({ permissions: [] });
 test.setTimeout(120000);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
-test('an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware', async ({ page }, testInfo) => {
+test('an immutable worker renders a real captured physical phrase and dry stem without enabling live audio or hardware', { tag: ['@boundary'] }, async ({ page }, testInfo) => {
   await page.addInitScript(() => {
     window.causalRenderAudioOpens = 0; window.causalRenderMidiRequests = 0; const NativeContext = window.AudioContext;
     window.AudioContext = class extends NativeContext { constructor(options) { window.causalRenderAudioOpens++; super(options); } };

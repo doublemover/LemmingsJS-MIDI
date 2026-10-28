@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('production project imports reject malformed graphs without changing the live world, history, route or stored checkpoint @boundary', async ({ page }, testInfo) => {
+test('production project imports reject malformed graphs without changing the live world, history, route or stored checkpoint @boundary', { tag: ['@boundary', '@workstation-import-refusal'] }, async ({ page }, testInfo) => {
   test.setTimeout(120000);
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=2');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, { timeout: 60000 });

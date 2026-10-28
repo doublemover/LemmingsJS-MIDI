@@ -50,7 +50,8 @@ const CATEGORY_PATTERNS = Object.freeze({
     'test/time-travel*.test.js', 'test/input/*.test.js', 'test/walk-wall-collision.test.js'
   ],
   midi: ['test/midi/**/*.test.js'],
-  procgen: ['test/procgen-*.test.js'],
+  midi2: ['test/midi/ump-packet-codec.test.js', 'test/midi/ump-stream-decoder.test.js', 'test/midi/midi-protocol-lowering.test.js'],
+  procgen: ['test/procgen-*.test.js', 'test/midi/procgen-workstation-music.test.js'],
   bench: ['test/*bench*.test.js', 'test/browser-work-observation.test.js', 'test/history-replay-evidence.test.js'],
   release: ['test/release-readiness.test.js'],
   workflow: ['test/*workflow*.test.js', 'test/run-tests-script.test.js'],
@@ -74,6 +75,7 @@ const CATEGORY_ORDER = Object.freeze([
   'core',
   'game',
   'midi',
+  'midi2',
   'procgen',
   'editor',
   'tools',
@@ -86,7 +88,7 @@ const CATEGORY_ORDER = Object.freeze([
 ]);
 const CHANGED_FILE_CATEGORY_RULES = Object.freeze([
   { category: 'midi', matches: normalized => normalized.startsWith('js/midi/') || normalized.startsWith('js/app/midi') || normalized.startsWith('test/midi/') },
-  { category: 'procgen', matches: normalized => normalized.startsWith('js/app/procgen/') || /^test\/procgen-.*\.test\.js$/.test(normalized) },
+  { category: 'procgen', matches: normalized => normalized.startsWith('js/app/procgen/') || normalized === 'js/app/procgenBoot.js' || /^test\/procgen-.*\.test\.js$/.test(normalized) },
   {
     category: 'release',
     matches: normalized => (

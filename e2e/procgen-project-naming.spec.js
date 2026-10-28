@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/workstationValidation.js';
 
 test.use({ permissions: [] });
 const ready = async page => {
@@ -34,7 +34,7 @@ const beginCopy = async (page, playing) => {
   return page.getByRole('dialog', { name: 'Save project copy', exact: true });
 };
 
-test('production project naming cancels every dismissal without writing or changing identity and restores playback once @boundary', async ({ page }) => {
+test('production project naming cancels every dismissal without writing or changing identity and restores playback once @boundary', { tag: ['@boundary', '@workstation-save-cancel'] }, async ({ page }) => {
   test.setTimeout(120000); await ready(page);
   for (const playing of [false, true]) for (const dismissal of ['cancel', 'escape', 'close', 'backdrop', 'empty', 'repeated']) {
     const dialog = await beginCopy(page, playing); await expect(dialog).toBeVisible();

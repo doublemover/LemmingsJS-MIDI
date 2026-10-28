@@ -1,5 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { MIN_DESKTOP_VIEWPORT } from './e2e/helpers/desktopViewports.js';
+import { WORKSTATION_TEST_MATCH } from './scripts/BrowserTestCatalog.js';
 
 const DEFAULT_PLAYWRIGHT_BASE_URL = 'https://localhost:8080';
 
@@ -42,6 +43,10 @@ export default defineConfig({
     timeout: 5000
   },
   reporter: [['list']],
+  projects: [
+    { name: 'desktop', testIgnore: WORKSTATION_TEST_MATCH },
+    { name: 'workstation', testMatch: WORKSTATION_TEST_MATCH }
+  ],
   use: {
     baseURL,
     viewport: { ...MIN_DESKTOP_VIEWPORT },

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('browser runtime completes a bounded four-stage physical route for an admitted ordinary crew', { tag: '@boundary' }, async ({ page }) => {
+test('browser runtime completes a bounded four-stage physical route for an admitted ordinary crew', { tag: ['@boundary', '@workstation-physical-route'] }, async ({ page }) => {
   await page.goto('/procgen.html?e2e=1&seed=42&lanes=1');
   await page.waitForFunction(() => window.__PROCGEN_LANES__?.world?.gameResources);
   const result = await page.evaluate(async () => {

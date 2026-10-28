@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { inspectLane } from './helpers/workstationDock.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 
@@ -63,7 +64,7 @@ test('six pinned native sounds preserve the actual 1000-tick world and causal ev
 });
 
 test('hold preview restores on keyboard release and commits only through the explicit Apply command', async ({ page }) => {
-  await ready(page); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
+  await ready(page); await inspectLane(page, 'Lane'); await page.getByRole('button', { name: 'Sound library…', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Sound library', exact: true });
   await dialog.getByRole('button', { name: 'Prepare factory instruments', exact: true }).click();
   await expect(dialog.getByLabel('Saved instrument revision').locator('option')).toHaveCount(4, { timeout: 30000 });

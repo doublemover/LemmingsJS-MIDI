@@ -7605,3 +7605,73 @@ export-budget acknowledgments still prevent a false complete receipt.
   all checks, 90.28% lines/statements, 83.55% branches, 88.25% functions; master
   capture Ready at 53,888 frames with no reported discontinuity. **#997 is closed**
   against that exact source. This checkpoint excludes continuation296.
+
+### Continuation 297 — required browser workflow selection and real failure gates
+
+- Give the shipped workstation one declarative Playwright project with automatic
+  discovery and a separate desktop project. Collect actual full/smoke cases,
+  validate each discovered file and required capability, fail zero selection and
+  publish source-bound hashes/counts instead of relying on an older explicit list.
+- Run bounded workstation smoke in PR CI and the full transport/recovery/route
+  matrix in immutable-source maintenance CI. Retain separate owned servers and
+  fresh browser contexts; upload selection/results and failure traces.
+- Route workstation, future worker, storage-schema and boot changes to nested
+  music integration as well as ProcGen contracts; expose the separate UMP codec,
+  stream and lowering category without interpreting it as hardware qualification.
+- Qualify a real candidate display preparation failure, intact live document,
+  world/history/route/checkpoint, and a later explicit successful retry. Add the
+  combined accepted-actor mapping edit, lane switch and Undo journey; name the
+  actual shared mapping target in the dock rather than only its containing graph.
+- Add isolated browser fault qualification for Save Cancel, failed-load rollback,
+  causal delivery and local signal output. Require an applied-fault receipt and
+  exactly one behavioral gate failure; never edit production files for mutants.
+- The first full workstation project run reports **94 passing / two failures /
+  one opt-in benchmark skip**. Fix the omitted hold-preview dock entry together
+  with all eight sound-library workflow entries; automatically discover any
+  workstation-named spec, including sound-content fixtures and nested files.
+  The new rollback case exposes a real publication bug: refuse an unavailable
+  replacement display while a live runtime exists, before retiring that runtime.
+  Preserve the cold-start display-unavailable fallback and qualify explicit retry.
+  The combined selected-actor mapping/lane/Undo journey passes.
+- Collection and result gates now bind runtime/CSS/provenance as well as tests
+  and helpers, require the same collected/executed case set and actual passes
+  for every required capability. An explicitly tagged benchmark is the only skip.
+  Focused Node checks pass 86 cases; final expanded browser/fault qualification
+  remains pending.
+- Expanded 107-case qualification reports **103 passing / three failures / one
+  opt-in benchmark skip**. Both cold-display fallback and actual failed-load
+  rollback/retry now pass. All three new failures identify the same duplicate
+  accessible macro name on its group and inner generic node; retain the named
+  group and operative slider/numeric names, remove the redundant generic label,
+  and add typed-control audition/application to the required PR capabilities.
+  Recheck the affected sound/dock/recovery journeys and four deliberate faults
+  together; let current-source CI qualify the broader smoke and full Node gates.
+- Pushed fc42e9b0 CI passes 89 desktop boundaries and fails only the omitted
+  sound-content actor-view dock entry; Node coverage was consequently skipped.
+  Its independent master capture is Ready at 53,632 frames. Keep the previous
+  fully green 86d89b82 checkpoint separate until current-source CI passes.
+- Refresh all GitHub issue pages after #997 closure: **226 open issues**, including
+  101 still carrying acceptance/qualification audits. Use the required browser
+  gate and real rollback/output faults to finish #1084/#1031 first. Then batch
+  #993/#995's quiet global controls, fast lane shaping and coherent materials
+  together; preserve the existing typed control owner and shared row projection.
+  Do not interpret old generic green checks as hardware, acoustic, multi-engine
+  or actual assistive-technology qualification for those remaining issues.
+- All four isolated Save/rollback/causal/audio fault gates detect their applied
+  faults. The final affected cohort passes 18 cases but catches an early native
+  repeated 128-frame boundary in master capture. Preserve the correct producer
+  refusal and Partial prefix; the existing test accepted Partial only after
+  observing Recording and a long interval, which races legitimate early refusal.
+  Qualify early terminal prefixes with exact frame/discontinuity/WAV retention
+  checks. Ready still requires the long interval and nonzero finite PCM. Add
+  deterministic forward/backward terminal-prefix assertions; do not retry away
+  or relabel the real native discontinuity.
+- Final grouped qualification passes **126 focused Node / 19 affected native
+  browser cases**, with all four deliberately broken Save/rollback/causal/audio
+  paths detected by their behavioral gates. The final master capture is **Ready
+  at 101,760 captured frames**, peak 0.0227358341, zero nonfinite samples and no
+  reported clock discontinuity. Retain the earlier 640-frame Partial as separate
+  evidence. Collection selects 107 full / 80 smoke cases across 21 files, bound
+  to 1,036 source inputs. Formatting, critical types, undefined calls and unchanged
+  runtime provenance pass. Current-source CI remains pending; the final targeted
+  run is not presented as a single all-107 pass for the final source.
