@@ -1,4 +1,5 @@
 import { compileSoundRealizationGroups } from './SoundRealizationProfiles.js';
+import { validatePatchNeighborhoodProvenance } from './PatchNeighborhoodProvenance.js';
 import { cloneData, freezeData, hashData, canonicalDataText } from '../../core/CanonicalData.js';
 import { prepareSoundContentPack, planSoundContentSelection, SOUND_CONTENT_SCHEMA } from './SoundContentPack.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
@@ -8,6 +9,7 @@ import { sampleMapRenderIdentity } from './SampleInstrumentMap.js';
 export const SOUND_RECIPE_SCHEMA = 'lemmings-sound-recipes/v1';
 export const SOUND_COMPILER_REVISION = 'typed-recipes-v12';
 export const SOUND_REALIZATION_COMPILER_REVISION = 'typed-recipes-v13';
+export const SOUND_NEIGHBORHOOD_COMPILER_REVISION = 'typed-recipes-v14';
 const limits = { maxBytes: 8 * 1048576, maxNodes: 200000, domain: 'Sound recipes' };
 const units = new Set(['Hz', 'cents', 'ratio', 'dimensionless', 's', 'ms', 'amplitude-linear', 'dB', 'normalized', 'enum', 'world-pixel', 'octaves', 'cycles', 'count', 'inverse-world-pixel']);
 const id = value => typeof value === 'string' && /^[a-z][a-z0-9._:-]{0,127}$/i.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
@@ -15,6 +17,9 @@ const finite = value => Number.isFinite(value) && Math.abs(value) <= 1000000000;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const fail = (path, message) => { throw Object.assign(new Error(path + ': ' + message), { name: 'SoundContentCompileError', code: 'invalid-recipe', path }); };
 const requireValue = (condition, path, message) => { if (!condition) fail(path, message); };
+const validateNeighborhood = (raw, options, path) => {
+  try { return validatePatchNeighborhoodProvenance(raw, options); } catch (error) { fail(path, error.message); }
+};
 const before = (left, right) => left < right ? -1 : left > right ? 1 : 0;
 
 export function convertSoundQuantity(quantity, targetUnit, path = 'quantity') {
@@ -179,7 +184,9 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
       files: [...reachable].sort().map(sha256 => ({ sha256, rights: fileMap.get(sha256)?.rights || null })) }, limits);
     const cost = { maxVoices: definition.voicePolicy.maxVoices, componentCount: recipe.components.length, assetCount: new Set(dependencies).size,
       modulationEdges: modulations.length, sampleZones: definition.sampleMap?.zones.length || 0, estimateClass: 'declared-structure-not-measured-cpu' };
-    artifacts.push({ id: recipe.id, revision: recipe.revision, display: { name: recipe.name, author: recipe.author, tags: recipe.tags || [],
+    const neighborhood = recipe.neighborhood == null ? null : validateNeighborhood(recipe.neighborhood, { definition, engineRequirement }, path + '.neighborhood');
+    if (neighborhood) requireValue(source.pack.origin?.contentHash === neighborhood.parent.packHash, path + '.neighborhood', 'neighborhood ancestry differs from the immutable parent pack');
+    artifacts.push({ id: recipe.id, revision: recipe.revision, ...(neighborhood ? { neighborhood } : {}), display: { name: recipe.name, author: recipe.author, tags: recipe.tags || [],
       ...(definition.sampleMap ? { sampleMap: { articulations: definition.sampleMap.articulations, normalizationRef: definition.sampleMap.normalizationRef } } : {}) },
     renderKey, rightsHash, engineRequirement, inheritance, overrides, parameters: docs,
     macros: explanations, modulationBounds: modulations.map(modulation => ({ id: modulation.id, sourceUnit: modulation.sourceUnit, bounds: modulation.bounds })),
@@ -189,7 +196,9 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
   requireValue(patches.length > 0, 'recipes', 'no concrete instrument recipes');
   let realizationGroups = null;
   if (Object.hasOwn(source, 'realizationGroups')) { try { realizationGroups = await compileSoundRealizationGroups(source.realizationGroups, patches.map(entry => ({ ...entry, artifact: artifacts.find(artifact => artifact.id === entry.definition.id) }))); } catch (error) { fail('realizationGroups', error.message); } }
-  const compilerRevision = realizationGroups === null ? SOUND_COMPILER_REVISION : SOUND_REALIZATION_COMPILER_REVISION;
+  const neighborhoods = artifacts.some(artifact => artifact.neighborhood);
+  requireValue(!neighborhoods || realizationGroups === null, 'realizationGroups', 'A neighborhood fork pins one resolved realization; alternate profiles require a separately authored branch.');
+  const compilerRevision = neighborhoods ? SOUND_NEIGHBORHOOD_COMPILER_REVISION : realizationGroups === null ? SOUND_COMPILER_REVISION : SOUND_REALIZATION_COMPILER_REVISION;
   const normalized = { ...source, recipes: [...source.recipes].sort((left, right) => before(left.id, right.id)), files: [...source.files].sort((left, right) => before(left.path, right.path)) };
   const sourceHash = await hashData(normalized, limits);
   const prepared = await prepareSoundContentPack({ ...source.pack, schema: SOUND_CONTENT_SCHEMA, files: source.files, patches,
@@ -198,6 +207,49 @@ export async function compileSoundContent(raw, { targets = [], signal } = {}) {
   requireValue(!plan.missingReferences.length, 'recipes.dependencies', 'required immutable assets or ancestors are missing from the content inventory');
   return freezeData({ schema: 'lemmings-compiled-sound/v1', compilerRevision, sourceHash, prepared, artifacts, ...(realizationGroups === null ? {} : { realizationGroups }),
     qualification: 'compiled-data-not-render-qualified' });
+}
+
+export async function createResolvedPatchRecipeSource({ prepared, reference, descriptor, candidateId, name, parameters, provenance, signal } = {}) {
+  signal?.throwIfAborted();
+  requireValue(prepared?.contentHash === reference?.packHash && id(candidateId) && candidateId !== reference.patchId && typeof name === 'string' && name.length > 0 && name.length <= 160,
+    'neighborhood.parent', 'Choose an exact installed parent and a distinct bounded fork identity.');
+  const parent = prepared.patches.find(entry => entry.definition.id === reference.patchId && entry.definition.revision === reference.revision);
+  requireValue(parent && parent.definitionHash === reference.definitionHash && await hashData(reference.definition, { maxBytes: 65536, maxNodes: 8192 }) === reference.definitionHash,
+    'neighborhood.parent', 'The parent definition or immutable source hash changed.');
+  const engine = validateEngineDescriptor(descriptor);
+  requireValue(['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => engine[key] === reference.engineRequirement[key]),
+    'neighborhood.engine', 'The exact parent engine artifact and parameter schema are required.');
+  requireValue(reference.drumKit == null, 'neighborhood.scope', 'Select an individual drum voice before deriving a single-patch neighborhood; a complete kit is a separate compound owner.');
+  const definition = validateInstrumentPatchV2({ ...reference.definition, id: candidateId, revision: 1, name, parameters }, engine);
+  const neighborhood = validateNeighborhood(provenance, { definition, engineRequirement: reference.engineRequirement }, 'neighborhood');
+  requireValue(neighborhood.parent.patchId === reference.patchId && neighborhood.parent.revision === reference.revision && neighborhood.parent.definitionHash === reference.definitionHash &&
+    neighborhood.parent.packHash === reference.packHash, 'neighborhood.parent', 'The neighborhood recipe does not belong to this parent revision.');
+  const templates = nativeComponents(engine), schema = new Map(engine.parameters.map(spec => [spec.id, spec]));
+  requireValue(templates, 'neighborhood.engine', 'This engine has no authored data-only component template.');
+  const components = templates.map(template => ({ id: template.id, role: template.role, parameters: {} })), owners = new Map();
+  for (let index = 0; index < templates.length; index++) for (const parameter of templates[index].parameters) {
+    requireValue(!owners.has(parameter), 'neighborhood.components', 'Ambiguous component ownership cannot be regenerated.'); owners.set(parameter, components[index]);
+  }
+  for (const [parameter, value] of Object.entries(definition.parameters)) {
+    requireValue(owners.has(parameter), 'neighborhood.parameters.' + parameter, 'An unmapped parent parameter cannot be silently discarded.');
+    owners.get(parameter).parameters[parameter] = { value, unit: schema.get(parameter).unit };
+  }
+  const macros = definition.macros.map(macro => ({ ...macro, targets: macro.targets.map(target => ({ ...target,
+    minimum: { value: target.minimum, unit: target.composition === 'scale' ? 'ratio' : schema.get(target.parameter).unit },
+    maximum: { value: target.maximum, unit: target.composition === 'scale' ? 'ratio' : schema.get(target.parameter).unit } })) }));
+  const modulations = definition.modulations.map(modulation => ({ ...modulation,
+    amount: { value: modulation.amount, unit: schema.get(modulation.target).unit } }));
+  const { files } = prepared.pack;
+  const metadata = Object.fromEntries(Object.entries(prepared.pack).filter(([key]) => !['schema', 'files', 'patches', 'compilation', 'origin'].includes(key)));
+  const source = { schema: SOUND_RECIPE_SCHEMA, pack: { ...metadata, id: candidateId, version: '1.0.0', name,
+    origin: { id: prepared.pack.id, version: prepared.pack.version, contentHash: reference.packHash } }, files,
+  recipes: [{ id: candidateId, revision: 1, name, author: definition.author, tags: definition.tags,
+    engine: { id: engine.engineId, version: engine.engineVersion }, components: components.filter(component => Object.keys(component.parameters).length),
+    macros, modulations, causalBindings: definition.causalBindings, ...(definition.variation ? { variation: definition.variation } : {}),
+    sampleRefs: definition.sampleRefs, ...(definition.sampleMap ? { sampleMap: definition.sampleMap } : {}), ...(definition.seedLayers ? { seedLayers: definition.seedLayers } : {}),
+    voicePolicy: definition.voicePolicy, mix: definition.mix, midiFallback: definition.midiFallback,
+    rights: parent.rights, dependencies: [...parent.dependencies], neighborhood }] };
+  signal?.throwIfAborted(); return freezeData(cloneData(source, limits));
 }
 
 export function reviewSoundContentChanges(previous, next) {

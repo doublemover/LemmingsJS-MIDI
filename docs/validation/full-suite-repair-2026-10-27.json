@@ -19615,11 +19615,11 @@
     ],
     "issueStatus": {
       "944": {
-        "state": "software-acceptance-complete",
+        "state": "closed-completed",
         "evidence": "Executed cumulative resources, dominance and all declared budgets with unverified skeletons."
       },
       "945": {
-        "state": "software-acceptance-complete",
+        "state": "closed-completed",
         "evidence": "Executed real later-success search, pruning, isolated source ownership and actual work counters; verification remains authoritative."
       }
     },
@@ -19647,6 +19647,274 @@
       "js/solver/TimingSearch.js": "fb61059b62d46d7a48ec99f1df31f59d56ad689f8554cfc1fee28203b3e7d748",
       "test/procgen-solver-adapter.test.js": "485feece46d5436f15c51887c61ee43abb79ce0132041f5cadfc0624100d4658",
       "test/solver-bounded-search.test.js": "ae4d74a57d33e872daa82953246cd94f7a1d28ff4d6710461a52c9886e5fc5c0"
+    },
+    "remoteCi": {
+      "head": "427232be7a5a5e001ed6fcda06ffea5f2e3274de",
+      "status": "failure",
+      "run": 40702521750,
+      "job": 122865822206,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40702521750/job/122865822206",
+      "browserPassed": 125,
+      "browserFailed": 0,
+      "browserGroups": {
+        "desktopPassed": 22,
+        "workstationSmokePassed": 103,
+        "workstationSmokeFailed": 0,
+        "explicitBenchmarkSkips": 0
+      },
+      "nodeCoverageExecuted": true,
+      "nodePassed": 6679,
+      "nodeFailed": 2,
+      "nodePending": 10,
+      "coverage": {
+        "lines": 90.34,
+        "statements": 90.34,
+        "branches": 83.55,
+        "functions": 88.3
+      },
+      "failure": "Route semantic fixture compares elapsed wall-clock measurements. Paused RAF fixture omits the one presentation-policy redraw before caching. Both repaired and executed in continuation307.",
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 104705,
+        "captured": 104705,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.023317694664001465,
+        "nonfinite": 0
+      },
+      "policy": "success",
+      "dependencyReview": "success",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci306-failed.log",
+        "bytes": 1142191,
+        "sha256": "54239ea4c86925b91941e332338dd6affcc3c528123ebc04b9faf8507e82a4e3"
+      },
+      "excludesLaterWork": true
+    }
+  },
+  "continuation307": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Authored seeded neighborhoods, exact resolved forks and bounded source-fenced variation session",
+    "sourceBase": "427232be7a5a5e001ed6fcda06ffea5f2e3274de",
+    "issues": [
+      1112,
+      1204
+    ],
+    "development": [
+      "Five versioned data-only authored profiles: FM Forge, modal materials, pluck, individual single-zone Circuit sample voice, wind/graft. Canonical SHA-256 jitter is independent of world RNG, stable per slot across batch sizes, and bounded by explicit named coordinates and amount.",
+      "Preserve rising/falling/flat FM contour, explicit and macro-target locks, omitted locked defaults, clamp requests/effective results and named per-slot rejections without retry or replacement. Retain intentional duplicate-like parameter variants; make no perceptual-quality claim.",
+      "Lower full resolved parents through existing allowlisted recipe components. Compiler v14 pins provenance inside immutable pack identity and origin while retaining exact engine, assets, sample map, seed layers, macros, bindings, rights and voice policy. Pin one realized profile; never silently regenerate alternative profiles or compound kits. Preserve v12/v13 behavior.",
+      "Four-slot/four-pin session bounds data and outstanding operations. Fence complete document/lane/parent/take identity; reject stale reverse completions. Compare, Keep and Apply remain explicit integration callbacks, with take/owned-cue/admission gates and no autoplay. Retain unknown cue ownership and block new admission.",
+      "Repair both immutable306 CI assertion failures together: inject a fixed clock for route semantic equality and assert one pause-policy redraw followed by cached frames. Runtime behavior and production timing limits remain unchanged.",
+      "Refresh first-party worker closure provenance for the new directly imported receipt schema; vendor source and licenses are unchanged."
+    ],
+    "validation": {
+      "node": {
+        "passed": 49,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "Neighborhood and variation-session cases plus compiler/pack/reference contracts and both CI-failing work-removal/source-cleanup files.",
+        "scopedCoverage": {
+          "PatchVariationSession.js": {
+            "lines": 98.1,
+            "branches": 83.66,
+            "functions": 96.55
+          },
+          "AuthoredPatchNeighborhoods.js": {
+            "lines": 100,
+            "branches": 100,
+            "functions": 100
+          },
+          "PatchNeighborhood.js": {
+            "lines": 100,
+            "branches": 96.73,
+            "functions": 87.5
+          },
+          "PatchNeighborhoodProvenance.js": {
+            "lines": 100,
+            "branches": 94.64,
+            "functions": 100
+          },
+          "SoundContentCompiler.js": {
+            "lines": 93.28,
+            "branches": 79.58,
+            "functions": 100
+          },
+          "SoundContentPack.js": {
+            "lines": 97.89,
+            "branches": 89.18,
+            "functions": 100
+          }
+        }
+      },
+      "provenanceTests": {
+        "passed": 3,
+        "failed": 0,
+        "scope": "Actual checker accepts reviewed inventory and rejects changed vendor bytes, missing worker owner and missing license notice."
+      },
+      "definitionCorpus": {
+        "families": 5,
+        "seedsPerFamily": 64,
+        "seedFamilyCases": 320,
+        "compiled": 320,
+        "rejected": 0,
+        "distinctParameterSetsPerFamily": 64,
+        "repeatedIdentically": true,
+        "scope": "Definition/schema/resource metadata only; no audio or listening qualification."
+      },
+      "earlierNode": [
+        {
+          "passed": 44,
+          "failed": 4,
+          "reason": "Initially imposed falling-only FM contour, omitted unchanged-clamp receipts, and stale-cue test raced before callback acquisition."
+        },
+        {
+          "passed": 47,
+          "failed": 2,
+          "reason": "Clamped absent pluck default needed an explicit effective field; compiler provenance error needed its public compile-error boundary."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/341 files",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "scopeLimits": [
+        "Native dock UI and canonical library/render/transaction wiring remain development work.",
+        "No finite/non-silent/sparse/dense reference-audio corpus, musical-relatedness listening pass or assistive-technology qualification claimed.",
+        "Latest completely green immutable checkpoint remains continuation299;306 reaches full Node coverage but has the two recorded assertion failures. New-head CI is required."
+      ],
+      "coverageFollowup": "Extend adapter-specific callback refusal/retirement and editable pinned-revision branches during the actual canonical dock integration; covered owner paths do not substitute for that integration."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-node.log",
+        "bytes": 5271,
+        "sha256": "fb2506c34f847a4fc12eb6ca8da2ba0de508dddf01464dbdd9aa872d92b57377"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-node-initial.log",
+        "bytes": 6731,
+        "sha256": "df683d65fa5a2d82717e3c714bbfd50b2ffc47826d71d355d27a2851dcb9d11b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-node-second.log",
+        "bytes": 6144,
+        "sha256": "921242f176a0651ea141b0f4c909def38d861bc50b06649718be51a2b9d43626"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-provenance-tests.log",
+        "bytes": 274,
+        "sha256": "340e48c7372950350cfc1e9fbb8c4b9cb65b5bdc664eafb7d9cf38800ef2df96"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog307-provenance.log",
+        "bytes": 142,
+        "sha256": "8046ff0356bcf179e2906450966ab6c1dd1f20d8e2aee1ff355262109cc7768b"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-307-coverage\\coverage-summary.json",
+        "bytes": 197062,
+        "sha256": "c4442936e207d0ba6f06f2f2de6a6cffa9253fc0e366589f0f54906416d0d96e"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/patch-neighborhoods.md",
+        "bytes": 3465,
+        "sha256": "b76d569e0840bd0e5fb9f572583baf1a885f653519ef6ac27a064d27e76bfe7f"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 581663,
+        "sha256": "9ffa11059e53aab7e171c2776c3dfccf736bc74404687303d46a06c4307f436b"
+      },
+      {
+        "path": "js/app/midi-ui/PatchVariationSession.js",
+        "bytes": 12447,
+        "sha256": "a2b06c940c47af089acf5d54ea6702cd0aeec0a67d43174e4db35946d6c03880"
+      },
+      {
+        "path": "js/midi/content/AuthoredPatchNeighborhoods.js",
+        "bytes": 3050,
+        "sha256": "9c02d3f6d415e352ad1563705243da30f7b20a9836191921a65af169320c2570"
+      },
+      {
+        "path": "js/midi/content/PatchNeighborhood.js",
+        "bytes": 10245,
+        "sha256": "c5e17cb0e25e07a57af9fa135bb794839d199c90a05c0f1fa448bba1ab8a71ae"
+      },
+      {
+        "path": "js/midi/content/PatchNeighborhoodProvenance.js",
+        "bytes": 3300,
+        "sha256": "3d79f1e124c29138be50f7950fc2f4f30dfab684e1d401dc5348f623ce30cbdd"
+      },
+      {
+        "path": "js/midi/content/SoundContentCompiler.js",
+        "bytes": 31669,
+        "sha256": "b6b230d4a6e2496ca3fd1ac1f9f5cde269e95db39b251b1636a01152ee4c6fda"
+      },
+      {
+        "path": "js/midi/content/SoundContentPack.js",
+        "bytes": 25454,
+        "sha256": "da1578e5b439158ab688e04a0cf1bb12657f1a8773ae1f80d9f436d78c61f1d7"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 20885,
+        "sha256": "4201f2b07f2977ccf3f03022b07f7844fee6f38df928a9d7c9fffeb4849ed79e"
+      },
+      {
+        "path": "test/midi/patch-neighborhood.test.js",
+        "bytes": 14169,
+        "sha256": "8c840d457d6adbfffc2c152e4686443c6ae080133382cddbd027db677676c9c9"
+      },
+      {
+        "path": "test/midi/patch-variation-session.test.js",
+        "bytes": 9111,
+        "sha256": "6b1211184a6bc0f16608bee3504d458de8fce65b4b479715169150812ab0a440"
+      },
+      {
+        "path": "test/procgen-source-cleanups.test.js",
+        "bytes": 10214,
+        "sha256": "4f99eb28e8d0950eaed9381721642f24e4969d4db0eeab8090984cc78a4460c1"
+      },
+      {
+        "path": "test/work-removal.test.js",
+        "bytes": 4444,
+        "sha256": "ed4df269fd8ba6d22b9791c5d045c95fec298248c1a580492887b1fe62d94ecf"
+      }
+    ],
+    "issueStatus": {
+      "1112": {
+        "state": "open-implemented-partial",
+        "remaining": "Canonical Keep/reopen and prepared lane application, real finite reference corpus, sparse/dense/matched comparisons and musical-relatedness review."
+      },
+      "1204": {
+        "state": "open-implemented-partial",
+        "remaining": "Native scoped dock surface and canonical same-take cue/library/transaction adapters, editable exact revisions, keyboard/native browser and actual assistive-technology journeys."
+      }
     }
   }
 }

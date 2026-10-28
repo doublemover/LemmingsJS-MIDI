@@ -140,9 +140,13 @@ describe('source-level procgen work removal', function() {
     for (const time of [4, 8, 12, 16]) callbacks.shift()(time);
     expect(canvas.context.blits).to.equal(initial); expect(runtime.renderer.frameCacheHits).to.equal(4);
     callbacks.shift()(20); expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 1);
-    runtime.pause(); callbacks.shift()(40); callbacks.shift()(60);
-    expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 1);
-    runtime.renderer.camera.pan(12, 0); expect(canvas.context.blits).to.equal(initial + 2);
+    runtime.pause(); callbacks.shift()(40);
+    expect(canvas.context.blits).to.equal(initial + 2);
+    const pausedHits = runtime.renderer.frameCacheHits;
+    callbacks.shift()(60);
+    expect(runtime.world.tickIndex).to.equal(1); expect(canvas.context.blits).to.equal(initial + 2);
+    expect(runtime.renderer.frameCacheHits).to.equal(pausedHits + 1);
+    runtime.renderer.camera.pan(12, 0); expect(canvas.context.blits).to.equal(initial + 3);
     runtime.resume(); callbacks.shift()(80); callbacks.shift()(100);
     expect(runtime.world.tickIndex).to.equal(2);
     runtime.step(); expect(runtime.world.tickIndex).to.equal(3);

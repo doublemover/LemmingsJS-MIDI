@@ -7956,3 +7956,39 @@ export-budget acknowledgments still prevent a false complete receipt.
   Types, undefined calls, formatting, provenance and whitespace pass. New full CI
   must execute coverage; prior2aba8eea passed22 desktop/102 smoke cases, failed one
   thirty-second readiness fixture and skipped Node coverage.
+
+### Continuation 307 — authored neighborhood and variation-session foundation
+
+- Add bounded, versioned FM Forge, modal, pluck, single-voice Circuit and wind/
+  graft neighborhoods. Canonical SHA-256 seeds are independent of world RNG.
+  Preserve parent FM contour direction, explicit/macro locks, clamp explanations,
+  stable slot identity and named rejections without replacement retries.
+- Compile full resolved forks through the existing typed recipe compiler.
+  Revision v14 pins validated generator provenance inside the immutable pack;
+  v12/v13 behavior remains available. Preserve sample maps, seed layers, assets,
+  bindings, macros, voice policy, rights and one exact realization profile.
+- Add the source-fenced four-slot/four-pin session owner with retained-data and
+  operation bounds, explicit Compare/Keep/Apply callbacks, stale-result refusal,
+  cue-only release and retained unknown retirement. Pinning and generation never
+  play audio or alter the lane. The native dock and canonical audio/library
+  callback wiring remain the next implementation batch for #1112/#1204.
+- Forty-nine focused cases pass under coverage. Each of five families has a
+  repeated deterministic 64-seed definition corpus with 64 admitted definitions
+  and 64 distinct parameter sets. This is 320 seed/family cases, not an audio or
+  listening corpus. Additional cases cover conflicting locks, parent catalog
+  replacement/offline resolved reopening, reversed batches, old pins, missing
+  take/capability, pressure and unknown cue retirement.
+- Preserve immutable427232be CI: all22 desktop and103 workstation smoke cases
+  pass, including queued launch. Master Ready104705 frames, peak0.023317694664,
+  no clock gap/nonfinite samples. Node coverage reaches6679 passing/10 pending/
+  two assertion failures, with90.34% lines/statements,83.55% branches and88.30%
+  functions. This is not a green checkpoint; latest fully green remains1c818cc3.
+- Repair both failures together: use a fixed budget clock when comparing route
+  semantics; verify exactly one pause redraw followed by cached RAF frames so
+  presentation effects retire. Both pass in the focused cohort. Do not repeat
+  full local Node coverage; new immutable-head CI must supply that qualification.
+- Remaining qualification: native VARIATIONS controls; same immutable physical
+  take and matched-level cue; canonical Keep/reopen and prepared lane transaction;
+  finite/silent/missing-material/resource audio outcomes; sparse/dense render
+  corpus; actual assistive-technology and human musical-relatedness review.
+  #1112/#1204 remain open. #944/#945 are closed after the prior acceptance batch.

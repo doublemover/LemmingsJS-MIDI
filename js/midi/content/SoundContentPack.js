@@ -2,6 +2,7 @@ import { compileSoundRealizationGroups } from './SoundRealizationProfiles.js';
 import { canonicalDataText, cloneData, freezeData, hashData, hashDataText } from '../../core/CanonicalData.js';
 import { validateEngineDescriptor, validateInstrumentPatchV2 } from './InstrumentPatchV2.js';
 import { validateSampleInstrumentMap } from './SampleInstrumentMap.js';
+import { validatePatchNeighborhoodProvenance } from './PatchNeighborhoodProvenance.js';
 
 export const SOUND_CONTENT_SCHEMA = 'lemmings-sound-content/v1';
 const LIMITS = Object.freeze({ maxBytes: 4 * 1048576, maxNodes: 100000, domain: 'Sound content' });
@@ -25,7 +26,7 @@ const conversionRecord = (value, path) => {
 };
 const compilerArtifact = (artifact, patch, compilerRevision) => {
   const path = 'compilation.artifacts.' + artifact.id;
-  const sampleMetadata = ['typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13'].includes(compilerRevision);
+  const sampleMetadata = ['typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13', 'typed-recipes-v14'].includes(compilerRevision);
   keysOnly(artifact.display, ['name', 'author', 'tags', ...(sampleMetadata ? ['sampleMap'] : [])], path + '.display');
   assertContent(text(artifact.display.name, 160) && text(artifact.display.author, 160) && Array.isArray(artifact.display.tags) && artifact.display.tags.length <= 16 && artifact.display.tags.every(id), path, 'invalid compiler display metadata');
   let map = null;
@@ -168,17 +169,22 @@ export async function prepareSoundContentPack(raw, { engineDescriptors = [], sig
   }
   if (pack.compilation != null) {
     const compilation = pack.compilation; keysOnly(compilation, ['compilerRevision', 'sourceHash', 'schemaRevision', 'artifacts', ...(compilation.compilerRevision === 'typed-recipes-v13' ? ['realizationGroups'] : [])], 'compilation');
-    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
+    assertContent(['typed-recipes-v1', 'typed-recipes-v2', 'typed-recipes-v3', 'typed-recipes-v4', 'typed-recipes-v5', 'typed-recipes-v6', 'typed-recipes-v7', 'typed-recipes-v8', 'typed-recipes-v9', 'typed-recipes-v10', 'typed-recipes-v11', 'typed-recipes-v12', 'typed-recipes-v13', 'typed-recipes-v14'].includes(compilation.compilerRevision) && compilation.schemaRevision === 'lemmings-sound-recipes/v1' && hash(compilation.sourceHash) &&
       Array.isArray(compilation.artifacts) && compilation.artifacts.length === patches.length && compilation.artifacts.every(artifact => artifact && typeof artifact === 'object' && !Array.isArray(artifact)) &&
       new Set(compilation.artifacts.map(artifact => artifact.id + '@' + artifact.revision)).size === patches.length,
     'compilation', 'unsupported compilation inventory');
     for (const artifact of compilation.artifacts) {
-      keysOnly(artifact, ['id', 'revision', 'display', 'renderKey', 'rightsHash', 'engineRequirement', 'inheritance', 'overrides', 'parameters', 'macros', 'modulationBounds', 'cost', 'audition'], 'compilation.artifacts');
+      keysOnly(artifact, ['id', 'revision', 'display', 'renderKey', 'rightsHash', 'engineRequirement', 'inheritance', 'overrides', 'parameters', 'macros', 'modulationBounds', 'cost', 'audition', ...(compilation.compilerRevision === 'typed-recipes-v14' ? ['neighborhood'] : [])], 'compilation.artifacts');
       assertContent(identities.has(artifact.id + '@' + artifact.revision) && hash(artifact.renderKey) && hash(artifact.rightsHash) && Array.isArray(artifact.inheritance) &&
         artifact.inheritance.length <= 33 && artifact.inheritance.every(id) && Array.isArray(artifact.overrides) && artifact.overrides.length <= 128 && artifact.overrides.every(value => text(value, 256)) &&
         Array.isArray(artifact.parameters) && artifact.parameters.length <= 128 && Array.isArray(artifact.macros) && artifact.macros.length <= 4 &&
         Array.isArray(artifact.modulationBounds) && artifact.modulationBounds.length <= 64, 'compilation.artifacts', 'invalid compiler explanation bounds');
       compilerArtifact(artifact, patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision), compilation.compilerRevision);
+      if (artifact.neighborhood != null) {
+        const patch = patches.find(patch => patch.identity === artifact.id + '@' + artifact.revision);
+        validatePatchNeighborhoodProvenance(artifact.neighborhood, { definition: patch.archivedDefinition, engineRequirement: patch.engineRequirement });
+        assertContent(pack.origin?.contentHash === artifact.neighborhood.parent.packHash, 'compilation.artifacts.neighborhood', 'neighborhood parent differs from the immutable source pack');
+      }
     }
     if (compilation.compilerRevision === 'typed-recipes-v13') {
       assertContent(Array.isArray(compilation.realizationGroups) && compilation.realizationGroups.length <= 32, 'compilation.realizationGroups', 'invalid bounded realization inventory');

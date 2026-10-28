@@ -108,7 +108,15 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-immutable-module-worker-and-complete-static-job-closure",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/workstation/ProcgenWorkstation.js", "js/app/procgen/workstation/ProcgenSessionStorage.js", "js/data/file-provider/FileProviderFetch.js", "js/editor/EditorAssetCache.js", "js/app/midi-ui/SoundContentArchive.js", "js/app/midi-ui/SoundContentReader.js", "js/app/midi-ui/SoundContentLibrary.js"],
+      "entryPoints": [
+        "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "js/app/procgen/workstation/ProcgenSessionStorage.js",
+        "js/data/file-provider/FileProviderFetch.js",
+        "js/editor/EditorAssetCache.js",
+        "js/app/midi-ui/SoundContentArchive.js",
+        "js/app/midi-ui/SoundContentReader.js",
+        "js/app/midi-ui/SoundContentLibrary.js"
+      ],
       "files": [
         "js/app/midi-ui/AudioAssetRef.js",
         "js/app/midi-ui/CapturedEffectLifecycle.js",
@@ -328,6 +336,7 @@
         "js/midi/content/OwnedPcmFormat.js",
         "js/midi/content/OwnedStretchCoreIdentity.js",
         "js/midi/content/PairedModalBodyProfile.js",
+        "js/midi/content/PatchNeighborhoodProvenance.js",
         "js/midi/content/PreparedBodyStrike.js",
         "js/midi/content/PreparedSurface.js",
         "js/midi/content/ProceduralBiomeIdentities.js",
@@ -382,8 +391,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 271,
-      "sha256": "026cd2711711036f23ed4f375b658e4abc4a81284105f3bb43e9b2195373724b"
+      "fileCount": 272,
+      "sha256": "914f987081aba5a9701371356b6812bc86ec309c046601ec0a3daee4ca199b18"
     },
     {
       "id": "lemmings-timing-worker-source",
