@@ -248,22 +248,42 @@ describe('bounded procgen survey evidence', function() {
     expect((await fs.readdir(path.join(directory, 'results')))).to.deep.equal(['external.tmp']);
     expect(reopened.snapshot().bytes).to.equal(store.snapshot().bytes + 4);
   });
-  it('preserves one original when two processes race to publish different values', async () => {
+  it('preserves one original when two processes race to publish different values', async function() {
+    this.timeout(15000);
     const source = new URL('../scripts/procgen-survey/SurveyEvidenceStore.js', import.meta.url).href;
     const program = `import { SurveyEvidenceStore } from ${JSON.stringify(source)};
       const store = await new SurveyEvidenceStore(process.argv[1], { maxBytes: 32768 }).initialize({ id: 'frozen', code: 'sha' });
+      await new Promise(resolve => { process.once('message', resolve); process.send('ready'); });
       try { await store.writeImmutable('results/process-race.json', { writer: process.argv[2] }); process.stdout.write('committed'); }
-      catch (error) { process.stdout.write(error.message.includes('Conflicting immutable') ? 'conflict' : 'error:' + error.message); }`;
-    const child = writer => new Promise((resolve, reject) => {
-      const process = spawn(processExec, ['--input-type=module', '-e', program, directory, writer], { stdio: ['ignore', 'pipe', 'pipe'] });
-      let output = '', errorText = '';
-      process.stdout.on('data', chunk => { output += chunk; }); process.stderr.on('data', chunk => { errorText += chunk; });
-      process.on('error', reject); process.on('exit', code => code === 0 ? resolve(output) : reject(new Error(errorText || `child exited ${code}`)));
-    });
-    const processExec = process.execPath;
-    const outcomes = await Promise.all([child('A'), child('B')]);
-    expect(outcomes.sort()).to.deep.equal(['committed', 'conflict']);
-    expect(['A', 'B']).to.include((await store.read('results/process-race.json')).writer);
+      catch (error) { process.stdout.write(error.message.includes('Conflicting immutable') ? 'conflict' : 'error:' + error.message); }
+      finally { process.disconnect(); }`;
+    const children = [], controller = new AbortController();
+    const deadline = setTimeout(() => { controller.abort(new Error('Independent evidence writers exceeded their 10-second deadline')); for (const entry of children) entry.process.kill('SIGKILL'); }, 10000);
+    const child = writer => {
+      const worker = spawn(process.execPath, ['--input-type=module', '-e', program, directory, writer], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'], signal: controller.signal });
+      let output = '', errorText = '', failure;
+      worker.stdout.on('data', chunk => { output = (output + chunk).slice(-32768); }); worker.stderr.on('data', chunk => { errorText = (errorText + chunk).slice(-32768); });
+      worker.on('error', error => { failure = error; });
+      const closed = new Promise(resolve => worker.once('close', code => resolve({ code, output, errorText, failure })));
+      const ready = new Promise((resolve, reject) => {
+        worker.once('message', message => message === 'ready' ? resolve() : reject(new Error('Unexpected evidence writer readiness message')));
+        closed.then(result => reject(result.failure || new Error('Evidence writer closed before readiness: ' + result.code)));
+      });
+      const entry = { process: worker, closed, ready }; children.push(entry); return entry;
+    };
+    try {
+      const writers = [child('A'), child('B')]; await Promise.all(writers.map(entry => entry.ready));
+      for (const entry of writers) entry.process.send('publish');
+      const results = await Promise.all(writers.map(entry => entry.closed));
+      for (const result of results) { if (result.failure) throw result.failure; expect(result.code, result.errorText).to.equal(0); }
+      expect(results.map(result => result.output).sort()).to.deep.equal(['committed', 'conflict']);
+      expect(['A', 'B']).to.include((await store.read('results/process-race.json')).writer);
+      expect(await fs.readdir(path.join(directory, 'results'))).to.deep.equal(['process-race.json']);
+    } finally {
+      clearTimeout(deadline); controller.abort();
+      for (const entry of children) if (entry.process.exitCode == null && entry.process.signalCode == null) entry.process.kill('SIGKILL');
+      await Promise.all(children.map(entry => entry.closed));
+    }
   });
   it('recovers a killed writer and preserves its published original beside orphan staging', async () => {
     const source = new URL('../scripts/procgen-survey/SurveyEvidenceStore.js', import.meta.url).href;

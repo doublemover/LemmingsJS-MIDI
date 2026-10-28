@@ -7716,6 +7716,34 @@ export-budget acknowledgments still prevent a false complete receipt.
   Native browser UI zoom and actual assistive-device qualification remain
   distinct work. Platform font stacks and original CSS add no bundled assets.
 - Formatting, critical types, undefined calls, whitespace and unchanged
-  10-component/340-file provenance pass. Current-source remote CI is pending;
-  published green 3705b1a5 remains separate. Follow through on motion-policy,
+  10-component/340-file provenance pass. Remote 53dfb6c2 passes all 113 browser
+  cases and 6,602 Node cases, then fails one independent evidence-writer fixture
+  at Mocha's two-second default. Coverage is 90.24/83.54/88.24 percent;
+  published fully green 3705b1a5 remains separate. Follow through on motion-policy,
   large-lane navigation and remaining desktop assistive qualification next.
+
+### Continuation 299 — bounded independent evidence-writer qualification
+
+- Give the two-process immutable-publication fixture an explicit 10-second
+  process deadline and 15-second test allowance under instrumented CI startup.
+  Both independent writers now signal readiness before receiving a shared
+  publication release. Preserve exactly one committed result and one conflict,
+  with no retained staging file. Bound captured process output and await closed
+  pipes; abort/kill and drain both owners before temporary-directory cleanup.
+- All 27 evidence-store cases pass under c8, including independent publication,
+  killed writers and both hard-link recovery boundaries. Production storage
+  semantics and the validated desktop UI remain unchanged. Formatting and
+  whitespace pass; current-source remote full CI is pending.
+
+### Continuation 300 — shared instrument motion policy (in development)
+
+- Frontload one bounded, observable presentation policy for system reduction,
+  explicit reduced/frozen modes, pause/visibility and interruptible finite
+  transitions. Bind renderer effects, DOM, dock and automatic view selection to
+  the same owner, retaining static evidence and live data. Keep physical clocks,
+  output, actual source age and canonical history outside this presentation
+  timeline. Fence replacement/disposal and release listeners/transition leases.
+- The motion module and initial renderer/runtime/actor/CCTV wiring are local
+  uncommitted development. Complete View preferences, rendering lifetime and
+  exact-time/native regression coverage before grouped validation. Strengthen
+  compact shaping probes to use actual tick/checkpoint identity as well.

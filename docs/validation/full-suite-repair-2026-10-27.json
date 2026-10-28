@@ -845,7 +845,9 @@
       "height": 1080
     },
     "excludesContinuations": [
-      298
+      298,
+      299,
+      300
     ],
     "excludesLaterWork": true,
     "masterCapture": {
@@ -17634,7 +17636,80 @@
       "Current-source remote CI remains pending until published head completes; green3705b1a5 remains separate."
     ],
     "remoteCi": {
-      "status": "pending"
+      "status": "failed",
+      "head": "53dfb6c270ffdaa03d49d1fee997996490a4f1da",
+      "job": 122672534189,
+      "run": 40645277521,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40645277521/job/122672534189",
+      "nodePassed": 6602,
+      "nodeFailed": 1,
+      "failure": "Survey evidence independent-writer publication fixture exceeded Mocha default2000ms under coverage; production browser cases all pass.",
+      "browserPassed": 113,
+      "browserGroups": {
+        "desktop": 22,
+        "workstationSmoke": 91,
+        "skipped": 0,
+        "allCapabilitiesPassed": true
+      },
+      "coverage": {
+        "lines": 90.24,
+        "statements": 90.24,
+        "branches": 83.54,
+        "functions": 88.24
+      },
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 102912,
+        "captured": 102912,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.023317694664001465,
+        "nonfinite": 0
+      },
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci298-failed.log",
+        "bytes": 1125953,
+        "sha256": "48984b88df1d1949e4b391742c680f6cdb20e10c50c4974f8ccb5747734adbdf"
+      }
     }
+  },
+  "continuation299": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Bound instrumented independent evidence-writer fixture lifetime",
+    "sourceBase": "53dfb6c270ffdaa03d49d1fee997996490a4f1da",
+    "scope": [
+      "test/procgen-survey-evidence.test.js"
+    ],
+    "development": [
+      "Signal readiness from both independent Node processes before releasing immutable publication, retaining exactly one winner and one immutable conflict.",
+      "Use an explicit10-second process deadline and15-second instrumented test allowance rather than the generic2-second Mocha default. Bound output to32KiB per stream, abort/kill unfinished owners and await closed pipes before fixture filesystem cleanup.",
+      "Keep production evidence-store semantics and validated UI source unchanged."
+    ],
+    "validation": {
+      "node": {
+        "passed": 27,
+        "failed": 0,
+        "coverageInstrumentation": true,
+        "scope": "All survey evidence-store cases, including two-process publication, killed writer and both hard-link recovery boundaries."
+      },
+      "checks": [
+        "format",
+        "whitespace"
+      ],
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog299-survey.log",
+        "bytes": 58,
+        "sha256": "9edb04f9475df816df124631dce661df24749af55df90c823f016b7f6d93ea4a"
+      }
+    },
+    "sourceHashes": {
+      "test/procgen-survey-evidence.test.js": "bd8d728db4be992f8e31a8e87ae677ac3be5e7eac49aac3382aefb862b3cabe2",
+      "docs/roadmap.md": "3bde3a1387dc0b7ac82ed8b3921f7ecd6a21427303d2d71df00b242e5f4fba88"
+    },
+    "remoteCi": {
+      "status": "pending"
+    },
+    "excludesLocalContinuation": 300
   }
 }
