@@ -1,6 +1,7 @@
 import { createProcgenOperationalView } from './ProcgenOperationalView.js';
 import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnapshot.js';
 import { createLaneDisplayView } from './LaneDisplayView.js';
+import { createCausalVisualView } from './CausalVisualView.js';
 import { createModalOutputSafety } from '../../controls/ModalOutputSafety.js';
 import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
 import { getProcgenCommandDispatcher } from '../../controls/ProcgenCommandDispatcher.js';
@@ -137,6 +138,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const owner = {};
   const detachRenderer = () => {
     const renderer = attachedRenderer; attachedRenderer = null;
+    causalView.bind(null);
     if (!renderer) return;
     const lease = rendererLeases.get(renderer);
     if (lease?.owner !== owner) return;
@@ -216,6 +218,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const laneDisplayDialog = node('dialog', null, 'studio-dialog studio-lane-display-dialog'); laneDisplayDialog.setAttribute('aria-label', 'Selected lane display details');
   const laneDisplayDetails = node('pre');
   laneDisplayDialog.append(node('h2', 'Lane display evidence'), laneDisplayDetails, button('Close lane display', () => laneDisplayDialog.close())); presentationRoot.append(laneDisplayDialog);
+  const causalView = createCausalVisualView({ document, stage, actions: fullscreenMenu, parent: presentationRoot, resourceBudget, getDocumentIdentity,
+    read: readLaneDisplayValues, invalidate: () => laneMixSurface.invalidate() });
   const stageModeButton = button('Stage mode', () => handlers.stage?.(), 'Protect live performance and prepare an explicit NEXT score');
   const fullscreenExit = button('Exit fullscreen', fullscreenCommand); fullscreenExit.id = 'studioFullscreenExit'; fullscreenExit.hidden = true;
   // Opening the command and changing presentation geometry must not blur a numeric draft.
@@ -726,8 +730,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         const previous = rendererLeases.get(renderer);
         previous?.relinquish();
         rendererLeases.set(renderer, { owner, baseLayout: previous ? previous.baseLayout : renderer.workstationLayout,
-          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { attachedRenderer = null; superseded = true; } });
+          baseFrame: previous ? previous.baseFrame : renderer.onWorkstationFrame, relinquish: () => { causalView.bind(null); attachedRenderer = null; superseded = true; } });
         attachedRenderer = renderer;
+        causalView.bind(renderer);
       }
       renderer.workstationLayout = projection; renderer.onWorkstationFrame = frame; if (changed || rendererChanged) renderer.resize({ width: Math.max(1, Math.floor(width * dpr)), height: Math.max(1, Math.floor(height * dpr)) });
     }
@@ -926,16 +931,20 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const field = active?.closest?.('.studio-field'), name = field?.querySelector('span')?.textContent;
     return laneId === state.laneId && active?.matches?.('input') && ['Sustain', 'Pitch bend', 'Pressure'].includes(name) ? { name, value: active.value } : null;
   }
+  function readLaneDisplayValues() {
+    const ids = [...laneDisplays.keys()]; if (!ids.includes(state.laneId)) ids.push(state.laneId);
+    return handlers.laneDisplayState?.(ids) || ids.map(id => ({ lane: procgenLane(getProject().procgen.lanes, id), mix: handlers.laneMixView?.(id), evidence: { available: true } })).filter(value => value.lane);
+  }
   function paintLaneDisplays() {
     if (disposed || !projection) return;
-    const ids = [...laneDisplays.keys()]; if (!ids.includes(state.laneId)) ids.push(state.laneId);
-    const values = handlers.laneDisplayState?.(ids) || ids.map(id => ({ lane: procgenLane(getProject().procgen.lanes, id), mix: handlers.laneMixView?.(id), evidence: { available: true } })).filter(value => value.lane);
+    const values = readLaneDisplayValues();
     controlTree.update(displayPage, laneDisplayPages.get(state.laneId) || 'identity', { identity: getDocumentIdentity() });
     for (const value of values) {
       const snapshot = createLaneDisplaySnapshot({ ...value, page: laneDisplayPages.get(value.lane.id) || 'identity', activeControl: focusedDisplayControl(value.lane.id) });
       laneDisplays.get(value.lane.id)?.update(snapshot);
       if (value.lane.id === state.laneId && laneDisplayDetails.textContent !== snapshot.detail) laneDisplayDetails.textContent = snapshot.detail;
     }
+    causalView.render(values);
   }
   const laneMixSurface = displayScheduler.register({ id: 'workstation-lane-mix', element: lanes, intervalMs: 100, write: () => {
     for (const [id, control] of laneMixControls) {
@@ -1108,6 +1117,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         { name: 'modal-output-safety', run: () => modalSafety.dispose() }, { name: 'operational-view', run: () => operationalView.dispose() }, { name: 'keyed-controls', run: () => { controlTree.dispose(); parameterCache.clear(); } }, { name: 'desktop-commands', run: () => { commandPalette.dispose(); outputCommandRegistration.dispose(); commandRegistration.dispose(); } }, { name: 'resize-observer', run: () => resizeObserver?.disconnect() }, { name: 'name-dialog', run: () => nameDialog.dispose() }, { name: 'parameter-gestures', run: () => { stroke?.lease.cancel('disposed'); resizeLease?.cancel('disposed'); for (const control of parameterControls.splice(0)) control.dispose(); } },
         { name: 'lane-mix-controls', run: () => { for (const control of laneMixControls.values()) control.dispose(); laneMixControls.clear(); } },
         { name: 'lane-displays', run: () => { for (const display of laneDisplays.values()) display.dispose(); laneDisplays.clear(); laneDisplayPages.clear(); laneDisplayDialog.close(); laneDisplayDialog.remove(); } },
+        { name: 'causal-visual-view', run: () => causalView.dispose() },
         { name: 'current-score-controls', run: () => sceneControls.dispose() },
         { name: 'display-scheduler', run: () => displayScheduler.dispose() },
         { name: 'renderer', run: detachRenderer }, ...listeners.map((unlisten, index) => ({ name: 'view-listener-' + index, run: unlisten })),

@@ -7428,3 +7428,34 @@ export-budget acknowledgments still prevent a false complete receipt.
 - The focused follow-through passes 181 Node cases / four OLED desktop browser
   cases. The preceding grouped pass is 178/37; these are separate overlapping
   cohorts. Full remote CI must qualify the current published head before closure.
+
+### Continuation 292 — projected causal history and runtime-bound references
+
+- Project committed physical-to-musical source coordinates through the existing
+  accepted presentation host. Add static action/outcome marks, counted dense
+  bundles and native keyboard/text drilldown for exact source/intent/sink IDs,
+  frozen target values and target clock domains. No nearest-actor/BPM attribution
+  or individually rendered/shared-body acoustic evidence is invented.
+- Bound history to 64 intents / 120 simulation ticks, visible lanes plus selection,
+  24 mounted bundles and the existing per-batch/source/receipt bounds. Retain
+  source coordinates and termination tombstones; explicitly count eviction,
+  expiry, missing coordinates, offscreen/pending and omitted ranges. Extend owned
+  storage accounting and retire both history and view state.
+- Add a geometry-only presentation subscription and preserve full entity demand
+  for existing inspectors. Promotion to entity inspection requires a fresh frame;
+  geometric cause display does not add an actor/object inspection pass.
+- Add a runtime-binding epoch to display source identity. Same-seed reconstruction
+  can reuse world/generation/event IDs; old history, detached marks and frozen
+  explanations cannot bind to the new run. Native dialogs keep canonical output
+  safety and retain frozen text when the source leaves the history window.
+- Treat independent sink results as mixed when a local rejection coexists with
+  MIDI admission/submission. Keep same-sink degradation and explicit terminal
+  cancellation distinct; API submission remains separate from receiver/audibility.
+- Full CI at bfec9575 is green: **6,532 coverage cases / 75 desktop boundaries**,
+  all checks, 90.26% lines/statements, 83.50% branches and 88.23% functions. Master
+  capture is Ready at 57,600 frames with no clock discontinuity. **#1072 is closed**
+  on this complete operational-status/rate/recovery evidence. That checkpoint
+  excludes continuation292; its validation is recorded separately in the receipt.
+- #997 still requires individually correlated local-render/shared-body/transfer
+  qualification and the complete outcome matrix. Historical unknown stages and
+  aggregate effects cannot substitute for that evidence.

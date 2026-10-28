@@ -7,18 +7,21 @@ const layoutKey = renderer => {
 
 class ProcgenPresentationHost {
   constructor(renderer) {
-    this.renderer = renderer; this.current = null; this.retained = new Map(); this.leases = new Map(); this.listeners = new Set(); this.suspensions = new Map();
+    this.renderer = renderer; this.current = null; this.retained = new Map(); this.leases = new Map(); this.listeners = new Set(); this.geometryListeners = new Set(); this.suspensions = new Map();
     this.revision = 0; this.projectionRevision = 0; this.demandRevision = 0; this.reason = 'Wait for the world display to present.'; this.disposed = false; this.maxLeases = 32;
   }
   domKey() { const rect = this.demanded && readProcgenCanvasRect(this.renderer.canvas, this.renderer.window); return rect ? [rect.left, rect.top, rect.width, rect.height].join(':') : 'hidden'; }
-  get demanded() { return this.listeners.size > 0 || this.leases.size > 0; }
-  subscribe(listener) {
+  get demanded() { return this.entitiesDemanded || this.geometryListeners.size > 0; }
+  get entitiesDemanded() { return this.listeners.size > 0 || this.leases.size > 0; }
+  subscribe(listener, { entities = true } = {}) {
     if (this.disposed) return () => {};
-    const before = this.demanded; this.listeners.add(listener); if (!before) this.demandRevision++;
+    const before = this.demanded, beforeEntities = this.entitiesDemanded, listeners = entities ? this.listeners : this.geometryListeners;
+    listeners.add(listener); if (!before || beforeEntities !== this.entitiesDemanded) this.demandRevision++;
+    if (!beforeEntities && this.entitiesDemanded && this.current) this.invalidate('World entity inspection is preparing.');
     let released = false;
-    return () => { if (released) return; released = true; this.listeners.delete(listener); if (!this.demanded) this.invalidate('World inspection is inactive.'); };
+    return () => { if (released) return; released = true; const beforeEntities = this.entitiesDemanded; listeners.delete(listener); if (beforeEntities !== this.entitiesDemanded) this.demandRevision++; if (!this.demanded) this.invalidate('World inspection is inactive.'); };
   }
-  _notify() { for (const listener of this.listeners) { try { listener(this.current, this.reason); } catch { /* Inspector callbacks cannot break a paint. */ } } }
+  _notify() { for (const listeners of [this.listeners, this.geometryListeners]) for (const listener of listeners) { try { listener(this.current, this.reason); } catch { /* Inspector callbacks cannot break a paint. */ } } }
   _retire(snapshot) {
     if (!snapshot || snapshot === this.current || [...this.leases.values()].some(record => record.snapshot === snapshot)) return;
     const key = this.retained.get(snapshot); if (key) this.renderer.resources.release(key); this.retained.delete(snapshot);
@@ -72,10 +75,10 @@ class ProcgenPresentationHost {
   }
   acquire(owner, { purpose = 'inspect' } = {}) {
     const snapshot = this.getSnapshot();
-    if (!owner || !snapshot || purpose !== 'inspect' || this.leases.size >= this.maxLeases) return null;
+    if (!owner || !snapshot || !this.entitiesDemanded || purpose !== 'inspect' || this.leases.size >= this.maxLeases) return null;
     const record = { owner, snapshot, active: true };
     const lease = Object.freeze({ owner, purpose, get active() { return record.active; }, get snapshot() { return record.active ? record.snapshot : null; },
-      release: () => { if (!record.active) return; record.active = false; this.leases.delete(lease); const prior = record.snapshot; record.snapshot = null; this._retire(prior);
+      release: () => { if (!record.active) return; const beforeEntities = this.entitiesDemanded; record.active = false; this.leases.delete(lease); if (beforeEntities !== this.entitiesDemanded) this.demandRevision++; const prior = record.snapshot; record.snapshot = null; this._retire(prior);
         if (!this.demanded) this.invalidate('World inspection is inactive.'); } });
     this.leases.set(lease, record); return lease;
   }
@@ -92,7 +95,7 @@ class ProcgenPresentationHost {
     this.retained.clear(); if (previous || previousReason !== reason) this._notify();
   }
   getStatus() { return { available: !!this.current, reason: this.reason, revision: this.current?.revision ?? null, retainedSnapshots: this.retained.size, leases: this.leases.size, suspended: this.suspensions.size > 0 }; }
-  dispose() { if (this.disposed) return; this.disposed = true; this.invalidate('World inspection has closed.'); this.listeners.clear(); this.suspensions.clear(); this.renderer = null; }
+  dispose() { if (this.disposed) return; this.disposed = true; this.invalidate('World inspection has closed.'); this.listeners.clear(); this.geometryListeners.clear(); this.suspensions.clear(); this.renderer = null; }
 }
 
 export { ProcgenPresentationHost };

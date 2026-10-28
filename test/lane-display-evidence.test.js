@@ -13,6 +13,30 @@ const snapshot = (store, options = {}) => createLaneDisplaySnapshot({ lane, evid
 const fixture = options => { const store = createLaneDisplayEvidence(options); store.setLanes([lane.id]); return store; };
 
 describe('bounded live lane display evidence', () => {
+  it('retains immutable observed points and a terminal tombstone without looking up current actors', () => {
+    const store = fixture(), value = input(); value.batch.worldId = 'world'; value.batch.facts[0].positionBefore = { x: 100, y: 50 };
+    try { store.observe(value); value.batch.facts[0].positionBefore.x = 900;
+      expect(read(store).history[0].sources[0].point).to.deep.equal({ x: 100, y: 50, evidence: 'observed-startpoint' });
+      store.observe(input({ batch: { ...value.batch, batchId: 'terminal', tick: 11, facts: [{ eventId: 'terminal-fact', actorId: 7, kind: 'ActorTerminated' }] }, intents: [], receipts: [] }));
+      expect(read(store).history[0]).to.include({ actorState: 'terminated', terminationTick: 11 }); expect(read(store).history[0].sources[0].point.x).to.equal(100);
+    } finally { store.dispose(); }
+  });
+  it('bounds and expires causal history independently of the last OLED cause and fences out-of-order/source-reused data', () => {
+    const store = fixture({ maximumHistory: 2, historyTicks: 3 });
+    try { for (let tick = 10; tick < 14; tick++) { const value = input(); value.batch.tick = tick; value.batch.batchId = 'b-' + tick; value.intents[0].intentId = 'i-' + tick; value.intents[0].batchId = value.batch.batchId; store.observe(value); }
+      expect(read(store).history.map(value => value.intentId)).to.deep.equal(['i-12', 'i-13']); expect(read(store).historyOmitted).to.equal(2);
+      expect(store.observe(input())).to.equal(false); expect(read(store).latestTick).to.equal(13);
+      store.observe(input({ batch: { ...input().batch, tick: 20 }, intents: [], receipts: [] })); expect(read(store).history).to.have.length(0); expect(read(store).record.events[0].intentId).to.equal('i-13'); expect(read(store).historyExpired).to.equal(2);
+      expect(store.read(lane.id, 'another-document').history).to.have.length(0);
+    } finally { store.dispose(); }
+  });
+  it('accepts a late receipt only for a retained historical execution after a newer cause arrived', () => {
+    const store = fixture();
+    try { const first = input(); store.observe(first); const next = input(); next.batch.tick = 11; next.batch.batchId = 'next'; next.intents[0].batchId = 'next'; next.intents[0].intentId = 'next-intent'; store.observe(next);
+      expect(store.receipt(first.sourceKey, { ...first.receipts[0], stage: 'submitted' })).to.equal(true); expect(read(store).history[0].receipts.some(value => value.stage === 'submitted')).to.equal(true);
+      expect(read(store).record.events[0].intentId).to.equal('next-intent'); expect(read(store).record.events[0].receipts.some(value => value.stage === 'submitted')).to.equal(false);
+    } finally { store.dispose(); }
+  });
   it('joins exact observed facts, intents and sink receipts without retaining mutable source objects', () => {
     const store = fixture(), value = input();
     try {
@@ -62,9 +86,9 @@ describe('bounded live lane display evidence', () => {
     finally { store.dispose(); }
   });
   it('admits owned storage lazily and retires it without modifying input data or output owners', () => {
-    const budget = createResourceBudget({ limitBytes: 1048576, costFactors: { checkpoint: 1 } }), store = fixture({ resourceBudget: budget, maximumLanes: 1 });
+    const budget = createResourceBudget({ limitBytes: 1048576, costFactors: { checkpoint: 1 } }), store = fixture({ resourceBudget: budget, maximumLanes: 1, maximumHistory: 4 });
     const value = input(), before = JSON.stringify(value); expect(budget.diagnostics().residentBytes).to.equal(0);
-    store.observe(value); expect(JSON.stringify(value)).to.equal(before); expect(budget.diagnostics().residentBytes).to.equal(131072); store.dispose(); store.dispose(); expect(budget.diagnostics().residentBytes).to.equal(0);
+    store.observe(value); expect(JSON.stringify(value)).to.equal(before); expect(budget.diagnostics().residentBytes).to.equal(262144); store.dispose(); store.dispose(); expect(budget.diagnostics().residentBytes).to.equal(0);
   });
   it('shows denied display storage as unavailable while observation remains a safe optional consumer', () => {
     const store = fixture({ resourceBudget: createResourceBudget({ limitBytes: 4096 }), maximumLanes: 1 });
@@ -74,6 +98,12 @@ describe('bounded live lane display evidence', () => {
 });
 
 describe('truthful lane display pages', () => {
+  it('keeps a rejected local path and successful MIDI submission as mixed sink outcomes rather than universal failure', () => {
+    const store = fixture(), value = input(); value.receipts[0] = { ...value.receipts[0], status: 'rejected', reason: 'clock-unavailable' };
+    value.receipts.push({ ...value.receipts[0], sinkId: 'midi', status: 'accepted', stage: 'submitted', reason: null, targetTimeDomain: 'performance-microseconds' });
+    try { store.observe(value); const result = snapshot(store, { page: 'output' }); expect(result).to.include({ evidenceClass: 'mixed', priority: 'ordinary', glyph: '±' }); expect(result.detail).to.include('One sink rejected: clock-unavailable').and.include('MIDI API submitted; receiver unknown'); }
+    finally { store.dispose(); }
+  });
   it('keeps intentional output-off and preparation distinct from lost output without masking manual pages', () => {
     const store = fixture();
     try {

@@ -28,6 +28,19 @@ const fixture = () => {
 };
 
 describe('ProcGen presentation admission and retention', () => {
+  it('requests geometry-only repaint when the last retained entity inspection lease retires', () => {
+    const f = fixture(), geometry = f.host.subscribe(() => {}, { entities: false }), inspect = f.host.subscribe(() => {}); f.renderer.render();
+    const lease = f.host.acquire('held-inspection'); inspect(); expect(f.host.entitiesDemanded).to.equal(true); const before = f.host.demandRevision;
+    lease.release(); expect(f.host.entitiesDemanded).to.equal(false); expect(f.host.demandRevision).to.be.greaterThan(before); geometry(); f.host.dispose(); expect(f.reservations.size).to.equal(0);
+  });
+  it('supports geometry-only consumers without demanding entities and requires a fresh frame before full inspection', () => {
+    const f = fixture(), geometry = f.host.subscribe(() => {}, { entities: false });
+    expect(f.host.demanded).to.equal(true); expect(f.host.entitiesDemanded).to.equal(false); f.host.publish([]);
+    expect(f.host.getSnapshot().entities).to.have.length(0); expect(f.host.acquire('entity-inspector')).to.equal(null);
+    const inspect = f.host.subscribe(() => {}); expect(f.host.entitiesDemanded).to.equal(true); expect(f.host.getSnapshot()).to.equal(null);
+    f.renderer.render(); expect(f.host.getSnapshot().entities).to.have.length(2); const lease = f.host.acquire('entity-inspector'); expect(lease).not.to.equal(null);
+    lease.release(); inspect(); expect(f.host.entitiesDemanded).to.equal(false); geometry(); expect(f.reservations.size).to.equal(0); f.host.dispose();
+  });
   it('requires accepted visible paint and rejects every edit lease', () => {
     const f = fixture(); expect(f.host.acquire('tool')).to.equal(null);
     const release = f.host.subscribe(() => {}); f.renderer.render();

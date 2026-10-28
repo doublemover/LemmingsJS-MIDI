@@ -480,3 +480,36 @@ The expanded explanation separates the current project/patch from the frozen
 intent pitch/velocity, unknown historical graph revision, and each retained
 receipt's execution epoch and target time domain. A later receipt exceeding the
 retained cap makes coverage Partial rather than silently preserving Complete.
+
+## Projected cause history
+
+Observed musical causes appear as static, keyboard-focusable marks at the
+coordinates carried by committed physical facts. The accepted world projection
+places them; a current actor's pose or the nearest actor never supplies a missing
+coordinate. Build/work/contact/crossing/flight shapes differ without relying on
+color. Close causes become counted bundles. Select a mark to inspect each
+retained physical fact and its owned intents, or use **View actions → Cause
+history** for causes outside the current crop or without recorded coordinates.
+
+The explanation follows physical fact, mapping/eligibility, immutable intent,
+sink admission/scheduling and optional submission evidence. It retains source,
+batch, voice, generation, runtime binding, frozen pitch/velocity and target clock
+domain. An unrecorded eligibility decision, render correlation or receiver
+measurement stays unknown. A failed local path and a successful MIDI API path
+produce mixed outcomes; neither silently erases the other. A shared-body or
+reverb meter cannot establish an individual actor's audible contribution.
+
+The dialog freezes its explanation until **Refresh retained evidence** is chosen.
+If its source leaves the retained window, the frozen text remains available and
+the missing reference is labeled. Replaying the same seed cannot reuse the old
+runtime binding. A terminated actor keeps a tombstone rather than moving its mark
+to a surviving actor. Stop and Panic remain available in the native dialog.
+
+History is capped at 64 intents across visible/selected lanes and 120 simulation
+ticks. At most 24 projected bundles are mounted. Capped input, eviction, expiry,
+unrecorded coordinates, offscreen causes and pending/mismatched projections have
+explicit counts. This history contains physical-to-musical intent references;
+unmapped physical facts are not presented as emitted musical intents. The view
+uses the existing dirty display scheduler and a geometry-only presentation
+subscription; it adds no entity-inspection request, timer, flash replay or note
+stream. Reduced motion retains the same static marks and text explanations.

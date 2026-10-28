@@ -48,6 +48,25 @@ test('focused lane parameter drafts temporarily override a stable manual page an
   await page.evaluate(() => window.__laneDisplayObserver.disconnect());
 });
 
+test('actual mute and solo suppression override OLED activity without altering paused physics or sending notes', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page, 2); await activate(page); const before = await ownerState(page), display = page.locator('.studio-lane-display').first();
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__, laneId = studio.getProject().procgen.lanes[0].id; studio.dispatch({ type: 'procgen/lane', laneId, patch: { mute: true } }); });
+  await expect(display).toHaveAttribute('data-priority', 'blocked'); await expect(display).toContainText('self muted');
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__, lanes = studio.getProject().procgen.lanes; studio.dispatch({ type: 'procgen/lane', laneId: lanes[0].id, patch: { mute: false } }); studio.dispatch({ type: 'procgen/lane', laneId: lanes[1].id, patch: { solo: true } }); });
+  await expect(display).toContainText('solo suppressed'); await expect(display).toHaveAttribute('data-priority', 'blocked');
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.dispatch({ type: 'procgen/lane', laneId: studio.getProject().procgen.lanes[1].id, patch: { solo: false } }); });
+  await expect(display).toHaveAttribute('data-priority', 'ordinary'); const after = await ownerState(page); expect(after.physics).toBe(before.physics); expect(after.sent).toBe(before.sent);
+  const flags = value => JSON.parse(value.project).procgen.lanes.map(({ mute, solo }) => ({ mute, solo })); expect(flags(after)).toEqual(flags(before));
+});
+
+test('paging real desktop lane displays bounds mounted rows and restores the manual page without replaying output', { tag: '@boundary' }, async ({ page }) => {
+  await ready(page, 12); const before = await ownerState(page); await page.getByText('View actions', { exact: true }).click(); await page.getByLabel('Selected lane display page').selectOption('cause'); await page.getByText('View actions', { exact: true }).click();
+  const first = await page.locator('.studio-lane-display').first().getAttribute('data-lane-display'); await page.getByTitle('Show next lanes').click();
+  await expect(page.locator(`.studio-lane-display[data-lane-display="${first}"]`)).toHaveCount(0); expect(await page.locator('.studio-lane-display').count()).toBeLessThanOrEqual(8);
+  await page.getByTitle('Show previous lanes').click(); await expect(page.locator('.studio-lane-display').first()).toHaveAttribute('data-lane-display', first); await expect(page.locator('.studio-lane-display').first()).toHaveAttribute('data-page', 'cause');
+  expect(await ownerState(page)).toEqual(before); expect(await page.locator('.studio-lane-display').count()).toBeLessThanOrEqual(8);
+});
+
 test('live physical lane evidence joins real recorded MIDI IDs and leaves receiver and acoustic evidence unknown', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(60000); await ready(page, 2); await activate(page);
   await page.evaluate(() => { window.__PROCGEN_STUDIO__.ports.configure({ recording: true }); window.__PROCGEN_LANES__.resume(); window.__PROCGEN_STUDIO__.play(); });

@@ -200,13 +200,13 @@ class ProcgenLaneRenderer {
     if (bitmap.procgenVisiblePixels) this._captureActorFrame(frame, x, y);
   }
   _captureActorFrame(frame, x, y) {
-    if (!Object.hasOwn(this, 'presentation') || !this.presentation.demanded || !this._presentationActor) return;
+    if (!Object.hasOwn(this, 'presentation') || !this.presentation.entitiesDemanded || !this._presentationActor) return;
     const step = this.rasterStep;
     this._captureActorBounds({ x: this.originX + Math.round((x + (frame.offsetX || 0) - this.originX) / step) * step,
       y: this.originY + Math.round((y + (frame.offsetY || 0) - this.originY) / step) * step, width: frame.width, height: frame.height });
   }
   _captureActorBounds(bounds) {
-    if (!Object.hasOwn(this, 'presentation') || !this.presentation.demanded || !this._presentationActor) return;
+    if (!Object.hasOwn(this, 'presentation') || !this.presentation.entitiesDemanded || !this._presentationActor) return;
     const actor = this._presentationActor, left = bounds.x, top = bounds.y, previous = this.presentedActorBounds.get(actor);
     const x1 = previous ? Math.min(left, previous.x) : left, y1 = previous ? Math.min(top, previous.y) : top;
     const x2 = previous ? Math.max(left + bounds.width, previous.x + previous.width) : left + bounds.width, y2 = previous ? Math.max(top + bounds.height, previous.y + previous.height) : top + bounds.height;
@@ -485,7 +485,7 @@ class ProcgenLaneRenderer {
           const bounds = this.actorVisibility.bounds.get(actor), padding = this.actorEffectPass.paddingFor(actor, bounds);
           if (!bounds || bounds.x - padding >= this.originX + this.viewWidth || bounds.y - padding >= this.originY + this.viewHeight || bounds.x + bounds.width + padding <= this.originX || bounds.y + bounds.height + padding <= this.originY) continue;
         }
-        this._presentationActor = this.presentation.demanded ? actor : null;
+        this._presentationActor = this.presentation.entitiesDemanded ? actor : null;
         try { actor.render(this); this.renderedActors++; } finally { this._presentationActor = null; }
       }
     } finally { actorLease?.release(); }
@@ -516,7 +516,7 @@ class ProcgenLaneRenderer {
       this.hud?.render(this.context, this.world, this.camera, dpr);
       this.cctv.draw(this.context, dpr);
     }
-    if (this.presentation.demanded) this.presentation.publish(this._worldInspectionEntities(), snapshot => this._drawWorldInspection(snapshot));
+    if (this.presentation.demanded) this.presentation.publish(this.presentation.entitiesDemanded ? this._worldInspectionEntities() : [], snapshot => { if (this.presentation.entitiesDemanded) this._drawWorldInspection(snapshot); });
     this.lastFrameKey = frameKey; this.lastAppearance = appearance; this.lastSprites = sprites; this.lastHud = this.hud; this.lastHudSprites = this.hud?.sprites; this.lastDecorationLayer = this.decorationLayer;
     this.lastFrameMs = (this.window.performance?.now?.() ?? start) - start;
     return true;

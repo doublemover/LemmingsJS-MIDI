@@ -164,7 +164,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const retirement = createProcgenRetirementScope();
   const midiParameterEvidence = createMidiParameterEvidence({ resourceBudget });
   const laneDisplayEvidence = createLaneDisplayEvidence({ resourceBudget });
-  const laneDisplaySource = (world = runtime()?.world, generation = world?.generation) => JSON.stringify([documentGeneration, world?.worldId ?? null, generation ?? null]);
+  let laneDisplayWorldEpoch = 0;
+  const laneDisplaySource = (world = runtime()?.world, generation = world?.generation) => JSON.stringify([documentGeneration, laneDisplayWorldEpoch, world?.worldId ?? null, generation ?? null]);
   let lastHistoryGroup = null, inputGestureSerial = 0;
   let documentGeneration = 1, projectRevision = 0, inputLease = null;
   let editRevision = 0, savedRevision = -1, lastSavedAt = null, lastStorageError = null;
@@ -906,7 +907,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before replacing its world.');
     recoveryAbort?.abort(); soundTransactions.cancel('The physical playback owner changed.');
-    unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; boundRuntime = next; boundSession = sessionIdentity;
+    unhookRouter?.(); unhookWorld?.(); physicalPlayback?.dispose(); physicalPlayback = null; laneDisplayWorldEpoch++; boundRuntime = next; boundSession = sessionIdentity;
     const boundProject = session?.project || project; let bindingSession = !!session;
     const playbackProject = () => bindingSession ? boundProject : project;
     next.world?.configurePhysicalAuthoring?.(boundProject.procgen.physicalGraph, boundProject.procgen.fragmentInstances || []);
