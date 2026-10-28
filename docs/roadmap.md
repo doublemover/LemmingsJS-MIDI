@@ -8231,3 +8231,33 @@ export-budget acknowledgments still prevent a false complete receipt.
   stalls, Save/New and concurrent preparation, observer overhead A/B, physical
   event hashes and end-to-end input/audio tails. Next address the recording
   document-boundary gap under #1092 while remote313 full CI continues.
+
+### Continuation 315 — retained MIDI source boundaries across New/load
+
+- Bind a recorded MIDI prefix to its originating project generation/document.
+  Successful New and session publication stop recording before moving to the
+  new generation; retained events/source identity remain available for export.
+  An earlier prefix cannot be rearmed into another project state. Export uses
+  the originating document reference. Failed New publication retains the
+  current recording owner; disposed controllers cannot rearm or clear data.
+- Show Retained MIDI and its source boundary in Record. Add an explicit Clear
+  MIDI recording action in Edit, enabled only after stopping with retained data.
+  Clearing permits a new buffer identity and leaves prepared files and causal
+  takes intact. Held input notes mark the earlier window incomplete; subsequent
+  real releases are not forged into the stopped log.
+- All224 grouped Node cases pass, including the exact record/stop/New/load
+  regression, armed New/load with held input, failed New and independent worker,
+  export delivery/backpressure and soak ownership cases. All3 native recording
+  cases pass at1920×1080, including actual IndexedDB saveDocument/loadDocument,
+  unchanged old MIDI events, rearm refusal, visible Retained MIDI state and a
+  native click on Clear followed by a fresh one-tempo recording. Worker export
+  still matches400370 reference bytes and production range cleanup passes.
+- Preserve the zero-test command preflight caused by PowerShell consuming an
+  unquoted @boundary filter; the correctly quoted cohort runs3 real cases with
+  no skips. Collection passes142 full/113 PR cases across33 files and all14
+  required capabilities. Format, critical types, undefined calls, provenance
+  and whitespace checks pass. No full local suite is repeated.
+- #1092 remains open for the actual10000-tick durable tape/replay/seek/branch and
+  corruption/source-mismatch journey. In-memory MIDI preservation is not a
+  durable tape or evidence that project checkpoints contain MIDI. #1117 retains
+  actual button-tail latency, active-ledger reference and durable failure scope.

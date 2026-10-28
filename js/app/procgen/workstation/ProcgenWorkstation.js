@@ -135,6 +135,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const sessionIdentities = new WeakMap();
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
+  let recordingOrigin = null;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
   const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
@@ -492,6 +493,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { historyGroup: start.group.historyGroup });
     }
   };
+  const recordingViewState = midiState => ({ ...midiState, recordingOrigin,
+    foreignRecording: !!(midiState.recordedEvents && recordingOrigin && recordingOrigin.generation !== documentGeneration) });
   ports = createProcgenMidiPorts({ transport, now, resourceBudget, schedulerConfig: projectToMidiConfig(project),
     onMonitor(event) { const endpoint = ports?.getState(); if (endpoint?.inputId) macroGestures.observeController(event, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch }); state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
@@ -500,7 +503,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (inputLease && midiState.inputLiveness.connectionEpoch !== inputLease.inputEndpointEpoch) cancelInputEdits('input changed');
       const wasRecording = state.recording;
       state.recording = midiState.recording;
-      view?.recording?.(midiState.recording, midiState);
+      view?.recording?.(midiState.recording, recordingViewState(midiState));
       view?.refreshOperational?.();
       if (wasRecording && !midiState.recording && midiState.incompleteReasons.includes('recording-cap-reached'))
         status('Recording storage full. Performance continues; export is labeled partial.');
@@ -1021,6 +1024,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     attachRouter(next.view?.midiPreviewRouter);
     if (session) {
+      ports.configure({ recording: false, thru: false });
       documentGeneration++;
       physicalDocumentEpoch = documentGeneration;
       if (legacy.local.getState().selectedBackend === 'midi') legacy.local.stop?.();
@@ -1035,7 +1039,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         transport.restore(session.project?.procgen?.sceneOrigin ? { ...session.transport, playing: false } : session.transport); engine.restore(session.patterns); pendingResume = true;
         if (session.camera) renderer()?.camera?.applyState?.(session.camera);
       } finally { suppressPersistence = false; }
-      ports.configure({ recording: false, thru: false }); if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); } status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
+      view?.recording?.(false, recordingViewState(ports.getState())); if (!historyRestore) { undo.length = 0; redo.length = 0; physicalHistory.clear(); } status(historyRestore ? 'Physical history restored at its checkpoint, paused.' : 'Project loaded paused. Press Play to resume.');
     }
     bindingSession = false; prepareSettings(); legacy.setPaused(!transport.getState().playing); lastPlaying = transport.getState().playing;
     const timer = next.world?.timer; if (timer) timer.speedFactor = transport.getState().effectiveSpeed;
@@ -1207,7 +1211,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const prepareMidiExport = async () => {
     midiExportPreparation?.controller.abort();
-    const controller = new AbortController(), source = ports.createRecordingExportSource(), generation = documentGeneration, id = documentId,
+    const controller = new AbortController(), source = ports.createRecordingExportSource(), generation = documentGeneration, id = recordingOrigin ? recordingOrigin.documentId : documentId,
       request = ++exportPreparationRevision, state = source.state;
     const pending = { controller, phase: 'queued', completedUnits: 0, totalUnits: source.count }; midiExportPreparation = pending; publishExportState();
     const isCurrent = () => !disposed && !controller.signal.aborted && documentGeneration === generation && request === exportPreparationRevision && source.isCurrent();
@@ -1388,7 +1392,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (restarted === false) throw new Error('World preparation was canceled.');
       acceptWorldSettings(candidateSettings);
       engine.reset(); transport.stop(); pendingResume = false;
-      if (fresh) documentGeneration++;
+      if (fresh) { ports.configure({ recording: false }); documentGeneration++; view?.recording?.(false, recordingViewState(ports.getState())); }
       bindRuntime();
       if (fresh) { savedName = 'Untitled session'; documentId = null; documentRevision = 0; savedRevision = -1; lastSavedAt = null; storageStatus(); }
       if (previousTransport.playing) play(); status(fresh ? 'New project ready.' : 'World rebuilt.'); completed = true; return true;
@@ -1807,8 +1811,23 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     undo: safe(() => historyMove(undo, redo)),
     redo: safe(() => historyMove(redo, undo)),
     resetPattern() { if (!selected().patterns?.[state.slot]) return false; dispatch({ type: 'procgen/pattern', laneId: selected().id, slot: state.slot, patch: createProcgenPattern(selected().family, selected().role, state.slot) }); return true; },
-    record(value) { const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear(); view.recording(state.recording, midiState); if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat);
-    else if (value && midiState.lastConfigurationFailure?.reason === 'recording-index-budget') status('MIDI recording not started: ' + midiState.lastConfigurationFailure.message); return state.recording; },
+    record(value) {
+      if (disposed) return false;
+      const before = ports.getState();
+      if (value && recordingViewState(before).foreignRecording) { status('MIDI recording belongs to an earlier project state. Export it or clear the recording before starting another.'); return false; }
+      const midiState = ports.configure({ recording: !!value }); state.recording = midiState.recording; noteEntries.clear();
+      if (state.recording && (!recordingOrigin || !before.recordedEvents)) recordingOrigin = Object.freeze({ generation: documentGeneration, documentId });
+      view.recording(state.recording, recordingViewState(midiState));
+      if (state.recording) ports.recordTempo(transport.getState().bpm, transport.getState().beat);
+      else if (value && midiState.lastConfigurationFailure?.reason === 'recording-index-budget') status('MIDI recording not started: ' + midiState.lastConfigurationFailure.message);
+      return state.recording;
+    },
+    clearMidiRecording() {
+      if (disposed) return false;
+      if (ports.getState().recording) { status('Stop MIDI recording before clearing its retained events.'); return false; }
+      ports.clearRecording(); recordingOrigin = null; noteEntries.clear(); view.recording(false, recordingViewState(ports.getState()));
+      status('MIDI recording cleared. Prepared files and causal takes are unchanged.'); return true;
+    },
     learn() {
       if (inputLease) { cancelInputEdits('canceled by user'); return false; }
       const lane = selected(), lease = { id: ++inputGestureSerial, documentGeneration, projectRevision,
@@ -2093,6 +2112,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   });
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
+    getMidiRecordingState: () => Object.freeze(recordingViewState(ports.getState())),
     getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery, preparation: exportPreparationState(),
       preparationReceipt: lastMidiExportReceipt?.artifactId === preparedExport?.artifactId ? lastMidiExportReceipt?.receipt || null : null }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,

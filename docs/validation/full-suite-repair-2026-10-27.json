@@ -23440,5 +23440,181 @@
         "remaining": "Controlled8/128/1024-lane workloads, real persistence stalls/Save-New/concurrent preparation, observer overhead A/B, physical event hashes and end-to-end input/audio tails."
       }
     }
+  },
+  "continuation315": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Preserve recording source boundaries across New and stored-project load",
+    "sourceBase": "4ecd41ab1f897027809d7be8679b9d323c1323b0",
+    "issues": [
+      1092,
+      1117
+    ],
+    "development": [
+      "Bind each retained MIDI prefix to its originating project generation/document. Successful New/load publication stops recording; later project states cannot append to the earlier prefix. Preserve events/source identity for export and use the originating document reference. Failed New retains the current owner; disposed handlers cannot clear or rearm.",
+      "Show Retained MIDI and the boundary on Record. Explicit Clear MIDI recording is enabled only while stopped with events. Clearing starts a fresh buffer identity while retaining prepared files/causal takes. Held input voices mark a stopped window incomplete without inventing later observed releases."
+    ],
+    "validation": {
+      "node": {
+        "passed": 224,
+        "failed": 0,
+        "scope": "Exact record/stop/New/load, armed New/load with held input and failed New, plus complete recording/worker/controller/export delivery/backpressure and soak ownership cohorts."
+      },
+      "browser": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 55939.696,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "recordingBoundary": {
+          "events": 3,
+          "recording": false,
+          "foreignRecording": true,
+          "originalSourcePreserved": true,
+          "storage": "actual IndexedDB saveDocument/loadDocument;project checkpoint does not contain the MIDI recording",
+          "next": {
+            "armed": true,
+            "count": 1
+          }
+        },
+        "scope": "Actual IndexedDB document save/load, retained prefix and origin, explicit rearm refusal, visible Record state and native Clear action. Existing99991-record worker/reference download and production1000-history range cleanup pass in the same cohort.",
+        "sourceDeltaToPublication": []
+      },
+      "preflight": [
+        {
+          "status": "no-tests-collected",
+          "reason": "PowerShell consumed the unquoted @boundary token. Quote the filter; corrected cohort collects and passes3 real cases."
+        }
+      ],
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/345 files",
+        "whitespace",
+        "browser collection:142 full/113 smoke/all14 capabilities"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Exact-head CI pending publication.313 test job is running workstation smoke; latest completely green remains311.",
+      "scopeLimits": [
+        "The earlier MIDI window is retained in memory and deliberately exportable. A project checkpoint does not contain it and no durable tape claim follows.",
+        "Full10000-tick physical tape replay/seek/branch, corrupt/mismatched durable sources and native storage failures remain1092 acceptance.",
+        "Native boundary smoke covers finite preview intent; held input stop completeness is covered separately by the real controller fixtures. Hardware/audio equivalence and end-to-end button-tail latency remain separate."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-categories.log",
+        "bytes": 2415,
+        "sha256": "96ce918e6c1251c3eb577fde545f42bd8d113fe4285c2c5306c811ec72a91d5c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-native-final.log",
+        "bytes": 849,
+        "sha256": "242300a9b2ed102761f3dee1d614ca2d7a002453d553aaef77c60fedca11ec2d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-native.log",
+        "bytes": 217,
+        "sha256": "6a9ebdeb47b46c53b24a1e07c19b5b5baa2b1398ca8306e3b86f597ff427b803"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-node.log",
+        "bytes": 22213,
+        "sha256": "a73e7733a93091d476ede9eb0cf481fcb3bb6f23146d601d0b7e057a5f989492"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-provenance.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-browser-selection.json",
+        "bytes": 278308,
+        "sha256": "0cc0b2be5fb675911149bbb18d62eaf1d608ed69d2473d1ab88344c3e60771cf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-recording-results.json",
+        "bytes": 13277,
+        "sha256": "7abffcca9dd05998b191acc675352e2be6aafbfd1902fb3f0d0d7ec314e72833"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-315-coverage\\coverage-summary.json",
+        "bytes": 255191,
+        "sha256": "78d4578a3ab7e3cb02bea09493943a98e0822bbe254d444e8077eab6aafc56b0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-captures\\recorded-midi-worker-export.json",
+        "bytes": 4007,
+        "sha256": "867e8fac0d0532914e0fb251c0178d0bad245aa7fbd6f76016bbe9d949cbfadf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog315-captures\\recording-document-boundary.json",
+        "bytes": 227,
+        "sha256": "eafc8a005ebbc34261d455c7cd0474affc7153f26b417c4ab22991173fb11e9b"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 43180,
+        "sha256": "6e3c89416c5a18ee2b1cffdacd5b45b6b4d44c5c6bd23131e8d88cf321ed7232"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 601394,
+        "sha256": "a1b27758472a4444cb330b84c863dc786ecfdfe880a57915784ca7cf4c50ad51"
+      },
+      {
+        "path": "e2e/procgen-workstation-recording-boundary.spec.js",
+        "bytes": 3648,
+        "sha256": "2081f576ccf6128a254948c98148239ee5c69d40c019ddcb519858907768ff57"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 200616,
+        "sha256": "52235f2dc6a06865495736df71999282f16a7f801b4127d1363e6d2ec3970170"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 134947,
+        "sha256": "412aea87252f771acdc5ad5ee3a10512905ce71b67745c8be52297ea72c09ede"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 106467,
+        "sha256": "1b43b4971b9463c5d8b06b5b4f2aef0be4ea8336df3cb62062f9f6815767b7a9"
+      }
+    ],
+    "issueStatus": {
+      "1092": {
+        "state": "open-implemented-partial",
+        "remaining": "10000-tick durable tape/replay/seek/branch and corruption/source-mismatch acceptance; durable ranges remain separate from in-memory MIDI prefix preservation."
+      },
+      "1117": {
+        "state": "open-implemented-partial",
+        "remaining": "Actual button-tail latency, active-ledger reference evaluation and durable failure scope."
+      }
+    }
   }
 }

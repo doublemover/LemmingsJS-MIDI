@@ -66,6 +66,46 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('retains a stopped MIDI prefix across New/load, refuses concatenation and clears only on an explicit action', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    try {
+      expect(f.studio.handlers.record(true)).to.equal(true); expect(f.studio.handlers.clearMidiRecording()).to.equal(false);
+      f.studio.ports.recordOutput({ note: 60, timeMs: 0, durationMs: 50 }, { beat: 0 }); f.time(100); f.studio.handlers.record(false);
+      const session = f.studio.capture(), retained = JSON.stringify(f.studio.ports.getRecording()), origin = f.studio.getMidiRecordingState().recordingOrigin;
+      const source = f.studio.ports.createRecordingExportSource(), originalId = source.id; source.release();
+      expect(await f.studio.handlers.new()).to.equal(true);
+      expect(f.studio.getMidiRecordingState()).to.include({ recording: false, foreignRecording: true });
+      expect(f.studio.handlers.record(true)).to.equal(false); expect(f.statuses.at(-1)).to.include('earlier project state');
+      expect(JSON.stringify(f.studio.ports.getRecording())).to.equal(retained);
+      expect(await f.studio.loadSession(session)).to.equal(true); expect(f.studio.getMidiRecordingState().recordingOrigin).to.equal(origin);
+      expect(f.studio.handlers.record(true)).to.equal(false); expect(JSON.stringify(f.studio.ports.getRecording())).to.equal(retained);
+      await f.studio.handlers.exportMidi(); const artifact = f.studio.getExportState().artifact; expect(artifact.immutableSourceRef).to.include(originalId);
+      expect(f.studio.handlers.clearMidiRecording()).to.equal(true); expect(f.studio.getMidiRecordingState()).to.include({ foreignRecording: false, recordedEvents: 0, recordingOrigin: null });
+      expect(f.studio.getExportState().artifact).to.include({ artifactId: artifact.artifactId, retained: true });
+      expect(f.studio.handlers.record(true)).to.equal(true); expect(f.studio.ports.getRecording()).to.have.length(1);
+      const next = f.studio.ports.createRecordingExportSource(); expect(next.id).not.to.equal(originalId); next.release();
+    } finally { await f.studio.dispose().completion; }
+  });
+  for (const transition of ['New', 'load']) it('finalizes an armed MIDI recording at successful ' + transition + ' without forging a later input release', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    try {
+      const session = f.studio.capture();
+      f.studio.handlers.record(true); f.studio.ports.receiveMidi([0x90, 60, 90], 0);
+      expect(await (transition === 'New' ? f.studio.handlers.new() : f.studio.loadSession(session))).to.equal(true);
+      expect(f.studio.getMidiRecordingState()).to.include({ recording: false, foreignRecording: true, recordingComplete: false });
+      expect(f.studio.getMidiRecordingState().incompleteReasons).to.include('open-notes-at-stop');
+      const before = JSON.stringify(f.studio.ports.getRecording()); f.studio.ports.receiveMidi([0x80, 60, 0], 100);
+      expect(JSON.stringify(f.studio.ports.getRecording())).to.equal(before);
+      expect(f.studio.ports.getRecording().filter(event => event.direction === 'input').map(event => event.data)).to.deep.equal([[0x90, 60, 90]]);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('keeps the current recording owner when a fresh document fails before publication', async () => {
+    const f = setup(); f.studio.bindRuntime();
+    try {
+      f.studio.handlers.record(true); f.studio.ports.recordEvent({ type: 'cc', controller: 74, value: 40, timestamp: 0, beat: 0 }); f.failRestart();
+      expect(await f.studio.handlers.new()).to.equal(false); expect(f.studio.getMidiRecordingState()).to.include({ recording: true, foreignRecording: false });
+    } finally { await f.studio.dispose().completion; }
+  });
   it('keeps recording disarmed and reports index admission pressure, then retries after resources return', async () => {
     const budget = createResourceBudget(), f = setup({ resourceBudget: budget }), token = {};
     const before = budget.diagnostics(); budget.reserve({ token, owner: 'recording-pressure-fixture', bytes: before.limitBytes - before.accountedBytes });

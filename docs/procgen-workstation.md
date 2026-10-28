@@ -176,6 +176,13 @@ pressure refuse preparation while live cleanup remains available. File delivery
 uses the existing bounded, cancelable writer; a prepared MIDI file is not a
 durable causal-tape archive. End-to-end button-latency and durable-backpressure
 qualification remain tracked in #1117 and #1092.
+New and project load stop MIDI recording and retain its earlier source window
+for export. Record then shows **Retained MIDI** and refuses to append events from
+the new project state. After stopping, **Clear MIDI recording** in Edit explicitly
+clears that window and allows a fresh recording. Prepared files and causal takes
+remain available. Held input notes at the boundary mark an incomplete window;
+a later release is not invented in the old log. The MIDI window remains in
+memory and is not included in a project checkpoint; export it before closing.
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the
 browser's downloads before relying on a local copy.

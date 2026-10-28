@@ -340,6 +340,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   footer.append(inMenu('Edit', button('+ Lane', () => handlers.addLane?.())), inMenu('Edit', button('− Lane', () => handlers.removeLane?.())), inMenu('Edit', button('Duplicate', () => handlers.duplicate?.())), inMenu('Edit', button('Clear', () => handlers.clear?.())), inMenu('Edit', tool),
     inMenu('Edit', button('Copy', () => handlers.copy?.())), inMenu('Edit', button('Paste', () => handlers.paste?.())), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
+  const clearRecords = button('Clear MIDI recording', () => handlers.clearMidiRecording?.(), 'Clear the retained MIDI recording after stopping; prepared files and causal takes remain available'); clearRecords.id = 'studioClearRecording'; clearRecords.disabled = true;
   const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export'); exportDesk.hidden = true;
   const exportSummary = node('summary', 'No prepared file');
   const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
@@ -348,7 +349,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const cancelDelivery = button('Cancel delivery', () => handlers.cancelExportDelivery?.(), 'Stop the current file write but keep the prepared file'); cancelDelivery.disabled = true;
   const discardPrepared = button('Discard file', () => handlers.discardExport?.(), 'Release the prepared file without changing the project'); discardPrepared.disabled = true;
   exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared);
-  footer.append(inMenu('Edit', records), status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), inMenu('Project', button('Save As', () => handlers.saveAs?.())),
+  footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), inMenu('Project', button('Save As', () => handlers.saveAs?.())),
     button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', button('Load', () => handlers.load?.())), inMenu('Project', button('New', () => handlers.new?.())),
     inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', button('MIDI', () => handlers.exportMidi?.())),
     inMenu('World tools', button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo')),
@@ -1257,12 +1258,14 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (midiState) { midiRouteState = midiState; midiSurface.invalidate(); }
       state.recording = !!value;
       records.setAttribute('aria-pressed', String(value));
+      clearRecords.disabled = !!value || !midiState?.recordedEvents;
+      const foreign = midiState?.foreignRecording;
       const partial = midiState?.recordingComplete === false;
-      records.textContent = partial ? '● Partial take' : '● Record';
-      records.title = partial ? `Recording incomplete: ${midiState.incompleteReason}. Export labels the partial window.`
+      records.textContent = foreign ? '● Retained MIDI' : partial ? '● Partial take' : '● Record';
+      records.title = foreign ? 'MIDI from an earlier project state is retained. Export it or clear the recording before starting another.' : partial ? `Recording incomplete: ${midiState.incompleteReason}. Export labels the partial window.`
         : midiState?.recordingPressure >= 0.8 ? `Recording storage ${Math.round(midiState.recordingPressure * 100)}% full.`
           : 'Record MIDI input into the selected phrase';
-      records.dataset.state = partial ? 'partial' : midiState?.recordingPressure >= 0.8 ? 'near-cap' : value ? 'recording' : 'idle';
+      records.dataset.state = foreign ? 'previous' : partial ? 'partial' : midiState?.recordingPressure >= 0.8 ? 'near-cap' : value ? 'recording' : 'idle';
     },
     midi(text) { state.lastMidi = text; midiSurface.invalidate(); },
     dispose() {
