@@ -239,6 +239,7 @@
         "js/app/procgen/workstation/ProcgenRecoveryPageCodec.js",
         "js/app/procgen/workstation/ProcgenSmfBytes.js",
         "js/app/procgen/workstation/RecordedMidiEncoding.js",
+        "js/app/procgen/workstation/RecordedMidiExportPlan.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
@@ -400,8 +401,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 281,
-      "sha256": "758262fccee6864cfb6f2b236d6eb426dd389a4ae483ec724ab56bfb650693b2"
+      "fileCount": 282,
+      "sha256": "baa389f6b02b1dfa2baab8c5374d4f71baed62f105019c71efd7315302f0a469"
     },
     {
       "id": "lemmings-timing-worker-source",

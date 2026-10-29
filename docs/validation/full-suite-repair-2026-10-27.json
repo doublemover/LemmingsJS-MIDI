@@ -66826,5 +66826,830 @@
       "browserRepeated": false,
       "scope": "Re-run the affected77 Node cases against the exact published camera bytes. No application source changed; all final native browser source/runtime hashes remain identical."
     }
+  },
+  "continuation365": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Plan recorded MIDI files by source/output namespace and captured initial tempo",
+    "issues": [
+      986,
+      1093,
+      1089
+    ],
+    "implementation": [
+      "Versioned typed recorded-output plan selects one source layer and one recorded output. Default accepted-output precedence excludes input/intent copies; explicit source-layer API choice remains possible. Refuse ambiguous/absent routes and invalid counts.",
+      "Snapshot builds bounded route inventory during its existing yielded copy. Worker reconstructs counts independently, rejecting forged host inventory. Preserve equal-pitch unisons, same-time canonical release/retrigger order and per-output note balancing.",
+      "Nonmodal searchable16-output pages keep the original admitted prefix while awaiting a choice. Abort, source replacement, detached stale controls and view retirement retire the promise and preserve the previous prepared artifact. Selected files retain original channels; DAW routing remains explicit.",
+      "Embedded export plan retains protocol/time placement/source layer, selected route hash/ordinal and included/excluded counts. Raw output IDs/names are absent. Captured tempo determines the file header; unobserved retained prefix/caller fallback remain explicit.",
+      "Add planner to critical checkJs and move existing physical timing tests into procgen category; update only first-party worker inventory."
+    ],
+    "validation": {
+      "node": {
+        "passed": 210,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook365-node-final.log",
+          "bytes": 907,
+          "sha256": "cc0d4df363cb869aa9e079112a192bbd2a03abed331bf9a796658a052309caa8"
+        },
+        "coverageReport": {
+          "path": ".tmp/rook365-coverage-final/coverage-summary.json",
+          "bytes": 1392,
+          "sha256": "e3d4c72d5808d0d2dc762c7235d08331c3568dcebcba1bf5ca4ffabfa904ef66"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 157,
+              "covered": 157,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 157,
+              "covered": 157,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 10,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "branches": {
+              "total": 199,
+              "covered": 187,
+              "skipped": 0,
+              "pct": 93.96
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\MidiRecordingExportSnapshot.js": {
+            "lines": {
+              "total": 38,
+              "covered": 38,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 5,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 38,
+              "covered": 38,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 30,
+              "covered": 30,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\RecordedMidiEncoding.js": {
+            "lines": {
+              "total": 91,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 6,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 66.66
+            },
+            "statements": {
+              "total": 91,
+              "covered": 91,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 115,
+              "covered": 103,
+              "skipped": 0,
+              "pct": 89.56
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\RecordedMidiExportPlan.js": {
+            "lines": {
+              "total": 28,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 28,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 54,
+              "covered": 54,
+              "skipped": 0,
+              "pct": 100
+            }
+          }
+        },
+        "scope": "Generated independent reference bytes, source-route collisions/unisons/Thru copies, forged inventory, unknown source/route bounds, captured/caller tempo plus existing controller/physical-time integration. Scoped coverage is not the full-project threshold."
+      },
+      "browser": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T20:03:39.118Z",
+          "duration": 28434.34,
+          "expected": 3,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook365-browser-final.json",
+          "bytes": 28483,
+          "sha256": "4d86ab14ba8607a7a01570c65e33b3e3700be24227fad433354871c2838db0f1"
+        },
+        "log": {
+          "path": ".tmp/rook365-browser-final.log",
+          "bytes": 854,
+          "sha256": "322423028d082654cf3b0d7983f54256fc7ed4c70b1af369aaf53d4977ec1f04"
+        },
+        "receipts": [
+          {
+            "name": "separate-recorded-output-files.json",
+            "data": {
+              "before": {
+                "tick": 0,
+                "revision": 0,
+                "count": 9
+              },
+              "after": {
+                "tick": 0,
+                "revision": 0,
+                "count": 9
+              },
+              "receipts": [
+                {
+                  "filename": "procgen-performance-output-1.mid",
+                  "report": {
+                    "schema": "procgen-recording-window/v1",
+                    "complete": true,
+                    "reason": null,
+                    "reasons": [],
+                    "evidence": "intent-render",
+                    "retainedRange": {
+                      "firstSequence": 1,
+                      "lastSequence": 9,
+                      "firstTimestamp": 0,
+                      "lastTimestamp": 2185.7000000178814
+                    },
+                    "firstLostSequence": null,
+                    "droppedRecords": 0,
+                    "droppedCategories": {
+                      "input": 0,
+                      "output": 0,
+                      "transport": 0,
+                      "other": 0
+                    },
+                    "omittedOnsets": 0,
+                    "omittedReleases": 0,
+                    "exportPlan": {
+                      "schema": "procgen-recorded-midi-export-plan/v1",
+                      "sourceLayer": "intent-render",
+                      "timeDomain": "recorded-score-beat",
+                      "placement": "retained-absolute-beat",
+                      "originBeat": 0,
+                      "endpointPolicy": "single-recorded-output",
+                      "channelPolicy": "preserve-within-selected-output",
+                      "protocol": "captured-midi1-channel-bytes",
+                      "routeIndex": 0,
+                      "routeCount": 2,
+                      "selectedRouteOrdinal": 1,
+                      "includedMessages": 5,
+                      "excludedRouteMessages": 3,
+                      "excludedOtherLayerMessages": 0,
+                      "selectedOutputHash": "3e42f46deeeda5eba5a0da29015f12992a25eed97d2167317dfeb96fd8ee17cb",
+                      "ppq": 480,
+                      "initialTempo": {
+                        "source": "captured-boundary",
+                        "bpm": 360,
+                        "firstCapturedBeat": 0.24240000003576279,
+                        "unobservedPrefixBeats": 0.24240000003576279
+                      }
+                    }
+                  },
+                  "artifact": {
+                    "artifactId": "artifact-mvtz15xr-1",
+                    "immutableSourceRef": "recording:9f06a2cc-8e9e-42fa-b0f9-e98e10650dce:unsaved:0:9:1:9",
+                    "formatVersion": "smf1/v1",
+                    "mediaType": "audio/midi",
+                    "suggestedFilename": "procgen-performance-output-1.mid",
+                    "byteLength": 1125,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "pending",
+                    "sha256": null,
+                    "coverageLossReportRef": "embedded-midi-manifest",
+                    "expiresAt": 1793304822543,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 1,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  }
+                },
+                {
+                  "filename": "procgen-performance-output-2.mid",
+                  "report": {
+                    "schema": "procgen-recording-window/v1",
+                    "complete": true,
+                    "reason": null,
+                    "reasons": [],
+                    "evidence": "intent-render",
+                    "retainedRange": {
+                      "firstSequence": 1,
+                      "lastSequence": 9,
+                      "firstTimestamp": 0,
+                      "lastTimestamp": 2185.7000000178814
+                    },
+                    "firstLostSequence": null,
+                    "droppedRecords": 0,
+                    "droppedCategories": {
+                      "input": 0,
+                      "output": 0,
+                      "transport": 0,
+                      "other": 0
+                    },
+                    "omittedOnsets": 0,
+                    "omittedReleases": 0,
+                    "exportPlan": {
+                      "schema": "procgen-recorded-midi-export-plan/v1",
+                      "sourceLayer": "intent-render",
+                      "timeDomain": "recorded-score-beat",
+                      "placement": "retained-absolute-beat",
+                      "originBeat": 0,
+                      "endpointPolicy": "single-recorded-output",
+                      "channelPolicy": "preserve-within-selected-output",
+                      "protocol": "captured-midi1-channel-bytes",
+                      "routeIndex": 1,
+                      "routeCount": 2,
+                      "selectedRouteOrdinal": 2,
+                      "includedMessages": 3,
+                      "excludedRouteMessages": 5,
+                      "excludedOtherLayerMessages": 0,
+                      "selectedOutputHash": "de728253b67ba484e37b1bf70ab00e3b213fc80e3011f5f3ee723020b484c67c",
+                      "ppq": 480,
+                      "initialTempo": {
+                        "source": "captured-boundary",
+                        "bpm": 360,
+                        "firstCapturedBeat": 0.24240000003576279,
+                        "unobservedPrefixBeats": 0.24240000003576279
+                      }
+                    }
+                  },
+                  "artifact": {
+                    "artifactId": "artifact-mvtz169y-2",
+                    "immutableSourceRef": "recording:9f06a2cc-8e9e-42fa-b0f9-e98e10650dce:unsaved:0:9:1:9",
+                    "formatVersion": "smf1/v1",
+                    "mediaType": "audio/midi",
+                    "suggestedFilename": "procgen-performance-output-2.mid",
+                    "byteLength": 1117,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "pending",
+                    "sha256": null,
+                    "coverageLossReportRef": "embedded-midi-manifest",
+                    "expiresAt": 1793304822982,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 1,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  }
+                }
+              ],
+              "scope": "Production capture/export owner and worker, native desktop output-choice buttons and downloaded bytes. Authored MIDI intent is explicit; no physical receiver submission is claimed."
+            }
+          },
+          {
+            "name": "retired-output-choice.json",
+            "data": {
+              "previous": {
+                "artifactId": "artifact-mvtz18d7-1",
+                "immutableSourceRef": "recording:da1c7c02-c339-4e59-8386-466c25d79b60:unsaved:0:6:1:6",
+                "formatVersion": "smf1/v1",
+                "mediaType": "audio/midi",
+                "suggestedFilename": "procgen-performance.mid",
+                "byteLength": 1125,
+                "deliveryModes": [
+                  "anchor",
+                  "file-handle"
+                ],
+                "digestState": "pending",
+                "sha256": null,
+                "coverageLossReportRef": "embedded-midi-manifest",
+                "expiresAt": 1793304825691,
+                "retained": true,
+                "retirementReason": null,
+                "activeLeases": 1,
+                "maxConsumerLeases": 32,
+                "budgetState": "retained"
+              },
+              "canceled": {
+                "artifact": {
+                  "artifactId": "artifact-mvtz18d7-1",
+                  "immutableSourceRef": "recording:da1c7c02-c339-4e59-8386-466c25d79b60:unsaved:0:6:1:6",
+                  "formatVersion": "smf1/v1",
+                  "mediaType": "audio/midi",
+                  "suggestedFilename": "procgen-performance.mid",
+                  "byteLength": 1125,
+                  "deliveryModes": [
+                    "anchor",
+                    "file-handle"
+                  ],
+                  "digestState": "ready",
+                  "sha256": "793b5186214b21ead0f7602b84395717735257c069e7d16ab9508a274beb0628",
+                  "coverageLossReportRef": "embedded-midi-manifest",
+                  "expiresAt": 1793304825691,
+                  "retained": true,
+                  "retirementReason": null,
+                  "activeLeases": 1,
+                  "maxConsumerLeases": 32,
+                  "budgetState": "retained"
+                },
+                "delivery": {
+                  "deliveryId": "delivery-mvtz18d8-1",
+                  "artifactId": "artifact-mvtz18d7-1",
+                  "sinkKind": "anchor",
+                  "state": "delivery-requested",
+                  "bytesWritten": 0,
+                  "errorKind": null,
+                  "evidence": "anchor-click-returned"
+                },
+                "preparation": null,
+                "preparationReceipt": {
+                  "protocol": 3,
+                  "jobId": "background-26",
+                  "kind": "encode-recorded-midi",
+                  "ownerId": "procgen-midi-export",
+                  "ownerEpoch": 1,
+                  "sourceRevision": "da1c7c02-c339-4e59-8386-466c25d79b60:0:6",
+                  "state": "computed",
+                  "publication": "not-committed",
+                  "method": "dedicated-worker",
+                  "queueWaitMs": 0.09999999403953552,
+                  "elapsedMs": 100.09999999403954,
+                  "inputBytes": 559,
+                  "nodes": 33,
+                  "retainedBytes": 67786,
+                  "inputTransport": {
+                    "schema": "owned-background-snapshot-pages/v1",
+                    "packets": 1,
+                    "operations": 82,
+                    "bytes": 7142,
+                    "maximumSliceMs": 0.20000001788139343,
+                    "maximumPostMessageMs": 0.10000002384185791,
+                    "elapsedMs": 14.5,
+                    "stagingBytes": 131072
+                  },
+                  "outputTransport": {
+                    "mode": "acknowledged-snapshot-pages",
+                    "packets": 1,
+                    "operations": 116,
+                    "bytes": 10404,
+                    "ownedTransferredBytes": 1125,
+                    "maximumSliceMs": 0.10000002384185791,
+                    "elapsedMs": 1.800000011920929,
+                    "retainedEstimateBytes": 9962
+                  },
+                  "executionIdentity": {
+                    "receiptVersion": 3,
+                    "activeExecution": "unbound",
+                    "reason": "unbuilt-source-entry",
+                    "realmId": "a8e3866b-45cc-4b29-8883-ff9cc679f3d5",
+                    "capabilityProfile": "browser-background-jobs"
+                  }
+                }
+              },
+              "retired": {
+                "exported": {
+                  "artifact": {
+                    "artifactId": "artifact-mvtz18d7-1",
+                    "immutableSourceRef": "recording:da1c7c02-c339-4e59-8386-466c25d79b60:unsaved:0:6:1:6",
+                    "formatVersion": "smf1/v1",
+                    "mediaType": "audio/midi",
+                    "suggestedFilename": "procgen-performance.mid",
+                    "byteLength": 1125,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "ready",
+                    "sha256": "793b5186214b21ead0f7602b84395717735257c069e7d16ab9508a274beb0628",
+                    "coverageLossReportRef": "embedded-midi-manifest",
+                    "expiresAt": 1793304825691,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 1,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  },
+                  "delivery": {
+                    "deliveryId": "delivery-mvtz18d8-1",
+                    "artifactId": "artifact-mvtz18d7-1",
+                    "sinkKind": "anchor",
+                    "state": "delivery-requested",
+                    "bytesWritten": 0,
+                    "errorKind": null,
+                    "evidence": "anchor-click-returned"
+                  },
+                  "preparation": null,
+                  "preparationReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-26",
+                    "kind": "encode-recorded-midi",
+                    "ownerId": "procgen-midi-export",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "da1c7c02-c339-4e59-8386-466c25d79b60:0:6",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0.09999999403953552,
+                    "elapsedMs": 100.09999999403954,
+                    "inputBytes": 559,
+                    "nodes": 33,
+                    "retainedBytes": 67786,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 1,
+                      "operations": 82,
+                      "bytes": 7142,
+                      "maximumSliceMs": 0.20000001788139343,
+                      "maximumPostMessageMs": 0.10000002384185791,
+                      "elapsedMs": 14.5,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 116,
+                      "bytes": 10404,
+                      "ownedTransferredBytes": 1125,
+                      "maximumSliceMs": 0.10000002384185791,
+                      "elapsedMs": 1.800000011920929,
+                      "retainedEstimateBytes": 9962
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "unbound",
+                      "reason": "unbuilt-source-entry",
+                      "realmId": "a8e3866b-45cc-4b29-8883-ff9cc679f3d5",
+                      "capabilityProfile": "browser-background-jobs"
+                    }
+                  }
+                },
+                "recorded": 0
+              },
+              "scope": "Native filter/paging/cancel plus a deliberately invoked detached DOM button after real source retirement. No stale file publication."
+            }
+          },
+          {
+            "name": "recorded-midi-worker-export",
+            "data": {
+              "events": 99991,
+              "byteLength": 401057,
+              "panicOwnerMs": 0.29999998211860657,
+              "physics": 0,
+              "worker": {
+                "protocol": 3,
+                "jobId": "background-30",
+                "kind": "encode-recorded-midi",
+                "ownerId": "procgen-midi-export",
+                "ownerEpoch": 1,
+                "sourceRevision": "3c60cabb-0d70-49b7-8956-c094935cc0a2:0:99991",
+                "state": "computed",
+                "publication": "not-committed",
+                "method": "dedicated-worker",
+                "queueWaitMs": 0,
+                "elapsedMs": 249,
+                "inputBytes": 2500157,
+                "nodes": 33,
+                "retainedBytes": 5002426,
+                "inputTransport": {
+                  "schema": "owned-background-snapshot-pages/v1",
+                  "packets": 75,
+                  "operations": 156,
+                  "bytes": 2512209,
+                  "maximumSliceMs": 0.20000001788139343,
+                  "maximumPostMessageMs": 0.10000002384185791,
+                  "elapsedMs": 53.19999998807907,
+                  "stagingBytes": 131072
+                },
+                "outputTransport": {
+                  "mode": "acknowledged-snapshot-pages",
+                  "packets": 1,
+                  "operations": 116,
+                  "bytes": 10404,
+                  "ownedTransferredBytes": 401057,
+                  "maximumSliceMs": 0.09999999403953552,
+                  "elapsedMs": 1.4000000059604645,
+                  "retainedEstimateBytes": 809826
+                },
+                "executionIdentity": {
+                  "receiptVersion": 3,
+                  "activeExecution": "bound",
+                  "buildId": "aae6c6a7c1a694682e802fde9c5da833c9a602d81ff2c6e458f0a3137336a355",
+                  "closureDigest": "ba9d3e7217a8e3bd786b711c5d93eba9fbc11f9dca24e8bfcf618be1552f8c6d",
+                  "assetDigest": "5683776cfba62ec20a3aeb1c5f6cf5f8123962b54ae6600b9a411a479b332ce1",
+                  "codeDigest": "e9e3e067c987953873a7e1dd9be55292841a4338b8851e9736683ad6631601de",
+                  "harnessVersion": "browser-survey-v1",
+                  "identityRecipe": "normalized-data-slot-v2-instruments",
+                  "instrumentArtifacts": [
+                    {
+                      "engineId": "native-fm",
+                      "engineVersion": 1,
+                      "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                    },
+                    {
+                      "engineId": "native-modal",
+                      "engineVersion": 1,
+                      "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                    },
+                    {
+                      "engineId": "native-oscillator",
+                      "engineVersion": 1,
+                      "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                    },
+                    {
+                      "engineId": "native-sample",
+                      "engineVersion": 1,
+                      "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                    },
+                    {
+                      "engineId": "worklet-choir",
+                      "engineVersion": 1,
+                      "artifactHash": "d64b8a88bb4903cd2131abc8869b89ec689d3bd7bc071d50395d884ded7411a2"
+                    },
+                    {
+                      "engineId": "worklet-friction",
+                      "engineVersion": 1,
+                      "artifactHash": "19ad9817a8942ea693660add73fc5e68d1435445ddb6934cf3c5435692bb4dd5"
+                    },
+                    {
+                      "engineId": "worklet-granular",
+                      "engineVersion": 1,
+                      "artifactHash": "c99e1be8d6c95f5395231c423cfb0ea0bfd4d730c8f35b91a22de4bef85690ab"
+                    },
+                    {
+                      "engineId": "worklet-pluck",
+                      "engineVersion": 1,
+                      "artifactHash": "8aeda919027599b2b53eee2b3d662ee294a8bcc7d8b54c679498cfdedf5d156e"
+                    },
+                    {
+                      "engineId": "worklet-sample",
+                      "engineVersion": 1,
+                      "artifactHash": "d0d0b04c4af56813180d2454570466110867c279b36eff690600f97c860bd868"
+                    },
+                    {
+                      "engineId": "worklet-seed-layers",
+                      "engineVersion": 1,
+                      "artifactHash": "0af83a03bb96913e128e86f191d53f93e4539810c39332599cb1f534f3c57741"
+                    },
+                    {
+                      "engineId": "worklet-sine",
+                      "engineVersion": 1,
+                      "artifactHash": "fdc51f8e0715a8c73d71a3f57759b5dbd7a1a8f1999e5cda48e31dcbbc234015"
+                    },
+                    {
+                      "engineId": "worklet-spectrum",
+                      "engineVersion": 1,
+                      "artifactHash": "f9f091d01521ed118d91d13d13332676f81434322df3ac02e9042e01d9f8d7a3"
+                    },
+                    {
+                      "engineId": "worklet-texture",
+                      "engineVersion": 1,
+                      "artifactHash": "b9f2d62f29b4c9ff3c68f8a173559a0c3e78862c19146503f5fe57f3f01b1bfb"
+                    },
+                    {
+                      "engineId": "worklet-wind",
+                      "engineVersion": 1,
+                      "artifactHash": "cb813e7118121367f219fd2605dd64632ef4a341c0f96d6271eebea6b71b3ab9"
+                    }
+                  ],
+                  "stateSchema": 5,
+                  "realmId": "a5c5ef7e-0f30-4b45-b889-b6b8392b6c7b",
+                  "capabilityProfile": "browser-background-jobs",
+                  "binding": "immutable-application-generation"
+                }
+              },
+              "manifest": {
+                "schema": "procgen-recording-window/v1",
+                "complete": true,
+                "reason": null,
+                "reasons": [],
+                "evidence": "intent-render",
+                "retainedRange": {
+                  "firstSequence": 1,
+                  "lastSequence": 99991,
+                  "firstTimestamp": 0,
+                  "lastTimestamp": 99989
+                },
+                "firstLostSequence": null,
+                "droppedRecords": 0,
+                "droppedCategories": {
+                  "input": 0,
+                  "output": 0,
+                  "transport": 0,
+                  "other": 0
+                },
+                "omittedOnsets": 0,
+                "omittedReleases": 0,
+                "exportPlan": {
+                  "schema": "procgen-recorded-midi-export-plan/v1",
+                  "sourceLayer": "intent-render",
+                  "timeDomain": "recorded-score-beat",
+                  "placement": "retained-absolute-beat",
+                  "originBeat": 0,
+                  "endpointPolicy": "single-recorded-output",
+                  "channelPolicy": "preserve-within-selected-output",
+                  "protocol": "captured-midi1-channel-bytes",
+                  "routeIndex": 0,
+                  "routeCount": 1,
+                  "selectedRouteOrdinal": 1,
+                  "includedMessages": 99990,
+                  "excludedRouteMessages": 0,
+                  "excludedOtherLayerMessages": 0,
+                  "selectedOutputHash": "9e6142cd93c8f8abe706d2cde8ce190a7a56f11410a0bbc5fe662d106db59369",
+                  "ppq": 480,
+                  "initialTempo": {
+                    "source": "captured-boundary",
+                    "bpm": 360,
+                    "firstCapturedBeat": 0.4295999999642372,
+                    "unobservedPrefixBeats": 0.4295999999642372
+                  }
+                }
+              },
+              "options": {
+                "bpm": 360,
+                "beatsPerBar": 4,
+                "beatUnit": 4
+              },
+              "tempo": {
+                "bpm": 360,
+                "beat": 0.4295999999642372
+              },
+              "retainedAfterCancel": true,
+              "scope": "actual-workstation-worker-preparation-and-cancellation;no-device-or-end-to-end-button-latency-claim"
+            }
+          }
+        ],
+        "scope": "Actual1920x1080 desktop capture/export owner, native route buttons/search/paging/cancel and downloaded files. Stale detached control is deliberately invoked. The route UI captures authored MIDI intent; no physical receiver submission, DAW routing or acoustic claim."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check (10components/351files)",
+        "node scripts/check-browser-categories.js (243full/213smoke/52files)",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "referenceCorrection": "The initial207-pass group had one golden ordinal disagreement. The inventory preserves first appearance across both source layers; derive expected active route order from that stable inventory, rather than first active message. Final210 cases pass after adding captured-tempo tests.",
+    "firstNodeReport": {
+      "path": ".tmp/rook365-node.log",
+      "bytes": 1777,
+      "sha256": "805c45653806be096f00451b0b22196e861b247b0298f9dc1c3a5c9683cd9105"
+    },
+    "firstBrowserReport": {
+      "path": ".tmp/rook365-browser.json",
+      "bytes": 27633,
+      "sha256": "17596a89ed0055a0948b67f16a6127652a61a52e0cd08f91abbd550dd1e089d4"
+    },
+    "worker": {
+      "id": "lemmings-background-job-worker",
+      "fileCount": 282,
+      "sha256": "baa389f6b02b1dfa2baab8c5374d4f71baed62f105019c71efd7315302f0a469"
+    },
+    "ci363": {
+      "head": "180c69e43edfb7f38821f570c5db2a51a24b2c4a",
+      "runId": 40935520509,
+      "mainJob": 123664896807,
+      "node": {
+        "passed": 7129,
+        "pending": 10,
+        "failed": 1
+      },
+      "desktopPassed": 26,
+      "workstationPassed": 205,
+      "enginePassed": 18,
+      "otherThreeJobs": "success",
+      "failure": "The camera mock with a single shared canvas/document handler, corrected in364.",
+      "conclusion": "failure"
+    },
+    "ci362EngineRerun": {
+      "runId": 40933832894,
+      "job": 123678226114,
+      "conclusion": "success",
+      "passed": 18,
+      "originalSignal11CrashRetained": true,
+      "noRootCauseAsserted": true
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "conclusion": "success"
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/RecordedMidiExportPlan.js",
+        "bytes": 3141,
+        "sha256": "a0e17c89462de6a06e8eb615fcca2b98e3e28b26a411695fe267e8f618d17c3c"
+      },
+      {
+        "path": "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
+        "bytes": 2667,
+        "sha256": "8977d1ac0f238b184418b2c9bc7a2a2edd7a99b5b081436e0793f37b76b51137"
+      },
+      {
+        "path": "js/app/procgen/workstation/RecordedMidiEncoding.js",
+        "bytes": 7962,
+        "sha256": "cd6653898294fc988bbfd12d2fb158f8c4351b5d70f6ef2405171a6be9575226"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 215852,
+        "sha256": "fdd2d75db1ff6e167e23dd590bd7d2397a655e3dc98dd19b64e33baad9ac041e"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 142644,
+        "sha256": "86ea8997c615648a22cf43d0b7c357707b3251a543981abbd94301162b79a1ce"
+      },
+      {
+        "path": "css/procgen-workstation.css",
+        "bytes": 48706,
+        "sha256": "75d3dfa174d8cc7aa16900fdf2b22319e345c93a2418dd2032af7e30a13cc585"
+      },
+      {
+        "path": "tsconfig.checkjs.json",
+        "bytes": 1250,
+        "sha256": "a4cdb99e82300b39841ef69369f63bb8a635001e273a33b24f502cd495879725"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21476,
+        "sha256": "28d0dc24bf63704889715adcc898a20a58d663d11e46fa51f45f9929586abc42"
+      },
+      {
+        "path": "test/procgen-recorded-midi-plan.test.js",
+        "bytes": 8697,
+        "sha256": "7ac19ace4a7a25c83977bea814a9cb5cfa305609e24700165368d6bca382191b"
+      },
+      {
+        "path": "test/recorded-midi-export.test.js",
+        "bytes": 12836,
+        "sha256": "110b8785d2939e4ab5e561c099011072f42a4b51f35642ee5248746c9690fb2c"
+      },
+      {
+        "path": "test/procgen-physical-midi-timing.test.js",
+        "bytes": 10897,
+        "sha256": "21a9fc5b28f5fe2bd3bb8e1b314e60b5e84cfe7244a6a3781f02396eb214753c"
+      },
+      {
+        "path": "e2e/procgen-workstation-midi-routes.spec.js",
+        "bytes": 6146,
+        "sha256": "2dfea634b88f33b6500231ef83b2ec53577bdb8988e8765922ef39c83697bad1"
+      },
+      {
+        "path": "e2e/procgen-workstation-midi-worker-export.spec.js",
+        "bytes": 5404,
+        "sha256": "27a9fa9a3c60c7c0ef1532753071c0f530b54c702d5ea8e818dbb2f0ef1e8c18"
+      }
+    ],
+    "remaining": "#986 physical-take-to-protocol integration and complete clock export matrix; #1093 source/time placement UI, endpoint epochs, semantic lowering losses and independently qualified lossless UMP Clip Files. All-workstation type coverage remains #1089. Current full CI remains independent."
   }
 }

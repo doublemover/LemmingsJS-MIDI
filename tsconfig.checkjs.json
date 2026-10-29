@@ -22,6 +22,7 @@
     "js/app/midi-ui/midiUiFeatureFlags.js",
     "js/app/midi-ui/midiUiIntent.js",
     "js/app/midi-ui/midiUiRefreshSections.js",
+    "js/app/procgen/workstation/RecordedMidiExportPlan.js",
     "js/editor/editor-controller/EditorControllerPointer.js",
     "js/editor/editor-controller/EditorControllerPointerInput.js",
     "js/editor/editor-controller/EditorControllerPointerSelection.js",

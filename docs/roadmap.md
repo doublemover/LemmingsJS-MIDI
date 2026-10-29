@@ -9418,3 +9418,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   Compare the exact published tree, retain the mismatch and correction, and
   re-run all77 affected Node cases successfully against the published bytes.
   Other five source hashes and final native browser/runtime bytes match exactly.
+
+### Continuation 365 - recorded MIDI source and output plans
+
+- Require one recorded output per compatibility file so overlapping channel/program/
+  pitch namespaces cannot merge. Preserve deliberate unisons and canonical order.
+  Prefer API-accepted output over intent/input copies; expose explicit source-layer
+  API choice. Snapshot bounded route counts once; the worker rebuilds them itself.
+- Add a searchable16-row nonmodal output chooser under the admitted source owner.
+  Cancel, source mutation and view retirement settle its promise and preserve any
+  previous prepared artifact. Keep Panic available and reject detached old buttons.
+- Embed source/protocol/time/route choices, counts and output hash without raw IDs.
+  Derive initial tempo from the captured boundary; label an unobserved retained
+  prefix or caller-declared fallback rather than substituting current UI BPM.
+- Final grouped pass:210 Node cases and three native desktop export journeys,
+  including separate same-channel device files, real unisons,35-route paging,
+  cancel/stale-source retirement and99990-event worker preparation/Panic/download.
+  Planner and snapshot have100% scoped lines/functions/branches. New planner joins
+  critical checkJs; format/types/undefined/provenance/category checks pass. Move
+  physical timing tests under the procgen category. No full local suite repeated.
+- 363 full CI:7129 Node passes/10pending and the same single camera mock failure
+  repaired in364;26 desktop/205 workstation and18 engine cases plus native codec
+  jobs pass.362 engine rerun passes18 after the retained original signal11 crash.
+  364 main is in full coverage with its engine/native jobs green.350 remains the
+  latest verified full green checkpoint until every required job passes.
+- Keep #986/#1093 open for integrated physical-take protocol export, the remaining
+  clock matrix, source/time placement UI, endpoint epochs, full lowering reports
+  and independently qualified lossless UMP Clip Files. Continue solo.

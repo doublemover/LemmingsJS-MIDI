@@ -1,4 +1,5 @@
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
+import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
 import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -1291,7 +1292,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } catch (error) { if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
     finally { try { computed?.release(); } finally { signal?.removeEventListener('abort', cancel); finishOperation(lease); preferenceHold?.release(); } }
   };
-  const prepareMidiExport = async () => {
+  const prepareMidiExport = async ({ outputRouteId, sourceLayer = 'auto' } = {}) => {
     archiveExportPreparation?.controller.abort();
     if (currentOperation?.kind === 'export') currentOperation.controller.abort();
     midiExportPreparation?.controller.abort();
@@ -1301,18 +1302,32 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const isCurrent = () => !disposed && !controller.signal.aborted && documentGeneration === generation && request === exportPreparationRevision && source.isCurrent();
     let computed = null;
     try {
-      const options = { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit };
+      const options = { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, sourceLayer,
+        ...(outputRouteId === undefined ? {} : { outputRouteId }) };
       const window = { recordingComplete: state.recordingComplete, incompleteReason: state.incompleteReason, incompleteReasons: state.incompleteReasons,
         retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence, droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories };
       computed = await backgroundJobs.compute({ kind: 'encode-recorded-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation,
         sourceRevision: `${source.id}:${source.revision}:${source.count}`, inputBytes: source.inputBytes, estimatedPeakBytes: source.estimatedPeakBytes,
         signal: controller.signal, budgetAdapter: resourceBudget, isCurrent, retainInput: true, releasePreparedInput: source.release,
-        prepareInput: async ({ signal }) => ({ snapshot: await source.prepareInput({ signal, onProgress: progress => {
-          if (isCurrent()) { Object.assign(pending, progress); publishExportState(); }
-        } }), window, options }), onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
+        prepareInput: async ({ signal }) => {
+          const snapshot = await source.prepareInput({ signal, onProgress: progress => {
+            if (isCurrent()) { Object.assign(pending, progress); publishExportState(); }
+          } });
+          try { planRecordedMidiExport(snapshot, options); }
+          catch (error) {
+            if (error.code !== 'midi-export-route-selection-required' || !view?.chooseMidiExportRoute) throw error;
+            signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed before output selection.');
+            pending.phase = 'Choose recorded output'; publishExportState();
+            options.outputRouteId = await view.chooseMidiExportRoute(error.routes, { evidence: error.evidence, signal, isCurrent });
+            signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed while choosing its output.');
+            planRecordedMidiExport(snapshot, options);
+          }
+          return { snapshot, window, options };
+        }, onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
       if (!isCurrent()) return null;
       const { bytes, manifest } = computed.value;
-      const artifact = prepareDownload({ bytes, filename: manifest.complete ? 'procgen-performance.mid' : 'procgen-performance-partial.mid', type: 'audio/midi',
+      const routeSuffix = manifest.exportPlan.routeCount > 1 ? '-output-' + manifest.exportPlan.selectedRouteOrdinal : '';
+      const artifact = prepareDownload({ bytes, filename: 'procgen-performance' + routeSuffix + (manifest.complete ? '' : '-partial') + '.mid', type: 'audio/midi',
         sourceRef: `recording:${source.id}:${id ?? 'unsaved'}:${source.revision}:${source.count}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
         formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
       lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
@@ -1323,7 +1338,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           `Partial ${evidence} download requested: ${reasons}; ${manifest.omittedOnsets} unmatched onset(s) omitted.`);
       }
       return artifact.metadata();
-    } catch (error) { if (!isCurrent()) return null; throw error; }
+    } catch (error) {
+      if (!isCurrent()) return null;
+      if (error.code === 'midi-export-choice-canceled') { status('MIDI export canceled. Any previous prepared file remains ready.'); return null; }
+      throw error;
+    }
     finally { computed?.release(); source.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
   const getShareExportDescriptor = () => {

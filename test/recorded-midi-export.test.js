@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { createHash } from 'node:crypto';
 import { createProcgenMidiPorts } from '../js/app/procgen/workstation/ProcgenMidiPorts.js';
 import { snapshotMidiRecording, recordingExportPeakBytes } from '../js/app/procgen/workstation/MidiRecordingExportSnapshot.js';
 import { encodeRecordedMidi } from '../js/app/procgen/workstation/RecordedMidiEncoding.js';
@@ -14,13 +15,26 @@ const rejected = async (work, text) => { let error; try { await work; } catch (c
 const snapshot = records => snapshotMidiRecording({ records, count: records.length, isCurrent: () => true, yieldTask: async () => {} });
 const reference = (records, window, options) => {
   const output = records.filter(event => !event.cancelled && (event.direction === 'output' || event.type === 'tempo'));
-  const submitted = output.some(event => event.evidence === 'api-accepted'), evidence = submitted ? 'api-accepted' : 'intent-render';
-  const balanced = selectBalancedProcgenRecording(output.filter(event => event.evidence === evidence || event.type === 'tempo'));
+  const evidence = options.sourceLayer && options.sourceLayer !== 'auto' ? options.sourceLayer : output.some(event => event.evidence === 'api-accepted') ? 'api-accepted' : 'intent-render';
+  const candidates = output.filter(event => event.evidence === evidence && event.type !== 'tempo');
+  const allIds = [...new Set(output.filter(event => event.type !== 'tempo' && ['api-accepted', 'intent-render'].includes(event.evidence)).map(event => String(event.outputId ?? '')))];
+  const selectedIds = new Set(candidates.map(event => String(event.outputId ?? ''))), ids = allIds.filter(id => selectedIds.has(id));
+  const selected = options.outputRouteId ?? ids[0], chosen = candidates.filter(event => String(event.outputId ?? '') === selected);
+  const firstTempo = output.filter(event => event.type === 'tempo').reduce((first, event) => !first || event.beat < first.beat ? event : first, null);
+  const initialTempo = { source: firstTempo ? 'captured-boundary' : 'caller-declared', bpm: firstTempo?.bpm ?? options.bpm ?? 120,
+    firstCapturedBeat: firstTempo?.beat ?? null, unobservedPrefixBeats: firstTempo?.beat ?? null };
+  const balanced = selectBalancedProcgenRecording(output.filter(event => event.type === 'tempo' || event.evidence === evidence && String(event.outputId ?? '') === selected));
   const complete = window.recordingComplete && !balanced.omittedOnsets && !balanced.omittedReleases;
   const manifest = { schema: 'procgen-recording-window/v1', complete, reason: window.incompleteReason || (complete ? null : 'unpaired-note-boundary'), reasons: window.incompleteReasons,
     evidence, retainedRange: window.retainedRange, firstLostSequence: window.firstLostSequence, droppedRecords: window.droppedRecords,
-    droppedCategories: window.droppedCategories, omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases };
-  return { bytes: exportProcgenMidi(balanced.events, { ...options, manifest }), manifest };
+    droppedCategories: window.droppedCategories, omittedOnsets: balanced.omittedOnsets, omittedReleases: balanced.omittedReleases,
+    exportPlan: { schema: 'procgen-recorded-midi-export-plan/v1', sourceLayer: evidence, timeDomain: 'recorded-score-beat', placement: 'retained-absolute-beat', originBeat: 0,
+      endpointPolicy: 'single-recorded-output', channelPolicy: 'preserve-within-selected-output', protocol: 'captured-midi1-channel-bytes',
+      routeIndex: selected === undefined ? null : allIds.indexOf(selected), routeCount: ids.length, selectedRouteOrdinal: selected === undefined ? null : ids.indexOf(selected) + 1,
+      includedMessages: chosen.length, excludedRouteMessages: candidates.length - chosen.length,
+      excludedOtherLayerMessages: output.filter(event => event.type !== 'tempo' && ['api-accepted', 'intent-render'].includes(event.evidence) && event.evidence !== evidence).length,
+      selectedOutputHash: selected === undefined ? null : createHash('sha256').update(JSON.stringify({ outputId: selected })).digest('hex'), ppq: options.ppq ?? 480, initialTempo } };
+  return { bytes: exportProcgenMidi(balanced.events, { ...options, bpm: initialTempo.bpm, manifest }), manifest };
 };
 describe('owned recorded MIDI worker export', function() {
   this.timeout(20000);
@@ -52,6 +66,8 @@ describe('owned recorded MIDI worker export', function() {
       }
       const window = trial % 3 ? windowState : { ...windowState, recordingComplete: false, incompleteReason: 'recording-cap-reached', incompleteReasons: ['recording-cap-reached'], droppedRecords: 3, firstLostSequence: 400 };
       const options = { bpm: 90 + next(80), ppq: trial % 2 ? 96 : 480, beatsPerBar: 3, beatUnit: 8 };
+      const evidence = records.some(event => !event.cancelled && event.direction === 'output' && event.evidence === 'api-accepted') ? 'api-accepted' : 'intent-render';
+      options.outputRouteId = records.find(event => !event.cancelled && event.direction === 'output' && event.evidence === evidence).outputId;
       const actual = await encodeRecordedMidi({ snapshot: await snapshot(records), window, options }, { ...fast, estimatedPeakBytes: recordingExportPeakBytes(records.length) });
       expect(actual.manifest).to.deep.equal(reference(records, window, options).manifest); expect(actual.bytes).to.deep.equal(reference(records, window, options).bytes);
     }

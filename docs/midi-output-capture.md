@@ -32,4 +32,34 @@ With the existing local server at port 8094 and cached Playwright/Edge available
 
 `node scripts/midi-capture-native.js --name=ensemble`
 
-This fresh 1440×900 desktop context installs the repository Web MIDI stub, uses normal main Expert controls, captures actual level events, then captures a 16-cell local audition spaced over 14.4 seconds. It records a demand-render sample and verifies cancellation prevents later schedules. Browser audio is muted; the fixture asserts Web MIDI remains disabled and reports page errors. Artifacts are written to `temp/midi-capture-native/`. Unit fake-clock coverage follows cancellation beyond the complete audition horizon. These fixtures verify APIs, scheduling and rendered graph signal, without claiming acoustic assessment.
+This fresh 1920×1080 desktop context installs the repository Web MIDI stub, uses normal main Expert controls, captures actual level events, then captures a 16-cell local audition spaced over 14.4 seconds. It records a demand-render sample and verifies cancellation prevents later schedules. Browser audio is muted; the fixture asserts Web MIDI remains disabled and reports page errors. Artifacts are written to `temp/midi-capture-native/`. Unit fake-clock coverage follows cancellation beyond the complete audition horizon. These fixtures verify APIs, scheduling and rendered graph signal, without claiming acoustic assessment.
+
+## Workstation recorded-output MIDI plans
+
+MIDI file preparation selects one source layer and one recorded output before
+writing bytes. The current MIDI action prefers API-accepted output when present,
+otherwise it labels authored MIDI intent. Input and forwarded output copies are
+not combined. API callers may request `sourceLayer` explicitly. The planner is
+included in critical checkJs and uses the snapshot producer's bounded route
+inventory; the worker independently rebuilds and validates that inventory.
+
+If multiple recorded outputs share channels, a nonmodal, searchable16-row chooser
+requires one output per file. The admitted original prefix remains owned while
+choosing. Cancel, source replacement or view retirement retires the request and
+preserves the previous prepared file. Each selected output keeps its original
+channels and all deliberate unisons. Import separate files onto the intended
+receiver routes; the files do not configure DAW routing.
+
+The embedded `exportPlan` records source layer, selected output hash/ordinal,
+included/excluded message counts, retained absolute beat placement and protocol
+scope. Raw endpoint IDs/names are not embedded. Matching notes are balanced only
+inside the selected output; pending future releases are not invented. Captured
+tempo boundaries determine the initial tempo, preserving all later tempo records.
+If capture starts after beat zero, the manifest names the unobserved silent
+prefix. Without a captured tempo, the caller-declared fallback is explicit.
+Current UI tempo cannot replace a captured boundary.
+
+This is compatibility export of captured MIDI1 channel bytes. A user-facing source
+layer/time-placement picker, full semantic/UMP loss reporting, endpoint epoch
+projection and independently qualified lossless Clip Files remain #1093 work.
+Physical source-score export uses the separate typed #986 contract.

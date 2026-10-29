@@ -348,7 +348,42 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const savePrepared = button('Save file', () => handlers.savePreparedExport?.(), 'Stream the prepared file to a selected destination'); savePrepared.disabled = true;
   const cancelDelivery = button('Cancel delivery', () => handlers.cancelExportDelivery?.(), 'Stop the current file write but keep the prepared file'); cancelDelivery.disabled = true;
   const discardPrepared = button('Discard file', () => handlers.discardExport?.(), 'Release the prepared file without changing the project'); discardPrepared.disabled = true;
-  exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared);
+  const exportRouteField = node('fieldset', null, 'studio-midi-export-routes'); exportRouteField.hidden = true;
+  const exportRouteLegend = node('legend', 'Choose recorded output'), exportRouteHelp = node('p'), exportRouteFilter = node('input');
+  exportRouteFilter.type = 'search'; exportRouteFilter.setAttribute('aria-label', 'Find recorded MIDI output');
+  const exportRouteList = node('div', null, 'studio-midi-export-options'), exportRoutePage = node('output'); exportRoutePage.setAttribute('aria-live', 'polite');
+  let exportRouteChoice = null;
+  const finishExportRouteChoice = (owner, error = null, outputId = null) => {
+    if (!owner || exportRouteChoice !== owner) return;
+    exportRouteChoice = null; owner.signal?.removeEventListener('abort', owner.abort); exportRouteField.hidden = true; exportRouteList.replaceChildren();
+    exportSummary.focus?.({ preventScroll: true });
+    if (error) owner.reject(error); else owner.resolve(outputId);
+  };
+  const validateExportRouteChoice = () => {
+    const owner = exportRouteChoice; if (!owner) return true;
+    let current = false; try { current = !disposed && owner.isCurrent(); } catch { /* Replaced source owners cannot authorize an export. */ }
+    if (!current) finishExportRouteChoice(owner, new Error('The recorded MIDI source changed.'));
+    return current;
+  };
+  const paintExportRoutes = () => {
+    if (!validateExportRouteChoice() || !exportRouteChoice) return;
+    const owner = exportRouteChoice, query = exportRouteFilter.value.trim().toLowerCase(), matches = owner.routes.filter(route => route.search.includes(query));
+    owner.page = Math.max(0, Math.min(owner.page, Math.max(0, Math.ceil(matches.length / 16) - 1)));
+    const first = owner.page * 16; exportRouteList.replaceChildren();
+    for (const route of matches.slice(first, first + 16)) {
+      const control = node('button', 'Prepare output ' + route.ordinal + ' · ' + (route.outputId || 'Unassigned output').slice(0, 80)); control.type = 'button'; control.title = route.outputId || 'Unassigned output';
+      control.addEventListener('click', () => { if (exportRouteChoice === owner && control.isConnected && validateExportRouteChoice()) finishExportRouteChoice(owner, null, route.outputId); });
+      exportRouteList.append(control);
+    }
+    exportRoutePage.textContent = matches.length ? `Outputs ${first + 1}–${Math.min(first + 16, matches.length)} of ${matches.length}` : 'No matching recorded outputs';
+    exportRoutePrevious.disabled = owner.page === 0; exportRouteNext.disabled = first + 16 >= matches.length;
+  };
+  const exportRoutePrevious = button('Previous recorded outputs', () => { if (exportRouteChoice) { exportRouteChoice.page--; paintExportRoutes(); } });
+  const exportRouteNext = button('Next recorded outputs', () => { if (exportRouteChoice) { exportRouteChoice.page++; paintExportRoutes(); } });
+  const exportRouteCancel = button('Cancel output choice', () => finishExportRouteChoice(exportRouteChoice, Object.assign(new Error('MIDI output selection canceled.'), { code: 'midi-export-choice-canceled' })));
+  on(exportRouteFilter, 'input', () => { if (exportRouteChoice) { exportRouteChoice.page = 0; paintExportRoutes(); } });
+  exportRouteField.append(exportRouteLegend, exportRouteHelp, exportRouteFilter, exportRouteList, exportRoutePage, exportRoutePrevious, exportRouteNext, exportRouteCancel);
+  exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared, exportRouteField);
   footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), inMenu('Project', button('Save As', () => handlers.saveAs?.())),
     button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', button('Load', () => handlers.load?.())), inMenu('Project', button('New', () => handlers.new?.())),
     inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', button('MIDI', () => handlers.exportMidi?.())),
@@ -982,6 +1017,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     }
   }
   function render({ partial = false } = {}) {
+    validateExportRouteChoice();
     if (disposed) return;
     pointerArbiter.revalidate();
     if (curveDocumentIdentity !== getDocumentIdentity()) { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); curveDocumentIdentity = getDocumentIdentity(); }
@@ -1248,6 +1284,21 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       exportDesk.open = true; exportDesk.scrollIntoView?.({ block: 'nearest' });
       (savePrepared.disabled ? retryExport : savePrepared).focus?.({ preventScroll: true });
     },
+    chooseMidiExportRoute(routes, { evidence, signal, isCurrent }) {
+      signal?.throwIfAborted();
+      if (disposed || !isCurrent()) return Promise.reject(new Error('The recorded MIDI source is no longer available.'));
+      if (!Array.isArray(routes) || routes.length < 2 || routes.length > 4096) return Promise.reject(new Error('A bounded recorded-output choice is required.'));
+      finishExportRouteChoice(exportRouteChoice, new Error('A newer MIDI output selection replaced this request.'));
+      return new Promise((resolve, reject) => {
+        const owner = { resolve, reject, signal, isCurrent, page: 0, routes: routes.map((route, index) => ({ ...route, ordinal: index + 1, search: String(route.outputId).toLowerCase() })) };
+        owner.abort = () => finishExportRouteChoice(owner, signal.reason || new Error('MIDI export canceled.'));
+        exportRouteChoice = owner; signal?.addEventListener('abort', owner.abort, { once: true });
+        exportRouteFilter.value = ''; exportRouteField.hidden = false; exportDesk.hidden = false; exportDesk.open = true;
+        exportRouteHelp.textContent = (evidence === 'api-accepted' ? 'Recorded output accepted by MIDI APIs.' : 'Authored MIDI intent; no receiver submission is claimed.') +
+          ' Each file preserves one recorded output. Import each file onto its corresponding output; original channel numbers are retained.';
+        paintExportRoutes(); exportRouteFilter.focus({ preventScroll: true });
+      });
+    },
     exportState(artifact, delivery, preparation = null) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';
@@ -1282,6 +1333,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         clockStatus: position.clockStatus, linked: position.linked, speedMode: position.speedMode })); frame(position.beat);
     },
     recording(value, midiState = null) {
+      validateExportRouteChoice();
       laneNavigator.update(getDocumentIdentity());
       if (midiState) { midiRouteState = midiState; midiSurface.invalidate(); }
       state.recording = !!value;
@@ -1301,6 +1353,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       variationsView?.dispose(); variationsView = null;
       if (stageActive) setStageMode(false);
       if (retirement.getReceipt()) return retirement.getReceipt(); disposed = true; retireMotion();
+      finishExportRouteChoice(exportRouteChoice, new Error('The MIDI export view retired.'));
       if (mountedViews.get(canvas) === api) mountedViews.delete(canvas);
       return retirement.retire([
         { name: 'project-picker', run: () => retirePicker(pickerOwner, { cancel: true, close: true }) }, { name: 'fullscreen', run: () => fullscreenSession.dispose() },
