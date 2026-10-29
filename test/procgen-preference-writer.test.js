@@ -21,4 +21,29 @@ describe('coalesced preference encoding ownership', () => {
     writer.request({ project: { procgen: { lanes: [] } } }, 0); generation++; complete(); await writer.dispose();
     expect(writes).to.equal(0);
   });
+  it('reports failed admission without a durable claim and clears the failure on successful retry', async () => {
+    let fail = true; const writer = createProcgenPreferenceWriter({ key: 'project', getGeneration: () => 1, storage: { setItem() {} },
+      jobs: { async compute() { if (fail) throw Object.assign(new Error('Input exceeds its admitted footprint'), { code: 'snapshot-transport' }); return { value: '{}', release() {} }; } } });
+    writer.request({ project: { procgen: { lanes: [] } } }, 2); await Promise.resolve(); await Promise.resolve();
+    expect(writer.state()).to.include({ requestedRevision: 2, durableRevision: -1, pendingRevision: null }); expect(writer.state().lastError.code).to.equal('snapshot-transport');
+    fail = false; writer.request({ project: { procgen: { lanes: [] } } }, 3); await writer.dispose();
+    expect(writer.state()).to.include({ requestedRevision: 3, durableRevision: 3, lastError: null });
+  });
+  it('keeps generation-local durability and refuses absent storage', async () => {
+    let generation = 1; const jobs = { async compute() { return { value: '{}', release() {} }; } };
+    const writer = createProcgenPreferenceWriter({ key: 'project', getGeneration: () => generation, storage: { setItem() {} }, jobs });
+    writer.request({ project: { procgen: { lanes: [] } } }, 7); await Promise.resolve(); await Promise.resolve();
+    expect(writer.state().durableRevision).to.equal(7); generation++; expect(writer.state()).to.include({ requestedRevision: null, durableRevision: -1, lastError: null }); await writer.dispose();
+    const missing = createProcgenPreferenceWriter({ key: 'project', getGeneration: () => 1, jobs }); missing.request({ project: { procgen: { lanes: [] } } }, 1); await missing.dispose();
+    expect(missing.state().durableRevision).to.equal(-1); expect(missing.state().lastError.message).to.include('storage is unavailable');
+  });
+  it('does not expose a retired pending revision or late failure in the current document', async () => {
+    let generation = 1, reject; const states = [];
+    const writer = createProcgenPreferenceWriter({ key: 'project', getGeneration: () => generation, onState: state => states.push(state),
+      jobs: { compute: () => new Promise((_resolve, fail) => { reject = fail; }) } });
+    writer.request({ project: { procgen: { lanes: [] } } }, 9); generation++;
+    expect(writer.state()).to.include({ pendingRevision: null, requestedRevision: null, durableRevision: -1 });
+    reject(new Error('Retired worker failed')); await writer.dispose(); expect(writer.state().lastError).to.equal(null);
+    expect(states.map(state => state.state)).to.deep.equal(['saving']);
+  });
 });

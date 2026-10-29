@@ -8701,3 +8701,22 @@ export-budget acknowledgments still prevent a false complete receipt.
 - The synthetic host excludes real audio/IndexedDB and120Hz scheduling. Smaller
   launch cases each contain one task over16ms; heap data is unavailable. #985
   remains open for production propagation and full task-budget qualification.
+
+### Continuation 334 — actual edit workload and honest preference failure
+
+- Run the actual instrument controller at8/128/1024lanes with64-step patterns,
+ 480 iterations targeting120Hz,960 admitted/recorded MIDI packets and64 complete
+  launch acknowledgments per size. Physical state/output remain unchanged. Preserve
+  source/host hashes, lateness, task distributions, long tasks and preference state.
+- Expose current-document requested/durable revision and bounded failure details;
+  discard stale pending/error/durability claims after document replacement. Absent
+  storage is unavailable.128 distinct Node cases pass; writer lines reach100%.
+- The128-lane preference snapshot exceeds its footprint;1024-lane snapshot
+  reservation exceeds the available shared budget. Deadline lateness also grows
+  at1024lanes. These are actual unresolved #985 findings; no budget increase or
+  successful persistence qualification is inferred from completed input work.
+- Full329 CI is green:6860Node/10 pre-existing pending,150browser (24desktop/
+  126workstation), all14capabilities and static/MCP/benchmark/policy/dependency
+  gates. Coverage90.72% lines/statements,83.75% branches,88.46% functions. Its
+  capture is Partial at58880finite frames after a128-frame clock discontinuity.
+  Earlier Ready captures remain separate.330 onward require their own full runs.

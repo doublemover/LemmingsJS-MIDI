@@ -161,6 +161,24 @@ p99 is1.6/1.7/3.9; simultaneous-launch p99 is10.0/8.6/13.6, with one sample over
 exclude real audio, IndexedDB and120Hz scheduling; heap readings were unavailable.
 These observations do not close #985's production/controller/persistence gate.
 
+Continuation334 runs the actual instrument controller at8/128/1024lanes with
+four64-step patterns per lane and480 scheduled edit/input iterations targeting
+120Hz. Every size accepts and records all960 supplied MIDI packets, preserves
+physical state and leaves output disabled. Mix state creates only480 changed
+rows during those480 gain changes. The target cadence is not a sustained-rate
+claim: the1024-lane run accumulates substantial scheduling lateness. Browser
+long-task observations also include setup and the deliberately unyielded launch
+batch; individual operation timings do not describe the entire main-thread load.
+
+The profile finds actual persistence failures:128lanes exceed the admitted
+snapshot-transport footprint, while1024lanes cannot reserve the candidate peak
+against the remaining shared budget. These remain failures under #985. Writer
+diagnostics now retain requested revision and bounded current-generation error
+details; no old document's durability/pending/failure is presented as current.
+Missing storage cannot claim a durable write.128 distinct affected Node cases
+pass across the grouped controller cohort and added lifecycle regression. The
+writer has100% scoped lines; further cleanup-fault paths remain branch followups.
+
 `scripts/profile-procgen-editing.mjs` measures 8/128/1024 lanes with 64-step
 patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched launch
 acknowledgments. Reports separate latency percentiles, long tasks, heap observations,

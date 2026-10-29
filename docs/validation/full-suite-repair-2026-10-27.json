@@ -818,41 +818,45 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "5cdba45c913abc6a6e3e49d2af67c2dc97879dec",
+    "head": "4e4af603102bf7ba00f460b68dd17c2b53087d50",
     "status": "success",
-    "run": 40814910040,
-    "job": 123253599149,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40814910040/job/123253599149",
-    "nodePassed": 6849,
+    "run": 40821281987,
+    "job": 123274088388,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40821281987/job/123274088388",
+    "nodePassed": 6860,
     "nodePending": 10,
-    "browserPassed": 145,
+    "browserPassed": 150,
     "desktopPassed": 24,
-    "workstationSmokePassed": 121,
+    "workstationSmokePassed": 126,
     "workstationCapabilities": 14,
     "coverage": {
       "lines": 90.72,
       "statements": 90.72,
-      "branches": 83.73,
-      "functions": 88.43
+      "branches": 83.75,
+      "functions": 88.46
     },
     "masterCapture": {
-      "state": "Ready",
-      "frames": 55552,
-      "captured": 55552,
-      "stopReason": "user-stop",
-      "clockDiscontinuity": null,
-      "peak": 0.022854328155517578,
+      "state": "Partial",
+      "frames": 58880,
+      "captured": 58880,
+      "stopReason": "noncontiguous-render-clock",
+      "clockDiscontinuity": {
+        "actualFrame": 88320,
+        "expectedFrame": 88448,
+        "frames": 128
+      },
+      "peak": 0.02318418025970459,
       "nonfinite": 0
     },
     "benchmark": "success",
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "Includes326 and all current production changes; excludes327/328 additional acceptance fixtures.",
+    "scope": "Includes329 completed draw-row optimization and recursive fixture guard; excludes330 onward.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci326-green.log",
-      "bytes": 1171039,
-      "sha256": "835fe4d609a3b451363f1420a323f8912a4fb5d27412da309cbb19388a0956f8"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci329-green.log",
+      "bytes": 1175580,
+      "sha256": "92fccb12a3e8f6b5757522f862996824728ee06f3a25a85df2ecce9740359482"
     }
   },
   "continuation264": {
@@ -29661,6 +29665,509 @@
       "985": {
         "state": "open",
         "remaining": "Production view/navigation and end-to-end120Hz/controller/capture/launch/persistence task-budget qualification."
+      }
+    }
+  },
+  "continuation334": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "4fdcd327",
+    "scope": "Actual production edit/recording/launch workload and current-generation preference diagnostics; retain unresolved transport/admission failures rather than claiming a persistence pass.",
+    "validation": {
+      "node": {
+        "initialGroupedPassed": 127,
+        "finalLifecyclePassed": 5,
+        "distinctAffectedPassed": 128,
+        "failed": 0,
+        "scope": "Coalescing, retry, missing storage, durable/pending/error generation fences and existing controller/rollback/save lifecycle.",
+        "coverage": {
+          "ProcgenPreferenceWriter": {
+            "lines": 100,
+            "functions": 90,
+            "branches": 77.96
+          }
+        },
+        "coverageFollowup": "Cleanup/abort/failed producer combinations remain function/branch followups beyond the current explicit lifecycle corpus."
+      },
+      "productionProfile": {
+        "schema": "procgen-edit-cost/v2",
+        "sourceRevision": "4fdcd327520019ad29ca7e03d8da0e8d801b3130",
+        "sourceHashes": {
+          "scripts/profile-procgen-editing.mjs": "a6c78e00b62659ed24d863519e3fd3b01c7dfba30caea6711219a62e493ed4f7",
+          "js/app/procgen/workstation/ProcgenWorkstation.js": "61781bf75e236e9265fb48f64978cfbe43e10e4e51a1978871edd14368e71374",
+          "js/app/procgen/workstation/ProcgenWorkstationView.js": "0bd0cf34ac08bdb01cb3073ec6d55fac58309946890c320df2da509d37e88791",
+          "js/app/procgen/workstation/LaneMixState.js": "2ee30939e098f9773615b6425699e4904020bef123c8956020e4cdc55970c564",
+          "js/app/procgen/workstation/ProcgenStartupIntent.js": "0880202be5dfbf26e0750ab8d2bf0974391431b7aa5da0d9d0507ccf42ed3399",
+          "js/app/procgen/workstation/ProcgenPreferenceWriter.js": "9d49ae2e2b2221089ee61da040fbdcb4348eebc8af9f44ded0c875e6391a52c1",
+          "js/app/resources/BackgroundSnapshotPages.js": "bee6fcbc91a704aea9695a6e9ff6b64fdd0120c0b7e8ef0fc4f8a3a6e2353fcb",
+          "js/app/resources/BackgroundJobService.js": "b898a7d3bde0d6b7a292f08efbca84452aec6b51977f0b638613d1120fe5af29"
+        },
+        "environment": {
+          "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+          "node": "v26.12.1",
+          "browser": "153.0.8010.12",
+          "date": "2026-10-29T05:44:20.166Z",
+          "isolation": "Shared local development host; not a dedicated reference-machine release gate."
+        },
+        "cases": [
+          {
+            "laneCount": 8,
+            "patternLength": 64,
+            "controllerHz": 120,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.699999988079071,
+                "p95": 0.9000000059604645,
+                "p99": 1
+              },
+              "gain": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 1,
+                "p99": 1.1000000089406967
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.6000000089406967,
+                "p95": 0.9000000059604645,
+                "p99": 1
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 7,
+                "p95": 10.5,
+                "p99": 12.299999997019768
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0,
+                "p95": 1.8333333333339397,
+                "p99": 7.299999997019768
+              }
+            },
+            "longTasks": [
+              478
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 510
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 16134
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1509,
+              "durableRevision": 1509,
+              "lastError": null,
+              "active": false
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 8,
+              "stateVisits": 8,
+              "stateAllocations": 8,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1029,
+              "stateVisits": 488,
+              "stateAllocations": 488,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 1
+            },
+            "qualification": "Actual controller/view/recording and coalesced preference writer, supplied valid MIDI packets at120Hz; no connected hardware, physical output or acoustic evidence. localStorage completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16
+          },
+          {
+            "laneCount": 128,
+            "patternLength": 64,
+            "controllerHz": 120,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 1,
+                "p99": 1.1000000089406967
+              },
+              "gain": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 1.1000000089406967,
+                "p99": 1.2999999970197678
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 1,
+                "p99": 1.1000000089406967
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 6.799999997019768,
+                "p95": 10.900000005960464,
+                "p99": 13.100000008940697
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0,
+                "p95": 0.20000000298023224,
+                "p99": 6.5
+              }
+            },
+            "longTasks": [
+              206,
+              498
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 3990
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 34770
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1629,
+              "durableRevision": -1,
+              "lastError": {
+                "generation": 1,
+                "revision": 1629,
+                "code": "snapshot-transport",
+                "message": "Snapshot transport exceeds its admitted footprint."
+              },
+              "active": false
+            },
+            "preferenceCurrent": false,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 128,
+              "stateVisits": 128,
+              "stateAllocations": 128,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1149,
+              "stateVisits": 608,
+              "stateAllocations": 608,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 1
+            },
+            "qualification": "Actual controller/view/recording and coalesced preference writer, supplied valid MIDI packets at120Hz; no connected hardware, physical output or acoustic evidence. localStorage completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16
+          },
+          {
+            "laneCount": 1024,
+            "patternLength": 64,
+            "controllerHz": 120,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 1.5999999940395355,
+                "p95": 2.1000000089406967,
+                "p99": 2.2999999970197678
+              },
+              "gain": {
+                "count": 480,
+                "p50": 1.5,
+                "p95": 2.199999988079071,
+                "p99": 2.300000011920929
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 1.4000000059604645,
+                "p95": 2,
+                "p99": 2.2000000029802322
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 8.800000011920929,
+                "p95": 11.599999994039536,
+                "p99": 13.399999991059303
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 1785.4333333422737,
+                "p95": 3269.533333336314,
+                "p99": 3426.300000011921
+              }
+            },
+            "longTasks": [
+              2372,
+              601
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 29974
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 174550
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 2525,
+              "durableRevision": -1,
+              "lastError": {
+                "generation": 1,
+                "revision": 2525,
+                "code": "ResourceBudgetError",
+                "message": "candidate needs 346193920 accounted bytes; 118301469 are available."
+              },
+              "active": false
+            },
+            "preferenceCurrent": false,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 1024,
+              "stateVisits": 1024,
+              "stateAllocations": 1024,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 2045,
+              "stateVisits": 1504,
+              "stateAllocations": 1504,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and coalesced preference writer, supplied valid MIDI packets at120Hz; no connected hardware, physical output or acoustic evidence. localStorage completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16
+          }
+        ],
+        "errors": []
+      },
+      "productionProfileResult": {
+        "workloadComplete": true,
+        "preferenceQualification": false,
+        "fullTaskBudgetQualified": false,
+        "findings": [
+          "128lane preference: Snapshot transport exceeds its admitted footprint.",
+          "1024lane preference: candidate needs346193920 accounted bytes;118301469 available in the diagnostic run.",
+          "1024lane deadline lateness grows; controllerHz is the120Hz target, not achieved throughput.",
+          "Long tasks include setup and an unyielded64-launch batch; per-operation durations do not establish the entire main-thread budget."
+        ]
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10components/349files",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": {
+        "head": "4e4af603102bf7ba00f460b68dd17c2b53087d50",
+        "status": "success",
+        "run": 40821281987,
+        "job": 123274088388,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40821281987/job/123274088388",
+        "nodePassed": 6860,
+        "nodePending": 10,
+        "browserPassed": 150,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 126,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.72,
+          "statements": 90.72,
+          "branches": 83.75,
+          "functions": 88.46
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 58880,
+          "captured": 58880,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 88320,
+            "expectedFrame": 88448,
+            "frames": 128
+          },
+          "peak": 0.02318418025970459,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes329 completed draw-row optimization and recursive fixture guard; excludes330 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci329-green.log",
+          "bytes": 1175580,
+          "sha256": "92fccb12a3e8f6b5757522f862996824728ee06f3a25a85df2ecce9740359482"
+        }
+      },
+      "scopeLimits": [
+        "Supplied valid input packets are not connected hardware timing or acoustic evidence.",
+        "Browser localStorage acknowledgement is separate from OS durability; failed saves remain explicitly failed."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-cache.log",
+        "bytes": 482,
+        "sha256": "bf7329e85dae77626660d0f8b35ced69d8a6637ceda13409b6c9e71adcbb3120"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-format-cache.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-format-diagnostics.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-node.log",
+        "bytes": 12058,
+        "sha256": "74fb2318d1785c806dcf9c6e6367b39940407d5a577fc19bc3828a71148fdf04"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci329-green.log",
+        "bytes": 1175580,
+        "sha256": "92fccb12a3e8f6b5757522f862996824728ee06f3a25a85df2ecce9740359482"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-production-profile-diagnostics.json",
+        "bytes": 10008,
+        "sha256": "c3c0c4bb79b258e2f0a7f80645d54121249988a8391c9886f89789c9121cbd4a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog334-production-profile.json",
+        "bytes": 8980,
+        "sha256": "71c4d40c616d04ea9d977f286af813624242d7f0d8a5abcc6b84221fece37dd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci329-green-report.json",
+        "bytes": 1010,
+        "sha256": "bfc30b8e07b942c6e1fd3efe713e8d3f2ba9ccd28dba904f151c7908ccf18003"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-334-coverage-cache\\coverage-summary.json",
+        "bytes": 672,
+        "sha256": "8578a2df8d70eeafb03277df788bbf1d34bad220aedaa6b78b1c6e513f3cc6b6"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "scripts/profile-procgen-editing.mjs",
+        "bytes": 7719,
+        "sha256": "a6c78e00b62659ed24d863519e3fd3b01c7dfba30caea6711219a62e493ed4f7"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPreferenceWriter.js",
+        "bytes": 3926,
+        "sha256": "9d49ae2e2b2221089ee61da040fbdcb4348eebc8af9f44ded0c875e6391a52c1"
+      },
+      {
+        "path": "test/procgen-preference-writer.test.js",
+        "bytes": 4508,
+        "sha256": "eeeeccf2ff949c96c618742f9961bb0a9c9ad6950cdb916aa67ebaebcff0f43a"
+      }
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "remaining": "Incremental bounded durable project persistence, large-ensemble target-cadence and production main-thread budget."
       }
     }
   }
