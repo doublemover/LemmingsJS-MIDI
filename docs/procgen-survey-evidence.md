@@ -5,6 +5,17 @@ transfer, and committed evidence are different stages. `SurveyWorkerPool`
 publishes their identities and outcomes separately in `computations` and
 `persistence`; result presence alone does not imply a saved original.
 
+Canonical evidence reads intrinsic numeric view slots and native collection
+entries. Array accessors, unsupported objects and cycles are refused; sparse
+holes differ from undefined and null. Every own world data owner is classified.
+Future unclassified owners and root accessors refuse projection, while admission,
+assistance, birth, junction, feedback and terrain-score state bind continuation.
+
+Controlled terrain uses private source proofs to omit unchanged query caches.
+Actual cached pixel edits remain visible; injected chunks without a source proof
+are refused. This does not qualify every generated-terrain cache or archived
+execution environment. Earlier state3/canonical2 receipts remain legacy evidence.
+
 ## Transfer and persistence
 
 Workers first advertise the exact JSON byte length and SHA-256 of a result.
@@ -161,7 +172,7 @@ durability: file and directory flushes are not part of this protocol.
 
 ## Canonical identity and retained history
 
-Canonical numeric encoding version 2 distinguishes signed zero, NaN and both
+Canonical numeric encoding version 3 distinguishes signed zero, NaN and both
 infinities in scalars and typed arrays. Typed views include their element type,
 logical length, byte length and byte offset. DataView includes the exact
 selected bytes. Big integer views use decimal strings. These portable evidence
@@ -172,7 +183,7 @@ Snapshots, milestones and telemetry reject an in-progress or failed physical
 tick. The source manifest records canonical encoding and physical state schema
 versions separately, and labels its loaded execution identity as unbound.
 
-Survey state schema 3 stores compact immutable terminal records. A first death
+Survey state schema 4 stores compact immutable terminal records. A first death
 observation preserves arrival, qualification and cause accounting immediately;
 the actor reference is released only after a committed `ActorTerminated` fact
 or an explicit generation reset. Death animations remain runtime owned until

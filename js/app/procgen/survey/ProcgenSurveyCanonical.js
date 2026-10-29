@@ -1,9 +1,15 @@
-const SURVEY_STATE_SCHEMA = 3;
-const SURVEY_CANONICAL_SCHEMA = 2;
+const SURVEY_STATE_SCHEMA = 4;
+const SURVEY_CANONICAL_SCHEMA = 3;
 const SUPPORTED_VIEWS = new Set(['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
   'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array']);
+const typedPrototype = Object.getPrototypeOf(Uint8Array.prototype);
+const getter = (prototype, key) => Function.prototype.call.bind(Object.getOwnPropertyDescriptor(prototype, key).get);
+const viewType = getter(typedPrototype, Symbol.toStringTag), bufferLength = getter(ArrayBuffer.prototype, 'byteLength');
+const typedRead = Object.fromEntries(['byteOffset', 'byteLength', 'length', 'buffer'].map(key => [key, getter(typedPrototype, key)]));
+const dataViewRead = Object.fromEntries(['byteOffset', 'byteLength', 'buffer'].map(key => [key, getter(DataView.prototype, key)]));
 const compareText = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 const canonicalSurveyJson = value => {
+  const active = new WeakSet();
   const encode = item => {
     if (item === undefined) return ['undefined'];
     if (typeof item === 'number') return ['number', Object.is(item, -0) ? '-0' : Number.isFinite(item) ? item : String(item)];
@@ -11,25 +17,41 @@ const canonicalSurveyJson = value => {
       if (typeof item === 'function' || typeof item === 'symbol' || typeof item === 'bigint') throw new Error('Unsupported canonical value');
       return item === null ? ['null'] : [typeof item, item];
     }
-    if (item instanceof DataView) return ['data-view', item.byteOffset, item.byteLength,
-      Array.from(new Uint8Array(item.buffer, item.byteOffset, item.byteLength))];
-    if (ArrayBuffer.isView(item)) {
-      const type = item.constructor.name;
-      if (!SUPPORTED_VIEWS.has(type)) throw new Error(`Unsupported canonical view: ${type}`);
-      return ['typed-v2', type, item.byteOffset, item.byteLength, item.length,
-        Array.from(item, value => typeof value === 'bigint' ? ['bigint', value.toString()] : encode(value))];
-    }
-    if (item instanceof ArrayBuffer) return ['array-buffer', item.byteLength, Array.from(new Uint8Array(item))];
-    if (Array.isArray(item)) return ['array', item.map(encode)];
-    if (item instanceof Map) return ['map', [...item].map(([key, entry]) => [encode(key), encode(entry)]).sort((a, b) => compareText(JSON.stringify(a[0]), JSON.stringify(b[0])))];
-    if (item instanceof Set) return ['set', [...item].map(encode).sort((a, b) => compareText(JSON.stringify(a), JSON.stringify(b)))];
-    const out = [];
-    for (const key of Object.keys(item).sort()) {
-      const descriptor = Object.getOwnPropertyDescriptor(item, key);
-      if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw new Error('Canonical data cannot contain getters');
-      out.push([key, encode(descriptor.value)]);
-    }
-    return ['object', out];
+    if (active.has(item)) throw new Error('Canonical data cannot contain cycles');
+    active.add(item);
+    try {
+      if (ArrayBuffer.isView(item)) {
+        const type = viewType(item);
+        if (type === undefined) {
+          const offset = dataViewRead.byteOffset(item), bytes = dataViewRead.byteLength(item);
+          return ['data-view', offset, bytes, Array.from(new Uint8Array(dataViewRead.buffer(item), offset, bytes))];
+        }
+        if (!SUPPORTED_VIEWS.has(type)) throw new Error(`Unsupported canonical view: ${type}`);
+        return ['typed-v2', type, typedRead.byteOffset(item), typedRead.byteLength(item), typedRead.length(item),
+          Array.from(typedPrototype.values.call(item), value => typeof value === 'bigint' ? ['bigint', value.toString()] : encode(value))];
+      }
+      if (item instanceof ArrayBuffer) return ['array-buffer', bufferLength(item), Array.from(new Uint8Array(item))];
+      if (Array.isArray(item)) {
+        const entries = [];
+        for (let index = 0; index < item.length; index++) {
+          const descriptor = Object.getOwnPropertyDescriptor(item, index);
+          if (descriptor && !Object.hasOwn(descriptor, 'value')) throw new Error('Canonical data cannot contain getters');
+          entries.push(descriptor ? encode(descriptor.value) : ['hole']);
+        }
+        return ['array', entries];
+      }
+      if (item instanceof Map) return ['map', Array.from(Map.prototype.entries.call(item), ([key, entry]) => [encode(key), encode(entry)]).sort((a, b) => compareText(JSON.stringify(a[0]), JSON.stringify(b[0])))];
+      if (item instanceof Set) return ['set', Array.from(Set.prototype.values.call(item), encode).sort((a, b) => compareText(JSON.stringify(a), JSON.stringify(b)))];
+      const prototype = Object.getPrototypeOf(item);
+      if (prototype !== Object.prototype && prototype !== null) throw new Error('Unsupported canonical object');
+      const out = [];
+      for (const key of Object.keys(item).sort()) {
+        const descriptor = Object.getOwnPropertyDescriptor(item, key);
+        if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw new Error('Canonical data cannot contain getters');
+        out.push([key, encode(descriptor.value)]);
+      }
+      return ['object', out];
+    } finally { active.delete(item); }
   };
   return JSON.stringify(encode(value));
 };

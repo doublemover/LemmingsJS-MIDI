@@ -8528,3 +8528,27 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #1207 retains trusted-gesture native OS-picker qualification where supported.
   The dedicated browser download and Blob/controlled-writable journeys now have
   executed receipts from323. No filesystem durability claim is made.
+
+### Continuation 325 — intrinsic numeric evidence and classified world owners
+
+- Canonical schema3 reads actual typed-array/DataView slots and native collection
+  entries. Array accessors, unsupported objects and cycles are refused; sparse
+  holes differ from undefined/null. Preserve signed zero, nonfinite tags, extrema,
+  integer/BigInt views and subview dimensions without invoking spoofed metadata.
+- State schema4 includes future admission/assistance settings, birth ownership,
+  junctions, feedback and terrain-score state. Classify every own world data field;
+  a new unclassified owner or root accessor refuses projection. Old canonical2/
+  state3 receipts cannot qualify as current evidence.
+- Controlled terrain owns private proofs for generated chunks. Warm/cold or
+  reordered unchanged collision caches project to the same geometry source;
+  changed actual pixels remain visible and injected unproved chunks are refused.
+  Ground-query diagnostics do not change logical identity. Wider generated-source
+  cache normalization and the complete continuation/negative corpus remain open.
+- All65 affected survey Node cases and two native browser cases pass. Canonical
+  code measures100% lines/functions and95.52% branches; controlled terrain100%
+  lines/94.28% branches. Browser vectors agree exactly with Node and real controlled/
+  source replay remains compatible with explicit unbound execution. Keep #1223 open.
+- Full322 CI is green:6819 Node/10 pre-existing pending,141 browsers (24desktop/
+  117workstation), all14 capabilities, MCP/benchmark/static/policy/dependency checks.
+  Coverage90.71% lines/statements,83.72% branches,88.41% functions. Its separate
+  capture is Ready at61952 finite frames with no clock gap.323 onward are excluded.

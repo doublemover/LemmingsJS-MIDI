@@ -224,6 +224,10 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compatible.artifactIntegrity.status).to.equal('verified');
     expect(compatible.executionIdentity.status).to.equal('unbound');
     expect(compareSurveyReplay(complete, { ...complete, provenance: { ...complete.provenance, stateSchema: 1 } }).matched).to.equal(false);
+    const olderCanonical = { ...complete, provenance: { ...complete.provenance, canonicalSchema: 2 } };
+    expect(compareSurveyReplay(olderCanonical, olderCanonical).matched).to.equal(false);
+    const olderState = { ...complete, provenance: { ...complete.provenance, stateSchema: 3 } };
+    expect(compareSurveyReplay(olderState, olderState).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
     const unbound = { ...complete, provenance: { ...complete.provenance, scenarioHash: '0'.repeat(16) } };
@@ -244,6 +248,50 @@ describe('isolated deterministic real procgen survey core', function() {
     const trial = createSurveyTrial({ masks, scenario: scene() });
     trial.world.terrainActivityTicks[0] = NaN;
     expect(() => trial.snapshot()).to.throw('Invalid terrain activity tick'); trial.dispose();
+  });
+  it('binds future admission, assistance, junction and feedback owners in the physical projection', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() });
+    try {
+      for (const key of ['assists', 'workstationEnabled', 'maxActors', 'spawnSpreadTicks', 'leftEdgeX']) {
+        const before = trial.snapshot().physicalStateHash, original = trial.world[key];
+        trial.world[key] = typeof original === 'boolean' ? !original : original + 1;
+        expect(trial.snapshot().physicalStateHash, key).not.to.equal(before); trial.world[key] = original;
+      }
+      for (const [owner, key, next] of [['physicalFeedback', 'mode', 'armed'], ['physicalJunctions', 'revision', 8], ['terrainScorePending', 'overflow', true]]) {
+        const before = trial.snapshot().physicalStateHash, had = Object.hasOwn(trial.world[owner], key), original = trial.world[owner][key];
+        trial.world[owner][key] = next; expect(trial.snapshot().physicalStateHash, owner).not.to.equal(before);
+        if (had) trial.world[owner][key] = original; else delete trial.world[owner][key];
+      }
+    } finally { trial.dispose(); }
+  });
+  it('refuses unclassified future owners and root accessors without executing them', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() }), maxActors = trial.world.maxActors; let touched = 0;
+    try {
+      trial.world.futurePhysicalOwner = { queued: 1 };
+      try { trial.snapshot(); throw new Error('unexpected qualified state'); } catch (error) { expect(error.code).to.equal('unclassified-state-owner'); }
+      delete trial.world.futurePhysicalOwner;
+      Object.defineProperty(trial.world, 'maxActors', { configurable: true, get() { touched++; throw new Error('Unexpected getter'); } });
+      try { trial.snapshot(); throw new Error('unexpected qualified state'); } catch (error) { expect(error.code).to.equal('accessor-state-owner'); }
+      expect(touched).to.equal(0);
+      Object.defineProperty(trial.world, 'maxActors', { configurable: true, writable: true, value: maxActors });
+      expect(trial.snapshot().physicalStateHash).to.match(/^[a-f0-9]{16}$/);
+    } finally { trial.dispose(); }
+  });
+  it('keeps physical identity across warm/cold controlled query caches while exposing actual collision mutation', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() });
+    try {
+      const initial = trial.snapshot(), before = initial.physicalStateHash, terrain = trial.world.terrain, seed = trial.world.laneSeeds[0];
+      const chunk = terrain.getChunk(seed, 7); terrain.getChunk(seed, 3);
+      expect(trial.snapshot().physicalStateHash).to.equal(before);
+      trial.world.hasGroundAt(950, 72); expect(trial.snapshot().stateHash).to.equal(initial.stateHash);
+      chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).not.to.equal(before);
+      chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
+      terrain.collision.delete(seed + ':7'); terrain.collision.delete(seed + ':3');
+      expect(trial.snapshot().physicalStateHash).to.equal(before);
+      terrain.collision.set(seed + ':99', { solid: new Uint32Array(384), steel: new Uint32Array(384) });
+      try { trial.snapshot(); throw new Error('unexpected qualified cache'); } catch (error) { expect(error.code).to.equal('unverified-controlled-collision'); }
+      terrain.collision.delete(seed + ':99');
+    } finally { trial.dispose(); }
   });
   it('requires complete crew accounting and physical checksum domains even when two incomplete records match', () => {
     const complete = finalReplay(masks), compareBoth = value => compareSurveyReplay(value, value);

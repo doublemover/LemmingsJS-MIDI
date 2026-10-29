@@ -1,5 +1,5 @@
 import { ProcgenLaneWorld } from '../ProcgenLaneWorld.js';
-import { ProcgenSurveyTerrain } from './ProcgenSurveyTerrain.js';
+import { ProcgenSurveyTerrain, captureControlledSurveyTerrain } from './ProcgenSurveyTerrain.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -15,13 +15,25 @@ const ignoredKeys = new Set(['world', 'runtime', 'sprites', 'spriteProvider', 'c
   'recipe', 'patterns', 'ingredients', 'pieces', 'objects', 'compiledAssemblies', 'sourceGroups', 'wideSourceGroups', 'assemblySources', 'sourceRegions',
   'sourceDescriptor', 'assemblyCatalog', 'wordPlanner', 'descriptor', 'groups', 'groupsByRole', 'pairs', 'rasters']);
 const stateOwners = ['tickIndex', 'generation', 'generationStartTick', 'seed', 'laneSeeds', 'laneCount', 'laneHeight', 'eventTimeMs', 'simulationTimeMs', 'interventionState', 'nextActorId',
+  'worldId', 'width', 'height', 'leftEdgeX', 'workstationEnabled', 'assists', 'workerLimits', 'actorBirthAbilities', 'cohorts', 'spawnSpreadTicks', 'maxActors',
+  'physicalJunctions', 'physicalFeedback', 'terrainScoreState', 'terrainScorePending', 'birthCohortRecords', 'birthCohortRevision',
   'spawnedTotal', 'activeCount', 'admissionPaused', 'frontiers', 'generatedThrough', 'terrainRevision', 'frontierRevision', 'terrainActivityTicks',
   'pendingTerrainWork', '_effectiveTerrainWork', '_manualNukeLanes', '_spawnPhases', '_spawnPhaseRanks', '_laneAdmissionCohorts', '_spawnPhaseCohortTick',
   'accessTasks', 'edgeBlockers', 'failureReasons', 'stats', 'population', 'stall', 'terrainGrowth', 'lanePolicy', 'hazardPlanner', 'tunnelRoutes', 'basinRoutes',
   'hazards', 'triggerManager', 'terrainTileRevisions', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'];
+const knownWorldOwners = new Set([...stateOwners, 'actors', 'actions', 'terrain', 'editChunks', 'timer', 'soundEvents', 'runtime', 'sprites', 'characterParticles',
+  'physicalAuthoring', 'physicalCrewEvidence', 'terrainTopology', 'scenery', 'challengeCacheLimit', '_assistedColumn', '_chunkSlots', '_collisionSlots', '_collisionIndices',
+  '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editSlots', '_editCache', '_editIndices', '_stallWork', '_physicalWorkBounds',
+  '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_completedPhysicalBatchId', '_completedPhysicalSnapshot', '_snapshotRetainers', '_authoritativeActors',
+  '_processingActorId', '_processingLane', '_stepping', '_failedTick', '_disposed', '_disposalError']);
 
 // Read own data only. No snapshot, terrain query, revision read, or cache get.
 const captureState = (world, records, eventHash, { physicalOnly = false, scenarioOnly = false } = {}) => {
+  for (const key of Object.getOwnPropertyNames(world)) {
+    const descriptor = Object.getOwnPropertyDescriptor(world, key);
+    if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw Object.assign(new Error('Survey state owner cannot be an accessor: ' + key.slice(0, 128)), { name: 'SurveyStateProjectionError', code: 'accessor-state-owner' });
+    if (typeof descriptor.value !== 'function' && !knownWorldOwners.has(key)) throw Object.assign(new Error('Unclassified survey world owner: ' + key.slice(0, 128)), { name: 'SurveyStateProjectionError', code: 'unclassified-state-owner' });
+  }
   const actions = new Map(Object.entries(world.actions).map(([id, action]) => [action, Number(id)])), actors = new Map(records.filter(record => record.actor).map(record => [record.actor, record.id]));
   const seen = new Map();
   const encode = (value, path) => {
@@ -39,6 +51,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
       properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
     const out = {};
     for (const key of Object.keys(value).sort()) {
+      if (path === 'stats' && key === 'groundQueries') continue;
       if (scenarioOnly && (path === 'lanePolicy' && key === 'config' || path.startsWith('lanePolicy.lanes.') && key === 'initialBias')) continue;
       if (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key)) continue;
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -54,13 +67,13 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     arrivalTick: record.arrivalTick, deathTick: record.deathTick, retired: record.retired })) };
   for (const key of stateOwners) {
     if (physicalOnly && ['eventTimeMs', 'stats', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'].includes(key)) continue;
-    out[key] = encode(world[key], key);
+    out[key] = encode(Object.getOwnPropertyDescriptor(world, key)?.value, key);
   }
   out.edits = { resident: encode(new Map(Map.prototype.entries.call(world.editChunks)), 'edits.resident'), cold: encode(world.editChunks.cold, 'edits.cold') };
   out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), ...(physicalOnly ? {} : { interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') }) };
   out.clock = { speedFactor: world.timer.speedFactor, simulationTimeMs: world.simulationTimeMs };
   const terrain = world.terrain;
-  out.terrain = encode({ descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
+  out.terrain = encode(terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : { descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
     ...(physicalOnly ? {} : { descriptorResidency: terrain?.descriptorResidency, zoneCache: terrain?.zonePlanner?.cache, wideZoneCache: terrain?.wideZonePlanner?.cache }),
     selectedTerrainIds: terrain?.selectedTerrainIds, selectedObjectIds: terrain?.selectedObjectIds }, 'terrain');
   if (!physicalOnly) out.eventHash = eventHash;

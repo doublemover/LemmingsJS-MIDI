@@ -818,47 +818,42 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "1c818cc3a94ff645fd8cdbbea8718ce8c84e5371",
-    "job": 122714203298,
-    "run": 40658161711,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40658161711/job/122714203298",
+    "head": "2f4ca08b3c639521ab342f2e6bdbe13bda0ede8c",
     "status": "success",
-    "nodePassed": 6603,
-    "nodeFailed": 0,
-    "browserPassed": 113,
-    "browserGroups": {
-      "desktop": 22,
-      "workstationSmoke": 91,
-      "fullCollected": 118,
-      "files": 22,
-      "smokeSkipped": 0,
-      "allCapabilitiesPassed": true
-    },
+    "run": 40809471472,
+    "job": 123236111396,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40809471472/job/123236111396",
+    "nodePassed": 6819,
+    "nodePending": 10,
+    "browserPassed": 141,
+    "desktopPassed": 24,
+    "workstationSmokePassed": 117,
+    "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.23,
-      "statements": 90.23,
-      "branches": 83.54,
-      "functions": 88.24
+      "lines": 90.71,
+      "statements": 90.71,
+      "branches": 83.72,
+      "functions": 88.41
     },
     "masterCapture": {
       "state": "Ready",
-      "frames": 106112,
-      "captured": 106112,
+      "frames": 61952,
+      "captured": 61952,
       "stopReason": "user-stop",
       "clockDiscontinuity": null,
-      "peak": 0.023242831230163574,
+      "peak": 0.02335798740386963,
       "nonfinite": 0
     },
+    "benchmark": "success",
+    "mcp": "success",
+    "policy": "success",
+    "dependencyReview": "success",
+    "scope": "Includes317\u2013322; excludes323 onward.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci299-green.log",
-      "bytes": 1129476,
-      "sha256": "125bd8180e0289c8e23cad2f2ba30acad9bc9d53f9e5e19f6d0609a2a217a27d"
-    },
-    "excludesContinuations": [
-      300
-    ],
-    "excludesLaterWork": true,
-    "passed": 6603
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
+      "bytes": 1168169,
+      "sha256": "9cbaf050fcafc76d88e0c2f1ee1f12cf8272b15e577e75a2ecd98dcc6410807f"
+    }
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -26087,7 +26082,44 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending combined publication; full320 failed one seed-rebuild workflow and skipped MCP/bench/coverage. Last fully green checkpoint remains316."
+      "remoteCi": {
+        "head": "2f4ca08b3c639521ab342f2e6bdbe13bda0ede8c",
+        "status": "success",
+        "run": 40809471472,
+        "job": 123236111396,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40809471472/job/123236111396",
+        "nodePassed": 6819,
+        "nodePending": 10,
+        "browserPassed": 141,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 117,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.71,
+          "statements": 90.71,
+          "branches": 83.72,
+          "functions": 88.41
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 61952,
+          "captured": 61952,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02335798740386963,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes317\u2013322; excludes323 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
+          "bytes": 1168169,
+          "sha256": "9cbaf050fcafc76d88e0c2f1ee1f12cf8272b15e577e75a2ecd98dcc6410807f"
+        }
+      }
     },
     "logs": [
       {
@@ -26261,7 +26293,44 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending combined exact-head run. Full320 failed115pass/1fail and skipped MCP/benchmark/coverage; full316 remains last green recorded checkpoint.",
+      "remoteCi": {
+        "head": "2f4ca08b3c639521ab342f2e6bdbe13bda0ede8c",
+        "status": "success",
+        "run": 40809471472,
+        "job": 123236111396,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40809471472/job/123236111396",
+        "nodePassed": 6819,
+        "nodePending": 10,
+        "browserPassed": 141,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 117,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.71,
+          "statements": 90.71,
+          "branches": 83.72,
+          "functions": 88.41
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 61952,
+          "captured": 61952,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02335798740386963,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes317\u2013322; excludes323 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
+          "bytes": 1168169,
+          "sha256": "9cbaf050fcafc76d88e0c2f1ee1f12cf8272b15e577e75a2ecd98dcc6410807f"
+        }
+      },
       "scopeLimits": [
         "No tap/source compatibility relaxation.",
         "Broader derived graph and artifact workflow acceptance remains open under1236/1207.",
@@ -26708,6 +26777,268 @@
           "Pending discard/dispose and stale rejection after success"
         ],
         "remaining": "Trusted-gesture native OS-picker qualification on supported targets; no native filesystem durability inferred."
+      }
+    }
+  },
+  "continuation325": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Intrinsic survey numerics and classified physical source owners",
+    "sourceBase": "4c04377590c70b074d19f7a2310a4ff46174ffdc",
+    "issues": [
+      1223
+    ],
+    "development": [
+      "Canonical schema3 reads captured intrinsic typed-array/DataView slots and native Map/Set entries. Preserve signed zero/nonfinite/extreme/BigInt/subview inventories; reject accessors, cycles and unsupported empty-looking objects, and distinguish sparse holes.",
+      "State schema4 binds future assistance/admission/birth settings plus junction, feedback and terrain-score state. Enumerate and classify every own world data field; unknown roots or accessors refuse projection instead of silently disappearing. Legacy state3/canonical2 receipts cannot qualify as current.",
+      "Controlled terrain privately proves source-generated chunks. Unchanged warm/cold/query-order caches omit materialization history, actual cached pixel changes remain visible, injected unproved chunks are refused, and ground-query counters remain diagnostic.",
+      "Refresh the existing280-file background worker provenance hash; ten components/349 files remain inventoried."
+    ],
+    "validation": {
+      "node": {
+        "passed": 65,
+        "failed": 0,
+        "scope": "Canonical numeric/accessor/container vectors, actual survey physics/replay/accounting/source guards, browser source assets and supervised worker ingress. Initial62/64/65 scoped cohorts preceded final ground-query/source normalization; final65 pass on that production source.",
+        "coverage": {
+          "canonical": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 95.52
+          },
+          "controlledTerrain": {
+            "lines": 100,
+            "functions": 80,
+            "branches": 94.28
+          }
+        }
+      },
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "durationMs": 7197.147,
+        "scope": "Actual controlled and generated-source browser replay/dashboard/64-candidate workflow; identical Node/browser16-vector canonical corpus with actual browser typed metadata spoof/accessor refusal and warm/cold controlled-cache mutation check. Execution remains explicitly unbound."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending exact-head publication. Full322 is green and recorded here; full324 is separately in progress.",
+      "scopeLimits": [
+        "Wider generated-source/cache residency normalization and complete speed/intervention/contact continuation negative corpus remain open under1223.",
+        "Private controlled-cache proofs use the existing portable evidence checksum, not a cryptographic asset signature.",
+        "No exact archived execution, acoustic or physical MIDI qualification is inferred."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-categories-final.log",
+        "bytes": 2900,
+        "sha256": "906bc675dde59d6dd7b6f7d1889e21eabbb07415d0f6377ce68e3cb1697380b4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-categories.log",
+        "bytes": 2900,
+        "sha256": "906bc675dde59d6dd7b6f7d1889e21eabbb07415d0f6377ce68e3cb1697380b4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-final-native.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-final-source.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-owners.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-replay.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format-terrain.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-native-final.log",
+        "bytes": 839,
+        "sha256": "3de76134e2216b59ea744bb1dadbb3276b5841742856705412d4861a8673ef76"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-native-owners.log",
+        "bytes": 841,
+        "sha256": "e2f6386c272e4311cb958edc9ba9d98973d16a72fbd2d6960ad2c844d9db5e90"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-native.log",
+        "bytes": 840,
+        "sha256": "cfe2e3465819392e3c4bec2b18e5403be7f9e913aadcc87ce9c07ea9579c09b3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node-final-source.log",
+        "bytes": 6850,
+        "sha256": "167ffea3b11596f0614da4ae6cdabb73073629f784daf9864c93051bf46f3ea8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node-final.log",
+        "bytes": 429,
+        "sha256": "6e0ef008f9c0f9b6b5ffe061ee356bd946702018f5dc5e238330641576c8fe76"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node-owners.log",
+        "bytes": 6755,
+        "sha256": "e4e46bef87be74666220c82684bda7e2b12c877283ca9126e809da00c12ac0f9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node-replay.log",
+        "bytes": 2417,
+        "sha256": "644156f6a1316256f297308faa6e79681bd2816717bf0a7630bee1f2a5486522"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node-terrain.log",
+        "bytes": 6867,
+        "sha256": "310032a9a17cf9fa179886acd9df5668002504dbac55cf1c41edf97c3050005d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-node.log",
+        "bytes": 6557,
+        "sha256": "c9cd6af758c80e09ea781cb20c116cbd2ef73b8ed10d07ccfff09946b8ffccf5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-provenance-final.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-provenance-owners.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-provenance.log",
+        "bytes": 1092,
+        "sha256": "479c72d6f5e6354ef24a64f28734465748517f3dc7645e2c1611a90b0d5a0e32"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-types-final.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-undefined-final.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog325-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
+        "bytes": 1168169,
+        "sha256": "9cbaf050fcafc76d88e0c2f1ee1f12cf8272b15e577e75a2ecd98dcc6410807f"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog325-survey-numeric-results.json",
+        "bytes": 14161,
+        "sha256": "64d5b9f3bcc4f188e57ced074073828d6010627bd041b7e156730c0af82ba86b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog325-survey-owner-results.json",
+        "bytes": 14160,
+        "sha256": "4f07842c75a175d91a9638daaa418f9593113f9223fed3198a450ec66e68bbf4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog325-survey-final-results.json",
+        "bytes": 14161,
+        "sha256": "d4a6509cf2daeb950af85be192e6af86150314079e996bda163998b53daa62f6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-325-coverage-final-source\\coverage-summary.json",
+        "bytes": 168900,
+        "sha256": "73f803609cf552bf3e1e5fd08e02076e703f3bb984a75a8634750b8b33d314ab"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green-report.json",
+        "bytes": 856,
+        "sha256": "eef57b8f188bd4a3e0b5dacadd93040cebe05e469935b053fc8a57ee4be163d7"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4791,
+        "sha256": "2775965d763bb82b5a70ba5ca348cc9c8dda6bb91b9cff5d6e530188250db86f"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 34804,
+        "sha256": "0f4a54ea13d433ef4636066580dbad52fb13dfc52d7852d299ccaa6a692ee8f3"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyTerrain.js",
+        "bytes": 2901,
+        "sha256": "5789d91b8176c3066e279ac72a6b0a8e55c94f40c324f4d81caf13aadc00ad3d"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21348,
+        "sha256": "ba7fa1fdaf716621d52776458ae1c0f768c16dcae6e0c37714459df9ba5e30f2"
+      },
+      {
+        "path": "test/procgen-survey-core.test.js",
+        "bytes": 31929,
+        "sha256": "45fa25ffbe9a24be23d0236d97dbd399485d360ff0da7adfe39b423eea205f9d"
+      },
+      {
+        "path": "test/procgen-survey-canonical.test.js",
+        "bytes": 3158,
+        "sha256": "bb901b7f5ebfccc5136177e62bdab53693fc548c8e8ff5904af69937aafb18da"
+      },
+      {
+        "path": "test/helpers/surveyCanonicalVectors.js",
+        "bytes": 1302,
+        "sha256": "d29aff723190fd3633878e8d068036d585dc21e824147e1e075dcbdaa80cc76d"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 2531,
+        "sha256": "653e0310c94495ed53204fed5a48ce4d933c7528826d522da4a23b116fccd368"
+      }
+    ],
+    "issueStatus": {
+      "1223": {
+        "state": "open-implemented-partial",
+        "remaining": "Wider generated-source/cache residency normalization and full speed/intervention/contact continuation and negative corpus."
       }
     }
   }
