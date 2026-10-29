@@ -9653,3 +9653,20 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Continue arbitrary boundary reconstruction, pause/external-clock/suspension
   export matrix, actual generation-transition qualification and native/MPE/CI
   Profile targets/receivers under #986/#1093/#1063. Continue solo.
+
+### Continuation 373 - Playwright file delivery and real browser filesystem
+
+- Replace the uncommitted manual-dialog qualification harness with Playwright
+  coverage in the production workstation export suite. Use trusted Save clicks
+  and controlled picker outcomes; the successful selected handle and writable
+  are real browser OPFS objects, with read-back equal to the actual anchor bytes.
+- Cover cancellation/retry, exact prepared identity/hash/length, suggested names,
+  permission/capability fallback, real transaction rollback around controlled
+  write/close failures and delayed acknowledgement ownership. A pending native
+  call retains its source lease until settlement. Preserve the live world/project.
+- All six Playwright desktop journeys pass at1920×1080, including the unchanged
+  archive replacement/cancel/discard case. Collection254full/224smoke across54
+  files. Static/category checks pass; application runtime source is unchanged.
+  Native OS dialogs, user filesystem grants, real disk faults and power-loss
+  durability remain distinct from this automated browser coverage. Continue the
+  backlog without a desktop Computer Use dependency or another full local run.

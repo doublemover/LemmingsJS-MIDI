@@ -246,3 +246,18 @@ revoice now covers a single closed semantic epoch. Broader physical-take target
 policies, submitted UMP capture, complete compatibility loss reports and the
 remaining unsupported Clip features/DAW retention still keep #1093 open. No DAW
 or hardware receiver qualification follows from these file-reader checks.
+
+## Automated file-delivery coverage
+
+Playwright drives trusted Save clicks, picker cancellation and retry, unsupported
+picker fallback, and controlled permission/write/close failures. The successful
+file sink is a real browser origin-private FileSystemFileHandle and writable;
+read-back must match the actual anchor download and prepared SHA-256. Failed
+transactions abort without replacing the existing origin-private file. Pending
+write acknowledgements retain their source lease after cancellation until they
+settle. These cases preserve the prepared artifact and live world/project.
+
+Picker outcomes are controlled at the browser API boundary. This qualifies the
+application and real browser filesystem behavior; it does not qualify a native
+operating-system dialog, user filesystem grant, physical disk fault or power-loss
+durability. Automated browser checks use Playwright throughout.
