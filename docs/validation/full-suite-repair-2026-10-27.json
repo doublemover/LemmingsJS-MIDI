@@ -34025,5 +34025,28 @@
         "sha256": "3035566507e2d625c7979e8c96549abba6339017ee1170d318aeb8d93ffb6ef9"
       }
     ]
+  },
+  "continuation341": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "dd70bd84b26272d95629bc16b8b163af525bb52c",
+    "scope": "Remove the extra EOF blank line in the new test fixture; no runtime change.",
+    "correction": "The final staged whitespace check failed for test/helpers/performance-lease.js but the publication script continued into commit340. Earlier tracked-file checks did not inspect the untracked helper. The staged failure was not a passing gate; this follow-up fixes it and guards checks/commit/push in one sequential shell command.",
+    "validation": {
+      "node": "The unchanged340runtime retains416 grouped Node passes.",
+      "browser": "The unchanged340runtime retains34 native desktop passes, including the18560-frame Partial capture handoff.",
+      "static": [
+        "npm run format",
+        "git diff --cached --check",
+        "node scripts/check-runtime-provenance.mjs"
+      ]
+    },
+    "sourceFiles": [
+      {
+        "path": "test/helpers/performance-lease.js",
+        "bytes": 2159,
+        "sha256": "359d2a1c8dc756cfb3f67dccd24c62f72d32fe4660533abb78ae0377ad0d4767"
+      }
+    ]
   }
 }

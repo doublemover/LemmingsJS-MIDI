@@ -25,4 +25,3 @@ export const environment = () => {
   const source = (lease, stop = () => receipt(), scope = 'live') => lease.register({ scope, stop });
   return { make, source, locks, Channel, requests, messages, channels, owned: () => !!owner };
 };
-
