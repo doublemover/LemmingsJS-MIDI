@@ -151,6 +151,28 @@ to reconstruct unobserved sub-tick knob curves. Pending inputs, bounded receipts
 and identity counters use the existing world checkpoint graph. Cancellation,
 generation reset and disposal cancel pending requests.
 
+## Action voice naming and restored output
+
+ActionVoicePolicy uses canonical names such as `walking`, `hoisting`, `jumping`,
+`shrug`, `ohno` and `splatting`. Shared action producers retain their original
+`walk`, `hoist`, `jump`, `shrugging`, `oh-no` and `splatter` facts. Matching
+normalizes those names at the policy boundary, including motion/contact admission
+and same-action transitions; it never rewrites the recorded physical source.
+Aliased duplicates are rejected. Countdown remains an overlay, not a voice entry.
+
+Restoring a causal checkpoint continues semantic ownership without replaying a
+historical begin into a fresh output backend. That backend remains silent until
+a future physical entry admits a new voice. This is not a restored DSP or receiver
+state claim. A committed end may remain scheduled until its declared presentation
+frontier; zero-owner assertions must observe that frontier or explicit retirement.
+
+The real-action qualification covers a1000-tick blocker, natural fall→float→walk
+under release/legato/crossfade, same-pitch expressive climbers and peer removal,
+failed assignment, motion admission, held restore, actual shared Lemming object
+reuse, completed cohort reset, countdown and same-action reentry. MIDI uses the
+production scheduler with virtual adapters and controlled time; physical receiver
+and local DSP qualification remain separate.
+
 ## Integration and remaining capture boundaries
 
 The workstation observes committed batches with `PhysicalScoreClock.observe`,

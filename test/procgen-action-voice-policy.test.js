@@ -12,6 +12,11 @@ const graph = (policy = {}, voiceTransfer = null) => ({ version: 1, revision: 1,
   actionVoicePolicy: { matchActions: ['falling', 'floating', 'walking', 'blocking'], ...policy }, ...(voiceTransfer ? { voiceTransfer } : {}) }] });
 
 describe('actor-owned action voice policies', () => {
+  it('matches actual shared action names without changing physical facts or accepting countdown as an action', () => {
+    expect(validateActionVoicePolicy({ matchActions: ['walk', 'hoist', 'jump', 'shrugging', 'oh-no', 'splatter', 'exiting'] }).matchActions).to.deep.equal(['walking', 'hoisting', 'jumping', 'shrug', 'ohno', 'splatting', 'exiting']);
+    expect(() => validateActionVoicePolicy({ matchActions: ['walk', 'walking'] })).to.throw();
+    expect(() => validateActionVoicePolicy({ matchActions: ['countdown'] })).to.throw();
+  });
   it('holds one voice for 1000 static ticks then ends once at the declared safety bound', () => {
     const engine = createCausalMusicEngine({ getGraph: () => graph({ maximumHoldTicks: 1000 }) });
     const [start] = engine.processBatch(batch(1, [entry('blocking', 'block:7')])); expect(start.kind).to.equal('begin');

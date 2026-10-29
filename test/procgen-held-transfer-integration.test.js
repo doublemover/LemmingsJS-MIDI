@@ -41,8 +41,9 @@ const fixture = async (masks, clock, policy, { muted = false, disconnected = fal
   await playback.ready();
   const listener = batch => { batches.push(batch); intents.push(...playback.processBatch(batch, { bpm: 120, position: timeline.observe(batch, { bpm: 120 }) })); };
   world.soundEvents.onBatch.on(listener);
-  const step = () => { world.step(); clock.tick(60); return batches.at(-1); };
+  const step = () => { world.step(); clock.tick(world.timer.frameTime); return batches.at(-1); };
   step();
+  clock.tick(5); expect(calls.filter(call => call.type === 'noteOn')).to.have.length(2);
   const initial = playback.engine.snapshot();
   expect(initial.active).to.have.length(2); expect(new Set(initial.active.map(row => row.voiceId)).size).to.equal(2);
   expect(intents.filter(intent => intent.kind === 'begin').every(intent => intent.pitch.cents === 6000)).to.equal(true);
@@ -76,6 +77,8 @@ describe('actual held actor crossing and sink ownership', () => {
         expect(derived.every(intent => intent.actorId === fact.actorId && intent.onsetId && intent.voiceId)).to.equal(true);
       }
       expect(f.receipts.some(receipt => receipt.losses?.some(loss => loss.kind === 'voice-crossfade-unavailable'))).to.equal(policy === 'revoice');
+      expect(f.calls.filter(call => call.type === 'noteOn')).to.have.length(policy === 'revoice' || policy === 'releaseAndAttack' ? 4 : 2);
+      expect(f.receipts.some(receipt => receipt.reason === 'late-attack' || receipt.reason === 'stale-expression')).to.equal(false);
       const ownership = () => f.playback.engine.snapshot().active.map(({ actorId, voiceId, laneId }) => ({ actorId, voiceId, laneId }));
       const beforeRows = ownership(), projection = createProcgenLaneProjection({ laneCount: 2, height: 608, physicalHeight: f.world.laneHeight, laneIndices: [1, 0] });
       expect([projection.laneAt(0), projection.laneAt(607)]).to.deep.equal([1, 0]); f.step(); expect(ownership()).to.deep.equal(beforeRows);

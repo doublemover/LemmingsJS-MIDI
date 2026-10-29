@@ -9263,3 +9263,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   process crash; both native codec platforms pass. Full Chromium/new headless
   passes the control group locally with added native move/capture diagnostics;
   independent Linux qualification remains.350 is still the last full green head.
+
+### Continuation 358 - real sustained action qualification
+
+- Fix actual producer/policy name mismatches: shared walk/hoist/jump/shrugging/
+  oh-no/splatter facts match canonical action voice policies without rewriting
+  physical history. Normalize motion admission and same-action transitions too.
+- Qualify #1014 in12 actual physical action scenarios through production MIDI
+  ownership, including1000-tick blocker, three natural transition policies,
+  expressive same-pitch climbers, rejected assignment, motion admission, silent
+  checkpoint continuation, shared object reuse, completed cohort reset and overlay.
+- Correct357 fixture timing: host time advances20ms at speed3, not60ms. Require
+  four actual balanced attacks/releases for revoice and releaseAndAttack, two for
+  carry/silentHandoff, and no late-attack/stale-expression receipts. Preserve the
+  published357 raw observations;358 supersedes that limited driver qualification.
+- Final grouped pass:75 Node cases,23 strengthened transfer scenarios and five
+  production output browser journeys pass. ActionVoicePolicy has100% lines/
+  functions and80.72% branches in the scoped coverage. No full local rerun.
+- 357 main CI stops at a stale first-party worker provenance digest; refresh that
+  exact component and verify the gate. Its18-case engine job and both native codec
+  jobs pass. The full Chromium native-control choice still needs Linux main CI.
+  350 remains the last verified full green checkpoint. Close #1014 software scope.

@@ -13,7 +13,7 @@ import { freeze as freezePhysical } from './physical/PhysicalSchema.js';
 import { validateEncounterDomain, createEncounterObserver } from './physical/Encounters.js';
 import { validateTopologyRegions, bindTopologyFact, validateTopologyResult } from './physical/TopologyInstrumentRegion.js';
 import { validateTonalDomain, createTonalInterpretation } from './physical/TonalInterpretation.js';
-import { validateActionVoicePolicy, validateVoiceTransferPolicy, createActionVoiceAdmission, actionExpression } from './physical/ActionVoicePolicy.js';
+import { validateActionVoicePolicy, validateVoiceTransferPolicy, createActionVoiceAdmission, actionExpression, actionVoiceName } from './physical/ActionVoicePolicy.js';
 import { createRhythmicResponses, validateRhythmicResponse, RHYTHMIC_SOURCE_KINDS } from './physical/RhythmicResponses.js';
 import { createPhysicalMusicDomain, validatePhysicalDomain, DERIVED_PHYSICAL_KINDS } from './physical/PhysicalMusicDomain.js';
 import { validateInstrumentControls, captureInstrumentCause, INSTRUMENT_PHYSICAL_SOURCE_KINDS } from '../../../midi/content/InstrumentPerformance.js';
@@ -322,8 +322,8 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         const entries = actionEntries.get(fact.actorId) || [];
         for (const record of [...active.values()]) {
           if (record.actorId !== fact.actorId || record.actionInstanceId !== fact.actionInstanceId || record.lifetimeScope && record.lifetimeScope !== 'actionInstance') continue;
-          const policy = record.instrument.actionVoicePolicy, nextAction = entries.find(entry => entry.causalSequence > fact.causalSequence && (policy?.beginCondition === 'enter' || entry.policyAdmission && entry.targetMappingId === record.instrument.id)), compatible = policy && nextAction && policy.matchActions.includes(nextAction.action) &&
-            (nextAction.action !== fact.action || policy.sameActionReentry === 'legato');
+          const policy = record.instrument.actionVoicePolicy, nextAction = entries.find(entry => entry.causalSequence > fact.causalSequence && (policy?.beginCondition === 'enter' || entry.policyAdmission && entry.targetMappingId === record.instrument.id)), compatible = policy && nextAction && policy.matchActions.includes(actionVoiceName(nextAction.action)) &&
+            (actionVoiceName(nextAction.action) !== actionVoiceName(fact.action) || policy.sameActionReentry === 'legato');
           if (compatible && policy.transitionPolicy === 'legato') { transitions.set(`${record.instrument.id}/${fact.actorId}`, { record, fromActionInstanceId: record.actionInstanceId, policy: 'legato' }); continue; }
           if (compatible && policy.transitionPolicy === 'crossfade') {
             const transition = { kind: 'crossfade', seconds: policy.crossfadeSeconds, fromVoiceId: record.voiceId, fromActionInstanceId: record.actionInstanceId, toActionInstanceId: nextAction.actionInstanceId };
@@ -391,7 +391,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         if (fact.actorId == null || !nonempty(fact.eventId) && !fact.editRetrigger) continue;
         if (fact.targetMappingId && fact.targetMappingId !== instrument.id || instrument.response && !fact.derivedResponse) continue;
         if (instrument.actionVoicePolicy) {
-          const policy = instrument.actionVoicePolicy; if (!policy.matchActions.includes(fact.action) || policy.beginCondition !== 'enter' && !fact.policyAdmission) continue;
+          const policy = instrument.actionVoicePolicy; if (!policy.matchActions.includes(actionVoiceName(fact.action)) || policy.beginCondition !== 'enter' && !fact.policyAdmission) continue;
           const transition = transitions.get(`${instrument.id}/${fact.actorId}`);
           if (transition?.policy === 'legato') { const record = transition.record; record.actionInstanceId = fact.actionInstanceId; output.push(intentFor(batch, fact, instrument, 'update', record.voiceId, null, batch.generation, {}, { transitionPolicy: 'legato', fromActionInstanceId: transition.fromActionInstanceId, toActionInstanceId: fact.actionInstanceId })); transitions.delete(`${instrument.id}/${fact.actorId}`); continue; }
           if (transition?.transition) fact = { ...fact, voiceTransition: transition.transition };

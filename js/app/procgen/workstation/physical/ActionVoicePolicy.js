@@ -1,10 +1,12 @@
 import { plain, integer, freeze, copy, boundedList } from './PhysicalSchema.js';
 
-const names = new Set(['walking', 'falling', 'floating', 'climbing', 'hoisting', 'building', 'bashing', 'digging', 'mining', 'blocking', 'shrug', 'ohno', 'exploding', 'drowning', 'frying', 'splatting']);
+const names = new Set(['walking', 'falling', 'floating', 'climbing', 'hoisting', 'jumping', 'building', 'bashing', 'digging', 'mining', 'blocking', 'shrug', 'ohno', 'exploding', 'drowning', 'frying', 'splatting', 'exiting']);
+const aliases = new Map([['walk', 'walking'], ['hoist', 'hoisting'], ['jump', 'jumping'], ['shrugging', 'shrug'], ['oh-no', 'ohno'], ['splatter', 'splatting']]);
+export const actionVoiceName = action => aliases.get(action) || action;
 const numeric = (value, fallback, minimum, maximum) => { const number = value ?? fallback; if (!Number.isFinite(number) || number < minimum || number > maximum) throw new Error('Invalid action voice quantity.'); return number; };
 export function validateActionVoicePolicy(value) {
   if (!plain(value)) throw new Error('Invalid action voice policy.');
-  const matchActions = boundedList(value.matchActions, 16, action => { if (!names.has(action)) throw new Error('Unknown physical action voice source.'); return action; }, 'action voice matches');
+  const matchActions = boundedList(value.matchActions, 16, action => { const name = actionVoiceName(action); if (!names.has(name)) throw new Error('Unknown physical action voice source.'); return name; }, 'action voice matches');
   if (!matchActions.length || new Set(matchActions).size !== matchActions.length || !['enter', 'motion', 'contact'].includes(value.beginCondition ?? 'enter') ||
       !['release', 'legato', 'crossfade'].includes(value.transitionPolicy ?? 'release') || !['restart', 'legato'].includes(value.sameActionReentry ?? 'restart')) throw new Error('Invalid action voice transition contract.');
   const expressionMappings = boundedList(value.expressionMappings ?? [], 8, mapping => {
@@ -35,9 +37,9 @@ export function createActionVoiceAdmission({ maxPending = 512 } = {}) {
       if (fact.kind === 'ActorTerminated' || fact.kind === 'ActionExited') for (const [key, record] of pending) if (record.actorId === fact.actorId && (fact.kind === 'ActorTerminated' || record.actionInstanceId === fact.actionInstanceId)) pending.delete(key);
       if (fact.kind === 'ActionEntered') for (const instrument of definitions) {
         const policy = instrument.actionVoicePolicy, key = `${instrument.id}/${fact.actorId}`;
-        if (!policy.matchActions.includes(fact.action) || policy.beginCondition === 'enter') { pending.delete(key); continue; }
+        if (!policy.matchActions.includes(actionVoiceName(fact.action)) || policy.beginCondition === 'enter') { pending.delete(key); continue; }
         if (!pending.has(key) && pending.size >= maxPending) { failure = 'pending-action-voice-capacity'; continue; }
-        pending.set(key, { instrumentId: instrument.id, actorId: fact.actorId, actionInstanceId: fact.actionInstanceId, action: fact.action,
+        pending.set(key, { instrumentId: instrument.id, actorId: fact.actorId, actionInstanceId: fact.actionInstanceId, action: actionVoiceName(fact.action),
           sourceEventId: fact.eventId, beginCondition: policy.beginCondition, admittedTick: batch.tick, maximumHoldTicks: policy.maximumHoldTicks });
       }
       if (fact.kind === 'MotionCommitted' || fact.kind === 'ContactResolved' || fact.kind === 'ContactSpanBegan') for (const [key, record] of pending) {
