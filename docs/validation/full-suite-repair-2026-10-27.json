@@ -80414,5 +80414,594 @@
       "Real browser IndexedDB transaction with controlled keepalive pressure, not physical disk latency or power-loss durability. Durable physical-tape semantics remain under1092; mixed performance qualification remains1087.",
       "Generated ownership reference covers recorded preview intent; prior independent complete-MIDI-byte export and input/sustain/capacity/disposal cohorts remain separate evidence. No hardware or acoustic claim."
     ]
+  },
+  "continuation375": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "97eeed53b68c910b197cf9bdefc914b0804d5138",
+    "scope": "Generated recipe/pack physical cache ownership and query-residency normalization; repair independent terrain-miner pollution from ignored validation archives.",
+    "changes": [
+      "State schema6 captures actual generated themes and lane/source assignment instead of reading absent cache fields on the pack wrapper. Numeric canonical schema3 is unchanged; earlier state projections are not interchangeable.",
+      "Record private weak cache-object receipts at owned descriptor/collision/growth/zone creation. Validate current content, owner, key and source/configuration without any terrain query, snapshot, LRU update or rehydration. Refuse modified or unproved content and stale last-chunk pointers.",
+      "Stream typed bytes and owned scalar metadata into bounded portable checksums without allocating canonical typed-array expansions. Proof values retain only an opaque owner token, never the terrain/world itself. Existing cache limits bound receipt lifetime. These are integrity/evidence checksums, not cryptographic source signatures.",
+      "Omit pristine generated cache entries and diagnostic residency from physical identity; preserve source/configuration, pack assignment and route metadata. Immutable source assets retain their separate provenance/ownership contract.",
+      "Skip nested .tmp validation output during source discovery; explicitly selecting a root named .tmp still scans its own source files and reports unhandled source archives. Never delete diagnostic artifacts to obtain a passing source inventory."
+    ],
+    "validation": {
+      "firstNode": {
+        "passed": 70,
+        "failed": 0,
+        "log": ".tmp/rook375-node-first.log"
+      },
+      "broaderNode": {
+        "passed": 143,
+        "failed": 1,
+        "log": ".tmp/rook375-node-broad.log",
+        "failure": "The existing terrain book regeneration scan treated ignored .tmp Playwright trace and downloaded CI ZIPs as source archives. Cache/terrain/worker/ingress/observer tests passed; source-miner repair is qualified separately."
+      },
+      "finalMiner": {
+        "passed": 17,
+        "failed": 0,
+        "log": ".tmp/rook375-miner-final.log",
+        "includes": "Two isolated discovery roots plus actual complete book regeneration and authored assembly regeneration; the checked-in book remains byte-for-byte identical.",
+        "composition": "Only the offline scanner and its new fixture changed after the broader group. The143 earlier passing runtime cases retain their exact source qualification; the single failed source regeneration now passes with the final tool."
+      },
+      "playwright": {
+        "passed": 3,
+        "failed": 0,
+        "groups": [
+          {
+            "report": ".tmp/rook375-playwright-final.json",
+            "passed": 2,
+            "cases": [
+              {
+                "title": "desktop survey canonical numeric vectors match Node and ignore spoofed typed view properties",
+                "file": "procgen-workstation-survey-numerics.spec.js",
+                "status": "passed",
+                "receipts": []
+              },
+              {
+                "title": "production generated pack evidence ignores query warmth and refuses altered physical caches @boundary",
+                "file": "procgen-workstation-survey-numerics.spec.js",
+                "status": "passed",
+                "receipts": [
+                  {
+                    "name": "generated-pack-cache-evidence",
+                    "value": {
+                      "stateSchema": 6,
+                      "before": "fb0cd951eb3986ed",
+                      "warm": "fb0cd951eb3986ed",
+                      "recovered": "fb0cd951eb3986ed",
+                      "initialCounts": [
+                        {
+                          "collision": 1,
+                          "descriptions": 2,
+                          "growth": 1
+                        },
+                        {
+                          "collision": 1,
+                          "descriptions": 2,
+                          "growth": 1
+                        }
+                      ],
+                      "warmCounts": [
+                        {
+                          "collision": 6,
+                          "descriptions": 10,
+                          "growth": 6
+                        },
+                        {
+                          "collision": 6,
+                          "descriptions": 10,
+                          "growth": 6
+                        }
+                      ],
+                      "refusals": [
+                        {
+                          "kind": "solid",
+                          "code": "changed-generated-terrain-cache",
+                          "cacheKind": "collision",
+                          "cacheKey": "4157451727:4"
+                        },
+                        {
+                          "kind": "steel",
+                          "code": "changed-generated-terrain-cache",
+                          "cacheKind": "collision",
+                          "cacheKey": "4157451727:4"
+                        },
+                        {
+                          "kind": "topProfile",
+                          "code": "changed-generated-terrain-cache",
+                          "cacheKind": "collision",
+                          "cacheKey": "4157451727:4"
+                        },
+                        {
+                          "kind": "descriptor",
+                          "code": "changed-generated-terrain-cache",
+                          "cacheKind": "description",
+                          "cacheKey": "4157451727:4"
+                        },
+                        {
+                          "kind": "growth-plan",
+                          "code": "changed-generated-terrain-cache",
+                          "cacheKind": "growth-plan",
+                          "cacheKey": "4157451727:4"
+                        },
+                        {
+                          "kind": "unproved-collision",
+                          "code": "unverified-generated-terrain-cache",
+                          "cacheKind": "collision",
+                          "cacheKey": "4157451727:4"
+                        }
+                      ],
+                      "sameWorld": true,
+                      "sameTick": true,
+                      "sameProject": true,
+                      "output": false,
+                      "scope": "Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract."
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "report": ".tmp/rook375-desktop-playwright-final.json",
+            "passed": 1,
+            "cases": [
+              {
+                "title": "matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary",
+                "file": "procgen-survey.spec.js",
+                "status": "passed",
+                "receipts": [
+                  {
+                    "name": "survey-native-parity.json",
+                    "value": {
+                      "sourceDigest": "80fdee331f8b51e7652d08b95e640c6ea6d603b2d4bc4ff6a9c001ead65fcad5",
+                      "replays": [
+                        {
+                          "schemaVersion": 4,
+                          "originalTrialId": "trial-add4f1db78046447",
+                          "replayTrialId": "trial-add4f1db78046447",
+                          "matched": false,
+                          "differences": [],
+                          "validity": "execution-unbound",
+                          "reasons": [
+                            "active-execution-unbound"
+                          ],
+                          "coverage": {
+                            "commonTicks": [
+                              0,
+                              64,
+                              128,
+                              192
+                            ],
+                            "mismatchedTicks": [],
+                            "intervals": [
+                              {
+                                "fromTick": 0,
+                                "throughTick": 64,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 64,
+                                "throughTick": 128,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 128,
+                                "throughTick": 192,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              }
+                            ],
+                            "logicalMismatchedTicks": [],
+                            "physicalMismatchedTicks": [],
+                            "eventMismatchedTicks": [],
+                            "checksumDomains": [
+                              "logical-state",
+                              "physical-state",
+                              "logical-events"
+                            ],
+                            "truncated": false,
+                            "fromTick": 0,
+                            "throughTick": 192,
+                            "originalMilestones": 4,
+                            "replayMilestones": 4
+                          },
+                          "originalFinalStateHash": "0b34c45c3224e298",
+                          "replayFinalStateHash": "0b34c45c3224e298",
+                          "independentSample": false,
+                          "scope": "current-runtime-compatibility",
+                          "compatibilityMatch": true,
+                          "artifactIntegrity": {
+                            "status": "assets-verified",
+                            "codeDigest": "80fdee331f8b51e7652d08b95e640c6ea6d603b2d4bc4ff6a9c001ead65fcad5",
+                            "codeStatus": "not-checked",
+                            "assetStatus": "verified",
+                            "policy": "saved-assets-only"
+                          },
+                          "executionIdentity": {
+                            "status": "unbound",
+                            "reason": "explicit-current-runtime-comparison"
+                          },
+                          "replayConsistency": {
+                            "status": "matched",
+                            "coverage": {
+                              "commonTicks": [
+                                0,
+                                64,
+                                128,
+                                192
+                              ],
+                              "mismatchedTicks": [],
+                              "intervals": [
+                                {
+                                  "fromTick": 0,
+                                  "throughTick": 64,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 64,
+                                  "throughTick": 128,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 128,
+                                  "throughTick": 192,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                }
+                              ],
+                              "logicalMismatchedTicks": [],
+                              "physicalMismatchedTicks": [],
+                              "eventMismatchedTicks": [],
+                              "checksumDomains": [
+                                "logical-state",
+                                "physical-state",
+                                "logical-events"
+                              ],
+                              "truncated": false,
+                              "fromTick": 0,
+                              "throughTick": 192,
+                              "originalMilestones": 4,
+                              "replayMilestones": 4
+                            }
+                          }
+                        },
+                        {
+                          "schemaVersion": 4,
+                          "originalTrialId": "trial-29f89a7ef0c89482",
+                          "replayTrialId": "trial-29f89a7ef0c89482",
+                          "matched": false,
+                          "differences": [],
+                          "validity": "execution-unbound",
+                          "reasons": [
+                            "active-execution-unbound"
+                          ],
+                          "coverage": {
+                            "commonTicks": [
+                              0,
+                              64,
+                              128,
+                              192,
+                              256,
+                              320,
+                              384,
+                              448,
+                              512,
+                              576,
+                              600
+                            ],
+                            "mismatchedTicks": [],
+                            "intervals": [
+                              {
+                                "fromTick": 0,
+                                "throughTick": 64,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 64,
+                                "throughTick": 128,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 128,
+                                "throughTick": 192,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 192,
+                                "throughTick": 256,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 256,
+                                "throughTick": 320,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 320,
+                                "throughTick": 384,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 384,
+                                "throughTick": 448,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 448,
+                                "throughTick": 512,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 512,
+                                "throughTick": 576,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              },
+                              {
+                                "fromTick": 576,
+                                "throughTick": 600,
+                                "observation": "endpoint-checksums; interior ticks not individually observed"
+                              }
+                            ],
+                            "logicalMismatchedTicks": [],
+                            "physicalMismatchedTicks": [],
+                            "eventMismatchedTicks": [],
+                            "checksumDomains": [
+                              "logical-state",
+                              "physical-state",
+                              "logical-events"
+                            ],
+                            "truncated": false,
+                            "fromTick": 0,
+                            "throughTick": 600,
+                            "originalMilestones": 11,
+                            "replayMilestones": 11
+                          },
+                          "originalFinalStateHash": "63b534b78a5c9293",
+                          "replayFinalStateHash": "63b534b78a5c9293",
+                          "independentSample": false,
+                          "scope": "current-runtime-compatibility",
+                          "compatibilityMatch": true,
+                          "artifactIntegrity": {
+                            "status": "assets-verified",
+                            "codeDigest": "80fdee331f8b51e7652d08b95e640c6ea6d603b2d4bc4ff6a9c001ead65fcad5",
+                            "codeStatus": "not-checked",
+                            "assetStatus": "verified",
+                            "policy": "saved-assets-only"
+                          },
+                          "executionIdentity": {
+                            "status": "unbound",
+                            "reason": "explicit-current-runtime-comparison"
+                          },
+                          "replayConsistency": {
+                            "status": "matched",
+                            "coverage": {
+                              "commonTicks": [
+                                0,
+                                64,
+                                128,
+                                192,
+                                256,
+                                320,
+                                384,
+                                448,
+                                512,
+                                576,
+                                600
+                              ],
+                              "mismatchedTicks": [],
+                              "intervals": [
+                                {
+                                  "fromTick": 0,
+                                  "throughTick": 64,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 64,
+                                  "throughTick": 128,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 128,
+                                  "throughTick": 192,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 192,
+                                  "throughTick": 256,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 256,
+                                  "throughTick": 320,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 320,
+                                  "throughTick": 384,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 384,
+                                  "throughTick": 448,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 448,
+                                  "throughTick": 512,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 512,
+                                  "throughTick": 576,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                },
+                                {
+                                  "fromTick": 576,
+                                  "throughTick": 600,
+                                  "observation": "endpoint-checksums; interior ticks not individually observed"
+                                }
+                              ],
+                              "logicalMismatchedTicks": [],
+                              "physicalMismatchedTicks": [],
+                              "eventMismatchedTicks": [],
+                              "checksumDomains": [
+                                "logical-state",
+                                "physical-state",
+                                "logical-events"
+                              ],
+                              "truncated": false,
+                              "fromTick": 0,
+                              "throughTick": 600,
+                              "originalMilestones": 11,
+                              "replayMilestones": 11
+                            }
+                          }
+                        }
+                      ],
+                      "outputRequests": {
+                        "midi": 0,
+                        "audio": 0
+                      },
+                      "errors": [],
+                      "layout64Only": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "runtimeSourceUnchangedBetweenGroups": true,
+        "scope": "Real production generated pack warmth/refusal/recovery, original numeric/controlled sentinel corpus, and existing controlled/generated survey replay with actual browser worker ingress. Replay execution remains explicitly unbound; no archived exact-execution claim."
+      },
+      "coverage": {
+        "file": "js/app/procgen/ProcgenTerrainCacheEvidence.js",
+        "lines": 93,
+        "functions": 100,
+        "branches": 84.44,
+        "missingLines": "50–56 public route/source metadata object projection",
+        "followup": "Extend nonempty route-contract/object/accessor metadata and remaining intrinsic/negative projection branches with meaningful source-bound fixtures."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "npm run check-undefined",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "browserCollection": {
+        "full": 257,
+        "smoke": 226,
+        "files": 54
+      },
+      "provenance": {
+        "components": 10,
+        "files": 361,
+        "workerFiles": 292,
+        "workerSha256": "ce9908b05176a64e8210287a77e40062bb36ee42ea2f2ae6df051411ea9b62aa"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook375-node-first.log",
+          "bytes": 7776,
+          "sha256": "6b945307cd1dc0f7a9723b2d54dd4b5fe14861151da9f807e5b0911a30c95d53"
+        },
+        {
+          "path": ".tmp/rook375-node-broad.log",
+          "bytes": 34438,
+          "sha256": "53d41b3e034ebd6b56924be3c764a930c781c7d5dae0d7e3ec32a731d0b22ea8"
+        },
+        {
+          "path": ".tmp/rook375-miner-final.log",
+          "bytes": 1939,
+          "sha256": "7fcc3c5b974b4e4a3b42750ebb74f5171f6dc25e688bd684fafa604954e6b4bb"
+        },
+        {
+          "path": ".tmp/rook375-playwright-final.json",
+          "bytes": 7445,
+          "sha256": "38aafe63a8aa04254dacc43e0c0caa52d05a99fc44e66992ce8c7823180a7b99"
+        },
+        {
+          "path": ".tmp/rook375-desktop-playwright-final.json",
+          "bytes": 12752,
+          "sha256": "ed29f5b366794e2697b83f5beb8cf78292dc7aa126958bc673f9089d142658a9"
+        },
+        {
+          "path": ".tmp/rook375-coverage/coverage-summary.json",
+          "bytes": 667,
+          "sha256": "60b10a9989bccfe1e28fa87769e13fd3256e1c099e66a4ccac49bb55d6f0bb40"
+        },
+        {
+          "path": ".tmp/rook375-checks.log",
+          "bytes": 4264,
+          "sha256": "ecd878f63ee39d209eaf5e9780928f020f3fed1be63b8bf383de3cc8696ec0c3"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainCacheEvidence.js",
+        "bytes": 7763,
+        "sha256": "1f7ec6f0bf5a45017fbf254858064b25293a1b89a91e88dad2a0ec1d698a7c4b"
+      },
+      {
+        "path": "js/app/procgen/ProcgenRecipeTerrain.js",
+        "bytes": 49124,
+        "sha256": "bbd629859bb3b9288c0965a124c59427475d3a85cd7a685e8212440289b23c71"
+      },
+      {
+        "path": "js/app/procgen/ProcgenTerrainZones.js",
+        "bytes": 4407,
+        "sha256": "6365094aa8978d9209eab972bfacf7badf9528f53e8c58ff0f00de0ce635749a"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4791,
+        "sha256": "f213e654d7b2b6df437d060eb6ceb793cc6e4778b4a2b45ebad4608301025f2d"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 34929,
+        "sha256": "71e10af7c92d1f0cc351779c941788eaf886ef800f63b2ce33aa1a0e8d973128"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 7199,
+        "sha256": "50fd46c2db9ba789e4006a9f9eb0dfb869d2466d35dd2384c205be446e96b42e"
+      },
+      {
+        "path": "test/procgen-generated-terrain-evidence.test.js",
+        "bytes": 6820,
+        "sha256": "863baa3f7eeb909e99a0bc58ebb0dd42c2e774eff08b45b18ed225b07d9bffc8"
+      },
+      {
+        "path": "tools/mineTerrainRecipes.js",
+        "bytes": 38998,
+        "sha256": "600eb753abc7125988010511740bb48348dca202bf48814b56dbe578acffdb45"
+      },
+      {
+        "path": "test/procgen-terrain-recipe-discovery.test.js",
+        "bytes": 2159,
+        "sha256": "e13c2eaf97f60ba3282869786f5fca438da0e9a9bde49356acecdfb1782a8643"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22309,
+        "sha256": "c105b8b02809c69076ff045ac578e9117a3b34a81b28ba79679f6fc65246b981"
+      }
+    ],
+    "remaining1223": [
+      "Authored/prepared terrain wrappers and the complete generative-source/behavior projection audit.",
+      "Complete speed/intervention/contact continuation and semantically invalid/negative source corpus.",
+      "Exact archived execution binding remains independent of compatible replay and local checksums."
+    ],
+    "latestVerifiedCiHead": "eda85f9e37699fca34edb951bc172778a6cb7731"
   }
 }

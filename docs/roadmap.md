@@ -9695,3 +9695,29 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Close the bounded recording-index/export-performance work in #1117 with these
   receipts; full physical-tape replay corpus remains #1092 and combined system
   performance qualification remains #1087. Continue solo with Playwright.
+
+### Continuation 375 - generated terrain cache identity and clean source mining
+
+- Bind survey state6 to actual generated recipe/pack themes and lane/source
+  assignment. Privately receipt descriptor/collision/growth/zone content at
+  creation; validate native cache entries without querying terrain or changing
+  residency. Omit pristine caches, refuse modified/unproved/stale-pointer data.
+  Stream typed checksums without canonical expansions; weak receipt tokens do
+  not retain terrain/world owners. Numeric canonical schema3 stays unchanged.
+- Initial70affected Node cases pass. The broader group has143passes and one
+  independent source-miner failure from ignored .tmp validation ZIPs. Exclude
+  nested .tmp output while retaining explicitly selected source roots and real
+  source-archive failures. All17final miner/assembly checks pass, including exact
+  checked-in book regeneration. Preserve the original failure and all artifacts.
+- All three related Playwright journeys pass at1920×1080. Actual pack cache
+  warmth preserves identity; six altered/unproved physical sources refuse with
+  exact kind/key and recover after repair. World/tick/project remain unchanged.
+  Original numeric/controlled and actual controlled/generated replay stay green.
+  No archived exact-execution, hardware or acoustic qualification is inferred.
+- Cache evidence leaf has93%Node lines,100%functions and84.44%branches. Extend
+  nonempty route-contract/object/accessor metadata and remaining intrinsic
+  negative vectors. Refresh292worker source files;10components/361files pass
+  provenance. Collection257full/226smoke across54files; critical/static checks pass.
+- #1223 remains open for authored/prepared terrain wrappers, the complete source
+  projection audit and speed/intervention/contact continuation/negative corpus.
+  Latest fully verified CI remains372/eda85f9e; later374 CI is running. Continue solo.

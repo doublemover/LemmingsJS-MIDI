@@ -1,6 +1,7 @@
 import { ProcgenLaneWorld } from '../ProcgenLaneWorld.js';
 import { ProcgenSurveyTerrain, captureControlledSurveyTerrain } from './ProcgenSurveyTerrain.js';
 import { captureTerrainEditIdentity } from '../ProcgenTerrainEditIdentity.js';
+import { captureGeneratedTerrainEvidence } from '../ProcgenTerrainCacheEvidence.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -74,7 +75,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
   out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), ...(physicalOnly ? {} : { interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') }) };
   out.clock = { speedFactor: world.timer.speedFactor, simulationTimeMs: world.simulationTimeMs };
   const terrain = world.terrain;
-  out.terrain = encode(terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : { descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
+  out.terrain = encode(terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : captureGeneratedTerrainEvidence(terrain) || { descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
     ...(physicalOnly ? {} : { descriptorResidency: terrain?.descriptorResidency, zoneCache: terrain?.zonePlanner?.cache, wideZoneCache: terrain?.wideZonePlanner?.cache }),
     selectedTerrainIds: terrain?.selectedTerrainIds, selectedObjectIds: terrain?.selectedObjectIds }, 'terrain');
   if (!physicalOnly) out.eventHash = eventHash;

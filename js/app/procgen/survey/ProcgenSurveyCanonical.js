@@ -1,4 +1,4 @@
-const SURVEY_STATE_SCHEMA = 5;
+const SURVEY_STATE_SCHEMA = 6;
 const SURVEY_CANONICAL_SCHEMA = 3;
 const SUPPORTED_VIEWS = new Set(['Int8Array', 'Uint8Array', 'Uint8ClampedArray', 'Int16Array', 'Uint16Array',
   'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array']);

@@ -1,3 +1,5 @@
+import { registerTerrainCacheEvidence } from './ProcgenTerrainCacheEvidence.js';
+
 const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 const ROLES = ['route', 'decoration', 'join', 'overlap', 'repeat', 'erase'];
 const choose = (items, code) => {
@@ -52,7 +54,7 @@ class ProcgenTerrainZonePlanner {
       maximumAuthoredWidth: this.widthLimit, descriptorId: this.descriptor.id, sourceRevision: this.descriptor.sourceRevision,
       pack: this.descriptor.pack, groundSet: this.descriptor.groundSet, themeId: this.descriptor.themeId, anchorPair: pair, groups: Object.freeze(groups) });
     if (this.cache.size >= this.cacheLimit) this.cache.delete(this.cache.keys().next().value);
-    this.cache.set(key, zone); return zone;
+    registerTerrainCacheEvidence(this, 'zone', key, zone, this.revisionCode); this.cache.set(key, zone); return zone;
   }
   reset() { this.cache.clear(); }
 }
