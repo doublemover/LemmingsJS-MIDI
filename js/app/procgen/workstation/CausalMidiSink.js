@@ -14,11 +14,14 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
     const value = Math.floor(now() * 1000); return Number.isSafeInteger(value) && value >= 0 ? value : null;
   };
   const report = (entry, outcome) => {
-    const receipt = Object.freeze({ ...outcome, intentId: entry.intent.intentId, batchId: entry.intent.batchId,
+    const receipt = Object.freeze({ ...outcome, worldId: entry.intent.worldId ?? null, onsetId: entry.intent.onsetId ?? null,
+      eventId: entry.intent.eventId ?? (entry.intent.sourceEventIds?.length === 1 ? entry.intent.sourceEventIds[0] : null), ...entry.routeIdentity,
+      intentId: entry.intent.intentId, batchId: entry.intent.batchId,
       generation: entry.intent.generation, voiceId: entry.intent.voiceId, sourceEventIds: entry.intent.sourceEventIds,
       sourceBoundary: Object.freeze({ tick: entry.intent.scoreTime.simTick, generation: entry.intent.generation }),
       sinkId: entry.sinkId, executionEpoch: entry.executionEpoch, targetTimeDomain: 'performance-microseconds', submittedAtMs: now() });
     latestReceipt = receipt;
+    if (outcome.status === 'accepted' && (['submitted', 'expression-submission', 'initial-expression-submission'].includes(outcome.stage) || entry.terminalIntent && outcome.terminal?.state === 'release-submitted')) entry.admission?.acknowledge({ ackState: 'driver-submitted', acknowledgedTime: receipt.submittedAtMs, acknowledgementTimeDomain: 'performance-ms' });
     try { onReceipt(receipt); } catch { /* Diagnostics cannot change output ownership. */ }
   };
   const laneFor = id => typeof id === 'number' ? getLanes()[id] : getLanes().find(lane => lane.id === id);
@@ -69,7 +72,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       executions.set(execution, { epoch: executionEpoch, generation, voices: new Map(), closed: false, retirement: null });
       return { status: 'accepted', execution };
     },
-    begin(intent, targetMicroseconds, execution) {
+    begin(intent, targetMicroseconds, execution, admission) {
       const state = stateFor(execution), lane = laneFor(intent.laneId);
       if (!state || state.closed || !enabled() || intent.generation !== state.generation || !lane) return reject('midi-execution-unavailable');
       if ([...executions.values()].some(owner => [...owner.voices.values()].some(entry => entry.uncertain))) return reject('midi-retirement-unknown');
@@ -82,7 +85,8 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       if (!Number.isFinite(baseCents) || !Number.isFinite(offset) || reference <= 0 || !Number.isInteger(note) || note < 0 || note > 127 || !unit(intent.velocity01) || intent.velocity01 === 0) return reject('midi-pitch-or-velocity-unrepresentable');
       const memberRange = route.mpeZone?.memberRange ? route.mpeZone.memberRange.semitones + route.mpeZone.memberRange.cents / 100 : null;
       const entry = { intent, handle: null, note, baseCents, initialOffset: offset, mpe: !!route.mpeZone && !lane.externalPercussion, memberRange, outputId: route.outputId, uncertain: false,
-        sinkId: 'physical-midi:' + intent.route, executionEpoch: state.epoch };
+        sinkId: 'physical-midi:' + intent.route, executionEpoch: state.epoch, admission,
+        routeIdentity: ports.getOutputAdmissionIdentity?.(route.outputId) ?? { connectionEpoch: null, routeRevision: ports.getRouteRevision() } };
       const expression = expressionFor(entry, intent.expression || {});
       if (expression.error) return reject(expression.error);
       const losses = [...expression.losses];
@@ -100,7 +104,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
         entry.uncertain = terminal.state === 'uncertain';
         if (!entry.uncertain) state.voices.delete(intent.voiceId);
         const failed = entry.uncertain || terminal.state === 'cancelled' && !state.closed && !entry.terminalIntent;
-        report(entry.terminalIntent ? { ...entry, intent: entry.terminalIntent } : entry, { status: failed ? 'rejected' : 'accepted', stage: 'voice-terminal', terminal, reason: entry.uncertain ? 'release-unconfirmed' : failed ? terminal.reason : null });
+        report(entry.terminalIntent ? { ...entry, intent: entry.terminalIntent, admission: entry.terminalAdmission } : entry, { status: failed ? 'rejected' : 'accepted', stage: 'voice-terminal', terminal, reason: entry.uncertain ? 'release-unconfirmed' : failed ? terminal.reason : null });
       } });
       if (outcome.status !== 'accepted') {
         if (outcome.handle && outcome.terminal?.state === 'uncertain') { entry.handle = outcome.handle; entry.uncertain = true; state.voices.set(intent.voiceId, entry); }
@@ -119,11 +123,11 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       return Object.freeze({ status: losses.length ? 'degraded' : 'accepted', stage: outcome.stage,
         ...(losses.length ? { reason: 'midi-representation-loss', losses: Object.freeze(losses) } : {}), outputId: route.outputId, channel: outcome.channel });
     },
-    update(voiceId, expression, targetMicroseconds, execution, slewSeconds, causeIntent) {
+    update(voiceId, expression, targetMicroseconds, execution, slewSeconds, causeIntent, admission) {
       const state = stateFor(execution), entry = state && !state.closed && state.voices.get(voiceId);
       if (!entry || entry.uncertain || !enabled()) return reject('midi-voice-unavailable');
       const mapped = expressionFor(entry, expression); if (mapped.error) return reject(mapped.error);
-      const source = causeIntent ? { ...entry, intent: causeIntent } : entry;
+      const source = causeIntent ? { ...entry, intent: causeIntent, admission } : entry;
       const outcome = ports.updateOwnedVoice(entry.handle, mapped.patch, { timeMs: targetMicroseconds / 1000, onResult: result => report(source, { ...result, stage: 'expression-submission' }) });
       if (outcome.status !== 'accepted') return outcome;
       return mapped.losses.length ? Object.freeze({ status: 'degraded', stage: outcome.stage, reason: 'midi-representation-loss', losses: Object.freeze(mapped.losses), outputRequested: Object.keys(mapped.patch).length > 0 }) : outcome;
@@ -137,10 +141,10 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       if (route.status !== 'accepted' || route.outputId !== entry.outputId) return Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'held-midi-route-pinned-until-release' });
       return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false });
     },
-    end(voiceId, options, targetMicroseconds, execution, causeIntent) {
+    end(voiceId, options, targetMicroseconds, execution, causeIntent, admission) {
       const state = stateFor(execution), entry = state?.voices.get(voiceId);
       if (!entry) return Object.freeze({ status: 'accepted', stage: 'already-retired', outputRequested: false });
-      entry.terminalIntent = causeIntent || entry.intent;
+      entry.terminalIntent = causeIntent || entry.intent; entry.terminalAdmission = admission;
       const timeMs = targetMicroseconds / 1000 + (options?.mode === 'one-shot' ? options.tailSeconds * 1000 : 0);
       return ports.endOwnedVoice(entry.handle, { timeMs, reason: options?.mode === 'one-shot' ? 'physical-one-shot-ended' : 'physical-voice-ended' });
     },
@@ -164,6 +168,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       if (!anchor || anchor.executionEpoch !== executionEpoch || anchor.scoreEpoch !== score.epoch || anchor.bpm !== bpm) anchor = { executionEpoch, scoreEpoch: score.epoch, beat: score.beat, hostMs: now() + delayMs, bpm };
     },
     sinks: ['local', 'prepared-body'].map(route => Object.freeze({ id: 'physical-midi:' + route, route, backend, enabled,
+      getAdmissionIdentity: intent => ports.getOutputAdmissionIdentity?.(laneFor(intent.laneId)?.outputId) ?? { connectionEpoch: null, routeRevision: ports.getRouteRevision() },
       executionLease: false, timeDomain: 'performance-microseconds', latePolicy, toTargetFrame: score => {
         if (!enabled() || !anchor || score?.epoch !== anchor.scoreEpoch || !Number.isFinite(score.beat)) return null;
         const timeMs = anchor.hostMs + (score.beat - anchor.beat) * 60000 / anchor.bpm;

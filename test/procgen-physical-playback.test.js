@@ -5,6 +5,29 @@ import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/P
 import { createProcgenPhysicalPlayback } from '../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
 
 describe('ProcGen physical playback', () => {
+
+  it('counts deferred settlement once and keeps later driver acknowledgements out of admission totals', async () => {
+    const project = createProcgenWorkstationProject(createMidiProject()), timeline = createProcgenPhysicalScoreClock(), context = { state: 'running', currentTime: 1, sampleRate: 48000 };
+    let resolve, admission;
+    const completion = new Promise(done => { resolve = done; }), backend = { prepare: async () => ({ status: 'ready' }), begin(value, frame, execution, owned) { admission = owned; return { status: 'deferred', completion, cancel: () => true }; }, end: () => ({ status: 'accepted', stage: 'scheduled' }), cancelGeneration() {}, dispose() {} };
+    const session = { getState: () => ({ enabled: true }), enable: async () => true, createInstrumentBackend: () => backend, stop() {}, dispose() {} };
+    const playback = createProcgenPhysicalPlayback({ audio: { createSession: () => session, getAudioContext: () => context, getState: () => ({ enabled: true }), subscribe: () => () => {} },
+      getGraph: () => project.procgen.physicalGraph, scoreTimeline: timeline, now: () => 1000 });
+    try {
+      await playback.ready();
+      const batch = { version: 1, worldId: 'world', generation: 1, batchId: 'deferred-builder', tick: 1, sourceTimeMs: 60, tickDurationMs: 60, completeness: { status: 'complete', dropped: 0 }, facts: [{ kind: 'TerrainWorkCommitted', eventId: 'builder', causalSequence: 1, actorId: 1, laneId: 0, operationKind: 'build' }] };
+      playback.processBatch(batch, { bpm: 120, position: timeline.observe(batch, { bpm: 120 }) });
+      expect(playback.operationalState()).to.include({ pendingAdmissions: 1, accepted: 1, rejected: 0 });
+      expect(admission.acknowledge({ ackState: 'driver-submitted', acknowledgedTime: 1000, acknowledgementTimeDomain: 'performance-ms' })).to.equal(true);
+      resolve({ status: 'accepted', stage: 'scheduled' }); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      expect(playback.operationalState()).to.include({ pendingAdmissions: 0, accepted: 2, rejected: 0 });
+      const transitions = playback.diagnostics().dispatch.admissions.history.filter(row => row.intentId.includes('begin'));
+      expect(transitions.map(row => row.ackState)).to.deep.equal(['none', 'scheduled', 'driver-submitted']);
+      expect(admission.acknowledge({ ackState: 'applied', appliedFrame: 50000 })).to.equal(true);
+      expect(playback.operationalState().accepted).to.equal(2);
+    } finally { await playback.dispose().completion; }
+  });
+
   it('keeps source declarations and mix allocations stable through unrelated canonical edits', async () => {
     let project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject())); const declared = [];
     const playback = createProcgenPhysicalPlayback({ audio: { createSession: () => ({ getState: () => ({ enabled: false }), configureLaneSources: ids => declared.push(ids), stop() {}, dispose() {} }), getState: () => ({ enabled: false }) },

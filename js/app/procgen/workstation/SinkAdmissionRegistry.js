@@ -22,7 +22,8 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
       latest.delete(evict);
     }
     const status = ['accepted', 'rejected', 'deferred'].includes(outcome?.status) ? outcome.status : 'rejected';
-    const ackState = status === 'accepted' ? outcome.ackState ?? 'scheduled' : 'none';
+    const outputRequested = outcome?.outputRequested !== false;
+    const ackState = status === 'accepted' ? outcome.ackState ?? (outputRequested ? 'scheduled' : 'none') : 'none';
     const fields = {}; let validIdentity = true;
     for (const name of identityFields) {
       const value = identity?.[name] ?? null;
@@ -30,9 +31,9 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
         typeof value === 'string' && value.length > 0 && value.length <= 512 || Number.isSafeInteger(value) && value >= 0);
       fields[name] = valid ? value : null; validIdentity &&= valid;
     }
-    const valid = validIdentity && Object.hasOwn(stages, ackState) && (status !== 'accepted' || ackState !== 'none');
+    const valid = validIdentity && Object.hasOwn(stages, ackState) && (status !== 'accepted' || (outputRequested ? ackState !== 'none' : ackState === 'none'));
     return publish({ schema: 'lemmings-sink-admission/v1', ...fields, receiptId: 'admission:' + ++serial, receiptVersion: 1,
-      status: valid ? status : 'rejected', reason: !validIdentity ? 'invalid-admission-identity' : !valid ? 'invalid-ack-state' : status === 'accepted' ? null : String(outcome?.reason || (status === 'deferred' ? 'sink-deferred' : 'sink-rejected')).slice(0, 512),
+      status: valid ? status : 'rejected', outputRequested, reason: !validIdentity ? 'invalid-admission-identity' : !valid ? 'invalid-ack-state' : status === 'accepted' ? null : String(outcome?.reason || (status === 'deferred' ? 'sink-deferred' : 'sink-rejected')).slice(0, 512),
       ackState: valid ? ackState : 'none' });
   };
   const advance = (previous, update) => {
@@ -40,7 +41,7 @@ export function createSinkAdmissionRegistry({ capacity = 4096, historyLimit = 10
         update.expectedVersion !== previous.receiptVersion || identityFields.some(name => Object.hasOwn(update, name) && update[name] !== previous[name])) return null;
     const status = update.status ?? previous.status, ackState = update.ackState ?? (status === 'accepted' ? previous.status === 'deferred' ? 'scheduled' : previous.ackState : 'none');
     if (!['accepted', 'rejected'].includes(status) || previous.status === 'accepted' && status !== 'accepted' || !Object.hasOwn(stages, ackState) ||
-        status === 'accepted' && (!stages[ackState] || stages[ackState] < stages[previous.ackState]) || status !== 'accepted' && ackState !== 'none' ||
+        status === 'accepted' && (previous.outputRequested ? !stages[ackState] || stages[ackState] < stages[previous.ackState] : ackState !== 'none') || status !== 'accepted' && ackState !== 'none' ||
         update.appliedFrame != null && (!Number.isSafeInteger(update.appliedFrame) || update.appliedFrame < 0 || !['applied', 'receiver-observed'].includes(ackState)) ||
         update.acknowledgedTime != null && (!Number.isFinite(update.acknowledgedTime) || typeof update.acknowledgementTimeDomain !== 'string' || !update.acknowledgementTimeDomain)) return null;
     return publish({ ...previous, status, ackState, receiptVersion: previous.receiptVersion + 1,

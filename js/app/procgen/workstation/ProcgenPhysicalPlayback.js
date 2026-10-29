@@ -54,7 +54,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   const clock = createAudioClockBridge({ getContext: () => audio?.getAudioContext?.(), nowMs: now,
     presentationDelayMs: 24, maxHorizonMs: 5000 });
   let disposed = false, prepared = false, armEnabled = true, enableLease = null, executionEpoch = null, previousGeneration = null, previousWorldId = null, previousTerrainRevision = null, executionSerial = 0;
-  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, leaseFailures = 0;
+  let anchoredEpoch = null, anchoredBpm = null, rejected = 0, accepted = 0, degraded = 0, pendingAdmissions = 0, leaseFailures = 0;
   let surfaceBodies = null, sceneMorph = null;
   const effectStreamId = 'physical-effects-' + (++nextEffectStream); let effectClockAnchor = null;
   const effectCapture = createEffectPerformanceCapture({ owner: documentEpoch + ':effect-capture', streamId: effectStreamId, resourceBudget, getContext: () => audio?.getAudioContext?.(), getExecutionEpoch: () => executionEpoch, getAnchor: () => effectClockAnchor, isEnabled: isEffectCaptureEnabled, onReceipt });
@@ -103,11 +103,11 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     } }) : null; } catch (error) { try { onInstrumentState({ laneId: 'prepared-body', state: 'unavailable', code: error.code || error.message }); } catch {} }
   const audioLatePolicy = createStrictLiveFramePolicy({ nowFrame: () => clock.currentFrame() });
   const dispatcher = createCausalIntentDispatcher({
-    sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend }] : []), ...additionalOutputs.flatMap(output => output.sinks)],
+    sinks: [...(backend ? [{ id: 'physical-browser-audio', route: 'local', backend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: backend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...(bodyBackend ? [{ id: 'physical-shared-body', route: 'prepared-body', backend: bodyBackend, timeDomain: 'audio-sample-frames', getAdmissionIdentity: () => ({ connectionEpoch: bodyBackend.executionIncarnation?.() ?? null, routeRevision: routed?.routeRevision() ?? 0 }) }] : []), ...additionalOutputs.flatMap(output => output.sinks)],
     executionEpoch: () => executionEpoch,
     toTargetFrame: (scoreTime, batch, intent, sink) => sink.toTargetFrame ? sink.toTargetFrame(scoreTime, batch, intent) : permitted() && (!initialMorphMechanism || sceneMorph?.isPrepared()) ? clock.toTargetFrame(scoreTime, executionEpoch) : null,
     latePolicy: context => context.sink.latePolicy ? context.sink.latePolicy(context) : audioLatePolicy(context),
-    onReceipt: receipt => { if ((!receipt.targetTimeDomain || receipt.targetTimeDomain === 'audio-sample-frames') && Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.status === 'accepted') accepted++; else if (receipt.status === 'degraded') degraded++; else rejected++; onReceipt(receipt); }
+    onReceipt: receipt => { if ((!receipt.targetTimeDomain || receipt.targetTimeDomain === 'audio-sample-frames') && Number.isSafeInteger(receipt.sourceTargetFrame) && receipt.sourceTargetFrame >= 0 && receipt.executionEpoch === executionEpoch) { effectClockAnchor = Object.freeze({ intentId: receipt.intentId, sourceTargetFrame: receipt.sourceTargetFrame, executionEpoch }); effectCapture.flush(); } latestSinkOutcome = { status: receipt.status, reason: receipt.reason || null }; if (receipt.receiptVersion == null || receipt.receiptVersion === 1 || receipt.previousAdmissionStatus === 'deferred') { if (receipt.previousAdmissionStatus === 'deferred') pendingAdmissions--; if (receipt.status === 'accepted') accepted++; else if (receipt.status === 'degraded') degraded++; else if (receipt.status === 'deferred') pendingAdmissions++; else rejected++; } onReceipt(receipt); }
   });
   const captureEffect = effectCapture.capture;
   let unsubscribeEffectReceipts = null;
@@ -296,8 +296,8 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     prepareLaneInstrument: (laneId, reference, options) => laneInstruments ? laneInstruments.prepare(laneId, reference, options) : Promise.reject(new Error('Lane instrument routing is unavailable.')),
     synchronizeLaneInstruments: lanes => laneInstruments?.synchronize(lanes) || Promise.resolve([]),
     retryLaneInstruments: () => laneInstruments?.retry(getLanes()) || Promise.resolve([]),
-    operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, leaseFailures }),
-    diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected,
+    operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, pendingAdmissions, leaseFailures }),
+    diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected, pendingAdmissions,
       preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
       instruments: laneInstruments?.diagnostics() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
 }

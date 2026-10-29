@@ -390,14 +390,13 @@ for (const interruption of ['capture-loss', 'escape', 'window-blur', 'modal', 's
   await ready(page, 1); await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', 'draw');
   await page.evaluate(() => {
     const f = window.workstationViewTest, grid = document.querySelector('.studio-sequences');
-    grid.addEventListener('pointerdown', event => { f.pointerId = event.pointerId; }, { once: true });
+    grid.addEventListener('pointerdown', event => { f.pointerId = event.pointerId; f.pointerStart = { x: event.clientX, y: event.clientY }; }, { once: true });
     grid.addEventListener('gotpointercapture', event => { f.captureAcquired = event.isTrusted && event.pointerId === f.pointerId; }, { once: true });
   });
-  const target = page.locator('.studio-cell:not(.enabled)').first(); await target.scrollIntoViewIfNeeded();
-  const cell = await target.boundingBox();
-  await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2); await page.mouse.down();
-  await page.mouse.move(cell.x + cell.width / 2 + 1, cell.y + cell.height / 2);
-  expect(await page.evaluate(() => window.workstationViewTest.captureAcquired)).toBe(true);
+  const target = page.locator('.studio-cell:not(.enabled)').first(); await target.hover(); await page.mouse.down();
+  const start = await page.evaluate(() => window.workstationViewTest.pointerStart);
+  expect(start).toBeTruthy(); await page.mouse.move(start.x + 4, start.y, { steps: 4 });
+  await expect.poll(() => page.evaluate(() => window.workstationViewTest.captureAcquired)).toBe(true);
   expect(await page.evaluate(() => document.querySelector('.studio-sequences').hasPointerCapture(window.workstationViewTest.pointerId))).toBe(true);
   if (interruption === 'escape') await page.keyboard.press('Escape');
   else await page.evaluate(kind => {
@@ -408,7 +407,7 @@ for (const interruption of ['capture-loss', 'escape', 'window-blur', 'modal', 's
     if (kind === 'source-A-B-A') { const original = f.getProject(); f.replaceProject({ ...original, name: 'Temporary B' }); f.replaceProject(original); }
     if (kind === 'dispose') f.view.dispose();
   }, interruption);
-  await page.mouse.move(cell.x + cell.width / 2 + 5, cell.y + cell.height / 2); await page.mouse.up();
+  await page.mouse.move(start.x + 5, start.y); await page.mouse.up();
   const state = await page.evaluate(async () => {
     const { getPointerGestureArbiter } = await import('/js/app/controls/PointerGestureArbiter.js');
     return { active: getPointerGestureArbiter(document).inspect(), actions: window.workstationViewTest.actions.length };

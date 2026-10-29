@@ -46,6 +46,14 @@ describe('immutable sink admission transitions', () => {
 });
 
 describe('pattern admission ownership', () => {
+  it('does not resume semantic-only notes or cache controllers when no output was requested', () => {
+    let outputRequested = false, notes = 0, controls = 0;
+    const f = fixture({ emit: () => { notes++; return { status: 'accepted', sinkId: 'local', outputRequested }; }, emitCC: () => { controls++; return { status: 'accepted', sinkId: 'local', outputRequested }; } });
+    f.edit({ type: 'procgen/lane', laneId: 'lane-1', patch: { ccAutomation: [{ id: 'cc', controller: 74, length: 4, mode: 'step', points: [{ beat: 0, value: 64 }] }] } });
+    f.beat(0); expect(f.engine.snapshot().active).to.have.length(0); expect(controls).to.equal(1);
+    f.engine.resume({ beat: .1, timestamp: 50, bpm: 120 }); expect(notes).to.equal(1);
+    f.beat(.25); expect(controls).to.equal(2); outputRequested = true; f.beat(.5); expect(controls).to.equal(3); f.beat(.75); expect(controls).to.equal(3);
+  });
   it('records separate local-only and hardware-only acceptance without resurrecting the refused sink', () => {
     for (const selected of ['local', 'midi']) {
       const attempts = [];

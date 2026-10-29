@@ -66,7 +66,7 @@ const createProcgenPatternEngine = ({ getProject, emit, emitCC, getSinkKey = () 
     return state.lanes[lane.id];
   };
   const audible = (project, lane) => !lane.mute && lane.gain > 0 && (!solo || lane.solo);
-  const accepted = receipt => receipt?.status === 'accepted';
+  const accepted = receipt => receipt?.status === 'accepted' && receipt.outputRequested !== false;
   const routeFor = lane => String(getSinkKey(lane));
   const releaseEntry = entry => {
     deferred.delete(entry.receipt.receiptId);

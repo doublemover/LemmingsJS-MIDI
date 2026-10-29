@@ -48950,5 +48950,506 @@
         "sha256": "fc7cdc515b333c4c00d36ea84a1266fd8416f775e375df376d6a8ad4caf9539d"
       }
     ]
+  },
+  "continuation354": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "e07c105145fb8070babbbe396c309b1abcc54417",
+    "scope": "Canonical physical sink admission, deferred ownership and MIDI acknowledgement integration for #1059; repair the Linux standalone capture fixture.",
+    "implementation": [
+      "Capture complete supplied world/generation/batch/intent/onset/voice/event identity, connection epoch, route revision, endpoint key and target clock independently for each physical sink. Reject known world mismatches and malformed sink identity before calling a driver.",
+      "Reserve bounded deferred capacity before invoking a sink, including reentrant dispatch. Keep uncertain cancellation owned; final replies cannot revive disposed, disabled, source-replaced, generation-retired, route-replaced or expired work.",
+      "Give immutable receipts version/sequence and monotone acknowledgement stages. Bound and buffer early driver acknowledgements until admission and deferred settlement; actual MIDI attack, expression and explicit release submission advances driver-submitted with a separate performance-ms acknowledgement clock.",
+      "Keep non-output semantic observations at ackState none. Pattern semantic-only responses cannot become active/resumable notes or controller deduplication.",
+      "Count each initial admission and deferred settlement once; later acknowledgement versions cannot inflate physical playback acceptance totals. Replace shifted physical history with an O(1) circular buffer.",
+      "Use the native visible hover point and wait explicitly for trusted capture in the six Linux paint interruption cases. The failed geometric center lay at the clipped row edge; viewport remains1920x1080."
+    ],
+    "validation": {
+      "node": {
+        "passed": 108,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook354-node-done.log",
+          "bytes": 11093,
+          "sha256": "2b32f4545ede4ebd429109b271cca1f36ff851f3c1b9231af4a1096838fb7a2b"
+        },
+        "scope": "Grouped actual dispatcher, scheduler/MIDI ports, physical playback, pattern/CC, causal producer, travel/transfer and sample-selection contracts."
+      },
+      "browser": {
+        "uniquePassed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "gestureStats": {
+          "startTime": "2026-10-29T16:13:32.520Z",
+          "duration": 5598.146000000001,
+          "expected": 8,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "outputStats": {
+          "startTime": "2026-10-29T16:18:49.496Z",
+          "duration": 48366.117,
+          "expected": 8,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "finalMidiOverlapStats": {
+          "startTime": "2026-10-29T16:22:41.103Z",
+          "duration": 3257.4080000000004,
+          "expected": 1,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "reports": [
+          {
+            "path": ".tmp/rook354-gesture-browser.json",
+            "bytes": 13583,
+            "sha256": "2b56cce1a0107a3576559c52b550ee660a5c5ee7aca3f7cccdf3f877a9ebd97c"
+          },
+          {
+            "path": ".tmp/rook354-output-browser-publish.json",
+            "bytes": 15370,
+            "sha256": "8f66952e2b29c085c013f0701d266e0259f005a71238f8199e0695b9f2f4e1d8"
+          },
+          {
+            "path": ".tmp/rook354-midi-browser-done.json",
+            "bytes": 4365,
+            "sha256": "3f13937dc48ebf7c29eedc932cb377dc55c393bc6ab7159167a37dedffa2bf69"
+          }
+        ],
+        "logs": [
+          {
+            "path": ".tmp/rook354-gesture-browser.log",
+            "bytes": 1830,
+            "sha256": "db5a1d18b39fd388bfdfb3c141db28659497e7399709d7b7fb4fbe6be92a78f0"
+          },
+          {
+            "path": ".tmp/rook354-output-browser-publish.log",
+            "bytes": 2720,
+            "sha256": "7f6559319f9709ecc43b66e8f7e5e877dc6267bef065b78632395d5ce64d9591"
+          },
+          {
+            "path": ".tmp/rook354-midi-browser-done.log",
+            "bytes": 492,
+            "sha256": "e25a033f16428c75a7ec0c4ac6e99f4e971f63a1c665c51405cabb6b3444a599"
+          }
+        ],
+        "receipts": [
+          {
+            "title": "desktop simultaneous native mouse and pen contacts retain the first owner @boundary @gesture-lifecycle",
+            "name": "desktop-concurrent-pointer-ownership.json",
+            "evidence": {
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": {
+                "contacts": [
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  },
+                  {
+                    "id": 2,
+                    "type": "pen",
+                    "trusted": true,
+                    "owner": 1
+                  }
+                ],
+                "releases": [
+                  {
+                    "id": 2,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  },
+                  {
+                    "id": 1,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  }
+                ]
+              },
+              "mobileEmulation": false,
+              "evidence": "Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; no physical tablet qualification."
+            }
+          },
+          {
+            "title": "six pinned native sounds preserve the actual 1000-tick world and causal event order without a legacy pattern path",
+            "name": "sound-world-isolation.json",
+            "evidence": {
+              "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+              "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+              "mismatchStates": null,
+              "difference": null,
+              "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+              "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+              "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+              "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+              "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+              "selections": [
+                "foundation.soft-triangle",
+                "forge.glass-rivet",
+                "material.timber",
+                "pluck.burrow-thumb",
+                "choir.hollow-ooh",
+                "spectrum.bubble-reed"
+              ],
+              "tickStart": 2,
+              "tickEnd": 1002,
+              "sameWorld": true,
+              "hardwareUnchanged": true,
+              "sourceOnlyFixture": false,
+              "acousticQualification": false
+            }
+          }
+        ],
+        "scope": "Eight desktop gesture journeys plus eight production physical output/causal/native sound-isolation journeys. The final endpoint-key and semantic-only pattern guards are covered in108 Node cases; the production MIDI browser case is requalified afterward and overlaps the eight output journeys. Separate native audio and MIDI journeys do not qualify simultaneous native-audio/MIDI output.",
+        "soundIsolation": {
+          "ticks": 1000,
+          "sounds": 6,
+          "initialAndRestoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+          "controlAndChangedAndUndoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+          "controlAndChangedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+          "acousticQualification": false
+        }
+      },
+      "coverage": {
+        "cases": 108,
+        "overlap": true,
+        "summary": {
+          "total": {
+            "lines": {
+              "total": 1225,
+              "covered": 1129,
+              "skipped": 0,
+              "pct": 92.16
+            },
+            "statements": {
+              "total": 1225,
+              "covered": 1129,
+              "skipped": 0,
+              "pct": 92.16
+            },
+            "functions": {
+              "total": 239,
+              "covered": 173,
+              "skipped": 0,
+              "pct": 72.38
+            },
+            "branches": {
+              "total": 1347,
+              "covered": 1046,
+              "skipped": 0,
+              "pct": 77.65
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalIntentDispatcher.js": {
+            "lines": {
+              "total": 196,
+              "covered": 186,
+              "skipped": 0,
+              "pct": 94.89
+            },
+            "functions": {
+              "total": 22,
+              "covered": 21,
+              "skipped": 0,
+              "pct": 95.45
+            },
+            "statements": {
+              "total": 196,
+              "covered": 186,
+              "skipped": 0,
+              "pct": 94.89
+            },
+            "branches": {
+              "total": 291,
+              "covered": 247,
+              "skipped": 0,
+              "pct": 84.87
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMidiSink.js": {
+            "lines": {
+              "total": 180,
+              "covered": 173,
+              "skipped": 0,
+              "pct": 96.11
+            },
+            "functions": {
+              "total": 36,
+              "covered": 32,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "statements": {
+              "total": 180,
+              "covered": 173,
+              "skipped": 0,
+              "pct": 96.11
+            },
+            "branches": {
+              "total": 182,
+              "covered": 127,
+              "skipped": 0,
+              "pct": 69.78
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalSinkAdmissions.js": {
+            "lines": {
+              "total": 86,
+              "covered": 86,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 19,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 84.21
+            },
+            "statements": {
+              "total": 86,
+              "covered": 86,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 127,
+              "covered": 101,
+              "skipped": 0,
+              "pct": 79.52
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPatternEngine.js": {
+            "lines": {
+              "total": 400,
+              "covered": 394,
+              "skipped": 0,
+              "pct": 98.5
+            },
+            "functions": {
+              "total": 50,
+              "covered": 48,
+              "skipped": 0,
+              "pct": 96
+            },
+            "statements": {
+              "total": 400,
+              "covered": 394,
+              "skipped": 0,
+              "pct": 98.5
+            },
+            "branches": {
+              "total": 414,
+              "covered": 345,
+              "skipped": 0,
+              "pct": 83.33
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPhysicalPlayback.js": {
+            "lines": {
+              "total": 303,
+              "covered": 230,
+              "skipped": 0,
+              "pct": 75.9
+            },
+            "functions": {
+              "total": 104,
+              "covered": 48,
+              "skipped": 0,
+              "pct": 46.15
+            },
+            "statements": {
+              "total": 303,
+              "covered": 230,
+              "skipped": 0,
+              "pct": 75.9
+            },
+            "branches": {
+              "total": 238,
+              "covered": 142,
+              "skipped": 0,
+              "pct": 59.66
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SinkAdmissionRegistry.js": {
+            "lines": {
+              "total": 60,
+              "covered": 60,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 8,
+              "covered": 8,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 60,
+              "covered": 60,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 95,
+              "covered": 84,
+              "skipped": 0,
+              "pct": 88.42
+            }
+          }
+        },
+        "report": {
+          "path": ".tmp/rook354-coverage-done/coverage-summary.json",
+          "bytes": 2507,
+          "sha256": "337cced3405deb2cd07ad3e45971d522a3fc038c13bbc3904069935676603229"
+        },
+        "remaining": "Native audio/MIDI combined boundary, maximum deferred ownership/resource charging, delayed cancellation retirement and additional prepared-body/renderer faults remain broader integration/resource work. Focused percentages do not replace unchanged whole-project CI thresholds."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check:10components/350files",
+        "npm run check:browser-categories:223full/193smoke/49files/all14gates",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "ci352": {
+      "head": "5c2d40d9d6145cdf8751419340a5fe1b9567c36d",
+      "runId": 40903159101,
+      "conclusion": "failure",
+      "jobs": {
+        "engine": {
+          "id": 123550641828,
+          "conclusion": "success"
+        },
+        "nativeWindows": {
+          "id": 123550642377,
+          "conclusion": "success"
+        },
+        "nativeLinux": {
+          "id": 123550642761,
+          "conclusion": "success"
+        },
+        "main": {
+          "id": 123550642718,
+          "conclusion": "failure"
+        }
+      },
+      "mainBrowser": {
+        "desktopPassed": 26,
+        "workstationPassed": 158,
+        "workstationFailed": 6,
+        "reason": "Six standalone pattern interruption fixtures did not witness native capture; Linux coordinates83,608.5 were at the clipped row edge. Current fixture uses locator hover and a trusted capture wait; independent Linux CI remains required."
+      },
+      "failureArtifact": {
+        "id": 12911613821,
+        "path": ".tmp/ci352-failure.zip",
+        "bytes": 18360651,
+        "sha256": "2a8f9070705145daa3ce08398e58c87d8e00e0fcd6c22a61d249e636212ca6eb"
+      },
+      "notAFullGreenCheckpoint": true
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "ci353AtLastCheck": {
+      "runId": 40906679837,
+      "engine": "success",
+      "nativeLinux": "success",
+      "nativeWindows": "success",
+      "main": "in_progress"
+    },
+    "issueStatus": {
+      "1000": "Closed at353 for software interactions; Linux standalone fixture correction included here, with independent CI pending.",
+      "1059": "Open: canonical physical contract and real MIDI acknowledgements implemented; remaining native browser combined-audio/MIDI completed-boundary qualification.",
+      "1086": "Open broader platform/device/browser capability qualification."
+    },
+    "limits": [
+      "No full local suite repeated.",
+      "No physical receiver, acoustic, hardware stylus or actual OS-background claim.",
+      "Unknown cancellation retains bounded ownership; shared resource charging remains owned by resource issues.",
+      "Minimum1920x1080desktop; no phone/tablet emulation."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/CausalSinkAdmissions.js",
+        "bytes": 8475,
+        "sha256": "d62755ebfd287fbba498b2a821fbfe8594b8f9c3a298093247da0c3a5e1ff6d7"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalIntentDispatcher.js",
+        "bytes": 17892,
+        "sha256": "5aa74e4d3b9a5113b46c4cdfd2ba92602edba868b9505b931d479b0d404f60ab"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalMidiSink.js",
+        "bytes": 16227,
+        "sha256": "082a892502fd37922c1623bf512ef5916e6872cbbe75e3efadba82766b0391ff"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "bytes": 34837,
+        "sha256": "662f9f60907aa30f9b82b82110dd41b590e3666f1156dac22eafa769e69fb96b"
+      },
+      {
+        "path": "js/app/procgen/workstation/SinkAdmissionRegistry.js",
+        "bytes": 5396,
+        "sha256": "31fd9e57a3028b91fee03cc708d50559c60dc83a2d02014066719037d2e247a0"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPatternEngine.js",
+        "bytes": 30163,
+        "sha256": "babf7d9489475e42d9244fa68b44f6269072f197324809ab1f64ca1a83f075d5"
+      },
+      {
+        "path": "test/midi/causal-sink-admission.test.js",
+        "bytes": 10960,
+        "sha256": "0bfcf748ad3d1d47e268c717b12700d0f11000b61164ead1f810f54b7d17e5a1"
+      },
+      {
+        "path": "test/midi/causal-midi-sink.test.js",
+        "bytes": 13667,
+        "sha256": "8a5854b305afb4e6d7acebd1087ae40a961208fcae68b2c738ea0ad0f5dc9add"
+      },
+      {
+        "path": "test/midi/procgen-sink-admission.test.js",
+        "bytes": 13917,
+        "sha256": "f8ba4bfaf1f24db75f1d8ce3b423405ce4e51c0cf6afda5f1486b528b56ab1be"
+      },
+      {
+        "path": "test/procgen-physical-playback.test.js",
+        "bytes": 9932,
+        "sha256": "6c5ffe9e33550ebbb28c0ff94d40e9b734d0218e3a60787f65b345f92a4fe104"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 45070,
+        "sha256": "6c425e6498155b45d927745a3c3c3bc023bfbeb832fe11ea20ea00abdde703dc"
+      }
+    ]
   }
 }

@@ -9182,3 +9182,27 @@ export-budget acknowledgments still prevent a false complete receipt.
   Correct352's empty parsed-attachment array by adding the3 recovered exact JSON
   attachments here; retain the published352 entry and raw report hashes unchanged.
   Focused Node coverage is a measurement of this subset, not a project-wide gate.
+
+### Continuation 354 - canonical physical sink admissions
+
+- Capture supplied world/onset/event and per-sink connection, endpoint and route
+  identity through physical admission and immutable versioned acknowledgements.
+  Reserve pending capacity before callbacks; canceled or stale deferred replies
+  cannot revive an execution. Unconfirmed cancellation remains bounded and owned.
+- Wire actual scheduler attack/expression/release submission acknowledgements into
+  the canonical receipt. Keep target and acknowledgement clock domains distinct.
+  Semantic observations request no output; they cannot create resumable pattern
+  notes or cache unsent CC values. Count deferred settlement once and retain
+  physical history in an O(1) circular buffer.
+- 108 grouped Node cases pass. Eight native desktop gesture journeys and eight
+  production output/causal/six-sound1000-tick journeys pass; final identity and
+  semantic guards have Node coverage plus a final overlapping production MIDI
+  browser pass. No full local suite is repeated.
+- Keep #1059 open for simultaneous native-audio/MIDI qualification from the same
+  completed physical boundary. Shared resource charging and physical receiver/
+  acoustic evidence retain their separate owners and limits.
+- 352 CI passed the engine and both native codec jobs, but the main job failed six
+  standalone capture preconditions (26 desktop and158 workstation cases passed).
+  Linux's geometric target center was at a clipped row edge; the fixture now
+  chooses the actual visible hover point and waits for trusted capture. New Linux
+  CI remains independent.350 is still the last verified full green checkpoint.

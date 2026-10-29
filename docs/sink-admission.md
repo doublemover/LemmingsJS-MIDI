@@ -48,3 +48,29 @@ with captured route identity. It cancels pending work at transport, project and
 port ownership boundaries. The physical causal dispatcher retains its separate
 per-sink delivery records. Unifying its remaining acknowledgement/deferral paths
 and qualifying actual combined-device operation are tracked in `docs/roadmap.md`.
+
+Physical completed-tick output uses the same immutable registry through
+`CausalSinkAdmissions`. Each dispatcher sink captures world/onset/event identity,
+connection epoch, route revision and its own target clock. Semantic observations
+with `outputRequested: false` retain an accepted semantic result and
+`ackState: none`; they do not claim scheduled or applied output.
+
+Reserve a bounded pending slot before invoking the backend, including reentrant
+calls. A deferred backend supplies `completion` and `cancel(reason)`. Source,
+generation, execution, route, enabled state and deadline are rechecked before
+settlement; cancellation cannot revive work through a late reply. Unknown or
+throwing cancellation retains its slot. Authored facts remain independent of
+output receipts and inferred sounding state.
+
+Backend begin/update/end calls receive an optional owned acknowledgement context.
+Its bounded early acknowledgement buffer handles synchronous callbacks and driver
+submission before deferred settlement. Public `dispatcher.acknowledge(receipt,
+update)` requires the current receipt/version, matching identity and a monotone
+stage. Real MIDI scheduler attack, expression and explicit release submission
+advance driver-submitted receipts with a separate performance clock. A route or
+connection change rejects late acknowledgements. Neither adapter return nor
+driver-submitted establishes receiver processing or audibility.
+
+Physical playback counts each initial admission and deferred settlement once.
+Later acknowledgements do not increase accepted/rejected totals. Dispatch history
+uses a bounded circular buffer; snapshots retain chronological order.

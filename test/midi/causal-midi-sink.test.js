@@ -31,6 +31,21 @@ const fixture = (clock, { mpe = true, lanes = [{ id: 'lane-1', channel: 1, outpu
     dispose() { dispatcher.dispose(); sink.dispose(); ports.dispose(); } };
 };
 describe('physical intent scheduler/MIDI realization', () => {
+  it('advances the real scheduler submission into the canonical admission with captured route and causal identity', () => withFakeClockAndPerformance(clock => {
+    const f = fixture(clock), source = intent('begin', 'voice-1', 0, { worldId: 'world', onsetId: 'native-onset' });
+    try {
+      const [scheduled] = f.dispatch([source]); const route = f.ports.getOutputAdmissionIdentity();
+      expect(scheduled.admission).to.include({ worldId: 'world', onsetId: 'native-onset', intentId: source.intentId, voiceId: source.voiceId, sinkId: 'physical-midi:local', connectionEpoch: route.connectionEpoch, routeRevision: route.routeRevision, ackState: 'scheduled', timeDomain: 'performance-microseconds' });
+      clock.tick(24); const submitted = f.receipts.find(row => row.ackState === 'driver-submitted');
+      expect(submitted).not.to.equal(undefined); expect(submitted.receiptVersion).to.equal(2); expect(submitted.admission).to.include({ acknowledgedTime: 24, acknowledgementTimeDomain: 'performance-ms', targetTime: 24000 });
+      expect(scheduled.ackState).to.equal('scheduled'); expect(submitted.admission).not.to.have.property('appliedFrame');
+      const terminal = intent('end', 'voice-1', .25, { worldId: 'world', onsetId: 'native-onset' });
+      f.dispatch([terminal]); clock.tick(125);
+      const released = f.receipts.find(row => row.intentId === terminal.intentId && row.ackState === 'driver-submitted');
+      expect(released).not.to.equal(undefined); expect(released.receiptVersion).to.equal(2);
+      expect(f.events.find(row => row.stage === 'voice-terminal')).to.include({ worldId: 'world', onsetId: 'native-onset', connectionEpoch: route.connectionEpoch, routeRevision: route.routeRevision });
+    } finally { f.dispose(); }
+  }));
   it('fans the identical canonical intent to audio and MIDI with independent clocks and lease requirements', () => withFakeClockAndPerformance(clock => {
     const f = fixture(clock), audioCalls = [], source = intent(), sourceText = JSON.stringify(source);
     const audio = { begin: (value, frame) => { audioCalls.push({ value, frame }); return { status: 'accepted', stage: 'scheduled' }; },

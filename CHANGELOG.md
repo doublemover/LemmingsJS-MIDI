@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Own deferred physical output and immutable per-sink acknowledgements across route changes, preserve driver receipt identity, and keep semantic-only responses out of active notes and controller caches.
+
 - Preserve terrain drag ownership across competing contacts, cancel source-replaced curve/dock drafts, and retire unhandled releases without interrupting window-level paint commits.
 
 - Keep sound-dial edits and Undo bound to their source, restore displayed values after retired input, and register capture cleanup for curve, dock and terrain controls.
