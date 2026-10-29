@@ -1,3 +1,4 @@
+import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
@@ -6,11 +7,7 @@ import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIden
 import { prepareSceneMacroAction } from './SceneMacroAction.js';
 import { performanceSceneHash } from './PerformanceScene.js';
 import { createPerformanceStageSession } from './PerformanceStageSession.js';
-import { createRectangularMembraneView } from '../../midi-ui/RectangularMembraneView.js';
 import { createSympatheticMapView } from '../../midi-ui/SympatheticMapView.js';
-import { createSpectralFreezeView } from '../../midi-ui/SpectralFreezeView.js';
-import { createTravelColorationView } from '../../midi-ui/TravelColorationView.js';
-import { createCrossExcitationView } from '../../midi-ui/CrossExcitationView.js';
 import { sealMidiProjectSnapshot } from '../../../midi/project/MidiProjectSnapshot.js';
 import { createPhysicalDomainEditor } from './PhysicalDomainEditor.js';
 import { createPhysicalFeedbackController } from './physical/PhysicalFeedback.js';
@@ -58,12 +55,9 @@ import { createInstrumentMacroGestures } from '../../midi-ui/InstrumentMacroGest
 import { createLaneSoundTransaction } from '../../midi-ui/LaneSoundTransaction.js';
 import { createNativeSoundSelection } from '../../midi-ui/NativeSoundSelection.js';
 import { resolveLegacySoundAlias } from './NativeSoundCollections.js';
-import { createSoundContentLibrary } from '../../midi-ui/SoundContentLibrary.js';
 import { createPatchVariationOwner } from '../../midi-ui/PatchVariationOwner.js';
 import { createPatchVariationView } from '../../midi-ui/PatchVariationView.js';
-import { createQuarryEchoView } from '../../midi-ui/QuarryEchoView.js';
 import { createSoundSeedLabView } from '../../midi-ui/SoundSeedLabView.js';
-import { createShapeFoundryView } from '../../midi-ui/ShapeFoundryView.js';
 import { createMasterCaptureView } from '../../midi-ui/MasterCaptureView.js';
 import { createPrelistenMonitor } from '../../midi-ui/PrelistenMonitor.js';
 import { createCausalTakeAudioRenderView } from '../../midi-ui/CausalTakeAudioRenderView.js';
@@ -195,6 +189,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalHistory.prune(new Set([...undo, ...redo]));
   };
   const status = text => { if (!disposed) view?.status(text); };
+  const toolGate = createLazyWorkstationToolGate({
+    getIdentity: () => JSON.stringify([disposed, documentGeneration, projectRevision, laneDisplayWorldEpoch, state.laneId, stageSession?.active() || false]),
+    getInteraction: () => ({ hidden: document.hidden === true, focus: document.activeElement, body: document.body, dialog: document.querySelector?.('dialog[open]') || null }),
+    onError: (name, error) => status(name + ' could not open: ' + String(error?.message || error).slice(0, 512))
+  });
   const retirePhysicalScoreViews = ({ parentOnly = false } = {}) => {
     physicalScoreParent = null; if (!parentOnly) { physicalScore = null; physicalScoreQuery = null; }
     scoreViewRetirement = createProcgenRetirementScope().retire([
@@ -228,7 +227,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const ownsOperation = lease => !disposed && currentOperation === lease && !lease.signal.aborted;
   const finishOperation = lease => { if (currentOperation === lease) currentOperation = null; };
-  const listen = (target, event, handler) => { target?.addEventListener?.(event, handler); listeners.push(() => target?.removeEventListener?.(event, handler)); };
+  const listen = (target, event, handler, options) => { target?.addEventListener?.(event, handler, options); listeners.push(() => target?.removeEventListener?.(event, handler, options)); };
+  listen(document, 'keydown', event => { if (event.key === 'Escape') toolGate.cancel(); });
+  listen(document, 'pointerdown', () => toolGate.cancel(), true);
   const runtime = () => getRuntime?.();
   const renderer = () => runtime()?.lanes?.renderer;
   const router = () => runtime()?.view?.midiPreviewRouter;
@@ -637,6 +638,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== next.bpm) { pendingResume = false; if (held.length) engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
+    toolGate.cancel();
     macroGestures.cancelAll(); soundTransactions.cancel('The world or transport is being replaced.');
     physicalFeedback?.disarm();
     recoveryAbort?.abort();
@@ -1659,9 +1661,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     openRectangularMembrane() {
       if (disposed || !physicalPlayback) { status('The shared skin is unavailable.'); return; }
-      rectangularMembraneView ||= createRectangularMembraneView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
-        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      rectangularMembraneView.open();
+      return toolGate.open('Shared skin', () => import('../../midi-ui/RectangularMembraneView.js'), ({ createRectangularMembraneView }) => {
+        rectangularMembraneView ||= createRectangularMembraneView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+          saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+        rectangularMembraneView.open();
+      });
     },
     openSympatheticMap(foundryModel = null) {
       if (disposed || !physicalPlayback) { status('Shared audio bodies are unavailable.'); return; }
@@ -1671,27 +1675,35 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     openSpectralFreeze() {
       if (disposed || !physicalPlayback) { status('Physical spectral freeze is unavailable.'); return; }
-      spectralFreezeView ||= createSpectralFreezeView({ document, window, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
-        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      spectralFreezeView.open();
+      return toolGate.open('Spectral freeze', () => import('../../midi-ui/SpectralFreezeView.js'), ({ createSpectralFreezeView }) => {
+        spectralFreezeView ||= createSpectralFreezeView({ document, window, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+          saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+        spectralFreezeView.open();
+      });
     },
     openTravelColoration() {
       if (disposed || !physicalPlayback) { status('Physical travel color is unavailable.'); return; }
-      travelColorationView ||= createTravelColorationView({ document, getPlayback: () => physicalPlayback,
-        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      travelColorationView.open();
+      return toolGate.open('Travel color', () => import('../../midi-ui/TravelColorationView.js'), ({ createTravelColorationView }) => {
+        travelColorationView ||= createTravelColorationView({ document, getPlayback: () => physicalPlayback,
+          saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+        travelColorationView.open();
+      });
     },
     openCrossExcitation() {
       if (disposed || !physicalPlayback) { status('Physical lane effects are unavailable.'); return; }
-      crossExcitationView ||= createCrossExcitationView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
-        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      crossExcitationView.open();
+      return toolGate.open('Cross excitation', () => import('../../midi-ui/CrossExcitationView.js'), ({ createCrossExcitationView }) => {
+        crossExcitationView ||= createCrossExcitationView({ document, getPlayback: () => physicalPlayback, getLanes: () => project.procgen.lanes,
+          saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+        crossExcitationView.open();
+      });
     },
     openQuarryEcho() {
       if (disposed || !physicalPlayback) { status('Physical owner effects are unavailable.'); return; }
-      quarryEchoView ||= createQuarryEchoView({ document, window, onRectangularMembrane: () => handlers.openRectangularMembrane(), onSympatheticMap: () => handlers.openSympatheticMap(), onSpectralFreeze: () => handlers.openSpectralFreeze(), onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
-        saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
-      quarryEchoView.open();
+      return toolGate.open('Quarry Echo', () => import('../../midi-ui/QuarryEchoView.js'), ({ createQuarryEchoView }) => {
+        quarryEchoView ||= createQuarryEchoView({ document, window, onRectangularMembrane: () => handlers.openRectangularMembrane(), onSympatheticMap: () => handlers.openSympatheticMap(), onSpectralFreeze: () => handlers.openSpectralFreeze(), onTravelColoration: () => handlers.openTravelColoration(), onCrossExcitation: () => handlers.openCrossExcitation(), getPlayback: () => physicalPlayback, getSavedRack: () => project.procgen.effectRack || null,
+          saveRack: rack => { if (disposed || worldBusy || pendingHistory || causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the current world or take operation before saving effect defaults.'); dispatch({ type: 'procgen/effectRack', rack }); }, onStatus: status });
+        quarryEchoView.open();
+      });
     },
     harvestSoundSeed(source) {
       if (disposed || !resourceBudget || !legacy.local.audio) throw new Error('Sound-seed ownership is unavailable.');
@@ -1706,9 +1718,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     applyMatchingWorld(laneId = selected().id) { const lane = procgenLane(project.procgen.lanes, laneId); if (!lane?.linkedThemePresetId) throw new Error('This sound has no matching physical world suggestion.'); return dispatch({ type: 'procgen/worldTheme', laneId, worldThemeId: lane.linkedThemePresetId }); },
     openSoundLibrary() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Sound library resource ownership is unavailable.'); return; }
-      soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
-        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
-      soundLibrary.open();
+      return toolGate.open('Sound library', () => import('../../midi-ui/SoundContentLibrary.js'), ({ createSoundContentLibrary }) => {
+        soundLibrary ||= createSoundContentLibrary({ document, window, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs,
+          onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onStatus: status, monitor: handlers.openPrelistenMonitor() });
+        soundLibrary.open();
+      });
     },
     createVariationsView() {
       if (disposed || !resourceBudget || !legacy.local.audio) return null;
@@ -1732,8 +1746,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     openShapeFoundry() {
       if (disposed || !resourceBudget || !legacy.local.audio) { status('Shape foundry resource ownership is unavailable.'); return; }
-      shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
-        onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
+      return toolGate.open('Shape foundry', () => import('../../midi-ui/ShapeFoundryView.js'), ({ createShapeFoundryView }) => {
+        shapeFoundry ||= createShapeFoundryView({ document, audio: legacy.local.audio, resourceBudget, jobs: backgroundJobs, getTargetIdentity: () => ({ documentGeneration, projectRevision, laneId: selected().id }),
+          onApply: (candidate, options) => handlers.applyInstalledInstrument(candidate, options), onOfferSharedBody: model => handlers.openSympatheticMap(model), onOfferResonatorSource: (index, file, options) => handlers.offerMorphSource(index, 'shape', file, options), onStatus: status }); shapeFoundry.open();
+      });
     },
     applyInstalledInstrument(candidate, { signal, hold = false, isCurrent } = {}) { return soundTransactions.select(candidate, { signal, hold, isCurrent, laneId: selected().id }); },
     canvasToolAuthorityChanged() { legacy.refreshCanvasToolAuthority?.(); },
@@ -2086,6 +2102,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document, 'keyup', syncLegacyControls);
   listen(document, 'keydown', event => { if (event.key === 'Escape' && inputLease) cancelInputEdits('canceled by user'); });
   pageLifecycle = createProcgenPageLifecycle({ document, window, suspend: ({ reason }) => {
+    toolGate.cancel();
     physicalAuthoringAbort?.abort(); physicalAuthoringView?.suspend(); quarryEchoView?.suspend(); crossExcitationView?.suspend(); travelColorationView?.suspend(); spectralFreezeView?.suspend(); sympatheticMapView?.suspend(); rectangularMembraneView?.suspend(); physicalJunctionView?.suspend();
     soundSeedLab?.suspend(); shapeFoundry?.suspend();
     void masterCapture?.suspend();
@@ -2190,6 +2207,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'physical-authoring-view', run: () => physicalAuthoringView?.dispose() },
         { name: 'physical-authoring-history', run: () => physicalHistory.dispose() },
         { name: 'physical-junction-view', run: () => physicalJunctionView?.dispose() },
+        { name: 'lazy-tool-requests', run: () => toolGate.dispose() },
         { name: 'rectangular-membrane-view', run: () => rectangularMembraneView?.dispose() },
         { name: 'sympathetic-map-view', run: () => sympatheticMapView?.dispose() },
         { name: 'spectral-freeze-view', run: () => spectralFreezeView?.dispose() },

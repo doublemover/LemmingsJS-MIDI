@@ -305,6 +305,11 @@ view/editor execution and the E2E harness load only for their explicit legacy
 path and diagnostic opt-in; failure of those optional modules does not block
 the ordinary instrument. Shared asset/style data remains part of preparation.
 
+Shared skin, spectral freeze, travel color, cross excitation, quarry echo,
+sound library and shape foundry views load when opened. Escape, a new pointer
+interaction or a changed document, lane or world cancels a pending opening.
+An unavailable tool reports its error without replacing the live performance.
+
 Startup resolves one immutable plan before asset preparation. Shared recipes
 use versioned defaults for omitted fields, including decoration, population and
 worker policy; unrelated previous setup preferences cannot fill those gaps.

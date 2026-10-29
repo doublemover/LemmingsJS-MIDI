@@ -25893,7 +25893,33 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending exact-head publication. Last fully recorded316 remains green.",
+      "remoteCi": {
+        "head": "f1b783141599c6537151d556e506ffa63bb0b4f0",
+        "conclusion": "failure",
+        "job": 123220049519,
+        "run": 40804492434,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40804492434/job/123220049519",
+        "workstation": {
+          "passed": 115,
+          "failed": 1,
+          "failure": "procgen-workstation-seed-rebuild.spec.js expected rebuildable, received unavailable"
+        },
+        "skipped": [
+          "MCP smoke",
+          "benchmark smoke",
+          "coverage"
+        ],
+        "capture": {
+          "state": "Ready",
+          "frames": 106368,
+          "captured": 106368,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02330303192138672,
+          "nonfinite": 0
+        },
+        "diagnosis": "Replacement render preparation left the previous file selector enabled until the scheduled display write. A dry-stem selection could be reset to the replacement master. Source/tap guards correctly refused rebuild. Fixed in continuation322."
+      },
       "scopeLimits": [
         "Optional hardware MIDI script and wider creative/audio UI graph still need separate deferral/measurement work.",
         "Cold/warm/offline/subdirectory/stale-chunk, first accepted sound and declared-target interaction/startup budgets remain open under1161.",
@@ -25950,6 +25976,11 @@
         "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog320-undefined.log",
         "bytes": 111,
         "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci320-failed.log",
+        "bytes": 141734,
+        "sha256": "199be2659d6a13c4fcfd8c681d5a4a031e5f1eb7c191e0ac154a841da7fdde85"
       }
     ],
     "artifacts": [
@@ -26009,6 +26040,185 @@
       "1095": {
         "state": "open-implemented-partial",
         "scope": "Reuse configured resource/provider ownership; wider asset qualification remains separate."
+      }
+    }
+  },
+  "continuation321": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Deferred creative views with current-context publication",
+    "sourceBase": "f1b783141599c6537151d556e506ffa63bb0b4f0",
+    "issues": [
+      1161
+    ],
+    "development": [
+      "Seven optional creative view imports move to explicit tool opening while remaining discoverable by the immutable packager.",
+      "A single latest-request gate fences document/revision/world/lane/stage identity, visibility, current dialog and focus; Escape, pointer interaction, suspension and retirement cancel pending openings.",
+      "Existing view reuse and retirement remain; the synchronous foundry-model sympathetic-map handoff is unchanged. Module errors report locally and do not activate audio."
+    ],
+    "validation": {
+      "node": {
+        "passed": 121,
+        "failed": 0,
+        "scope": "112 workstation/controller, seven publication gate and two static-entry/packaging cases. Final nine gate/graph guards also pass."
+      },
+      "browser": {
+        "passed": 13,
+        "failed": 0,
+        "scope": "Twelve existing command cases plus actual delayed-module Escape/reopen/error workflow. Expanded pointer-cancellation case passes separately and again in final combined three-case batch. Same project/world, output disabled and zero AudioContext constructions."
+      },
+      "staticEntry": {
+        "before": {
+          "modules": 774,
+          "bytes": 7660239
+        },
+        "after": {
+          "modules": 760,
+          "bytes": 7499895
+        },
+        "scope": "Static import/re-export source inventory taken before continuation322 render-view edits; not compressed size, measured startup, heap, first sound or actual network requests."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending combined publication; full320 failed one seed-rebuild workflow and skipped MCP/bench/coverage. Last fully green checkpoint remains316."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-native-pointer.log",
+        "bytes": 461,
+        "sha256": "d892219934d380b5ada2eb1310e01b1298f19cc963ec32181a55f30251d2bfd4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-native.log",
+        "bytes": 2834,
+        "sha256": "11f4598794b646d7bd73a00c5fdd14d8519cc9ccfeb78ea179c91faec535e944"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-node-guards.log",
+        "bytes": 908,
+        "sha256": "657654bab2006e23db05e5c2ff1c5c64453c877212d29bfaffd9937f98facbc2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-node.log",
+        "bytes": 11741,
+        "sha256": "d6a6087ad16fb5178071130ca5a37f332c5e983c1a99741153908d9a57e963d6"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-categories.log",
+        "bytes": 2706,
+        "sha256": "50d5bed019ac8c0d03e5693d7fad19045ad5a95440788ae81558bc6a1098ae18"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-static-after.json",
+        "bytes": 48500,
+        "sha256": "68814aa2db7268877cda6f38775883070f617c4eaa50aeaddf35aa59719c4af1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog321-lazy-tools-results.json",
+        "bytes": 20245,
+        "sha256": "7da5f48813862768bf69dacb45c17d9ca88a535ff43c28039f674427ebb01f7c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog321-lazy-tools-pointer-results.json",
+        "bytes": 4303,
+        "sha256": "15faed6b6d403795a1d904ac45ea91e88c2bad7eb1bad4186387b7307822a606"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-321-coverage\\coverage-summary.json",
+        "bytes": 247147,
+        "sha256": "8dfaf3b064b2f11ca9a5fd9dcc2290d8095d3630e2765a193f0869bcbdc66c37"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-321-coverage-guards\\coverage-summary.json",
+        "bytes": 1007,
+        "sha256": "e9418abcd25b7693ed92e8d31f1d0937e848f7cde960275754f4741271a32541"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 204029,
+        "sha256": "aa673bf24f4bcb753c3fd57117363bf32c960748ee725dd511581b6ea6e36f19"
+      },
+      {
+        "path": "js/app/procgen/workstation/LazyWorkstationToolGate.js",
+        "bytes": 1663,
+        "sha256": "f040b5a3578a5f0dec14503753e3aa5bfdb7591f9d1a6212527a703bf405413e"
+      },
+      {
+        "path": "test/lazy-workstation-tool-gate.test.js",
+        "bytes": 4641,
+        "sha256": "16b3b74cb555cae4d939a3f6414f2ba72c2ac99e000f9da10a2ff7da7b96817d"
+      },
+      {
+        "path": "test/procgen-startup-graph.test.js",
+        "bytes": 3033,
+        "sha256": "a21313c6d6e4f9c2aa79630e18a7c1775f9ecfe03aa593d81003603d8bd48416"
+      },
+      {
+        "path": "e2e/procgen-workstation-lazy-tools.spec.js",
+        "bytes": 3152,
+        "sha256": "96d89cbcfb610fdd2fbc0736a3058e8cc57eb5b34e5205231bdd76cec5ab6b1f"
+      }
+    ],
+    "issueStatus": {
+      "1161": {
+        "state": "open-implemented-partial",
+        "remaining": "Optional hardware/creative graph and measured cold/warm/offline/subdirectory/stale-chunk, first accepted sound and declared-target startup/interaction budgets."
       }
     }
   }

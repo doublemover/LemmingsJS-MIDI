@@ -23,10 +23,14 @@ describe('ProcGen resource entry and optional runtime graph', function() {
     expect([...files].filter(name => name.startsWith('js/app/e2e/'))).to.deep.equal([]);
     expect(files.has('js/app/procgen/ProcgenResourceFactory.js')).to.equal(true);
     expect(files.has('js/game/GameFactory.js')).to.equal(true);
+    for (const name of ['RectangularMembraneView', 'SpectralFreezeView', 'TravelColorationView', 'CrossExcitationView', 'QuarryEchoView', 'SoundContentLibrary', 'ShapeFoundryView']) expect(files.has('js/app/midi-ui/' + name + '.js'), name).to.equal(false);
   });
   it('declares deferred entries to the existing source-bound packager', async () => {
     const entry = 'js/app/procgenBoot.js', source = await fs.readFile(path.join(rootDir, entry), 'utf8');
     const files = new Set(discoverRuntimeDependencies(entry, source).map(value => path.posix.normalize(path.posix.join(path.posix.dirname(entry), value))));
     for (const name of ['js/app/bootstrap.js', 'js/game/GameView.js', 'js/editor/EditorLevelLoader.js', 'js/app/e2eHarness.js', 'js/app/procgen/ProcgenResourceFactory.js']) expect(files.has(name), name).to.equal(true);
+    const controller = 'js/app/procgen/workstation/ProcgenWorkstation.js';
+    const toolEntries = new Set(discoverRuntimeDependencies(controller, await fs.readFile(path.join(rootDir, controller), 'utf8')));
+    for (const name of ['RectangularMembraneView', 'SpectralFreezeView', 'TravelColorationView', 'CrossExcitationView', 'QuarryEchoView', 'SoundContentLibrary', 'ShapeFoundryView']) expect(toolEntries.has('../../midi-ui/' + name + '.js'), name).to.equal(true);
   });
 });

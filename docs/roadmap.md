@@ -8460,3 +8460,18 @@ export-budget acknowledgments still prevent a false complete receipt.
   recovery/recipes/sharing, and complete legacy compatibility at1920px minimum.
   Keep #1161 open for optional hardware/creative graph and measured startup/
   first-sound/offline/package scope. Exact-head full CI remains pending.
+
+### Continuation 321 — defer creative tool views
+
+- Load seven optional creative views through literal dynamic imports. Preserve
+  their existing owners and retirement; keep the synchronous foundry-model
+  handoff to the sympathetic map until that source lifetime is separately owned.
+- Fence publication by document/revision/world/lane/stage identity and the latest
+  interaction. Escape, pointer interaction, suspension and retirement cancel late
+  openings. Module failures remain local; opening a tool activates no audio.
+- Static source inventory changes774 modules/7660239 bytes to760/7499895.
+  This is source reachability, not a measured startup or transfer budget.
+- All121 affected Node cases pass. Thirteen native command/tool cases pass;
+  the expanded Escape/pointer/error case also passes on the combined final batch.
+  Critical types, undefined calls, provenance and browser category checks pass.
+  Keep #1161 open for its remaining startup/first-sound/offline/hardware scope.
