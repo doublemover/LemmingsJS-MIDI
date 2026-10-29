@@ -9284,3 +9284,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   exact component and verify the gate. Its18-case engine job and both native codec
   jobs pass. The full Chromium native-control choice still needs Linux main CI.
   350 remains the last verified full green checkpoint. Close #1014 software scope.
+
+### Continuation 359 - preserve effective clock and reject unmapped exports
+
+- Owned legacy speed projection no longer overwrites the transport timer or view
+  speed. Native keydown across game/BPM and linked/unlinked policies records the
+  effective control before actual pump batches; clamped BPM400 keeps3.333x/18ms
+  rather than the requested5x/12ms. Controlled blur and delayed keyup preserve it.
+- Direct/worker SMF paths share strict numeric nonnegative beat validation and
+  safe integer quantization. Missing time cannot silently become tick zero.
+- 104 affected Node cases and five native desktop clock-input journeys pass;
+  formatting/types/undefined/category/provenance checks pass. MIDI snapshot has
+ 100% scoped coverage; the three other MIDI export modules have100% lines.
+  No full local suite is repeated. Refresh the exact first-party worker digest.
+- Keep #986 open for typed physical-source export/crop/quantization, full reopened
+  input re-performance and undurable-admission controls. The paused single Step
+  observes the existing zero-speed60000ms floor; a nominal paused-step contract
+  remains required and is not advertised as completed timing acceptance.
+- 358 main CI has reached workstation smoke; engine and both native codec jobs
+  pass. Linux full Chromium capture qualification is still independent.350 remains
+  the last verified full green checkpoint. Continue solo through the backlog.

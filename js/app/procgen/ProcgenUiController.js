@@ -364,8 +364,8 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     if (!owned && physicalControlOwner?.speed) return physicalControlOwner.speed(normalizeProcgenSpeed(value, settings.speed));
     settings.speed = normalizeProcgenSpeed(value, settings.speed);
     if (byId('procgenSpeed')) byId('procgenSpeed').value = settings.speed;
-    const runtime = getRuntime(); if (runtime?.view) runtime.view.gameSpeedFactor = settings.speed;
-    const timer = runtime?.game?.getGameTimer?.(); if (timer) timer.speedFactor = settings.speed;
+    const runtime = getRuntime(); if (!owned && runtime?.view) runtime.view.gameSpeedFactor = settings.speed;
+    const timer = runtime?.game?.getGameTimer?.(); if (!owned && timer) timer.speedFactor = settings.speed;
     renderProcgenSpeedControl({ document, sprites: panelSprites(), speed: settings.speed });
   };
   for (const id of ['procgenSpeed', 'procgenSpeedReadout', 'procgenSpeedDown', 'procgenSpeedUp']) listen(byId(id), 'contextmenu', event => { event.preventDefault?.(); setSpeed(1); });

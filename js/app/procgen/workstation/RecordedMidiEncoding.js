@@ -1,5 +1,5 @@
 import { RECORDING_EXPORT_SCHEMA, recordingExportPeakBytes } from './MidiRecordingExportSnapshot.js';
-import { smfVariable, smfTempo, smfHeader } from './ProcgenSmfBytes.js';
+import { smfVariable, smfTempo, smfHeader, smfBeatTick } from './ProcgenSmfBytes.js';
 
 export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}, { signal, current = () => true, estimatedPeakBytes,
   onProgress = () => {}, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
@@ -26,7 +26,7 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
         throw new TypeError('Malformed recorded MIDI message.');
     }
     if (kind === 3 || kind === evidence) {
-      const tick = Math.max(0, Math.round(timing[index * 2] * ppq)); if (!Number.isSafeInteger(tick)) throw new RangeError('Recorded beat exceeds exact SMF timing.'); ticks[index] = tick;
+      ticks[index] = smfBeatTick(timing[index * 2], ppq);
       const on = family === 0x90 && messages[m + 2] > 0, off = family === 0x80 || family === 0x90 && !messages[m + 2];
       if (kind === 3) { smfTempo(timing[index * 2 + 1]); keep[index] = 1; retained++; }
       else if (!on && !off) { keep[index] = 1; retained++; }

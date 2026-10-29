@@ -1,6 +1,46 @@
 import { expect, test } from '@playwright/test';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
+for (const scenario of [
+  { name: 'game-unlinked', speedMode: 'game', linked: false },
+  { name: 'bpm-linked-clamped', speedMode: 'bpm', linked: true, blur: true },
+  { name: 'game-linked', speedMode: 'game', linked: true },
+  { name: 'bpm-unlinked', speedMode: 'bpm', linked: false, blur: true },
+  { name: 'paused', speedMode: 'game', linked: false, paused: true }
+]) test('native speed key keeps the recorded physical clock under ' + scenario.name + ' @boundary @physical-clock-input', { tag: ['@boundary', '@workstation-transport'] }, async ({ page }, testInfo) => {
+  test.setTimeout(90000); await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=1&speed=4'); await page.bringToFront();
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled);
+  const before = await page.evaluate(async scenario => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
+    studio.handlers.transport({ gameSpeed: 4, bpm: 180, speedMode: scenario.speedMode, linked: scenario.linked });
+    const armed = await studio.handlers.startCausalTake({ takeName: 'Native clock ' + scenario.name }); if (!armed) throw new Error('Take admission failed');
+    if (!scenario.paused) { studio.play(); api.resume(); } else { studio.transport.pause(); api.pause(); }
+    document.activeElement?.blur(); return { tick: api.world.tickIndex, takeId: armed.takeId };
+  }, scenario);
+  await page.keyboard.down('Equal');
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().gameSpeed)).toBe(5);
+  const captured = await page.evaluate(() => ({ state: window.__PROCGEN_STUDIO__.transport.getState(), timer: window.__PROCGEN_LANES__.world.timer.speedFactor, tick: window.__PROCGEN_LANES__.world.tickIndex }));
+  expect(captured.timer).toBe(captured.state.effectiveSpeed);
+  if (scenario.paused) { await page.locator('#procgenStep').click(); await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(before.tick + 1); }
+  else await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBeGreaterThanOrEqual(before.tick + 3);
+  if (scenario.blur) await page.evaluate(() => window.dispatchEvent(new Event('blur'))); else await page.keyboard.up('Equal');
+  const result = await page.evaluate(async ({ before, scenario, captured }) => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause(); const stopped = await studio.handlers.stopCausalTake();
+    const root = new URL('./', location.href), { createProcgenSessionStorage } = await import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root)), { createProcgenCausalJournal } = await import(new URL('js/app/procgen/workstation/ProcgenCausalJournal.js', root));
+    const storage = createProcgenSessionStorage();
+    try {
+      const records = (await createProcgenCausalJournal({ storage }).query({ takeId: before.takeId })).records;
+      const input = records.find(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.speedFactor === captured.state.effectiveSpeed);
+      const batch = records.find(record => record.kind === 'physical-batch' && record.tick > (input?.tick ?? before.tick));
+      return { scenario: scenario.name, nativeKeydown: true, interruption: scenario.blur ? 'controlled-window-blur' : 'native-keyup', requestedGameSpeed: captured.state.gameSpeed, effectiveSpeed: captured.state.effectiveSpeed, timer: captured.timer, complete: stopped.complete,
+        input: input && { sequence: input.sequence, tick: input.tick, payload: input.payload }, batch: batch && { sequence: batch.sequence, tick: batch.tick, tickDurationMs: batch.payload.tickDurationMs }, finalTimer: api.world.timer.speedFactor };
+    } finally { storage.close(); }
+  }, { before, scenario, captured });
+  await page.keyboard.up('Equal'); await testInfo.attach('physical-clock-input.json', { body: JSON.stringify(result), contentType: 'application/json' });
+  expect(result.complete).toBe(true); expect(result.finalTimer).toBe(0); expect(result.batch).toBeTruthy();
+  if (!scenario.paused) { expect(result.input.sequence).toBeLessThan(result.batch.sequence); expect(result.input.tick).toBeLessThan(result.batch.tick); expect(result.batch.tickDurationMs).toBeCloseTo(60 / result.effectiveSpeed, 8); }
+});
+
 async function ready(page) {
   await page.goto('/procgen.html?e2e=1&seed=42');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });

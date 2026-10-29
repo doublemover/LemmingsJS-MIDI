@@ -57364,5 +57364,438 @@
       }
     ],
     "remaining": "Continue solo through remaining backlog and independent main CI native-control qualification. Physical MIDI2 OS/receiver, acoustic, broader engine/background and exact DSP-restoration work retain their issue-specific scope."
+  },
+  "continuation359": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Keep legacy speed projection out of the physical clock and reject unmapped SMF time",
+    "issues": [
+      986
+    ],
+    "implementation": [
+      "Owned legacy speed projection updates settings/display without overwriting the transport effective timer or its view speed field. Linked BPM clamp and paused0 remain authoritative before keyup.",
+      "Use shared numeric nonnegative beat validation and safe exact tick lowering in direct SMF export, recording snapshot and worker encoding. Missing/null/string, negative, nonfinite and unsafe beat-to-tick values fail instead of becoming tick zero; explicit0 remains valid.",
+      "Native keyboard fixtures exercise game/BPM linked and unlinked modes, held input through actual physical pump ticks, controlled blur without keyup, and one paused native Step. Journal records precede the first affected completed batch in all four running modes."
+    ],
+    "validation": {
+      "node": {
+        "passed": 104,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook359-node-qualified.log",
+          "bytes": 9993,
+          "sha256": "f9e4f9aef1885b34e17fd2d3d06eedda1b4c783c8b9d684b1198cd83ee597aee"
+        },
+        "coverageReport": {
+          "path": ".tmp/rook359-coverage/coverage-summary.json",
+          "bytes": 2083,
+          "sha256": "7ae0e68cc56de6b4f1ffdfeded02644208aef09e51c2db58e605bf5f0aea80f8"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 738,
+              "covered": 704,
+              "skipped": 0,
+              "pct": 95.39
+            },
+            "statements": {
+              "total": 738,
+              "covered": 704,
+              "skipped": 0,
+              "pct": 95.39
+            },
+            "functions": {
+              "total": 118,
+              "covered": 88,
+              "skipped": 0,
+              "pct": 74.57
+            },
+            "branches": {
+              "total": 644,
+              "covered": 505,
+              "skipped": 0,
+              "pct": 78.41
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenUiController.js": {
+            "lines": {
+              "total": 545,
+              "covered": 511,
+              "skipped": 0,
+              "pct": 93.76
+            },
+            "functions": {
+              "total": 100,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 72
+            },
+            "statements": {
+              "total": 545,
+              "covered": 511,
+              "skipped": 0,
+              "pct": 93.76
+            },
+            "branches": {
+              "total": 461,
+              "covered": 340,
+              "skipped": 0,
+              "pct": 73.75
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\MidiRecordingExportSnapshot.js": {
+            "lines": {
+              "total": 37,
+              "covered": 37,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 5,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 37,
+              "covered": 37,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 30,
+              "covered": 30,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenMidiExport.js": {
+            "lines": {
+              "total": 62,
+              "covered": 62,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 62,
+              "covered": 62,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 41,
+              "covered": 35,
+              "skipped": 0,
+              "pct": 85.36
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenSmfBytes.js": {
+            "lines": {
+              "total": 22,
+              "covered": 22,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 5,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 22,
+              "covered": 22,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 18,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 94.44
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\RecordedMidiEncoding.js": {
+            "lines": {
+              "total": 72,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 6,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 66.66
+            },
+            "statements": {
+              "total": 72,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 94,
+              "covered": 83,
+              "skipped": 0,
+              "pct": 88.29
+            }
+          }
+        },
+        "scope": "Affected UI, direct/worker MIDI export, transport, physical score timeline and render-time cases. Scope coverage is not a project-wide gate."
+      },
+      "browser": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T17:48:16.192Z",
+          "duration": 10250.071,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook359-browser.json",
+          "bytes": 12669,
+          "sha256": "b8db5874b0bac73b7bcd5f5f1ab315a1ae46f314d6ef1dd75fd0a1ec3be253fa"
+        },
+        "log": {
+          "path": ".tmp/rook359-browser.log",
+          "bytes": 1316,
+          "sha256": "87b6f51855a71024b568cee5e96954869a38e43e8be8799ec6ba03ad9facd234"
+        },
+        "receipts": [
+          {
+            "scenario": "game-unlinked",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 2,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 3,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0
+          },
+          {
+            "scenario": "bpm-linked-clamped",
+            "nativeKeydown": true,
+            "interruption": "controlled-window-blur",
+            "requestedGameSpeed": 5,
+            "effectiveSpeed": 3.3333333333333335,
+            "timer": 3.3333333333333335,
+            "complete": true,
+            "input": {
+              "sequence": 3,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 3.3333333333333335,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 4,
+              "tick": 1,
+              "tickDurationMs": 18
+            },
+            "finalTimer": 0
+          },
+          {
+            "scenario": "game-linked",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 3,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 4,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0
+          },
+          {
+            "scenario": "bpm-unlinked",
+            "nativeKeydown": true,
+            "interruption": "controlled-window-blur",
+            "requestedGameSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 2,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 3,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0
+          },
+          {
+            "scenario": "paused",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "effectiveSpeed": 0,
+            "timer": 0,
+            "complete": true,
+            "batch": {
+              "sequence": 1,
+              "tick": 1,
+              "tickDurationMs": 60000
+            },
+            "finalTimer": 0
+          }
+        ],
+        "scope": "Actual1920x1080 desktop native keyboard and runtime pump/step, real IndexedDB causal journal. Controlled window blur is not an OS-background qualification. No audio/MIDI activation or hardware claim."
+      },
+      "checks": [
+        "npm run format",
+        "npm run provenance:check:10 components/350 files",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "fixtureCorrection": "The stable-prefix recording fixture supplied a past note without a mapped beat. Give that unrelated mutation test an explicit beat; separate new cases require missing time to fail.",
+    "workerDigest": {
+      "component": "lemmings-background-job-worker",
+      "previous": "e745aa4dc4e71c07477adb98d9cba6e5c2ee0fa57a5adfbdd9d31c050d3da18d",
+      "current": "52e6a00a92c1244ce36238c2d890e994147900a8363b0edd177c66666ba32149"
+    },
+    "ci358": {
+      "runId": 40923521656,
+      "head": "8d8565f92151f2f826dc970ca1c311b6d4f4d373",
+      "status": "in_progress",
+      "mainJob": 123622813710,
+      "mainObservedStage": "workstation browser smoke",
+      "engineJob": {
+        "id": 123622814409,
+        "conclusion": "success"
+      },
+      "nativeLinux": {
+        "id": 123622814164,
+        "conclusion": "success"
+      },
+      "nativeWindows": {
+        "id": 123622814278,
+        "conclusion": "success"
+      },
+      "noFullGreenClaim": true
+    },
+    "remaining986": [
+      "Retain #986 open: typed piecewise physical-source/export lowering, quantization/crop/pause/external-clock acceptance and full saved/reopened re-performance of the native input journeys are not established by these checks.",
+      "Paused single-step currently records tickDurationMs60000 from the existing zero-speed timer floor; this fixture observes it without asserting that as a desired musical interval. A nominal paused-step time contract and replay remain unresolved.",
+      "Undurable control-record admission still needs fail-closed qualification before claiming the complete clock-control contract."
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "bytes": 48300,
+        "sha256": "60a5989b58667089c804dbaabdfeaf15a6c1e6c60d23ebe928c4692fdc7c2370"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSmfBytes.js",
+        "bytes": 1288,
+        "sha256": "aa2906469fd41ce5a8f8e54b9e73c1dc4a0d7fceca7ba69ddad923b9f3650b36"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiExport.js",
+        "bytes": 3398,
+        "sha256": "92dbcbd87cf06122b9c6f24b95a5cc91f48a0b428129c5749d9370a994b5c636"
+      },
+      {
+        "path": "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
+        "bytes": 2538,
+        "sha256": "a27da05a3fca67c71e2f3dc5aff356482fb3b180b8937d3092b8de9d18d5cfdc"
+      },
+      {
+        "path": "js/app/procgen/workstation/RecordedMidiEncoding.js",
+        "bytes": 6597,
+        "sha256": "ff38fd3581732e7ea69878663a73a631d3f11584a3507f77d6ea40eab89d37fb"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21412,
+        "sha256": "442f594d567cb8d006d290d087f70eff8e04d6857c4ba4b5f40ed2618623acad"
+      },
+      {
+        "path": "test/procgen-ui.test.js",
+        "bytes": 49963,
+        "sha256": "f40e05b8336c1a191e46066e1fc8af6f2816a8e484c5f4891026a20d0096fe4e"
+      },
+      {
+        "path": "test/procgen-workstation-midi.test.js",
+        "bytes": 31451,
+        "sha256": "d32c350d96d15bc672b44ac3e11d8df9aa1b2cdf6c3c787dfd6fe17e9df5447c"
+      },
+      {
+        "path": "test/recorded-midi-export.test.js",
+        "bytes": 9998,
+        "sha256": "9e78ac4783757afe1b5cde717657ae67b55eb72056af78b686cf3cf63e2cb26b"
+      },
+      {
+        "path": "e2e/procgen-workstation-transport.spec.js",
+        "bytes": 10982,
+        "sha256": "f67c59f213d87d8482513eec99f3d61888b58645c6f010d676efb982d52da541"
+      }
+    ]
   }
 }

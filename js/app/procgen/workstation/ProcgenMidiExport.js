@@ -1,5 +1,5 @@
 import { encodeProcgenMidi } from './ProcgenMidiPorts.js';
-import { smfVariable as variable, smfTempo as tempo, smfHeader } from './ProcgenSmfBytes.js';
+import { smfVariable as variable, smfTempo as tempo, smfHeader, smfBeatTick } from './ProcgenSmfBytes.js';
 
 // A retained window may end before a real release arrives. Omit only the
 // unpaired message; an invented Note Off would claim an event we did not see.
@@ -42,7 +42,7 @@ export function exportProcgenMidi(events = [], { bpm = 120, ppq = 480, beatsPerB
     timeline.push({ tick: 0, data: [0xff, 0x01, ...variable(payload.length), ...payload] });
   }
   for (const event of events) {
-    const tick = Math.max(0, Math.round((Number(event.beat) || 0) * ppq));
+    const tick = smfBeatTick(event?.beat, ppq);
     if (event.type === 'tempo') { timeline.push({ tick, data: tempo(event.bpm) }); continue; }
     const messages = encodeProcgenMidi(event);
     for (const data of messages) {

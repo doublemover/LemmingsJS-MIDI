@@ -33,6 +33,18 @@ const fixture = (search = '', storedLanes = null, preferences = {}, restartResul
   return { document, window, ui, timer, runtime, get restarts() { return restarts; }, el: id => document.getElementById(id) };
 };
 describe('compact procgen drawer', () => {
+  it('projects an owned speed synchronously without overwriting the transport clock before keyup', () => {
+    for (const effective of [0, 1.5, 400 / 120]) {
+      const f = fixture(); const requests = [];
+      try {
+        f.ui.setPhysicalControlOwner({ speed(value) { requests.push(value); f.timer.speedFactor = effective; f.ui.setSpeed(value, { owned: true }); return value; } });
+        f.ui.setSpeed(4); f.window.dispatchEvent({ type: 'keydown', key: '=', code: 'Equal', preventDefault() {} });
+        expect(requests).to.deep.equal([4, 5]); expect(f.ui.settings.speed).to.equal(5); expect(f.timer.speedFactor).to.equal(effective);
+        f.window.dispatchEvent({ type: 'blur' }); expect(f.timer.speedFactor).to.equal(effective);
+        f.window.dispatchEvent({ type: 'keyup', key: '=', code: 'Equal' }); expect(f.timer.speedFactor).to.equal(effective);
+      } finally { f.ui.dispose(); }
+    }
+  });
   it('routes an immediate reviewed-output activation by current backend state rather than a delayed status-strip action', () => {
     const f = fixture(); let starts = 0, discoveries = 0;
     const state = { enabled: false, selectedBackend: 'midi', midiPermission: 'granted', selectedOutputId: 'reviewed', status: 'selected' };

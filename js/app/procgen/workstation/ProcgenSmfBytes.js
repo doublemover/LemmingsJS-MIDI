@@ -1,3 +1,12 @@
+export const smfBeat = beat => {
+  if (!Number.isFinite(beat) || beat < 0) throw new RangeError('An unmapped recording beat cannot be exported.');
+  return beat;
+};
+export const smfBeatTick = (beat, ppq) => {
+  const tick = Math.round(smfBeat(beat) * ppq);
+  if (!Number.isSafeInteger(tick)) throw new RangeError('Recorded beat exceeds exact SMF timing.');
+  return tick;
+};
 export const smfVariable = value => {
   if (!Number.isSafeInteger(value) || value < 0 || value > 0x0fffffff) throw new RangeError('MIDI delta time exceeds the four-byte SMF limit.');
   const bytes = [value & 127];

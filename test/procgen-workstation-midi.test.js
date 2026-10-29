@@ -427,6 +427,12 @@ describe('ProcGen Standard MIDI File export', () => {
     expect(events[6]).to.deep.equal({ tick: 960, status: 255, type: 81, data: [15, 66, 64] });
     expect(events.at(-1)).to.deep.equal({ tick: 1440, status: 255, type: 47, data: [] });
   });
+  it('refuses missing or unrepresentable beat mappings instead of silently exporting tick zero', () => {
+    for (const beat of [undefined, null, '', '2', NaN, Infinity, -1]) expect(() => exportProcgenMidi([{ type: 'noteOn', note: 60, velocity: 100, beat }])).to.throw('unmapped');
+    expect(() => exportProcgenMidi([{ type: 'noteOn', note: 60, velocity: 100, beat: Number.MAX_SAFE_INTEGER }])).to.throw('exact SMF');
+    const events = parseSmf(exportProcgenMidi([{ type: 'noteOn', note: 60, velocity: 100, beat: 0 }]));
+    expect(events.find(event => event.status === 0x90).tick).to.equal(0);
+  });
 
   it('sorts events stably and supports recordings larger than JavaScript argument limits', () => {
     const events = Array.from({ length: 40000 }, (_, index) => ({ beat: index / 24, data: [0xb0, 1, index % 128] }));

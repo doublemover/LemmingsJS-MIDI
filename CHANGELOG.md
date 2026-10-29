@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve the transport clock when projecting legacy speed controls, and reject unmapped or unrepresentable recorded MIDI times instead of exporting them at tick zero.
+
 - Match real walking, hoisting and terminal action names in sustained voice policies while preserving physical source facts and independently owned transitions.
 
 - Release held MIDI voices when their stable lane becomes silent or unavailable, fence queued attacks at submission, and report unsupported crossfades without inventing replacement voices.

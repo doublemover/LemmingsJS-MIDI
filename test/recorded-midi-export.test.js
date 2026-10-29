@@ -24,6 +24,15 @@ const reference = (records, window, options) => {
 };
 describe('owned recorded MIDI worker export', function() {
   this.timeout(20000);
+  it('rejects unmapped snapshot beats and negative worker times while preserving explicit zero', async () => {
+    for (const beat of [undefined, null, '', '2', NaN, Infinity, -1]) await rejected(snapshot([{ direction: 'output', evidence: 'intent-render', data: [0xb0, 1, 80], beat }]), 'unmapped');
+    const valid = await snapshot([{ direction: 'output', evidence: 'intent-render', data: [0xb0, 1, 80], beat: 0 }]);
+    valid.timing[0] = -1;
+    await rejected(encodeRecordedMidi({ snapshot: valid, window: windowState }, { estimatedPeakBytes: recordingExportPeakBytes(1), ...fast }), 'unmapped');
+    valid.timing[0] = Number.MAX_SAFE_INTEGER;
+    await rejected(encodeRecordedMidi({ snapshot: valid, window: windowState }, { estimatedPeakBytes: recordingExportPeakBytes(1), ...fast }), 'exact SMF');
+    valid.timing[0] = 0; expect((await encodeRecordedMidi({ snapshot: valid, window: windowState }, { estimatedPeakBytes: recordingExportPeakBytes(1), ...fast })).bytes).to.be.instanceOf(Uint8Array);
+  });
   it('matches the complete reference bytes on generated same-pitch sustain, routes, timestamp disorder, cancellation and evidence windows', async () => {
     let random = 37; const next = bound => { random = (Math.imul(random, 1664525) + 1013904223) >>> 0; return random % bound; };
     for (let trial = 0; trial < 64; trial++) {
@@ -45,7 +54,7 @@ describe('owned recorded MIDI worker export', function() {
   it('captures a stable prefix while new events append and refuses clear, canceled future events and retirement', async () => {
     const ports = createProcgenMidiPorts({ now: () => 1000 });
     try {
-      ports.configure({ recording: true }); ports.recordOutput({ note: 60, timeMs: 900, durationMs: 200 });
+      ports.configure({ recording: true }); ports.recordOutput({ note: 60, timeMs: 900, durationMs: 200 }, { beat: 1, bpm: 120 });
       const first = ports.createRecordingExportSource(); ports.recordEvent({ type: 'cc', controller: 74, value: 40, timestamp: 1100, beat: 1 });
       const input = await first.prepareInput(); expect(input.count).to.equal(2); expect(first.isCurrent()).to.equal(true);
       ports.flush(); expect(first.isCurrent()).to.equal(false); await rejected(first.prepareInput(), 'changed'); first.release();
@@ -79,7 +88,7 @@ describe('owned recorded MIDI worker export', function() {
       yieldTask: async () => { slices++; controller.abort(); } })); expect(slices).to.equal(1);
     expect(() => recordingExportPeakBytes(2000000)).to.throw('workspace');
     await rejected(snapshot([{ direction: 'output', evidence: 'intent-render', data: [0x90, 60, 80], beat: Infinity }]), 'unmapped');
-    await rejected(snapshot([{ direction: 'output', evidence: 'intent-render', data: [0x90, 60, 80], outputId: 'x'.repeat(4097) }]), 'route');
+    await rejected(snapshot([{ direction: 'output', evidence: 'intent-render', data: [0x90, 60, 80], beat: 0, outputId: 'x'.repeat(4097) }]), 'route');
     const empty = await snapshot([]);
     await rejected(encodeRecordedMidi({ snapshot: empty, window: windowState }, { estimatedPeakBytes: 4096 }), 'workspace');
     const invalid = await snapshot([{ type: 'tempo', bpm: 0, beat: 0 }]);

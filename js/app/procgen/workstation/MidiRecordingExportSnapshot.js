@@ -1,4 +1,5 @@
 import { yieldBackgroundTask } from '../../resources/BackgroundTaskYield.js';
+import { smfBeat } from './ProcgenSmfBytes.js';
 
 export const RECORDING_EXPORT_SCHEMA = 'procgen-recording-columns/v1';
 export const recordingExportPeakBytes = count => {
@@ -15,9 +16,7 @@ export async function snapshotMidiRecording({ records, count, signal, isCurrent,
   for (let index = 0; index < count; index++) {
     const event = records[index], t = index * 2, m = index * 5;
     if (!event.cancelled && (event.type === 'tempo' || event.direction === 'output' && ['api-accepted', 'intent-render'].includes(event.evidence))) {
-      const beat = event.beat == null ? 0 : Number(event.beat);
-      if (!Number.isFinite(beat)) throw new RangeError('An unmapped recording beat cannot be exported.');
-      timing[t] = beat;
+      timing[t] = smfBeat(event.beat);
       if (event.type === 'tempo') { timing[t + 1] = event.bpm; messages[m + 4] = 3; }
       else {
         const data = event.data, outputId = String(event.outputId ?? '');

@@ -1,6 +1,6 @@
 # ProcGen physical timing domains
 
-The physical event stream uses these clocks. A consumer must keep the domain and epoch with each timestamp; equal numeric values in different domains are not interchangeable. The causal output path is still being integrated with the live workstation, which currently retains its legacy pattern engine.
+The physical event stream uses these clocks. A consumer must keep the domain and epoch with each timestamp; equal numeric values in different domains are not interchangeable. The live workstation routes committed physical batches through its causal engine. Complementary pattern lanes retain their separate transport scheduling.
 
 | Value | Unit and owner | Meaning |
 | --- | --- | --- |
@@ -26,3 +26,22 @@ Scheduling and presentation share the meter conversion in
 recomputes an unlaunched phrase's next boundary on the next scheduling pulse.
 Regression fixtures cover non-4/4 engine/display agreement; their runtime
 execution is deferred during the backlog development pass.
+
+## Recorded MIDI export input
+
+Both direct SMF export and worker recording snapshots require an explicitly mapped,
+finite, nonnegative numeric beat for every selected event. Missing/null/string,
+negative and nonfinite values fail preparation; they are never assigned tick zero.
+Explicit beat zero remains valid. Quantization must produce an exact safe integer
+and each delta must fit the four-byte SMF representation.
+
+These APIs consume already mapped recording beats. They do not lower raw physical
+ticks or host milliseconds and do not reconstruct history from the current BPM.
+A source exporter must first apply its retained epoch/segment map and crop origin.
+Original source time and any live scheduling repair remain separate evidence.
+
+Legacy speed controls publish requested values through the transport owner before
+projecting their labels. The projection cannot overwrite the effective timer,
+including a clamped linked BPM or paused clock. Native keyboard qualification
+records real physical pump batches between keydown and keyup/controlled blur;
+that ordering evidence is distinct from full take re-performance qualification.
