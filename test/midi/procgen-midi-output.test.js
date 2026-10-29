@@ -28,6 +28,16 @@ const fixture = (backend = 'midi', reviewed = true, deferredLibrary = false) => 
   return { output, webMidi, local, calls, secondCalls, config, get loads() { return loads; }, supplyLibrary() { library = webMidi; resolveLibrary(webMidi); }, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
 };
 describe('procgen selected audible destination', () => {
+  for (const name of ['NotAllowedError', 'SecurityError']) for (const reviewed of [false, true]) it('keeps ' + name + ' explicit during ' + (reviewed ? 'activation' : 'discovery') + ' without automatic retry or local fallback', async () => {
+    const f = fixture('midi', reviewed);
+    f.webMidi.enable = async () => { f.webMidi.requests++; throw Object.assign(new Error('Browser blocked MIDI access'), { name }); };
+    try {
+      expect(await f.output.start()).to.equal(false);
+      for (let index = 0; index < 3; index++) expect(f.output.getState()).to.include({ midiPermission: 'denied', failureKind: 'permission-denied', enabled: false });
+      expect(f.webMidi.requests).to.equal(1); expect(f.local.starts).to.equal(0); expect(f.calls).to.have.length(0);
+      expect(f.output.getState().message).to.include('denied or blocked');
+    } finally { await f.output.dispose()?.completion; }
+  });
   it('loads MIDI only on explicit discovery and shares a pending discovery without activating a route', async () => {
     const f = fixture('midi', false, true);
     try {

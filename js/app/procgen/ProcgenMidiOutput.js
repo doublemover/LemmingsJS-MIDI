@@ -4,6 +4,7 @@ import { getBrowserPerformanceLease } from '../midi-ui/BrowserPerformanceLease.j
 import { createProcgenRetirementScope } from './ProcgenRetirement.js';
 
 let performanceSequence = 0;
+const midiAccessDenied = error => error?.name === 'NotAllowedError' || error?.name === 'SecurityError';
 
 const audibilityKey = config => JSON.stringify({ enabled: config.enabled, mpe: config.mpe, defaultChannel: config.defaultChannel,
   sfx: Object.entries(config.sfx || {}).map(([id, source]) => [id, source?.disabled, source?.channel, source?.outputId, source?.trackId]),
@@ -135,8 +136,8 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, loadWe
         return available;
       } catch (error) {
         if (!disposed && request === discoverySerial && sourceGeneration === generation && selected === 'midi') {
-          permission = error?.name === 'NotAllowedError' ? 'denied' : 'error';
-          if (!output) report('error', permission === 'denied' ? 'MIDI permission denied. Check browser permissions or choose browser listening.' : 'MIDI discovery failed: ' + (error?.message || 'check device access.'), permission === 'denied' ? 'permission-denied' : 'discovery');
+          permission = midiAccessDenied(error) ? 'denied' : 'error';
+          if (!output) report('error', permission === 'denied' ? 'MIDI permission denied or blocked. Check browser permissions or choose browser listening.' : 'MIDI discovery failed: ' + (error?.message || 'check device access.'), permission === 'denied' ? 'permission-denied' : 'discovery');
           else notifyState();
         }
         return [];
@@ -182,8 +183,8 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, loadWe
       reviewedName = output.name || output.id; onDevicesChange(ports, outputId); return attach(view);
     } catch (error) {
       if (!disposed && request === generation) {
-        stop(); permission = error?.name === 'NotAllowedError' ? 'denied' : 'error';
-        report('error', permission === 'denied' ? 'MIDI permission denied. Check browser permissions or choose browser listening.' : 'MIDI could not connect: ' + (error?.message || 'check device access.'), permission === 'denied' ? 'permission-denied' : 'activation');
+        stop(); permission = midiAccessDenied(error) ? 'denied' : 'error';
+        report('error', permission === 'denied' ? 'MIDI permission denied or blocked. Check browser permissions or choose browser listening.' : 'MIDI could not connect: ' + (error?.message || 'check device access.'), permission === 'denied' ? 'permission-denied' : 'activation');
       }
       return false;
     }

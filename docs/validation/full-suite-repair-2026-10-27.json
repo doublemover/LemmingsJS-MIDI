@@ -818,62 +818,76 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "24c0d5a3fa3daa5e4228f825212c495e7f4effc4",
+    "head": "89fa0f1c1145a250219fd041f809b8300913e301",
     "status": "success",
-    "run": 40865491271,
-    "job": 123419093172,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40865491271/job/123419093172",
-    "nodePassed": 7002,
+    "run": 40874063435,
+    "job": 123448224788,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224788",
+    "engineJob": 123448224568,
+    "engineUrl": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224568",
+    "requiredJobs": 2,
+    "nodePassed": 7013,
     "nodePending": 10,
-    "browserPassed": 180,
+    "browserPassed": 191,
     "desktopPassed": 24,
     "workstationSmokePassed": 156,
+    "enginePassed": 11,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.76,
-      "statements": 90.76,
-      "branches": 83.8,
-      "functions": 88.49
+      "lines": 90.77,
+      "statements": 90.77,
+      "branches": 83.82,
+      "functions": 88.52
     },
     "masterCapture": {
       "state": "Partial",
-      "frames": 50048,
-      "captured": 50048,
+      "frames": 71424,
+      "captured": 71424,
       "stopReason": "noncontiguous-render-clock",
       "clockDiscontinuity": {
-        "actualFrame": 87168,
-        "expectedFrame": 87296,
+        "actualFrame": 106624,
+        "expectedFrame": 106752,
         "frames": 128
       },
-      "peak": 0.02335798740386963,
+      "peak": 0.023482203483581543,
       "nonfinite": 0
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 30272,
+      "totalDurationMs": 31165,
       "measurementValid": true,
       "failures": [],
       "metrics": {
-        "perfP95Frame": 66.70000000000073,
-        "perfP50Tps": 102.52365930599369,
-        "historyRatio": 0.5856666666666667,
-        "antsAvgMs": 12.69,
-        "tileCompositionAvgMs": 2.42,
-        "overlayPlaneAvgMs": 8.54,
-        "scaledBlitAvgMs": 18.81
+        "perfP95Frame": 50,
+        "perfP50Tps": 96.79968391940835,
+        "historyRatio": 0.5853333333333334,
+        "antsAvgMs": 13.46,
+        "tileCompositionAvgMs": 3.83,
+        "overlayPlaneAvgMs": 15.8,
+        "scaledBlitAvgMs": 26.1
       }
     },
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "All published fixes through345; does not cover346 WIP. Native capture preserved a finite nonzero Partial prefix after an observed128-frame render-clock discontinuity. No complete capture, acoustic or physical disk durability claim.",
+    "engineQualification": {
+      "status": "passed",
+      "files": 1246,
+      "configuredAudioBackend": "pulseaudio-null-sink",
+      "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+      "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+      "facts": 1078,
+      "ticks": 64,
+      "nativeAudio": "Firefox155 and Linux WebKit26.6 supported activation/navigation/reactivation paths passed; no acoustics."
+    },
+    "scope": "Both required347jobs completed successfully. Includes all published fixes through347; does not cover348WIP. Partial capture is retained finite digital evidence, not a complete or acoustic recording.",
     "log": {
-      "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci345-green.log",
-      "bytes": 1199301,
-      "sha256": "8ca3b0c94d060603b5ebb755d0f4aff6c71ef3a77bfdeb953d856dce256f713d",
-      "normalization": "Retained decoded complete job text with LF line endings."
+      "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci347-green.log",
+      "bytes": 1201734,
+      "sha256": "4ff6a321e4e307d46d6bbb0ab7e83a1c65a555d5541b960194f2933ce6c54f38",
+      "normalization": "Retained complete decoded mainjob text with LF line endings."
     }
   },
   "continuation264": {
@@ -40195,5 +40209,4219 @@
         "sha256": "8db4154e7e7fc27e6e61c2970318a1aa5439e91179629895d4c766efa1e5601a"
       }
     ]
+  },
+  "continuation348": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "89fa0f1c1145a250219fd041f809b8300913e301",
+    "scope": "Frontload current/legacy MIDI denial classification and independently gated three-engine display/worker/native-permission coverage. No full local suite rerun.",
+    "implementation": [
+      "Current NotAllowedError and legacy SecurityError consistently classify MIDI as denied/blocked during discovery and selected activation, with no automatic retry or synth fallback.",
+      "Actual Chromium CDP permission state denied, delegated native navigator API counted without substituting results, explicit independent browser audio activation and final performance lease release.",
+      "All three engines recover controlled unavailable canvas context through actual Retry display while retaining exact world/project/paused tick.",
+      "All three engines keep native IndexedDB Save usable with worker construction blocked; checksum Worker refusal prevents stored-load candidate publication and preserves exact current dirty source/world plus committed revision2. Explicit load retry restores that exact named revision paused.",
+      "Required native gate expands to18cases4Chromium7Firefox7WebKit and binds both new fixtures in before/after source-harness inventories."
+    ],
+    "validation": {
+      "node": {
+        "passed": 58,
+        "failed": 0,
+        "scope": "MIDI output/performance admission, native gate, capability/config/catalog."
+      },
+      "criticalTypes": "pass",
+      "format": "pass",
+      "undefinedCalls": "pass",
+      "provenance": {
+        "components": 10,
+        "files": 350,
+        "status": "pass"
+      },
+      "native": {
+        "stats": {
+          "startTime": "2026-10-29T12:54:15.988Z",
+          "duration": 184539.957,
+          "expected": 18,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "sourceBinding": {
+          "closureDigest": "9d40ce03d53befb2f1ffbb0ec0e7c62bd92ff4f2bf5e5ab40d4b44e9f12ab635",
+          "codeDigest": "33435f2fe047841ff85e8e33a276dfc16fc35d3ed0a7919fe4796d4bef6ce527",
+          "assetDigest": "0612e0ace196443390c8909d0fb7bdffa0bb4b09657e3c948c5775dc6fff024e",
+          "files": 1246,
+          "harness": [
+            {
+              "path": "playwright.lifecycle.config.js",
+              "bytes": 841,
+              "sha256": "a6c11e0af01cb9cf061b511504224dfdd1cb0734220a7ddb7ab14d39b1b28c5d"
+            },
+            {
+              "path": "scripts/run-lifecycle-engines.js",
+              "bytes": 3039,
+              "sha256": "02bd697859d7361ed11b4dc0e03aff2ef15c69579278e47cab1d7b4a3742753c"
+            },
+            {
+              "path": "scripts/LifecycleEngineResults.js",
+              "bytes": 3665,
+              "sha256": "36926c3a436daa2fb1ca4c53809171f2c9eb8123baea8d74ace11650eb853ec6"
+            },
+            {
+              "path": "scripts/run-browser-boundaries.js",
+              "bytes": 2281,
+              "sha256": "6ed6c09a09aace8a82012433fb40e45e133270c3412460e5fbd9a6b961f89a79"
+            },
+            {
+              "path": "e2e-portable/fixtures.js",
+              "bytes": 869,
+              "sha256": "e3f8a3ee9d77bea3cfaddfa06bfd7665821953fb482df8f3c8ca0d24a20d5c0c"
+            },
+            {
+              "path": "e2e-portable/lifecycle.spec.js",
+              "bytes": 9351,
+              "sha256": "e025f44a9aad53a8de02f527f3344c83e6c6efc67a84fd8bdca48fe1584486fb"
+            },
+            {
+              "path": "e2e-portable/semantic.spec.js",
+              "bytes": 4195,
+              "sha256": "6b6f4bda914f923db17038e7fd1fe143360c58580675ebac9bce001ca15878d9"
+            },
+            {
+              "path": "e2e-portable/capabilities.spec.js",
+              "bytes": 7387,
+              "sha256": "f8b6062149d39e804664dca93baff0688ba45daf358ecb6bd0e9b56018ecc4f6"
+            },
+            {
+              "path": "e2e-portable/native-permission.spec.js",
+              "bytes": 3493,
+              "sha256": "844bded66b49fa5742381b264557c93baaaa01145c5e57b8fff106a08ff39154"
+            }
+          ],
+          "stableBeforeAfter": true
+        },
+        "qualification": {
+          "schema": "lemmings-lifecycle-engine-qualification/v1",
+          "passed": 18,
+          "engines": [
+            {
+              "project": "chromium-semantic",
+              "passed": 4,
+              "browser": "153.0.8010.12",
+              "configuredRenderer": "browser-default-unqualified",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": true,
+                    "enabled": false,
+                    "fallbackPath": "webmidi"
+                  },
+                  "offscreenCanvas": {
+                    "supported": true,
+                    "ctorSupported": true,
+                    "transferControlSupported": true,
+                    "fallbackPath": "offscreen_canvas"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": true,
+                    "deterministicFallback": "worker_offscreen"
+                  }
+                },
+                "audioContextAvailable": true,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            },
+            {
+              "project": "firefox-lifecycle",
+              "passed": 7,
+              "browser": "155.0",
+              "configuredRenderer": "software-webrender-requested",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": true,
+                    "enabled": false,
+                    "fallbackPath": "webmidi"
+                  },
+                  "offscreenCanvas": {
+                    "supported": true,
+                    "ctorSupported": true,
+                    "transferControlSupported": true,
+                    "fallbackPath": "offscreen_canvas"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": true,
+                    "deterministicFallback": "worker_offscreen"
+                  }
+                },
+                "audioContextAvailable": true,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            },
+            {
+              "project": "webkit-lifecycle",
+              "passed": 7,
+              "browser": "26.6",
+              "configuredRenderer": "browser-default-unqualified",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": false,
+                    "enabled": false,
+                    "fallbackPath": "audio_only"
+                  },
+                  "offscreenCanvas": {
+                    "supported": false,
+                    "ctorSupported": false,
+                    "transferControlSupported": false,
+                    "fallbackPath": "canvas2d_main_thread"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": false,
+                    "deterministicFallback": "drawimage_present"
+                  }
+                },
+                "audioContextAvailable": false,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            }
+          ],
+          "scope": "Exact muted fixture physics/causal parity plus qualified history/storage/audio capability paths. No acoustic, native GPU/MIDI or archived-execution qualification."
+        },
+        "cases": [
+          {
+            "title": "a controlled unavailable canvas recovers the same admitted world through explicit display retry",
+            "project": "chromium-semantic",
+            "status": "passed",
+            "durationMs": 4333,
+            "observations": [
+              {
+                "name": "controlled-display-retry.json",
+                "evidence": {
+                  "browser": "153.0.8010.12",
+                  "before": {
+                    "tick": 16,
+                    "renderer": {
+                      "motion": {
+                        "schema": "instrument-motion/v1",
+                        "mode": "system",
+                        "state": "frozen",
+                        "systemPreference": "no-preference",
+                        "paused": true,
+                        "visible": true,
+                        "retired": false,
+                        "revision": 5,
+                        "activeTransitions": 0,
+                        "maxTransitions": 1280,
+                        "transitionCapacity": 0,
+                        "subscribers": 2,
+                        "skipped": 0,
+                        "regressions": 0,
+                        "callbackFailures": 0,
+                        "retainedBytes": 4096
+                      },
+                      "projectedRowSurfaces": 0,
+                      "state": "recovering",
+                      "reason": "Canvas 2D context unavailable",
+                      "attempts": 0,
+                      "qualityDivisor": 1,
+                      "estimatedBytes": 0,
+                      "cachedBitmapBytes": 0,
+                      "peakEstimatedBytes": 4096,
+                      "budgetBytes": 67108864,
+                      "cacheBudgetBytes": 16777216,
+                      "backingStores": 0,
+                      "allocations": 0,
+                      "evictions": 0,
+                      "failures": 0,
+                      "retirementFailures": 0,
+                      "unreleasedEstimatedBytes": 0
+                    }
+                  },
+                  "after": {
+                    "sameWorld": true,
+                    "sameProject": true,
+                    "tick": 16,
+                    "output": false,
+                    "playing": false
+                  },
+                  "fault": "Controlled null gameCanvas context; native GPU failure is not claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "worker construction failure keeps Save usable and refuses stored load before explicit retry",
+            "project": "chromium-semantic",
+            "status": "passed",
+            "durationMs": 4713,
+            "observations": [
+              {
+                "name": "controlled-worker-load-retry.json",
+                "evidence": {
+                  "browser": "153.0.8010.12",
+                  "before": {
+                    "id": "doc:69c635e4-c866-4e71-b535-5d9c35fa22cb",
+                    "revision": 2,
+                    "editRevision": 2,
+                    "savedRevision": 1,
+                    "dirty": true,
+                    "savedAt": "2026-10-29T12:54:23.974Z"
+                  },
+                  "failed": {
+                    "document": {
+                      "id": "doc:69c635e4-c866-4e71-b535-5d9c35fa22cb",
+                      "revision": 2,
+                      "editRevision": 2,
+                      "savedRevision": 1,
+                      "dirty": true,
+                      "savedAt": "2026-10-29T12:54:23.974Z"
+                    },
+                    "storedRevision": 2,
+                    "failures": [
+                      "lemmings-background-recovery-checksum",
+                      "lemmings-background-encode-preference-pages"
+                    ],
+                    "sameWorld": true,
+                    "sameProject": true
+                  },
+                  "after": {
+                    "document": {
+                      "id": "doc:69c635e4-c866-4e71-b535-5d9c35fa22cb",
+                      "revision": 2,
+                      "editRevision": 3,
+                      "savedRevision": 3,
+                      "dirty": false,
+                      "savedAt": "2026-10-29T12:54:23.974Z"
+                    },
+                    "laneName": "Retained worker retry source",
+                    "sameWorld": false,
+                    "playing": false,
+                    "output": false
+                  },
+                  "fault": "Controlled constructor SecurityError in the load checksum worker. Native IndexedDB Save remains usable; no native worker-device failure claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "a controlled unavailable canvas recovers the same admitted world through explicit display retry",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 8277,
+            "observations": [
+              {
+                "name": "controlled-display-retry.json",
+                "evidence": {
+                  "browser": "155.0",
+                  "before": {
+                    "tick": 16,
+                    "renderer": {
+                      "motion": {
+                        "schema": "instrument-motion/v1",
+                        "mode": "system",
+                        "state": "frozen",
+                        "systemPreference": "no-preference",
+                        "paused": true,
+                        "visible": true,
+                        "retired": false,
+                        "revision": 5,
+                        "activeTransitions": 0,
+                        "maxTransitions": 1280,
+                        "transitionCapacity": 0,
+                        "subscribers": 2,
+                        "skipped": 0,
+                        "regressions": 0,
+                        "callbackFailures": 0,
+                        "retainedBytes": 4096
+                      },
+                      "projectedRowSurfaces": 0,
+                      "state": "recovering",
+                      "reason": "Canvas 2D context unavailable",
+                      "attempts": 0,
+                      "qualityDivisor": 1,
+                      "estimatedBytes": 0,
+                      "cachedBitmapBytes": 0,
+                      "peakEstimatedBytes": 4096,
+                      "budgetBytes": 67108864,
+                      "cacheBudgetBytes": 16777216,
+                      "backingStores": 0,
+                      "allocations": 0,
+                      "evictions": 0,
+                      "failures": 0,
+                      "retirementFailures": 0,
+                      "unreleasedEstimatedBytes": 0
+                    }
+                  },
+                  "after": {
+                    "sameWorld": true,
+                    "sameProject": true,
+                    "tick": 16,
+                    "output": false,
+                    "playing": false
+                  },
+                  "fault": "Controlled null gameCanvas context; native GPU failure is not claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "worker construction failure keeps Save usable and refuses stored load before explicit retry",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 11104,
+            "observations": [
+              {
+                "name": "controlled-worker-load-retry.json",
+                "evidence": {
+                  "browser": "155.0",
+                  "before": {
+                    "id": "doc:b2d9da46-9e58-4df9-b4d9-07dd6cfabcfe",
+                    "revision": 2,
+                    "editRevision": 2,
+                    "savedRevision": 1,
+                    "dirty": true,
+                    "savedAt": "2026-10-29T12:54:48.694Z"
+                  },
+                  "failed": {
+                    "document": {
+                      "id": "doc:b2d9da46-9e58-4df9-b4d9-07dd6cfabcfe",
+                      "revision": 2,
+                      "editRevision": 2,
+                      "savedRevision": 1,
+                      "dirty": true,
+                      "savedAt": "2026-10-29T12:54:48.694Z"
+                    },
+                    "storedRevision": 2,
+                    "failures": [
+                      "lemmings-background-encode-recovery-page",
+                      "lemmings-background-recovery-checksum"
+                    ],
+                    "sameWorld": true,
+                    "sameProject": true
+                  },
+                  "after": {
+                    "document": {
+                      "id": "doc:b2d9da46-9e58-4df9-b4d9-07dd6cfabcfe",
+                      "revision": 2,
+                      "editRevision": 3,
+                      "savedRevision": 3,
+                      "dirty": false,
+                      "savedAt": "2026-10-29T12:54:48.694Z"
+                    },
+                    "laneName": "Retained worker retry source",
+                    "sameWorld": false,
+                    "playing": false,
+                    "output": false
+                  },
+                  "fault": "Controlled constructor SecurityError in the load checksum worker. Native IndexedDB Save remains usable; no native worker-device failure claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "a controlled unavailable canvas recovers the same admitted world through explicit display retry",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 7709,
+            "observations": [
+              {
+                "name": "controlled-display-retry.json",
+                "evidence": {
+                  "browser": "26.6",
+                  "before": {
+                    "tick": 17,
+                    "renderer": {
+                      "motion": {
+                        "schema": "instrument-motion/v1",
+                        "mode": "system",
+                        "state": "frozen",
+                        "systemPreference": "no-preference",
+                        "paused": true,
+                        "visible": true,
+                        "retired": false,
+                        "revision": 5,
+                        "activeTransitions": 0,
+                        "maxTransitions": 1280,
+                        "transitionCapacity": 0,
+                        "subscribers": 2,
+                        "skipped": 0,
+                        "regressions": 0,
+                        "callbackFailures": 0,
+                        "retainedBytes": 4096
+                      },
+                      "projectedRowSurfaces": 0,
+                      "state": "recovering",
+                      "reason": "Canvas 2D context unavailable",
+                      "attempts": 0,
+                      "qualityDivisor": 1,
+                      "estimatedBytes": 0,
+                      "cachedBitmapBytes": 0,
+                      "peakEstimatedBytes": 4096,
+                      "budgetBytes": 67108864,
+                      "cacheBudgetBytes": 16777216,
+                      "backingStores": 0,
+                      "allocations": 0,
+                      "evictions": 0,
+                      "failures": 0,
+                      "retirementFailures": 0,
+                      "unreleasedEstimatedBytes": 0
+                    }
+                  },
+                  "after": {
+                    "sameWorld": true,
+                    "sameProject": true,
+                    "tick": 17,
+                    "output": false,
+                    "playing": false
+                  },
+                  "fault": "Controlled null gameCanvas context; native GPU failure is not claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "worker construction failure keeps Save usable and refuses stored load before explicit retry",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 15813,
+            "observations": [
+              {
+                "name": "controlled-worker-load-retry.json",
+                "evidence": {
+                  "browser": "26.6",
+                  "before": {
+                    "id": "doc:ab46deab-529a-4096-bd19-0c52fecb2bb2",
+                    "revision": 2,
+                    "editRevision": 2,
+                    "savedRevision": 1,
+                    "dirty": true,
+                    "savedAt": "2026-10-29T12:56:10.995Z"
+                  },
+                  "failed": {
+                    "document": {
+                      "id": "doc:ab46deab-529a-4096-bd19-0c52fecb2bb2",
+                      "revision": 2,
+                      "editRevision": 2,
+                      "savedRevision": 1,
+                      "dirty": true,
+                      "savedAt": "2026-10-29T12:56:10.995Z"
+                    },
+                    "storedRevision": 2,
+                    "failures": [
+                      "lemmings-background-encode-recovery-page",
+                      "lemmings-background-encode-preference-pages",
+                      "lemmings-background-recovery-checksum"
+                    ],
+                    "sameWorld": true,
+                    "sameProject": true
+                  },
+                  "after": {
+                    "document": {
+                      "id": "doc:ab46deab-529a-4096-bd19-0c52fecb2bb2",
+                      "revision": 2,
+                      "editRevision": 3,
+                      "savedRevision": 3,
+                      "dirty": false,
+                      "savedAt": "2026-10-29T12:56:10.995Z"
+                    },
+                    "laneName": "Retained worker retry source",
+                    "sameWorld": false,
+                    "playing": false,
+                    "output": false
+                  },
+                  "fault": "Controlled constructor SecurityError in the load checksum worker. Native IndexedDB Save remains usable; no native worker-device failure claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "native denied MIDI permission is requested only explicitly and browser listening remains independently usable",
+            "project": "chromium-semantic",
+            "status": "passed",
+            "durationMs": 2873,
+            "observations": [
+              {
+                "name": "native-midi-denial.json",
+                "evidence": {
+                  "browser": "153.0.8010.12",
+                  "decision": "Native Chromium permission denied; no API result substituted.",
+                  "denied": {
+                    "output": {
+                      "status": "error",
+                      "message": "MIDI permission denied or blocked. Check browser permissions or choose browser listening.",
+                      "enabled": false,
+                      "selectedBackend": "midi",
+                      "performanceLease": {
+                        "protocol": "lemmings-performance/v1",
+                        "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                        "clientId": "e7436973ed040555dfff266bd6b83322",
+                        "leaseEpoch": 0,
+                        "status": "idle",
+                        "reason": null,
+                        "exclusive": false,
+                        "coordination": "web-locks",
+                        "heldResourceScopes": [],
+                        "roles": [],
+                        "activeDocumentIdentities": [],
+                        "otherOwner": null,
+                        "pendingRequests": 0,
+                        "disposed": false
+                      },
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "selectedOutputId": null,
+                      "outputGeneration": 1,
+                      "failureKind": "permission-denied",
+                      "selectedOutputName": null,
+                      "discoveredOutputCount": 0,
+                      "midiPermission": "denied",
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "e7436973ed040555dfff266bd6b83322",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "ownedNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "permission": {
+                      "calls": 1,
+                      "errors": [
+                        {
+                          "name": "NotAllowedError",
+                          "message": "Permission to use Web MIDI API was not granted."
+                        }
+                      ]
+                    }
+                  },
+                  "local": {
+                    "output": {
+                      "status": "live",
+                      "message": "Listening to game notes in the browser. No MIDI is sent.",
+                      "enabled": true,
+                      "audio": {
+                        "status": "ready",
+                        "message": "Browser preview is on. No MIDI is sent.",
+                        "enabled": true,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "e7436973ed040555dfff266bd6b83322",
+                          "leaseEpoch": 1,
+                          "status": "owned",
+                          "reason": null,
+                          "exclusive": true,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [
+                            "audio-1"
+                          ],
+                          "roles": [
+                            "live"
+                          ],
+                          "activeDocumentIdentities": [
+                            "workstation:1"
+                          ],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 1,
+                        "contextState": "running",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 2,
+                          "exactBytes": 19916,
+                          "estimatedBytes": 69632,
+                          "peakDeclaredBytes": 89548,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": true,
+                        "mixLatencyMs": 6,
+                        "mixMakeupCompensation": 0.647,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "local-browser-audio",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 2,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "playing": false,
+                    "calls": 1
+                  },
+                  "scope": "Digital context activation and API denial; no physical MIDI device, acoustic or GPU qualification."
+                }
+              }
+            ]
+          },
+          {
+            "title": "the same physical recipe produces identical checkpoints and complete causal batches across engines",
+            "project": "chromium-semantic",
+            "status": "passed",
+            "durationMs": 3021,
+            "observations": [
+              {
+                "name": "native-engine-semantics.json",
+                "evidence": {
+                  "project": "chromium-semantic",
+                  "browser": "153.0.8010.12",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "schema": "lemmings-engine-semantics/v1",
+                    "recipe": {
+                      "seed": 42,
+                      "lanes": 8,
+                      "ticks": 64
+                    },
+                    "initialTick": 0,
+                    "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                    "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                    "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                    "finalTick": 64,
+                    "stablePaused": true,
+                    "batches": 64,
+                    "facts": 1078,
+                    "complete": true,
+                    "kinds": {
+                      "ActorBorn": 14,
+                      "ActionEntered": 22,
+                      "FlightArcStarted": 14,
+                      "lemming-spawn": 14,
+                      "FlightArcUpdated": 120,
+                      "MotionCommitted": 487,
+                      "lemming-land": 8,
+                      "ActionExited": 8,
+                      "FlightArcEnded": 8,
+                      "ContactSpanBegan": 8,
+                      "ContactSpanUpdated": 375
+                    },
+                    "activeActors": 14,
+                    "observerListeners": {
+                      "before": 2,
+                      "after": 2
+                    },
+                    "outputEnabled": false,
+                    "renderer": {
+                      "path": "canvas2d_main_thread",
+                      "state": "ready",
+                      "hardwareAcceleration": "unqualified"
+                    },
+                    "assets": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      },
+                      {
+                        "family": "dirt",
+                        "id": "lemmings-0",
+                        "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                      },
+                      {
+                        "family": "rock",
+                        "id": "holiday93-1",
+                        "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                      },
+                      {
+                        "family": "fire",
+                        "id": "lemmings-1",
+                        "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                      },
+                      {
+                        "family": "brick",
+                        "id": "lemmings_ohNo-0",
+                        "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                      },
+                      {
+                        "family": "snow",
+                        "id": "lemmings_ohNo-2",
+                        "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                      },
+                      {
+                        "family": "pillar",
+                        "id": "lemmings-3",
+                        "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                      }
+                    ],
+                    "capabilities": {
+                      "webMidi": {
+                        "supported": true,
+                        "enabled": false,
+                        "fallbackPath": "webmidi"
+                      },
+                      "offscreenCanvas": {
+                        "supported": true,
+                        "ctorSupported": true,
+                        "transferControlSupported": true,
+                        "fallbackPath": "offscreen_canvas"
+                      },
+                      "imageBitmap": {
+                        "supported": true,
+                        "fallbackPath": "imagebitmap"
+                      },
+                      "worker": {
+                        "supported": true,
+                        "fallbackPath": "worker"
+                      },
+                      "renderPaths": {
+                        "presentPathSupported": true,
+                        "workerOffscreenSupported": true,
+                        "deterministicFallback": "worker_offscreen"
+                      }
+                    },
+                    "audioContextAvailable": true,
+                    "viewport": {
+                      "width": 1920,
+                      "height": 1080
+                    },
+                    "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "the same physical recipe produces identical checkpoints and complete causal batches across engines",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 7818,
+            "observations": [
+              {
+                "name": "native-engine-semantics.json",
+                "evidence": {
+                  "project": "firefox-lifecycle",
+                  "browser": "155.0",
+                  "configuredRenderer": "software-webrender-requested",
+                  "source": {
+                    "schema": "lemmings-engine-semantics/v1",
+                    "recipe": {
+                      "seed": 42,
+                      "lanes": 8,
+                      "ticks": 64
+                    },
+                    "initialTick": 0,
+                    "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                    "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                    "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                    "finalTick": 64,
+                    "stablePaused": true,
+                    "batches": 64,
+                    "facts": 1078,
+                    "complete": true,
+                    "kinds": {
+                      "ActorBorn": 14,
+                      "ActionEntered": 22,
+                      "FlightArcStarted": 14,
+                      "lemming-spawn": 14,
+                      "FlightArcUpdated": 120,
+                      "MotionCommitted": 487,
+                      "lemming-land": 8,
+                      "ActionExited": 8,
+                      "FlightArcEnded": 8,
+                      "ContactSpanBegan": 8,
+                      "ContactSpanUpdated": 375
+                    },
+                    "activeActors": 14,
+                    "observerListeners": {
+                      "before": 2,
+                      "after": 2
+                    },
+                    "outputEnabled": false,
+                    "renderer": {
+                      "path": "canvas2d_main_thread",
+                      "state": "ready",
+                      "hardwareAcceleration": "unqualified"
+                    },
+                    "assets": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      },
+                      {
+                        "family": "dirt",
+                        "id": "lemmings-0",
+                        "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                      },
+                      {
+                        "family": "rock",
+                        "id": "holiday93-1",
+                        "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                      },
+                      {
+                        "family": "fire",
+                        "id": "lemmings-1",
+                        "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                      },
+                      {
+                        "family": "brick",
+                        "id": "lemmings_ohNo-0",
+                        "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                      },
+                      {
+                        "family": "snow",
+                        "id": "lemmings_ohNo-2",
+                        "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                      },
+                      {
+                        "family": "pillar",
+                        "id": "lemmings-3",
+                        "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                      }
+                    ],
+                    "capabilities": {
+                      "webMidi": {
+                        "supported": true,
+                        "enabled": false,
+                        "fallbackPath": "webmidi"
+                      },
+                      "offscreenCanvas": {
+                        "supported": true,
+                        "ctorSupported": true,
+                        "transferControlSupported": true,
+                        "fallbackPath": "offscreen_canvas"
+                      },
+                      "imageBitmap": {
+                        "supported": true,
+                        "fallbackPath": "imagebitmap"
+                      },
+                      "worker": {
+                        "supported": true,
+                        "fallbackPath": "worker"
+                      },
+                      "renderPaths": {
+                        "presentPathSupported": true,
+                        "workerOffscreenSupported": true,
+                        "deterministicFallback": "worker_offscreen"
+                      }
+                    },
+                    "audioContextAvailable": true,
+                    "viewport": {
+                      "width": 1920,
+                      "height": 1080
+                    },
+                    "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "the same physical recipe produces identical checkpoints and complete causal batches across engines",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 8736,
+            "observations": [
+              {
+                "name": "native-engine-semantics.json",
+                "evidence": {
+                  "project": "webkit-lifecycle",
+                  "browser": "26.6",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "schema": "lemmings-engine-semantics/v1",
+                    "recipe": {
+                      "seed": 42,
+                      "lanes": 8,
+                      "ticks": 64
+                    },
+                    "initialTick": 0,
+                    "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                    "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                    "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                    "finalTick": 64,
+                    "stablePaused": true,
+                    "batches": 64,
+                    "facts": 1078,
+                    "complete": true,
+                    "kinds": {
+                      "ActorBorn": 14,
+                      "ActionEntered": 22,
+                      "FlightArcStarted": 14,
+                      "lemming-spawn": 14,
+                      "FlightArcUpdated": 120,
+                      "MotionCommitted": 487,
+                      "lemming-land": 8,
+                      "ActionExited": 8,
+                      "FlightArcEnded": 8,
+                      "ContactSpanBegan": 8,
+                      "ContactSpanUpdated": 375
+                    },
+                    "activeActors": 14,
+                    "observerListeners": {
+                      "before": 2,
+                      "after": 2
+                    },
+                    "outputEnabled": false,
+                    "renderer": {
+                      "path": "canvas2d_main_thread",
+                      "state": "ready",
+                      "hardwareAcceleration": "unqualified"
+                    },
+                    "assets": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      },
+                      {
+                        "family": "dirt",
+                        "id": "lemmings-0",
+                        "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                      },
+                      {
+                        "family": "rock",
+                        "id": "holiday93-1",
+                        "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                      },
+                      {
+                        "family": "fire",
+                        "id": "lemmings-1",
+                        "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                      },
+                      {
+                        "family": "brick",
+                        "id": "lemmings_ohNo-0",
+                        "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                      },
+                      {
+                        "family": "snow",
+                        "id": "lemmings_ohNo-2",
+                        "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                      },
+                      {
+                        "family": "pillar",
+                        "id": "lemmings-3",
+                        "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                      }
+                    ],
+                    "capabilities": {
+                      "webMidi": {
+                        "supported": false,
+                        "enabled": false,
+                        "fallbackPath": "audio_only"
+                      },
+                      "offscreenCanvas": {
+                        "supported": false,
+                        "ctorSupported": false,
+                        "transferControlSupported": false,
+                        "fallbackPath": "canvas2d_main_thread"
+                      },
+                      "imageBitmap": {
+                        "supported": true,
+                        "fallbackPath": "imagebitmap"
+                      },
+                      "worker": {
+                        "supported": true,
+                        "fallbackPath": "worker"
+                      },
+                      "renderPaths": {
+                        "presentPathSupported": true,
+                        "workerOffscreenSupported": false,
+                        "deterministicFallback": "drawimage_present"
+                      }
+                    },
+                    "audioContextAvailable": false,
+                    "viewport": {
+                      "width": 1920,
+                      "height": 1080
+                    },
+                    "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "cold history reconstructs saved editor preferences without autoplay",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 12437,
+            "observations": [
+              {
+                "name": "portable-editor-cold-history.json",
+                "evidence": {
+                  "project": "firefox-lifecycle",
+                  "browser": "155.0",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "software-webrender-requested",
+                  "source": {
+                    "history": {
+                      "marker": "71a8f858-d921-4756-ace6-16bc2d74bb4f",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "2e17deb5c0c5ef30af6a0fd7e792fc4e",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 3948,
+                      "beat": 0,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "ready"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": null,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 0,
+                        "committed": 0,
+                        "readPages": 18,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 25206,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 1,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2190,
+                        "sequence": 1,
+                        "capture": {
+                          "slices": 41,
+                          "maximumSliceMs": 5,
+                          "elapsedMs": 283
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "previous-setup",
+                      "seed": 1520752050,
+                      "laneName": "Portable cached source"
+                    },
+                    "capabilities": {
+                      "audioContext": true
+                    },
+                    "navigation": {
+                      "type": "back_forward",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "marker": "d861b663-c3e6-4426-969b-7cde79fe618a",
+                    "revision": 1
+                  },
+                  "scope": "Cold history reconstruction; no retained world or physical tick recovery claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "native project transactions retain the exact named revision across reload and explicit stored load",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 13517,
+            "observations": [
+              {
+                "name": "portable-native-document.json",
+                "evidence": {
+                  "project": "firefox-lifecycle",
+                  "browser": "155.0",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "software-webrender-requested",
+                  "source": {
+                    "history": {
+                      "marker": "a80cbcc4-159a-4d61-a13b-e42f84c45d0e",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "e445483dba3e3755c124a97b9838e204",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 6847,
+                      "beat": 0.228,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "restored"
+                    },
+                    "document": {
+                      "id": "doc:88550104-7db4-4c8d-ac52-ca7dd0828ea3",
+                      "revision": 2,
+                      "editRevision": 1,
+                      "savedRevision": 1,
+                      "dirty": false,
+                      "savedAt": "2026-10-29T12:55:09.829Z"
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": null,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 1,
+                        "reusedPages": 0,
+                        "workerJobs": 2,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 1132,
+                        "stagedBytes": 1132,
+                        "stagedBatches": 1,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 1,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 1,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 0,
+                        "sequence": 0,
+                        "capture": {
+                          "slices": 41,
+                          "maximumSliceMs": 5,
+                          "elapsedMs": 273
+                        },
+                        "pages": 0,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Portable revision two"
+                    },
+                    "capabilities": {
+                      "audioContext": true
+                    },
+                    "navigation": {
+                      "type": "reload",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "id": "doc:88550104-7db4-4c8d-ac52-ca7dd0828ea3",
+                    "revision": 1,
+                    "editRevision": 0,
+                    "savedRevision": 0,
+                    "dirty": false,
+                    "savedAt": "2026-10-29T12:55:09.520Z"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "native audio navigation requires fresh activation and absent audio remains unavailable",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 9935,
+            "observations": [
+              {
+                "name": "portable-native-audio-navigation.json",
+                "evidence": {
+                  "project": "firefox-lifecycle",
+                  "browser": "155.0",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "software-webrender-requested",
+                  "source": {
+                    "history": {
+                      "marker": "0a15791d-30a5-4c55-8992-178499ee3470",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "ed4620290cfb29152ab86c9a4352b0c8",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 3437,
+                      "beat": 0,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "ready"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": null,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 0,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 0,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2174,
+                        "sequence": 1,
+                        "capture": {
+                          "slices": 46,
+                          "maximumSliceMs": 7,
+                          "elapsedMs": 302
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Lane 1"
+                    },
+                    "capabilities": {
+                      "audioContext": true
+                    },
+                    "navigation": {
+                      "type": "back_forward",
+                      "reasons": null
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "cold history never invents durable recovery when native storage is unavailable",
+            "project": "firefox-lifecycle",
+            "status": "passed",
+            "durationMs": 18440,
+            "observations": [
+              {
+                "name": "portable-unavailable-storage.json",
+                "evidence": {
+                  "project": "firefox-lifecycle",
+                  "browser": "155.0",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "software-webrender-requested",
+                  "source": {
+                    "history": {
+                      "marker": "5bde6579-7873-47c1-896f-40d92b505eb6",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "3fcb385ab234615fefcb5ea2c1f6c3d9",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 8025,
+                      "beat": 0,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "ready"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": 0,
+                      "durableRevision": -1,
+                      "lastError": {
+                        "generation": 1,
+                        "revision": 0,
+                        "code": "ProcgenStorageError",
+                        "message": "Browser project storage is unavailable. Export a project file to save."
+                      },
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 0,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 0,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 1,
+                        "totalMs": 1,
+                        "maximumMs": 1,
+                        "lastMs": 1
+                      },
+                      "state": "unavailable",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": {
+                        "name": "ProcgenStorageError"
+                      },
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2174,
+                        "sequence": 1,
+                        "capture": {
+                          "slices": 39,
+                          "maximumSliceMs": 6,
+                          "elapsedMs": 264
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 13,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 23,
+                        "inputCopyMs": 496,
+                        "inputCopyMaximumSliceMs": 6,
+                        "inputCopyPackets": 66,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 23,
+                        "retirementFailures": 0,
+                        "encodedPages": 23,
+                        "reusedPages": 0,
+                        "encodeMs": 4197,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Lane 1"
+                    },
+                    "capabilities": {
+                      "audioContext": true
+                    },
+                    "navigation": {
+                      "type": "back_forward",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "marker": "aedbed8b-619c-4e4e-a626-f05ca76d9454",
+                    "revision": 1
+                  },
+                  "durability": "Unavailable storage and a destroyed realm cannot retain unsaved source. No durable recovery claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "cold history reconstructs saved editor preferences without autoplay",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 13565,
+            "observations": [
+              {
+                "name": "portable-editor-cold-history.json",
+                "evidence": {
+                  "project": "webkit-lifecycle",
+                  "browser": "26.6",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "history": {
+                      "marker": "09b54969-2543-4ce5-b44b-f47cab853c0a",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "unsupported",
+                        "message": "Browser audio is not supported.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "52145d336fcc18547c6a1332e9b1fd44",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 5183,
+                      "beat": 0,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "ready"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": null,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 0,
+                        "committed": 0,
+                        "readPages": 18,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 25206,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 1,
+                        "readMaximumSliceMs": 1,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2186,
+                        "sequence": 1,
+                        "capture": {
+                          "slices": 22,
+                          "maximumSliceMs": 3,
+                          "elapsedMs": 324
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "previous-setup",
+                      "seed": 163559101,
+                      "laneName": "Portable cached source"
+                    },
+                    "capabilities": {
+                      "audioContext": false
+                    },
+                    "navigation": {
+                      "type": "back_forward",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "marker": "fe039eaa-bb90-4b24-bc4e-3075396f7c94",
+                    "revision": 1
+                  },
+                  "scope": "Cold history reconstruction; no retained world or physical tick recovery claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "native project transactions retain the exact named revision across reload and explicit stored load",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 18755,
+            "observations": [
+              {
+                "name": "portable-native-document.json",
+                "evidence": {
+                  "project": "webkit-lifecycle",
+                  "browser": "26.6",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "history": {
+                      "marker": "c4cfb6b7-d1ce-4d1a-b0dd-165ca9aea0c3",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "unsupported",
+                        "message": "Browser audio is not supported.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "8e256d45a2270e53f18a0795fe96472c",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 12287,
+                      "beat": 0.5640000000000001,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "restored"
+                    },
+                    "document": {
+                      "id": "doc:5514de87-718c-432c-9b3c-f6ba7bb9662b",
+                      "revision": 2,
+                      "editRevision": 1,
+                      "savedRevision": 1,
+                      "dirty": false,
+                      "savedAt": "2026-10-29T12:56:37.215Z"
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": null,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 5,
+                        "reusedPages": 0,
+                        "workerJobs": 6,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 3438,
+                        "stagedBytes": 11326,
+                        "stagedBatches": 5,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 1,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 1,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 0,
+                        "sequence": 0,
+                        "capture": {
+                          "slices": 25,
+                          "maximumSliceMs": 3,
+                          "elapsedMs": 374
+                        },
+                        "pages": 0,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Portable revision two"
+                    },
+                    "capabilities": {
+                      "audioContext": false
+                    },
+                    "navigation": {
+                      "type": "reload",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "id": "doc:5514de87-718c-432c-9b3c-f6ba7bb9662b",
+                    "revision": 1,
+                    "editRevision": 0,
+                    "savedRevision": 0,
+                    "dirty": false,
+                    "savedAt": "2026-10-29T12:56:36.799Z"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "native audio navigation requires fresh activation and absent audio remains unavailable",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 5681,
+            "observations": [
+              {
+                "name": "portable-native-audio-unavailable.json",
+                "evidence": {
+                  "project": "webkit-lifecycle",
+                  "browser": "26.6",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "history": {
+                      "marker": "72dc0011-b4d5-47f4-9005-970525fcb9ff",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "error",
+                      "message": "Browser audio is not supported.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "unsupported",
+                        "message": "Browser audio is not supported.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "cfca6bcb301d1b0946a73dd778c3c304",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 5351,
+                      "beat": 0.534,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "paused"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": 0,
+                      "requestedRevision": 0,
+                      "durableRevision": -1,
+                      "lastError": null,
+                      "retirement": null,
+                      "active": true,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 1,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 0,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 1,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": true,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 0,
+                        "totalMs": 0,
+                        "maximumMs": 0,
+                        "lastMs": null
+                      },
+                      "state": "unsaved",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": null,
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2698,
+                        "sequence": 2,
+                        "capture": {
+                          "slices": 25,
+                          "maximumSliceMs": 4,
+                          "elapsedMs": 386
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 0,
+                        "resultCopyMaximumSliceMs": 0,
+                        "resultCopyPackets": 0,
+                        "inputCopyMs": 0,
+                        "inputCopyMaximumSliceMs": 0,
+                        "inputCopyPackets": 0,
+                        "workerQueueWaitMs": 0,
+                        "workerJobs": 0,
+                        "retirementFailures": 0,
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "encodeMs": 0,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Lane 1"
+                    },
+                    "capabilities": {
+                      "audioContext": false
+                    },
+                    "navigation": {
+                      "type": "navigate",
+                      "reasons": null
+                    }
+                  },
+                  "qualification": "Native AudioContext absent in this browser port; no native audio activation claimed."
+                }
+              }
+            ]
+          },
+          {
+            "title": "cold history never invents durable recovery when native storage is unavailable",
+            "project": "webkit-lifecycle",
+            "status": "passed",
+            "durationMs": 16254,
+            "observations": [
+              {
+                "name": "portable-unavailable-storage.json",
+                "evidence": {
+                  "project": "webkit-lifecycle",
+                  "browser": "26.6",
+                  "configuredAudioBackend": "system-default-unqualified",
+                  "configuredRenderer": "browser-default-unqualified",
+                  "source": {
+                    "history": {
+                      "marker": "0675310f-cd2e-423c-8435-f310d87e328c",
+                      "hides": [],
+                      "shows": [
+                        false
+                      ]
+                    },
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "unsupported",
+                        "message": "Browser audio is not supported.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "aa8f8545d656ba8630493134cfc4d00b",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 7810,
+                      "beat": 0,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "ready"
+                    },
+                    "document": {
+                      "id": null,
+                      "revision": 0,
+                      "editRevision": 0,
+                      "savedRevision": -1,
+                      "dirty": true,
+                      "savedAt": null
+                    },
+                    "preferences": {
+                      "pendingRevision": null,
+                      "requestedRevision": 0,
+                      "durableRevision": -1,
+                      "lastError": {
+                        "generation": 1,
+                        "revision": 0,
+                        "code": "ProcgenStorageError",
+                        "message": "Browser project storage is unavailable. Export a project file to save."
+                      },
+                      "retirement": null,
+                      "active": false,
+                      "suspended": false,
+                      "retirementUnknown": false,
+                      "storage": {
+                        "encodedPages": 0,
+                        "reusedPages": 0,
+                        "workerJobs": 0,
+                        "committed": 0,
+                        "readPages": 0,
+                        "pendingBytes": 0,
+                        "peakPendingBytes": 0,
+                        "stagedBytes": 0,
+                        "stagedBatches": 0,
+                        "discardedStages": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "readMaximumSliceMs": 0,
+                        "retirementFailures": 0,
+                        "writing": false,
+                        "retired": false
+                      }
+                    },
+                    "recovery": {
+                      "snapshot": {
+                        "calls": 1,
+                        "totalMs": 1,
+                        "maximumMs": 1,
+                        "lastMs": 1
+                      },
+                      "state": "unavailable",
+                      "pendingRevision": 0,
+                      "durableRevision": -1,
+                      "durableTick": null,
+                      "durableGeneration": null,
+                      "error": {
+                        "name": "ProcgenStorageError"
+                      },
+                      "retirement": null,
+                      "lastCommit": null,
+                      "journal": {
+                        "bytes": 2174,
+                        "sequence": 1,
+                        "capture": {
+                          "slices": 30,
+                          "maximumSliceMs": 3,
+                          "elapsedMs": 445
+                        },
+                        "pages": 1,
+                        "complete": true,
+                        "failure": null
+                      },
+                      "storage": {
+                        "resultCopyMs": 242,
+                        "resultCopyMaximumSliceMs": 1,
+                        "resultCopyPackets": 23,
+                        "inputCopyMs": 2080,
+                        "inputCopyMaximumSliceMs": 1,
+                        "inputCopyPackets": 65,
+                        "workerQueueWaitMs": 1,
+                        "workerJobs": 23,
+                        "retirementFailures": 0,
+                        "encodedPages": 23,
+                        "reusedPages": 0,
+                        "encodeMs": 3586,
+                        "decodeMs": 0,
+                        "commitMs": 0,
+                        "transactionMaximumSliceMs": 0,
+                        "maximumStoredPayloadBytes": 0,
+                        "maximumReadPayloadBytes": 0,
+                        "writing": false
+                      }
+                    },
+                    "project": {
+                      "mode": "recipe",
+                      "seed": 42,
+                      "laneName": "Lane 1"
+                    },
+                    "capabilities": {
+                      "audioContext": false
+                    },
+                    "navigation": {
+                      "type": "back_forward",
+                      "reasons": null
+                    }
+                  },
+                  "before": {
+                    "marker": "f0868912-8c9b-4f45-808b-e21aee92d7c0",
+                    "revision": 1
+                  },
+                  "durability": "Unavailable storage and a destroyed realm cannot retain unsaved source. No durable recovery claimed."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "initial": {
+        "stats": {
+          "startTime": "2026-10-29T12:45:26.561Z",
+          "duration": 185127.61000000002,
+          "expected": 15,
+          "skipped": 0,
+          "unexpected": 3,
+          "flaky": 0
+        },
+        "reason": "All3worker fixtures incorrectly assumed ordinary named Save uses a Worker. Actual Save correctly committedrevision2; incidental preference failures could change status after commit. Corrected fixture targets actual stored-load checksum worker, checks exact worker name and preserves Save availability."
+      },
+      "focusedCoverage": {
+        "testsPassed": 20,
+        "lines": 91.8,
+        "statements": 91.8,
+        "branches": 75,
+        "functions": 88.88,
+        "scope": "Single ProcgenMidiOutput module only. Initial diagnostic inherited whole-project81% branch threshold and exited1 after all20tests passed. Reporting-only c8 report uses the retained V8 data without that inapplicable aggregate threshold; repository whole-project thresholds remain unchanged.",
+        "remainingFunctions": [
+          {
+            "name": "createOutputAdmission",
+            "line": 27
+          },
+          {
+            "name": "ownershipMessage",
+            "line": 33
+          },
+          {
+            "name": "takeOverPerformance",
+            "line": 216
+          },
+          {
+            "name": "setPerformanceDocumentIdentity",
+            "line": 217
+          },
+          {
+            "name": "localStateChanged",
+            "line": 219
+          }
+        ]
+      },
+      "ci347Engine": {
+        "head": "89fa0f1c1145a250219fd041f809b8300913e301",
+        "run": 40874063435,
+        "job": 123448224568,
+        "status": "success",
+        "passed": 11,
+        "sourceFiles": 1246,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "qualification": {
+          "schema": "lemmings-lifecycle-engine-qualification/v1",
+          "passed": 11,
+          "engines": [
+            {
+              "project": "chromium-semantic",
+              "passed": 1,
+              "browser": "153.0.8010.12",
+              "configuredRenderer": "browser-default-unqualified",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": true,
+                    "enabled": false,
+                    "fallbackPath": "webmidi"
+                  },
+                  "offscreenCanvas": {
+                    "supported": true,
+                    "ctorSupported": true,
+                    "transferControlSupported": true,
+                    "fallbackPath": "offscreen_canvas"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": true,
+                    "deterministicFallback": "worker_offscreen"
+                  }
+                },
+                "audioContextAvailable": true,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            },
+            {
+              "project": "firefox-lifecycle",
+              "passed": 5,
+              "browser": "155.0",
+              "configuredRenderer": "software-webrender-requested",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": true,
+                    "enabled": false,
+                    "fallbackPath": "webmidi"
+                  },
+                  "offscreenCanvas": {
+                    "supported": true,
+                    "ctorSupported": true,
+                    "transferControlSupported": true,
+                    "fallbackPath": "offscreen_canvas"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": true,
+                    "deterministicFallback": "worker_offscreen"
+                  }
+                },
+                "audioContextAvailable": true,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            },
+            {
+              "project": "webkit-lifecycle",
+              "passed": 5,
+              "browser": "26.6",
+              "configuredRenderer": "browser-default-unqualified",
+              "source": {
+                "schema": "lemmings-engine-semantics/v1",
+                "recipe": {
+                  "seed": 42,
+                  "lanes": 8,
+                  "ticks": 64
+                },
+                "initialTick": 0,
+                "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+                "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+                "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+                "finalTick": 64,
+                "stablePaused": true,
+                "batches": 64,
+                "facts": 1078,
+                "complete": true,
+                "kinds": {
+                  "ActorBorn": 14,
+                  "ActionEntered": 22,
+                  "FlightArcStarted": 14,
+                  "lemming-spawn": 14,
+                  "FlightArcUpdated": 120,
+                  "MotionCommitted": 487,
+                  "lemming-land": 8,
+                  "ActionExited": 8,
+                  "FlightArcEnded": 8,
+                  "ContactSpanBegan": 8,
+                  "ContactSpanUpdated": 375
+                },
+                "activeActors": 14,
+                "observerListeners": {
+                  "before": 2,
+                  "after": 2
+                },
+                "outputEnabled": false,
+                "renderer": {
+                  "path": "canvas2d_main_thread",
+                  "state": "ready",
+                  "hardwareAcceleration": "unqualified"
+                },
+                "assets": [
+                  {
+                    "family": "crystal",
+                    "id": "lemmings-4",
+                    "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                  },
+                  {
+                    "family": "bubble",
+                    "id": "lemmings_ohNo-3",
+                    "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                  },
+                  {
+                    "family": "dirt",
+                    "id": "lemmings-0",
+                    "revision": "42815ae81f796c647ade1d782d04764ac576ab7500439e09044ac7884feeed1d"
+                  },
+                  {
+                    "family": "rock",
+                    "id": "holiday93-1",
+                    "revision": "754987c81e5aa914877e0457baf6965a420388b39fbf863d277ffa0913e14d33"
+                  },
+                  {
+                    "family": "fire",
+                    "id": "lemmings-1",
+                    "revision": "49df39b5aefcef219376f06a24ed3fe12c5efb21ad641ebe6549e46909e60839"
+                  },
+                  {
+                    "family": "brick",
+                    "id": "lemmings_ohNo-0",
+                    "revision": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe"
+                  },
+                  {
+                    "family": "snow",
+                    "id": "lemmings_ohNo-2",
+                    "revision": "91e01f8ab6307fc9a13426886e5fb3ed00bda6670eabe34eea6cdcc05b52a91c"
+                  },
+                  {
+                    "family": "pillar",
+                    "id": "lemmings-3",
+                    "revision": "45637ff5294142c71631630c74a064b19081502b02fc4e04ecc88fdc8d93e0ba"
+                  }
+                ],
+                "capabilities": {
+                  "webMidi": {
+                    "supported": false,
+                    "enabled": false,
+                    "fallbackPath": "audio_only"
+                  },
+                  "offscreenCanvas": {
+                    "supported": true,
+                    "ctorSupported": true,
+                    "transferControlSupported": true,
+                    "fallbackPath": "offscreen_canvas"
+                  },
+                  "imageBitmap": {
+                    "supported": true,
+                    "fallbackPath": "imagebitmap"
+                  },
+                  "worker": {
+                    "supported": true,
+                    "fallbackPath": "worker"
+                  },
+                  "renderPaths": {
+                    "presentPathSupported": true,
+                    "workerOffscreenSupported": true,
+                    "deterministicFallback": "worker_offscreen"
+                  }
+                },
+                "audioContextAvailable": true,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080
+                },
+                "qualification": "Muted deterministic physics and causal facts; no rendered PCM, physical GPU/MIDI, acoustics or bound archived execution claim."
+              }
+            }
+          ],
+          "scope": "Exact muted fixture physics/causal parity plus qualified history/storage/audio capability paths. No acoustic, native GPU/MIDI or archived-execution qualification."
+        },
+        "artifact": {
+          "id": 12896743283,
+          "sha256": "3511d27c72ebb365e687ce24a4cbbac423b61f4a22079dce22565760f69ecb81"
+        },
+        "scope": "Both347jobs have now completed successfully. LinuxFirefox155andWebKit26.6 exercised supported AudioContext activation/navigation/reactivation; physics/causal hashes match Windows. See latestFullCi for full counts and precise capture limits."
+      },
+      "ci346Main": {
+        "head": "c4b94ac2a3b28e9d9ae000213bdf3a0822cb733f",
+        "run": 40871092717,
+        "job": 123438032067,
+        "status": "success",
+        "nodePassed": 7005,
+        "nodePending": 10,
+        "browserPassed": 180,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 156,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.76,
+          "statements": 90.76,
+          "branches": 83.82,
+          "functions": 88.52
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 115328,
+          "captured": 115328,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02332913875579834,
+          "nonfinite": 0
+        },
+        "wholeWorkflow": "failed because separate lifecycle-engines job failed; does not replace latestVerifiedCiCheckpoint."
+      },
+      "retained": [
+        {
+          "path": ".tmp/rook348-node.log",
+          "bytes": 95,
+          "sha256": "aee5adcb70d9bea924484276a6e8edbbd30038d85c3f0621a3bd307e2cd1a057"
+        },
+        {
+          "path": ".tmp/rook348-native-initial.json",
+          "bytes": 144648,
+          "sha256": "3b2646c9cc0e7a7a1be276f16691db0f254f7149a1437e5d9fe53bc5bb6f5e52"
+        },
+        {
+          "path": ".tmp/rook348-native-final.json",
+          "bytes": 133565,
+          "sha256": "673d1e63aea9ebd798a234619b22a1b68b4069fdceb7dd862b11bf6825651771"
+        },
+        {
+          "path": ".tmp/rook348-qualification-final.json",
+          "bytes": 242239,
+          "sha256": "7c3f5f2d1b516b0da3713371486109851952df6413480de004fa48bd61d11831"
+        },
+        {
+          "path": ".tmp/rook348-focused-coverage.log",
+          "bytes": 425,
+          "sha256": "d47a56c01fa5364dddf5329ed40d18d55040aebbf33ee91a0ead248bd70c63ed"
+        },
+        {
+          "path": ".tmp/rook348-coverage-report.log",
+          "bytes": 299,
+          "sha256": "e345fc6fa93e72d9bde1ab4bd248955f6a8056aa55206c49a0c1f1a088126b1f"
+        },
+        {
+          "path": ".tmp/rook348-coverage/coverage-final.json",
+          "bytes": 84935,
+          "sha256": "be1978407d737e39f01900ddf09d68a4f5206ffa0f5f93e0a34de204a98b4fb4"
+        },
+        {
+          "path": ".tmp/ci347-lifecycle-engine-results.json",
+          "bytes": 545198,
+          "sha256": "2fbb1bc01256294faf33fe4048ef2f3af0b60356f0e16ce4066dbf82cf97249f"
+        },
+        {
+          "path": ".tmp/ci347-lifecycle-engine-qualification.json",
+          "bytes": 241862,
+          "sha256": "b7c0a2a4e6ac93bedb1b9765dae8389e238a030777cf2c49823613fc513704ba"
+        }
+      ]
+    },
+    "issueStatus": {
+      "1009": "open; actual desktop background and real Firefox/WebKit BFCache remain unqualified.",
+      "1059": "open; deferred/per-sink/immutable transition registry still real implementation gap; original rejected-note/CC bugs alone do not close it.",
+      "1086": "open; native Chromium denial and controlled cross-engine worker/display failure+retry now qualified. Remaining native Firefox denial/no-device, broader audio/storage/graphics/owner-count and actual background/device matrix."
+    },
+    "limits": [
+      "No microphone permission, physical MIDI output, hardware GPU, acoustics or disk/power-loss durability claim.",
+      "Worker/canvas faults are explicitly controlled API failures. Save legitimately works without a dedicated Worker; current dirty source is retained until explicit load succeeds.",
+      "Chromium denied permission is an actual native decision; Firefox/WebKit native-denial journeys are not implied.",
+      "Native engine/job results do not equate to completed full workflow while any required job is pending or failed."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "bytes": 20603,
+        "sha256": "2aa12bd5683c4baab1b85580cb9de7ca4f84bb94fd0803637fcb4c5d9fc865c4"
+      },
+      {
+        "path": "playwright.lifecycle.config.js",
+        "bytes": 841,
+        "sha256": "a6c11e0af01cb9cf061b511504224dfdd1cb0734220a7ddb7ab14d39b1b28c5d"
+      },
+      {
+        "path": "scripts/LifecycleEngineResults.js",
+        "bytes": 3665,
+        "sha256": "36926c3a436daa2fb1ca4c53809171f2c9eb8123baea8d74ace11650eb853ec6"
+      },
+      {
+        "path": "scripts/run-lifecycle-engines.js",
+        "bytes": 3039,
+        "sha256": "02bd697859d7361ed11b4dc0e03aff2ef15c69579278e47cab1d7b4a3742753c"
+      },
+      {
+        "path": "test/lifecycle-engine-results.test.js",
+        "bytes": 3401,
+        "sha256": "2ac5e9ef5a27b7c372bd625a29cec49a8f3e9ff16bff5273a41487f035ac016d"
+      },
+      {
+        "path": "test/midi/procgen-midi-output.test.js",
+        "bytes": 19538,
+        "sha256": "bba0f12ae98019536afb7e73fd0b26d1a009c2308f371e34888a22628abf19fa"
+      },
+      {
+        "path": "e2e-portable/capabilities.spec.js",
+        "bytes": 7387,
+        "sha256": "f8b6062149d39e804664dca93baff0688ba45daf358ecb6bd0e9b56018ecc4f6"
+      },
+      {
+        "path": "e2e-portable/native-permission.spec.js",
+        "bytes": 3493,
+        "sha256": "844bded66b49fa5742381b264557c93baaaa01145c5e57b8fff106a08ff39154"
+      }
+    ],
+    "previousVerifiedCiCheckpoint": {
+      "head": "24c0d5a3fa3daa5e4228f825212c495e7f4effc4",
+      "status": "success",
+      "run": 40865491271,
+      "job": 123419093172,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40865491271/job/123419093172",
+      "nodePassed": 7002,
+      "nodePending": 10,
+      "browserPassed": 180,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 156,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.76,
+        "statements": 90.76,
+        "branches": 83.8,
+        "functions": 88.49
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 50048,
+        "captured": 50048,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 87168,
+          "expectedFrame": 87296,
+          "frames": 128
+        },
+        "peak": 0.02335798740386963,
+        "nonfinite": 0
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30272,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 66.70000000000073,
+          "perfP50Tps": 102.52365930599369,
+          "historyRatio": 0.5856666666666667,
+          "antsAvgMs": 12.69,
+          "tileCompositionAvgMs": 2.42,
+          "overlayPlaneAvgMs": 8.54,
+          "scaledBlitAvgMs": 18.81
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "scope": "All published fixes through345; does not cover346 WIP. Native capture preserved a finite nonzero Partial prefix after an observed128-frame render-clock discontinuity. No complete capture, acoustic or physical disk durability claim.",
+      "log": {
+        "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci345-green.log",
+        "bytes": 1199301,
+        "sha256": "8ca3b0c94d060603b5ebb755d0f4aff6c71ef3a77bfdeb953d856dce256f713d",
+        "normalization": "Retained decoded complete job text with LF line endings."
+      }
+    },
+    "latestFullCi": {
+      "head": "89fa0f1c1145a250219fd041f809b8300913e301",
+      "status": "success",
+      "run": 40874063435,
+      "job": 123448224788,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224788",
+      "engineJob": 123448224568,
+      "engineUrl": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224568",
+      "requiredJobs": 2,
+      "nodePassed": 7013,
+      "nodePending": 10,
+      "browserPassed": 191,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 156,
+      "enginePassed": 11,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.82,
+        "functions": 88.52
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 71424,
+        "captured": 71424,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 106624,
+          "expectedFrame": 106752,
+          "frames": 128
+        },
+        "peak": 0.023482203483581543,
+        "nonfinite": 0
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 31165,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 50,
+          "perfP50Tps": 96.79968391940835,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 13.46,
+          "tileCompositionAvgMs": 3.83,
+          "overlayPlaneAvgMs": 15.8,
+          "scaledBlitAvgMs": 26.1
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1246,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": "Firefox155 and Linux WebKit26.6 supported activation/navigation/reactivation paths passed; no acoustics."
+      },
+      "scope": "Both required347jobs completed successfully. Includes all published fixes through347; does not cover348WIP. Partial capture is retained finite digital evidence, not a complete or acoustic recording.",
+      "log": {
+        "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci347-green.log",
+        "bytes": 1201734,
+        "sha256": "4ff6a321e4e307d46d6bbb0ab7e83a1c65a555d5541b960194f2933ce6c54f38",
+        "normalization": "Retained complete decoded mainjob text with LF line endings."
+      }
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { collectBrowserCases } from './BrowserTestCatalog.js';
 
-const required = Object.freeze({ 'chromium-semantic': 1, 'firefox-lifecycle': 5, 'webkit-lifecycle': 5 });
+const required = Object.freeze({ 'chromium-semantic': 4, 'firefox-lifecycle': 7, 'webkit-lifecycle': 7 });
 const sha256 = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const semanticReceipt = (report, project) => {
   const receipts = [];

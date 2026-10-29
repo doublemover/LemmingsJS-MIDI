@@ -8975,10 +8975,46 @@ export-budget acknowledgments still prevent a false complete receipt.
   process isolation alone did not eliminate them. Three diagnostic audio repeats
   passed; the final eleven-case profile passed once. No universal stability or
   hardware GPU claim follows from those observations.
--346's Linux engine job passed six cases but Firefox audio stayed suspended and
+- 346's Linux engine job passed six cases but Firefox audio stayed suspended and
   another boot crashed. Provision a PulseAudio null sink for digital CI audio;
   Linux execution of this fix remains pending. Windows WebKit's absent AudioContext
   remains explicit. Do not label346 fully green merely from its separate main job.
 - Continue solo through the remaining backlog; #1086 retains denied/unavailable
   capability, graphics, owner-count and physical-device qualification, and #1009
   retains actual desktop background and Firefox/WebKit BFCache journeys.
+
+### Continuation 348 - permission, worker and display failure boundaries
+
+- All18 desktop engine cases pass without retries/skips/crashes;58 grouped Node
+  tests, critical types, formatting, undefined calls and10-component/350-file
+  provenance pass. The same64-tick physics/causal/asset parity gate stays mandatory.
+- Actual Chromium permission denial causes exactly one delegated native MIDI
+  request after explicit activation and none during startup or automatic retry.
+  The rejected route stays off; a separate explicit action starts native browser
+  audio without another MIDI request. Treat both NotAllowedError and legacy
+  SecurityError as denied/blocked in discovery and selected-output activation.
+- Each engine recovers an explicitly unavailable canvas through Retry display,
+  retaining the exact world/project and paused tick. With worker construction
+  blocked, native IndexedDB Save remains usable at named revision2. Stored Load
+  refuses at its checksum worker, preserves the exact current dirty source/world
+  and stored revision, then an explicit retry loads the saved revision paused.
+  Controlled API faults are not native GPU/worker-device qualification.
+- Correct the initial worker fixture assumption: named Save does not require a
+  checksum worker. Its successful revision2 commit was correct; the initial batch
+  passed15/failed3 before moving the fault assertion to actual Load ownership.
+- 347's Linux engine job now passes all11 cases with the PulseAudio null sink,
+  including actual Firefox and WebKit AudioContext activation/navigation/restart.
+  Physics/causal hashes match Windows as well. Both347jobs are now green:7,013
+  Node passes,10 pre-existing pending and191 browser passes (24desktop/156main/
+  11engine), all14 capabilities and static/provenance/policy/dependency/MCP/benchmark
+  gates. Coverage90.77% lines/statements,83.82% branches,88.52% functions. Preserve
+  its explicit Partial71,424-frame capture after a128-frame discontinuity.348has
+  independent scoped qualification and CI.346's main job passed
+  7,005 Node/180 browser cases and Ready115,328-frame capture, but its engine job
+  failed, so346 remains a failed whole-workflow checkpoint.
+- Focused output coverage is91.80% lines/statements,75.00% branches,88.88%
+  functions across20 cases. Whole-project coverage thresholds remain unchanged.
+  Additional focused coverage can target coordinator admission, takeover,
+  document-identity and local-state callbacks; native ownership journeys exercise
+  these paths separately. Continue the named remaining #1086/#1009 matrix and
+  the lane-transfer acceptance before considering those broader issues complete.

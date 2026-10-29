@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { qualifyLifecycleEngineResults } from '../scripts/LifecycleEngineResults.js';
 
-const report = () => ({ suites: Object.entries({ 'chromium-semantic': 1, 'firefox-lifecycle': 5, 'webkit-lifecycle': 5 }).map(([project, count]) => ({
+const report = () => ({ suites: Object.entries({ 'chromium-semantic': 4, 'firefox-lifecycle': 7, 'webkit-lifecycle': 7 }).map(([project, count]) => ({
   specs: Array.from({ length: count }, (_, index) => ({ title: project + ':' + index, file: 'native.spec.js', line: index + 1, column: 1,
     tests: [{ projectName: project, expectedStatus: 'passed', results: [{ status: 'passed', attachments: index ? [] : [{ name: 'native-engine-semantics.json', contentType: 'application/json',
       body: Buffer.from(JSON.stringify({ project, browser: 'native-test-version', source: { schema: 'lemmings-engine-semantics/v1', recipe: { seed: 42, lanes: 8, ticks: 64 },
@@ -11,7 +11,7 @@ const report = () => ({ suites: Object.entries({ 'chromium-semantic': 1, 'firefo
 const change = (value, apply) => { const attachment = value.suites[1].specs[0].tests[0].results[0].attachments[0], receipt = JSON.parse(Buffer.from(attachment.body, 'base64')); apply(receipt.source); attachment.body = Buffer.from(JSON.stringify(receipt)).toString('base64'); };
 
 describe('native lifecycle engine qualification', () => {
-  it('permits explicit unavailable audio while requiring all eleven cases and exact physical evidence', () => { const result = qualifyLifecycleEngineResults(report()); expect(result.passed).to.equal(11); expect(result.engines[2].source.audioContextAvailable).to.equal(false); });
+  it('permits explicit unavailable audio while requiring all eighteen cases and exact physical evidence', () => { const result = qualifyLifecycleEngineResults(report()); expect(result.passed).to.equal(18); expect(result.engines[2].source.audioContextAvailable).to.equal(false); });
   for (const key of ['physicsHash', 'causalHash']) it('rejects a one-engine ' + key + ' divergence despite every case passing', () => {
     const value = report(); change(value, source => { source[key] = 'd'.repeat(64); }); expect(() => qualifyLifecycleEngineResults(value)).to.throw('Cross-engine semantic mismatch');
   });
