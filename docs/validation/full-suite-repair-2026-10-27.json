@@ -26533,5 +26533,182 @@
         "resolvedGap": "Executed both dedicated browser-download/Blob-sink cases."
       }
     }
+  },
+  "continuation324": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Cancel and retire archive preparation without stale publication",
+    "sourceBase": "127bd9344d9186657b07cc34c3484f82a7f71853",
+    "issues": [
+      1207
+    ],
+    "development": [
+      "Archive preparation owns a linked cancellation signal and four-read pending cap. New project/MIDI/archive preparation cancels its predecessor, while actual unfinished source work remains tracked.",
+      "Late source rejection/completion cannot replace a newer artifact or status. Project/MIDI stale errors are fenced too. Show archive verification rather than a MIDI label, allow Discard before the first artifact, and preserve earlier prepared output on Cancel.",
+      "Disposal cancels preparation and suppresses later display publication; storage/journal qualification release waits for all actual archive reads to settle."
+    ],
+    "validation": {
+      "node": {
+        "passed": 144,
+        "failed": 0,
+        "scope": "Workstation controller, prepared artifact and portable archive cohort, including real journal/worker replacements, late rejection, Cancel/Discard/disposal and unresolved-read capacity.",
+        "earlierRuns": [
+          {
+            "passed": 141,
+            "failed": 2,
+            "diagnosis": "Older archive finalization could publish an obsolete phase; project digest completion also legitimately updates current metadata. Fence old phase writes and assert that all later artifact publications belong to the newer source."
+          },
+          {
+            "passed": 143,
+            "failed": 0,
+            "scope": "Before final pending-cap/no-artifact Discard regression."
+          }
+        ]
+      },
+      "browser": {
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 71573.32400000001,
+        "scope": "Immutable build actual stored-source workers: archive\u2192project, archive A\u2192B, Cancel and Discard; six scene/clipboard/checkpoint/archive sharing workflows;99991-record worker MIDI/reference export. Native download/Blob cases were separately executed in323.",
+        "faultInjection": "Only the first stored-source worker input-start is held; cancellation terminates that real worker. Replacement jobs, native IndexedDB verification, artifact preparation and UI use their production paths."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending combined323/324 publication. Full322 was still in workstation smoke at last inspection.",
+      "scopeLimits": [
+        "Trusted-gesture native OS picker support/selection still needs platform qualification where available. Browser Blob through a controlled writable does not establish filesystem durability.",
+        "The pending cap refuses additional preparation instead of forgiving unfinished reads."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-categories.log",
+        "bytes": 2835,
+        "sha256": "4d1f65a29024c58b6febe072dfccdc1ee79b09726c32912656f9232baa8c3ac3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-format-final2.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-format-native-fixed.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-format-native.log",
+        "bytes": 302,
+        "sha256": "247c049b88de868383c20b5b6fd563fff7f16df03c493f769a39da0fb56f2ec3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-native.log",
+        "bytes": 1865,
+        "sha256": "77758fb9ddcefc544d46891459cec279d636a6edc9e3580946c974e0d659fb5e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-node-final.log",
+        "bytes": 13597,
+        "sha256": "d032b277414d6251004d5a7c293741e43260b1c1cf2dd8c58ea7384db23980a4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-node-final2.log",
+        "bytes": 13716,
+        "sha256": "3497f736c2f4248b932f302d882572e6d5e5c2c506b32c2470d19612e49f8f4a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-node.log",
+        "bytes": 14394,
+        "sha256": "e8bdd0d568d4c2b2bafab56bdc0ba04b9b5a675edf73d6df9c0d3087ce62772c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog324-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog324-export-owner-results.json",
+        "bytes": 18244,
+        "sha256": "4f2c343c5e127e5ef93e86179028a59a137720942ece69984fb1a0830a234179"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-324-coverage\\coverage-summary.json",
+        "bytes": 247176,
+        "sha256": "6b0ee3d6838116bd3910ec0dcb5ebe02f6cdf3a99f4bca1ed4fee60d0047c2c3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-324-coverage-final\\coverage-summary.json",
+        "bytes": 247176,
+        "sha256": "6b0ee3d6838116bd3910ec0dcb5ebe02f6cdf3a99f4bca1ed4fee60d0047c2c3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-324-coverage-final2\\coverage-summary.json",
+        "bytes": 247176,
+        "sha256": "066f23024527010f3aa5a5394cc00acce8c29f5437dc6f2a928943b0804b40df"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 207607,
+        "sha256": "1a72dff41cb07d51b63904485ae6630221d893e65b726a34ff1f7d3b20d4f77d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 135034,
+        "sha256": "0bd0cf34ac08bdb01cb3073ec6d55fac58309946890c320df2da509d37e88791"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 119392,
+        "sha256": "0666a7f604f7247b90c6d8760ced8093a6e96d1977aeab6c60d2f8a92eed6e78"
+      },
+      {
+        "path": "e2e/procgen-workstation-export-ownership.spec.js",
+        "bytes": 3513,
+        "sha256": "1815003dc498401e5e3b55380e58ccdba2d4cf6edccc770323fed9e235b4565e"
+      }
+    ],
+    "issueStatus": {
+      "1207": {
+        "state": "open-implemented-partial",
+        "resolvedGaps": [
+          "Dedicated native browser download and Blob-sink execution",
+          "Reverse archive\u2192project/archive A\u2192B ordering",
+          "Pending discard/dispose and stale rejection after success"
+        ],
+        "remaining": "Trusted-gesture native OS-picker qualification on supported targets; no native filesystem durability inferred."
+      }
+    }
   }
 }

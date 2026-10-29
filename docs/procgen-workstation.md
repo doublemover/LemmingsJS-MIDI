@@ -315,6 +315,11 @@ requests share one bounded load; a failed load can be retried. Panic, disposal
 or a changed world prevents an obsolete connection from requesting permission
 or publishing a route. Installed builds retain the library for offline use.
 
+Preparing a causal archive shows its source-verification phase and can be canceled
+or discarded before a file exists. A newer project, MIDI or archive preparation
+owns the resulting file; an earlier completion cannot replace it. Closing the
+workstation retains pending archive reads until they settle before closing storage.
+
 Startup resolves one immutable plan before asset preparation. Shared recipes
 use versioned defaults for omitted fields, including decoration, population and
 worker policy; unrelated previous setup preferences cannot fill those gaps.

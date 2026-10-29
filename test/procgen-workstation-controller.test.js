@@ -275,6 +275,73 @@ describe('ProcGen workstation orchestration', () => {
     await f.studio.handlers.exportMidi(); const midi = f.studio.getExportState().artifact; expect(midi.formatVersion).to.equal('smf1/v1'); complete();
     expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact.artifactId).to.equal(midi.artifactId); expect(releases).to.equal(1); await f.studio.dispose().completion; jobs.dispose();
   });
+  for (const replacement of ['project', 'archive']) for (const rejected of [false, true]) it('keeps a newer ' + replacement + ' artifact after an older archive ' + (rejected ? 'rejects' : 'settles'), async () => {
+    const memory = createMemoryCausalStore(); let held = false, enter, release;
+    const entered = new Promise(resolve => { enter = resolve; }), gate = new Promise(resolve => { release = resolve; });
+    const storage = { ...memory.storage, close() {}, async loadCausalTake(id) {
+      if (held) { held = false; enter(); await gate; if (rejected) throw new Error('Obsolete archive source rejected'); }
+      return memory.storage.loadCausalTake(id);
+    } };
+    const jobs = createTestBackgroundJobs(), f = setup({ storageOverride: storage, backgroundJobs: jobs }); f.studio.bindRuntime();
+    try {
+      await f.studio.handlers.startCausalTake(); await f.studio.stopCausalTake(); held = true;
+      const pending = f.studio.handlers.prepareCausalArchive(); await entered;
+      expect(f.studio.getExportState().preparation.kind).to.equal('causal-take');
+      const newer = replacement === 'archive' ? await f.studio.handlers.prepareCausalArchive() : await f.studio.handlers.export();
+      expect(newer.retained).to.equal(true); const artifact = f.studio.getExportState().artifact, status = f.statuses.at(-1), publications = f.exportStates.length;
+      release(); expect(await pending).to.include({ status: 'superseded' });
+      expect(f.studio.getExportState().artifact.artifactId).to.equal(artifact.artifactId); expect(f.statuses.at(-1)).to.equal(status);
+      expect(f.exportStates.slice(publications).every(value => value.artifact?.artifactId === artifact.artifactId)).to.equal(true);
+    } finally { release(); await f.studio.dispose().completion; jobs.dispose(); }
+  });
+  for (const cancellation of ['cancel', 'discard', 'dispose']) it('owns pending archive source retirement through ' + cancellation, async () => {
+    const memory = createMemoryCausalStore(); let held = false, enter, release, closed = false;
+    const entered = new Promise(resolve => { enter = resolve; }), gate = new Promise(resolve => { release = resolve; });
+    const storage = { ...memory.storage, close() { closed = true; }, async loadCausalTake(id) {
+      if (held) { held = false; enter(); await gate; } return memory.storage.loadCausalTake(id);
+    } };
+    const jobs = createTestBackgroundJobs(), f = setup({ storageOverride: storage, backgroundJobs: jobs }); f.studio.bindRuntime(); let retirement;
+    try {
+      await f.studio.handlers.exportMidi(); const previous = f.studio.getExportState().artifact.artifactId;
+      await f.studio.handlers.startCausalTake(); await f.studio.stopCausalTake(); held = true;
+      const pending = f.studio.handlers.prepareCausalArchive(); await entered;
+      if (cancellation === 'cancel') expect(f.studio.handlers.cancelExportDelivery()).to.equal(true);
+      else if (cancellation === 'discard') expect(f.studio.handlers.discardExport()).to.equal(true);
+      else { retirement = f.studio.dispose(); await Promise.resolve(); expect(closed).to.equal(false); }
+      const publications = f.exportStates.length; release(); expect(await pending).to.include({ status: 'superseded' });
+      if (retirement) await retirement.completion;
+      if (cancellation === 'discard') expect(f.studio.getExportState().artifact).to.equal(null);
+      else expect(f.studio.getExportState().artifact).to.include({ artifactId: previous, retained: cancellation !== 'dispose' });
+      expect(f.studio.getExportState().preparation).to.equal(null);
+      if (cancellation === 'dispose') expect(f.exportStates).to.have.length(publications);
+    } finally { release(); await f.studio.dispose().completion; jobs.dispose(); }
+  });
+  it('does not replace successful MIDI status with an obsolete project rejection', async () => {
+    const jobs = createTestBackgroundJobs(); let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const f = setup({ backgroundJobs: { async compute(options) { if (options.kind === 'encode-recorded-midi') return jobs.compute(options); await gate; throw new Error('Obsolete project rejected'); } } });
+    try {
+      const pending = f.studio.handlers.export(); await f.studio.handlers.exportMidi(); const state = f.studio.getExportState(), status = f.statuses.at(-1);
+      release(); expect(await pending).to.equal(null); expect(f.studio.getExportState().artifact.artifactId).to.equal(state.artifact.artifactId); expect(f.statuses.at(-1)).to.equal(status);
+    } finally { release(); await f.studio.dispose().completion; jobs.dispose(); }
+  });
+  it('bounds unresolved archive reads and lets Discard cancel preparation before any artifact exists', async () => {
+    const memory = createMemoryCausalStore(); let held = false, release, reads = 0;
+    const gate = new Promise(resolve => { release = resolve; });
+    const storage = { ...memory.storage, close() {}, async loadCausalTake(id) {
+      if (held) { reads++; await gate; } return memory.storage.loadCausalTake(id);
+    } };
+    const jobs = createTestBackgroundJobs(), f = setup({ storageOverride: storage, backgroundJobs: jobs }); f.studio.bindRuntime();
+    try {
+      await f.studio.handlers.startCausalTake(); await f.studio.stopCausalTake(); held = true;
+      const pending = Array.from({ length: 4 }, () => f.studio.handlers.prepareCausalArchive());
+      expect(await f.studio.handlers.prepareCausalArchive()).to.equal(false); expect(f.statuses.at(-1)).to.include('still retiring');
+      expect(reads).to.equal(4); expect(f.studio.handlers.discardExport()).to.equal(true); expect(f.studio.getExportState().preparation).to.equal(null);
+      held = false; release(); expect((await Promise.all(pending)).every(value => value.status === 'superseded')).to.equal(true);
+      expect(f.studio.getExportState().artifact).to.equal(null);
+      expect((await f.studio.handlers.prepareCausalArchive()).retained).to.equal(true);
+    } finally { release(); await f.studio.dispose().completion; jobs.dispose(); }
+  });
   it('keeps freshly admitted pattern voices after seeking away a paused resume boundary', async () => {
     const f = setup({ lookaheadMs: 80 }); f.studio.bindRuntime(); f.enable();
     f.studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { mode: 'pattern', patternPurpose: 'A held phrase across the paused seek boundary' } });

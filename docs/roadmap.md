@@ -8508,3 +8508,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   the real library. The corrected native case passes without changing deadlines.
   Native MIDI access is a declared empty-port fixture, not hardware evidence.
   #1161 remains open for measured startup, precache and wider optional scope.
+
+### Continuation 324 — archive preparation and source retirement
+
+- Own archive preparation with cancellation and a four-read pending cap. New
+  project/MIDI/archive preparation supersedes the previous owner; late rejection
+  or completion cannot replace a newer artifact or its status. Display the actual
+  archive phase, allow Discard before a first artifact exists, and keep the old
+  prepared file on cancellation. Suppress presentation after disposal.
+- Retain pending archive reads through disposal, then release journal proofs and
+  close storage only after those reads settle. Unknown pending reads consume the
+  cap rather than being forgotten when cancellation is requested.
+- All144 controller/artifact/archive Node cases and8 grouped native journeys pass.
+  The new immutable-build case exercises actual stored-source workers through
+  archive→project, archive A→B, Cancel and Discard; source world/tick/output remain
+  unchanged. Native sharing and the99991-record MIDI exporter pass alongside it.
+  Two earlier Node assertions caught stale phase publication and asynchronous
+  digest updates; the final guards and current-artifact assertions pass.
+- #1207 retains trusted-gesture native OS-picker qualification where supported.
+  The dedicated browser download and Blob/controlled-writable journeys now have
+  executed receipts from323. No filesystem durability claim is made.

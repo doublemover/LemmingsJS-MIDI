@@ -1174,10 +1174,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  let preparedExport = null, lastDelivery = null, activeExportAbort = null, midiExportPreparation = null, lastMidiExportReceipt = null, exportPreparationRevision = 0;
-  const exportPreparationState = () => midiExportPreparation ? Object.freeze({ kind: 'midi', phase: midiExportPreparation.phase,
+  let preparedExport = null, lastDelivery = null, activeExportAbort = null, midiExportPreparation = null, archiveExportPreparation = null, lastMidiExportReceipt = null, exportPreparationRevision = 0;
+  const archiveExportTasks = new Set();
+  const exportPreparationState = () => archiveExportPreparation && !archiveExportPreparation.controller.signal.aborted ? Object.freeze({ kind: 'causal-take', phase: 'verifying sources', completedUnits: 0, totalUnits: null }) : midiExportPreparation && !midiExportPreparation.controller.signal.aborted ? Object.freeze({ kind: 'midi', phase: midiExportPreparation.phase,
     completedUnits: midiExportPreparation.completedUnits, totalUnits: midiExportPreparation.totalUnits }) : null;
-  const publishExportState = () => view?.exportState?.(preparedExport?.metadata() || null, lastDelivery, exportPreparationState());
+  const publishExportState = () => { if (!disposed) view?.exportState?.(preparedExport?.metadata() || null, lastDelivery, exportPreparationState()); };
   const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
     if (disposed) throw new Error('The export owner is retired.');
     ++exportPreparationRevision;
@@ -1187,21 +1188,34 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
   };
-  const prepareCausalArchive = async ({ signal } = {}) => {
+  const prepareCausalArchive = ({ signal } = {}) => {
     signal?.throwIfAborted();
-    const request = ++exportPreparationRevision, ownerGeneration = documentGeneration;
+    if (disposed) throw new Error('The export owner is retired.');
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the causal take before preparing its archive.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('No finished causal take is selected.');
+    if (archiveExportTasks.size >= 4) throw new Error('Previous archive preparations are still retiring. Retry after their source reads settle.');
+    archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort();
+    if (currentOperation?.kind === 'export') currentOperation.controller.abort();
+    const request = ++exportPreparationRevision, ownerGeneration = documentGeneration, controller = new AbortController();
+    const pending = { controller }, cancel = () => controller.abort(signal.reason);
+    signal?.addEventListener('abort', cancel, { once: true }); archiveExportPreparation = pending; publishExportState();
+    const isCurrent = () => !disposed && !controller.signal.aborted && request === exportPreparationRevision && ownerGeneration === documentGeneration && takeId === (selectedCausalTakeId || lastCausalTake?.takeId);
     const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
-    const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs, signal });
-    if (disposed || signal?.aborted || request !== exportPreparationRevision || ownerGeneration !== documentGeneration || takeId !== (selectedCausalTakeId || lastCausalTake?.takeId)) {
-      prepared.artifact.discard(); return Object.freeze({ status: 'superseded', takeId });
-    }
-    preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
-    publishExportState();
-    status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
-    return prepared.artifact.metadata();
+    const work = (async () => {
+      try {
+        const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs, signal: controller.signal });
+        if (!isCurrent()) { prepared.artifact.discard(); return Object.freeze({ status: 'superseded', takeId }); }
+        preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
+        publishExportState(); status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
+        return prepared.artifact.metadata();
+      } catch (error) { if (!isCurrent()) return Object.freeze({ status: 'superseded', takeId }); throw error; }
+      finally {
+        signal?.removeEventListener('abort', cancel);
+        if (archiveExportPreparation === pending) { archiveExportPreparation = null; if (request === exportPreparationRevision) publishExportState(); }
+      }
+    })();
+    archiveExportTasks.add(work); work.then(() => archiveExportTasks.delete(work), () => archiveExportTasks.delete(work)); return work;
   };
   const deliverPrepared = () => {
     if (!preparedExport) return null;
@@ -1214,6 +1228,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const prepareProjectExport = async ({ deliver = true, signal } = {}) => {
     signal?.throwIfAborted();
     if (worldBusy) throw new Error('Wait for the world change to finish before exporting.');
+    archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort();
     const lease = beginOperation('export'), generation = documentGeneration, revision = editRevision, id = documentId, name = savedName;
     const request = ++exportPreparationRevision, cancel = () => lease.controller.abort(signal.reason);
     signal?.addEventListener('abort', cancel, { once: true });
@@ -1232,9 +1247,12 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (deliver && deliverPrepared()?.state === 'delivery-requested') status('Project download requested. Check your browser downloads. Retry file uses the same prepared project.');
       else if (!deliver) status('Project checkpoint ready. Choose Save file or Retry file to request delivery.');
       return artifact.metadata();
-    } finally { computed?.release(); signal?.removeEventListener('abort', cancel); finishOperation(lease); }
+    } catch (error) { if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
+    finally { computed?.release(); signal?.removeEventListener('abort', cancel); finishOperation(lease); }
   };
   const prepareMidiExport = async () => {
+    archiveExportPreparation?.controller.abort();
+    if (currentOperation?.kind === 'export') currentOperation.controller.abort();
     midiExportPreparation?.controller.abort();
     const controller = new AbortController(), source = ports.createRecordingExportSource(), generation = documentGeneration, id = recordingOrigin ? recordingOrigin.documentId : documentId,
       request = ++exportPreparationRevision, state = source.state;
@@ -1264,7 +1282,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           `Partial ${evidence} download requested: ${reasons}; ${manifest.omittedOnsets} unmatched onset(s) omitted.`);
       }
       return artifact.metadata();
-    } catch (error) { if (controller.signal.aborted) return null; throw error; }
+    } catch (error) { if (!isCurrent()) return null; throw error; }
     finally { computed?.release(); source.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
   const getShareExportDescriptor = () => {
@@ -2011,13 +2029,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return receipt;
     },
     discardExport() {
-      midiExportPreparation?.controller.abort();
+      const preparing = !!archiveExportPreparation || !!midiExportPreparation || currentOperation?.kind === 'export';
+      archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort();
+      if (currentOperation?.kind === 'export') currentOperation.controller.abort();
       ++exportPreparationRevision;
-      if (!preparedExport) return false;
+      if (!preparedExport) { publishExportState(); if (preparing) status('File preparation canceled. The source project is unchanged.'); return preparing; }
       preparedExport.discard(); preparedExport = null; lastDelivery = null;
       publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
     },
     cancelExportDelivery() {
+      if (archiveExportPreparation) { archiveExportPreparation.controller.abort(); status('Canceling archive preparation. The previous prepared file remains ready.'); return true; }
       if (midiExportPreparation) { midiExportPreparation.controller.abort(); status('Canceling MIDI preparation. The previous prepared file remains ready.'); return true; }
       if (!activeExportAbort) return false;
       activeExportAbort.abort(); status('Canceling file delivery. The prepared file remains ready.'); return true;
@@ -2210,7 +2231,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
         { name: 'physical-control-owner', run: () => releasePhysicalControls?.() },
-        { name: 'prepared-export', run: () => { midiExportPreparation?.controller.abort(); activeExportAbort?.abort(); preparedExport?.discard(); } },
+        { name: 'prepared-export', run: () => { archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort(); activeExportAbort?.abort(); preparedExport?.discard(); } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'macro-gestures', run: () => macroGestures.dispose() },
@@ -2249,7 +2270,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
           const close = () => createProcgenRetirementScope().retire([
             { name: 'journal-qualifications', run: () => causalJournal?.releaseQualifications() }, { name: 'database', run: () => storage.close?.() }
           ]);
-          return pendingCausalStop || pendingWorkbenchStop ? Promise.all([pendingCausalStop, pendingWorkbenchStop]).then(close) : close();
+          return pendingCausalStop || pendingWorkbenchStop || archiveExportTasks.size ?
+            Promise.all([pendingCausalStop, pendingWorkbenchStop, Promise.allSettled([...archiveExportTasks])]).then(close) : close();
         } }
       ]);
     }
