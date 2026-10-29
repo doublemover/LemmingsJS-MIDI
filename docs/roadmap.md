@@ -8552,3 +8552,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   117workstation), all14 capabilities, MCP/benchmark/static/policy/dependency checks.
   Coverage90.71% lines/statements,83.72% branches,88.41% functions. Its separate
   capture is Ready at61952 finite frames with no clock gap.323 onward are excluded.
+
+### Continuation 326 — logical terrain edit identity
+
+- Replace resident/cold storage layout in survey hashes with sorted nonzero
+  logical edit runs. Merge adjacent equal spans, omit empty patches, and read
+  native map entries without invoking LRU access, owner hooks or cold decoding.
+  Compaction/restoration leave the real state unchanged; pixel edits do not.
+- Refuse duplicate keys, inconsistent raw lengths, overlapping/out-of-range or
+  zero cold spans and accessor-backed metadata. State schema5 explicitly retires
+  earlier projection contracts; canonical numeric schema3 remains unchanged.
+- All71 affected Node cases and two native survey/browser-vector cases pass.
+  The new identity owner measures100% lines/functions and96.55% branches. Real
+  world hashes survive actual compact/restore, and browser cold-run identity
+  agrees with resident data. Generated descriptor/collision cache normalization
+  and the full continuation/negative corpus remain open under #1223.
+- Full324 CI is green:6836 Node/10 pre-existing pending,144 browser (24desktop/
+  120workstation), all14 capabilities and all static/MCP/benchmark/policy/dependency
+  gates; coverage90.72% lines/statements,83.71% branches,88.42% functions. This
+  capture is Partial at55936 finite frames after a128-frame clock gap.322's
+  separate Ready61952-frame capture is retained.325 onward are excluded.

@@ -228,6 +228,8 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compareSurveyReplay(olderCanonical, olderCanonical).matched).to.equal(false);
     const olderState = { ...complete, provenance: { ...complete.provenance, stateSchema: 3 } };
     expect(compareSurveyReplay(olderState, olderState).matched).to.equal(false);
+    const priorProjection = { ...complete, provenance: { ...complete.provenance, stateSchema: 4 } };
+    expect(compareSurveyReplay(priorProjection, priorProjection).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
     const unbound = { ...complete, provenance: { ...complete.provenance, scenarioHash: '0'.repeat(16) } };
@@ -291,6 +293,17 @@ describe('isolated deterministic real procgen survey core', function() {
       terrain.collision.set(seed + ':99', { solid: new Uint32Array(384), steel: new Uint32Array(384) });
       try { trial.snapshot(); throw new Error('unexpected qualified cache'); } catch (error) { expect(error.code).to.equal('unverified-controlled-collision'); }
       terrain.collision.delete(seed + ':99');
+    } finally { trial.dispose(); }
+  });
+  it('keeps the actual survey state through edit compaction and rehydration while detecting changed pixels', () => {
+    const trial = createSurveyTrial({ masks, scenario: scene() });
+    try {
+      const edits = trial.world.editChunks, first = new Uint8Array(edits.chunkLength), second = new Uint8Array(edits.chunkLength);
+      first.fill(2, 3, 8); second.fill(3, 18, 29); edits.set(9, first); edits.set(7, second);
+      const before = trial.snapshot(); edits.compactExcept(new Set(), 1);
+      expect(trial.snapshot().physicalStateHash).to.equal(before.physicalStateHash); expect(trial.snapshot().stateHash).to.equal(before.stateHash);
+      const patch = edits.get(9); expect(trial.snapshot().physicalStateHash).to.equal(before.physicalStateHash);
+      patch[0] = 1; expect(trial.snapshot().physicalStateHash).not.to.equal(before.physicalStateHash);
     } finally { trial.dispose(); }
   });
   it('requires complete crew accounting and physical checksum domains even when two incomplete records match', () => {

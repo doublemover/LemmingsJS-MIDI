@@ -818,41 +818,45 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "2f4ca08b3c639521ab342f2e6bdbe13bda0ede8c",
+    "head": "4c04377590c70b074d19f7a2310a4ff46174ffdc",
     "status": "success",
-    "run": 40809471472,
-    "job": 123236111396,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40809471472/job/123236111396",
-    "nodePassed": 6819,
+    "run": 40811307105,
+    "job": 123242004002,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40811307105/job/123242004002",
+    "nodePassed": 6836,
     "nodePending": 10,
-    "browserPassed": 141,
+    "browserPassed": 144,
     "desktopPassed": 24,
-    "workstationSmokePassed": 117,
+    "workstationSmokePassed": 120,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.71,
-      "statements": 90.71,
-      "branches": 83.72,
-      "functions": 88.41
+      "lines": 90.72,
+      "statements": 90.72,
+      "branches": 83.71,
+      "functions": 88.42
     },
     "masterCapture": {
-      "state": "Ready",
-      "frames": 61952,
-      "captured": 61952,
-      "stopReason": "user-stop",
-      "clockDiscontinuity": null,
-      "peak": 0.02335798740386963,
+      "state": "Partial",
+      "frames": 55936,
+      "captured": 55936,
+      "stopReason": "noncontiguous-render-clock",
+      "clockDiscontinuity": {
+        "actualFrame": 85376,
+        "expectedFrame": 85504,
+        "frames": 128
+      },
+      "peak": 0.0228269100189209,
       "nonfinite": 0
     },
     "benchmark": "success",
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "Includes317\u2013322; excludes323 onward.",
+    "scope": "Includes323/324; excludes325 onward.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci322-green.log",
-      "bytes": 1168169,
-      "sha256": "9cbaf050fcafc76d88e0c2f1ee1f12cf8272b15e577e75a2ecd98dcc6410807f"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green.log",
+      "bytes": 1171106,
+      "sha256": "cbfc97a41810d3c5039320d35980ad64af9bf0045f568e8f02f4a05579f1c12e"
     }
   },
   "continuation264": {
@@ -26470,7 +26474,48 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Combined322 full CI still running when323 was prepared.",
+      "remoteCi": {
+        "head": "4c04377590c70b074d19f7a2310a4ff46174ffdc",
+        "status": "success",
+        "run": 40811307105,
+        "job": 123242004002,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40811307105/job/123242004002",
+        "nodePassed": 6836,
+        "nodePending": 10,
+        "browserPassed": 144,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 120,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.72,
+          "statements": 90.72,
+          "branches": 83.71,
+          "functions": 88.42
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 55936,
+          "captured": 55936,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 85376,
+            "expectedFrame": 85504,
+            "frames": 128
+          },
+          "peak": 0.0228269100189209,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes323/324; excludes325 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green.log",
+          "bytes": 1171106,
+          "sha256": "cbfc97a41810d3c5039320d35980ad64af9bf0045f568e8f02f4a05579f1c12e"
+        }
+      },
       "scopeLimits": [
         "Script execution deferral is not a measured startup/heap/network/first-sound budget. Existing service-worker precache remains separate.",
         "Empty native MIDI access is an explicit fixture, not physical-device or acoustic qualification.",
@@ -26651,7 +26696,48 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending combined323/324 publication. Full322 was still in workstation smoke at last inspection.",
+      "remoteCi": {
+        "head": "4c04377590c70b074d19f7a2310a4ff46174ffdc",
+        "status": "success",
+        "run": 40811307105,
+        "job": 123242004002,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40811307105/job/123242004002",
+        "nodePassed": 6836,
+        "nodePending": 10,
+        "browserPassed": 144,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 120,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.72,
+          "statements": 90.72,
+          "branches": 83.71,
+          "functions": 88.42
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 55936,
+          "captured": 55936,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 85376,
+            "expectedFrame": 85504,
+            "frames": 128
+          },
+          "peak": 0.0228269100189209,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes323/324; excludes325 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green.log",
+          "bytes": 1171106,
+          "sha256": "cbfc97a41810d3c5039320d35980ad64af9bf0045f568e8f02f4a05579f1c12e"
+        }
+      },
       "scopeLimits": [
         "Trusted-gesture native OS picker support/selection still needs platform qualification where available. Browser Blob through a controlled writable does not establish filesystem durability.",
         "The pending cap refuses additional preparation instead of forgiving unfinished reads."
@@ -27039,6 +27125,156 @@
       "1223": {
         "state": "open-implemented-partial",
         "remaining": "Wider generated-source/cache residency normalization and full speed/intervention/contact continuation and negative corpus."
+      }
+    }
+  },
+  "continuation326": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Hash logical terrain edits independently of cold storage layout",
+    "sourceBase": "8fd1402fae07944485baeafff81201132924ba93",
+    "issues": [
+      1223
+    ],
+    "development": [
+      "Use sorted nonzero logical edit runs for resident, compressed cold and raw cold patches. Merge adjacent same-value spans and omit empty patches.",
+      "Traverse native maps and intrinsic byte lengths without calling live get/iterator hooks, decoding cold arrays, changing LRU order or publishing instrumentation.",
+      "Reject malformed/overlapping/zero/out-of-bounds cold spans, duplicate keys, invalid raw lengths and accessor-backed metadata. State schema5 retires state4 projection; canonical numeric schema3 remains unchanged."
+    ],
+    "validation": {
+      "node": {
+        "passed": 71,
+        "failed": 0,
+        "scope": "Five new read-only terrain-edit cases plus survey numerics/core/source/analysis/ingress. Actual world hash survives compact/restore and changes on pixel mutation; older state4 receipts are refused.",
+        "identityCoverage": {
+          "lines": 100,
+          "statements": 100,
+          "functions": 100,
+          "branches": 96.55
+        }
+      },
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "durationMs": 10992.075,
+        "scope": "Actual controlled/generated-source replay plus cross-Node/browser numeric/accessor/cache vectors, now also actual browser resident/compressed/rehydrated terrain edit identity and pixel mutation."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending exact-head publication. Full324 green is recorded separately; full325 is in progress.",
+      "scopeLimits": [
+        "Wider generated-terrain descriptor/collision cache normalization and complete continuation/negative corpus remain open.",
+        "No exact archived execution qualification is inferred."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-categories.log",
+        "bytes": 2900,
+        "sha256": "906bc675dde59d6dd7b6f7d1889e21eabbb07415d0f6377ce68e3cb1697380b4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-native.log",
+        "bytes": 840,
+        "sha256": "e31627e90488373140176b282c1b0c2da8b4a4d3fc7d32a5478427a53acbf683"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-node.log",
+        "bytes": 7439,
+        "sha256": "c33eb5e639ab47a93000ed79c5a7e71dff4e7612c4fe2903335c5b17188c6a2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog326-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green.log",
+        "bytes": 1171106,
+        "sha256": "cbfc97a41810d3c5039320d35980ad64af9bf0045f568e8f02f4a05579f1c12e"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog326-survey-edit-results.json",
+        "bytes": 14162,
+        "sha256": "8ab4f7a8091c801b112b08aa69f552dbe6f4531ebdc9d84d3aec83b6c7c475fd"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-326-coverage\\coverage-summary.json",
+        "bytes": 169248,
+        "sha256": "c7748ae09d68b58ed1913a852ba9dac1fb289388237a36612cbd0eafe40b6c9b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green-report.json",
+        "bytes": 953,
+        "sha256": "f4320436b8d946c5b8186c168c10f3fb2e0f441f9d606797e72e7e2e8d7d8fcb"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainEditIdentity.js",
+        "bytes": 2868,
+        "sha256": "d0416429450892e42ee19273c10fd68f5151bfedfd28de5c78b8554e16df1d09"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 34800,
+        "sha256": "e117f3963a40a489b9c82e0c674a8de167343e860a20830cc62d8f6ff1a05277"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4791,
+        "sha256": "f130b765997d0831f949483d5e108ae242c4b637db18dac7976dec7d3760a278"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21348,
+        "sha256": "fde4ebc841b0ab8ca121d0427313b0c121897ad009b99edd908379822d9f9d76"
+      },
+      {
+        "path": "test/procgen-terrain-edit-identity.test.js",
+        "bytes": 4140,
+        "sha256": "28596e3f01c392ca7ca446276162d287db240e4c1614c9cbea5367ff17e33a45"
+      },
+      {
+        "path": "test/procgen-survey-core.test.js",
+        "bytes": 33019,
+        "sha256": "b289b91865103fd768d849e7091b7c9307369e5b6124a6ced0b794cf0fb89d31"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 3273,
+        "sha256": "6208c3244531789a8e32ff84eec780b8d9bb713b13e15ea5ce3fb649a7d8adf1"
+      }
+    ],
+    "issueStatus": {
+      "1223": {
+        "state": "open-implemented-partial",
+        "resolvedGap": "Controlled and generated terrain edit-residency/cold restoration identity.",
+        "remaining": "Generated descriptor/collision cache normalization and full continuation/negative corpus."
       }
     }
   }

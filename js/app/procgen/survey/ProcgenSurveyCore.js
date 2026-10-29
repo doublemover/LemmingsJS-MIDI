@@ -1,5 +1,6 @@
 import { ProcgenLaneWorld } from '../ProcgenLaneWorld.js';
 import { ProcgenSurveyTerrain, captureControlledSurveyTerrain } from './ProcgenSurveyTerrain.js';
+import { captureTerrainEditIdentity } from '../ProcgenTerrainEditIdentity.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -69,7 +70,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     if (physicalOnly && ['eventTimeMs', 'stats', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'].includes(key)) continue;
     out[key] = encode(Object.getOwnPropertyDescriptor(world, key)?.value, key);
   }
-  out.edits = { resident: encode(new Map(Map.prototype.entries.call(world.editChunks)), 'edits.resident'), cold: encode(world.editChunks.cold, 'edits.cold') };
+  out.edits = encode(captureTerrainEditIdentity(world.editChunks), 'edits');
   out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), ...(physicalOnly ? {} : { interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') }) };
   out.clock = { speedFactor: world.timer.speedFactor, simulationTimeMs: world.simulationTimeMs };
   const terrain = world.terrain;

@@ -14,7 +14,7 @@ assistance, birth, junction, feedback and terrain-score state bind continuation.
 Controlled terrain uses private source proofs to omit unchanged query caches.
 Actual cached pixel edits remain visible; injected chunks without a source proof
 are refused. This does not qualify every generated-terrain cache or archived
-execution environment. Earlier state3/canonical2 receipts remain legacy evidence.
+execution environment. Earlier state3/state4 and canonical2 receipts remain legacy evidence.
 
 ## Transfer and persistence
 
@@ -183,7 +183,7 @@ Snapshots, milestones and telemetry reject an in-progress or failed physical
 tick. The source manifest records canonical encoding and physical state schema
 versions separately, and labels its loaded execution identity as unbound.
 
-Survey state schema 4 stores compact immutable terminal records. A first death
+Survey state schema 5 stores compact immutable terminal records. A first death
 observation preserves arrival, qualification and cause accounting immediately;
 the actor reference is released only after a committed `ActorTerminated` fact
 or an explicit generation reset. Death animations remain runtime owned until
@@ -192,6 +192,12 @@ Terminal records retain final position, action, action instance, lifecycle tick,
 causal order and termination reason. Full historical checkpoint export can
 still cost work proportional to retained history; ordinary observation visits
 the active set and consumes the runtime's completed actor projection.
+
+Terrain edits use sorted logical nonzero runs across resident, compressed cold
+and raw cold patches. Projection never rehydrates or reorders the live storage.
+Compaction and ordinary query restoration preserve identity; changed edit bytes
+change it. Duplicate keys, malformed/overlapping spans and accessor-backed patch
+records refuse projection.
 
 Workers defer optional telemetry projection until a checkpoint or requested
 publication. `observationWork()` exposes actor visits, finalizations and
