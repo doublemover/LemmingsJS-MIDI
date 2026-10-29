@@ -818,12 +818,12 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "8fd1402fae07944485baeafff81201132924ba93",
+    "head": "5cdba45c913abc6a6e3e49d2af67c2dc97879dec",
     "status": "success",
-    "run": 40813874178,
-    "job": 123250287608,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40813874178/job/123250287608",
-    "nodePassed": 6843,
+    "run": 40814910040,
+    "job": 123253599149,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40814910040/job/123253599149",
+    "nodePassed": 6849,
     "nodePending": 10,
     "browserPassed": 145,
     "desktopPassed": 24,
@@ -832,27 +832,27 @@
     "coverage": {
       "lines": 90.72,
       "statements": 90.72,
-      "branches": 83.72,
+      "branches": 83.73,
       "functions": 88.43
     },
     "masterCapture": {
       "state": "Ready",
-      "frames": 103681,
-      "captured": 103681,
+      "frames": 55552,
+      "captured": 55552,
       "stopReason": "user-stop",
       "clockDiscontinuity": null,
-      "peak": 0.02335798740386963,
+      "peak": 0.022854328155517578,
       "nonfinite": 0
     },
     "benchmark": "success",
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "Includes325; excludes326 onward.",
+    "scope": "Includes326 and all current production changes; excludes327/328 additional acceptance fixtures.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci325-green.log",
-      "bytes": 1170554,
-      "sha256": "8ef102ed1e64a42be186c95a6fb8e5ce5a4bfdfc393b448c037326f63d43a669"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci326-green.log",
+      "bytes": 1171039,
+      "sha256": "835fe4d609a3b451363f1420a323f8912a4fb5d27412da309cbb19388a0956f8"
     }
   },
   "continuation264": {
@@ -27201,7 +27201,44 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending exact-head publication. Full324 green is recorded separately; full325 is in progress.",
+      "remoteCi": {
+        "head": "5cdba45c913abc6a6e3e49d2af67c2dc97879dec",
+        "status": "success",
+        "run": 40814910040,
+        "job": 123253599149,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40814910040/job/123253599149",
+        "nodePassed": 6849,
+        "nodePending": 10,
+        "browserPassed": 145,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 121,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.72,
+          "statements": 90.72,
+          "branches": 83.73,
+          "functions": 88.43
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 55552,
+          "captured": 55552,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.022854328155517578,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes326 and all current production changes; excludes327/328 additional acceptance fixtures.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci326-green.log",
+          "bytes": 1171039,
+          "sha256": "835fe4d609a3b451363f1420a323f8912a4fb5d27412da309cbb19388a0956f8"
+        }
+      },
       "scopeLimits": [
         "Wider generated-terrain descriptor/collision cache normalization and complete continuation/negative corpus remain open.",
         "No exact archived execution qualification is inferred."
@@ -27528,6 +27565,131 @@
       "1113": {
         "state": "completed",
         "scope": "Existing complete-batch contract passes the full324/325 suite plus current41 Node/two native overflow/recovery/worker acceptance fixtures."
+      }
+    }
+  },
+  "continuation328": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "title": "Qualify finite release gestures and source-rooted capacity recovery",
+    "sourceBase": "8b1886d74f5874198cbdc1c9fa3f8d3194b98eff",
+    "issues": [
+      1052
+    ],
+    "development": [
+      "Qualify actual native Save versus Perform, finite slot admission and source-bound downstream travel attacks.",
+      "Exercise actual declared-capacity pressure with real actors, no catch-up after capacity frees, and five future births only after a distinct explicit command.",
+      "Extend same-seed release-log tests to bursty shared presentation timestamps at30Hz/144Hz, retaining exact birth/intent streams."
+    ],
+    "validation": {
+      "node": {
+        "passed": 26,
+        "failed": 0,
+        "scope": "Release gesture/world/checkpoint, view ownership, absolute-grid births, population pressure and real world action accounting. Four presentation timing functions agree exactly, including two bursty cadences.",
+        "coverage": {
+          "ReleaseGesture": {
+            "lines": 100,
+            "branches": 76.71
+          },
+          "ProcgenPopulationPolicy": {
+            "lines": 100,
+            "branches": 90
+          },
+          "ReleaseGestureView": {
+            "lines": 100,
+            "branches": 59.45
+          }
+        },
+        "coverageFollowup": "Optional browser V8 coverage can quantify invalid/cancel paths beyond the Node view fixture; native Save/Perform/capacity journeys execute separately."
+      },
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "durationMs": 6829.243,
+        "scope": "Actual eight-lane desktop resource world and release modal: Save is inert, positive finite five births/five travel-rooted attacks; at capacity eight actual actors all five attempts miss and no attacks occur. Freed capacity creates no backlog; another explicit command admits five births/attacks with distinct source command identity. World unchanged, output disabled."
+      },
+      "checks": [
+        "format",
+        "browser category selection",
+        "whitespace",
+        "production unchanged from fully green326"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending publication of these additional acceptance fixtures. Full326 green covers all current production changes;327/328 tests are additional qualification.",
+      "scopeLimits": [
+        "Logical musical intent and observed travel do not establish audible quality, physical MIDI output or speaker/headphone response."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-categories.log",
+        "bytes": 3038,
+        "sha256": "9ab449049b4811a4722725159cf84afbbafd52d6808ebd56f1c30eb17cd55320"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-format-cadence.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-native.log",
+        "bytes": 646,
+        "sha256": "46909630885ed30c5ed1239d4ba27d5364de64f0fad4c356ee28d40dbf2bff5c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-node-cadence.log",
+        "bytes": 2884,
+        "sha256": "e1fd7eb86f2fb0727d7a653a3fbdf540e2e8c4b2c3e976ad5d924f8c3073e591"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog328-node.log",
+        "bytes": 2891,
+        "sha256": "4988c56305380783811c803f3b0c211c7f931a015e54c123574eb2657363118d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci326-green.log",
+        "bytes": 1171039,
+        "sha256": "835fe4d609a3b451363f1420a323f8912a4fb5d27412da309cbb19388a0956f8"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog328-release-gesture-results.json",
+        "bytes": 5469,
+        "sha256": "11138cf255a13f19288007fa1dcb2c05500bb18ed37756a4370b84b20603f8e4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-328-coverage-cadence\\coverage-summary.json",
+        "bytes": 163575,
+        "sha256": "d52207f96e30f99c40540c1ec229ad52227c9e2c11f77941d2d62bce305d5632"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci326-green-report.json",
+        "bytes": 914,
+        "sha256": "94b7396a9345528f071882c34a2dddd962bb6bb76e42e01a599e3b379926bb4a"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "test/procgen-release-gesture.test.js",
+        "bytes": 10420,
+        "sha256": "e1c628a17c9eacc2846a639be32d0814cf789916c2e5634e7eecca2bb857c502"
+      },
+      {
+        "path": "e2e/procgen-workstation-release-gesture.spec.js",
+        "bytes": 5305,
+        "sha256": "3019dba354e656d387971f861cb17f47991fe0b59890f25ce714ce5ce561698a"
+      }
+    ],
+    "issueStatus": {
+      "1052": {
+        "state": "completed",
+        "scope": "Release policy/source command and actual desktop performance surface, with explicit finite capacity semantics and render-cadence-independent births/intents."
       }
     }
   }

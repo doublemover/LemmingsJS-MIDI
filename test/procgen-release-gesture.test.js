@@ -8,7 +8,7 @@ import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMus
 import { createProcgenWorkstationProject, reduceCanonicalProcgenProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 const gesture = extra => validateReleaseGesture({ version: 1, id: 'spray', revision: 1, nominalGapTicks: 17, spreadTicks: 12, finiteBurstCount: 5, grouping: 'cohort-spray', clockMode: 'locked', lanePhase: [], phaseStepTicks: 1, liveChangeBoundary: 'next-cohort', seed: 42, ...extra });
 const command = (world, id = 'gesture-command', extra = {}) => ({ id, kind: 'set-release-gesture', origin: 'manual', target: { generation: world.generation }, parameters: { gesture: gesture(extra) } });
-const advance = (world, tick, presentation = 0) => { while (world.tickIndex < tick) world.step(presentation + world.tickIndex * 3); };
+const advance = (world, tick, presentation = 0) => { while (world.tickIndex < tick) world.step(typeof presentation === 'function' ? presentation(world.tickIndex) : presentation + world.tickIndex * 3); };
 describe('physical release gesture ownership', () => {
   let masks; before(async () => { masks = await loadProcgenMasks(); });
   const world = options => { const result = new ProcgenLaneWorld({ masks, seed: 42, laneCount: 8, cohorts: true, assists: false, maxActors: 128, stallPolicy: { releaseIntervalTicks: 17, secondsWithoutProgress: 1000 }, ...options }); result.baseGroundAt = (_x, y) => y % result.laneHeight >= result.laneHeight - 16 ? 1 : 0; return result; };
@@ -49,8 +49,11 @@ describe('physical release gesture ownership', () => {
       const w = world(), graph = { version: 1, revision: 1, instruments: [{ id: 'gate', sourceKind: 'MotionCommitted', gateX: 40, crossingDirection: 'positive', pitchCents: 6000, velocity01: 0.5, role: 'gate', route: 'local' }] }, engine = createCausalMusicEngine({ getGraph: () => graph }), births = new Map(), attacks = [], birthFacts = [];
       w.soundEvents.onBatch.on(batch => { for (const f of batch.facts) if (f.kind === 'ActorBorn' && f.releaseGesture) { births.set(f.actorId, f); birthFacts.push(f); } for (const intent of engine.processBatch(batch)) if (intent.kind === 'begin' && births.has(intent.actorId)) attacks.push({ tick: batch.tick, actorId: intent.actorId, sourceEventIds: intent.sourceEventIds }); });
       w.prepareIntervention(command(w)).commit(); advance(w, 160, presentation); expect(birthFacts).to.have.length(5); expect(attacks).to.have.length(5); for (const note of attacks) expect(note.tick).to.be.greaterThan(births.get(note.actorId).spawnTick); for (const birth of birthFacts) expect(birth.parentCauseIds).to.include('gesture-command');
-      const result = { births: birthFacts, attacks }; w.dispose(); return result;
-    }; expect(run(0)).to.deep.equal(run(100000));
+      const result = { births: birthFacts, attacks }; w.dispose(); engine.dispose(); return result;
+    };
+    const reference = run(0); expect(run(100000)).to.deep.equal(reference);
+    expect(run(tick => Math.floor(tick / 8) * 1000 / 30)).to.deep.equal(reference);
+    expect(run(tick => Math.floor(tick / 2) * 1000 / 144)).to.deep.equal(reference);
   });
   it('restores partially consumed finite policies and command identities without repeating slots', () => {
     const a = world(), b = world(), factsA = [], factsB = []; a.prepareIntervention(command(a)).commit(); advance(a, 20); restoreProcgenCheckpoint(b, JSON.parse(JSON.stringify(captureProcgenCheckpoint(a))));

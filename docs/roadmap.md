@@ -8594,3 +8594,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   gates. Coverage90.72% lines/statements,83.72% branches,88.43% functions; its
   separate capture is Ready at103681 finite frames with no clock gap.326 onward
   remain outside that checkpoint.
+
+### Continuation 328 — finite release performance qualification
+
+- Close #1052 with the actual desktop Save/Perform surface: Save leaves physical
+  state untouched; Perform admits exactly five real slots and downstream travel
+  gate attacks. At declared capacity all five attempts miss without attacks;
+  freeing capacity creates no backlog. A new explicit command admits five new
+  births and attacks, each carrying the actual source identity after birth.
+- Extend identical-log real-world comparisons to shared timestamps from bursty
+  30Hz/144Hz presentation, beyond a constant wall-time offset. Existing current-
+  cohort freeze, next-cohort change, locked/adaptive pressure, checkpoint/reset,
+  malformed input and stale editor cases remain in the same26-case passing batch.
+- Both native cases pass; no audio/MIDI output is activated and no source world
+  is replaced. Node coverage reaches100% lines for release policy/population/view;
+  browser workflows are additional execution, not Node coverage. Further optional
+  browser V8 coverage would quantify the invalid/cancel paths already guarded by
+  the bounded editor. No acoustic or physical-device qualification is inferred.
+- Full326 CI is green:6849 Node/10 pre-existing pending,145 browser (24desktop/
+  121workstation), all14 capabilities and static/MCP/benchmark/policy/dependency
+  gates; coverage90.72% lines/statements,83.73% branches,88.43% functions. Its
+  capture is Ready at55552 finite frames without a gap. All current production
+  changes are included;327/328 add acceptance fixtures to that source.
