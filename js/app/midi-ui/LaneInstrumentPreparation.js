@@ -6,6 +6,7 @@ import { createOwnedResourceReservation } from '../resources/OwnedResourceReserv
 
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundContentError', code });
 const keyFor = reference => reference.packHash + ':' + reference.definitionHash;
+const failureCode = error => typeof error?.code === 'string' && error.code.length ? error.code.slice(0, 128) : error?.name === 'AbortError' ? 'preparation-canceled' : 'preparation-failed';
 let nextPreparationOwner = 0;
 
 export function createLaneInstrumentPreparation({ session, routed, getCatalog = getNativeInstrumentCatalog, onState = () => {}, maxLanes = 1024, resourceBudget = null, getMaterialProvider = null } = {}) {
@@ -15,7 +16,7 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
   const reserveInputs = (laneCount = 0, nextPending = pending.size) => metadata.resize(4096 + Math.max(laneCount, observed.size, queued.size, laneRequests.size) * 2048 +
     (nextPending + unknown.size) * 2 * 1048576);
   const retirement = createProcgenRetirementScope(); let disposed = false, serial = 0, pumping = null;
-  const report = (laneId, state, code = null) => { try { onState(Object.freeze({ laneId, state, code })); } catch { /* Views cannot publish instruments. */ } };
+  const report = (laneId, state, code = null) => { if (disposed) return; try { onState(Object.freeze({ laneId, state, code })); } catch { /* Views cannot publish instruments. */ } };
   const prepare = async (laneId, raw, { signal: externalSignal, retainPrevious = false } = {}) => {
     externalSignal?.throwIfAborted();
     if (disposed || unknown.size || pending.size >= 2) throw failure('instrument-preparation-capacity', 'Lane instrument preparation is unavailable or busy.');
@@ -90,7 +91,15 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
           operation.assignmentReceipt = routed.assign(laneId, key, operation.backend, { releaseSeconds, oneShotTailSeconds, bodyId: resolution.patch.id, macroIds: (resolution.patch.macros || []).map(macro => macro.id) }); operation.committed = true;
           observed.set(laneId, key); observedReferences.set(laneId, raw); failures.delete(laneId); if (!retainPrevious) { operation.accepted = true; release(); report(laneId, 'ready'); } return reference;
         }, accept() { check(); if (!operation.committed || operation.retired) throw failure('candidate-not-published', 'Only a live committed candidate can be accepted.'); operation.accepted = true; release(); report(laneId, 'ready'); return reference; }, release });
-    } catch (error) { operation.preparing = false; const receipt = release(); if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') error.retirement = receipt; } report(laneId, 'unavailable', error.code || 'preparation-failed'); throw error; }
+    } catch (error) {
+      const publish = !disposed && !signal.aborted && laneRequests.get(laneId) === operation;
+      operation.preparing = false; const receipt = release();
+      if (receipt) { await receipt.completion; if (receipt.outcome !== 'complete') {
+        if (!Object.isExtensible(error)) error = Object.assign(new Error(String(error?.message || error), { cause: error }), { code: failureCode(error) });
+        error.retirement = receipt;
+      } }
+      if (publish && !disposed) report(laneId, 'unavailable', failureCode(error)); throw error;
+    }
   };
   const synchronize = lanes => {
     if (disposed || !Array.isArray(lanes) || lanes.length > maxLanes) return Promise.reject(failure('owner-retired', 'Lane instrument synchronization is unavailable.'));
@@ -111,13 +120,15 @@ export function createLaneInstrumentPreparation({ session, routed, getCatalog = 
     const run = async () => { const results = new Map();
       while (queued.size && !disposed) {
         const entry = queued.values().next().value; queued.delete(entry.laneId);
-        if (disposed || observed.get(entry.laneId) !== entry.key) continue;
+        const current = () => !disposed && observed.get(entry.laneId) === entry.key && observedReferences.get(entry.laneId) === entry.reference;
+        if (!current()) continue;
         try { const candidate = await prepare(entry.laneId, entry.reference);
-          try { if (disposed || observed.get(entry.laneId) !== entry.key) throw failure('stale-owner', 'Saved lane instrument changed while preparing.'); candidate.commit(); results.set(entry.laneId, { laneId: entry.laneId, state: 'ready' }); }
+          try { if (!current()) throw failure('stale-owner', 'Saved lane instrument changed while preparing.'); candidate.commit(); results.set(entry.laneId, { laneId: entry.laneId, state: 'ready' }); }
           finally { candidate.release(); }
         } catch (error) {
-          if (!disposed && observed.get(entry.laneId) === entry.key) { const code = error.code || 'preparation-failed'; failures.set(entry.laneId, { key: entry.key, code }); routed.block(entry.laneId, code); }
-          results.set(entry.laneId, { laneId: entry.laneId, state: 'unavailable', code: error.code || 'preparation-failed' });
+          const code = failureCode(error);
+          if (current() && code !== 'stale-owner') { failures.set(entry.laneId, { key: entry.key, code }); routed.block(entry.laneId, code); }
+          results.set(entry.laneId, { laneId: entry.laneId, state: 'unavailable', code });
         }
       }
       return Object.freeze([...results.values()]);

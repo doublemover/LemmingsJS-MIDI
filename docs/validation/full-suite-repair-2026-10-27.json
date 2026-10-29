@@ -33740,5 +33740,290 @@
         "sha256": "d412b62c854ef93a75785effe462412e6e6465d224268154f27628d3d5d03d84"
       }
     ]
+  },
+  "continuation340": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "d56471df2eb00d450f7cfdc0fac4346d29f222a5",
+    "scope": "Cooperative same-origin browser audio/capture ownership with explicit desktop takeover; owned preparation cancellation and command-dialog focus fixes.",
+    "implementation": [
+      "An exclusive Web Lock held by the session callback is authoritative. Bounded versioned BroadcastChannel strings request a cooperative stop but never grant ownership. Claims use ifAvailable without signal/steal, so another tab does not queue autoplay. Local cancellation retires late grants; unknown native requests/retirement retain their resources.",
+      "One bounded coordinator per browser realm owns32 resource registrations,32 remembered peers,64 observers and one takeover request. Local random client/lease epochs gate the actual browser note and capture-tap boundaries. Local document identity is omitted from broadcasts; only bounded status/roles and opaque IDs cross contexts. Metadata declares65536 bytes (81920 accounted by the existing audio overhead).",
+      "Takeover revokes old note admission, awaits original audio/capture retirement, requires the actual tap to detach, waits for native context suspension/closure and releases the native lock only afterward. The workstation stop hook stops transport, controller recording/thru and its causal take and refuses unconfirmed owned MIDI cleanup. A failed frontier leaves the incoming page silent. Closing the owner does not autoplay a waiting editor.",
+      "Production browser controls expose explicit takeover and identify the other local client. Missing or blocked Web Locks permits explicit uncoordinated activation with a visible warning and no exclusive claim. Pagehide/freeze/BFCache-event revalidation stays stopped; unsupported/frozen peers cannot be declared safe from missing heartbeats.",
+      "Native numeric cancellation codes become bounded string diagnostics. Same-hash reference replacements fence canceled preparation results, and retired physical owners cannot overwrite current status. Name-dialog cancellation returns focus to the visible collapsed command-menu heading after command dismissal."
+    ],
+    "validation": {
+      "node": {
+        "passed": 416,
+        "failed": 0,
+        "command": "node node_modules/c8/bin/c8.js --check-coverage=false --reporter=json-summary --reports-dir=.tmp/coverage-rook340-final-qualified node_modules/mocha/bin/mocha.js test/browser-performance-lease.test.js test/midi/browser-note-preview.test.js test/midi/local-game-preview.test.js test/midi/procgen-midi-output.test.js test/midi/owned-master-capture.test.js test/midi/master-capture-provenance.test.js test/procgen-workstation-controller.test.js test/procgen-operational-state.test.js test/procgen-operational-view.test.js test/procgen-ui.test.js test/midi/owned-articulation-policy.test.js test/midi/sound-material-ancestry.test.js test/compact-instrument-chrome.test.js test/parameter-controls.test.js --reporter dot",
+        "scope": "Concurrent claims, canceled/late grants, acknowledged/failed capture/context retirement, lifecycle-event revalidation, absent/blocked Locks and absent BroadcastChannel, bounded/private status, closed registrations, refused metadata release, original audio/capture/controller/UI cases, numeric native cancellation, same-hash supersession and modal focus return.",
+        "coverageFollowup": "Broader malformed/stale peer and callback interleavings, cue-role reporting, delayed preparation cleanup/rollback faults and every actual MIDI/clock/thru byte boundary remain useful targeted qualification; protocol tests do not prove native BFCache eligibility or all engine/hardware behavior.",
+        "coverage": {
+          "ProjectNameDialog.js": {
+            "lines": 100,
+            "branches": 87.17,
+            "functions": 100
+          },
+          "BrowserPerformanceLease.js": {
+            "lines": 98.96,
+            "branches": 84.85,
+            "functions": 100
+          },
+          "LaneInstrumentPreparation.js": {
+            "lines": 97.36,
+            "branches": 64.93,
+            "functions": 90.62
+          },
+          "browserNotePreview.js": {
+            "lines": 95.44,
+            "branches": 83.15,
+            "functions": 87.77
+          },
+          "localGamePreview.js": {
+            "lines": 93.71,
+            "branches": 83.18,
+            "functions": 84.21
+          },
+          "ProcgenUiController.js": {
+            "lines": 93.76,
+            "branches": 72.99,
+            "functions": 72
+          },
+          "ProcgenOperationalState.js": {
+            "lines": 98.75,
+            "branches": 92.01,
+            "functions": 100
+          }
+        }
+      },
+      "browser": {
+        "passedDistinct": 34,
+        "failedFinal": 0,
+        "skipped": 0,
+        "command": "node scripts/run-browser-boundaries.js e2e/procgen-workstation-performance-lease.spec.js e2e/procgen-workstation-workflow.spec.js e2e/procgen-operational-status.spec.js e2e/procgen-workstation-materials.spec.js --workers=1 --project=workstation --reporter=list,json",
+        "viewportMinimum": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Five new actual desktop ownership journeys: concurrent two-tab activation, owner closure with no autoplay, explicit takeover pausing old transport/context, actual native capture-worklet finalization, and missing/blocked Locks. Existing native operational/MIDI/status, save/load/Undo/replay, exact-entry/focus and materialDPR1/1.5/2 journeys pass together.",
+        "nativeMasterCapture": {
+          "state": "Partial",
+          "sourceFrames": 18560,
+          "receivedFrames": 18560,
+          "stopReason": "panic",
+          "indexedGaps": 0,
+          "terminalAcknowledged": true,
+          "scope": "Actual capture worklet and retained PCM prefix at abrupt owned audio stop during takeover; no Ready, acoustic or filesystem durability claim.",
+          "artifact": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-native340-capture-handoff.txt",
+          "uiReceipt": "Stop music\nPanic\nRecord browser master\n\nRecords the shared browser master after protection, including live-output rehearsal. The separate cue bus is excluded. External MIDI audio, microphones and device acoustics are outside this recording.\n\nPCM is held in memory until saved or discarded. Closing the browser can lose it. Missing frames are marked in the WAV manifest and use zero placeholders.\n\n30 seconds\n60 seconds\n120 seconds\n300 seconds\npartial \u00b7 48000 Hz stereo \u00b7 18,560 source frames \u00b7 18,560 received frames\n\nPartial: panic. 0 indexed gap(s). End frame acknowledged.\n\nStart master capture\nStop capture\nSave captured WAV\nHarvest sound seed\nCancel save\nDiscard captured PCM\nClose"
+        }
+      },
+      "static": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "node scripts/check-runtime-provenance.mjs (10 components,350 files)",
+        "git diff --check",
+        "browser category collection:172full/142smoke across47files"
+      ],
+      "priorCiFailure": {
+        "head": "d56471df2eb00d450f7cfdc0fac4346d29f222a5",
+        "run": 40842055759,
+        "job": 123340514328,
+        "status": "failure",
+        "passedDesktop": 24,
+        "passedWorkstation": 136,
+        "failedWorkstation": 1,
+        "failedCase": "quiet command menus preserve native controls, modal focus return, output warnings and Stage access",
+        "cause": "The now-dismissed Project menu hides the old Save As opener. Name-dialog cancellation needed to restore focus to its visible Project heading. That behavior and the corresponding actual focus expectation are repaired here.",
+        "scope": "The former load resource failure and other136workstation journeys pass. Later coverage/MCP/benchmark stages did not run.",
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 81280,
+          "receivedFrames": 81280,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 130432,
+            "expectedFrame": 130560,
+            "frames": 128
+          },
+          "peak": 0.023317694664001465,
+          "nonfinite": 0
+        },
+        "log": {
+          "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci339-failure.log",
+          "bytes": 147843,
+          "sha256": "673c97b809c234abe5ff52afc8d512bab9db737311a26c7f2203c92ab6157032"
+        }
+      },
+      "intermediateFailures": [
+        {
+          "nodePassed": 379,
+          "nodeFailed": 1,
+          "cause": "New metadata fixture used declared64KiB instead of the existing category's81920 accounted bytes; corrected fixture without raising any product budget.382case follow-up passed."
+        },
+        {
+          "browserPassed": 21,
+          "browserFailed": 1,
+          "cause": "The wider actual save/load journey exposed a numeric native cancellation diagnostic and retired/superseded lane-preparation status. Bounded normalization and current-source fences repair it."
+        },
+        {
+          "nodePassed": 414,
+          "nodeFailed": 2,
+          "cause": "The two new cancellation regressions omitted their archived patch definition, so the source was correctly refused before reaching their intended fault. Completed fixture definitions; all416 cases then pass."
+        }
+      ],
+      "latestFullCi": {
+        "head": "55b0b425b3f7c8f7b5526fa926b99305b1f132a4",
+        "status": "success",
+        "run": 40825384660,
+        "job": 123287116682,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40825384660/job/123287116682",
+        "nodePassed": 6886,
+        "nodePending": 10,
+        "browserPassed": 155,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 131,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.74,
+          "statements": 90.74,
+          "branches": 83.79,
+          "functions": 88.48
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 80640,
+          "captured": 80640,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 110080,
+            "expectedFrame": 110208,
+            "frames": 128
+          },
+          "peak": 0.007517695426940918,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes334 and all prior published fixes; excludes335 staged authored preferences. Capture remains separate from code/CI success.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci334-green.log",
+          "bytes": 1180505,
+          "sha256": "7d8209bd75c46e54d62d8e00cb77f0fa788d6d8ba29f50dfe26dc4ae7a535ba2"
+        }
+      }
+    },
+    "limits": [
+      "This is the browser-audio/capture portion of1193. Direct MIDI, routed/thru and transport-clock output still require the shared lease at their actual byte boundaries, including owned cleanup authority.1193 remains open.",
+      "Lifecycle event behavior is covered in controlled ownership tests. Real native BFCache eligibility, frozen-page takeover timeouts, wider engines and all failure combinations remain separate native qualification.",
+      "The native master handoff is a truthful18560-frame Partial capture with an acknowledged end and no indexed gaps. It does not certify a complete Ready recording or sound at a physical receiver.",
+      "Full334 remains the latest completely verified green CI.339 failed only the now-repaired focus return after24desktop/136workstation passes;340 needs its own full run. No current full Node coverage result is inferred from scoped checks."
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "next": "Review original acceptance after clean CI for this published repair while preserving prior scheduling/cold-save/heap limits."
+      },
+      "998": {
+        "state": "open",
+        "next": "Actual desktop screen-reader smoke remains independent; command-dialog focus restoration now uses the visible heading."
+      },
+      "1193": {
+        "state": "open",
+        "next": "Extend actual ownership to reviewed MIDI/router, raw/thru and transport-clock byte submission and owned cleanup; finish cue-role reporting and native frozen/BFCache/failure matrix before closing."
+      }
+    },
+    "sourceFiles": [
+      {
+        "path": "e2e/procgen-workstation-performance-lease.spec.js",
+        "bytes": 5293,
+        "sha256": "546149e9d1ae30fe672ffdcecb3b1719d113adbceb5e08acb8d76f8298fb6c97"
+      },
+      {
+        "path": "js/app/midi-ui/BrowserPerformanceLease.js",
+        "bytes": 18157,
+        "sha256": "c88e3558fb37cba2ac8be0fbf2056bb59df6002f6926df3994bd0d0d4515010b"
+      },
+      {
+        "path": "test/browser-performance-lease.test.js",
+        "bytes": 8857,
+        "sha256": "82fabafd81f01036b924315e3f1f004c03ebb03f98a43638297a77bcb65ee601"
+      },
+      {
+        "path": "test/helpers/performance-lease.js",
+        "bytes": 2160,
+        "sha256": "e3e71b8c241fe7f74d60609210f9d373a785207411af135c876738a2109b48aa"
+      },
+      {
+        "path": "e2e/procgen-workstation-materials.spec.js",
+        "bytes": 17158,
+        "sha256": "9b3e11d22345df88853ffcca8ca2ad5e7cf4c2fda968aa3e51ae0be5bc0a8df5"
+      },
+      {
+        "path": "js/app/controls/ProjectNameDialog.js",
+        "bytes": 3370,
+        "sha256": "020c9c0d0b31749c1d5ba672d9e86e806f1d63b8befb3eba232326d2f79a2369"
+      },
+      {
+        "path": "js/app/midi-ui/LaneInstrumentPreparation.js",
+        "bytes": 15999,
+        "sha256": "51fc3dba98c1780a82bb822cb7e81c8ccd743024a6cc1d81d95dc0605be2718d"
+      },
+      {
+        "path": "js/app/midi-ui/browserNotePreview.js",
+        "bytes": 89768,
+        "sha256": "63e4e2d5c4edfd718a3af30db16b9f1f14338d339d0ca8e00c86885f0783eaa6"
+      },
+      {
+        "path": "js/app/midi-ui/localGamePreview.js",
+        "bytes": 7402,
+        "sha256": "fdc56c2fd2bd52b2369dd1cf697afbc2f84588117042a1bdc50653c97e9f3e5e"
+      },
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "bytes": 15266,
+        "sha256": "b247e89536540dbd2e443fed7779f375c1b6a04847e8c893e48312582a07e2a5"
+      },
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "bytes": 48196,
+        "sha256": "da7f27ee0d230c3abe0624bb010e95964c607f1127723ea99c09345fb29e0674"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+        "bytes": 13096,
+        "sha256": "6b5479f18f80a9c0cd5911ca5b8a27447293269236ecd26551084bab92f12c72"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 210322,
+        "sha256": "c2f88c37064931b65a7d4d7a9044f9b5b6fb259b4c9d0b15de11aff34733fe67"
+      },
+      {
+        "path": "test/compact-instrument-chrome.test.js",
+        "bytes": 14887,
+        "sha256": "4b1065e314126d66cabf7a946b20b2ca66a51ad9545753a326781667d94aa750"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "bytes": 119958,
+        "sha256": "405653703b212d89b2fd1f86acf2ce3283cd86d50f82c5069786dc2236cb17d2"
+      },
+      {
+        "path": "test/midi/owned-articulation-policy.test.js",
+        "bytes": 4255,
+        "sha256": "443ad45f2c47843d6f284c316fb6ad2de6b67bf7daff6df1e3a63fa19d1dd399"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 122578,
+        "sha256": "3035566507e2d625c7979e8c96549abba6339017ee1170d318aeb8d93ffb6ef9"
+      }
+    ]
   }
 }

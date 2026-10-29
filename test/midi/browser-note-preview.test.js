@@ -1,4 +1,5 @@
 import { createProcgenRetirementScope } from '../../js/app/procgen/ProcgenRetirement.js';
+import { environment as performanceEnvironment, turn as performanceTurn } from '../helpers/performance-lease.js';
 import { expect } from 'chai';
 import { EventHandler } from '../../js/util/EventHandler.js';
 import { createMidiEventPlayback, getMidiEventPlaybackEnvelope } from '../../js/app/midi-ui/midiEventPlayback.js';
@@ -234,6 +235,47 @@ const setup = (options = {}, context = new FakeContext()) => {
   });
   return { preview, context, creations: () => creations };
 };
+
+describe('browser audio cross-context performance boundaries', () => {
+  it('unlocks within the gesture but admits notes and capture only for the winning page', async () => {
+    const f = performanceEnvironment(), a = f.make(), b = f.make(), first = setup({ performanceCoordinator: a.lease }, new FakeContext('suspended')),
+      second = setup({ performanceCoordinator: b.lease }, new FakeContext('suspended'));
+    const enabling = first.preview.enable(); expect(first.context.resumeCalls).to.equal(1); expect(await enabling).to.equal(true);
+    const denied = second.preview.enable(); expect(second.context.resumeCalls).to.equal(1); expect(await denied).to.equal(false);
+    expect(second.preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 })).to.equal(false); expect(second.context.oscillators).to.have.length(0);
+    expect(() => second.preview.acquireMasterCaptureTap({ context: second.context, contextEpoch: second.preview.getState().contextEpoch, node: second.context.createGain(), onRetire() {} })).to.throw('unavailable');
+    expect(first.preview.output.channels[1].sendNoteOn(60, { rawAttack: 100 })).not.to.equal(false);
+    await first.preview.dispose(); await second.preview.dispose(); await a.lease.dispose(); await b.lease.dispose();
+  });
+  it('waits for the actual capture and context stop frontiers before enabling a takeover', async () => {
+    const f = performanceEnvironment(), a = f.make(), b = f.make(), first = setup({ performanceCoordinator: a.lease }), second = setup({ performanceCoordinator: b.lease });
+    await first.preview.enable(); const captured = deferred(), suspended = deferred(); let tap, suspending = false;
+    tap = first.preview.acquireMasterCaptureTap({ context: first.context, contextEpoch: first.preview.getState().contextEpoch, node: first.context.createGain(),
+      onRetire: () => captured.promise.then(() => tap.release()) });
+    first.context.suspend = () => { suspending = true; return suspended.promise.then(() => { first.context.state = 'suspended'; }); };
+    expect(a.lease.state().roles).to.include('capture');
+    const incoming = second.preview.takeOverPerformance(); await performanceTurn();
+    expect(first.preview.getState().enabled).to.equal(false); expect(second.preview.getState().enabled).to.equal(false); expect(suspending).to.equal(false);
+    expect(first.preview.output.channels[1].sendNoteOn(62, { rawAttack: 100 })).to.equal(false);
+    captured.resolve(); await performanceTurn(); expect(suspending).to.equal(true); expect(second.preview.getState().enabled).to.equal(false);
+    suspended.resolve(); expect(await incoming).to.equal(true); expect(first.context.state).to.equal('suspended'); expect(first.preview._pcmCaptureTaps.size).to.equal(0);
+    expect(second.preview.output.channels[1].sendNoteOn(65, { rawAttack: 100 })).not.to.equal(false);
+    await first.preview.dispose(); await second.preview.dispose(); await a.lease.dispose(); await b.lease.dispose();
+  });
+  it('stays silent and retains the native lock when the old context cannot acknowledge suspension', async () => {
+    const f = performanceEnvironment(), a = f.make(), b = f.make(), first = setup({ performanceCoordinator: a.lease }), second = setup({ performanceCoordinator: b.lease });
+    await first.preview.enable(); first.context.suspend = () => Promise.reject(new Error('Native suspension refused'));
+    expect(await second.preview.takeOverPerformance()).to.equal(false); expect(a.lease.state().status).to.equal('blocked'); expect(f.owned()).to.equal(true);
+    expect(second.preview.getState().enabled).to.equal(false); expect(second.preview.output.channels[1].sendNoteOn(65, { rawAttack: 100 })).to.equal(false);
+    await first.preview.dispose(); await second.preview.dispose(); await a.lease.dispose(); await b.lease.dispose();
+  });
+  it('refuses handoff when a capture callback settles without detaching its actual tap', async () => {
+    const f = performanceEnvironment(), a = f.make(), b = f.make(), first = setup({ performanceCoordinator: a.lease }), second = setup({ performanceCoordinator: b.lease });
+    await first.preview.enable(); const tap = first.preview.acquireMasterCaptureTap({ context: first.context, contextEpoch: first.preview.getState().contextEpoch, node: first.context.createGain(), onRetire: async () => {} });
+    expect(await second.preview.takeOverPerformance()).to.equal(false); expect(a.lease.state().status).to.equal('blocked'); expect(second.preview.getState().enabled).to.equal(false);
+    tap.release(); await first.preview.dispose(); await second.preview.dispose(); await a.lease.dispose(); await b.lease.dispose();
+  });
+});
 
 describe('BrowserNotePreview', function() {
   for (const boundary of ['channel-release', 'channel-disconnect', 'backend-stop', 'backend-dispose', 'observer-revoke'])

@@ -12,7 +12,11 @@ export function createProjectNameDialog({ document, window } = {}) {
     return new Promise(resolve => {
       let done = false;
       const finish = result => { if (done) return; done = true; if (pending?.dialog === dialog) pending = null;
-        try { dialog.close?.(); } finally { dialog.remove(); if (previousFocus?.isConnected !== false) previousFocus?.focus?.({ preventScroll: true }); resolve(result); } };
+        try { dialog.close?.(); } finally {
+          dialog.remove(); const menu = previousFocus?.closest?.('.studio-command-menu:not([open])');
+          const returnFocus = menu?.querySelector(':scope > summary') || previousFocus;
+          if (returnFocus?.isConnected !== false) returnFocus?.focus?.({ preventScroll: true }); resolve(result);
+        } };
       pending = { dialog, finish };
       let backdropPointer = null;
       const outside = event => {

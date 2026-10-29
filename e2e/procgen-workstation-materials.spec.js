@@ -44,7 +44,8 @@ test('quiet command menus preserve native controls, modal focus return, output w
   await page.locator('details[data-menu-name=Setup] > summary').focus(); await page.keyboard.press('Escape'); await expect(page.locator('details[data-menu-name=Setup] > summary')).toBeFocused(); await expect(page.locator('details[data-menu-name=Setup] > summary')).toHaveAttribute('aria-expanded', 'false');
   await useWorkstationControl(page, page.getByRole('button', { name: 'Save As', exact: true }), { button: 'Save As' }, 'click');
   const dialog = page.getByRole('dialog', { name: 'Save project copy', exact: true }); await expect(dialog).toBeVisible(); await page.keyboard.press('Escape'); await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Save As', exact: true })).toBeFocused(); await page.keyboard.press('Escape');
+  await expect(page.locator('details[data-menu-name=Project] > summary')).toBeFocused();
+  await expect(page.locator('details[data-menu-name=Project] > summary')).toHaveAttribute('aria-expanded', 'false');
   await page.getByRole('button', { name: 'Stage mode', exact: true }).click(); await expect(page.locator('#procgenPanic')).toBeVisible(); await page.getByRole('button', { name: 'Exit stage', exact: true }).first().click();
   expect(await scope(page)).toEqual(before); await expect(page.locator('#procgenDeepDock')).toBeHidden();
 });

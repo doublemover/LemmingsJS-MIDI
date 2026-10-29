@@ -29,14 +29,15 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   let disposed = false;
   let disposePromise = null;
 
+  const outputMessage = observed => observed.performanceLease?.coordination === 'uncoordinated' ? message + ' Tab coordination is unavailable; another tab may also be active.' : message;
   const getState = () => ({
     status,
-    message,
+    message: outputMessage(audio.getState()),
     enabled: (status === 'live' || status === 'suspended') && audio.getState().enabled,
     audio: audio.getState()
   });
   const getOperationalState = () => { const observed = audio.getOperationalState?.() || audio.getState();
-    return Object.freeze({ status, message, enabled: (status === 'live' || status === 'suspended') && observed.enabled, audio: observed });
+    return Object.freeze({ status, message: outputMessage(observed), enabled: (status === 'live' || status === 'suspended') && observed.enabled, audio: observed });
   };
   const report = (nextStatus, nextMessage) => {
     status = nextStatus;
@@ -116,7 +117,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     detach();
     report('error', state.message || 'Browser audio stopped. Enable preview again.');
   });
-  const start = async () => {
+  const start = async ({ takeOver = false } = {}) => {
     if (disposed) return false;
     const view = getLemmings();
     if (view?.midiAvailable === false) return false;
@@ -135,7 +136,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     }
     try {
       // Invoke unlock before awaiting anything so the click still authorizes browser audio.
-      const ready = audio.enable();
+      const ready = audio.enable(null, { takeOver });
       if (view.midiEnabled) await view.setMidiEnabled(false);
       if (!await ready) {
         if (!disposed && request === generation) report('error', audio.getState().message);
@@ -168,7 +169,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     return disposePromise;
   };
   const setCapture = observer => { capture = observer; router?.setCapture(capture); audio.setCapture?.(capture); };
-  return { start, stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, getOperationalState, setCapture, audio };
+  return { start, takeOverPerformance: () => start({ takeOver: true }), stop, panic: stop, suspendGame, resumeGame, dispose, syncConfig, getState, getOperationalState, setCapture, audio };
 };
 
 export { createLocalGamePreview };

@@ -937,6 +937,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const bindRuntime = ({ session, historyRestore = false } = {}) => {
     if (disposed) return null;
+    legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
     let sessionIdentity = null;
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
     const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
@@ -963,7 +964,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     };
     const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
       isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
-    physicalPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+    let nextPlayback;
+    physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       additionalOutputs: [physicalMidi],
       onIntentProvenance: value => {
         if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;
@@ -971,9 +973,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (physicalProvenanceBuffer.length < 512) physicalProvenanceBuffer.push(value); else physicalProvenanceDropped++;
       },
       getGraph: () => next.world.physicalAuthoring?.graph || playbackProject().procgen.physicalGraph, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes), isPlaybackEnabled: localEnabled, scoreTimeline: physicalScoreClock, now,
-      onInstrumentState: event => { if (event.state === 'unavailable' || event.state === 'retirement-unknown') status('Lane ' + event.laneId + ' instrument: ' + event.code); },
+      onInstrumentState: event => { if (!disposed && nextPlayback && physicalPlayback === nextPlayback && runtime() === next && (event.state === 'unavailable' || event.state === 'retirement-unknown')) status('Lane ' + event.laneId + ' instrument: ' + event.code); },
       onReceipt: onPhysicalReceipt });
-    void physicalPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => status('Saved lane instruments: ' + error.message));
+    void nextPlayback.synchronizeLaneInstruments(boundProject.procgen.lanes).catch(error => { if (!disposed && physicalPlayback === nextPlayback && runtime() === next) status('Saved lane instruments: ' + error.message); });
     if (session?.physicalState) physicalPlayback.engine.restore(session.physicalState);
     if (typeof next.world.step === 'function') physicalFeedback = createPhysicalFeedbackController({ world: next.world, resourceBudget, getGraph: () => project.procgen.physicalGraph, recordInput: (input, boundary) => causalTake ? causalTake.recordInput(input, boundary) : { status: 'accepted' }, onStatus: status, onFailure: () => { transport.pause(); physicalPlayback?.stop(); } });
     const onGameEvent = event => { if (transport.getState().playing) engine.onGameEvent(event, now()); };
@@ -1564,6 +1566,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (disposed || identity !== current.identity || action !== current.recoveryAction.id) { status('Operational state changed. Review the current action.'); return false; }
       if (action === 'discover') return legacy.local.discover?.();
       if (action === 'listen' || action === 'activate') return legacy.local.start();
+      if (action === 'take-over-output') return legacy.local.takeOverPerformance?.() ?? false;
       if (action === 'export') return handlers.export();
       if (action === 'play') return handlers.stagePlay();
       if (action === 'exit-stage') return handlers.stageExit();
@@ -2137,6 +2140,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (expressionOutput !== observedExpressionOutput) { observedExpressionOutput = expressionOutput; view?.renderInspector?.(); }
   });
   if (typeof unsubscribeOutputState === 'function') listeners.push(unsubscribeOutputState);
+  const unregisterPerformanceStop = legacy.local.audio?.registerPerformanceStop?.(async () => {
+    handlers.stopOutput(); state.recording = false; state.thru = false; ports.configure({ recording: false, thru: false });
+    view?.recording?.(false, recordingViewState(ports.getState()));
+    await stopCausalTake({ reason: 'cross-tab-performance-stop' });
+    if (ports.getState().lastCleanup?.uncertain) throw new Error('Owned MIDI release is unconfirmed; performance takeover remains blocked.');
+  });
+  if (typeof unregisterPerformanceStop === 'function') listeners.push(unregisterPerformanceStop);
   if (saved?.project?.procgen?.version !== 2 && saved?.project?.procgen) {
     try {
       const conversion = convertLegacyProcgenWorkstationProject(saved.project, { strategy: 'physical-default' });

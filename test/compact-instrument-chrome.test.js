@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { createParameterKnob } from '../js/app/controls/ParameterKnob.js';
 import { createWorkstationChrome } from '../js/app/procgen/workstation/WorkstationChrome.js';
+import { createProjectNameDialog } from '../js/app/controls/ProjectNameDialog.js';
 
 const descriptor = { id: 'lane-pan', name: 'Pan', quantity: 'stereo-position', unit: '', min: -127, max: 127, step: 1, defaultValue: 0 };
 const setup = () => {
@@ -89,6 +90,17 @@ describe('owned workstation command chrome', () => {
       expect(menu.open).to.equal(false); expect(f.document.activeElement).to.equal(input);
       const field = f.document.querySelector('#field'); chrome.reveal(field); field.querySelector('input').click(); expect(field.closest('details').open).to.equal(true);
     } finally { chrome.dispose(); f.window.close(); }
+  });
+  it('returns a canceled name dialog to its visible menu heading after command dismissal', async () => {
+    const f = mount(), chrome = createWorkstationChrome(f.options), owner = createProjectNameDialog({ document: f.document }), command = f.document.querySelector('footer button'); let pending;
+    f.window.HTMLDialogElement.prototype.showModal = function() { this.setAttribute('open', ''); };
+    f.window.HTMLDialogElement.prototype.close = function() { this.removeAttribute('open'); this.dispatchEvent(new f.window.Event('close')); };
+    try {
+      command.addEventListener('click', () => { pending = owner.request({ value: 'Saved source' }); }); chrome.reveal(command); command.focus(); command.click();
+      const menu = command.closest('details'), dialog = f.document.querySelector('dialog'); expect(menu.open).to.equal(false); expect(f.document.activeElement).to.equal(dialog.querySelector('input'));
+      dialog.dispatchEvent(new f.window.Event('cancel', { cancelable: true })); expect(await pending).to.equal(null); expect(f.document.activeElement).to.equal(menu.querySelector('summary'));
+      expect(f.document.querySelector('dialog')).to.equal(null); expect(menu.open).to.equal(false);
+    } finally { owner.dispose(); chrome.dispose(); f.window.close(); }
   });
   it('preserves exact native nodes and listeners through A to B replacement and stale disposal', () => {
     const f = mount(), field = f.document.querySelector('#field'), input = field.querySelector('input'), save = f.document.querySelector('footer button'); let clicks = 0; save.addEventListener('click', () => clicks++);

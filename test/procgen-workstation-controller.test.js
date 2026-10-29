@@ -83,6 +83,13 @@ describe('ProcGen workstation orchestration', () => {
     await f.studio.dispose().completion; const count = f.statuses.length; midi.enabled = true; finish();
     expect(await pending).to.equal(false); expect(f.statuses).to.have.length(count);
   });
+  it('stops transport, controller recording and thru for cooperative browser performance retirement', async () => {
+    let stop, removed = false; const audio = { ...createSilentPreparationAudio(), registerPerformanceStop(callback) { stop = callback; return () => { removed = true; }; } };
+    const f = setup({ audio }); f.studio.bindRuntime(); f.studio.play(); f.studio.state.recording = true; f.studio.state.thru = true;
+    await stop('cooperative-takeover'); expect(f.studio.transport.getState().playing).to.equal(false);
+    expect(f.studio.state).to.include({ recording: false, thru: false }); expect(f.studio.ports.getState().lastCleanup?.wholeDevice).not.to.equal(true);
+    await f.studio.dispose().completion; expect(removed).to.equal(true);
+  });
   it('retains a stopped MIDI prefix across New/load, refuses concatenation and clears only on an explicit action', async () => {
     const f = setup(); f.studio.bindRuntime();
     try {

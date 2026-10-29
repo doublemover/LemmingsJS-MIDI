@@ -152,7 +152,7 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, loadWe
     observedMidi = value; observedMidi?.addListener?.('disconnected', disconnected); observedMidi?.addListener?.('connected', disconnected);
   };
   observeMidi(getWebMidi());
-  return { audio: local.audio, start, discover, stop, panic: stop, getState, getOperationalState: () => Object.freeze(getState(true)), syncStatus, suspendGame, resumeGame, refreshDevices,
+  return { audio: local.audio, start, takeOverPerformance: () => selected === 'synth' ? local.takeOverPerformance?.() ?? false : false, discover, stop, panic: stop, getState, getOperationalState: () => Object.freeze(getState(true)), syncStatus, suspendGame, resumeGame, refreshDevices,
     localStateChanged: () => { if (selected === 'synth') notifyState(); },
     subscribe(listener) { if (disposed || typeof listener !== 'function') return () => {}; if (!stateListeners.has(listener) && stateListeners.size >= 32) throw new Error('Output state subscription capacity exceeded.'); stateListeners.add(listener); return () => stateListeners.delete(listener); },
     setBackend(value) { const next = value === 'midi' ? 'midi' : 'synth'; if (next !== selected) { stop(); selected = next; report('off', next === 'midi' ? 'MIDI output is off. Connect to start.' : 'Browser preview is off.'); } },

@@ -8826,3 +8826,35 @@ export-budget acknowledgments still prevent a false complete receipt.
   verified green checkpoint;338did not reach coverage/MCP/benchmark. Review #985
   against its original acceptance after clean CI, retaining measured cold-save,
   scheduling and heap limits. Resume preserved #1193cross-tab work independently.
+
+### Continuation 340 — cooperative browser audio and capture ownership
+
+- Hold one same-origin Web Lock for actual browser performance lifetime. Bounded
+  versioned broadcast messages request handoff; only a native lock grant admits
+  output. Never queue autoplay, steal a lock or infer a stopped peer from missing
+  heartbeats. Cancel obsolete requests, retire late grants and retain unknowns.
+  Keep 32 sources, 32 peer records, 64 observers and one pending takeover. Local document
+  identity stays local; broadcast only bounded status, roles and opaque IDs.
+- Gate actual browser notes and master taps. Explicit takeover stops transport,
+  controller recording/thru and the causal take, waits for capture-tap retirement
+  and native context suspension, then releases ownership. Failed shutdown stays
+  silent. Missing/blocked Locks exposes explicit uncoordinated playback with a
+  visible warning. Lifecycle revalidation never resumes output automatically.
+- Normalize native numeric cancellation diagnostics and fence superseded or
+  retired lane-preparation callbacks. A dismissed command's name dialog returns
+  focus to its visible menu heading. This repairs 339 CI's sole remaining failure:
+  24 desktop/136 workstation cases passed, including the former load failure; later
+  coverage/MCP/benchmark stages did not run.
+- All 416 grouped Node cases and 34 distinct native desktop journeys pass. Actual
+  two-tab activation/takeover/owner closure and the native capture-worklet handoff
+  pass with the operational, save/load/Undo/replay, focus and DPR 1/1.5/2 workflows.
+  The handoff capture is Partial: 18,560 source/received frames, abrupt owned stop
+  classified as panic, zero indexed gaps and an acknowledged end. It is not Ready.
+  Core ownership coverage is 98.96% lines/84.85% branches/100% functions. Category
+  collection is 172 full/142 smoke across 47 files. Full 340 CI remains independent.
+- #1193 remains open: next bind reviewed MIDI/router, raw/thru and clock byte
+  submissions and owned cleanup to this lease; finish cue-role reporting and the
+  actual frozen/BFCache/failure matrix. #998 still needs real desktop screen-reader
+  smoke. #985 awaits original-acceptance review after clean current CI, preserving
+  the existing cold-save/scheduling/heap limits. 334 remains the latest complete
+  green CI checkpoint. Continue solo, with implementation frontloaded.

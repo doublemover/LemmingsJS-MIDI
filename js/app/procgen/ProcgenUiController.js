@@ -77,6 +77,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     const button = byId('procgenListen'), midi = state.selectedBackend === 'midi';
     const discover = needsMidiDiscovery(state);
     if (button) { button.dataset.outputAction = state.enabled || ['starting', 'discovering'].includes(state.status) ? 'stop' : discover ? 'discover' : midi ? 'activate' : 'listen'; button.textContent = state.enabled || ['starting', 'discovering'].includes(state.status) ? state.status === 'discovering' ? 'Cancel discovery' : midi ? 'Deactivate MIDI output' : 'Disable browser output' : midi ? discover ? 'Discover MIDI outputs' : 'Activate MIDI output' : 'Listen locally'; button.setAttribute('aria-pressed', String(state.enabled)); }
+    if (button && !midi && state.audio?.performanceLease?.status === 'busy') { button.dataset.outputAction = 'takeover'; button.textContent = 'Take over browser output'; }
     if (byId('procgenAudioStatus')) byId('procgenAudioStatus').textContent = state.message + (!midi && settings.soundFont ? ' Requested sample bank is unavailable; using the browser synth.' : '');
     if (byId('procgenMasterVolume')) byId('procgenMasterVolume').disabled = midi;
     if (byId('procgenMidiDevice')) byId('procgenMidiDevice').hidden = !midi;
@@ -276,6 +277,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   listen(byId('procgenListen'), 'click', () => {
     const state = local.getOperationalState();
     if (state.enabled || ['starting', 'discovering'].includes(state.status)) return local.stop();
+    if (state.selectedBackend !== 'midi' && state.audio?.performanceLease?.status === 'busy') return local.takeOverPerformance();
     if (needsMidiDiscovery(state)) return local.discover();
     return local.start();
   });
