@@ -331,7 +331,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if ((causalTake || causalTakeStart || causalTakeStop) && instrumentRefsChanged) throw new Error('Finish the causal take before changing its pinned lane instrument.');
     if ((causalTake || causalTakeStart || causalTakeStop) && !equal(project.procgen.effectRack ?? null, next.procgen.effectRack ?? null)) throw new Error('Finish the causal take before changing its saved effect defaults.');
     if (causalTake) { const world = runtime()?.world; sampleMacroPerformance({ tick: world?.tickIndex ?? 0, generation: world?.generation ?? 0 }); }
-    const beforePerformanceLanes = macroGestures.lanes(project.procgen.lanes), afterPerformanceLanes = macroGestures.lanes(next.procgen.lanes);
+    const capturingPerformance = causalTake || causalTakeStart || causalTakeStop;
+    const beforePerformanceLanes = capturingPerformance ? macroGestures.lanes(project.procgen.lanes) : null, afterPerformanceLanes = capturingPerformance ? macroGestures.lanes(next.procgen.lanes) : null;
     const performanceChange = causalTake || causalTakeStart || causalTakeStop ? change && !change.structural
       ? diffCausalLanePerformance(beforePerformanceLanes, afterPerformanceLanes, change.fields.some(key => ['instrumentControls', 'instrumentRef', 'gain', 'pan', 'mute', 'solo'].includes(key)) ? change.laneIds : [])
       : diffCausalPerformanceState(captureCausalPerformanceState(beforePerformanceLanes), captureCausalPerformanceState(afterPerformanceLanes)) : null;

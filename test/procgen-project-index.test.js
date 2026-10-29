@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { createMidiProject, sanitizeMidiProject, reduceMidiProject } from '../js/midi/project/MidiProject.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
-import { procgenLane, procgenLaneIndex, procgenProjectChange, procgenIndexDiagnostics } from '../js/app/procgen/workstation/ProcgenProjectIndex.js';
+import { procgenLane, procgenLaneIndex, procgenProjectChange, procgenLaneCollectionChange, procgenIndexDiagnostics } from '../js/app/procgen/workstation/ProcgenProjectIndex.js';
 
 const fixture = count => sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, () => ({ mode: 'pattern', patternPurpose: 'Edit-cost fixture' })) }));
 describe('changed-data project indexes and revisions', () => {
@@ -14,6 +14,9 @@ describe('changed-data project indexes and revisions', () => {
     expect(after.procgen.lanes[0]).to.equal(before.procgen.lanes[0]);
     expect(after.procgen.lanes[511].patterns).to.equal(before.procgen.lanes[511].patterns);
     expect(procgenProjectChange(before, after).laneIds).to.deep.equal(['lane-512']);
+    expect(procgenLaneCollectionChange(before.procgen.lanes, after.procgen.lanes).laneIds).to.deep.equal(['lane-512']);
+    expect(procgenLaneCollectionChange(before.procgen.lanes.slice(), after.procgen.lanes)).to.equal(null);
+    expect(procgenLaneCollectionChange(before.procgen.lanes, after.procgen.lanes.slice())).to.equal(null);
     expect(procgenProjectChange(fixture(1), after)).to.equal(null);
     expect(reduceMidiProject(after, { type: 'procgen/lane', laneId: 'lane-512', patch: { gain: .5 } })).to.equal(after);
   });

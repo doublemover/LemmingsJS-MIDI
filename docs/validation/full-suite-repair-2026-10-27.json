@@ -29127,5 +29127,275 @@
         "scope": "Local dependency caching, exact source pixels, explicit retained/candidate admission and retirement, measured work removal and native checkpoint-restore qualification."
       }
     }
+  },
+  "continuation332": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "cb4b4be3",
+    "scope": "Trusted changed-lane mix propagation, unchanged source declarations, conditional macro performance derivation, explicit global-solo/structural/unknown ancestry fallback.",
+    "validation": {
+      "node": {
+        "passed": 144,
+        "failed": 0,
+        "duration": "2s",
+        "scope": "8/128/1024lane reference parity, row allocation removal, complete solo/mute transition trace, source declaration identity, controller/save/rollback/take/gesture matrix.",
+        "coverage": {
+          "LaneMixState": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 89.33
+          },
+          "ProcgenProjectIndex": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 93.54
+          }
+        },
+        "coverageFollowup": "Unusual invalid/source-change combinations remain branch followups; existing explicit invalid collection/value rejection preserves prior state."
+      },
+      "browser": {
+        "passed": 6,
+        "failed": 0,
+        "durationMs": 7598.389999999999,
+        "scope": "Actual8/128-lane controller keeps unrelated mix rows/physical state/output untouched; global solo transitions plus existing non4/4launch, focus/caret, cell DOM and IME behavior."
+      },
+      "benchmark": {
+        "schema": "lane-mix-benchmark/v1",
+        "iterations": 1000,
+        "warmup": 100,
+        "runtime": "v26.12.1",
+        "scope": "Canonical single-lane reducer and lane-mix owner only; half unrelated label edits, half actual gain/pan edits. State-row allocations are counted, not every V8 allocation. No controller/view/persistence/browser latency or release-gate claim.",
+        "results": [
+          {
+            "lanes": 8,
+            "timingsMs": {
+              "authoredEdit": {
+                "p50": 0.004899999999992133,
+                "p95": 0.010900000000006571,
+                "p99": 0.019800000000003593
+              },
+              "indexedMix": {
+                "p50": 0.0005000000000023874,
+                "p95": 0.0016999999999995907,
+                "p99": 0.004300000000000637
+              },
+              "referenceMix": {
+                "p50": 0.0015000000000071623,
+                "p95": 0.0040000000000048885,
+                "p99": 0.012299999999996203
+              }
+            },
+            "work": {
+              "fullBuilds": 0,
+              "incrementalBuilds": 500,
+              "skippedCollections": 500,
+              "stateVisits": 500,
+              "stateAllocations": 500
+            }
+          },
+          {
+            "lanes": 128,
+            "timingsMs": {
+              "authoredEdit": {
+                "p50": 0.005000000000023874,
+                "p95": 0.006499999999988404,
+                "p99": 0.019700000000000273
+              },
+              "indexedMix": {
+                "p50": 0.0004999999999881766,
+                "p95": 0.0006999999999948159,
+                "p99": 0.0010000000000047748
+              },
+              "referenceMix": {
+                "p50": 0.014499999999998181,
+                "p95": 0.015700000000009595,
+                "p99": 0.1074999999999875
+              }
+            },
+            "work": {
+              "fullBuilds": 0,
+              "incrementalBuilds": 500,
+              "skippedCollections": 500,
+              "stateVisits": 500,
+              "stateAllocations": 500
+            }
+          },
+          {
+            "lanes": 1024,
+            "timingsMs": {
+              "authoredEdit": {
+                "p50": 0.005599999999986949,
+                "p95": 0.009999999999990905,
+                "p99": 0.018000000000000682
+              },
+              "indexedMix": {
+                "p50": 0.0005999999999630745,
+                "p95": 0.0009000000000014552,
+                "p99": 0.0013000000000147338
+              },
+              "referenceMix": {
+                "p50": 0.09829999999999472,
+                "p95": 0.1636000000000024,
+                "p99": 0.22819999999998686
+              }
+            },
+            "work": {
+              "fullBuilds": 0,
+              "incrementalBuilds": 500,
+              "skippedCollections": 500,
+              "stateVisits": 500,
+              "stateAllocations": 500
+            }
+          }
+        ]
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "browser categories",
+        "runtime provenance:10components/349files",
+        "whitespace"
+      ],
+      "provenance": {
+        "component": "lemmings-background-job-worker",
+        "files": 280,
+        "sha256": "b0d794a84cd4ad970b5e06d27343e4aa7d5b6a5559fca9f16903b7db58198099",
+        "initialCheck": "Correctly rejected changed source digest; refreshed only that unique component SHA in the manually formatted manifest."
+      },
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "329 passed browser/MCP and is progressing through benchmark/coverage;330/331 remain separate. Last verified full green is326.",
+      "scopeLimits": [
+        "State-row counters exclude temporary objects and total V8 allocations.",
+        "Mechanical reducer/mix timings do not establish end-to-end controller/view/persistence latency, native hardware timing or acoustic output."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-categories.log",
+        "bytes": 3126,
+        "sha256": "f359e0319ff184e58c2f815ae21c8f68558e3f5d6a04f543c8ed1ee347656ec2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-format-native.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-native.log",
+        "bytes": 1245,
+        "sha256": "40e67845be98c230dbb57b78626fc4678b44be907cccb98d9095c9bc8296ca73"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-node.log",
+        "bytes": 13999,
+        "sha256": "30e5ee053d480f34d9ed971bbc1b780f9605b4b13c58d92553a407aafffd5ef3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-provenance-final.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-provenance.log",
+        "bytes": 1092,
+        "sha256": "479c72d6f5e6354ef24a64f28734465748517f3dc7645e2c1611a90b0d5a0e32"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog332-mix-results.json",
+        "bytes": 15944,
+        "sha256": "b6546984f6c2429a265db9c08d7969fedc9ac9dca67c56b0a130f3b4144eadea"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-mix-benchmark.json",
+        "bytes": 2472,
+        "sha256": "31a9b73f2444e086f32a7eadc856f7a6431cf258efe28b8fd173659fdb44f57a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-332-coverage\\coverage-summary.json",
+        "bytes": 247182,
+        "sha256": "952b3fdf3d1f159c89c830fca8e2d918927cce87d5f11b040a6b53945937c924"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/workstation/LaneMixState.js",
+        "bytes": 4184,
+        "sha256": "2ee30939e098f9773615b6425699e4904020bef123c8956020e4cdc55970c564"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenProjectIndex.js",
+        "bytes": 2090,
+        "sha256": "bf6e98f1262156343741fc12b0b4d65fec704714b7e9799ef00490ea00cfb4d1"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "bytes": 34170,
+        "sha256": "525210ac07df43108f42505aec46a887f4e0879fa7931a68bb100c2f7d537947"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 207749,
+        "sha256": "61781bf75e236e9265fb48f64978cfbe43e10e4e51a1978871edd14368e71374"
+      },
+      {
+        "path": "scripts/bench-lane-mix.js",
+        "bytes": 3021,
+        "sha256": "e2b5058825327cc694aaa7e9f7f495dba554bb10e135410b57a9d6c71ea967b5"
+      },
+      {
+        "path": "test/midi/voice-lane-mix.test.js",
+        "bytes": 7609,
+        "sha256": "64dd02ca88064dee3d5ce7ec97e5057f4d47c203be0002c8f56de31f47f9f80b"
+      },
+      {
+        "path": "test/procgen-project-index.test.js",
+        "bytes": 2860,
+        "sha256": "49287753e7d95d68e3458f88d954e1e78def6dd3acc34dc89a588ccbbda6e530"
+      },
+      {
+        "path": "test/procgen-physical-playback.test.js",
+        "bytes": 7395,
+        "sha256": "537942122d2f0dfef1f932ade6f60bbfaac2c544bae150160a9054f04cd0e165"
+      },
+      {
+        "path": "e2e/procgen-workstation-mix-delta.spec.js",
+        "bytes": 2576,
+        "sha256": "dda8eb5b0412a98007f805e720f5723ca8b38c8128854f01beac286636cf1c43"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21348,
+        "sha256": "53af581d877cfab56a56b3cefd9a6d0edaba5e3eb8cba7774f717eca1daeeaa9"
+      }
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "remaining": "Navigation/view propagation and complete controller/120Hz/capture/launch/persistence latency and task budget qualification."
+      }
+    }
   }
 }

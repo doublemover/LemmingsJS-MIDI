@@ -1,10 +1,23 @@
 import { expect } from 'chai';
-import { createMidiProject } from '../js/midi/project/MidiProject.js';
+import { createMidiProject, sanitizeMidiProject, reduceMidiProject } from '../js/midi/project/MidiProject.js';
 import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
 import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
 import { createProcgenPhysicalPlayback } from '../js/app/procgen/workstation/ProcgenPhysicalPlayback.js';
 
 describe('ProcGen physical playback', () => {
+  it('keeps source declarations and mix allocations stable through unrelated canonical edits', async () => {
+    let project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject())); const declared = [];
+    const playback = createProcgenPhysicalPlayback({ audio: { createSession: () => ({ getState: () => ({ enabled: false }), configureLaneSources: ids => declared.push(ids), stop() {}, dispose() {} }), getState: () => ({ enabled: false }) },
+      getLanes: () => project.procgen.lanes, getGraph: () => project.procgen.physicalGraph, scoreTimeline: createProcgenPhysicalScoreClock(), now: () => 0 });
+    try {
+      playback.synchronizeLaneMix(); const before = playback.diagnostics().laneMix, count = declared.length;
+      project = reduceMidiProject(project, { type: 'procgen/lane', laneId: project.procgen.lanes[0].id, patch: { name: 'New label' } }); playback.synchronizeLaneMix();
+      expect(declared.length).to.equal(count); expect(playback.diagnostics().laneMix.stateAllocations).to.equal(before.stateAllocations);
+      project = reduceMidiProject(project, { type: 'procgen/lane', laneId: project.procgen.lanes[0].id, patch: { gain: .25 } }); playback.synchronizeLaneMix();
+      expect(declared.length).to.equal(count); expect(playback.diagnostics().laneMix.stateAllocations).to.equal(before.stateAllocations + 1);
+      project = reduceMidiProject(project, { type: 'procgen/addLane' }); playback.synchronizeLaneMix(); expect(declared.length).to.equal(count + 1);
+    } finally { await playback.dispose().completion; }
+  });
   it('retires the session and backend even when its state subscription and Stop throw', async () => {
     const project = createProcgenWorkstationProject(createMidiProject()), calls = [];
     const backend = { prepare: async () => ({ status: 'ready' }), dispose() { calls.push('backend'); } };

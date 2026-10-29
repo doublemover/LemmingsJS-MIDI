@@ -8,6 +8,7 @@ import { createTravelColorationRecipe } from '../../../midi/content/TravelColora
 import { createTravelEffectMotion } from './TravelEffectMotion.js';
 import { getNativeInstrumentCatalog } from '../../midi-ui/NativeInstrumentSchema.js';
 import { createLaneMixState } from './LaneMixState.js';
+import { procgenLaneCollectionChange } from './ProcgenProjectIndex.js';
 import { createAudioClockBridge } from './AudioClockBridge.js';
 import { createCausalMusicEngine } from './CausalMusicEngine.js';
 import { captureCausalPerformanceState } from './CausalPerformanceState.js';
@@ -212,7 +213,10 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
   };
   const synchronizeLaneMix = () => {
     const lanes = getLanes();
-    if (lanes !== declaredSourceLanes) { session?.configureLaneSources?.(lanes.map(lane => lane.id)); declaredSourceLanes = lanes; }
+    if (lanes !== declaredSourceLanes) {
+      const change = declaredSourceLanes && procgenLaneCollectionChange(declaredSourceLanes, lanes);
+      if (!change || change.structural) session?.configureLaneSources?.(lanes.map(lane => lane.id)); declaredSourceLanes = lanes;
+    }
     laneMix.synchronize(lanes); const revision = laneMix.revision(), context = audio?.getAudioContext?.();
     if (lastMixPublication?.revision === revision && lastMixPublication.context === context && lastMixPublication.executionEpoch === executionEpoch) return { status: 'accepted', stage: 'unchanged' };
     const receipt = routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
@@ -295,5 +299,5 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     operationalState: () => Object.freeze({ prepared, routingUnavailable, accepted, degraded, rejected, leaseFailures }),
     diagnostics: () => Object.freeze({ prepared, routingUnavailable, enabled: externalEnabled() || !!session?.getState().enabled, audioEnabled: !!session?.getState().enabled, externalOutputs: Object.freeze(additionalOutputs.map(output => output.diagnostics?.() || null)), accepted, degraded, rejected,
       preparedSurfaces: surfaceBodies?.state() || null, bodySources: bodyBackend?.diagnostics() || null, scoreMorph: sceneMorph?.state() || null, motionEffects: travelEffects.state(), clock: clock.diagnostics(), causal: engine.diagnostics(), dispatch: dispatcher.diagnostics(), leaseFailures, display: Object.freeze({ connected: !!releaseDisplay, errors: displayErrors, retirementBlocked: displayBlocked }),
-      instruments: laneInstruments?.diagnostics() || null, renderers: routed?.backend.renderDiagnostics() || null }) };
+      instruments: laneInstruments?.diagnostics() || null, laneMix: laneMix.diagnostics(), renderers: routed?.backend.renderDiagnostics() || null }) };
 }

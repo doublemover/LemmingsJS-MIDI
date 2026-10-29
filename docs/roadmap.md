@@ -8672,3 +8672,17 @@ export-budget acknowledgments still prevent a false complete receipt.
   sample2880000pixels; local retained edits sample120000pixels with28800retained/
   30000peak bytes. Local validation/host load was not isolated. #1055 can close
   on the cache contract; no GPU, heap-soak or acoustic qualification is inferred.
+
+### Continuation 332 — changed-lane physical mix propagation
+
+- Carry trusted non-retaining lane-collection ancestry to the mix owner. Reuse
+  states/declarations on unrelated edits and update only touched mix rows. Full
+  validation remains for unknown ancestry, structural changes or global solo-mode
+  transitions. Skip macro performance derivation outside take ownership.
+- All144 affected Node and six native desktop cases pass. The1000-edit probe at
+  8/128/1024lanes allocates500 state rows for500 real mix changes and none for500
+  unrelated labels at every size. Real8/128-lane controller edits preserve other
+  lane identity, physics/output and existing launch/focus/IME behavior.
+- Lane mix and change-index owners reach100% scoped lines/functions. Refresh the
+  bound worker provenance digest without changing its280-file closure. #985 stays
+  open for navigation/view propagation and complete controller/persistence latency.

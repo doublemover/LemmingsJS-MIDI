@@ -124,6 +124,26 @@ encode through admitted background jobs; one active revision and the latest
 pending revision are retained. Worker structured-clone and localStorage native
 write costs remain measurable boundaries, not claimed zero-cost operations.
 
+Continuation332 carries non-retaining trusted lane-change identity into physical
+mix synchronization. Unrelated canonical edits reuse mix states and source
+declarations; gain/pan/mute/solo edits update only affected rows while the global
+solo-suppression mode is unchanged. Entering/leaving that mode, structural edits,
+unproven collections and skipped ancestry still perform full validation/rebuild.
+Unchanged lane views retain current global revision metadata. Macro performance
+capture is derived only while a take is arming, recording or finalizing.
+
+The1000-edit mechanical8/128/1024-lane probe alternates500 label edits with500
+actual gain/pan changes. Every size creates500 mix-state rows, skips500 unrelated
+collections and performs no full rebuild after warmup. Indexed mix p50/p95/p99
+milliseconds are0.0005/0.0017/0.0043,0.0005/0.0007/0.0010 and
+0.0006/0.0009/0.0013; the1024-lane full reference is0.0983/0.1636/0.2282.
+These are reducer/mix-owner measurements and counted state-row allocations,
+not end-to-end controller/view/persistence latency or V8 allocation profiles.
+All144 affected Node cases and six desktop browser cases pass, including actual
+8/128-lane ownership, solo transitions, unchanged physics/output and existing
+field/IME/row/launch behavior. #985 remains open for navigation/view and full
+controller/persistence measurement against its named task budget.
+
 `scripts/profile-procgen-editing.mjs` measures 8/128/1024 lanes with 64-step
 patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched launch
 acknowledgments. Reports separate latency percentiles, long tasks, heap observations,
