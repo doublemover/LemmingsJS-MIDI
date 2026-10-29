@@ -87,7 +87,7 @@ export function createAutomationCurveEditor({ document, window, curve, getIdenti
   paint();
   return Object.freeze({ element: root, inspect: () => Object.freeze({ dirty: dirty || pointDirty || composing, conflict, draftText, selected, gestureId: gesture?.lease.id ?? null }),
     update(next) {
-      if (disposed) return; if (composing && !root.contains(document.activeElement)) { composing = false; draftText = exact.value; dirty = draftText !== acceptedText; } const nextText = formatAutomationCurvePoints(next.points), changed = nextText !== acceptedText || next.length !== accepted.length || next.mode !== accepted.mode || next.axis !== accepted.axis;
+      if (disposed) return; arbiter.revalidate(); if (composing && !root.contains(document.activeElement)) { composing = false; draftText = exact.value; dirty = draftText !== acceptedText; } const nextText = formatAutomationCurvePoints(next.points), changed = nextText !== acceptedText || next.length !== accepted.length || next.mode !== accepted.mode || next.axis !== accepted.axis;
       if (changed) { gesture?.lease.cancel('external-edit'); accepted = next; acceptedText = nextText; if (dirty || pointDirty || composing) conflict = true; else { draftText = acceptedText; draft = next.points; } }
       if (!composing) paint();
     }, cancel: reason => gesture?.lease.cancel(reason), dispose() { if (disposed) return reservation.release(); gesture?.lease.cancel('disposed'); disposed = true; for (const release of listeners) release(); root.remove(); return reservation.release(); } });

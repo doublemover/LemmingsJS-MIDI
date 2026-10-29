@@ -46832,5 +46832,2123 @@
         "sha256": "0952dc583027729274f2f561a3a804505c9db5c5d988fd525fff943a3d9eb3d4"
       }
     ]
+  },
+  "continuation353": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "5c2d40d9d6145cdf8751419340a5fe1b9567c36d",
+    "scope": "Finish desktop physical brush, curve and dock gesture transactions for #1000.",
+    "implementation": [
+      "Keep the terrain lease when a second pointer cannot acquire it; only the admitted next lease replaces the local owner. Shared capture release avoids redundant native release calls.",
+      "Revalidate curve and dock source identity at each publication so observed A-B-A cannot revive an old pointer draft.",
+      "Cancel an owning pointerup left unhandled by its control after pending native capture disappears. Defer cleanup to the next task so window handlers can commit, and compare the original owner so a reentrant new lease remains valid.",
+      "Qualify native desktop interruptions, concurrent contact startup, foreign release, source replacement, outside-release fallback, fresh camera recovery and production physical terrain Undo/Redo."
+    ],
+    "validation": {
+      "node": {
+        "passed": 41,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook353-node-reviewed.log",
+          "bytes": 4666,
+          "sha256": "72155efc40d592f3d5df7514bdde986b107639ca0aadd4e27e01c9edffa42787"
+        }
+      },
+      "browser": {
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "stats": {
+          "startTime": "2026-10-29T15:54:19.515Z",
+          "duration": 38196.416,
+          "expected": 37,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "receipts": [
+          {
+            "title": "terrain native gesture cancels on capture-loss @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "capture-loss",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on Escape @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "Escape",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on blur @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "blur",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on modal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "modal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on source-A-B-A @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "source-A-B-A",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on removal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "removal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on disposal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "disposal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain native gesture cancels on capture-rejection @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "capture-rejection",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "terrain concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "terrain",
+              "mode": "concurrent-mouse-pen",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preview",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      },
+                      {
+                        "y": 13,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 14,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 15,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 16,
+                        "x1": 116,
+                        "x2": 117
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                },
+                {
+                  "kind": "terrain",
+                  "input": {
+                    "operation": "addSolid",
+                    "spans": [
+                      {
+                        "y": 0,
+                        "x1": 100,
+                        "x2": 101
+                      },
+                      {
+                        "y": 13,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 14,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 15,
+                        "x1": 116,
+                        "x2": 117
+                      },
+                      {
+                        "y": 16,
+                        "x1": 116,
+                        "x2": 117
+                      }
+                    ],
+                    "tag": null,
+                    "materialId": null
+                  }
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on capture-loss @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "capture-loss",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on Escape @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "Escape",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on blur @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "blur",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on modal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "modal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on source-A-B-A @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "source-A-B-A",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on removal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "removal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on disposal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "disposal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native gesture cancels on capture-rejection @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "capture-rejection",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "curve",
+              "mode": "concurrent-mouse-pen",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "curve",
+                  "points": [
+                    {
+                      "beat": 0,
+                      "value": 32
+                    },
+                    {
+                      "beat": 2,
+                      "value": 123
+                    },
+                    {
+                      "beat": 4,
+                      "value": 32
+                    }
+                  ]
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on capture-loss @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "capture-loss",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on Escape @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "Escape",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on blur @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "blur",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on modal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "modal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on source-A-B-A @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "source-A-B-A",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on removal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "removal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on disposal @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "disposal",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock native gesture cancels on capture-rejection @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "capture-rejection",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "dock concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "concurrent-mouse-pen",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 1
+                }
+              ],
+              "calls": [
+                {
+                  "kind": "preferences",
+                  "height": 296
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "production native terrain selection applies once and retains physical Undo and Redo @boundary @gesture-controls",
+            "name": "production-terrain-history.json",
+            "evidence": {
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "before": {
+                "solid": false,
+                "tick": 0,
+                "revision": 0
+              },
+              "applied": {
+                "tick": 1,
+                "revision": 1,
+                "paused": true,
+                "command": {
+                  "transactionId": "physical-author:1:0:1",
+                  "operation": "terrain-and-graph",
+                  "instanceId": null,
+                  "generation": 1,
+                  "tick": 1,
+                  "revision": 1,
+                  "graphRevision": 2
+                }
+              },
+              "undo": "restored empty cell",
+              "redo": "restored authored solid cell",
+              "evidence": "Production native mouse selection, real physical boundary, real project/history restoration; no audio/device claim."
+            }
+          },
+          {
+            "title": "dock unhandled native release outside cleared pending capture retires without preferences @boundary @gesture-controls",
+            "name": "desktop-control-gesture.json",
+            "evidence": {
+              "kind": "dock",
+              "mode": "native-pending-capture-release-outside",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                }
+              ],
+              "calls": [],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "desktop simultaneous native mouse and pen contacts retain the first owner @boundary @gesture-lifecycle",
+            "name": "desktop-concurrent-pointer-ownership.json",
+            "evidence": {
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "events": {
+                "contacts": [
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  },
+                  {
+                    "id": 2,
+                    "type": "pen",
+                    "trusted": true,
+                    "owner": 1
+                  }
+                ],
+                "releases": [
+                  {
+                    "id": 2,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  },
+                  {
+                    "id": 1,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  }
+                ]
+              },
+              "mobileEmulation": false,
+              "evidence": "Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; no physical tablet qualification."
+            }
+          }
+        ],
+        "report": {
+          "path": ".tmp/rook353-browser-reviewed.json",
+          "bytes": 81660,
+          "sha256": "89f874a84b29af622f8d5be72440446a5aa4ea6c6ee96e373050df503a110e95"
+        },
+        "log": {
+          "path": ".tmp/rook353-browser-reviewed.log",
+          "bytes": 6755,
+          "sha256": "54eb045ed915c678e0987d4c1a438bd7a0708a166345f41d7e82318a72bea454"
+        },
+        "scope": "Actual controls and native browser-injected desktop mouse/pen/capture/key/modal events. Blur, source changes and capture rejection are controlled. Isolated callback receipts are distinguished from the separate production physical boundary/history journey. No physical tablet, acoustic or actual OS-background claim."
+      },
+      "coverage": {
+        "scope": "Same41 Node tests; reporting only, no repeat of those tests.",
+        "summary": {
+          "total": {
+            "lines": {
+              "total": 275,
+              "covered": 145,
+              "skipped": 0,
+              "pct": 52.72
+            },
+            "statements": {
+              "total": 275,
+              "covered": 145,
+              "skipped": 0,
+              "pct": 52.72
+            },
+            "functions": {
+              "total": 35,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 80
+            },
+            "branches": {
+              "total": 176,
+              "covered": 144,
+              "skipped": 0,
+              "pct": 81.81
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\AutomationCurveEditor.js": {
+            "lines": {
+              "total": 94,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "functions": {
+              "total": 21,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 76.19
+            },
+            "statements": {
+              "total": 94,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "branches": {
+              "total": 104,
+              "covered": 78,
+              "skipped": 0,
+              "pct": 75
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\PointerGestureArbiter.js": {
+            "lines": {
+              "total": 56,
+              "covered": 56,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 12,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 56,
+              "covered": 56,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 70,
+              "covered": 64,
+              "skipped": 0,
+              "pct": 91.42
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalAuthoringView.js": {
+            "lines": {
+              "total": 68,
+              "covered": 3,
+              "skipped": 0,
+              "pct": 4.41
+            },
+            "functions": {
+              "total": 1,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 0
+            },
+            "statements": {
+              "total": 68,
+              "covered": 3,
+              "skipped": 0,
+              "pct": 4.41
+            },
+            "branches": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\WorkstationDock.js": {
+            "lines": {
+              "total": 57,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 7.01
+            },
+            "functions": {
+              "total": 1,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 0
+            },
+            "statements": {
+              "total": 57,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 7.01
+            },
+            "branches": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            }
+          }
+        },
+        "remaining": "Native curve/dock/terrain pointer paths are covered by the37 browser journeys, not by Node line instrumentation. Additional Node-only semantic branches and hostile teardown fixtures may improve isolated coverage; project-wide thresholds remain unchanged.",
+        "initialReporterOutcome": "The focused c8 command returned1 because whole-project line thresholds were applied to a subset that only imports the physical/dock modules. All41 tests passed. Re-reported stored measurements with check-coverage=false, without rerunning tests or changing repository thresholds."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check:10components/350files",
+        "npm run check:browser-categories:223full/193smoke/49files/all14gates",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "initialFailures": [
+        {
+          "scope": "Initial28browsercases",
+          "passed": 25,
+          "failed": 3,
+          "report": {
+            "path": ".tmp/rook353-browser.json",
+            "bytes": 77398,
+            "sha256": "ae1d90e89101a1c3fe2f901f545ede11341cb9ee5b6858783872c7b9fd2638a5"
+          },
+          "reason": "Concurrent native pen events outside the moved hit region and native pending/acquired capture retirement were not represented by the fixture. Retain distinct startup and interruption scopes; targets remain inside their current control for successful commits."
+        },
+        {
+          "scope": "Concurrent diagnostic groups",
+          "reports": [
+            {
+              "path": ".tmp/rook353-concurrency.json",
+              "bytes": 23561,
+              "sha256": "9a4132cdcca850e0fbeff31a36beab2c39f00c1d5f81d8451170015f51dd2f1d"
+            },
+            {
+              "path": ".tmp/rook353-concurrency-buttons.json",
+              "bytes": 23858,
+              "sha256": "c41a98df4299e5744de0d716ae37ea3fc1ceb4484e15a15f226e90d72e69df3e"
+            },
+            {
+              "path": ".tmp/rook353-concurrency-startup.json",
+              "bytes": 16880,
+              "sha256": "a707a698ae2fc9594509eeb59fffdeb7328f806d8eaf20c9044c093fbf30ca34"
+            }
+          ],
+          "reason": "CDP mouse/pen events can retire actual capture or silently clear pending capture. Reported loss correctly cancels. Silent pending-capture loss exposed an unhandled outside pointerup; production now cancels that owner safely."
+        },
+        {
+          "scope": "First37-case combined pass",
+          "passed": 35,
+          "failed": 2,
+          "report": {
+            "path": ".tmp/rook353-browser-final.json",
+            "bytes": 92399,
+            "sha256": "f4cfd4da3b7d968281bf5bda62ffebbd6081346f58b8f659069da1b2787b4cb6"
+          },
+          "reason": "A microtask fallback ran between native document and window listeners, canceling two window paint commits. Next-task cleanup preserves those commits. Final37-case batch passes without retries."
+        }
+      ]
+    },
+    "recovered352NativeReceipts": {
+      "reason": "continuation352.validation.browser.receipts was accidentally empty because a persistent-REPL collector retained its old array binding. Its published source/report hashes and passing counts are unchanged. Recovered the3 exact native JSON attachments directly from those retained final reports; no published historical entry was rewritten.",
+      "reports": [
+        {
+          "path": ".tmp/rook352-reviewed-desktop.json",
+          "bytes": 10524,
+          "sha256": "36d9aef765d6e52c75d0a1cefe2912d3ff3973268e50f1bb2c5a5f12c7cf4c42"
+        },
+        {
+          "path": ".tmp/rook352-reviewed-workstation.json",
+          "bytes": 15983,
+          "sha256": "505a2a9977f367e81075fdfbc0aaad4206c09913b51540aa51826ce9c0d126e3"
+        }
+      ],
+      "receipts": [
+        {
+          "title": "sound dial captured source A-B never retargets a stale edit or Undo @boundary",
+          "name": "native-sound-dial-ownership.json",
+          "evidence": {
+            "mode": "A-B",
+            "viewport": {
+              "width": 1920,
+              "height": 1080
+            },
+            "events": [
+              {
+                "type": "pointerdown",
+                "id": 1,
+                "trusted": true,
+                "value": "60",
+                "owner": null
+              },
+              {
+                "type": "gotpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "60",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": true,
+                "value": "64",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "80",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "99",
+                "owner": null
+              },
+              {
+                "type": "change",
+                "trusted": false,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "pointerup",
+                "id": 1,
+                "trusted": true,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "change",
+                "trusted": true,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "lostpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "blur",
+                "trusted": true,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "pointerdown",
+                "id": 1,
+                "trusted": true,
+                "value": "65",
+                "owner": null
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "70",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-2:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "gotpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "70",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-2:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "pointerup",
+                "id": 1,
+                "trusted": true,
+                "value": "70",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-2:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "lostpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "70",
+                "owner": null
+              },
+              {
+                "type": "blur",
+                "trusted": true,
+                "value": "70",
+                "owner": null
+              }
+            ],
+            "sourceIds": [
+              "sfx-1",
+              "sfx-2"
+            ],
+            "finalPitches": [
+              80,
+              65
+            ],
+            "evidence": "Native mouse and UA range capture events; stale input events controlled; no hardware or acoustic claim."
+          }
+        },
+        {
+          "title": "sound dial captured source A-B-A never retargets a stale edit or Undo @boundary",
+          "name": "native-sound-dial-ownership.json",
+          "evidence": {
+            "mode": "A-B-A",
+            "viewport": {
+              "width": 1920,
+              "height": 1080
+            },
+            "events": [
+              {
+                "type": "pointerdown",
+                "id": 1,
+                "trusted": true,
+                "value": "60",
+                "owner": null
+              },
+              {
+                "type": "gotpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "60",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": true,
+                "value": "64",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "80",
+                "owner": {
+                  "id": 1,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "99",
+                "owner": null
+              },
+              {
+                "type": "change",
+                "trusted": false,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "pointerup",
+                "id": 1,
+                "trusted": true,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "change",
+                "trusted": true,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "lostpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "blur",
+                "trusted": true,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "pointerdown",
+                "id": 1,
+                "trusted": true,
+                "value": "80",
+                "owner": null
+              },
+              {
+                "type": "input",
+                "trusted": true,
+                "value": "64",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "gotpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "64",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "input",
+                "trusted": false,
+                "value": "70",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "pointerup",
+                "id": 1,
+                "trusted": true,
+                "value": "70",
+                "owner": {
+                  "id": 2,
+                  "pointerId": 1,
+                  "targetKey": "sfx-1:midiSoundPitchDial"
+                }
+              },
+              {
+                "type": "change",
+                "trusted": true,
+                "value": "70",
+                "owner": null
+              },
+              {
+                "type": "lostpointercapture",
+                "id": 1,
+                "trusted": true,
+                "value": "70",
+                "owner": null
+              },
+              {
+                "type": "blur",
+                "trusted": true,
+                "value": "70",
+                "owner": null
+              }
+            ],
+            "sourceIds": [
+              "sfx-1",
+              "sfx-2"
+            ],
+            "finalPitches": [
+              80,
+              65
+            ],
+            "evidence": "Native mouse and UA range capture events; stale input events controlled; no hardware or acoustic claim."
+          }
+        },
+        {
+          "title": "desktop simultaneous native mouse and pen contacts retain the first owner @boundary @gesture-lifecycle",
+          "name": "desktop-concurrent-pointer-ownership.json",
+          "evidence": {
+            "viewport": {
+              "width": 1920,
+              "height": 1080
+            },
+            "events": {
+              "contacts": [
+                {
+                  "id": 1,
+                  "type": "mouse",
+                  "trusted": true,
+                  "owner": 1
+                },
+                {
+                  "id": 2,
+                  "type": "pen",
+                  "trusted": true,
+                  "owner": 1
+                }
+              ],
+              "releases": [
+                {
+                  "id": 2,
+                  "owner": 1,
+                  "actions": 0,
+                  "trusted": true
+                },
+                {
+                  "id": 1,
+                  "owner": 1,
+                  "actions": 0,
+                  "trusted": true
+                }
+              ]
+            },
+            "mobileEmulation": false,
+            "evidence": "Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; no physical tablet qualification."
+          }
+        }
+      ]
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "latestCi352": {
+      "head": "5c2d40d9d6145cdf8751419340a5fe1b9567c36d",
+      "runId": 40903159101,
+      "engine": "success",
+      "nativeLinux": "success",
+      "nativeWindows": "success",
+      "main": "in_progress",
+      "notAFullGreenCheckpoint": true
+    },
+    "issueStatus": {
+      "1000": "Software gesture acceptance complete; close after publishing this span. Physical tablet calibration/pressure and actual OS-background remain separately qualified in broader platform issues.",
+      "1059": "Open: canonical physical sink receipt and deferred/ack integration remains.",
+      "1086": "Open: broader engine/platform/device capability qualification remains."
+    },
+    "limits": [
+      "1920x1080desktop minimum; no phone/tablet viewport or emulation.",
+      "No physical receiver, acoustic, hardware stylus pressure or actual OS-background evidence.",
+      "Full CI for this new head remains independent of scoped local tests."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/controls/AutomationCurveEditor.js",
+        "bytes": 15086,
+        "sha256": "6c7e407815a56d574dd0c56093813fef3f2577ab1725900c1d1f75e77f32a720"
+      },
+      {
+        "path": "js/app/controls/PointerGestureArbiter.js",
+        "bytes": 3866,
+        "sha256": "e483f693f8e1d78c0efe661a4f0143ef3a9f1a27099edc49fe689415aeb3b3dd"
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "bytes": 16045,
+        "sha256": "ef8f3c3142be5489e3307aaa8a7ae50f6240c69bcce8e427fc515c3a72049e18"
+      },
+      {
+        "path": "js/app/procgen/workstation/WorkstationDock.js",
+        "bytes": 9259,
+        "sha256": "9b19e4a7d0816ea6646e2a22fab43a13a711eef7025361c80614c672e7d9b3fb"
+      },
+      {
+        "path": "test/pointer-gesture-lifecycle.test.js",
+        "bytes": 8907,
+        "sha256": "cfd2078f3c854272e1876eda1736339368999522fd9d6e75870a0e9f7fb69819"
+      },
+      {
+        "path": "e2e/procgen-workstation-gesture-controls.spec.js",
+        "bytes": 17041,
+        "sha256": "fc7cdc515b333c4c00d36ea84a1266fd8416f775e375df376d6a8ad4caf9539d"
+      }
+    ]
   }
 }

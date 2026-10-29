@@ -24,6 +24,11 @@ export function getPointerGestureArbiter(document) {
   };
   const foreignSafeCancel = event => { if (active && active.pointerId === event.pointerId) cancelSafely(event.type); };
   for (const type of ['pointercancel', 'lostpointercapture']) document.addEventListener?.(type, foreignSafeCancel, true);
+  document.addEventListener?.('pointerup', event => {
+    if (!active || active.pointerId !== event.pointerId) return; const owner = active;
+    // Window handlers finish their transaction before the unhandled-release fallback.
+    setTimeout(() => { if (active === owner) cancelSafely('unhandled-pointerup'); }, 0);
+  });
   document.defaultView?.addEventListener?.('blur', () => cancelSafely('blur'));
   document.addEventListener?.('visibilitychange', () => { if (document.visibilityState === 'hidden') cancelSafely('hidden'); });
   document.addEventListener?.('keydown', event => {

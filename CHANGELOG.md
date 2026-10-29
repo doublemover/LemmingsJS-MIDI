@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve terrain drag ownership across competing contacts, cancel source-replaced curve/dock drafts, and retire unhandled releases without interrupting window-level paint commits.
+
 - Keep sound-dial edits and Undo bound to their source, restore displayed values after retired input, and register capture cleanup for curve, dock and terrain controls.
 
 - Release interrupted desktop pointer capture and prevent old paint or camera gestures from reviving after source and zoom changes.

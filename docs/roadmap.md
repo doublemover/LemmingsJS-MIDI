@@ -9159,3 +9159,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   a PR merge checkout; its raw dirty flag is retained, and all five changed runtime
   hashes match350's published receipt. 351's engine/codec jobs pass but its main
   job fails six old fixture capture preconditions, so it is not fully green.
+
+### Continuation 353 - complete desktop gesture transactions
+
+- Preserve the physical terrain brush's first lease when another contact is
+  refused. Curve/dock publications revalidate source identity, including observed
+  A→B→A, before a draft can continue.
+- Retire an unhandled owning release when native pending capture disappears.
+  Cleanup runs on the next task after window commit handlers and cannot cancel a
+  reentrant replacement owner. Capture loss cancels; it never publishes a draft.
+- The final grouped pass has41 Node passes and37 browser passes at1920×1080:
+  terrain/curve/dock capture loss, Escape, controlled blur, modal opening, source
+  replacement, removal, disposal, capture rejection and native concurrent contact
+  startup. Every isolated tool journey recovers a fresh camera pan; production
+  terrain Apply advances exactly one real boundary and survives physical
+  Undo/Redo. Existing native pen and window paint commits remain covered.
+- Close #1000's software interaction acceptance after publication. Keep actual
+  OS-background, physical tablet/pressure and device qualification with the broader
+  platform owners. The new grouped checks do not advance the full CI checkpoint;
+ 350 remains the latest verified full green head.
+- Preserve initial native-input and event-order failures in the canonical receipt.
+  Correct352's empty parsed-attachment array by adding the3 recovered exact JSON
+  attachments here; retain the published352 entry and raw report hashes unchanged.
+  Focused Node coverage is a measurement of this subset, not a project-wide gate.

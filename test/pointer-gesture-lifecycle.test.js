@@ -18,6 +18,17 @@ describe('desktop gesture lifetime ownership', () => {
   });
   afterEach(() => { arbiter.cancel('test-cleanup'); dom.window.close(); });
   const acquire = (overrides = {}) => arbiter.acquire({ pointerId: 1, targetKey: 'paint', identity: 'a', getIdentity: () => 'a', captureTarget: canvas, ...overrides });
+  it('retires an unhandled owning release after pending capture disappears and ignores foreign releases', async () => {
+    const reasons = []; acquire({ onCancel: reason => reasons.push(reason) });
+    document.body.dispatchEvent(pointer('pointerup', 2)); await new Promise(resolve => setTimeout(resolve, 0)); expect(arbiter.inspect().pointerId).to.equal(1);
+    document.body.dispatchEvent(pointer('pointerup', 1)); await new Promise(resolve => setTimeout(resolve, 0)); expect(arbiter.inspect()).to.equal(null); expect(reasons).to.deep.equal(['unhandled-pointerup']);
+  });
+  it('lets window handlers commit first and cannot cancel a new reentrant owner', async () => {
+    const reasons = [], lease = acquire({ onCancel: reason => reasons.push(reason) });
+    dom.window.addEventListener('pointerup', event => { expect(lease.finish(event)).to.equal(true); acquire({ onCancel: reason => reasons.push(reason) }); }, { once: true });
+    canvas.dispatchEvent(pointer('pointerup', 1)); await new Promise(resolve => setTimeout(resolve, 0)); expect(arbiter.inspect().id).not.to.equal(lease.id); expect(reasons).to.deep.equal([]);
+    arbiter.cancel('finished'); expect(reasons).to.deep.equal(['finished']);
+  });
   it('ignores foreign contacts and releases the captured owner exactly once on finish', () => {
     const lease = acquire(); captured.add(1);
     canvas.dispatchEvent(pointer('pointercancel', 2)); canvas.dispatchEvent(pointer('lostpointercapture', 2));

@@ -51,7 +51,7 @@ export function createWorkstationDock({ document, window, shell, inspector, resi
   });
   paint();
   return Object.freeze({ toggle, mode, open, choose, visible, panelId: tab => tab === 'Selection' && selectionPanel?.firstElementChild ? selectionPanel.id : fields.id, cancel: reason => gesture?.lease.cancel(reason),
-    update() { if (disposed) return; try { context = createWorkstationDockContext({ ...getContext(), documentIdentity: getIdentity() }); } catch (failure) { context = null; onStatus(failure.message); } paint(); },
+    update() { if (disposed) return; arbiter.revalidate(); try { context = createWorkstationDockContext({ ...getContext(), documentIdentity: getIdentity() }); } catch (failure) { context = null; onStatus(failure.message); } paint(); },
     inspect: () => Object.freeze({ mode: state.workspaceMode, height: state.dockHeight, visible: visible(), context, gestureId: gesture?.lease.id ?? null }),
     dispose() { if (disposed) return; gesture?.lease.cancel('disposed'); disposed = true; for (const release of listeners) release(); if (selectionPanel) { for (const child of [...selectionPanel.children]) inspector.append(child); selectionPanel.remove(); selectionPanel = null; } header.remove(); toggle.remove(); mode.remove(); context = returnFocus = null; } });
 }
