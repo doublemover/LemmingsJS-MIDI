@@ -49,7 +49,7 @@ const CATEGORY_PATTERNS = Object.freeze({
     'test/trigger*.test.js', 'test/command*.test.js', 'test/history-*.test.js',
     'test/time-travel*.test.js', 'test/input/*.test.js', 'test/walk-wall-collision.test.js'
   ],
-  midi: ['test/midi/**/*.test.js', 'test/physical-take-midi.test.js', 'test/procgen-physical-midi-timing.test.js'],
+  midi: ['test/midi/**/*.test.js', 'test/physical-take-midi.test.js', 'test/procgen-physical-midi-timing.test.js', 'test/recording-flush-reference.test.js'],
   midi2: ['test/recorded-ump-clip.test.js', 'test/procgen-original-ump-capture.test.js', 'test/midi/midi-clip-file.test.js', 'test/midi/midi-clip-worker.test.js', 'test/midi/ump-packet-codec.test.js', 'test/midi/ump-stream-decoder.test.js', 'test/midi/midi-protocol-lowering.test.js', 'test/midi/midi-controller-mutations.test.js'],
   procgen: ['test/procgen-*.test.js', 'test/instrument-motion-policy.test.js', 'test/midi/procgen-workstation-music.test.js'],
   bench: ['test/*bench*.test.js', 'test/browser-work-observation.test.js', 'test/history-replay-evidence.test.js'],

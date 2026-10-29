@@ -9670,3 +9670,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   Native OS dialogs, user filesystem grants, real disk faults and power-loss
   durability remain distinct from this automated browser coverage. Continue the
   backlog without a desktop Computer Use dependency or another full local run.
+
+### Continuation 374 - Playwright recording control tails and pending storage
+
+- Compare eight seeded complete preview-intent histories after16phases of
+  overlapping same-pitch/multiroute notes, disordered timestamps, future
+  cancellation and repeated flush/Panic. All201 related Node cases pass.
+- Measure trusted Stage Pause/Stop/Panic at1k/10k/99k retained records with64
+  samples per operation. Post-click-task p99 is at most16.3ms and second-rAF
+  p99 at most30.2ms in this Chromium run; at most132 records revisited and no
+  observed long tasks overlap sample windows. Keep all history. Separate owner
+  benchmark covers1k/10k/100k/1m; await actual retirement before zero-budget checks.
+- Real IndexedDB document write remains pending while trusted Panic completes
+  with22record revisits and preserves10003records/world/tick. Release controlled
+  transaction keepalive and observe actual revision1 durable acknowledgement.
+  No physical disk/power-loss, acoustic or hard realtime claim. Four distinct
+  Playwright cases pass across the documented groups, all at1920×1080. Preserve
+  the initial premature-retirement assertion and Stage fixture refusal.
+- Promote372/eda85f9e to full green:7208Node/10preexisting pending,26desktop,
+  219workstation,18engine,14capabilities, both native codec jobs and benchmark/
+  MCP/policy/dependency gates. Verify1146workstation/1257engine/both8native
+  inventories against that Git tree; native corpora/output hashes agree.
+  Coverage90.76%lines/83.95%branches/88.61%functions. Later test source is separate.
+- Close the bounded recording-index/export-performance work in #1117 with these
+  receipts; full physical-tape replay corpus remains #1092 and combined system
+  performance qualification remains #1087. Continue solo with Playwright.

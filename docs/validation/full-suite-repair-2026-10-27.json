@@ -818,46 +818,46 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "9e7bffb6423d060fa46f7cea5c4a3d41063d80ad",
+    "head": "eda85f9e37699fca34edb951bc172778a6cb7731",
     "status": "success",
-    "run": 40961685662,
-    "job": 123755792574,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40961685662",
-    "engineJob": 123755792068,
+    "run": 40968043509,
+    "job": 123777450101,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40968043509",
+    "engineJob": 123777450413,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7188,
+    "nodePassed": 7208,
     "nodePending": 10,
-    "browserPassed": 260,
+    "browserPassed": 263,
     "desktopPassed": 26,
-    "workstationSmokePassed": 216,
+    "workstationSmokePassed": 219,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.79,
-      "statements": 90.79,
-      "branches": 83.96,
-      "functions": 88.65
+      "lines": 90.76,
+      "statements": 90.76,
+      "branches": 83.95,
+      "functions": 88.61
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 38335,
+      "totalDurationMs": 30851,
       "measurementValid": true,
       "failures": [],
       "metrics": {
-        "perfP95Frame": 100,
-        "perfP50Tps": 82.78783211399251,
-        "historyRatio": 0.5861666666666666,
-        "antsAvgMs": 31.8,
-        "tileCompositionAvgMs": 4.07,
-        "overlayPlaneAvgMs": 21.28,
-        "scaledBlitAvgMs": 32.58
+        "perfP95Frame": 83.39999999999964,
+        "perfP50Tps": 104.28931875525652,
+        "historyRatio": 0.5858333333333333,
+        "antsAvgMs": 12.05,
+        "tileCompositionAvgMs": 2.37,
+        "overlayPlaneAvgMs": 8.54,
+        "scaledBlitAvgMs": 17.23
       }
     },
     "mcp": "success",
@@ -865,9 +865,9 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1252,
+      "files": 1257,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "190a0893ca8b920c53c554d7a42d7e1372562b7a01536a46f4eab81a6264b879",
+      "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
@@ -893,8 +893,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123755792499,
-      "windowsJob": 123755792890,
+      "linuxJob": 123777450318,
+      "windowsJob": 123777450228,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -905,55 +905,55 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "bf5ef49d1c3f122a42018ab1649bd4cb2ca237f5",
+      "testedPrMergeHead": "2f621754c15374bc24293bd2d91740a6565c9390",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1141,
-      "inventorySha256": "4e13a4a189f9d0d3ca90a8b4889a010449db98b213e263f3d9320ce1b8f6ee50",
+      "inventoryFiles": 1146,
+      "inventorySha256": "b7d0cb5a7ce34487a879821049ec54297e487e1613dc4fbc28b77ed76262a571",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1252,
+      "engineInventoryFiles": 1257,
       "allEngineSourceFilesMatchPublishedHead": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci369-main.zip",
-        "bytes": 658427,
-        "sha256": "7547fea028d12313d92c28ea548944e4db7c57469175a72f6a2d2e65c4145d9d"
+        "path": ".tmp/ci372-main.zip",
+        "bytes": 679371,
+        "sha256": "06d57939685ac2cc9f3458dfa86d9ac5e6c086a58ae5edca0206632ae9478631"
       },
       {
-        "path": ".tmp/ci369-engine.zip",
-        "bytes": 155828,
-        "sha256": "c9855bc2039fdeecfe6241e9a3cd4eb707c68b75d360b29dd79629c786a64715"
+        "path": ".tmp/ci372-engine.zip",
+        "bytes": 156900,
+        "sha256": "578b91cd4dfd4fa1d9d80fcbd50827009e23477f2ee0a3e702f96922cd427719"
       },
       {
-        "path": ".tmp/ci369-linux.zip",
+        "path": ".tmp/ci372-linux.zip",
         "bytes": 2247,
-        "sha256": "e1341477ba0d654e1fb29869fa97973fe345846eaa75e1ab62889c8ce4d7b94a"
+        "sha256": "8dde3afd1d9fccb5a3e5220994ccd682a9d9b8ad35c920b19ecd9478be9fc792"
       },
       {
-        "path": ".tmp/ci369-windows.zip",
-        "bytes": 2147,
-        "sha256": "d090041eac7b868cdc26753f76664c4909e38544daf6976adf7abd8a6ca940cc"
+        "path": ".tmp/ci372-windows.zip",
+        "bytes": 2148,
+        "sha256": "b50aa2b65035ab099ff3971120f7b8437c19cfc62bc34942b9dcc792eb93d3f1"
       },
       {
-        "path": ".tmp/ci369-main-workstation-result-qualification.json",
-        "bytes": 184237,
-        "sha256": "ed06d489f04f4ee741dcc5ebf3362a396d450fed2041722296f12ab556c5b5bd"
+        "path": ".tmp/ci372-main-workstation-result-qualification.json",
+        "bytes": 185102,
+        "sha256": "4820073e0a7a3efbe89d2a195b128bfc64740f87aa2189601d51f37277a3afbd"
       },
       {
-        "path": ".tmp/ci369-engine-lifecycle-engine-qualification.json",
-        "bytes": 243367,
-        "sha256": "e862560fb28a509f3748e141f3b2c6124811e3c73f8f8e29abb210c4d0b7d572"
+        "path": ".tmp/ci372-engine-lifecycle-engine-qualification.json",
+        "bytes": 244359,
+        "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
       },
       {
-        "path": ".tmp/ci369-linux-native-midi-codec-qualification.json",
+        "path": ".tmp/ci372-linux-native-midi-codec-qualification.json",
         "bytes": 7877,
-        "sha256": "3de1fd23d7e1378f6fe111fb450aa8496aa8870c6217ca333eca465133349b18"
+        "sha256": "9f7f912bc4eefe26be24bd302e3881320c453ae47fe043740c574005f0a4a946"
       },
       {
-        "path": ".tmp/ci369-windows-native-midi-codec-qualification.json",
-        "bytes": 7748,
-        "sha256": "5b19a27fa2d376608ad5779c52f8232f809ddbaf464580d9c690338a7657d45c"
+        "path": ".tmp/ci372-windows-native-midi-codec-qualification.json",
+        "bytes": 7747,
+        "sha256": "f849c05e86e8640e4dea5b387d42d688d14373e3895b580ee18c475fde3f7ec4"
       }
     ],
     "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
@@ -79408,5 +79408,1011 @@
       ],
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
+  },
+  "continuation374": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "scope": "Playwright production recording control tails, generated full-history intent ledger and nonblocking real IndexedDB document backpressure; benchmark retirement awaits its real completion receipt.",
+    "baseHead": "ca9f2a86613a4716c67fdaf557adb0d00d10c0a3",
+    "applicationSourceHead": "eda85f9e37699fca34edb951bc172778a6cb7731",
+    "changes": [
+      "Generate eight deterministic 16-phase full-history references with 1024 overlapping preview voices per seed, multiple routes/channels/same pitches, indefinite notes, timestamp disorder, active/future cancellation and idempotent flush/Panic. Compare the complete retained byte/time/route/voice order.",
+      "Measure trusted Playwright Stage Pause/Stop/Panic pointer/click tails at1k/10k/99k production records,64samples per operation, explicit-GC heap and long-task windows. Retain all history; the independent actual-owner probe covers1k/10k/100k/1m.",
+      "Hold a real IndexedDB document transaction active using controlled get requests, click Panic while its native write awaits completion, release it and verify actual durable save acknowledgement without changing the world/tick/recording.",
+      "Repair the benchmark helper to await acknowledged MIDI-performance retirement before asserting zero reservations. Preserve the strict zero-budget check."
+    ],
+    "validation": {
+      "node": {
+        "passed": 201,
+        "failed": 0,
+        "files": [
+          "test/recording-flush-reference.test.js",
+          "test/recording-range-index.test.js",
+          "test/procgen-workstation-midi.test.js",
+          "test/procgen-workstation-controller.test.js",
+          "test/procgen-original-ump-capture.test.js"
+        ]
+      },
+      "playwright": {
+        "distinctCases": 4,
+        "groups": [
+          {
+            "report": ".tmp/rook374-recording-playwright-final.json",
+            "passed": 3,
+            "note": "Range smoke, exact1k–1m owner benchmark and earlier Stop/Panic UI version."
+          },
+          {
+            "report": ".tmp/rook374-stage-playwright-second.json",
+            "passed": 1,
+            "note": "Final expanded Pause/Stop/Panic UI case supersedes the earlier two-control probe."
+          },
+          {
+            "report": ".tmp/rook374-storage-playwright-final.json",
+            "passed": 1,
+            "note": "Disjoint real IndexedDB backpressure case; application runtime unchanged across all groups."
+          }
+        ],
+        "environment": {
+          "browser": "153.0.8010.12",
+          "viewport": {
+            "width": 1920,
+            "height": 1080
+          },
+          "source": "built-browser-runtime",
+          "heap": "CDP after explicit collection"
+        },
+        "buttonProfiles": [
+          {
+            "history": 1000,
+            "iterations": 192,
+            "fixedOutstanding": {
+              "active": 1,
+              "future": 1
+            },
+            "operations": {
+              "pause": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.599999994039536,
+                  "p95Ms": 13.5,
+                  "p99Ms": 14.900000005960464,
+                  "maximumMs": 14.900000005960464
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 26.700000017881393,
+                  "p95Ms": 29.30000001192093,
+                  "p99Ms": 30.100000023841858,
+                  "maximumMs": 30.100000023841858
+                },
+                "maximumRescannedEvents": 132
+              },
+              "stop": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.5,
+                  "p95Ms": 14.199999988079071,
+                  "p99Ms": 15.5,
+                  "maximumMs": 15.5
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 26.400000005960464,
+                  "p95Ms": 28.5,
+                  "p99Ms": 30.19999998807907,
+                  "maximumMs": 30.19999998807907
+                },
+                "maximumRescannedEvents": 130
+              },
+              "panic": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.599999994039536,
+                  "p95Ms": 13.5,
+                  "p99Ms": 14,
+                  "maximumMs": 14
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 26.700000017881393,
+                  "p95Ms": 28.400000005960464,
+                  "p99Ms": 29,
+                  "maximumMs": 29
+                },
+                "maximumRescannedEvents": 132
+              }
+            },
+            "source": {
+              "recordedEvents": 1385,
+              "capacity": 100000,
+              "index": {
+                "generation": 1,
+                "capacity": 100000,
+                "chunkSize": 128,
+                "appended": 1961,
+                "canceled": 576,
+                "scannedEvents": 13086,
+                "refreshedChunks": 197,
+                "treeUpdates": 21580,
+                "pendingChunks": 0,
+                "typedBytes": 73728,
+                "metadataEstimate": 6400000,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-1",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 6477824,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "longTasks": [],
+              "sameWorld": true,
+              "sameTick": true
+            },
+            "memoryBefore": {
+              "usedSize": 41151636,
+              "totalSize": 42319872,
+              "embedderHeapUsedSize": 9323880,
+              "backingStorageSize": 59892535
+            },
+            "memoryLoaded": {
+              "usedSize": 41679968,
+              "totalSize": 42582016,
+              "embedderHeapUsedSize": 8889952,
+              "backingStorageSize": 59985042
+            },
+            "memoryAfterClicks": {
+              "usedSize": 43141120,
+              "totalSize": 43954176,
+              "embedderHeapUsedSize": 8525960,
+              "backingStorageSize": 59985914
+            },
+            "memoryRetired": {
+              "usedSize": 42960372,
+              "totalSize": 44216320,
+              "embedderHeapUsedSize": 9548920,
+              "backingStorageSize": 59893630
+            },
+            "observedLongTasksDuringSamples": []
+          },
+          {
+            "history": 10000,
+            "iterations": 192,
+            "fixedOutstanding": {
+              "active": 1,
+              "future": 1
+            },
+            "operations": {
+              "pause": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 12.199999988079071,
+                  "p95Ms": 13.5,
+                  "p99Ms": 16.30000001192093,
+                  "maximumMs": 16.30000001192093
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 28,
+                  "p95Ms": 29.400000005960464,
+                  "p99Ms": 30,
+                  "maximumMs": 30
+                },
+                "maximumRescannedEvents": 132
+              },
+              "stop": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 12.099999994039536,
+                  "p95Ms": 13.599999994039536,
+                  "p99Ms": 14.199999988079071,
+                  "maximumMs": 14.199999988079071
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 28.19999998807907,
+                  "p95Ms": 29.30000001192093,
+                  "p99Ms": 29.900000005960464,
+                  "maximumMs": 29.900000005960464
+                },
+                "maximumRescannedEvents": 132
+              },
+              "panic": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 12.400000005960464,
+                  "p95Ms": 13.599999994039536,
+                  "p99Ms": 14.100000023841858,
+                  "maximumMs": 14.100000023841858
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 28.30000001192093,
+                  "p95Ms": 29.5,
+                  "p99Ms": 30.19999998807907,
+                  "maximumMs": 30.19999998807907
+                },
+                "maximumRescannedEvents": 128
+              }
+            },
+            "source": {
+              "recordedEvents": 10385,
+              "capacity": 100000,
+              "index": {
+                "generation": 3,
+                "capacity": 100000,
+                "chunkSize": 128,
+                "appended": 10961,
+                "canceled": 576,
+                "scannedEvents": 12958,
+                "refreshedChunks": 196,
+                "treeUpdates": 111570,
+                "pendingChunks": 0,
+                "typedBytes": 73728,
+                "metadataEstimate": 6400000,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-1",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 6477824,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "longTasks": [],
+              "sameWorld": true,
+              "sameTick": true
+            },
+            "memoryBefore": {
+              "usedSize": 42952556,
+              "totalSize": 43954176,
+              "embedderHeapUsedSize": 9467576,
+              "backingStorageSize": 59893630
+            },
+            "memoryLoaded": {
+              "usedSize": 44153400,
+              "totalSize": 45527040,
+              "embedderHeapUsedSize": 8437544,
+              "backingStorageSize": 59985949
+            },
+            "memoryAfterClicks": {
+              "usedSize": 44504568,
+              "totalSize": 45789184,
+              "embedderHeapUsedSize": 8597368,
+              "backingStorageSize": 59985914
+            },
+            "memoryRetired": {
+              "usedSize": 43235020,
+              "totalSize": 44740608,
+              "embedderHeapUsedSize": 9484888,
+              "backingStorageSize": 59893630
+            },
+            "observedLongTasksDuringSamples": []
+          },
+          {
+            "history": 99000,
+            "iterations": 192,
+            "fixedOutstanding": {
+              "active": 1,
+              "future": 1
+            },
+            "operations": {
+              "pause": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.699999988079071,
+                  "p95Ms": 13.099999994039536,
+                  "p99Ms": 13.700000017881393,
+                  "maximumMs": 13.700000017881393
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 27.19999998807907,
+                  "p95Ms": 28.69999998807907,
+                  "p99Ms": 30.099999994039536,
+                  "maximumMs": 30.099999994039536
+                },
+                "maximumRescannedEvents": 128
+              },
+              "stop": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.799999982118607,
+                  "p95Ms": 13.5,
+                  "p99Ms": 14.900000005960464,
+                  "maximumMs": 14.900000005960464
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 27.30000001192093,
+                  "p95Ms": 28.69999998807907,
+                  "p99Ms": 29.5,
+                  "maximumMs": 29.5
+                },
+                "maximumRescannedEvents": 132
+              },
+              "panic": {
+                "postClickTask": {
+                  "samples": 64,
+                  "p50Ms": 11.5,
+                  "p95Ms": 13.100000023841858,
+                  "p99Ms": 13.699999988079071,
+                  "maximumMs": 13.699999988079071
+                },
+                "secondAnimationFrame": {
+                  "samples": 64,
+                  "p50Ms": 27.30000001192093,
+                  "p95Ms": 29,
+                  "p99Ms": 29.30000001192093,
+                  "maximumMs": 29.30000001192093
+                },
+                "maximumRescannedEvents": 132
+              }
+            },
+            "source": {
+              "recordedEvents": 99385,
+              "capacity": 100000,
+              "index": {
+                "generation": 5,
+                "capacity": 100000,
+                "chunkSize": 128,
+                "appended": 99961,
+                "canceled": 576,
+                "scannedEvents": 13470,
+                "refreshedChunks": 196,
+                "treeUpdates": 1001570,
+                "pendingChunks": 0,
+                "typedBytes": 73728,
+                "metadataEstimate": 6400000,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-1",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 6477824,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "longTasks": [],
+              "sameWorld": true,
+              "sameTick": true
+            },
+            "memoryBefore": {
+              "usedSize": 43415172,
+              "totalSize": 44478464,
+              "embedderHeapUsedSize": 9545304,
+              "backingStorageSize": 59893646
+            },
+            "memoryLoaded": {
+              "usedSize": 54486096,
+              "totalSize": 55685120,
+              "embedderHeapUsedSize": 8537688,
+              "backingStorageSize": 59985941
+            },
+            "memoryAfterClicks": {
+              "usedSize": 54791768,
+              "totalSize": 56995840,
+              "embedderHeapUsedSize": 8679336,
+              "backingStorageSize": 59985906
+            },
+            "memoryRetired": {
+              "usedSize": 43497688,
+              "totalSize": 45527040,
+              "embedderHeapUsedSize": 9518680,
+              "backingStorageSize": 59893638
+            },
+            "observedLongTasksDuringSamples": []
+          }
+        ],
+        "ownerBenchmark": {
+          "schema": "lemmings-midi-recording-range-benchmark/v1",
+          "profiles": [
+            {
+              "history": 1000,
+              "iterations": 64,
+              "loadingMs": 5.200000017881393,
+              "fixedOutstanding": {
+                "active": 1,
+                "future": 1
+              },
+              "flush": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.19999998807907104,
+                "p99Ms": 0.30000001192092896,
+                "maximumMs": 0.30000001192092896
+              },
+              "panic": {
+                "samples": 32,
+                "p50Ms": 0.09999999403953552,
+                "p95Ms": 0.10000002384185791,
+                "p99Ms": 0.20000001788139343,
+                "maximumMs": 0.20000001788139343
+              },
+              "maximumRescannedEvents": 131,
+              "retained": 1128,
+              "retainedRange": {
+                "firstSequence": 1,
+                "lastSequence": 1320,
+                "firstTimestamp": 0,
+                "lastTimestamp": 1000
+              },
+              "index": {
+                "generation": 0,
+                "capacity": 1528,
+                "chunkSize": 128,
+                "appended": 1320,
+                "canceled": 192,
+                "scannedEvents": 4255,
+                "refreshedChunks": 65,
+                "treeUpdates": 5540,
+                "pendingChunks": 0,
+                "typedBytes": 1152,
+                "metadataEstimate": 97792,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-2",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 103040,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "peakAccountedBytes": 184960,
+              "memoryBefore": {
+                "usedSize": 41180644,
+                "totalSize": 42582016,
+                "embedderHeapUsedSize": 9236880,
+                "backingStorageSize": 59902138
+              },
+              "memoryLoaded": {
+                "usedSize": 41385028,
+                "totalSize": 42582016,
+                "embedderHeapUsedSize": 9220680,
+                "backingStorageSize": 59902168
+              },
+              "memoryRetired": {
+                "usedSize": 41674320,
+                "totalSize": 42582016,
+                "embedderHeapUsedSize": 9591680,
+                "backingStorageSize": 59902163
+              }
+            },
+            {
+              "history": 10000,
+              "iterations": 64,
+              "loadingMs": 21.80000001192093,
+              "fixedOutstanding": {
+                "active": 1,
+                "future": 1
+              },
+              "flush": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.10000002384185791,
+                "p99Ms": 0.20000001788139343,
+                "maximumMs": 0.20000001788139343
+              },
+              "panic": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.19999998807907104,
+                "p99Ms": 0.20000001788139343,
+                "maximumMs": 0.20000001788139343
+              },
+              "maximumRescannedEvents": 131,
+              "retained": 10128,
+              "retainedRange": {
+                "firstSequence": 1,
+                "lastSequence": 10320,
+                "firstTimestamp": 0,
+                "lastTimestamp": 1000
+              },
+              "index": {
+                "generation": 0,
+                "capacity": 10528,
+                "chunkSize": 128,
+                "appended": 10320,
+                "canceled": 192,
+                "scannedEvents": 4128,
+                "refreshedChunks": 65,
+                "treeUpdates": 72695,
+                "pendingChunks": 0,
+                "typedBytes": 9216,
+                "metadataEstimate": 673792,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-3",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 687104,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "peakAccountedBytes": 769024,
+              "memoryBefore": {
+                "usedSize": 41494468,
+                "totalSize": 42582016,
+                "embedderHeapUsedSize": 9227432,
+                "backingStorageSize": 59911726
+              },
+              "memoryLoaded": {
+                "usedSize": 42673144,
+                "totalSize": 43630592,
+                "embedderHeapUsedSize": 9240928,
+                "backingStorageSize": 59911507
+              },
+              "memoryRetired": {
+                "usedSize": 41760216,
+                "totalSize": 42844160,
+                "embedderHeapUsedSize": 9453936,
+                "backingStorageSize": 59914173
+              }
+            },
+            {
+              "history": 100000,
+              "iterations": 64,
+              "loadingMs": 282.89999997615814,
+              "fixedOutstanding": {
+                "active": 1,
+                "future": 1
+              },
+              "flush": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.10000002384185791,
+                "p99Ms": 0.10000002384185791,
+                "maximumMs": 0.10000002384185791
+              },
+              "panic": {
+                "samples": 32,
+                "p50Ms": 0.09999999403953552,
+                "p95Ms": 0.19999998807907104,
+                "p99Ms": 0.3999999761581421,
+                "maximumMs": 0.3999999761581421
+              },
+              "maximumRescannedEvents": 132,
+              "retained": 100128,
+              "retainedRange": {
+                "firstSequence": 1,
+                "lastSequence": 100320,
+                "firstTimestamp": 0,
+                "lastTimestamp": 1000
+              },
+              "index": {
+                "generation": 0,
+                "capacity": 100528,
+                "chunkSize": 128,
+                "appended": 100320,
+                "canceled": 192,
+                "scannedEvents": 4383,
+                "refreshedChunks": 65,
+                "treeUpdates": 1003850,
+                "pendingChunks": 0,
+                "typedBytes": 73728,
+                "metadataEstimate": 6433792,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-4",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 6511616,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "peakAccountedBytes": 6593536,
+              "memoryBefore": {
+                "usedSize": 41994488,
+                "totalSize": 42844160,
+                "embedderHeapUsedSize": 9387288,
+                "backingStorageSize": 59987239
+              },
+              "memoryLoaded": {
+                "usedSize": 52996820,
+                "totalSize": 54312960,
+                "embedderHeapUsedSize": 9156120,
+                "backingStorageSize": 59975103
+              },
+              "memoryRetired": {
+                "usedSize": 41663704,
+                "totalSize": 44154880,
+                "embedderHeapUsedSize": 9137440,
+                "backingStorageSize": 59901221
+              }
+            },
+            {
+              "history": 1000000,
+              "iterations": 64,
+              "loadingMs": 4000.0999999940395,
+              "fixedOutstanding": {
+                "active": 1,
+                "future": 1
+              },
+              "flush": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.20000001788139343,
+                "p99Ms": 0.20000001788139343,
+                "maximumMs": 0.20000001788139343
+              },
+              "panic": {
+                "samples": 32,
+                "p50Ms": 0,
+                "p95Ms": 0.09999999403953552,
+                "p99Ms": 0.30000001192092896,
+                "maximumMs": 0.30000001192092896
+              },
+              "maximumRescannedEvents": 131,
+              "retained": 1000128,
+              "retainedRange": {
+                "firstSequence": 1,
+                "lastSequence": 1000320,
+                "firstTimestamp": 0,
+                "lastTimestamp": 1000
+              },
+              "index": {
+                "generation": 0,
+                "capacity": 1000528,
+                "chunkSize": 128,
+                "appended": 1000320,
+                "canceled": 192,
+                "scannedEvents": 4767,
+                "refreshedChunks": 65,
+                "treeUpdates": 13005005,
+                "pendingChunks": 0,
+                "typedBytes": 589824,
+                "metadataEstimate": 64033792,
+                "closed": false,
+                "reservation": {
+                  "enabled": true,
+                  "owner": "midi-recording-range-5",
+                  "kind": "recording-range-index-and-object-metadata-estimate",
+                  "category": "checkpoint",
+                  "generation": 0,
+                  "declaredBytes": 64627712,
+                  "maxBytes": 536870912,
+                  "state": "reserved",
+                  "error": null
+                },
+                "recordingEventObjects": "owned-by-recording;index-metadata-overhead-is-estimated"
+              },
+              "peakAccountedBytes": 64709632,
+              "memoryBefore": {
+                "usedSize": 41657704,
+                "totalSize": 42844160,
+                "embedderHeapUsedSize": 9064976,
+                "backingStorageSize": 60491045
+              },
+              "memoryLoaded": {
+                "usedSize": 155035948,
+                "totalSize": 156065792,
+                "embedderHeapUsedSize": 9218000,
+                "backingStorageSize": 60491045
+              },
+              "memoryRetired": {
+                "usedSize": 41790788,
+                "totalSize": 44679168,
+                "embedderHeapUsedSize": 9241848,
+                "backingStorageSize": 59901221
+              }
+            }
+          ],
+          "evidence": "actual-ports-flush-and-panic-with-synthetic-retained-CC-history;no-device-send-or-end-to-end-button-latency-claim",
+          "memoryScope": "index-typed-storage-and-conservative-object-metadata-estimate-are-reserved;recording-object-heap-is-measured-separately",
+          "environment": {
+            "browser": "153.0.8010.12",
+            "viewport": {
+              "width": 1920,
+              "height": 1080
+            },
+            "source": "built-browser-runtime",
+            "heap": "CDP after explicit collection"
+          }
+        },
+        "storage": {
+          "before": {
+            "count": 10005,
+            "scans": 0,
+            "document": {
+              "id": null,
+              "revision": 0,
+              "editRevision": 0,
+              "savedRevision": -1,
+              "dirty": true,
+              "savedAt": null
+            }
+          },
+          "after": {
+            "count": 10003,
+            "scans": 22,
+            "pending": true,
+            "sameWorld": true,
+            "sameTick": true,
+            "keepAliveRequests": 531
+          },
+          "committed": {
+            "saved": true,
+            "completed": true,
+            "aborted": false,
+            "document": {
+              "id": "doc:7230ad85-2327-4bf8-be6c-8478e6fda0f2",
+              "revision": 1,
+              "editRevision": 0,
+              "savedRevision": 0,
+              "dirty": false,
+              "savedAt": "2026-10-29T23:18:22.264Z"
+            },
+            "count": 10003
+          },
+          "scope": "Real IndexedDB document transaction held active by controlled get requests while trusted Panic cancels fixed active/future ownership. Actual transaction completion follows release; no physical disk latency, power-loss or acoustic claim."
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run check-undefined",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "priorAttempts": [
+        {
+          "report": ".tmp/rook374-recording-playwright-first.json",
+          "passed": 2,
+          "failed": 1,
+          "reason": "Old benchmark checked zero budget before the asynchronous MIDI-performance retirement acknowledged completion; isolated diagnostic identifies81920bytes still pending, not a proven production leak."
+        },
+        {
+          "report": ".tmp/rook374-owner-diagnostic.json",
+          "reason": "Preserve named pending MIDI-performance resource and strict accounting diagnostic before awaiting retirement."
+        },
+        {
+          "report": ".tmp/rook374-stage-playwright-final.json",
+          "passed": 0,
+          "failed": 1,
+          "reason": "Fixture attempted to author history after entering Stage; its real authoring guard refused. Final fixture prepares before entering Stage and exits before clearing."
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".tmp/rook374-node-final.log",
+          "bytes": 19278,
+          "sha256": "7402d52d0a0b60ff76b9514079f1fedb765a3cce0a01a34a32252720b14924f1"
+        },
+        {
+          "path": ".tmp/rook374-recording-playwright-first.json",
+          "bytes": 18610,
+          "sha256": "4e3e3f6b01e3140360d0217c8e39d2c5992d8c44b2f1f0984f5da6ea4779f91c"
+        },
+        {
+          "path": ".tmp/rook374-recording-playwright-final.json",
+          "bytes": 23752,
+          "sha256": "0abc2a75a7aaa76f3b34396a855cb3dbe6528bb856320c48a844a651df7d9734"
+        },
+        {
+          "path": ".tmp/rook374-owner-diagnostic.json",
+          "bytes": 11497,
+          "sha256": "f173be71ee801831b576d493cc8eb535f9033972b0465ba66e763da210d7b67a"
+        },
+        {
+          "path": ".tmp/rook374-stage-playwright-final.json",
+          "bytes": 7790,
+          "sha256": "fe47794dd1e09115e158885930de7914cbc4a5a7f03538c85cc6644d608dd316"
+        },
+        {
+          "path": ".tmp/rook374-stage-playwright-second.json",
+          "bytes": 14200,
+          "sha256": "c41a59be3dac74cc31e7859e545b7ec0566c5a9b59bfc0b7a5f382124037f99c"
+        },
+        {
+          "path": ".tmp/rook374-storage-playwright-final.json",
+          "bytes": 5575,
+          "sha256": "e1eca64193df97313598941f0683ec60e22074639fb7c2d215c0617c34d6ca41"
+        },
+        {
+          "path": ".tmp/rook374-checks.log",
+          "bytes": 4026,
+          "sha256": "f4043a4e36b49eb5c395944f437d978aa2b20e2ce7fa609bb78a6384008f63c9"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "e2e/procgen-workstation-recording-range.spec.js",
+        "bytes": 17363,
+        "sha256": "8444b405b6b99d0a1cd5b9a4be16fa94aafcad8dfa4be3bd1d1d64e178c78832"
+      },
+      {
+        "path": "test/support/recording-range-benchmark.js",
+        "bytes": 4568,
+        "sha256": "93f2dabe43ba672324d3320062171f134ee1d623da8ba615c8481133a5c699eb"
+      },
+      {
+        "path": "test/recording-flush-reference.test.js",
+        "bytes": 3349,
+        "sha256": "1cfddb5ed426d35e170d31348d2f813c3e481afce9c6d02a6346b81ed7b1b4fd"
+      },
+      {
+        "path": "scripts/runTests.js",
+        "bytes": 17196,
+        "sha256": "17366b15136648d8bbbae4894056f55504d84fe2085d45e8bc5e945f625c8f1e"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "eda85f9e37699fca34edb951bc172778a6cb7731",
+      "status": "success",
+      "run": 40968043509,
+      "job": 123777450101,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40968043509",
+      "engineJob": 123777450413,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7208,
+      "nodePending": 10,
+      "browserPassed": 263,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 219,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.76,
+        "statements": 90.76,
+        "branches": 83.95,
+        "functions": 88.61
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30851,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.39999999999964,
+          "perfP50Tps": 104.28931875525652,
+          "historyRatio": 0.5858333333333333,
+          "antsAvgMs": 12.05,
+          "tileCompositionAvgMs": 2.37,
+          "overlayPlaneAvgMs": 8.54,
+          "scaledBlitAvgMs": 17.23
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1257,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123777450318,
+        "windowsJob": 123777450228,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "2f621754c15374bc24293bd2d91740a6565c9390",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1146,
+        "inventorySha256": "b7d0cb5a7ce34487a879821049ec54297e487e1613dc4fbc28b77ed76262a571",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1257,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci372-main.zip",
+          "bytes": 679371,
+          "sha256": "06d57939685ac2cc9f3458dfa86d9ac5e6c086a58ae5edca0206632ae9478631"
+        },
+        {
+          "path": ".tmp/ci372-engine.zip",
+          "bytes": 156900,
+          "sha256": "578b91cd4dfd4fa1d9d80fcbd50827009e23477f2ee0a3e702f96922cd427719"
+        },
+        {
+          "path": ".tmp/ci372-linux.zip",
+          "bytes": 2247,
+          "sha256": "8dde3afd1d9fccb5a3e5220994ccd682a9d9b8ad35c920b19ecd9478be9fc792"
+        },
+        {
+          "path": ".tmp/ci372-windows.zip",
+          "bytes": 2148,
+          "sha256": "b50aa2b65035ab099ff3971120f7b8437c19cfc62bc34942b9dcc792eb93d3f1"
+        },
+        {
+          "path": ".tmp/ci372-main-workstation-result-qualification.json",
+          "bytes": 185102,
+          "sha256": "4820073e0a7a3efbe89d2a195b128bfc64740f87aa2189601d51f37277a3afbd"
+        },
+        {
+          "path": ".tmp/ci372-engine-lifecycle-engine-qualification.json",
+          "bytes": 244359,
+          "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
+        },
+        {
+          "path": ".tmp/ci372-linux-native-midi-codec-qualification.json",
+          "bytes": 7877,
+          "sha256": "9f7f912bc4eefe26be24bd302e3881320c453ae47fe043740c574005f0a4a946"
+        },
+        {
+          "path": ".tmp/ci372-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "f849c05e86e8640e4dea5b387d42d688d14373e3895b580ee18c475fde3f7ec4"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "scopeLimits": [
+      "Paused physics with fixed active/future recording ownership; post-click macrotask and second requestAnimationFrame callback, not monitor presentation or strict realtime.",
+      "Collected browser heap includes warmup/cache effects. No claim of identical heap return or total event-object coverage by index metadata reservations.",
+      "Real browser IndexedDB transaction with controlled keepalive pressure, not physical disk latency or power-loss durability. Durable physical-tape semantics remain under1092; mixed performance qualification remains1087.",
+      "Generated ownership reference covers recorded preview intent; prior independent complete-MIDI-byte export and input/sustain/capacity/disposal cohorts remain separate evidence. No hardware or acoustic claim."
+    ]
   }
 }

@@ -34,7 +34,12 @@ export async function benchmarkRecordingRanges({ createPorts, createBudget, size
       }
       retained = verifyHistory(ports, history + iterations * 2);
       index = ports.getRecordingIndexState(); peakAccountedBytes = budget.diagnostics().peakAccountedBytes;
-    } finally { ports.clearRecording(); ports.dispose(); if (budget.diagnostics().accountedBytes !== 0) throw new Error('Recording index resources did not retire.'); }
+    } finally {
+      ports.clearRecording(); const retirement = ports.dispose();
+      if (retirement?.completion) await retirement.completion;
+      if (retirement?.outcome && retirement.outcome !== 'complete' || budget.diagnostics().accountedBytes !== 0) throw new Error('Recording index resources did not retire: ' + JSON.stringify({ history,
+        resources: retirement?.resources, owners: budget.inspectOwners?.({ maximum: 8 }), diagnostics: budget.diagnostics() }));
+    }
     memoryRetired = await collectMemory();
     profiles.push({ history, iterations, loadingMs, fixedOutstanding: { active: 1, future: 1 }, flush: timing(flush), panic: timing(panic),
       maximumRescannedEvents: Math.max(...scans), retained, retainedRange: state.retainedRange, index, peakAccountedBytes, memoryBefore, memoryLoaded, memoryRetired });
