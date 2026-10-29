@@ -46,7 +46,12 @@ test('a captured phrase durably branches a fitted body, preserves a shared froze
     await dialog.getByLabel('Render source model', { exact: true }).selectOption(model);
     await dialog.getByLabel('Render end policy', { exact: true }).selectOption('exact-crop');
     await dialog.getByLabel('Include all captured dry lane stems', { exact: true }).check();
-    await dialog.getByRole('button', { name: 'Prepare revoice WAV', exact: true }).click();
+    const immediate = await dialog.getByRole('button', { name: 'Prepare revoice WAV', exact: true }).evaluate(button => {
+      const dialog = button.closest('dialog'); button.click();
+      return { harvestDisabled: [...dialog.querySelectorAll('button')].find(value => value.textContent === 'Harvest selected file as seed').disabled,
+        selectionDisabled: dialog.querySelector('[aria-label="Prepared rendered file"]').disabled };
+    });
+    expect(immediate).toEqual({ harvestDisabled: true, selectionDisabled: true });
     await expect(dialog.getByRole('button', { name: 'Harvest selected file as seed', exact: true })).toBeEnabled({ timeout: 60000 });
     await dialog.getByLabel('Prepared rendered file', { exact: true }).selectOption('1'); return dialog;
   };
@@ -82,7 +87,8 @@ test('a captured phrase durably branches a fitted body, preserves a shared froze
   before = await boundary(page); expect(before.physics).toBe(capturedBoundary.physics); expect(before.sameWorld).toBe(true);
   dialog = await render('worklet-sine'); await dialog.getByRole('button', { name: 'Harvest selected file as seed', exact: true }).click();
   await expect.poll(async () => (await state(page)).offeredSource).toBe(true); expect((await state(page)).analysis.candidate.assetHash).toBe(frozen.assetHash);
-  await lab.getByRole('button', { name: 'Plan selected derived rebuild', exact: true }).click(); await expect.poll(async () => (await state(page)).rebuildPlan?.state).toBe('rebuildable');
+  await lab.getByRole('button', { name: 'Plan selected derived rebuild', exact: true }).click();
+  await expect.poll(async () => { const plan = (await state(page)).rebuildPlan; return plan?.state === 'unavailable' ? { state: plan.state, blockers: plan.blockers } : plan?.state; }).toBe('rebuildable');
   const plan = (await state(page)).rebuildPlan; expect(plan.nodes.map(node => node.id)).toEqual(['source', 'region', 'modal', 'patch']);
   await lab.getByRole('button', { name: 'Prepare selected derived branch', exact: true }).click();
   await expect.poll(async () => (await state(page)).rebuild.summary?.contentHash, { timeout: 60000 }).toBeTruthy();

@@ -8475,3 +8475,18 @@ export-budget acknowledgments still prevent a false complete receipt.
   the expanded Escape/pointer/error case also passes on the combined final batch.
   Critical types, undefined calls, provenance and browser category checks pass.
   Keep #1161 open for its remaining startup/first-sound/offline/hardware scope.
+
+### Continuation 322 — synchronous render selection ownership
+
+- Full CI320 passed115 workstation cases and failed the derived-seed rebuild:
+  the replacement file was master while the original source was a captured dry
+  lane. The source/tap compatibility guard correctly rejected that replacement.
+- Disable file selection/harvest/delivery synchronously before render preparation,
+  including four-way comparison. Resolve files only against the displayed bundle
+  and preserve prior artifacts when preparation fails. Keep compatibility guards.
+- All12 renderer/graft-owner Node cases and all3 combined native workflows pass:
+  real phrase/dry-stem render, deferred tool interaction and full fitted-body
+  rebuild/frozen shared-project/over-budget graft refusal. The rebuild asserts
+  disabled controls in the same JavaScript turn as Prepare, before display writes.
+- Full local suite is not repeated. Publish the combined changes for complete CI;
+  the failed320 run skipped MCP/benchmark/coverage and remains in the receipt.

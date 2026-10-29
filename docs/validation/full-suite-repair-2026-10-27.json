@@ -26221,5 +26221,136 @@
         "remaining": "Optional hardware/creative graph and measured cold/warm/offline/subdirectory/stale-chunk, first accepted sound and declared-target startup/interaction budgets."
       }
     }
+  },
+  "continuation322": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Fence render file actions before deferred display writes",
+    "sourceBase": "2e574475835f20065b4e14fdef0b7b579e454948",
+    "issues": [
+      1236,
+      1207
+    ],
+    "development": [
+      "Mark preparation and paint disabled file actions synchronously before worker or comparison preparation.",
+      "Use only the selected entry from the currently displayed prepared bundle; guard prelisten/harvest/download/save/discard against preparation or metadata loading. Preserve old prepared output on failure.",
+      "Sample renderer state once per paint. Keep exact source-rate/origin/tap rebuild policy unchanged."
+    ],
+    "validation": {
+      "node": {
+        "passed": 12,
+        "failed": 0,
+        "scope": "Existing renderer/graft comparison owners."
+      },
+      "browser": {
+        "passed": 3,
+        "failed": 0,
+        "durationMs": 50900,
+        "scope": "Actual captured phrase/dry stem immutable-worker render; expanded deferred tool Escape/pointer/module failure; captured fitted-body derived rebuild, shared frozen project and over-budget graft rejection. Same-turn Prepare assertions exercise busy selection before scheduled paint."
+      },
+      "earlierLocalReproduction": {
+        "passed": 1,
+        "scope": "The original focused seed case passed locally before the fix; this did not dismiss the attached CI failure. The new same-turn busy assertion covers the discovered race deterministically."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending combined exact-head run. Full320 failed115pass/1fail and skipped MCP/benchmark/coverage; full316 remains last green recorded checkpoint.",
+      "scopeLimits": [
+        "No tap/source compatibility relaxation.",
+        "Broader derived graph and artifact workflow acceptance remains open under1236/1207.",
+        "No physical MIDI device or acoustic qualification implied."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-node-render.log",
+        "bytes": 1523,
+        "sha256": "bc1c8373a7ef6efbf469f02a3494ddf7e4268054a4cb5dee0731adf5ec584e65"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-native-render-busy.log",
+        "bytes": 909,
+        "sha256": "768a6a98b46f132324d396f05ffe27c43e1a5e2156a2316afed164e3ba1b5abb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog321-seed-rebuild.log",
+        "bytes": 514,
+        "sha256": "6d98078a42b15b05e5852b8b671bc2f2a83153a796126d86e5600ef846f09298"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-categories.log",
+        "bytes": 2706,
+        "sha256": "50d5bed019ac8c0d03e5693d7fad19045ad5a95440788ae81558bc6a1098ae18"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog322-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog321-render-busy-results.json",
+        "bytes": 228220,
+        "sha256": "78092cd1df1e0fd9fa4e2235c653c969c0e8cf0d988e160168babfa564cf3cf9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog321-seed-rebuild-results.json",
+        "bytes": 219228,
+        "sha256": "92cdc2e8dbad26e8ebb1491657657bd4f1829ade5e59d60955bf6930c858ec03"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-321-coverage-render\\coverage-summary.json",
+        "bytes": 87152,
+        "sha256": "54ee5b09460219fabb9e9bb9cb78303c4b1cbc8a4e94311298657529f754585d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci320-seed-failure-state.json",
+        "bytes": 41601,
+        "sha256": "8254461be21e1b33fe8db5041a53bec103785a9bce9120a3ae62764fd911b9b0"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/midi-ui/CausalTakeAudioRenderView.js",
+        "bytes": 29953,
+        "sha256": "6ee1f257d7bdaf26a90609bc68a863dad6ff71205275bdc7a6bdcc3609ae7b88"
+      },
+      {
+        "path": "e2e/procgen-workstation-seed-rebuild.spec.js",
+        "bytes": 14935,
+        "sha256": "29b4999d48474abab34f1a2b309d5f0516b4ad2c323a7ddd87e4a690a6294f09"
+      }
+    ],
+    "issueStatus": {
+      "1236": {
+        "state": "open-implemented-partial"
+      },
+      "1207": {
+        "state": "open-implemented-partial"
+      }
+    }
   }
 }
