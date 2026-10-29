@@ -8745,3 +8745,11 @@ export-budget acknowledgments still prevent a false complete receipt.
   lines/statements,83.79% branches,88.48% functions; ten pre-existing pending.
   Its80640-frame capture is Partial after a128-frame clock discontinuity.335
   requires its own full run; the capture does not change the successful CI result.
+
+### Continuation 336 — committed worker source digest
+
+- The335CI run stopped at provenance: its digest included four CR bytes that
+  Git normalized out of BackgroundJobKinds.js. Restore that working file to its
+  committed LF bytes and recalculate the worker digest; runtime semantics and
+  the completed335validation are unchanged. Verify filtered Git source bytes
+  before publishing the corrected manifest. Full336CI remains independent.

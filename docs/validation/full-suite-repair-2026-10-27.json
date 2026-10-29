@@ -31145,7 +31145,8 @@
       {
         "path": "js/app/resources/BackgroundJobKinds.js",
         "bytes": 2209,
-        "sha256": "752f5fbff21d40cdc43b3b8a60b1e394c8c3ee4180bdafd67e7b45b0681a1058"
+        "sha256": "752f5fbff21d40cdc43b3b8a60b1e394c8c3ee4180bdafd67e7b45b0681a1058",
+        "testedWorkingTreeBeforeGitNormalization": true
       },
       {
         "path": "test/procgen-preference-pages.test.js",
@@ -31175,7 +31176,8 @@
       {
         "path": "provenance/runtime-artifacts.json",
         "bytes": 21412,
-        "sha256": "bb1d76af265536dc98af91736160ca53e566eece640cff32ded3eef92cefa35b"
+        "sha256": "bb1d76af265536dc98af91736160ca53e566eece640cff32ded3eef92cefa35b",
+        "testedWorkingTreeBeforeGitNormalization": true
       }
     ],
     "issueStatus": {
@@ -31184,5 +31186,28 @@
         "remaining": "Large-ensemble target cadence, full launch/main-thread budget and reduced initial/coalesced all-lane serialization latency."
       }
     }
+  },
+  "continuation336": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "f7b97e42f523eccacee268bf117dd407037a2b9d",
+    "scope": "Correct the worker provenance digest after Git normalized the four BackgroundJobKinds.js line endings from CRLF to LF. Runtime semantics are unchanged.",
+    "priorCi": {
+      "head": "f7b97e42f523eccacee268bf117dd407037a2b9d",
+      "run": 40830034930,
+      "job": 123301881850,
+      "status": "failure",
+      "failedStep": "npm run provenance:check",
+      "cause": "The pre-commit working-tree digest included four CR bytes removed by .gitattributes at add time; Linux checks the committed LF bytes. Browser/Node tests did not run.",
+      "expectedBefore": "413bd15f868bf880be439d4a6459132652535adbad833eea166072f69a86f069",
+      "committedDigest": "eaf837b01d3c0c1713b569a19231f2ce3acf8ad8e041f5897a3a5fa88d081051"
+    },
+    "validation": [
+      "Normalize only BackgroundJobKinds.js to its existing committed LF bytes.",
+      "Recalculate all281worker files using the same path/NUL/content/NUL algorithm.",
+      "Check every manifest input against Git filtered bytes before publication; no semantic runtime or test source changes.",
+      "The335scoped237Node,12distinctdesktop and full three-size production save/reload results remain applicable; the independent full336CI is pending."
+    ],
+    "workerSha256": "eaf837b01d3c0c1713b569a19231f2ce3acf8ad8e041f5897a3a5fa88d081051"
   }
 }
