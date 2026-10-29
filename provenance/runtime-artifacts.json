@@ -260,6 +260,9 @@
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
         "js/app/procgen/workstation/PhysicalJunctionProject.js",
+        "js/app/procgen/workstation/PhysicalMidiTiming.js",
+        "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "js/app/procgen/workstation/ProcgenPhysicalScoreClock.js",
         "js/app/procgen/workstation/ProcgenPreferencePages.js",
         "js/app/procgen/workstation/ProcgenProjectIndex.js",
         "js/app/procgen/workstation/ProcgenRecoveryChecksum.js",
@@ -434,8 +437,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 288,
-      "sha256": "d5c5ad2335f04703f995f5ad189ab729aac97ac8c24ed7dc9ebe319a42bccce2"
+      "fileCount": 291,
+      "sha256": "72ed9aa59706e1f1fd0e9f78fc22f0d624cbd7e4d03bb52515497b7648f52201"
     },
     {
       "id": "lemmings-timing-worker-source",

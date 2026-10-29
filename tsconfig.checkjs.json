@@ -27,6 +27,7 @@
     "js/app/procgen/workstation/OriginalUmpCapture.js",
     "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
     "js/app/procgen/workstation/RecordedUmpClipExport.js",
+    "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
     "js/editor/editor-controller/EditorControllerPointer.js",
     "js/editor/editor-controller/EditorControllerPointerInput.js",
     "js/editor/editor-controller/EditorControllerPointerSelection.js",

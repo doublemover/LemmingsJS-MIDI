@@ -79,6 +79,43 @@ loss reporting and original-UMP capture/projection remain #1093 work. The file
 codec below consumes original UMP snapshots.
 Physical source-score export uses the separate typed #986 contract.
 
+## Physical take MIDI1 revoice
+
+**Physical take MIDI1** reads the selected finished take through its verified
+owned semantic journal source, then projects it in an admitted worker. This is a
+new realization of captured musical intent, separate from the recorded submitted
+output. Select the new melodic target program1–128; source timbre is replaced.
+
+The bounded source must have covered semantic history, retained empty initial and
+final voice inventories, no remaining page, and one captured physical-clock epoch.
+Open note histories, unsupported prepared-body output, missing onsets, unknown
+expression and insufficient channel capacity refuse preparation. No pickups,
+releases, voice stealing or channel merges are invented.
+
+Each concurrent semantic voice owns one of fifteen melodic channels (channel10 is
+excluded). Initial RPN pitch range/program and per-onset expression state precede
+the attack. The retained release and bend reset precede channel reuse, including
+same-tick reuse. Captured sounding pitch and reference frequency determine the
+note address plus bend. Pressure, pan, velocity and pitch precision reductions
+are reported; zero semantic velocity refuses export, while small positive values
+remain nonzero Note Ons with measured promotion error.
+
+The physical timeline determines beats, tempo changes, crop origin/end and
+trailing selected silence. Canonical intent order is a distinct ordering mode;
+original nullable fact sequences remain metadata and are never replaced by
+invented fact identities. Protocol expansion and quantized ties retain capture
+order. Source times are not rewritten with callback arrival or current UI BPM,
+and live lateness repair is not applied. An embedded manifest records source
+take/revision/hash, timing error, capacity/assignment policy and lowering losses.
+The receiver still has to honor the emitted channel/RPN/program messages; no
+historical hardware timbre or submitted-output reproduction is claimed.
+
+This first product path bounds input to8192 intents and8192 journal records.
+Arbitrary mid-note crop/state reconstruction, multiple clock epochs, MPE/CI
+Profile/UMP targets and the remaining pause/external-clock/suspension matrix stay
+separate work. Export/cancellation preserves the live world, project and previous
+prepared artifact.
+
 ## Original UMP Clip File codec
 
 The ports owner now captures original `sendEvent({umpWords, ...})` requests once,
@@ -198,7 +235,8 @@ Independent file tests use pinned development-only `jzz-midi-smf@1.9.9` and its
 elapsed tempo timing, multiple groups,16-bit release velocity, per-note bend,
 simultaneous unisons, tempo/meter changes, maximum delta splits, malformed input
 and deterministic re-export. Original authored-source projection, optional
-attribution and desktop Clip controls are now integrated. Physical-take protocol
-projection, submitted UMP capture, complete compatibility loss reports and the
+attribution and desktop Clip controls are now integrated. Physical-take MIDI1
+revoice now covers a single closed semantic epoch. Broader physical-take target
+policies, submitted UMP capture, complete compatibility loss reports and the
 remaining unsupported Clip features/DAW retention still keep #1093 open. No DAW
 or hardware receiver qualification follows from these file-reader checks.

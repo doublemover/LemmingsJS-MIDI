@@ -9598,3 +9598,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   benchmark/MCP/policy/dependency checks. Verify1141workstation/1252engine and
   both8file native inventories against that Git tree. Coverage90.79%lines,
   83.95%branches,88.64%functions. Later source has independent CI scope.
+
+### Continuation 371 - physical take to independently voiced MIDI1
+
+- Project a verified finalized semantic take into a new MIDI1 realization from
+  its captured PhysicalScoreClock. Bound source/page/intents, require covered
+  closed note inventories and one clock epoch; refuse unsupported state/body
+  reconstruction instead of inventing notes or flattening epochs.
+- Preserve canonical intent order as its own timing contract. Retain actual
+  nullable fact sequences, exact score mapping, source tempo and crop end silence;
+  never replace facts with synthetic ordinals or current UI BPM. Expand each
+  intent stably, preserving release/reset before channel reuse on quantized ties.
+- Allocate up to fifteen independent melodic channels, excluding percussion10.
+  Configure RPN bend range/program and onset state, regenerate sounding pitch
+  from cents/reference frequency, and reject voice exhaustion/excess expression.
+  Report replaced timbre, capacity,7bit/14bit errors, low-velocity promotion and
+  unobserved release velocity in the embedded source/timing/lowering manifest.
+- Add Physical take MIDI1 target-program controls and worker-only preparation.
+  Final205 related Node and four native1920×1080 journeys pass. The actual
+  captured physical phrase independently parses at captured tempo after UI BPM
+  changes, preserves world/project, requests no MIDI permission and retains the
+  previous artifact after cancellation/invalid target. Existing three Clip
+  journeys, including100000events, remain green. Both timing/projection modules
+  have100%lines; combined95.65%functions/92.09%branches. Critical checkJs passes.
+  Collection248full/218smoke across54files; no full local suite repeat.
+- Continue the pause/external-clock/suspension matrix, arbitrary boundary crops,
+  multiple epochs, native/MPE/CI Profile targets and receiver/DAW qualification
+  under #986/#1093/#1063. The single closed-epoch MIDI1 product path is implemented;
+  those broader policies remain open. Continue solo while later CI proceeds.

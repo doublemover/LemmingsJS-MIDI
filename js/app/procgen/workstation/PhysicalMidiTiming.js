@@ -8,6 +8,8 @@ export function preparePhysicalMidiTiming(events, source, ppq) {
   if (!Array.isArray(events) || events.length > 100000 || source?.version !== 1 || source.domain !== 'simulation-tick' ||
       !Number.isInteger(ppq) || ppq < 24 || ppq > 32767) throw failure('invalid-source-time', 'A bounded typed physical MIDI source is required.');
   const clock = createProcgenPhysicalScoreClock(); clock.restore(source.clock);
+  const intentOrder = source.ordering === 'canonical-intent-order';
+  if (source.ordering != null && !intentOrder) throw failure('invalid-source-order', 'Unknown physical MIDI source ordering.');
   const saved = clock.snapshot(), epochs = saved.timeline.epochs;
   const epochIndex = epochs.findIndex(entry => entry.epoch === source.origin?.epoch), epoch = epochs[epochIndex];
   if (!epoch || source.end?.epoch !== epoch.epoch) throw failure('source-epoch-range', 'Select one captured source epoch explicitly; cross-epoch flattening is unavailable.');
@@ -58,7 +60,9 @@ export function preparePhysicalMidiTiming(events, source, ppq) {
   };
   for (const entry of tempoMap) measure(entry.beat, entry.tick);
   for (const event of events) {
-    if (!event || event.worldId !== saved.worldId || !natural(event.causalSequence) || event.causalSequence < lastSequence || event.type === 'tempo')
+    const sequence = intentOrder ? event?.intentOrdinal : event?.causalSequence;
+    if (!event || event.worldId !== saved.worldId || !natural(sequence) || sequence < lastSequence ||
+        intentOrder && event.causalSequence != null && !natural(event.causalSequence) || event.type === 'tempo')
       throw failure('invalid-source-order', 'Physical MIDI events require matching world identity and nondecreasing canonical causal sequence.');
     const time = mapped(event.scoreTime), beat = time.beat - origin.beat;
     if (time.beat < origin.beat || time.beat > end.beat) throw failure('outside-source-range', 'Physical MIDI events must be selected inside the declared crop; no source event was silently excluded.');
@@ -67,12 +71,12 @@ export function preparePhysicalMidiTiming(events, source, ppq) {
       throw failure('source-score-time-mismatch', 'Physical MIDI beat disagrees with its captured piecewise timeline.');
     const tick = quantify(beat); measure(beat, tick);
     if (tick === previousTick && beat !== previousBeat) collapsedDistinctTimes++;
-    output.push({ ...event, beat }); lastSequence = event.causalSequence; previousBeat = beat; previousTick = tick;
+    output.push({ ...event, beat }); lastSequence = sequence; previousBeat = beat; previousTick = tick;
   }
   const endBeat = end.beat - origin.beat, endTick = quantify(endBeat); measure(endBeat, endTick);
   const report = Object.freeze({ schema: 'procgen-physical-midi-timing/v1', mode: 'source-score', sourceTimeDomain: 'simulation-tick', exportTimeDomain: 'smf-tick',
     worldId: saved.worldId, epoch: epoch.epoch, origin, end, endTick, ppq, eventCount: events.length, tempoChanges,
-    ordering: 'canonical-causal-sequence-stable-on-quantized-ties', cropPolicy: 'reject-outside-explicit-range', liveLatenessApplied: false,
+    ordering: intentOrder ? 'canonical-intent-order-stable-protocol-expansion-on-quantized-ties' : 'canonical-causal-sequence-stable-on-quantized-ties', cropPolicy: 'reject-outside-explicit-range', liveLatenessApplied: false,
     quantization: Object.freeze({ rounding: 'nearest-tick-math-round', tempoEncoding: 'rounded-microseconds-per-quarter', maximumBeatError, maximumTimingErrorMs,
       collapsedDistinctTimes, collapsedTempoChanges, collisionScope: 'physical-events', errorScope: 'events-tempo-boundaries-and-crop-end' }) });
   return { events: output, bpm: initial.tempoBpm, endBeat, report };

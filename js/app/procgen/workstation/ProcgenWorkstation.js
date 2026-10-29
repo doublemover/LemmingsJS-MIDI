@@ -45,7 +45,7 @@ import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js'
 import { createProcgenPhysicalPlayback } from './ProcgenPhysicalPlayback.js';
 import { createCausalMidiSink } from './CausalMidiSink.js';
 import { createProcgenCausalJournal } from './ProcgenCausalJournal.js';
-import { createCausalTakeRecorder } from './CausalTake.js';
+import { createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from './CausalTake.js';
 import { captureCausalPerformanceState, diffCausalPerformanceState, diffCausalLanePerformance } from './CausalPerformanceState.js';
 import { prepareCausalTakeArchive } from './CausalTakeArchive.js';
 import { createPhysicalScoreProjection } from './PhysicalScoreProjection.js';
@@ -1377,6 +1377,37 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } catch (error) { if (!isCurrent()) return null; throw error; }
     finally { computed?.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
+  const preparePhysicalTakeMidi = async ({ program = 0, bendRangeSemitones = 2 } = {}) => {
+    if (!Number.isInteger(program) || program < 0 || program > 127 || ![2, 12, 24, 48, 96].includes(bendRangeSemitones)) throw new RangeError('Choose a valid MIDI target program and pitch-bend range.');
+    if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the physical take before preparing its MIDI revoice.');
+    const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
+    if (!takeId) throw new Error('Select a finished physical take first.');
+    archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort();
+    if (currentOperation?.kind === 'export') currentOperation.controller.abort();
+    const controller = new AbortController(), generation = documentGeneration, request = ++exportPreparationRevision;
+    const pending = { controller, phase: 'reading captured physical intent', completedUnits: 0, totalUnits: null }; midiExportPreparation = pending; publishExportState();
+    const isCurrent = () => !disposed && !controller.signal.aborted && generation === documentGeneration && request === exportPreparationRevision && takeId === (selectedCausalTakeId || lastCausalTake?.takeId);
+    let source = null, computed = null;
+    try {
+      const journal = causalJournal ||= createProcgenCausalJournal({ storage, resourceBudget, jobs: backgroundJobs });
+      source = await querySoundOnlyRevoiceOwned({ journal, resourceBudget, jobs: backgroundJobs, takeId, executionEpoch: 'physical-midi-' + request,
+        soundPatch: { id: 'midi1-independent-melodic-channels', revision: 1 }, limit: 8192, maxIntents: 8192, maxBytes: 4 * 1048576, signal: controller.signal });
+      if (!isCurrent()) return null;
+      const intentCount = source.value.intents.length;
+      computed = await backgroundJobs.compute({ kind: 'encode-physical-take-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation, sourceRevision: source.value.sourceCanonicalHash,
+        inputBytes: 4 * 1048576 + 65536, estimatedPeakBytes: 32 * 1048576 + intentCount * 8192, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
+        prepareInput: () => ({ revoice: source.value, options: { program, bendRangeSemitones } }),
+        onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
+      if (!isCurrent()) return null;
+      const { bytes, manifest } = computed.value;
+      const artifact = prepareDownload({ bytes, filename: 'physical-take-revoice' + (manifest.sourceComplete ? '' : '-partial') + '.mid', type: 'audio/midi',
+        sourceRef: `causal-take:${takeId}:${manifest.takeRevision}:${manifest.sourceCanonicalHash}`, formatVersion: 'physical-take-midi1/v1', lossRef: 'embedded-physical-midi-lowering-manifest' });
+      lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
+      if (deliverPrepared()?.state === 'delivery-requested') status('Physical take MIDI1 revoice download requested. Captured timing is preserved; timbre is replaced by program' + (program + 1) + ', with fifteen independent melodic channels. Receiver setup and playback remain unverified.');
+      return artifact.metadata();
+    } catch (error) { if (!isCurrent()) return null; throw error; }
+    finally { try { computed?.release(); } finally { try { retireCausalRead(source); } finally { if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } } } }
+  };
   const getShareExportDescriptor = () => {
     const world = runtime()?.world, takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     const capture = masterCapture?.state().capture;
@@ -2131,6 +2162,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     export: safe(() => prepareProjectExport()),
     exportMidi: safe(prepareMidiExport),
     inspectMidiClip: safe(inspectMidiClip),
+    exportPhysicalTakeMidi: safe(preparePhysicalTakeMidi),
     exportClipManifest() {
       if (!preparedManifest) { status('No optional Clip manifest is prepared.'); return null; }
       const receipt = deliverArtifactToAnchor(preparedManifest, { document, windowRef: window });

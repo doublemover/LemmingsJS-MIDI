@@ -29,6 +29,7 @@ import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
 import { encodeRecordedUmpClip } from '../procgen/workstation/RecordedUmpClipExport.js';
+import { encodePhysicalTakeMidi } from '../procgen/workstation/PhysicalTakeMidiProjection.js';
 import { encodeMidiClipFile, decodeMidiClipFile } from '../../midi/protocol/MidiClipFile.js';
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 
@@ -109,6 +110,10 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'encode-physical-take-midi') {
+    const value = await encodePhysicalTakeMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
+    return { value, inputBytes: new TextEncoder().encode(JSON.stringify(input)).byteLength, nodes: 64, retainedBytes: value.bytes.byteLength * 2 + 65536 };
+  }
   if (kind === 'encode-recorded-ump-clip') {
     const value = await encodeRecordedUmpClip(input, { signal, current, estimatedPeakBytes, maxBytes, crypto, onProgress, yieldControl }); guard(signal, current);
     const snapshot = input.snapshot;

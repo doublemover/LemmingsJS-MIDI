@@ -72602,4 +72602,1475 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     }
   }
+,
+  "continuation371": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "issues": [
+      986,
+      1093,
+      1063
+    ],
+    "implementation": {
+      "source": "Verified owned finalized semantic take; bounded8192intents/8192records, covered initial/final empty voice state, one captured clock epoch. No implicit paging omission, state reconstruction, pickups or releases.",
+      "protocol": "New MIDI1 revoice, one configured melodic program, deterministic fifteen-channel capacity excluding percussion10, reject exhaustion, per-voice sounding pitch/reference frequency plus asymmetric14bit bend. RPN/program/reset before attack; release/reset before reuse.",
+      "order": "Distinct canonical-intent-order mode preserves retained array order and stable protocol expansion; original nullable physical fact sequences stay unchanged metadata.",
+      "timing": "PhysicalMidiTiming consumes captured clock segments and explicit origin/end, retains tempo changes and trailing selected silence; no current UI BPM or live lateness repair.",
+      "losses": "Embedded source/timing/lowering manifest reports replaced timbre,7bit velocity/pressure/pan and14bit pitch error, minimum-nonzero promotion, unobserved release velocity, capacity and policy.",
+      "product": "Physical take MIDI1 target-program control and owned worker job; invalid/canceled preparation retains prior artifact, no live output or world/project mutation.",
+      "workerInventory": {
+        "files": 291,
+        "sha256": "72ed9aa59706e1f1fd0e9f78fc22f0d624cbd7e4d03bb52515497b7648f52201"
+      },
+      "remaining": [
+        "Pause/external-clock/suspension export acceptance matrix",
+        "Arbitrary mid-note crop/reconstruction and multiple epochs",
+        "MPE/CI Profile/UMP target policies and full lowering reports",
+        "Independent DAW/receiver setup and playback qualification"
+      ]
+    },
+    "qualification": {
+      "nodePassed": 205,
+      "nodeFiles": 5,
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 209,
+            "covered": 209,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 209,
+            "covered": 209,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 23,
+            "covered": 22,
+            "skipped": 0,
+            "pct": 95.65
+          },
+          "branches": {
+            "total": 215,
+            "covered": 198,
+            "skipped": 0,
+            "pct": 92.09
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalMidiTiming.js": {
+          "lines": {
+            "total": 83,
+            "covered": 83,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 9,
+            "covered": 9,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 83,
+            "covered": 83,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 80,
+            "covered": 78,
+            "skipped": 0,
+            "pct": 97.5
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalTakeMidiProjection.js": {
+          "lines": {
+            "total": 126,
+            "covered": 126,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 14,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 92.85
+          },
+          "statements": {
+            "total": 126,
+            "covered": 126,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 135,
+            "covered": 120,
+            "skipped": 0,
+            "pct": 88.88
+          }
+        }
+      },
+      "browserPassed": 4,
+      "browserCases": [
+        {
+          "title": "original native UMP intent capture stays separate from accepted MIDI1 and cannot export empty success @boundary",
+          "file": "procgen-workstation-midi-clip.spec.js",
+          "status": "passed",
+          "receipts": [
+            {
+              "name": "original-ump-intent-capture",
+              "value": {
+                "original": {
+                  "protocol": "ump",
+                  "sourceLayer": "authored-intent",
+                  "publication": "not-submitted",
+                  "recorded": 16,
+                  "dropped": 0,
+                  "unmappedTimes": 0,
+                  "complete": true,
+                  "reason": null,
+                  "pending": false,
+                  "retainedEstimateBytes": 11116,
+                  "maximumBytes": 33554432,
+                  "maximumRecords": 100000,
+                  "retainedSources": 0,
+                  "closed": false,
+                  "reservation": {
+                    "enabled": true,
+                    "owner": "original-ump-capture-2",
+                    "kind": "original-ump-recording-metadata-estimate",
+                    "category": "checkpoint",
+                    "generation": 0,
+                    "declaredBytes": 11116,
+                    "maxBytes": 33554432,
+                    "state": "reserved",
+                    "error": null
+                  }
+                },
+                "recorded": 16,
+                "outcomes": [
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false,
+                  false
+                ],
+                "previousRetained": true,
+                "first": {
+                  "outputId": "",
+                  "connectionEpoch": null,
+                  "routeRevision": null,
+                  "intentId": "original-0",
+                  "type": "umpIntent",
+                  "direction": "output",
+                  "source": "original-ump-intent",
+                  "evidence": "intent-render",
+                  "protocol": "ump",
+                  "publication": "authored-not-submitted",
+                  "sourceProtocol": "midi2",
+                  "umpWords": [
+                    1100102656,
+                    305397760
+                  ],
+                  "sourceUmp": [
+                    1100102656,
+                    305397760
+                  ],
+                  "data": [],
+                  "timestamp": 2390,
+                  "beat": 8,
+                  "timeDomain": "recorded-score-beat",
+                  "sequence": 2
+                },
+                "last": {
+                  "outputId": "",
+                  "connectionEpoch": null,
+                  "routeRevision": null,
+                  "intentId": "original-15",
+                  "type": "umpIntent",
+                  "direction": "output",
+                  "source": "original-ump-intent",
+                  "evidence": "intent-render",
+                  "protocol": "ump",
+                  "publication": "authored-not-submitted",
+                  "sourceProtocol": "midi2",
+                  "umpWords": [
+                    1100102656,
+                    306380800
+                  ],
+                  "sourceUmp": [
+                    1100102656,
+                    306380800
+                  ],
+                  "data": [],
+                  "timestamp": 2393.9000000059605,
+                  "beat": 8.015625,
+                  "timeDomain": "recorded-score-beat",
+                  "sequence": 17
+                },
+                "physics": 0,
+                "scope": "Native authored UMP ingress before unavailable route/lowering; no API submission, hardware receiver or product Clip-export claim."
+              }
+            }
+          ]
+        },
+        {
+          "title": "native product Clip controls choose an original output, save optional attribution and validate imports as data @boundary",
+          "file": "procgen-workstation-midi-clip.spec.js",
+          "status": "passed",
+          "receipts": [
+            {
+              "name": "original-clip-product-export",
+              "value": {
+                "before": {
+                  "physics": 0,
+                  "revision": 0
+                },
+                "prepared": {
+                  "artifact": {
+                    "artifactId": "artifact-mvu41t56-1",
+                    "immutableSourceRef": "recording:d7d00436-a607-4bb5-b565-1109494d58fd:unsaved:1:5:1:5",
+                    "formatVersion": "midi-clip-file/v1",
+                    "mediaType": "application/octet-stream",
+                    "suggestedFilename": "procgen-performance-output-2-intent.midi2",
+                    "byteLength": 100,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "ready",
+                    "sha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                    "coverageLossReportRef": "optional-original-ump-sidecar",
+                    "expiresAt": 1793313250698,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 1,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  },
+                  "manifest": {
+                    "artifactId": "artifact-mvu41t57-2",
+                    "immutableSourceRef": "recording:d7d00436-a607-4bb5-b565-1109494d58fd:unsaved:1:5:1:5",
+                    "formatVersion": "procgen-original-ump-sidecar/v1",
+                    "mediaType": "application/json",
+                    "suggestedFilename": "procgen-performance-output-2-intent.midi2.json",
+                    "byteLength": 1900,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "ready",
+                    "sha256": "dd97d67ebe0a7e566ea546ead59596754de133334027a6c81444d38c56518d50",
+                    "coverageLossReportRef": null,
+                    "expiresAt": 1793313250698,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 0,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  },
+                  "delivery": {
+                    "deliveryId": "delivery-mvu41t57-1",
+                    "artifactId": "artifact-mvu41t56-1",
+                    "sinkKind": "anchor",
+                    "state": "delivery-requested",
+                    "bytesWritten": 0,
+                    "errorKind": null,
+                    "evidence": "anchor-click-returned"
+                  },
+                  "preparation": null,
+                  "preparationReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-27",
+                    "kind": "encode-recorded-ump-clip",
+                    "ownerId": "procgen-midi-export",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "d7d00436-a607-4bb5-b565-1109494d58fd:1:5",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0,
+                    "elapsedMs": 246.80000001192093,
+                    "inputBytes": 1067,
+                    "nodes": 64,
+                    "retainedBytes": 69536,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 1,
+                      "operations": 176,
+                      "bytes": 15394,
+                      "maximumSliceMs": 0.7000000178813934,
+                      "maximumPostMessageMs": 0.09999999403953552,
+                      "elapsedMs": 31.899999976158142,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 220,
+                      "bytes": 20236,
+                      "ownedTransferredBytes": 2000,
+                      "maximumSliceMs": 0.29999998211860657,
+                      "elapsedMs": 2.5,
+                      "retainedEstimateBytes": 18552
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "65df87c41861ea79361333852567264c05133cb19aa47126d4b70364ec1b0b5b",
+                      "closureDigest": "945e63674ed505237baef0b4060825c54cd9ee44c347cb70b6b1167451be58df",
+                      "assetDigest": "41be624c684638af65c497dff4116b8b539eb85471f7a6040a86f1789af3b4b0",
+                      "codeDigest": "8044908f4f75cad32bf7124503fbc1b512099ec88a85991486d199aed19972dd",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "instrumentArtifacts": [
+                        {
+                          "engineId": "native-fm",
+                          "engineVersion": 1,
+                          "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                        },
+                        {
+                          "engineId": "native-modal",
+                          "engineVersion": 1,
+                          "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                        },
+                        {
+                          "engineId": "native-oscillator",
+                          "engineVersion": 1,
+                          "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                        },
+                        {
+                          "engineId": "native-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                        },
+                        {
+                          "engineId": "worklet-choir",
+                          "engineVersion": 1,
+                          "artifactHash": "d30f4b58a42fec86222f7d34828c9936c32ea54a6285836a1f57629ac9abe1c3"
+                        },
+                        {
+                          "engineId": "worklet-friction",
+                          "engineVersion": 1,
+                          "artifactHash": "e7e9842271241e4c2b4fade878e7e9b21d291792e530b8ec02948f6c04bcf745"
+                        },
+                        {
+                          "engineId": "worklet-granular",
+                          "engineVersion": 1,
+                          "artifactHash": "e4b2cff977b676d15a2236aa18e18d7b6a3077b65f9e77efa1408b6f37990f3d"
+                        },
+                        {
+                          "engineId": "worklet-pluck",
+                          "engineVersion": 1,
+                          "artifactHash": "cc7b73d8dd1e009a6c9637eb555b2b7f7504e61b9a286c6215d30086d5f8de6d"
+                        },
+                        {
+                          "engineId": "worklet-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "a1a3dd72c730b37a148daac2172a2fc0a9d9d347c97dc93917bced7e99766848"
+                        },
+                        {
+                          "engineId": "worklet-seed-layers",
+                          "engineVersion": 1,
+                          "artifactHash": "56fccbe1cc70be6a58befe7caffbb66d331b65f9f9b5de7c56eada948394e850"
+                        },
+                        {
+                          "engineId": "worklet-sine",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb1822153792d383d295b22eb47b0666a5df1c76d53d2e60f18eabf4c93e767"
+                        },
+                        {
+                          "engineId": "worklet-spectrum",
+                          "engineVersion": 1,
+                          "artifactHash": "2dd261860084e180862a841e20aa45b41eda2deb2996d2703353710a692abe22"
+                        },
+                        {
+                          "engineId": "worklet-texture",
+                          "engineVersion": 1,
+                          "artifactHash": "6e9f8f2eaccdddc11f54881832206082901a20b02a143f02ce51325214e8f605"
+                        },
+                        {
+                          "engineId": "worklet-wind",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb02574d89f16013bbe8ee32e7b1f75441d2e20bc8a38e9a76dde039e102425"
+                        }
+                      ],
+                      "stateSchema": 5,
+                      "realmId": "74729717-c67e-4863-833a-bd7290734af1",
+                      "capabilityProfile": "browser-background-jobs",
+                      "binding": "immutable-application-generation"
+                    }
+                  }
+                },
+                "imported": {
+                  "artifact": {
+                    "artifactId": "artifact-mvu41tj9-3",
+                    "immutableSourceRef": "validated-clip-import:5",
+                    "formatVersion": "midi-clip-file/v1",
+                    "mediaType": "application/octet-stream",
+                    "suggestedFilename": "validated-import.midi2",
+                    "byteLength": 100,
+                    "deliveryModes": [
+                      "anchor",
+                      "file-handle"
+                    ],
+                    "digestState": "ready",
+                    "sha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                    "coverageLossReportRef": "validated-data-only-no-hardware-or-project-import",
+                    "expiresAt": 1793313251205,
+                    "retained": true,
+                    "retirementReason": null,
+                    "activeLeases": 0,
+                    "maxConsumerLeases": 32,
+                    "budgetState": "retained"
+                  },
+                  "manifest": null,
+                  "delivery": null,
+                  "preparation": null,
+                  "preparationReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-36",
+                    "kind": "inspect-midi-clip",
+                    "ownerId": "procgen-midi-export",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "import:5",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0,
+                    "elapsedMs": 105.7000000178814,
+                    "inputBytes": 100,
+                    "nodes": 32,
+                    "retainedBytes": 65536,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 1,
+                      "operations": 6,
+                      "bytes": 588,
+                      "maximumSliceMs": 0,
+                      "maximumPostMessageMs": 0,
+                      "elapsedMs": 27.200000017881393,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 73,
+                      "bytes": 6508,
+                      "ownedTransferredBytes": 0,
+                      "maximumSliceMs": 0.10000002384185791,
+                      "elapsedMs": 1.4000000059604645,
+                      "retainedEstimateBytes": 4524
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "65df87c41861ea79361333852567264c05133cb19aa47126d4b70364ec1b0b5b",
+                      "closureDigest": "945e63674ed505237baef0b4060825c54cd9ee44c347cb70b6b1167451be58df",
+                      "assetDigest": "41be624c684638af65c497dff4116b8b539eb85471f7a6040a86f1789af3b4b0",
+                      "codeDigest": "8044908f4f75cad32bf7124503fbc1b512099ec88a85991486d199aed19972dd",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "instrumentArtifacts": [
+                        {
+                          "engineId": "native-fm",
+                          "engineVersion": 1,
+                          "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                        },
+                        {
+                          "engineId": "native-modal",
+                          "engineVersion": 1,
+                          "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                        },
+                        {
+                          "engineId": "native-oscillator",
+                          "engineVersion": 1,
+                          "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                        },
+                        {
+                          "engineId": "native-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                        },
+                        {
+                          "engineId": "worklet-choir",
+                          "engineVersion": 1,
+                          "artifactHash": "d30f4b58a42fec86222f7d34828c9936c32ea54a6285836a1f57629ac9abe1c3"
+                        },
+                        {
+                          "engineId": "worklet-friction",
+                          "engineVersion": 1,
+                          "artifactHash": "e7e9842271241e4c2b4fade878e7e9b21d291792e530b8ec02948f6c04bcf745"
+                        },
+                        {
+                          "engineId": "worklet-granular",
+                          "engineVersion": 1,
+                          "artifactHash": "e4b2cff977b676d15a2236aa18e18d7b6a3077b65f9e77efa1408b6f37990f3d"
+                        },
+                        {
+                          "engineId": "worklet-pluck",
+                          "engineVersion": 1,
+                          "artifactHash": "cc7b73d8dd1e009a6c9637eb555b2b7f7504e61b9a286c6215d30086d5f8de6d"
+                        },
+                        {
+                          "engineId": "worklet-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "a1a3dd72c730b37a148daac2172a2fc0a9d9d347c97dc93917bced7e99766848"
+                        },
+                        {
+                          "engineId": "worklet-seed-layers",
+                          "engineVersion": 1,
+                          "artifactHash": "56fccbe1cc70be6a58befe7caffbb66d331b65f9f9b5de7c56eada948394e850"
+                        },
+                        {
+                          "engineId": "worklet-sine",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb1822153792d383d295b22eb47b0666a5df1c76d53d2e60f18eabf4c93e767"
+                        },
+                        {
+                          "engineId": "worklet-spectrum",
+                          "engineVersion": 1,
+                          "artifactHash": "2dd261860084e180862a841e20aa45b41eda2deb2996d2703353710a692abe22"
+                        },
+                        {
+                          "engineId": "worklet-texture",
+                          "engineVersion": 1,
+                          "artifactHash": "6e9f8f2eaccdddc11f54881832206082901a20b02a143f02ce51325214e8f605"
+                        },
+                        {
+                          "engineId": "worklet-wind",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb02574d89f16013bbe8ee32e7b1f75441d2e20bc8a38e9a76dde039e102425"
+                        }
+                      ],
+                      "stateSchema": 5,
+                      "realmId": "31cbb452-0bf7-4a74-96e5-dc5e02e02f8a",
+                      "capabilityProfile": "browser-background-jobs",
+                      "binding": "immutable-application-generation"
+                    }
+                  },
+                  "physics": 0,
+                  "revision": 0,
+                  "original": {
+                    "protocol": "ump",
+                    "sourceLayer": "authored-intent",
+                    "publication": "not-submitted",
+                    "recorded": 4,
+                    "dropped": 0,
+                    "unmappedTimes": 0,
+                    "complete": true,
+                    "reason": null,
+                    "pending": false,
+                    "retainedEstimateBytes": 2960,
+                    "maximumBytes": 33554432,
+                    "maximumRecords": 100000,
+                    "retainedSources": 0,
+                    "closed": false,
+                    "reservation": {
+                      "enabled": true,
+                      "owner": "original-ump-capture-2",
+                      "kind": "original-ump-recording-metadata-estimate",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4096,
+                      "maxBytes": 33554432,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  }
+                },
+                "cancellation": {
+                  "previousRetained": true,
+                  "sidecarRetained": true
+                },
+                "manifest": {
+                  "schema": "procgen-original-ump-sidecar/v1",
+                  "complete": true,
+                  "clipSha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                  "clipBytes": 100,
+                  "sourcePrefixRows": 5,
+                  "sourceLayer": "authored-intent",
+                  "publication": "not-submitted",
+                  "noteBoundaryCoverage": "unverified-original-packets-preserved-no-derived-releases",
+                  "timeAuthority": "explicit-authored-score-beats-not-physical-take-projection",
+                  "exportPlan": {
+                    "schema": "procgen-original-ump-export-plan/v1",
+                    "sourceLayer": "authored-intent",
+                    "timeDomain": "recorded-score-beat",
+                    "placement": "rebase-recording-start",
+                    "originBeat": 8,
+                    "endpointPolicy": "single-recorded-output",
+                    "channelPolicy": "preserve-original-groups-and-channels",
+                    "protocol": "original-ump",
+                    "routeIndex": 1,
+                    "routeCount": 2,
+                    "selectedRouteOrdinal": 2,
+                    "includedMessages": 2,
+                    "excludedRouteMessages": 2,
+                    "excludedOtherLayerMessages": 0,
+                    "publication": "not-submitted",
+                    "tempoSource": "captured-transport",
+                    "ppq": 960,
+                    "initialTempo": {
+                      "source": "captured-transport",
+                      "bpm": 90,
+                      "firstCapturedBeat": 8,
+                      "unobservedPrefixBeats": 0
+                    }
+                  },
+                  "outputIdentity": {
+                    "outputId": "original-B",
+                    "connectionEpoch": null,
+                    "routeRevision": null
+                  },
+                  "initialMeter": "unobserved-unless-present-in-original-flex",
+                  "quantization": {
+                    "policy": "nearest-tick",
+                    "quantizedEvents": 0,
+                    "maximumBeatError": 0
+                  },
+                  "originalPackets": 2,
+                  "derivedTempoPackets": 1,
+                  "endPolicy": "last-retained-event-no-inferred-trailing-duration",
+                  "setupDisposition": "data-only-never-submitted",
+                  "recordingIncomplete": false,
+                  "originalCaptureIncomplete": false,
+                  "coverage": {
+                    "recordingId": "d7d00436-a607-4bb5-b565-1109494d58fd",
+                    "droppedRecords": 0,
+                    "originalDropped": 0,
+                    "originalUnmappedTimes": 0,
+                    "recordingRevision": 1,
+                    "incompleteReasons": []
+                  },
+                  "attribution": [
+                    {
+                      "sequenceIndex": 0,
+                      "sourceRecordIndex": 3,
+                      "sourceBeat": 10,
+                      "tick": 1920,
+                      "attribution": {
+                        "intentId": 77,
+                        "actorId": "original-B"
+                      }
+                    },
+                    {
+                      "sequenceIndex": 1,
+                      "sourceRecordIndex": 4,
+                      "sourceBeat": 11,
+                      "tick": 2880,
+                      "attribution": {
+                        "intentId": 77,
+                        "actorId": "original-B"
+                      }
+                    }
+                  ]
+                },
+                "clipSha256": "cdf487b8c42c02e23aa062a978f8f9400ca9f8ed77bd144b24d6dd98611fea76",
+                "optionalManifestSha256": "dd97d67ebe0a7e566ea546ead59596754de133334027a6c81444d38c56518d50",
+                "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+                "scope": "Original authored UMP score source, native worker and desktop controls; separate output and optional attribution, safe data-only import. No accepted UMP backend, physical-take playback import, DAW or hardware claim."
+              }
+            }
+          ]
+        },
+        {
+          "title": "native worker Clip encoding/import preserves 100000 UMP events and retires a canceled source @boundary",
+          "file": "procgen-workstation-midi-clip.spec.js",
+          "status": "passed",
+          "receipts": [
+            {
+              "name": "native-midi-clip-worker",
+              "value": {
+                "count": 100000,
+                "fileBytes": 1200056,
+                "fileHash": "66eaa5fc2adbea98f575862f835d26d3999013b18a6c929da7476d3cfa416e03",
+                "sourceWordHash": "6f465a18fec1b2ca3376a252e4c3b2ed83038b8df7c37c2079fc40400651be72",
+                "binary": "534d4632434c4950004000000030ffff00400000f02000000000000000000000000000000040000040b14a00fedc00000040000241b14a00fedc00010040000242b14a00fedc00020040000243b14a00fedc00030040000244b14a00fedc00040040000245b14a00fedc00050040000246b14a00fedc00060040000247b14a00fedc00070040000248b14a00fedc00080040000249b14a00fedc0009004000024ab14a00fedc000a004000024bb14a00fedc000b004000024cb14a00fedc000c004000024db14a00",
+                "turns": 78,
+                "physics": 0,
+                "canceled": true,
+                "retainedBeforeRelease": 10084520,
+                "viewport": {
+                  "width": 1920,
+                  "height": 1080,
+                  "dpr": 1
+                },
+                "accountedAfterRelease": 0,
+                "encodedReceipt": {
+                  "protocol": 3,
+                  "jobId": "background-1",
+                  "kind": "encode-midi-clip",
+                  "ownerId": "native-clip",
+                  "ownerEpoch": 1,
+                  "sourceRevision": "original-ump:1",
+                  "state": "computed",
+                  "publication": "not-committed",
+                  "method": "dedicated-worker",
+                  "queueWaitMs": 0,
+                  "elapsedMs": 223,
+                  "inputBytes": 2000008,
+                  "nodes": 32,
+                  "retainedBytes": 4002064,
+                  "inputTransport": {
+                    "schema": "owned-background-snapshot-pages/v1",
+                    "packets": 60,
+                    "operations": 83,
+                    "bytes": 2006376,
+                    "maximumSliceMs": 0.19999998807907104,
+                    "maximumPostMessageMs": 0.09999999403953552,
+                    "elapsedMs": 20,
+                    "stagingBytes": 131072
+                  },
+                  "outputTransport": {
+                    "mode": "acknowledged-snapshot-pages",
+                    "packets": 1,
+                    "operations": 57,
+                    "bytes": 5082,
+                    "ownedTransferredBytes": 1200056,
+                    "maximumSliceMs": 0.09999999403953552,
+                    "elapsedMs": 1.5,
+                    "retainedEstimateBytes": 2403516
+                  },
+                  "executionIdentity": {
+                    "receiptVersion": 3,
+                    "activeExecution": "bound",
+                    "buildId": "65df87c41861ea79361333852567264c05133cb19aa47126d4b70364ec1b0b5b",
+                    "closureDigest": "945e63674ed505237baef0b4060825c54cd9ee44c347cb70b6b1167451be58df",
+                    "assetDigest": "41be624c684638af65c497dff4116b8b539eb85471f7a6040a86f1789af3b4b0",
+                    "codeDigest": "8044908f4f75cad32bf7124503fbc1b512099ec88a85991486d199aed19972dd",
+                    "harnessVersion": "browser-survey-v1",
+                    "identityRecipe": "normalized-data-slot-v2-instruments",
+                    "instrumentArtifacts": [
+                      {
+                        "engineId": "native-fm",
+                        "engineVersion": 1,
+                        "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                      },
+                      {
+                        "engineId": "native-modal",
+                        "engineVersion": 1,
+                        "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                      },
+                      {
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                      },
+                      {
+                        "engineId": "native-sample",
+                        "engineVersion": 1,
+                        "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                      },
+                      {
+                        "engineId": "worklet-choir",
+                        "engineVersion": 1,
+                        "artifactHash": "d30f4b58a42fec86222f7d34828c9936c32ea54a6285836a1f57629ac9abe1c3"
+                      },
+                      {
+                        "engineId": "worklet-friction",
+                        "engineVersion": 1,
+                        "artifactHash": "e7e9842271241e4c2b4fade878e7e9b21d291792e530b8ec02948f6c04bcf745"
+                      },
+                      {
+                        "engineId": "worklet-granular",
+                        "engineVersion": 1,
+                        "artifactHash": "e4b2cff977b676d15a2236aa18e18d7b6a3077b65f9e77efa1408b6f37990f3d"
+                      },
+                      {
+                        "engineId": "worklet-pluck",
+                        "engineVersion": 1,
+                        "artifactHash": "cc7b73d8dd1e009a6c9637eb555b2b7f7504e61b9a286c6215d30086d5f8de6d"
+                      },
+                      {
+                        "engineId": "worklet-sample",
+                        "engineVersion": 1,
+                        "artifactHash": "a1a3dd72c730b37a148daac2172a2fc0a9d9d347c97dc93917bced7e99766848"
+                      },
+                      {
+                        "engineId": "worklet-seed-layers",
+                        "engineVersion": 1,
+                        "artifactHash": "56fccbe1cc70be6a58befe7caffbb66d331b65f9f9b5de7c56eada948394e850"
+                      },
+                      {
+                        "engineId": "worklet-sine",
+                        "engineVersion": 1,
+                        "artifactHash": "2bb1822153792d383d295b22eb47b0666a5df1c76d53d2e60f18eabf4c93e767"
+                      },
+                      {
+                        "engineId": "worklet-spectrum",
+                        "engineVersion": 1,
+                        "artifactHash": "2dd261860084e180862a841e20aa45b41eda2deb2996d2703353710a692abe22"
+                      },
+                      {
+                        "engineId": "worklet-texture",
+                        "engineVersion": 1,
+                        "artifactHash": "6e9f8f2eaccdddc11f54881832206082901a20b02a143f02ce51325214e8f605"
+                      },
+                      {
+                        "engineId": "worklet-wind",
+                        "engineVersion": 1,
+                        "artifactHash": "2bb02574d89f16013bbe8ee32e7b1f75441d2e20bc8a38e9a76dde039e102425"
+                      }
+                    ],
+                    "stateSchema": 5,
+                    "realmId": "cc8f1f90-b434-47c7-94a7-8b2192d72107",
+                    "capabilityProfile": "browser-background-jobs",
+                    "binding": "immutable-application-generation"
+                  }
+                },
+                "decodedReceipt": {
+                  "protocol": 3,
+                  "jobId": "background-2",
+                  "kind": "decode-midi-clip",
+                  "ownerId": "native-clip",
+                  "ownerEpoch": 1,
+                  "sourceRevision": "original-ump:1",
+                  "state": "computed",
+                  "publication": "not-committed",
+                  "method": "dedicated-worker",
+                  "queueWaitMs": 0.09999999403953552,
+                  "elapsedMs": 421.40000000596046,
+                  "inputBytes": 1200056,
+                  "nodes": 32,
+                  "retainedBytes": 4065552,
+                  "inputTransport": {
+                    "schema": "owned-background-snapshot-pages/v1",
+                    "packets": 36,
+                    "operations": 42,
+                    "bytes": 1203208,
+                    "maximumSliceMs": 0.10000002384185791,
+                    "maximumPostMessageMs": 0.10000002384185791,
+                    "elapsedMs": 17.19999998807907,
+                    "stagingBytes": 131072
+                  },
+                  "outputTransport": {
+                    "mode": "acknowledged-snapshot-pages",
+                    "packets": 1,
+                    "operations": 93,
+                    "bytes": 8374,
+                    "ownedTransferredBytes": 2000008,
+                    "maximumSliceMs": 0.20000001788139343,
+                    "elapsedMs": 1.300000011920929,
+                    "retainedEstimateBytes": 4005720
+                  },
+                  "executionIdentity": {
+                    "receiptVersion": 3,
+                    "activeExecution": "bound",
+                    "buildId": "65df87c41861ea79361333852567264c05133cb19aa47126d4b70364ec1b0b5b",
+                    "closureDigest": "945e63674ed505237baef0b4060825c54cd9ee44c347cb70b6b1167451be58df",
+                    "assetDigest": "41be624c684638af65c497dff4116b8b539eb85471f7a6040a86f1789af3b4b0",
+                    "codeDigest": "8044908f4f75cad32bf7124503fbc1b512099ec88a85991486d199aed19972dd",
+                    "harnessVersion": "browser-survey-v1",
+                    "identityRecipe": "normalized-data-slot-v2-instruments",
+                    "instrumentArtifacts": [
+                      {
+                        "engineId": "native-fm",
+                        "engineVersion": 1,
+                        "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                      },
+                      {
+                        "engineId": "native-modal",
+                        "engineVersion": 1,
+                        "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                      },
+                      {
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                      },
+                      {
+                        "engineId": "native-sample",
+                        "engineVersion": 1,
+                        "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                      },
+                      {
+                        "engineId": "worklet-choir",
+                        "engineVersion": 1,
+                        "artifactHash": "d30f4b58a42fec86222f7d34828c9936c32ea54a6285836a1f57629ac9abe1c3"
+                      },
+                      {
+                        "engineId": "worklet-friction",
+                        "engineVersion": 1,
+                        "artifactHash": "e7e9842271241e4c2b4fade878e7e9b21d291792e530b8ec02948f6c04bcf745"
+                      },
+                      {
+                        "engineId": "worklet-granular",
+                        "engineVersion": 1,
+                        "artifactHash": "e4b2cff977b676d15a2236aa18e18d7b6a3077b65f9e77efa1408b6f37990f3d"
+                      },
+                      {
+                        "engineId": "worklet-pluck",
+                        "engineVersion": 1,
+                        "artifactHash": "cc7b73d8dd1e009a6c9637eb555b2b7f7504e61b9a286c6215d30086d5f8de6d"
+                      },
+                      {
+                        "engineId": "worklet-sample",
+                        "engineVersion": 1,
+                        "artifactHash": "a1a3dd72c730b37a148daac2172a2fc0a9d9d347c97dc93917bced7e99766848"
+                      },
+                      {
+                        "engineId": "worklet-seed-layers",
+                        "engineVersion": 1,
+                        "artifactHash": "56fccbe1cc70be6a58befe7caffbb66d331b65f9f9b5de7c56eada948394e850"
+                      },
+                      {
+                        "engineId": "worklet-sine",
+                        "engineVersion": 1,
+                        "artifactHash": "2bb1822153792d383d295b22eb47b0666a5df1c76d53d2e60f18eabf4c93e767"
+                      },
+                      {
+                        "engineId": "worklet-spectrum",
+                        "engineVersion": 1,
+                        "artifactHash": "2dd261860084e180862a841e20aa45b41eda2deb2996d2703353710a692abe22"
+                      },
+                      {
+                        "engineId": "worklet-texture",
+                        "engineVersion": 1,
+                        "artifactHash": "6e9f8f2eaccdddc11f54881832206082901a20b02a143f02ce51325214e8f605"
+                      },
+                      {
+                        "engineId": "worklet-wind",
+                        "engineVersion": 1,
+                        "artifactHash": "2bb02574d89f16013bbe8ee32e7b1f75441d2e20bc8a38e9a76dde039e102425"
+                      }
+                    ],
+                    "stateSchema": 5,
+                    "realmId": "88eb5301-abbf-484c-8a3d-ed0a27b12dc0",
+                    "capabilityProfile": "browser-background-jobs",
+                    "binding": "immutable-application-generation"
+                  }
+                },
+                "scope": "native-source-bound-file-codec-worker; synthetic-original-UMP-fixture; no capture UI, hardware setup, DAW or receiver claim",
+                "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+                "exactIndependentWordsAndTicks": 100000
+              }
+            }
+          ]
+        },
+        {
+          "title": "native physical take MIDI revoice uses recorded clocks and independent melodic channels without live output @boundary",
+          "file": "procgen-workstation-physical-midi.spec.js",
+          "status": "passed",
+          "receipts": [
+            {
+              "name": "actual-physical-take-midi-revoice",
+              "value": {
+                "before": {
+                  "project": "{\"version\":1,\"id\":\"midi-project\",\"name\":\"MIDI Project\",\"templateId\":null,\"createdAt\":1793312674277,\"updatedAt\":1793312675159,\"enabled\":false,\"devices\":{\"inputId\":null,\"outputId\":null,\"inputChannel\":\"omni\"},\"transport\":{\"bpmBase\":120,\"timeSignature\":{\"beats\":4,\"unit\":4},\"quantize\":\"1/16\",\"swing\":0},\"global\":{\"scale\":{\"name\":\"dorian\",\"root\":2,\"degrees\":[0,2,3,5,7,9,10]},\"noteRange\":{\"min\":36,\"max\":86},\"velocityRange\":{\"min\":20,\"max\":110,\"default\":80},\"durationTicks\":{\"min\":2,\"max\":24,\"default\":6},\"density\":{\"windowTicks\":24,\"velocityBoost\":0.15,\"durationScale\":0.25},\"envelope\":{\"attack\":1,\"decay\":0,\"sustain\":1,\"release\":1},\"position\":{\"xNoteRange\":{\"min\":-12,\"max\":12},\"timbreRange\":{\"min\":20,\"max\":110},\"viewPan\":false,\"panMode\":\"viewport\",\"lanePanSpread\":72,\"panRange\":{\"min\":-127,\"max\":127},\"panDeadZonePct\":0.02,\"panOnscreenWeight\":0.8,\"panOffscreenWeight\":0.2,\"panOffscreenRange\":1},\"mpe\":{\"enabled\":false,\"masterChannel\":1,\"memberChannels\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],\"pitchBendRange\":{\"semitones\":24,\"cents\":0},\"timbreCc\":74},\"limits\":{\"windowMs\":1000,\"maxEventsPerTick\":32,\"hardMaxEventsPerTick\":128,\"maxEventsPerSecond\":900,\"hardMaxEventsPerSecond\":1000,\"maxBytesPerSecond\":3906,\"overloadCooldownMs\":500,\"maxActiveNotes\":32,\"prioritySfx\":[2,3,16]},\"reverse\":{\"allNotesOffOnToggle\":false},\"musicDirector\":{\"recipe\":\"events\"},\"laneMusic\":{\"version\":1,\"pitchEnabled\":false,\"referenceRoot\":2,\"spread\":0,\"variation\":\"balanced\",\"defaultSchemeId\":\"game-iron-ensemble\",\"mode\":\"steps\",\"ranges\":[]}},\"ensemble\":{\"enabled\":true,\"sourceTrackId\":\"track-1\",\"roles\":[{\"id\":\"bass\",\"trackId\":\"ensemble-bass\",\"register\":{\"min\":38,\"max\":50},\"pan\":-12,\"durationScale\":0.9,\"percussion\":false},{\"id\":\"rhythm\",\"trackId\":\"ensemble-rhythm\",\"register\":{\"min\":50,\"max\":65},\"pan\":-42,\"durationScale\":0.65,\"percussion\":false},{\"id\":\"melody\",\"trackId\":\"ensemble-melody\",\"register\":{\"min\":65,\"max\":81},\"pan\":42,\"durationScale\":1,\"percussion\":false},{\"id\":\"percussion\",\"trackId\":\"ensemble-percussion\",\"register\":{\"min\":36,\"max\":49},\"pan\":12,\"durationScale\":0.5,\"percussion\":true}],\"assignments\":[],\"tension\":{\"enabled\":true,\"amount\":1,\"healthyPopulation\":8,\"healthyTicks\":120,\"collapseRatio\":0.25,\"recoveryRatio\":0.6,\"fadeTicks\":90,\"breakthroughPixels\":48,\"breakthroughHoldTicks\":180}},\"tracks\":[{\"id\":\"track-1\",\"name\":\"Track 1\",\"outputId\":null,\"channel\":1,\"program\":null,\"instrumentLabel\":\"General MIDI\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":1,\"priority\":1,\"voiceBudget\":32},{\"id\":\"ensemble-bass\",\"name\":\"Bass\",\"outputId\":null,\"channel\":2,\"program\":38,\"instrumentLabel\":\"Synth bass\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.88,\"priority\":1,\"voiceBudget\":6},{\"id\":\"ensemble-rhythm\",\"name\":\"Rhythm\",\"outputId\":null,\"channel\":3,\"program\":29,\"instrumentLabel\":\"Overdriven guitar\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.78,\"priority\":1,\"voiceBudget\":6},{\"id\":\"ensemble-melody\",\"name\":\"Melody\",\"outputId\":null,\"channel\":4,\"program\":81,\"instrumentLabel\":\"Saw lead\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.72,\"priority\":1,\"voiceBudget\":8},{\"id\":\"ensemble-percussion\",\"name\":\"Percussion\",\"outputId\":null,\"channel\":10,\"program\":null,\"instrumentLabel\":\"GM drums\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.8,\"priority\":1,\"voiceBudget\":4}],\"sources\":[{\"id\":\"sfx-26\",\"kind\":\"sfx\",\"sourceKey\":\"26\",\"label\":\"Crowd turns - rolling multi-bar reply\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,67,69],\"chord\":null,\"velocity\":18,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":55,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":2,\"rolling\":{\"enabled\":true,\"bars\":2,\"evolve\":2}}},\"clipId\":null},{\"id\":\"sfx-27\",\"kind\":\"sfx\",\"sourceKey\":\"27\",\"label\":\"Crowd turns - rolling multi-bar reply\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":[69,74,76],\"chord\":null,\"velocity\":18,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":75,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":2,\"rolling\":{\"enabled\":true,\"bars\":2,\"evolve\":2}}},\"clipId\":null},{\"id\":\"sfx-28\",\"kind\":\"sfx\",\"sourceKey\":\"28\",\"label\":\"countdown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":99,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":80,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-24\",\"kind\":\"sfx\",\"sourceKey\":\"24\",\"label\":\"spawn · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,71],\"chord\":null,\"velocity\":24,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-16\",\"kind\":\"sfx\",\"sourceKey\":\"16\",\"label\":\"exit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,74],\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-25\",\"kind\":\"sfx\",\"sourceKey\":\"25\",\"label\":\"Safe landing - quiet descending arrival\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":74,\"degree\":null,\"octave\":4,\"notes\":[74,79,81,86],\"chord\":null,\"velocity\":32,\"priority\":0,\"durationTicks\":3,\"pan\":null,\"timbre\":50,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"down\",\"spacingTicks\":3}},\"clipId\":null},{\"id\":\"sfx-20\",\"kind\":\"sfx\",\"sourceKey\":\"20\",\"label\":\"builder step · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,71],\"chord\":null,\"velocity\":108,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":86,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-18\",\"kind\":\"sfx\",\"sourceKey\":\"18\",\"label\":\"builder warning · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":72,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":104,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-21\",\"kind\":\"sfx\",\"sourceKey\":\"21\",\"label\":\"bash · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,57],\"chord\":null,\"velocity\":108,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":48,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"updown\",\"length\":2,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-22\",\"kind\":\"sfx\",\"sourceKey\":\"22\",\"label\":\"dig · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57],\"chord\":null,\"velocity\":102,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":3,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-23\",\"kind\":\"sfx\",\"sourceKey\":\"23\",\"label\":\"mine · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,55,57],\"chord\":null,\"velocity\":105,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":50,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":3,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-10\",\"kind\":\"sfx\",\"sourceKey\":\"10\",\"label\":\"steel hit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":86,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":112,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-1\",\"kind\":\"sfx\",\"sourceKey\":\"1\",\"label\":\"skill select · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":72,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-4\",\"kind\":\"sfx\",\"sourceKey\":\"4\",\"label\":\"skill assign · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":74,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":99,\"priority\":null,\"durationTicks\":3,\"pan\":null,\"timbre\":82,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-2\",\"kind\":\"sfx\",\"sourceKey\":\"2\",\"label\":\"entrance open · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":5,\"pan\":null,\"timbre\":62,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-3\",\"kind\":\"sfx\",\"sourceKey\":\"3\",\"label\":\"level start · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":105,\"priority\":null,\"durationTicks\":7,\"pan\":null,\"timbre\":46,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-5\",\"kind\":\"sfx\",\"sourceKey\":\"5\",\"label\":\"ohno · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":57,\"degree\":null,\"octave\":4,\"notes\":[57,60],\"chord\":null,\"velocity\":114,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"updown\",\"length\":2,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-12\",\"kind\":\"sfx\",\"sourceKey\":\"12\",\"label\":\"explosion · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":38,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":5,\"pan\":null,\"timbre\":24,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-8\",\"kind\":\"sfx\",\"sourceKey\":\"8\",\"label\":\"splat · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-17\",\"kind\":\"sfx\",\"sourceKey\":\"17\",\"label\":\"drown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57,62],\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-19\",\"kind\":\"sfx\",\"sourceKey\":\"19\",\"label\":\"fell off · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":78,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":38,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-6\",\"kind\":\"sfx\",\"sourceKey\":\"6\",\"label\":\"trap zap · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":72,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":126,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":106,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-7\",\"kind\":\"sfx\",\"sourceKey\":\"7\",\"label\":\"trap squish · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":3,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-9\",\"kind\":\"sfx\",\"sourceKey\":\"9\",\"label\":\"trap slicer · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":96,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-13\",\"kind\":\"sfx\",\"sourceKey\":\"13\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-14\",\"kind\":\"sfx\",\"sourceKey\":\"14\",\"label\":\"trap ten ton · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":38,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":24,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-15\",\"kind\":\"sfx\",\"sourceKey\":\"15\",\"label\":\"trap bear · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":57,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":62,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-1\",\"kind\":\"trigger\",\"sourceKey\":\"1\",\"label\":\"exit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,74],\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-5\",\"kind\":\"trigger\",\"sourceKey\":\"5\",\"label\":\"drown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57,62],\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-6\",\"kind\":\"trigger\",\"sourceKey\":\"6\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-12\",\"kind\":\"trigger\",\"sourceKey\":\"12\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-29\",\"kind\":\"sfx\",\"sourceKey\":\"29\",\"label\":\"Crew passage - rising resolution\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,67,69,74],\"chord\":null,\"velocity\":56,\"priority\":8,\"durationTicks\":3,\"pan\":null,\"timbre\":null,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":3}},\"clipId\":null}],\"clips\":[],\"automation\":[],\"ui\":{\"selectedTrackId\":\"track-1\",\"selectedSourceId\":\"sfx-24\",\"selectedClipId\":null,\"activeRegion\":\"sources\"},\"procgen\":{\"version\":2,\"playModel\":\"physical-v1\",\"revision\":1,\"seed\":42,\"physicalGraph\":{\"version\":1,\"revision\":2,\"seed\":0,\"instruments\":[{\"id\":\"midi-crossing\",\"sourceKind\":\"MotionCommitted\",\"action\":null,\"operationKind\":null,\"causeKind\":null,\"gateX\":40,\"articulation\":null,\"probability01\":1,\"crossingDirection\":\"positive\",\"changedOnly\":false,\"pitchCents\":6012.34567,\"velocity01\":0.8,\"route\":\"local\",\"role\":\"crossing\",\"mute\":false,\"solo\":false}]},\"lanes\":[{\"id\":\"lane-1\",\"revision\":0,\"name\":\"Lane 1\",\"family\":\"crystal\",\"role\":\"lead\",\"patch\":\"crystal-lead\",\"worldThemeId\":\"crystal\",\"instrumentPatchId\":\"crystal-lead\",\"performanceRecipeId\":\"crystal-lead\",\"linkedThemePresetId\":\"crystal\",\"soundChangePolicy\":\"new-notes-only\",\"externalProgram\":10,\"externalPercussion\":false,\"instrumentRef\":null,\"instrumentControls\":{\"macros\":{}},\"mode\":\"physical\",\"patternPurpose\":null,\"channel\":1,\"outputId\":null,\"bankMSB\":null,\"bankLSB\":null,\"eventMask\":{},\"ccAutomation\":[],\"mute\":false,\"solo\":false,\"gain\":1,\"eventAccent\":0.65,\"pan\":0,\"activeSlot\":0,\"queuedSlot\":null,\"launchSerial\":0,\"patterns\":[]}]}}",
+                  "tick": 96,
+                  "takeId": "take:51aebdef-14d4-45df-ae35-2547a3c6206c",
+                  "capturedBpm": 360,
+                  "uiBpm": 60
+                },
+                "after": {
+                  "tick": 96,
+                  "project": "{\"version\":1,\"id\":\"midi-project\",\"name\":\"MIDI Project\",\"templateId\":null,\"createdAt\":1793312674277,\"updatedAt\":1793312675159,\"enabled\":false,\"devices\":{\"inputId\":null,\"outputId\":null,\"inputChannel\":\"omni\"},\"transport\":{\"bpmBase\":120,\"timeSignature\":{\"beats\":4,\"unit\":4},\"quantize\":\"1/16\",\"swing\":0},\"global\":{\"scale\":{\"name\":\"dorian\",\"root\":2,\"degrees\":[0,2,3,5,7,9,10]},\"noteRange\":{\"min\":36,\"max\":86},\"velocityRange\":{\"min\":20,\"max\":110,\"default\":80},\"durationTicks\":{\"min\":2,\"max\":24,\"default\":6},\"density\":{\"windowTicks\":24,\"velocityBoost\":0.15,\"durationScale\":0.25},\"envelope\":{\"attack\":1,\"decay\":0,\"sustain\":1,\"release\":1},\"position\":{\"xNoteRange\":{\"min\":-12,\"max\":12},\"timbreRange\":{\"min\":20,\"max\":110},\"viewPan\":false,\"panMode\":\"viewport\",\"lanePanSpread\":72,\"panRange\":{\"min\":-127,\"max\":127},\"panDeadZonePct\":0.02,\"panOnscreenWeight\":0.8,\"panOffscreenWeight\":0.2,\"panOffscreenRange\":1},\"mpe\":{\"enabled\":false,\"masterChannel\":1,\"memberChannels\":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],\"pitchBendRange\":{\"semitones\":24,\"cents\":0},\"timbreCc\":74},\"limits\":{\"windowMs\":1000,\"maxEventsPerTick\":32,\"hardMaxEventsPerTick\":128,\"maxEventsPerSecond\":900,\"hardMaxEventsPerSecond\":1000,\"maxBytesPerSecond\":3906,\"overloadCooldownMs\":500,\"maxActiveNotes\":32,\"prioritySfx\":[2,3,16]},\"reverse\":{\"allNotesOffOnToggle\":false},\"musicDirector\":{\"recipe\":\"events\"},\"laneMusic\":{\"version\":1,\"pitchEnabled\":false,\"referenceRoot\":2,\"spread\":0,\"variation\":\"balanced\",\"defaultSchemeId\":\"game-iron-ensemble\",\"mode\":\"steps\",\"ranges\":[]}},\"ensemble\":{\"enabled\":true,\"sourceTrackId\":\"track-1\",\"roles\":[{\"id\":\"bass\",\"trackId\":\"ensemble-bass\",\"register\":{\"min\":38,\"max\":50},\"pan\":-12,\"durationScale\":0.9,\"percussion\":false},{\"id\":\"rhythm\",\"trackId\":\"ensemble-rhythm\",\"register\":{\"min\":50,\"max\":65},\"pan\":-42,\"durationScale\":0.65,\"percussion\":false},{\"id\":\"melody\",\"trackId\":\"ensemble-melody\",\"register\":{\"min\":65,\"max\":81},\"pan\":42,\"durationScale\":1,\"percussion\":false},{\"id\":\"percussion\",\"trackId\":\"ensemble-percussion\",\"register\":{\"min\":36,\"max\":49},\"pan\":12,\"durationScale\":0.5,\"percussion\":true}],\"assignments\":[],\"tension\":{\"enabled\":true,\"amount\":1,\"healthyPopulation\":8,\"healthyTicks\":120,\"collapseRatio\":0.25,\"recoveryRatio\":0.6,\"fadeTicks\":90,\"breakthroughPixels\":48,\"breakthroughHoldTicks\":180}},\"tracks\":[{\"id\":\"track-1\",\"name\":\"Track 1\",\"outputId\":null,\"channel\":1,\"program\":null,\"instrumentLabel\":\"General MIDI\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":1,\"priority\":1,\"voiceBudget\":32},{\"id\":\"ensemble-bass\",\"name\":\"Bass\",\"outputId\":null,\"channel\":2,\"program\":38,\"instrumentLabel\":\"Synth bass\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.88,\"priority\":1,\"voiceBudget\":6},{\"id\":\"ensemble-rhythm\",\"name\":\"Rhythm\",\"outputId\":null,\"channel\":3,\"program\":29,\"instrumentLabel\":\"Overdriven guitar\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.78,\"priority\":1,\"voiceBudget\":6},{\"id\":\"ensemble-melody\",\"name\":\"Melody\",\"outputId\":null,\"channel\":4,\"program\":81,\"instrumentLabel\":\"Saw lead\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.72,\"priority\":1,\"voiceBudget\":8},{\"id\":\"ensemble-percussion\",\"name\":\"Percussion\",\"outputId\":null,\"channel\":10,\"program\":null,\"instrumentLabel\":\"GM drums\",\"mute\":false,\"solo\":false,\"arm\":false,\"velocityScale\":0.8,\"priority\":1,\"voiceBudget\":4}],\"sources\":[{\"id\":\"sfx-26\",\"kind\":\"sfx\",\"sourceKey\":\"26\",\"label\":\"Crowd turns - rolling multi-bar reply\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,67,69],\"chord\":null,\"velocity\":18,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":55,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":2,\"rolling\":{\"enabled\":true,\"bars\":2,\"evolve\":2}}},\"clipId\":null},{\"id\":\"sfx-27\",\"kind\":\"sfx\",\"sourceKey\":\"27\",\"label\":\"Crowd turns - rolling multi-bar reply\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":[69,74,76],\"chord\":null,\"velocity\":18,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":75,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":2,\"rolling\":{\"enabled\":true,\"bars\":2,\"evolve\":2}}},\"clipId\":null},{\"id\":\"sfx-28\",\"kind\":\"sfx\",\"sourceKey\":\"28\",\"label\":\"countdown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":99,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":80,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-24\",\"kind\":\"sfx\",\"sourceKey\":\"24\",\"label\":\"spawn · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,71],\"chord\":null,\"velocity\":24,\"priority\":0,\"durationTicks\":2,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-16\",\"kind\":\"sfx\",\"sourceKey\":\"16\",\"label\":\"exit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,74],\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-25\",\"kind\":\"sfx\",\"sourceKey\":\"25\",\"label\":\"Safe landing - quiet descending arrival\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":74,\"degree\":null,\"octave\":4,\"notes\":[74,79,81,86],\"chord\":null,\"velocity\":32,\"priority\":0,\"durationTicks\":3,\"pan\":null,\"timbre\":50,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"down\",\"spacingTicks\":3}},\"clipId\":null},{\"id\":\"sfx-20\",\"kind\":\"sfx\",\"sourceKey\":\"20\",\"label\":\"builder step · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,71],\"chord\":null,\"velocity\":108,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":86,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-18\",\"kind\":\"sfx\",\"sourceKey\":\"18\",\"label\":\"builder warning · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":72,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":104,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-21\",\"kind\":\"sfx\",\"sourceKey\":\"21\",\"label\":\"bash · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,57],\"chord\":null,\"velocity\":108,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":48,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"updown\",\"length\":2,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-22\",\"kind\":\"sfx\",\"sourceKey\":\"22\",\"label\":\"dig · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57],\"chord\":null,\"velocity\":102,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":3,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-23\",\"kind\":\"sfx\",\"sourceKey\":\"23\",\"label\":\"mine · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,55,57],\"chord\":null,\"velocity\":105,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":50,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":3,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-10\",\"kind\":\"sfx\",\"sourceKey\":\"10\",\"label\":\"steel hit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":86,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":112,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-1\",\"kind\":\"sfx\",\"sourceKey\":\"1\",\"label\":\"skill select · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":72,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-4\",\"kind\":\"sfx\",\"sourceKey\":\"4\",\"label\":\"skill assign · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":74,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":99,\"priority\":null,\"durationTicks\":3,\"pan\":null,\"timbre\":82,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-2\",\"kind\":\"sfx\",\"sourceKey\":\"2\",\"label\":\"entrance open · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":5,\"pan\":null,\"timbre\":62,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-3\",\"kind\":\"sfx\",\"sourceKey\":\"3\",\"label\":\"level start · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":105,\"priority\":null,\"durationTicks\":7,\"pan\":null,\"timbre\":46,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-5\",\"kind\":\"sfx\",\"sourceKey\":\"5\",\"label\":\"ohno · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":57,\"degree\":null,\"octave\":4,\"notes\":[57,60],\"chord\":null,\"velocity\":114,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"updown\",\"length\":2,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-12\",\"kind\":\"sfx\",\"sourceKey\":\"12\",\"label\":\"explosion · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":38,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":5,\"pan\":null,\"timbre\":24,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-8\",\"kind\":\"sfx\",\"sourceKey\":\"8\",\"label\":\"splat · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-17\",\"kind\":\"sfx\",\"sourceKey\":\"17\",\"label\":\"drown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57,62],\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-19\",\"kind\":\"sfx\",\"sourceKey\":\"19\",\"label\":\"fell off · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":78,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":38,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-6\",\"kind\":\"sfx\",\"sourceKey\":\"6\",\"label\":\"trap zap · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":72,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":126,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":106,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-7\",\"kind\":\"sfx\",\"sourceKey\":\"7\",\"label\":\"trap squish · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":3,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-9\",\"kind\":\"sfx\",\"sourceKey\":\"9\",\"label\":\"trap slicer · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":69,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":96,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-13\",\"kind\":\"sfx\",\"sourceKey\":\"13\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-14\",\"kind\":\"sfx\",\"sourceKey\":\"14\",\"label\":\"trap ten ton · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":38,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":24,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-15\",\"kind\":\"sfx\",\"sourceKey\":\"15\",\"label\":\"trap bear · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":57,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":127,\"priority\":null,\"durationTicks\":2,\"pan\":null,\"timbre\":62,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-1\",\"kind\":\"trigger\",\"sourceKey\":\"1\",\"label\":\"exit · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,65,69,74],\"chord\":null,\"velocity\":120,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":70,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"up\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-5\",\"kind\":\"trigger\",\"sourceKey\":\"5\",\"label\":\"drown · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":50,\"degree\":null,\"octave\":4,\"notes\":[50,53,57,62],\"chord\":null,\"velocity\":87,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":32,\"pitchBend\":null,\"envelope\":null,\"arp\":{\"enabled\":true,\"mode\":\"down\",\"length\":4,\"pattern\":null},\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-6\",\"kind\":\"trigger\",\"sourceKey\":\"6\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"trigger-12\",\"kind\":\"trigger\",\"sourceKey\":\"12\",\"label\":\"trap fire · Iron ensemble\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":53,\"degree\":null,\"octave\":4,\"notes\":null,\"chord\":null,\"velocity\":111,\"priority\":null,\"durationTicks\":4,\"pan\":null,\"timbre\":42,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":null},\"clipId\":null},{\"id\":\"sfx-29\",\"kind\":\"sfx\",\"sourceKey\":\"29\",\"label\":\"Crew passage - rising resolution\",\"enabled\":true,\"trackId\":\"track-1\",\"mode\":\"direct\",\"mapping\":{\"note\":62,\"degree\":null,\"octave\":4,\"notes\":[62,67,69,74],\"chord\":null,\"velocity\":56,\"priority\":8,\"durationTicks\":3,\"pan\":null,\"timbre\":null,\"pitchBend\":null,\"envelope\":null,\"arp\":null,\"phrase\":{\"enabled\":true,\"mode\":\"up\",\"spacingTicks\":3}},\"clipId\":null}],\"clips\":[],\"automation\":[],\"ui\":{\"selectedTrackId\":\"track-1\",\"selectedSourceId\":\"sfx-24\",\"selectedClipId\":null,\"activeRegion\":\"sources\"},\"procgen\":{\"version\":2,\"playModel\":\"physical-v1\",\"revision\":1,\"seed\":42,\"physicalGraph\":{\"version\":1,\"revision\":2,\"seed\":0,\"instruments\":[{\"id\":\"midi-crossing\",\"sourceKind\":\"MotionCommitted\",\"action\":null,\"operationKind\":null,\"causeKind\":null,\"gateX\":40,\"articulation\":null,\"probability01\":1,\"crossingDirection\":\"positive\",\"changedOnly\":false,\"pitchCents\":6012.34567,\"velocity01\":0.8,\"route\":\"local\",\"role\":\"crossing\",\"mute\":false,\"solo\":false}]},\"lanes\":[{\"id\":\"lane-1\",\"revision\":0,\"name\":\"Lane 1\",\"family\":\"crystal\",\"role\":\"lead\",\"patch\":\"crystal-lead\",\"worldThemeId\":\"crystal\",\"instrumentPatchId\":\"crystal-lead\",\"performanceRecipeId\":\"crystal-lead\",\"linkedThemePresetId\":\"crystal\",\"soundChangePolicy\":\"new-notes-only\",\"externalProgram\":10,\"externalPercussion\":false,\"instrumentRef\":null,\"instrumentControls\":{\"macros\":{}},\"mode\":\"physical\",\"patternPurpose\":null,\"channel\":1,\"outputId\":null,\"bankMSB\":null,\"bankLSB\":null,\"eventMask\":{},\"ccAutomation\":[],\"mute\":false,\"solo\":false,\"gain\":1,\"eventAccent\":0.65,\"pan\":0,\"activeSlot\":0,\"queuedSlot\":null,\"launchSerial\":0,\"patterns\":[]}]}}",
+                  "requests": 0,
+                  "preparationReceipt": {
+                    "protocol": 3,
+                    "jobId": "background-12",
+                    "kind": "encode-physical-take-midi",
+                    "ownerId": "procgen-midi-export",
+                    "ownerEpoch": 1,
+                    "sourceRevision": "9a19fc7003d9ddc57ab62613ff0c74e76108ea6b0a1e790ed753ea0302a2904e",
+                    "state": "computed",
+                    "publication": "not-committed",
+                    "method": "dedicated-worker",
+                    "queueWaitMs": 0,
+                    "elapsedMs": 148.59999999403954,
+                    "inputBytes": 8194,
+                    "nodes": 64,
+                    "retainedBytes": 69644,
+                    "inputTransport": {
+                      "schema": "owned-background-snapshot-pages/v1",
+                      "packets": 5,
+                      "operations": 1135,
+                      "bytes": 97644,
+                      "maximumSliceMs": 0.5999999940395355,
+                      "maximumPostMessageMs": 0.09999999403953552,
+                      "elapsedMs": 40.19999998807907,
+                      "stagingBytes": 131072
+                    },
+                    "outputTransport": {
+                      "mode": "acknowledged-snapshot-pages",
+                      "packets": 1,
+                      "operations": 215,
+                      "bytes": 19376,
+                      "ownedTransferredBytes": 2054,
+                      "maximumSliceMs": 0.19999998807907104,
+                      "elapsedMs": 1.800000011920929,
+                      "retainedEstimateBytes": 18624
+                    },
+                    "executionIdentity": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "65df87c41861ea79361333852567264c05133cb19aa47126d4b70364ec1b0b5b",
+                      "closureDigest": "945e63674ed505237baef0b4060825c54cd9ee44c347cb70b6b1167451be58df",
+                      "assetDigest": "41be624c684638af65c497dff4116b8b539eb85471f7a6040a86f1789af3b4b0",
+                      "codeDigest": "8044908f4f75cad32bf7124503fbc1b512099ec88a85991486d199aed19972dd",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "instrumentArtifacts": [
+                        {
+                          "engineId": "native-fm",
+                          "engineVersion": 1,
+                          "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+                        },
+                        {
+                          "engineId": "native-modal",
+                          "engineVersion": 1,
+                          "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+                        },
+                        {
+                          "engineId": "native-oscillator",
+                          "engineVersion": 1,
+                          "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+                        },
+                        {
+                          "engineId": "native-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+                        },
+                        {
+                          "engineId": "worklet-choir",
+                          "engineVersion": 1,
+                          "artifactHash": "d30f4b58a42fec86222f7d34828c9936c32ea54a6285836a1f57629ac9abe1c3"
+                        },
+                        {
+                          "engineId": "worklet-friction",
+                          "engineVersion": 1,
+                          "artifactHash": "e7e9842271241e4c2b4fade878e7e9b21d291792e530b8ec02948f6c04bcf745"
+                        },
+                        {
+                          "engineId": "worklet-granular",
+                          "engineVersion": 1,
+                          "artifactHash": "e4b2cff977b676d15a2236aa18e18d7b6a3077b65f9e77efa1408b6f37990f3d"
+                        },
+                        {
+                          "engineId": "worklet-pluck",
+                          "engineVersion": 1,
+                          "artifactHash": "cc7b73d8dd1e009a6c9637eb555b2b7f7504e61b9a286c6215d30086d5f8de6d"
+                        },
+                        {
+                          "engineId": "worklet-sample",
+                          "engineVersion": 1,
+                          "artifactHash": "a1a3dd72c730b37a148daac2172a2fc0a9d9d347c97dc93917bced7e99766848"
+                        },
+                        {
+                          "engineId": "worklet-seed-layers",
+                          "engineVersion": 1,
+                          "artifactHash": "56fccbe1cc70be6a58befe7caffbb66d331b65f9f9b5de7c56eada948394e850"
+                        },
+                        {
+                          "engineId": "worklet-sine",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb1822153792d383d295b22eb47b0666a5df1c76d53d2e60f18eabf4c93e767"
+                        },
+                        {
+                          "engineId": "worklet-spectrum",
+                          "engineVersion": 1,
+                          "artifactHash": "2dd261860084e180862a841e20aa45b41eda2deb2996d2703353710a692abe22"
+                        },
+                        {
+                          "engineId": "worklet-texture",
+                          "engineVersion": 1,
+                          "artifactHash": "6e9f8f2eaccdddc11f54881832206082901a20b02a143f02ce51325214e8f605"
+                        },
+                        {
+                          "engineId": "worklet-wind",
+                          "engineVersion": 1,
+                          "artifactHash": "2bb02574d89f16013bbe8ee32e7b1f75441d2e20bc8a38e9a76dde039e102425"
+                        }
+                      ],
+                      "stateSchema": 5,
+                      "realmId": "75dcc09b-1c1b-45ba-b959-56da02165c58",
+                      "capabilityProfile": "browser-background-jobs",
+                      "binding": "immutable-application-generation"
+                    }
+                  },
+                  "previousRetained": true
+                },
+                "manifest": {
+                  "schema": "procgen-physical-take-midi/v1",
+                  "takeId": "take:51aebdef-14d4-45df-ae35-2547a3c6206c",
+                  "takeRevision": 8,
+                  "sourceCanonicalHash": "9a19fc7003d9ddc57ab62613ff0c74e76108ea6b0a1e790ed753ea0302a2904e",
+                  "sourceComplete": true,
+                  "noteBoundaries": "retained-closed-no-derived-pickups-or-releases",
+                  "timing": {
+                    "schema": "procgen-physical-midi-timing/v1",
+                    "mode": "source-score",
+                    "sourceTimeDomain": "simulation-tick",
+                    "exportTimeDomain": "smf-tick",
+                    "worldId": "procgen:42",
+                    "epoch": "procgen:42:1:0",
+                    "origin": {
+                      "epoch": "procgen:42:1:0",
+                      "simTick": 0,
+                      "subTick": 0,
+                      "precision": "tick",
+                      "beat": 0
+                    },
+                    "end": {
+                      "epoch": "procgen:42:1:0",
+                      "simTick": 96,
+                      "subTick": 0,
+                      "precision": "tick",
+                      "beat": 11.52
+                    },
+                    "endTick": 11059,
+                    "ppq": 960,
+                    "eventCount": 25,
+                    "tempoChanges": 0,
+                    "ordering": "canonical-intent-order-stable-protocol-expansion-on-quantized-ties",
+                    "cropPolicy": "reject-outside-explicit-range",
+                    "liveLatenessApplied": false,
+                    "quantization": {
+                      "rounding": "nearest-tick-math-round",
+                      "tempoEncoding": "rounded-microseconds-per-quarter",
+                      "maximumBeatError": 0.0002083333333333659,
+                      "maximumTimingErrorMs": 0.03408229166666388,
+                      "collapsedDistinctTimes": 0,
+                      "collapsedTempoChanges": 0,
+                      "collisionScope": "physical-events",
+                      "errorScope": "events-tempo-boundaries-and-crop-end"
+                    }
+                  },
+                  "lowering": {
+                    "schema": "procgen-physical-midi-lowering/v1",
+                    "sourceLayer": "captured-musical-intent",
+                    "evidence": "new-midi1-revoice-not-submitted-output",
+                    "protocol": "midi1-independent-melodic-channels",
+                    "channels": [
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16
+                    ],
+                    "program": 24,
+                    "bendRangeSemitones": 2,
+                    "capacity": 15,
+                    "capacityPolicy": "reject-no-steal-no-merge",
+                    "peakVoices": 1,
+                    "begins": 2,
+                    "updates": 0,
+                    "ends": 2,
+                    "losses": {
+                      "velocity7bit": 2,
+                      "minimumNonzeroVelocity": 0,
+                      "pressure7bit": 0,
+                      "pan7bit": 0,
+                      "pitch14bit": 2,
+                      "maximumVelocityError": 0.0031496062992125706,
+                      "maximumPressureError": 0,
+                      "maximumPanError": 0,
+                      "maximumPitchErrorCents": 0.00935380661717744,
+                      "sourceIntentsWithoutFactSequence": 0,
+                      "originalTimbreReplaced": true,
+                      "releaseVelocityUnobserved": 2
+                    }
+                  }
+                },
+                "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+                "scope": "Actual captured desktop physical phrase projected from verified semantic journal, captured clock, owned worker and MIDI1 revoice. No historical submitted trace, MPE/CI Profile, physical receiver or hardware setup/playback qualification."
+              }
+            }
+          ]
+        }
+      ],
+      "browserCollection": {
+        "full": 248,
+        "smoke": 218,
+        "files": 54
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "initialFixtureCorrections": [
+        "Expected actual explicit crop-refusal phrase.",
+        "Removed nonexistent journal.dispose cleanup; retained source/result leases release through actual owners."
+      ],
+      "evidence": [
+        {
+          "path": ".tmp/rook371-node-first.log",
+          "bytes": 19628,
+          "sha256": "e46f4574f97f8de3476c81807c90d66af3332ab565928da5befc3e213d90cb4f"
+        },
+        {
+          "path": ".tmp/rook371-node-final.log",
+          "bytes": 19473,
+          "sha256": "e513ac242e334348de0bb7516d472ac24b5fb8accd52b1f0d3f0c0cc9713ef80"
+        },
+        {
+          "path": ".tmp/rook371-browser-first.json",
+          "bytes": 95953,
+          "sha256": "d5910ef6531dac5877f542ee132ffb6daea9f2d8a2f1451cac0acfe8d4fb705f"
+        },
+        {
+          "path": ".tmp/rook371-browser-first.log",
+          "bytes": 1065,
+          "sha256": "6b5e16adedbc93da9ef795788059df6eacdd513a1ac0e1b80320f206cb307dcc"
+        },
+        {
+          "path": ".tmp/rook371-coverage/coverage-summary.json",
+          "bytes": 1044,
+          "sha256": "e007ba9e5a78d95ddbde0e42783e56bae63853eeb19810f1623425df0dd5ca0a"
+        },
+        {
+          "path": ".tmp/rook371-static.log",
+          "bytes": 262,
+          "sha256": "7ef0f4570bff00b7890afbd5845a11dced3e61cb2cdbeae3895cc3f55461dd2b"
+        },
+        {
+          "path": ".tmp/rook371-provenance.log",
+          "bytes": 4002,
+          "sha256": "fe0293dbd2fef4c33ff376ba1538caf75d320db06d207bec56e3ba461deeed48"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+        "bytes": 12725,
+        "sha256": "c5cf3c7d0b10b9caaaf1346a5dfd81fcb1b8c6cb3e107db2cabe1638f72ba320"
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalMidiTiming.js",
+        "bytes": 6944,
+        "sha256": "b6f2697f0a2e56423f38b1a6b78b73477a6401e553ec6b59cb9f6ca94579fcb7"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalScoreClock.js",
+        "bytes": 3634,
+        "sha256": "90fb91826ce6fe1e32dd3965e88d5df834467f65bfd1043885584f713c675d2c"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 224348,
+        "sha256": "63777aa5f679f6dbc737003ea0a4fc5f911c5e2352474404910abaef084b9c0a"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 148143,
+        "sha256": "a250505343af45f9217f1fc078882cc0d60013480fb0532a241d1713f554b3a5"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "bytes": 46603,
+        "sha256": "fdaa983dc05695739598857ad2b11cdc936916044964fa0dfc6accf527cfac7c"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "bytes": 2441,
+        "sha256": "6efbc72aedae8496a7fc8c077017d6cbcc874acc770b387197e02eb949610b5b"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "bytes": 8475,
+        "sha256": "e186e44853d8043f375affcb8f06ecaa17aa6ddd894ca9c09c36633f3668a1e2"
+      },
+      {
+        "path": "test/physical-take-midi.test.js",
+        "bytes": 10473,
+        "sha256": "4eff1edf87208bc0fe3c237b2cda806c9a4a367e925042f3347f29a714eba5a8"
+      },
+      {
+        "path": "e2e/procgen-workstation-physical-midi.spec.js",
+        "bytes": 5392,
+        "sha256": "e5d833abd12bb0bca979174255de4c2d68ae1f8283634f2cf3f61a74b9a5625f"
+      },
+      {
+        "path": "scripts/runTests.js",
+        "bytes": 17154,
+        "sha256": "520f705605f255919931b6f442c1430cce9bbbcaf48798634c68bfd0d30372cc"
+      },
+      {
+        "path": "tsconfig.checkjs.json",
+        "bytes": 1535,
+        "sha256": "963619b3bde28e4ba774a814fed55789f0181c1b120fe0d181e68c9c31f4839c"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22245,
+        "sha256": "66465366d616c42d72235f0aff7c4c4e7241382b1510312e96fd18b692945b34"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "338df071d24086d744634b0b83b364776211c3e6",
+      "status": "success",
+      "run": 40955790400,
+      "job": 123735425685,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40955790400",
+      "engineJob": 123735425791,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7175,
+      "nodePending": 10,
+      "browserPassed": 260,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 216,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.79,
+        "statements": 90.79,
+        "branches": 83.95,
+        "functions": 88.64
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 36908,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 99.90000000000055,
+          "perfP50Tps": 82.07423988064068,
+          "historyRatio": 0.5818333333333333,
+          "antsAvgMs": 23.56,
+          "tileCompositionAvgMs": 4.15,
+          "overlayPlaneAvgMs": 16.83,
+          "scaledBlitAvgMs": 30.98
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1252,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "4ab70849577730d7a9bff8ae9ed79da05c2918c5680cce0d5e908359bbb7fc1b",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123735425171,
+        "windowsJob": 123735425520,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "76a61a10c1d37e28a1cd55421b3980ac57993d12",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1141,
+        "inventorySha256": "e71c48f10e873a6cc39cf2b486b759fdc8c11cf549bdde3a7514928b4fe8b9c3",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1252,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci368-main.zip",
+          "bytes": 657543,
+          "sha256": "4e99c9c07b0916b254670359fced47f41e7b58fedd910f9b9f5ff24bf5c96e54"
+        },
+        {
+          "path": ".tmp/ci368-engine.zip",
+          "bytes": 156890,
+          "sha256": "5b90f739c332eee8032feb9e82bfb31e9730bdbb060bb1b8f32a8cfb66ab5df1"
+        },
+        {
+          "path": ".tmp/ci368-linux.zip",
+          "bytes": 2246,
+          "sha256": "0d3272bd9e98a07e4606a82fa045e9483bcd2aa3edebcfcdf09288c25bee3053"
+        },
+        {
+          "path": ".tmp/ci368-windows.zip",
+          "bytes": 2149,
+          "sha256": "32f495216903aec9e0aae91e8438f3958f59804c52e507aa94044713d793a3b7"
+        },
+        {
+          "path": ".tmp/ci368-main-workstation-result-qualification.json",
+          "bytes": 184237,
+          "sha256": "212d2369bf6b891dce305345e54292e84ba6347db06dbffcc626b3aa7c4dfc5c"
+        },
+        {
+          "path": ".tmp/ci368-engine-lifecycle-engine-qualification.json",
+          "bytes": 243367,
+          "sha256": "b10b0acb0c61fd5e3d502be1040acce6463393f46e283d84c7a3cd42f6ec5875"
+        },
+        {
+          "path": ".tmp/ci368-linux-native-midi-codec-qualification.json",
+          "bytes": 7875,
+          "sha256": "c51c52b58c9a20daa0ee14c021f0916d3373febe85d24f7d64cb682edd1e5324"
+        },
+        {
+          "path": ".tmp/ci368-windows-native-midi-codec-qualification.json",
+          "bytes": 7748,
+          "sha256": "77e2eae69febeec20f68d36583cfe173ce67d8db4116b1cafbf20608e83e48dc"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    }
+  }
 }
