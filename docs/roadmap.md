@@ -9542,3 +9542,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   initial boot before the project transaction; retain diagnostics. GitHub refuses
   its isolated rerun while the overall workflow is still running; retry only that
   job once the workflow finishes. Root cause remains unproven.
+
+### Continuation 369 - original capture callback and source lifetime ownership
+
+- Commit original packet ownership before record/pressure observers run. Own the
+  caller packet and fence delivery against route, policy, scheduler, Panic and
+  flush changes during those callbacks. Refuse nested mutation while capture is
+  pending; preserve authored intent independently of later byte submission.
+- Bound retained export sources to32 per capture. Clearing starts a new owner;
+  old original metadata remains charged while any source or snapshot producer
+  retains it. Early release waits for producer settlement. Disposal drops live
+  recording rows before the capture reservation can retire.
+- Grouped qualification:233 related Node cases and two native1920×1080 journeys
+  pass. Original capture has100%lines/functions and92.63%branches. Preserve
+  original-source Clip projection, optional attribution/boundary sidecars, product
+  controls and physical-take projection as remaining #1093/#986 work.
+- Promote366/79d2dd54 to the verified full green checkpoint:7162 Node passes with
+  10preexisting pending,26desktop/214workstation/18engine cases,14capabilities,
+  both native codec jobs and benchmark/MCP/policy/dependency checks. Coverage is
+  90.79%lines/83.94%branches/88.64%functions. Verify1140workstation/1251engine and
+  both8file native inventories against that Git tree; native8829command outputs
+  agree. Keep the original Firefox signal11 failure, diagnostics, earlier403
+  retry refusal and successful isolated18case rerun; root cause remains unproven.
+  Later development has its own qualification scope. Continue solo.

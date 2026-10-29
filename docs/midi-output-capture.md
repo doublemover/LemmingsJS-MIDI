@@ -103,6 +103,13 @@ Original capture shares the recording prefix/cap/clear lifecycle, with an extra
 charged growing reservation. Clear/disposal require acknowledged retirement;
 unknown retirement stays charged. It copies only the current packet and bounded
 attribution per request. Capture refusal does not change live lowering/delivery.
+Original record and pressure observers run after capture commits. The command
+owns its packet before observers run; route/policy replacement, Panic, flush or
+disposal fences delivery of that old request. A clear starts a fresh capture
+owner. At most32 retained export sources may hold the old owner, and its metadata
+reservation stays charged until all source leases and pending producers release.
+Disposal drops live recording rows before releasing their capture reservation.
+
 The compatibility snapshot tags original UMP separately. A UMP-only source is
 refused as MIDI1 export; mixed byte exports count excluded original intents in
 their manifest. Neither direct nor worker compatibility writers silently treat

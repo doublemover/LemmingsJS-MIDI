@@ -86,10 +86,13 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   let retainedEvents = 0, eventSequence = 0, firstLostSequence = null, incompleteReason = null, intentRenderSequence = 0;
   const incompleteReasons = new Set();
   const recordingRange = createMidiRecordingRangeIndex({ getRecords: () => records, capacity: maxRecordedEvents, resourceBudget });
-  const originalUmpCapture = createOriginalUmpCapture({ resourceBudget, maximumRecords: Math.min(maxRecordedEvents, 100000) });
+  const newOriginalCapture = () => createOriginalUmpCapture({ resourceBudget, maximumRecords: Math.min(maxRecordedEvents, 100000) });
+  let originalUmpCapture = newOriginalCapture();
   let droppedCategories = { input: 0, output: 0, transport: 0, other: 0 };
   let nearCapReported = false;
+  let deferredRecordingReport = false;
   let recordingMutation = 0, recordingId = newRecordingId();
+  let submissionOwner = {};
   const intentRenderEntries = new Set(), intentExpiry = [], activeTrace = new Map();
   const usedChannels = new Map(), noteOutputs = new Map(), activeOutputs = new Map(), routeIntents = new Map(), rawVoices = new Map(), sustainedChannels = new Map();
   const retiredPorts = new WeakSet(), retiredOutputIds = new Set();
@@ -227,25 +230,25 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     recordingPressure: maxRecordedEvents > 0 ? records.length / maxRecordedEvents : records.length ? 1 : 0,
     pressure: scheduler.getOutputPressure?.(now(), noteOutput?.id) || null }); };
   const report = () => callConsumer('state', onState, getState());
-  const markIncomplete = reason => {
+  const markIncomplete = (reason, notify = true) => {
     if (incompleteReasons.has(reason)) return;
     incompleteReasons.add(reason);
     incompleteReason ??= reason;
-    report();
+    if (notify) report(); else deferredRecordingReport = true;
   };
-  const drop = (count, category) => {
+  const drop = (count, category, notify = true) => {
     const size = Math.max(1, count);
     firstLostSequence ??= eventSequence + 1;
     eventSequence += size;
     droppedRecords += size;
     droppedCategories[category] = (droppedCategories[category] || 0) + size;
     recording = false;
-    markIncomplete('recording-cap-reached');
+    markIncomplete('recording-cap-reached', notify);
   };
-  const record = event => {
+  const record = (event, notify = true) => {
     if (disposed || !recording) return false;
     if (records.length >= maxRecordedEvents) {
-      drop(1, event.direction === 'input' ? 'input' : event.direction === 'output' ? 'output' : event.type === 'tempo' ? 'transport' : 'other');
+      drop(1, event.direction === 'input' ? 'input' : event.direction === 'output' ? 'output' : event.type === 'tempo' ? 'transport' : 'other', notify);
       return false;
     }
     const state = transport?.getState(), timestamp = event.timestamp ?? now();
@@ -258,7 +261,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     recordingRange.append(stored); records.push(stored); retainedEvents++;
     if (!nearCapReported && maxRecordedEvents > 0 && records.length >= maxRecordedEvents * 0.8) {
       nearCapReported = true;
-      report();
+      if (notify) report(); else deferredRecordingReport = true;
     }
     if (event.evidence !== 'intent-render' && (event.direction === 'input' || event.direction === 'output')) {
       const [status, note, velocity] = stored.data;
@@ -269,7 +272,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         if (remaining > 0) activeTrace.set(key, remaining); else activeTrace.delete(key);
       }
     }
-    callConsumer('record', onRecord, Object.freeze({ ...stored }));
+    if (notify) callConsumer('record', onRecord, Object.freeze({ ...stored }));
     return stored;
   };
   const cancelRecorded = event => {
@@ -458,6 +461,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     intentExpiry.length = 0;
   }
   function flush({ wholeDevice = false, reason = 'owned-stop' } = {}) {
+    submissionOwner = {};
     flushRecording();
     thruNotes.clear();
     scheduler.allNotesOff({ preserveRateHistory: true, wholeDevice, reason });
@@ -850,15 +854,30 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     learnNext(callback = onLearn) { learn = callback; report(); },
     cancelLearn() { learn = null; report(); },
     sendEvent(event) {
-      if (!event || typeof event !== 'object') return false;
+      if (disposed || !event || typeof event !== 'object') return false;
       const timestamp = event.timestamp ?? event.timeMs ?? now();
       if (!Number.isFinite(timestamp) || timestamp < 0) return false;
       if (event?.umpWords) {
+        let requested = event;
         if (recording) {
-          const outputId = String(event.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(outputId);
-          originalUmpCapture.record({ ...event, timestamp }, { outputId, connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? null }, record);
+          const usesDefault = event.outputId == null, outputId = String(event.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(outputId);
+          const epoch = route?.connectionEpoch, revision = routeRevision, policy = route?.intent.protocolLowering || protocolLowering, config = scheduler.config, owner = submissionOwner;
+          requested = { ...event, outputId, timestamp };
+          const words = event.umpWords, count = words.length;
+          if ((Array.isArray(words) || words instanceof Uint32Array) && Number.isInteger(count) && count >= 1 && count <= 4 &&
+              !(typeof SharedArrayBuffer === 'function' && words.buffer instanceof SharedArrayBuffer)) {
+            const owned = []; for (let index = 0; index < count; index++) owned.push(words[index]); requested.umpWords = Object.freeze(owned);
+          }
+          let captured = null;
+          if (originalUmpCapture.record(requested, { outputId, connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? null }, row => (captured = record(row, false)))) {
+            if (captured.sourceEventIds) requested.sourceEventIds = captured.sourceEventIds;
+            callConsumer('record', onRecord, Object.freeze({ ...captured }));
+          }
+          if (deferredRecordingReport) { deferredRecordingReport = false; if (!disposed) report(); }
+          if (disposed || submissionOwner !== owner || usesDefault && outputId !== String(noteOutput?.id ?? '') || activeOutputs.get(outputId) !== route || route?.connectionEpoch !== epoch ||
+              routeRevision !== revision || (route?.intent.protocolLowering || protocolLowering) !== policy || scheduler.config !== config) return false;
         }
-        return sendLoweredEvent(event);
+        return sendLoweredEvent(requested);
       }
       const messages = encodeProcgenMidi(event);
       if (!messages.length || !messages.every(validProcgenMidiChannelBytes)) return false;
@@ -941,12 +960,17 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     createRecordingExportSource() {
       if (disposed) throw new Error('The recording owner retired.');
-      let source = records;
-      const count = source.length, mutation = recordingMutation, state = getState(), estimatedPeakBytes = recordingExportPeakBytes(count);
+      let source = records, producers = 0, released = false;
+      const count = source.length, mutation = recordingMutation, state = getState(), estimatedPeakBytes = recordingExportPeakBytes(count), retention = originalUmpCapture.retain();
       const isCurrent = () => !disposed && source != null && source === records && mutation === recordingMutation;
+      const release = () => { source = null; if (producers) return false; if (!released) { retention.release(); released = true; } return true; };
       return Object.freeze({ id: recordingId, state, count, revision: mutation, inputBytes: count * 25 + 2 * 1048576, estimatedPeakBytes, isCurrent,
-        prepareInput: options => snapshotMidiRecording({ ...options, records: source, count, isCurrent }),
-        release() { source = null; return true; } });
+        async prepareInput(options) {
+          if (!isCurrent()) throw new Error('The recording changed before MIDI export preparation.');
+          producers++;
+          try { const snapshot = await snapshotMidiRecording({ ...options, records: source, count, isCurrent }); if (!isCurrent()) throw new Error('The recording changed during MIDI export preparation.'); return snapshot; }
+          finally { producers--; if (source == null) release(); }
+        }, release });
     },
     recordEvent(event, meta = {}) {
       const messages = encodeProcgenMidi(event);
@@ -958,7 +982,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     },
     recordTempo(bpm, beat = transport?.getState().beat || 0, timestamp = now()) { record({ type: 'tempo', bpm, beat, timestamp, data: [], source: 'transport' }); },
     clearRecording() {
-      originalUmpCapture.clear();
+      originalUmpCapture.dispose(); originalUmpCapture = newOriginalCapture();
       recordingMutation++; recordingId = newRecordingId();
       records = []; droppedRecords = 0; retainedEvents = 0; eventSequence = 0; firstLostSequence = null; incompleteReason = null;
       incompleteReasons.clear();
@@ -986,9 +1010,11 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         { name: 'midi-performance', run: () => performance ? performance.dispose() : panic() },
         { name: 'input-listeners', run: () => { clearTimeout(sensingTimer); sensingTimer = null; removeInput?.(); removeInput = null; input = null; } },
         { name: 'output-scheduler', run: () => { if (!suppliedScheduler) return scheduler.dispose(); } },
-        { name: 'original-ump-capture', run: () => originalUmpCapture.dispose() },
-        { name: 'recording-owner', run: () => { removeSubmissionObserver?.(); controllerMutations.dispose(); recording = false; recordingRange.dispose(); disposed = true;
-          noteOutput = null; clockOutput = null; noteOutputs.clear(); activeOutputs.clear(); routeIntents.clear(); rawVoices.clear(); } }
+        { name: 'recording-owner', run: () => { recording = false; disposed = true;
+          records = []; retainedEvents = 0; intentRenderEntries.clear(); intentExpiry.length = 0; activeTrace.clear();
+          try { removeSubmissionObserver?.(); controllerMutations.dispose(); recordingRange.clear({ release: true }); }
+          finally { recordingRange.dispose(); noteOutput = null; clockOutput = null; noteOutputs.clear(); activeOutputs.clear(); routeIntents.clear(); rawVoices.clear(); } } },
+        { name: 'original-ump-capture', run: () => originalUmpCapture.dispose() }
       ]); return disposalReceipt;
     }
   };

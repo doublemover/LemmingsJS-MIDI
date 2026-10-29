@@ -84,4 +84,84 @@ describe('original UMP authored capture before route lowering', () => {
     expect(selectBalancedProcgenRecording(records)).to.include({ omittedOnsets: 1, omittedReleases: 1 });
     expect(selectBalancedProcgenRecording(records).events).to.have.length(0);
   });
+  it('fences nested append, clear and disposal until the original capture is quiescent', () => {
+    const capture = createOriginalUmpCapture({ maximumRecords: 1 });
+    expect(capture.record(event(), route, () => {
+      expect(capture.state().pending).to.equal(true); expect(capture.record(event(), route, () => true)).to.equal(false);
+      expect(() => capture.clear()).to.throw('quiescent'); expect(() => capture.dispose()).to.throw('quiescent'); return true;
+    })).to.equal(true);
+    expect(capture.state()).to.include({ recorded: 1, dropped: 1, pending: false, complete: false }); capture.clear(); expect(capture.state().recorded).to.equal(0); capture.dispose();
+  });
+  it('publishes an original packet observer only after its ownership counters commit', () => {
+    let ports, observed;
+    ports = createProcgenMidiPorts({ now: () => 1000, onRecord: row => {
+      if (row.type !== 'umpIntent') return; observed = ports.getState().originalUmp;
+      ports.clearRecording();
+    } });
+    try {
+      ports.configure({ recording: true }); ports.sendEvent(event());
+      expect(observed).to.include({ recorded: 1, pending: false }); expect(ports.getRecording()).to.have.length(0);
+      expect(ports.getState().originalUmp).to.include({ recorded: 0, retainedEstimateBytes: 0, pending: false });
+    } finally { ports.dispose(); }
+  });
+  it('publishes recording pressure only after the original ownership boundary is quiescent', () => {
+    const observed = [];
+    const ports = createProcgenMidiPorts({ now: () => 1000, maxRecordedEvents: 1, onState: state => { if (state.recordedEvents) observed.push(state.originalUmp); } });
+    try {
+      ports.configure({ recording: true }); ports.sendEvent(event());
+      expect(observed.length).to.be.greaterThan(0); expect(observed.every(state => state.recorded === 1 && state.pending === false)).to.equal(true);
+    } finally { ports.dispose(); }
+  });
+  it('allows an original packet observer to retire the ports without reviving capture ownership', () => {
+    let ports;
+    ports = createProcgenMidiPorts({ now: () => 1000, onRecord: row => { if (row.type === 'umpIntent') ports.dispose(); } });
+    ports.configure({ recording: true }); ports.sendEvent(event());
+    expect(ports.getState().originalUmp.reservation).to.equal(null); expect(ports.getState().originalUmp.pending).to.equal(false);
+    expect(ports.sendEvent(event())).to.equal(false);
+  });
+  for (const change of ['none', 'replace-output', 'replace-policy', 'mutate-caller', 'panic', 'flush']) it('pins original delivery across observer action ' + change, () => {
+    let ports;
+    const messages = [], timestamps = [], original = event([0x40903c00, 0x80000000]), next = { id: 'B', state: 'connected', send: (data, timestamp) => { messages.push(['B', ...data]); timestamps.push(timestamp); return true; } };
+    ports = createProcgenMidiPorts({ now: () => 1000, onRecord: row => {
+      if (row.type !== 'umpIntent') return;
+      if (change === 'replace-output') ports.setNoteOutput(next);
+      if (change === 'replace-policy') ports.configure({ protocolLowering: { groupMap: { 0: 'preserve' } } });
+      if (change === 'mutate-caller') { original.umpWords[1] = 0xffff0000; original.timestamp = 9000; original.outputId = 'B'; }
+      if (change === 'panic') ports.panic(); if (change === 'flush') ports.flush();
+    } });
+    try {
+      ports.setNoteOutput({ id: 'A', state: 'connected', send: (data, timestamp) => { messages.push(['A', ...data]); timestamps.push(timestamp); return true; } });
+      ports.configure({ schedulerConfig: { mpe: { enabled: false } }, protocolLowering: { groupMap: { 0: 'preserve' } }, recording: true });
+      const expected = change === 'none' || change === 'mutate-caller'; expect(ports.sendEvent(original)).to.equal(expected);
+      expect(messages).to.deep.equal(expected ? [['A', 0x90, 60, 64]] : []);
+      expect(timestamps).to.deep.equal(expected ? [4000] : []);
+      expect(ports.getRecording({ protocol: 'ump' })[0].umpWords).to.deep.equal([0x40903c00, 0x80000000]);
+    } finally { ports.dispose(); }
+  });
+  it('keeps original metadata charged while a retained source survives clear or disposal', async () => {
+    const held = new Map(), budget = { reserve: entry => held.set(entry.token, entry), release: entry => held.delete(entry.token) };
+    const charged = () => [...held.values()].filter(entry => entry.kind === 'original-ump-recording-metadata-estimate').reduce((sum, entry) => sum + entry.bytes, 0);
+    const ports = createProcgenMidiPorts({ now: () => 1000, resourceBudget: budget, maxRecordedEvents: 8 });
+    ports.configure({ recording: true }); ports.sendEvent(event()); const first = ports.createRecordingExportSource();
+    ports.clearRecording(); expect(first.isCurrent()).to.equal(false); expect(charged()).to.be.greaterThan(0); first.release(); expect(charged()).to.equal(0);
+    ports.sendEvent(event()); const second = ports.createRecordingExportSource(); ports.dispose();
+    expect(ports.getRecording()).to.have.length(0); expect(charged()).to.be.greaterThan(0); second.release(); expect(charged()).to.equal(0);
+    expect(held.size).to.equal(0);
+  });
+  it('defers early source release until its snapshot producer has actually settled', async () => {
+    const held = new Map(), budget = { reserve: entry => held.set(entry.token, entry), release: entry => held.delete(entry.token) };
+    const ports = createProcgenMidiPorts({ now: () => 1000, resourceBudget: budget, maxRecordedEvents: 8 });
+    ports.configure({ recording: true }); ports.sendEvent(event()); const source = ports.createRecordingExportSource(), preparing = source.prepareInput();
+    ports.clearRecording(); expect(source.release()).to.equal(false);
+    expect([...held.values()].some(entry => entry.kind === 'original-ump-recording-metadata-estimate')).to.equal(true);
+    let error; try { await preparing; } catch (caught) { error = caught; } expect(error.message).to.include('changed');
+    expect([...held.values()].some(entry => entry.kind === 'original-ump-recording-metadata-estimate')).to.equal(false); ports.dispose(); expect(held.size).to.equal(0);
+  });
+  it('bounds retained source leases and retires their budget only after the last acknowledgement', () => {
+    let charged = 0; const capture = createOriginalUmpCapture({ resourceBudget: { reserve: entry => { charged = entry.bytes; }, release: () => { charged = 0; } } });
+    capture.record(event(), route, () => true); const leases = Array.from({ length: 32 }, () => capture.retain());
+    expect(() => capture.retain()).to.throw('retention'); expect(() => capture.clear()).to.throw('quiescent'); capture.dispose(); expect(charged).to.be.greaterThan(0);
+    leases.slice(0, -1).forEach(lease => lease.release()); expect(charged).to.be.greaterThan(0); leases.at(-1).release(); expect(charged).to.equal(0);
+    expect(leases.at(-1).release()).to.equal(false);
+  });
 });
