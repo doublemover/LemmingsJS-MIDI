@@ -18,6 +18,7 @@ import { PROCGEN_GAME_EVENT_MIDI_PRESETS, applyProcgenGameEventMidiPreset, getPr
 import { normalizeLaneCount, normalizeLaneHeight, DEFAULT_LANE_HEIGHT, normalizePopulationPolicy } from './ProcgenLaneWorld.js';
 import { normalizeWorkerLimits } from './ProcgenWorkerLimits.js';
 import { DEFAULT_KEYBINDINGS } from '../../input/KeybindingRegistry.js';
+import { loadDeferredWebMidi } from './DeferredWebMidi.js';
 import { normalizeProcgenSpeed, changeProcgenSpeed, renderProcgenSpeedControl } from './ProcgenSpeedControl.js';
 import { normalizeSeed } from '../../core/seededRandom.js';
 import { readProcgenUrlConfig, createProcgenRecipeShareDescriptor } from './ProcgenUrlConfig.js';
@@ -83,7 +84,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
   let local;
   const preview = createLocalGamePreview({ getLemmings: () => getRuntime()?.view, getConfig: () => config, immutableConfig: true, resourceBudget,
     onStateChange: () => local?.localStateChanged() });
-  local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi,
+  local = createProcgenMidiOutput({ local: preview, getView: () => getRuntime()?.view, getConfig: () => config, getWebMidi: () => window.WebMidi, loadWebMidi: () => loadDeferredWebMidi({ document, window }),
     backend: settings.output, canActivate: () => physicalControlOwner?.canActivateOutput?.() ?? true, onStateChange: state => { renderOutput(state); physicalControlOwner?.outputChanged?.(); }, onDevicesChange: (ports, selectedId) => {
       const select = byId('procgenMidiDevice'); if (!select) return;
       select.replaceChildren(); const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = ports.length ? 'Choose MIDI output' : 'Connect to find MIDI outputs'; select.append(placeholder);

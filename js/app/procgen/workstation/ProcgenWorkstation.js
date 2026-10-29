@@ -1,4 +1,5 @@
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
+import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
@@ -189,6 +190,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     physicalHistory.prune(new Set([...undo, ...redo]));
   };
   const status = text => { if (!disposed) view?.status(text); };
+  let midiConnectSerial = 0;
   const toolGate = createLazyWorkstationToolGate({
     getIdentity: () => JSON.stringify([disposed, documentGeneration, projectRevision, laneDisplayWorldEpoch, state.laneId, stageSession?.active() || false]),
     getInteraction: () => ({ hidden: document.hidden === true, focus: document.activeElement, body: document.body, dialog: document.querySelector?.('dialog[open]') || null }),
@@ -638,6 +640,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (held && previous.bpm !== next.bpm) { pendingResume = false; if (held.length) engine.resume({ ...next, timestamp: now(), activeNotes: held }); }
   };
   const beforeRestart = () => {
+    midiConnectSerial++;
     toolGate.cancel();
     macroGestures.cancelAll(); soundTransactions.cancel('The world or transport is being replaced.');
     physicalFeedback?.disarm();
@@ -1834,7 +1837,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     stageExit: safe(async () => { const result = await stageSession?.exit(); legacy.refreshShortcutHints?.(); return result; }), stageGo: safe(() => stageSession?.go()),
     stagePlay: () => play(), stagePause() { transport.pause(); },
-    panicOutput() { soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
+    panicOutput() { midiConnectSerial++; soundSeedLab?.suspend(); shapeFoundry?.suspend(); physicalFeedback?.disarm(); ports.panic(); physicalPlayback?.setEffectBypass?.('panic'); status('Owned output and effect memory cleared.'); },
     scenes: safe(openPerformanceScenes),
     transport(patch) { configureTransport(patch); if (patch.gameSpeed != null) legacy.setSpeed(patch.gameSpeed, { owned: true }); editRevision++; storageStatus(); persist(); if (!transport.getState().playing) scheduleRecovery(); },
     addLane: safe(async () => { if (!await rebuild({ projectNext: reduceMidiProject(project, { type: 'procgen/addLane' }) })) return false; state.laneId = project.procgen.lanes.at(-1).id; view.render(); return true; }),
@@ -1888,7 +1891,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     input(id) { cancelInputEdits('input changed'); state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
     clockOutput(id) { state.clockOutputId = id || null; syncPorts(); persist(); },
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
-    connect: safe(async () => { if (!window.WebMidi) throw new Error('Web MIDI is unavailable in this browser.'); if (!window.WebMidi.enabled) await window.WebMidi.enable({ sysex: false }); syncPorts({ rearmDefault: true }); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); }),
+    connect: safe(async () => {
+      const request = ++midiConnectSerial, generation = documentGeneration, world = runtime()?.world;
+      const current = () => !disposed && request === midiConnectSerial && generation === documentGeneration && world === runtime()?.world;
+      try {
+        const midi = window.WebMidi || await loadDeferredWebMidi({ document, window });
+        if (!current()) return false;
+        if (!midi || midi.supported === false) throw new Error('Web MIDI is unavailable in this browser.');
+        bindMidiEvents(midi);
+        if (!midi.enabled) await midi.enable({ sysex: false });
+        if (!current()) return false;
+        if (!midi.enabled) throw new Error('MIDI access did not become available. Connect again to retry.');
+        syncPorts({ rearmDefault: true }); view.renderInspector(); status('MIDI connected. Choose note and clock ports, then press Play.'); return true;
+      } catch (error) { if (current()) throw error; return false; }
+    }),
     expressionState(event) {
       const target = expressionTarget(event); return target ? Object.freeze({ ...midiParameterEvidence.read(target), endpointName: target.endpointName,
         endpointEpoch: target.endpointEpoch, available: target.available, channel: target.channel, canRequest: !stageSession?.active() }) : null;
@@ -2122,10 +2138,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   listen(document.getElementById('procgenPanic'), 'click', () => handlers.panicOutput());
   const disconnected = () => { syncPorts(); view.renderInspector(); };
   const connected = () => { syncPorts(); view.renderInspector(); status('MIDI device connected. Press Play or send MIDI Start/Continue to resume.'); };
-  window.WebMidi?.addListener?.('disconnected', disconnected);
-  window.WebMidi?.addListener?.('connected', connected);
-  listeners.push(() => window.WebMidi?.removeListener?.('disconnected', disconnected));
-  listeners.push(() => window.WebMidi?.removeListener?.('connected', connected));
+  let midiEventOwner = null;
+  const bindMidiEvents = midi => {
+    if (midiEventOwner === midi) return;
+    midiEventOwner?.removeListener?.('disconnected', disconnected); midiEventOwner?.removeListener?.('connected', connected);
+    midiEventOwner = midi; midiEventOwner?.addListener?.('disconnected', disconnected); midiEventOwner?.addListener?.('connected', connected);
+  };
+  bindMidiEvents(window.WebMidi);
+  listeners.push(() => bindMidiEvents(null));
   let interventionSerial = 0;
   const canWorldShortcut = action => !disposed && (action === 'restartLevel' ? !stageSession?.active() :
     action === 'nuke' || action === 'nukeInstant' ? !stageSession?.active() && !!runtime()?.world && !worldBusy && !causalTakeStart && !causalTakeStop : true);

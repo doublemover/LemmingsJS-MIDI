@@ -8490,3 +8490,21 @@ export-budget acknowledgments still prevent a false complete receipt.
   disabled controls in the same JavaScript turn as Prepare, before display writes.
 - Full local suite is not repeated. Publish the combined changes for complete CI;
   the failed320 run skipped MCP/benchmark/coverage and remains in the receipt.
+
+### Continuation 323 — explicit MIDI library loading
+
+- Remove the synchronous516017-byte vendor script from the ProcGen document.
+  Load that unchanged classic library only on explicit Connect/Discover, sharing
+  one pending request with a15s deadline, cleanup and retry after failure.
+- Keep current-owner checks before permission requests and after completion;
+  Panic, disposal, changed worlds and stopped discovery cannot activate a late
+  destination. Attach/remove device observers to their actual loaded owner.
+- All136 affected Node cases pass; the loader measures100% lines/functions and
+  94.73% branches. All22 distinct native desktop journeys pass across the batch
+  and its focused installed-case correction, including offline loading, failed
+  script retry, Panic, legacy MIDI and the dedicated download/Blob sink cases.
+- The first installed fixture waited on a request the service worker could
+  satisfy itself; it timed out. Hold actual script insertion instead, then load
+  the real library. The corrected native case passes without changing deadlines.
+  Native MIDI access is a declared empty-port fixture, not hardware evidence.
+  #1161 remains open for measured startup, precache and wider optional scope.

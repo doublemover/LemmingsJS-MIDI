@@ -32,5 +32,8 @@ describe('ProcGen resource entry and optional runtime graph', function() {
     const controller = 'js/app/procgen/workstation/ProcgenWorkstation.js';
     const toolEntries = new Set(discoverRuntimeDependencies(controller, await fs.readFile(path.join(rootDir, controller), 'utf8')));
     for (const name of ['RectangularMembraneView', 'SpectralFreezeView', 'TravelColorationView', 'CrossExcitationView', 'QuarryEchoView', 'SoundContentLibrary', 'ShapeFoundryView']) expect(toolEntries.has('../../midi-ui/' + name + '.js'), name).to.equal(true);
+    const loader = 'js/app/procgen/DeferredWebMidi.js';
+    expect(discoverRuntimeDependencies(loader, await fs.readFile(path.join(rootDir, loader), 'utf8'))).to.include('../../vendor/webmidi.js');
+    expect(await fs.readFile(path.join(rootDir, 'procgen.html'), 'utf8')).not.to.include('src="js/vendor/webmidi.js"');
   });
 });

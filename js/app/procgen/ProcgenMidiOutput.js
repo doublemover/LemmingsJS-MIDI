@@ -9,7 +9,7 @@ const audibilityKey = config => JSON.stringify({ enabled: config.enabled, mpe: c
 
 // Both destinations lower the existing project through one game-event router.
 // Permission is requested only by explicit discovery or activation.
-const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backend = 'synth', canActivate = () => true, onStateChange = () => {}, onDevicesChange = () => {} }) => {
+const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, loadWebMidi = null, backend = 'synth', canActivate = () => true, onStateChange = () => {}, onDevicesChange = () => {} }) => {
   let selected = backend === 'midi' ? 'midi' : 'synth', outputId = null, output = null, reviewedName = null;
   let router = null, attached = null, capture = null, generation = 0, disposed = false;
   let configKey = null, audibleKey = null;
@@ -27,7 +27,7 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
       backend: error || permissionLost ? 'midi-output-error' : ['live', 'suspended'].includes(status) ? 'web-midi' : 'no-active-output',
       outputId: output?.id || null, outputName: output?.name || null, selectedOutputId: outputId, outputGeneration: generation,
       failureKind: error ? 'api-send' : permissionLost ? 'permission-revoked' : failureKind, selectedOutputName: available.find(port => port.id === outputId)?.name || reviewedName, discoveredOutputCount: available.length,
-      midiPermission: !getWebMidi() || getWebMidi().supported === false ? 'unavailable' : getWebMidi().enabled ? 'granted' : permission, audio: compact && local.audio.getOperationalState ? local.audio.getOperationalState() : local.audio.getState() };
+      midiPermission: !getWebMidi() && !loadWebMidi || getWebMidi()?.supported === false ? 'unavailable' : getWebMidi()?.enabled ? 'granted' : permission, audio: compact && local.audio.getOperationalState ? local.audio.getOperationalState() : local.audio.getState() };
   };
   const notifyState = () => {
     const state = Object.freeze(getState());
@@ -65,13 +65,17 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
     if (disposed || selected !== 'midi') return Promise.resolve([]);
     if (discovery) return discovery;
     if (output && !getWebMidi()?.enabled) syncStatus();
-    const webMidi = getWebMidi(), request = ++discoverySerial, sourceGeneration = generation;
-    if (!webMidi || webMidi.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return Promise.resolve([]); }
+    let webMidi = getWebMidi(); const request = ++discoverySerial, sourceGeneration = generation;
+    if (!webMidi && !loadWebMidi || webMidi?.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return Promise.resolve([]); }
     const active = !!output;
-    if (!webMidi.enabled) permission = 'requesting';
+    if (!webMidi?.enabled) permission = 'requesting';
     if (!active) report('discovering', 'Discovering MIDI outputs. No destination is activated.'); else notifyState();
     const operation = (async () => {
       try {
+        if (!webMidi) webMidi = await loadWebMidi();
+        if (disposed || request !== discoverySerial || sourceGeneration !== generation || selected !== 'midi') return [];
+        if (!webMidi || webMidi.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return []; }
+        observeMidi(webMidi);
         if (!webMidi.enabled) await webMidi.enable({ sysex: false });
         if (disposed || request !== discoverySerial || sourceGeneration !== generation || selected !== 'midi') return [];
         if (!webMidi.enabled) { permission = 'error'; report('error', 'MIDI access did not become available. Review host permission before retrying.', 'discovery'); return []; }
@@ -98,11 +102,15 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
     if (selected === 'synth') return local.start();
     if (!outputId) { await discover(); return false; }
     if (!canActivate()) return false;
-    stop(); const request = generation, destination = outputId, webMidi = getWebMidi(), view = getView();
-    if (!webMidi || webMidi.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return false; }
+    stop(); const request = generation, destination = outputId, view = getView(); let webMidi = getWebMidi();
+    if (!webMidi && !loadWebMidi || webMidi?.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return false; }
     if (!validView(view)) { report('error', 'The game is not ready. Activate the selected destination after loading.', 'world-unavailable'); return false; }
     report('starting', 'Activating the selected MIDI destination.');
     try {
+      if (!webMidi) webMidi = await loadWebMidi();
+      if (disposed || request !== generation || selected !== 'midi' || outputId !== destination || !canActivate() || getView() !== view) return false;
+      if (!webMidi || webMidi.supported === false) { permission = 'unavailable'; report('error', 'Web MIDI is unavailable. Choose browser listening.', 'unsupported'); return false; }
+      observeMidi(webMidi);
       if (!webMidi.enabled) { permission = 'requesting'; await webMidi.enable({ sysex: false }); }
       if (disposed || request !== generation || selected !== 'midi' || outputId !== destination) return false;
       if (!canActivate()) { report('selected', 'Activation was not published. Review the current performance state before routing.'); return false; }
@@ -137,7 +145,13 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
     try { return attach(view); } catch (error) { detach(); output = null; report('error', 'MIDI could not resume: ' + (error?.message || 'connect again.')); return false; }
   };
   const disconnected = () => refreshDevices();
-  getWebMidi()?.addListener?.('disconnected', disconnected); getWebMidi()?.addListener?.('connected', disconnected);
+  let observedMidi = null;
+  const observeMidi = value => {
+    if (value === observedMidi) return;
+    observedMidi?.removeListener?.('disconnected', disconnected); observedMidi?.removeListener?.('connected', disconnected);
+    observedMidi = value; observedMidi?.addListener?.('disconnected', disconnected); observedMidi?.addListener?.('connected', disconnected);
+  };
+  observeMidi(getWebMidi());
   return { audio: local.audio, start, discover, stop, panic: stop, getState, getOperationalState: () => Object.freeze(getState(true)), syncStatus, suspendGame, resumeGame, refreshDevices,
     localStateChanged: () => { if (selected === 'synth') notifyState(); },
     subscribe(listener) { if (disposed || typeof listener !== 'function') return () => {}; if (!stateListeners.has(listener) && stateListeners.size >= 32) throw new Error('Output state subscription capacity exceeded.'); stateListeners.add(listener); return () => stateListeners.delete(listener); },
@@ -153,7 +167,7 @@ const createProcgenMidiOutput = ({ local, getView, getConfig, getWebMidi, backen
       if (nextAudible !== audibleKey) router.scheduler.allNotesOff({ preserveRateHistory: true });
       router.setMapping(config); configKey = nextKey; audibleKey = nextAudible; return true;
     },
-    dispose() { disposed = true; stop(); stateListeners.clear(); getWebMidi()?.removeListener?.('disconnected', disconnected); getWebMidi()?.removeListener?.('connected', disconnected); return local.dispose(); }
+    dispose() { disposed = true; stop(); stateListeners.clear(); observeMidi(null); return local.dispose(); }
   };
 };
 export { createProcgenMidiOutput };

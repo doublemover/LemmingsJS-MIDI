@@ -310,6 +310,11 @@ sound library and shape foundry views load when opened. Escape, a new pointer
 interaction or a changed document, lane or world cancels a pending opening.
 An unavailable tool reports its error without replacing the live performance.
 
+The MIDI library executes only after explicit Connect or Discover. Concurrent
+requests share one bounded load; a failed load can be retried. Panic, disposal
+or a changed world prevents an obsolete connection from requesting permission
+or publishing a route. Installed builds retain the library for offline use.
+
 Startup resolves one immutable plan before asset preparation. Shared recipes
 use versioned defaults for omitted fields, including decoration, population and
 worker policy; unrelated previous setup preferences cannot fill those gaps.

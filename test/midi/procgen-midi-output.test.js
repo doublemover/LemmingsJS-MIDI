@@ -5,7 +5,7 @@ import { EventHandler } from '../../js/util/EventHandler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-const fixture = (backend = 'midi', reviewed = true) => {
+const fixture = (backend = 'midi', reviewed = true, deferredLibrary = false) => {
   const calls = [], secondCalls = [], outputs = [makeOutput([1], calls, 'first'), makeOutput([1], secondCalls, 'second')]; outputs[0].name = 'First device'; outputs[1].name = 'Second device';
   const listeners = new Map(), webMidi = { enabled: false, outputs, requests: 0,
     async enable(options) { expect(options.sysex).to.equal(false); this.requests++; this.enabled = true; },
@@ -20,11 +20,37 @@ const fixture = (backend = 'midi', reviewed = true) => {
   let view = makeView();
   const config = { enabled: false, mpe: { enabled: false }, defaultChannel: 1, timing: { scheduleAheadMs: 0 }, position: { mappings: [] },
     sfx: { [SoundEffectIds.SPAWN]: { note: 61, velocity: 90, durationTicks: 2, outputId: 'unrelated-saved-device' } } };
-  const output = createProcgenMidiOutput({ local, backend, getView: () => view, getConfig: () => config, getWebMidi: () => webMidi });
+  let library = deferredLibrary ? null : webMidi, resolveLibrary, loads = 0;
+  const loading = deferredLibrary ? new Promise(resolve => { resolveLibrary = resolve; }) : null;
+  const output = createProcgenMidiOutput({ local, backend, getView: () => view, getConfig: () => config, getWebMidi: () => library,
+    loadWebMidi: deferredLibrary ? () => { loads++; return loading; } : null });
   if (backend === 'midi' && reviewed) output.setOutputId('first');
-  return { output, webMidi, local, calls, secondCalls, config, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
+  return { output, webMidi, local, calls, secondCalls, config, get loads() { return loads; }, supplyLibrary() { library = webMidi; resolveLibrary(webMidi); }, get view() { return view; }, changeView() { view = makeView(); }, disconnect() { webMidi.outputs = []; listeners.get('disconnected')(); } };
 };
 describe('procgen selected audible destination', () => {
+  it('loads MIDI only on explicit discovery and shares a pending discovery without activating a route', async () => {
+    const f = fixture('midi', false, true);
+    try {
+      expect(f.loads).to.equal(0); expect(f.output.getOperationalState().midiPermission).to.equal('unknown');
+      const first = f.output.discover(), second = f.output.discover(); expect(first).to.equal(second); expect(f.loads).to.equal(1);
+      expect(f.webMidi.requests).to.equal(0); f.supplyLibrary(); expect(await first).to.have.length(2);
+      expect(f.webMidi.requests).to.equal(1); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+      f.output.setOutputId('first'); expect(await f.output.start()).to.equal(true); expect(f.loads).to.equal(1);
+      f.disconnect(); expect(f.output.getState().enabled).to.equal(false);
+    } finally { f.output.dispose(); }
+  });
+  it('does not request permission after a pending library load is stopped, disposed or replaced', async () => {
+    for (const operation of ['discover', 'start']) for (const cancel of ['stop', 'dispose']) {
+      const f = fixture('midi', operation === 'start', true);
+      try {
+        const work = f.output[operation](); f.output[cancel](); f.supplyLibrary(); await work;
+        expect(f.webMidi.requests).to.equal(0); expect(f.view.midiPreviewRouter).to.equal(null); expect(f.calls).to.have.length(0);
+      } finally { f.output.dispose(); }
+    }
+    const f = fixture('midi', true, true);
+    try { const work = f.output.start(); f.changeView(); f.supplyLibrary(); expect(await work).to.equal(false); expect(f.webMidi.requests).to.equal(0); }
+    finally { f.output.dispose(); }
+  });
   it('discovers without choosing or activating a port, then requires a reviewed ID independent of enumeration order', async () => {
     const f = fixture('midi', false);
     try {

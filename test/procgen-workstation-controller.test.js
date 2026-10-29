@@ -66,6 +66,23 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('does not enable a late MIDI library after Panic cancels Connect', async () => {
+    const f = setup(); let script, requests = 0;
+    f.document.createElement = () => ({ remove() {} }); f.document.head = { append(value) { script = value; } };
+    f.window.setTimeout = () => 1; f.window.clearTimeout = () => {};
+    try {
+      const pending = f.studio.handlers.connect(); expect(script).to.be.ok; f.studio.handlers.panicOutput();
+      f.window.WebMidi = { enabled: false, async enable() { requests++; this.enabled = true; } }; script.onload();
+      expect(await pending).to.equal(false); expect(requests).to.equal(0);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('does not publish pending MIDI permission after workstation disposal', async () => {
+    let finish, requests = 0;
+    const midi = { enabled: false, inputs: [], outputs: [], enable() { requests++; return new Promise(resolve => { finish = resolve; }); }, addListener() {}, removeListener() {} };
+    const f = setup({ webMidi: midi }); const pending = f.studio.handlers.connect(); expect(requests).to.equal(1);
+    await f.studio.dispose().completion; const count = f.statuses.length; midi.enabled = true; finish();
+    expect(await pending).to.equal(false); expect(f.statuses).to.have.length(count);
+  });
   it('retains a stopped MIDI prefix across New/load, refuses concatenation and clears only on an explicit action', async () => {
     const f = setup(); f.studio.bindRuntime();
     try {
