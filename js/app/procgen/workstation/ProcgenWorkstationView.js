@@ -983,6 +983,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function render({ partial = false } = {}) {
     if (disposed) return;
+    pointerArbiter.revalidate();
     if (curveDocumentIdentity !== getDocumentIdentity()) { for (const entry of curveEditors.values()) entry.control.dispose(); curveEditors.clear(); curveDocumentIdentity = getDocumentIdentity(); }
     for (const [key, entry] of curveEditors) if (!procgenLane(getProject().procgen.lanes, entry.laneId)?.ccAutomation.some(curve => curve.id === entry.curveId)) { entry.control.dispose(); curveEditors.delete(key); }
     dock.update();
@@ -1017,6 +1018,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   function patchProject(action, change) {
     if (disposed || !action) return;
+    pointerArbiter.revalidate();
     if (action.type === 'procgen/step') { patchStep(action); return; }
     if (change.structural || action.type === 'procgen/seed') { render(); return; }
     const navigationChanged = syncLaneNavigation(); laneNavigator.update(getDocumentIdentity()); laneGroups.update(getDocumentIdentity()); if (navigationChanged) { beginGeometry(); reflowGeometry(); }
@@ -1060,7 +1062,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const lane = getProject().procgen.lanes.find(item => item.id === row.dataset.laneId), slot = Number(row.dataset.slot);
     if (!lane?.patterns?.[slot]) return;
     const source = getProject(), transform = projection;
-    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: `pattern:${lane.id}:${slot}`, identity: source,
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: `pattern:${lane.id}:${slot}`, identity: source, captureTarget: grid,
       getIdentity: () => getProject() === source && projection === transform ? source : null,
       onCancel: () => { stroke = null; try { grid.releasePointerCapture?.(event.pointerId); } catch { /* Capture may already be released. */ } if (!disposed) renderRows(); } });
     if (!lease) return;

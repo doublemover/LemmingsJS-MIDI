@@ -20,7 +20,7 @@ const ready = async (page, count = 8, steps = 16) => {
       else view.render(); };
     const view = createProcgenWorkstationView({ document, window, getProject: () => project, getRuntime: () => runtime, state, handlers, dispatch });
     view.render();
-    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, handlers, getProject: () => project };
+    window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, handlers, getProject: () => project, replaceProject: next => { project = next; view.render(); } };
   }, { count, steps });
 };
 
@@ -382,6 +382,62 @@ test('foreign pointer release cannot commit pattern painting and owner cancellat
   await page.locator('.studio-cell').first().focus(); await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(1);
   expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps[0].enabled)).toBe(true);
+});
+
+for (const interruption of ['capture-loss', 'escape', 'window-blur', 'modal', 'source-A-B-A', 'dispose']) test(`desktop captured pattern draft retires on ${interruption} and the next camera gesture pans @boundary @gesture-lifecycle`, async ({ page }) => {
+  await ready(page, 1); await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', 'draw');
+  await page.evaluate(() => {
+    const f = window.workstationViewTest, grid = document.querySelector('.studio-sequences');
+    grid.addEventListener('pointerdown', event => { f.pointerId = event.pointerId; }, { once: true });
+  });
+  const cell = await page.locator('.studio-cell').first().boundingBox();
+  await page.mouse.move(cell.x + cell.width / 2, cell.y + cell.height / 2); await page.mouse.down();
+  expect(await page.evaluate(() => document.querySelector('.studio-sequences').hasPointerCapture(window.workstationViewTest.pointerId))).toBe(true);
+  if (interruption === 'escape') await page.keyboard.press('Escape');
+  else await page.evaluate(kind => {
+    const f = window.workstationViewTest;
+    if (kind === 'capture-loss') document.querySelector('.studio-sequences').releasePointerCapture(f.pointerId);
+    if (kind === 'window-blur') window.dispatchEvent(new Event('blur'));
+    if (kind === 'modal') { const dialog = document.createElement('dialog'); document.body.append(dialog); dialog.showModal(); dialog.close(); dialog.remove(); }
+    if (kind === 'source-A-B-A') { const original = f.getProject(); f.replaceProject({ ...original, name: 'Temporary B' }); f.replaceProject(original); }
+    if (kind === 'dispose') f.view.dispose();
+  }, interruption);
+  await page.mouse.move(cell.x + cell.width / 2 + 5, cell.y + cell.height / 2); await page.mouse.up();
+  const state = await page.evaluate(async () => {
+    const { getPointerGestureArbiter } = await import('/js/app/controls/PointerGestureArbiter.js');
+    return { active: getPointerGestureArbiter(document).inspect(), actions: window.workstationViewTest.actions.length };
+  });
+  expect(state).toEqual({ active: null, actions: 0 });
+  await page.evaluate(async () => {
+    const { createProcgenCameraController } = await import('/js/app/procgen/ProcgenCameraController.js');
+    const canvas = document.createElement('canvas'); canvas.style.cssText = 'position:fixed;left:1200px;top:700px;width:500px;height:300px;z-index:99999'; canvas.width = 500; canvas.height = 300; document.body.append(canvas);
+    const renderer = { canvas, window, world: { width: 6000, height: 4000, generation: 1, actors: [] }, scale: 3, cameraX: 0, cameraY: 0, follow: false, render() {} };
+    window.gestureCamera = { canvas, renderer, controller: createProcgenCameraController(renderer) };
+  });
+  await page.mouse.move(1500, 850); await page.mouse.down(); await page.mouse.move(1400, 850); await page.mouse.up();
+  expect(await page.evaluate(() => window.gestureCamera.renderer.cameraX)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
+  await page.evaluate(() => window.gestureCamera.controller.dispose());
+});
+
+test('desktop native pen events keep one captured transaction and ignore a foreign release @boundary @gesture-lifecycle', async ({ page }) => {
+  await ready(page, 1); await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', 'draw');
+  await page.evaluate(() => document.querySelector('.studio-sequences').addEventListener('pointerdown', event => {
+    window.workstationViewTest.pen = { id: event.pointerId, type: event.pointerType, trusted: event.isTrusted };
+  }, { once: true }));
+  const cells = page.locator('.studio-sequence').first().locator('.studio-cell'), first = await cells.nth(0).boundingBox(), last = await cells.nth(3).boundingBox();
+  const session = await page.context().newCDPSession(page), y = first.y + first.height / 2, start = first.x + first.width / 2, end = last.x + last.width / 2;
+  try {
+    await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: start, y, pointerType: 'pen' });
+    await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: start, y, pointerType: 'pen', button: 'left', buttons: 1, clickCount: 1, force: 0.5 });
+    expect(await page.evaluate(() => window.workstationViewTest.pen)).toMatchObject({ type: 'pen', trusted: true });
+    await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: window.workstationViewTest.pen.id + 100 })));
+    expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
+    for (let at = 1; at <= 8; at++) await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: start + (end - start) * at / 8, y, pointerType: 'pen', button: 'left', buttons: 1, force: 0.75 });
+    await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: end, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1 });
+    expect(await page.evaluate(() => window.workstationViewTest.actions.map(action => action.type))).toEqual(['procgen/pattern']);
+    expect(await page.evaluate(() => window.workstationViewTest.getProject().procgen.lanes[0].patterns[0].steps.slice(0, 4).every(step => step.enabled))).toBe(true);
+  } finally { await session.detach(); }
 });
 
 

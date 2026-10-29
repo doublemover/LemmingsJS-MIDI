@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Release interrupted desktop pointer capture and prevent old paint or camera gestures from reviving after source and zoom changes.
+
 - Keep deferred pattern output outside active notes, cancel retired admissions, and retry controller values independently for each output sink.
 
 - Preserve focused MIDI editor drafts during background refreshes so exported projects retain the committed note value.

@@ -102,7 +102,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
     }
     onStatus('');
     const identity = getProject(), projection = projectionKey(domain);
-    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'span:' + (entry?.id || 'new'), identity,
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'span:' + (entry?.id || 'new'), identity, captureTarget: canvas,
       getIdentity: () => getProject() === identity && projectionKey(domain) === projection ? identity : null,
       onCancel: () => { cancelDrag(); changed(); } });
     if (!lease) { if (canvas.hasPointerCapture?.(event.pointerId)) canvas.releasePointerCapture?.(event.pointerId); return; }
@@ -157,7 +157,7 @@ const createProcgenMidiSpanOverlay = ({ document, getRuntime, getProject, getDom
   listen('dblclick', event => { if (editing) stop(event); });
   const api = {
     get revision() { return revision; },
-    sync() { if (disposed) return; const next = getRuntime()?.lanes?.renderer;
+    sync() { if (disposed) return; pointerArbiter.revalidate(); const next = getRuntime()?.lanes?.renderer;
       if (next === renderer && (presented && (presented.generation !== renderer?.world?.generation || presented.projectionKey !== projectionKey(getDomain())) || drag &&
         (drag.transform.generation !== renderer?.world?.generation || drag.projectionKey !== projectionKey(drag.domain)))) { editing = false; cancelDrag(); rectangles = []; presented = null; }
       if (next !== renderer) { editing = false; cancelDrag(); rectangles = []; presented = null; if (renderer?.midiSpanOverlay === api) renderer.midiSpanOverlay = null; renderer = next; }

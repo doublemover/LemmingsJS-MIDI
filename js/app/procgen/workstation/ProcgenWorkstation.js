@@ -29,6 +29,7 @@ import { createProcgenPageLifecycle } from './ProcgenPageLifecycle.js';
 import { sanitizeMidiProject, reduceMidiProject, projectToMidiConfig, isCanonicalMidiProject, markCanonicalMidiProject, sameMidiRuntimeInputs } from '../../../midi/project/MidiProject.js';
 import { createProcgenWorkstationProject, createProcgenPattern, convertLegacyProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 import { createProcgenPatternEngine } from './ProcgenPatternEngine.js';
+import { getPointerGestureArbiter } from '../../controls/PointerGestureArbiter.js';
 import { createProcgenTransport } from './ProcgenTransport.js';
 import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
@@ -387,6 +388,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = publishedProject;
+    if (document) getPointerGestureArbiter(document).revalidate();
     engine?.cancelPendingAdmissions();
     projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));

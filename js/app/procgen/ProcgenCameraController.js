@@ -62,12 +62,13 @@ const createProcgenCameraController = (renderer, { deferBinding = false } = {}) 
     const next = viewport();
     renderer.cameraX = pinnedX ? 0 : centerX - next.width / 2;
     renderer.cameraY = pinnedY ? 0 : centerY - next.height / 2;
-    clamp(); renderer.render(false);
+    clamp(); pointerArbiter.revalidate(); renderer.render(false);
   };
   let cachedLeader = null, leaderTick = -1, leaderGeneration = -1, leaderActors = null, leaderCount = -1, leaderWindow = '', lastFollowMs = null, disposed = false;
   const followFrontier = () => { renderer.inspectionRowAnchor = null; renderer.follow = true; update(true); renderer.render(false); };
   const update = (immediate = false, reuseLeader = false, presentationMs = windowRef.performance?.now?.() ?? Date.now()) => {
     if (disposed) return;
+    pointerArbiter.revalidate();
     if (world._stepping && world._musicCompletedTick !== world.tickIndex) return;
     clamp();
     if (!renderer.follow || !immediate && renderer.motionPolicy?.automaticCamera === false) { lastFollowMs = null; return; }
@@ -115,11 +116,12 @@ const createProcgenCameraController = (renderer, { deferBinding = false } = {}) 
   let drag = null;
   listen('pointerdown', event => {
     if (event.button && event.button !== 1) return;
-    const generation = world.generation, identity = world, delta = pointerDelta(1, 1);
-    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'camera-pan', identity,
-      getIdentity: () => !disposed && world === identity && world.generation === generation ? identity : null, onCancel: () => { drag = null; } });
+    const generation = world.generation, identity = world, delta = pointerDelta(1, 1), scale = renderer.scale;
+    const lease = pointerArbiter.acquire({ pointerId: event.pointerId, targetKey: 'camera-pan', identity, captureTarget: canvas,
+      getIdentity: () => !disposed && world === identity && renderer.world === identity && world.generation === generation && renderer.scale === scale ? identity : null, onCancel: () => { drag = null; } });
     if (!lease || !delta) { lease?.cancel('projection-unavailable'); return; }
-    canvas.focus?.(); drag = { lease, delta, pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false }; canvas.setPointerCapture?.(event.pointerId);
+    canvas.focus?.(); drag = { lease, delta, pointerId: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY, moved: false };
+    try { canvas.setPointerCapture?.(event.pointerId); } catch { lease.cancel('capture-unavailable'); }
   });
   listen('pointermove', event => {
     if (!drag?.lease.owns(event) || !drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
@@ -138,7 +140,7 @@ const createProcgenCameraController = (renderer, { deferBinding = false } = {}) 
     renderer.overviewActive = Number(state.scale) <= fitScale(false) + 1e-10;
     renderer.scale = boundedScale(Number(state.scale) || renderer.scale);
     renderer.cameraX = Math.max(0, Number(state.cameraX) || 0); renderer.cameraY = Math.max(0, Number(state.cameraY) || 0);
-    renderer.follow = state.follow !== false; lastFollowMs = null; clamp();
+    renderer.follow = state.follow !== false; lastFollowMs = null; clamp(); pointerArbiter.revalidate();
   };
   return { pan: (...args) => !disposed && pan(...args), setZoom: (...args) => !disposed && setZoom(...args), followFrontier: () => !disposed && followFrontier(), update, getState, applyState: state => !disposed && applyState(state), viewport, minimumScale,
     activate() { if (disposed || inputActive) return !disposed; for (const [event, handler, options] of listeners) canvas.addEventListener(event, handler, options); inputActive = true; return true; },

@@ -9083,3 +9083,38 @@ export-budget acknowledgments still prevent a false complete receipt.
   case; its whole workflow is not green. Preserve the failure. Add browser process
   debug logs and failure trace uploads without retries or changing required cases.
   The main job remains independent and the last full green checkpoint stays347.
+
+### Continuation 351 - desktop gesture retirement and source fences
+
+- Give the shared document gesture arbiter bounded lifecycle cancellation for
+  owning capture loss/cancel, Escape, window blur, hidden documents and native
+  modal opening. Foreign pointer events cannot terminate another owner. Release
+  registered capture in finally, including throwing cancellation callbacks; retain
+  a new reentrant owner rather than releasing its capture with the old one.
+- Revalidate source identity at canonical project publication, view patches,
+  span synchronization and camera updates. An observed A-to-B-to-A source change
+  cannot revive the old lease. Camera zoom/restored transforms and world
+  generations fence the old drag; rejected capture does not strand ownership.
+  Pattern, span and camera captures register their stable target explicitly.
+- 183 grouped Node cases and nine real1920x1080 desktop browser journeys pass.
+  The latter cover one-transaction draw/erase, foreign release, native capture
+  loss, real Escape, controlled window blur, native modal opening, source A/B/A,
+  disposal and the next actual camera pan. Browser-injected trusted pen events
+  also commit one transaction and ignore a controlled foreign pointer release.
+  No phone/tablet emulation or subminimum viewport is used. The blur/hidden
+  branches do not qualify actual OS background or physical pen hardware.
+- Focused32-case coverage: arbiter100% lines/statements/functions and93.24%
+  branches; camera96.68% lines/statements,80% branches,92.30% functions. Suggested
+  remaining focused coverage includes vertical leader-follow adjustment and wheel
+  pan/zoom branches; existing broader camera/browser scopes remain separate.
+  Format, critical types, undefined calls, provenance and browser category gates
+  pass. Category inventory now contains193 full/163 smoke workstation cases and
+  all14 required capability gates.
+- Keep #1000 open for actual concurrent native contacts and the remaining physical
+  authoring and MIDI sound-dial source A/B and A/B/A transaction matrix. The shared
+  owner fixes and pattern/camera evidence do not substitute for those tools.
+- 349's main job is green:7,019 Node passes/10 pre-existing pending,180 browser
+  passes and coverage90.77% lines/statements,83.82% branches,88.53% functions. Its
+  engine job failed17/18 after a Firefox boot crash, so349 remains a failed whole
+  workflow. 350's engine and both codec jobs pass; its main job is independent.
+  Keep347 as the latest full checkpoint until all four new required jobs pass.

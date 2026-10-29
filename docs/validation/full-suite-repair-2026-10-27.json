@@ -45937,5 +45937,279 @@
         "sha256": "48755598e3ebaedf9ba801d1796dcb3053fc5e285c4aca9d81857e92e46909fc"
       }
     ]
+  },
+  "continuation351": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+    "scope": "Desktop pointer lifecycle/capture cleanup and observed source A-B-A fences; solo, no worktrees.",
+    "implementation": [
+      "Central shared-owner cancellation for owning pointercancel/lostcapture, Escape, window blur, hidden document and native modal opening; foreign contacts neither commit nor cancel the owner.",
+      "Release registered capture even when onCancel throws, and preserve a new reentrant lease from old cleanup. Reject detached targets or throwing identity reads.",
+      "Revalidate at canonical project publication, view render/patch, span sync and camera update; observed source A-B-A cannot resurrect an old draft.",
+      "Fence camera zoom/restored transforms and world generation, release interrupted capture, and fail closed when native capture throws.",
+      "Add original Node lifetime fixtures and actual desktop mouse/pen/control interruption browser journeys."
+    ],
+    "validation": {
+      "node": {
+        "passed": 183,
+        "failed": 0,
+        "groups": [
+          {
+            "passed": 160,
+            "files": [
+              "test/pointer-gesture-lifecycle.test.js",
+              "test/parameter-controls.test.js",
+              "test/modal-output-safety.test.js",
+              "test/procgen-camera-timing.test.js",
+              "test/procgen-workstation-controller.test.js"
+            ],
+            "log": {
+              "path": ".tmp/rook351-grouped-node.log",
+              "bytes": 15522,
+              "sha256": "1e0b2f9f13f8a485e99dabd420aae265b9153006f701f5b4b6f604ad6d69efef"
+            }
+          },
+          {
+            "passed": 23,
+            "files": [
+              "test/midi/midi-automation-span-ui.test.js"
+            ],
+            "log": {
+              "path": ".tmp/rook351-span-node.log",
+              "bytes": 2337,
+              "sha256": "e0f1d5538868eacfb9a416296e894f87810a08578b43b2e1bdc858f1a8159071"
+            }
+          }
+        ]
+      },
+      "browser": {
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "stats": {
+          "startTime": "2026-10-29T14:43:02.926Z",
+          "duration": 5708.305,
+          "expected": 9,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "log": {
+          "path": ".tmp/rook351-qualified-gestures.log",
+          "bytes": 1984,
+          "sha256": "01a59abf81a3e499f2496d0476b194262216bc1935337367f7b20726f0a15ed6"
+        },
+        "mechanisms": [
+          "Real mouse/capture and keyboard Escape",
+          "Native releasePointerCapture and showModal boundaries",
+          "Controlled window blur Event; not actual OS foreground/background qualification",
+          "Actual project source A-B-A replacement through the production view",
+          "Dispose and fresh actual camera controller pan after each interrupted pattern draft",
+          "Chromium CDP browser-injected trusted pen events; foreign pointerup controlled; no physical pen/pressure or mobile-device qualification"
+        ]
+      },
+      "coverage": {
+        "focusedCases": 32,
+        "overlapsGroupedCases": true,
+        "summary": {
+          "total": {
+            "lines": {
+              "total": 202,
+              "covered": 197,
+              "skipped": 0,
+              "pct": 97.52
+            },
+            "statements": {
+              "total": 202,
+              "covered": 197,
+              "skipped": 0,
+              "pct": 97.52
+            },
+            "functions": {
+              "total": 38,
+              "covered": 36,
+              "skipped": 0,
+              "pct": 94.73
+            },
+            "branches": {
+              "total": 219,
+              "covered": 185,
+              "skipped": 0,
+              "pct": 84.47
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\PointerGestureArbiter.js": {
+            "lines": {
+              "total": 51,
+              "covered": 51,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 12,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 51,
+              "covered": 51,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 74,
+              "covered": 69,
+              "skipped": 0,
+              "pct": 93.24
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenCameraController.js": {
+            "lines": {
+              "total": 151,
+              "covered": 146,
+              "skipped": 0,
+              "pct": 96.68
+            },
+            "functions": {
+              "total": 26,
+              "covered": 24,
+              "skipped": 0,
+              "pct": 92.3
+            },
+            "statements": {
+              "total": 151,
+              "covered": 146,
+              "skipped": 0,
+              "pct": 96.68
+            },
+            "branches": {
+              "total": 145,
+              "covered": 116,
+              "skipped": 0,
+              "pct": 80
+            }
+          }
+        },
+        "remaining": "Vertical leader-follow and wheel pan/zoom branches can receive additional focused tests; broader browser/camera scopes remain separate."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check: 10 components / 350 files",
+        "npm run check:browser-categories: 193 full / 163 smoke, all14 capability gates",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "latestCi": {
+      "349": {
+        "head": "e809366d612d194aae93ef83330217abf3da9360",
+        "run": 40886097447,
+        "wholeWorkflow": "failed",
+        "main": {
+          "job": 123490098951,
+          "status": "success",
+          "nodePassed": 7019,
+          "nodePending": 10,
+          "browserPassed": 180,
+          "desktopPassed": 24,
+          "workstationPassed": 156,
+          "coverage": {
+            "lines": 90.77,
+            "statements": 90.77,
+            "branches": 83.82,
+            "functions": 88.53
+          }
+        },
+        "engine": {
+          "job": 123490098017,
+          "status": "failed",
+          "passed": 17,
+          "failed": 1,
+          "reason": "Firefox target crashed during initial audio-navigation boot"
+        },
+        "native": "Windows/Linux both pass identical8829-command corpus; full source-bound artifacts retained in350"
+      },
+      "350": {
+        "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+        "run": 40891278513,
+        "engine": {
+          "job": 123508431268,
+          "status": "success"
+        },
+        "nativeWindows": {
+          "job": 123508431691,
+          "status": "success"
+        },
+        "nativeLinux": {
+          "job": 123508431864,
+          "status": "success"
+        },
+        "main": {
+          "job": 123508431766,
+          "status": "in_progress at last observation"
+        }
+      },
+      "latestFullyVerifiedHead": "89fa0f1c1145a250219fd041f809b8300913e301"
+    },
+    "issueStatus": {
+      "1000": "open: native concurrent contacts and remaining physical authoring / MIDI sound-dial A-B and A-B-A history/transaction matrix remain"
+    },
+    "limits": [
+      "All browser viewports meet1920x1080 desktop minimum. No mobile layout or phone/tablet emulation.",
+      "Browser-injected pen and controlled interruption events do not certify physical tablet input or actual OS background behavior.",
+      "Shared cancellation does not substitute for completing each tool-specific transaction matrix."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/controls/PointerGestureArbiter.js",
+        "bytes": 3543,
+        "sha256": "fb29d60204845478b67214b8df84ed50566fefca73fa8802ac9542a0fe5dacbb"
+      },
+      {
+        "path": "js/app/procgen/ProcgenCameraController.js",
+        "bytes": 11294,
+        "sha256": "8b60a113e081c4db2e52a5c0b9f2e58e44972af9f99d867ef5db097f5c35f16e"
+      },
+      {
+        "path": "js/app/procgen/ProcgenMidiSpanOverlay.js",
+        "bytes": 21061,
+        "sha256": "fc429f69683de259757ff62ccee7a7a5fce59a2e18a9e3ccbb992e9be99b45dd"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 137605,
+        "sha256": "74d2bada745dab82a7b72bd646ad2b6b54099922e4e25a370df9aa0968d77229"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 212954,
+        "sha256": "a3d345e7fb36a5ec5233975bb3f04397c562ec98a59d0cb7743f4faf5e969763"
+      },
+      {
+        "path": "test/pointer-gesture-lifecycle.test.js",
+        "bytes": 7697,
+        "sha256": "057aa2468835cd93596756281d1745bb013896785f8860e0affbcddf21540fb3"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 41301,
+        "sha256": "9a2dafb2ebaec6505491e965dabe04028504ea0bb62a21feeced994eac121329"
+      }
+    ]
   }
 }
