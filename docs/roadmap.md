@@ -8655,3 +8655,20 @@ export-budget acknowledgments still prevent a false complete receipt.
   bounded version admission, immutable worker copies, real physical/music parity
   and native pixel/camera/CCTV/source-read evidence. Query timing and conservative
   byte estimates do not establish V8 heap, browser FPS or hardware/audio behavior.
+
+### Continuation 331 — transactional placement-mask replacement
+
+- Preserve the previous placement tile and clipped-frame ownership through new
+  candidate construction, sampling and shared admission. Enforce the existing
+  mask ceiling over retained plus staged bytes; evict unrelated LRU entries or
+  refuse before allocating. Count actual mask allocations, staged and peak bytes.
+- All57 affected Node cases pass, including exact/over-limit aggregate masks,
+  invisible entries, replacement failures, source transforms/dependencies, reveal,
+  reset and bounded scroll. Five distinct native desktop cases pass across the
+  recovery cohort and two cache fixtures, including a real checkpoint restore.
+  Cached/uncached pixels and physical hash agree; only relevant tiles rebuild.
+- The100-sample1920x1080 eight-row probe at8/128/1024lanes allocates no masks or
+  clip samples for distant edits/animation. Uncached rows allocate2400masks and
+  sample2880000pixels; local retained edits sample120000pixels with28800retained/
+  30000peak bytes. Local validation/host load was not isolated. #1055 can close
+  on the cache contract; no GPU, heap-soak or acoustic qualification is inferred.

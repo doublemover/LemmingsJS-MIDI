@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { ProcgenLaneRenderer } from '../js/app/procgen/ProcgenLaneRenderer.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks, loadProcgenTerrain } from './bench-procgen-lanes.js';
+import { MIN_DESKTOP_VIEWPORT } from '../e2e/helpers/desktopViewports.js';
 
 const distribution = samples => {
   const sorted = samples.slice().sort((a, b) => a - b);
@@ -51,7 +52,7 @@ const runRenderCacheBenchmark = async ({ lanes = [8, 128, 1024], iterations = 10
       }] });
       return descriptors.get(key);
     };
-    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(960, 608), world, assets: { groundPieces: terrain.pieces }, windowRef: { devicePixelRatio: 1, performance } });
+    const renderer = new ProcgenLaneRenderer({ canvas: canvasFixture(MIN_DESKTOP_VIEWPORT.width, MIN_DESKTOP_VIEWPORT.height), world, assets: { groundPieces: terrain.pieces }, windowRef: { devicePixelRatio: 1, performance } });
     renderer.workstationLayout = { firstLane: 0, count: 8, rowHeight: 76, stripHeight: 18, mode: 'strips' };
     renderer.follow = false; renderer.cameraX = 512;
     try {
@@ -71,7 +72,8 @@ const runRenderCacheBenchmark = async ({ lanes = [8, 128, 1024], iterations = 10
         placementRebuilds: after.placementRebuilds - before.placementRebuilds, clipPixelsSampled: after.clipPixelsSampled - before.clipPixelsSampled,
         cacheHits: after.hits - before.hits, cacheMisses: after.misses - before.misses, imageAllocations: afterResources.allocations - beforeResources.allocations,
         actorPublicationScans: actors.actorScans - beforeActors.actorScans, actorDrawScans: actors.drawScans - beforeActors.drawScans,
-        actorQueryVisits: actors.queryVisits - beforeActors.queryVisits, retainedClipBytes: after.clipBytes, cachedBitmapBytes: afterResources.cachedBitmapBytes,
+        actorQueryVisits: actors.queryVisits - beforeActors.queryVisits, retainedClipBytes: after.clipBytes, peakClipBytes: after.peakClipBytes,
+        maskAllocations: after.maskAllocations - before.maskAllocations, cachedBitmapBytes: afterResources.cachedBitmapBytes,
         estimatedBackingBytes: afterResources.estimatedBytes, heapDeltaBytes: process.memoryUsage().heapUsed - beforeHeap });
     } finally { renderer.dispose(); terrain.describe = describe; world.dispose(); }
   }

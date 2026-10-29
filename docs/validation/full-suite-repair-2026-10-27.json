@@ -28473,5 +28473,659 @@
         "scope": "Shared completed physical/semantic/action/draw indexes, leased bounded snapshots and worker copies, measured visible-query scaling, current ownership, non-materializing contacts and native/physical/music reference qualification."
       }
     }
+  },
+  "continuation331": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "0ebe71cf2f9c061304e3a890955801b1a2c421f0",
+    "scope": "Transactional placement-mask replacement keeps prior geometry/bitmap ownership until complete admission; unchanged mask cap includes retained plus staged bytes, with allocation/peak counters.",
+    "validation": {
+      "node": {
+        "passed": 57,
+        "failed": 0,
+        "duration": "40s",
+        "scope": "Placement exact/over-limit, invisible masks, prior/candidate ownership, source/cross-chunk/reveal/reset/scroll, renderer/camera/CCTV and real optimized/scalar collision parity.",
+        "coverage": {
+          "ProcgenObjectPlacementCache": {
+            "lines": 96.46,
+            "branches": 77,
+            "functions": 100
+          }
+        },
+        "coverageFollowup": "Additional assembly/hazard/readiness and malformed-source combinations could raise branch coverage; meaningful pressure, aggregate, invisible and rollback assertions pass."
+      },
+      "browser": {
+        "initial": {
+          "passed": 3,
+          "failed": 1,
+          "cause": "The chosen hard-coded local edit was already empty, so it correctly caused no rebuild. The corrected fixture chooses an actual visible clip cell and toggles its current state."
+        },
+        "final": {
+          "passed": 2,
+          "failed": 0,
+          "durationMs": 5708.139,
+          "distinctPassedIncludingEarlierRecovery": 5,
+          "scope": "Native1920x1080+ controlled dense installed-source art; distant entry identity/no clip resampling, actual affected-cell edit, cached/uncached pixels and actual checkpoint-restore pixel/physical-hash parity. Three prior current-production paint/context/disposal recovery cases also passed."
+        }
+      },
+      "benchmark": {
+        "metadata": {
+          "name": "rook",
+          "date": "2026-10-29T05:16:28.741Z",
+          "node": "v26.12.1",
+          "platform": "win32",
+          "architecture": "x64",
+          "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+          "logicalCpus": 16,
+          "commit": "0ebe71cf2f9c061304e3a890955801b1a2c421f0",
+          "sourceHashes": {
+            "scripts/bench-procgen-render-cache.mjs": "cb729055d6b170375cf3495e88688db6bf2951089a22752c0a1a068be6a44ce6",
+            "js/app/procgen/ProcgenLaneRenderer.js": "eeff0ec892c6137487736a1b07b4bd055303e416bd4191e5cc417dded32ed82b",
+            "js/app/procgen/ProcgenObjectPlacementCache.js": "d16cdf934edf94e015d62ae50b531700e56c3581bea027a9f16137c8e50a9eb5",
+            "js/app/procgen/ProcgenRenderResources.js": "cc2831304f85555c60a486d31264acbb7eb6793dc243fc80e0e4b2a26689977c"
+          },
+          "assets": {
+            "terrain": "2ab2a82f8ff7550df7b5d56957a3c7eab4b1eb0ec92a180a9323aea204da34fe",
+            "objectFramesSha256": "b148e978610eb9cc2ca942db6390648434f412456e3819bad2ac3a3886930fb3",
+            "recipe": "lemmings_ohNo-0"
+          },
+          "isolation": "Shared development host; concurrent agent work is not controlled. Short local distributions are not release gates.",
+          "scope": "Node production renderer, real source terrain/object art and typed-array pixels; canvas calls mocked. Not browser, GPU, interaction-to-paint, heap-retention or audio performance.",
+          "fixture": "Eight visible rows, fixed actor density, fully revealed source tiles, stationary camera. A controlled dense fixture places real animated source-object images over canonical terrain with terrain clipping. Workload changes are explicit fixture edits or animation ticks; the benchmark does not advance physical simulation."
+        },
+        "rows": [
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.1488000000000511,
+              "p95": 0.2720999999999094,
+              "p99": 0.4659999999998945
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 4000,
+            "cacheMisses": 0,
+            "imageAllocations": 0,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 13625800
+          },
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 5.598799999999983,
+              "p95": 6.671399999999949,
+              "p99": 8.352499999999964
+            },
+            "placementRebuilds": 4000,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4000,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 19403008
+          },
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.04339999999979227,
+              "p95": 0.38400000000001455,
+              "p99": 2.5334000000000287
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 0,
+            "cacheMisses": 0,
+            "imageAllocations": 216,
+            "actorPublicationScans": 800,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 1152000,
+            "estimatedBackingBytes": 17343616,
+            "heapDeltaBytes": 5841528
+          },
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 5.329300000000103,
+              "p95": 5.844300000000203,
+              "p99": 6.263900000000149
+            },
+            "placementRebuilds": 4000,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4000,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 800,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 34700448
+          },
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.4557999999997264,
+              "p95": 1.376299999999901,
+              "p99": 1.8822999999997592
+            },
+            "placementRebuilds": 100,
+            "clipPixelsSampled": 120000,
+            "cacheHits": 3900,
+            "cacheMisses": 100,
+            "imageAllocations": 100,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 30000,
+            "maskAllocations": 100,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 19597816
+          },
+          {
+            "totalLanes": 8,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 5.45470000000023,
+              "p95": 6.263400000000274,
+              "p99": 8.69340000000011
+            },
+            "placementRebuilds": 4000,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4000,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 800,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 31112320
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.13279999999986103,
+              "p95": 0.18429999999989377,
+              "p99": 0.24630000000024665
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 4500,
+            "cacheMisses": 0,
+            "imageAllocations": 0,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 11394808
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 10.055699999999888,
+              "p95": 10.481800000000021,
+              "p99": 10.594500000000153
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 28901448
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.1898999999998523,
+              "p95": 0.4852000000000771,
+              "p99": 0.6644000000001142
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 0,
+            "cacheMisses": 0,
+            "imageAllocations": 216,
+            "actorPublicationScans": 12800,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 1152000,
+            "estimatedBackingBytes": 17343616,
+            "heapDeltaBytes": 20540904
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 10.024999999999636,
+              "p95": 10.76090000000022,
+              "p99": 18.230699999999615
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 12800,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 19825800
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.6904999999997017,
+              "p95": 0.7310999999999694,
+              "p99": 0.8020000000005894
+            },
+            "placementRebuilds": 100,
+            "clipPixelsSampled": 120000,
+            "cacheHits": 4400,
+            "cacheMisses": 100,
+            "imageAllocations": 100,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 30000,
+            "maskAllocations": 100,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 18249800
+          },
+          {
+            "totalLanes": 128,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 10.009500000000116,
+              "p95": 10.475400000000263,
+              "p99": 10.760800000000017
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 29875992
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.12989999999990687,
+              "p95": 0.26310000000012224,
+              "p99": 0.4897000000000844
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 4500,
+            "cacheMisses": 0,
+            "imageAllocations": 0,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 10814472
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "distant-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 9.76720000000023,
+              "p95": 10.221599999999853,
+              "p99": 10.418300000000272
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 27669656
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 1.1060000000006767,
+              "p95": 2.497099999999591,
+              "p99": 3.824200000000019
+            },
+            "placementRebuilds": 0,
+            "clipPixelsSampled": 0,
+            "cacheHits": 0,
+            "cacheMisses": 0,
+            "imageAllocations": 216,
+            "actorPublicationScans": 102400,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 0,
+            "cachedBitmapBytes": 1152000,
+            "estimatedBackingBytes": 17343616,
+            "heapDeltaBytes": 38398680
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "animated-objects",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 11.00959999999941,
+              "p95": 13.934299999999894,
+              "p99": 15.466400000000249
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 102400,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 44878040
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "retained",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 0.6877000000004045,
+              "p95": 0.7277000000012777,
+              "p99": 1.4462000000003172
+            },
+            "placementRebuilds": 100,
+            "clipPixelsSampled": 120000,
+            "cacheHits": 4400,
+            "cacheMisses": 100,
+            "imageAllocations": 100,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 30000,
+            "maskAllocations": 100,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 17736800
+          },
+          {
+            "totalLanes": 1024,
+            "visibleLanes": 8,
+            "scenario": "visible-terrain-edit",
+            "cacheMode": "uncached-reference",
+            "iterations": 100,
+            "frameMs": {
+              "p50": 9.986300000000483,
+              "p95": 10.446599999999307,
+              "p99": 10.478099999998449
+            },
+            "placementRebuilds": 4500,
+            "clipPixelsSampled": 2880000,
+            "cacheHits": 0,
+            "cacheMisses": 4500,
+            "imageAllocations": 2400,
+            "actorPublicationScans": 0,
+            "actorDrawScans": 0,
+            "actorQueryVisits": 900,
+            "retainedClipBytes": 28800,
+            "peakClipBytes": 28800,
+            "maskAllocations": 2400,
+            "cachedBitmapBytes": 115200,
+            "estimatedBackingBytes": 16306816,
+            "heapDeltaBytes": 29567360
+          }
+        ]
+      },
+      "benchmarkIsolation": "Concurrent local Node validation and host load were not isolated. The benchmark uses1920x1080, eight fixed visible rows and supplied dense source-art clipping; mocked canvas submission is not native GPU timing.",
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10components/349files",
+        "browser categories",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "329/330 full CI pending separately;326 is latest verified green checkpoint.",
+      "scopeLimits": [
+        "Retained/staged/peak mask bytes and actual typed-array creation counts do not establish browser retained-heap or GPU driver allocations.",
+        "Prepared source art fixture density is explicit; no native audio, hardware or acoustic performance is inferred."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-benchmark.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-categories-final.log",
+        "bytes": 3067,
+        "sha256": "ba8f5c07878ab7b49378dc2ca2ef41963caf369fa8ee2f61e1e28f1b5574a968"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-categories.log",
+        "bytes": 3067,
+        "sha256": "3ff202e15e1f1930b712b4ea6d87d349abea3a4dd060164c3b2e31b8aaaab735"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-native-final.log",
+        "bytes": 636,
+        "sha256": "34a7e3aa9cf28a929eccc84484cfed5f70c229314414276dda9e37e4ce7a793d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-native.log",
+        "bytes": 4495,
+        "sha256": "383eb0c9b5e2190ffefb12965f49554a6212ab654ea0362e94c61703aa815b2f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-node.log",
+        "bytes": 5940,
+        "sha256": "547b5db812f0e34f5129dc9f71bf595b5000a613c7faf48b81b276bb591b3090"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog331-object-cache-results.json",
+        "bytes": 34551,
+        "sha256": "59a644d98ef96d7d67fcee97f8610ad1ad50e10aac1b5200cf99ec93e056a3d0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog331-object-cache-final-results.json",
+        "bytes": 11147,
+        "sha256": "8413c54a76f0cedb01d86337944e0caaea999a7231b6c82cbeae85a0e3a1f23a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog331-render-cache-benchmark.json",
+        "bytes": 14999,
+        "sha256": "96975025c1280b92c93d1ce022585885dd3f6ab415e9ae121fce143f39210357"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-331-coverage\\coverage-summary.json",
+        "bytes": 169891,
+        "sha256": "5beb7d837e3ab1cbdde05ccbfd9e891a2d42d2e07bb8dba0a603ec8d7134f9b5"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/ProcgenObjectPlacementCache.js",
+        "bytes": 8273,
+        "sha256": "d16cdf934edf94e015d62ae50b531700e56c3581bea027a9f16137c8e50a9eb5"
+      },
+      {
+        "path": "scripts/bench-procgen-render-cache.mjs",
+        "bytes": 8245,
+        "sha256": "cb729055d6b170375cf3495e88688db6bf2951089a22752c0a1a068be6a44ce6"
+      },
+      {
+        "path": "test/procgen-object-placement-cache.test.js",
+        "bytes": 10002,
+        "sha256": "12ab42350aff265cb9a33b19bcc47be05ecfda7147a7f2933ae2a7c92895b2af"
+      },
+      {
+        "path": "e2e/procgen-workstation-object-cache.spec.js",
+        "bytes": 7161,
+        "sha256": "a3a2b8299929af69d5511dadd2ad4f26c9feee5035f94a901bd2d0f0d6450ec2"
+      }
+    ],
+    "issueStatus": {
+      "1055": {
+        "state": "completed",
+        "scope": "Local dependency caching, exact source pixels, explicit retained/candidate admission and retirement, measured work removal and native checkpoint-restore qualification."
+      }
+    }
   }
 }

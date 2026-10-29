@@ -49,6 +49,13 @@ corresponding canonical tile, including edit patches. Distant terrain changes
 reuse geometry and masks. Object caches retain at most 512 tiles and 2 MiB of
 clip masks; clipped frame canvases also participate in the bitmap LRU. Eviction
 rebuilds presentation from world facts without generating collision terrain.
+Replacement keeps the old tile and its clipped-frame ownership until the new
+candidate is completely sampled and admitted. The2MiB mask ceiling includes
+retained plus staged candidate bytes. Unrelated LRU entries may retire to make
+room; if the protected old tile plus its candidate cannot fit, replacement
+refuses before mask allocation. Sampling or shared-budget refusal preserves the
+old tile. Diagnostics report staged bytes, peak mask bytes and mask allocations;
+invisible masks count toward the allocation peak before retirement.
 
 Camera following uses a 130 ms exponential time constant and a maximum 50 ms
 presentation delta per update. Explicit Follow snaps immediately; reduced motion
@@ -63,6 +70,36 @@ retries, late callbacks, construction cleanup, 100 resize/retirement cycles,
 cross-chunk mask dependencies and bounded scrolling residency. These fixtures do
 not constitute browser fault injection, retained-heap measurement, screenshots,
 or cross-browser motion qualification.
+
+Continuation331 passes57 grouped Node cases, including aggregate exact-limit/
+limit-plus-one, invisible masks, retained-plus-candidate pressure, failed sampling/
+reservation with the prior entry intact, cross-chunk dependencies, reveal/reset,
+bounded scrolling and real optimized/scalar physics. Five distinct native desktop
+cases pass across the recovery cohort and two new cache cases. Native source-art
+clips retain identity after a distant edit, rebuild only affected dependency
+tiles after a real visible-cell mutation, and match a fresh uncached repaint.
+An actual checkpoint restore also matches uncached pixels and preserves the
+physical checkpoint hash across painting. The dense clip fixture uses supplied
+fully revealed geometry and actual installed animated images; it is not a claim
+about unmodified scene density or GPU performance.
+
+The new100-iteration probe uses1920x1080 and the same eight visible rows. For
+distant edits, retained versus uncached p50/p95/p99 milliseconds are:
+
+| Total lanes | Retained | Uncached reference |
+| ---: | --- | --- |
+|8|0.149 /0.272 /0.466|5.599 /6.671 /8.352|
+|128|0.133 /0.184 /0.246|10.056 /10.482 /10.595|
+|1024|0.130 /0.263 /0.490|9.767 /10.222 /10.418|
+
+Retained distant/animated scenarios allocate zero masks and sample zero clip
+pixels. Each uncached row allocates2400 masks and samples2880000 pixels. The100
+local edits rebuild100tiles and sample120000pixels, retaining28800mask bytes
+with a30000-byte publication peak. Full distributions, resource/bitmap/heap-delta
+counters, source/art hashes and qualification limits are in continuation331 of
+the canonical validation receipt. A concurrent local Node validation cohort and
+other host load were not isolated; these are work-removal observations, not
+browser frame-time or retained-heap release gates.
 
 ## Recorded cache probe and browser recovery
 

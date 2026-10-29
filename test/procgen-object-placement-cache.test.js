@@ -39,6 +39,38 @@ describe('local ProcGen object placement geometry', () => {
     world.terrain.solidSample = () => { calls++; expect([...reservations.values()]).to.deep.equal([8]); throw new Error('sample failure'); };
     expect(() => cache.get(0, 0, descriptor)).to.throw('sample failure'); expect(calls).to.equal(1); expect(reservations.size).to.equal(0); cache.dispose();
   });
+  it('admits exactly the aggregate limit and refuses limit plus one before allocating masks', () => {
+    const { cache, descriptor, object, samples, reservations } = fixture({ maxClipBytes: 16 }); descriptor.objects.push({ ...object, x: 140 });
+    expect(cache.get(0, 0, descriptor)).to.have.length(2); expect(cache.getStats()).to.include({ clipBytes: 16, peakClipBytes: 16, maskAllocations: 2, stagedClipBytes: 0 });
+    const calls = samples.length, masks = cache.getStats().maskAllocations;
+    descriptor.objects.push({ ...object, x: 150, piece: { image: { ...object.piece.image, width: 1, height: 1, frames: [new Uint8Array([1])] } } });
+    expect(() => cache.get(0, 0, descriptor)).to.throw('Aggregate'); expect(samples.length).to.equal(calls); expect(cache.getStats().maskAllocations).to.equal(masks);
+    expect([...reservations.values()]).to.deep.equal([16]); cache.dispose();
+  });
+  it('preserves the prior entry and bitmap ownership after replacement sampling or admission failure', () => {
+    const { cache, world, descriptor, reservations, revisions } = fixture({ maxClipBytes: 16 }), first = cache.get(0, 0, descriptor), entry = cache.tiles.get(0);
+    const bitmap = {}; first[0].clippedFrames.set(0, bitmap); reservations.set(bitmap, 100);
+    revisions.set(0, 1); const sample = world.terrain.solidSample; world.terrain.solidSample = () => { expect(cache.getStats()).to.include({ clipBytes: 8, stagedClipBytes: 8, peakClipBytes: 16 }); throw new Error('replacement sample failed'); };
+    expect(() => cache.get(0, 0, descriptor)).to.throw('replacement sample failed');
+    expect(cache.tiles.get(0)).to.equal(entry); expect(reservations.get(entry)).to.equal(8); expect(reservations.get(bitmap)).to.equal(100); expect(reservations.size).to.equal(2);
+    world.terrain.solidSample = sample; const retain = cache.resources.retain;
+    cache.resources.retain = (key, bytes) => { if (key !== entry) throw new Error('shared budget refusal'); retain(key, bytes); };
+    expect(() => cache.get(0, 0, descriptor)).to.throw('shared budget refusal'); expect(cache.tiles.get(0)).to.equal(entry);
+    cache.resources.retain = retain; const second = cache.get(0, 0, descriptor);
+    expect(second).not.to.equal(first); expect(reservations.has(entry)).to.equal(false); expect(reservations.has(bitmap)).to.equal(false);
+    expect(cache.getStats()).to.include({ clipBytes: 8, stagedClipBytes: 0, peakClipBytes: 16 }); cache.dispose(); expect(reservations.size).to.equal(0);
+  });
+  it('includes retained masks in peak admission and keeps them intact when a candidate cannot fit', () => {
+    const { cache, descriptor, revisions, samples, reservations } = fixture({ maxClipBytes: 8 }); const first = cache.get(0, 0, descriptor), calls = samples.length;
+    revisions.set(0, 1); expect(() => cache.get(0, 0, descriptor)).to.throw('retained plus candidate');
+    expect(cache.tiles.get(0).placements).to.equal(first); expect(samples.length).to.equal(calls); expect([...reservations.values()]).to.deep.equal([8]);
+    expect(cache.getStats()).to.include({ clipBytes: 8, stagedClipBytes: 0, peakClipBytes: 8 }); cache.dispose();
+  });
+  it('retires invisible candidate masks after accounting their allocation peak', () => {
+    const { cache, world, descriptor, reservations } = fixture({ maxClipBytes: 8 }); world.terrain.solidSample = () => false;
+    expect(cache.get(0, 0, descriptor)).to.deep.equal([]); expect(cache.getStats()).to.include({ clipBytes: 0, stagedClipBytes: 0, peakClipBytes: 8, maskAllocations: 1 });
+    expect([...reservations.values()]).to.deep.equal([0]); cache.dispose(); expect(reservations.size).to.equal(0);
+  });
 
   it('retains geometry and clips through distant edits, camera redraws and hazard phase changes', () => {
     const { cache, world, descriptor, samples, revisions } = fixture();

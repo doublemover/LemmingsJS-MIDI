@@ -10,7 +10,7 @@ class ProcgenObjectPlacementCache {
   constructor(world, resources, { maxTiles = 512, maxClipBytes = 2 * 1024 * 1024 } = {}) {
     if (!Number.isSafeInteger(maxTiles) || maxTiles < 1 || !Number.isSafeInteger(maxClipBytes) || maxClipBytes < 0) throw new Error('Invalid placement cache limits.');
     this.world = world; this.resources = resources; this.tiles = new Map(); this.maxTiles = maxTiles; this.maxClipBytes = maxClipBytes;
-    this.clipBytes = 0; this.stats = { hits: 0, misses: 0, placementRebuilds: 0, clipPixelsSampled: 0, evictions: 0 };
+    this.clipBytes = 0; this.stagedClipBytes = 0; this.stats = { hits: 0, misses: 0, placementRebuilds: 0, clipPixelsSampled: 0, maskAllocations: 0, peakClipBytes: 0, evictions: 0 };
   }
   _dependencies(lane, chunk, descriptor) {
     const world = this.world, width = world.terrain.chunkWidth, chunks = new Set([chunk]);
@@ -36,7 +36,7 @@ class ProcgenObjectPlacementCache {
     let entry = this.tiles.get(key);
     const assetsMatch = entry?.images.length === descriptor.objects.length && entry.images.every((image, index) => image === descriptor.objects[index].piece.image);
     if (entry?.signature === signature && assetsMatch) { this.stats.hits++; this.tiles.delete(key); this.tiles.set(key, entry); return entry.placements; }
-    this.stats.misses++; if (entry) this._retire(key);
+    this.stats.misses++; const previous = entry;
     entry = { signature, images: descriptor.objects.map(object => object.piece.image), placements: [], clipBytes: 0 };
     const seed = world.laneSeeds[lane], top = lane * (world.laneHeight || 96);
     const matchesTerrain = (x, y) => {
@@ -69,15 +69,20 @@ class ProcgenObjectPlacementCache {
       }
       entry.placements.push(placement);
     }
-    while (this.tiles.size && (this.tiles.size >= this.maxTiles || this.clipBytes + entry.clipBytes > this.maxClipBytes)) { this._retire(this.tiles.keys().next().value); this.stats.evictions++; }
+    while (this.tiles.size && (this.tiles.size + (previous ? 0 : 1) > this.maxTiles || this.clipBytes + entry.clipBytes > this.maxClipBytes)) {
+      let victim; for (const candidate of this.tiles.keys()) if (candidate !== key) { victim = candidate; break; }
+      if (victim === undefined) break; this._retire(victim); this.stats.evictions++;
+    }
+    if (this.clipBytes + entry.clipBytes > this.maxClipBytes) throw new Error('Staged object terrain masks exceed the retained plus candidate display cache budget');
     // Admit the complete candidate before allocating or sampling any clip mask.
     this.resources?.retain(entry, entry.clipBytes);
+    this.stagedClipBytes = entry.clipBytes; this.stats.peakClipBytes = Math.max(this.stats.peakClipBytes, this.clipBytes + this.stagedClipBytes);
     try {
       const visiblePlacements = []; let retainedBytes = 0;
       for (const placement of entry.placements) {
         if (placement.needsClip) {
           const { image } = placement;
-          placement.clip = new Uint8Array(image.width * image.height); placement.clippedFrames = new Map();
+          placement.clip = new Uint8Array(image.width * image.height); this.stats.maskAllocations++; placement.clippedFrames = new Map();
           let visible = false;
           for (let dy = 0; dy < image.height; dy++) for (let dx = 0; dx < image.width; dx++) {
             this.stats.clipPixelsSampled++;
@@ -89,8 +94,10 @@ class ProcgenObjectPlacementCache {
         delete placement.needsClip; visiblePlacements.push(placement);
       }
       entry.placements = visiblePlacements; this.resources?.retain(entry, retainedBytes); entry.clipBytes = retainedBytes;
+      if (previous) this._retire(key);
       this.stats.placementRebuilds++; this.clipBytes += entry.clipBytes; this.tiles.set(key, entry);
     } catch (error) { this.resources?.release(entry); throw error; }
+    finally { this.stagedClipBytes = 0; }
     return entry.placements;
   }
   _retire(key) {
@@ -98,7 +105,7 @@ class ProcgenObjectPlacementCache {
     for (const placement of entry.placements) if (placement.clippedFrames) for (const bitmap of placement.clippedFrames.values()) this.resources?.release(bitmap);
     this.resources?.release(entry); this.clipBytes -= entry.clipBytes; this.tiles.delete(key);
   }
-  getStats() { return { ...this.stats, tiles: this.tiles.size, clipBytes: this.clipBytes, maxTiles: this.maxTiles, maxClipBytes: this.maxClipBytes }; }
+  getStats() { return { ...this.stats, tiles: this.tiles.size, clipBytes: this.clipBytes, stagedClipBytes: this.stagedClipBytes, maxTiles: this.maxTiles, maxClipBytes: this.maxClipBytes }; }
   clear() { for (const key of this.tiles.keys()) this._retire(key); }
   dispose() { this.clear(); this.world = this.resources = null; }
 }
