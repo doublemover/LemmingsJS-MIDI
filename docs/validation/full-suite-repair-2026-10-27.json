@@ -58296,5 +58296,687 @@
         "sha256": "e0c043924106820c0f01131bc3e6f0fc55073ba013e2e771b8cffa77cc7f0d03"
       }
     ]
+  },
+  "continuation361": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Qualify native capture cancellation independently of concurrent packet emulation",
+    "issues": [
+      1000,
+      1086
+    ],
+    "implementation": [
+      "Observe actual capture release requests without changing native behavior. Retain strict trusted pointer/capture events, original source ownership and exact commit counts. A foreign contact cannot cause an application-initiated early release.",
+      "When the browser delivers trusted owning capture loss before owning release, require zero edits, restored curve/pattern draft, retired ownership and a fresh captured edit committing once. Healthy concurrent contact still commits the original transaction exactly once.",
+      "Add two deterministic native capture-transfer journeys after actual mouse capture acquisition. Keep them separate from concurrent CDP pen/mouse packets, whose device transition may replace or clear native pending capture. Camera recovery remains covered.",
+      "Preserve the original timeout when page teardown already closed its CDP session; require an enabled Apply button before invoking it rather than masking its disabled-state cause with cleanup failure."
+    ],
+    "validation": {
+      "browser": {
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T18:24:40.265Z",
+          "duration": 39839.505000000005,
+          "expected": 39,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook361-browser-release.json",
+          "bytes": 120490,
+          "sha256": "e9f0000db2c4f70cdbeca6262ee3e4a28b5d9483ea8425e2e08362ed01c04229"
+        },
+        "log": {
+          "path": ".tmp/rook361-browser-release.log",
+          "bytes": 7156,
+          "sha256": "d277c25ddc6e283205872618cf2dad59dbe5508e67573f3adb03b82d9527d594"
+        },
+        "concurrentReceipts": [
+          {
+            "title": "curve concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls",
+            "receipt": {
+              "kind": "curve",
+              "mode": "concurrent-mouse-pen",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "browserChannel": "chromium",
+              "documentType": "text/html",
+              "focused": true,
+              "visibility": "visible",
+              "captureFlag": false,
+              "moves": [
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 2,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "BUTTON"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "CANVAS"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "CANVAS"
+                }
+              ],
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 2,
+                  "pointerType": "pen",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "releaseRequests": [],
+              "concurrentOutcome": "committed-first-owner",
+              "calls": [
+                {
+                  "kind": "curve",
+                  "points": [
+                    {
+                      "beat": 0,
+                      "value": 32
+                    },
+                    {
+                      "beat": 2,
+                      "value": 123
+                    },
+                    {
+                      "beat": 4,
+                      "value": 32
+                    }
+                  ]
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "curve native capture transfer cancels before a fresh edit commits @boundary @gesture-controls",
+            "receipt": {
+              "kind": "curve",
+              "mode": "concurrent-mouse-pen",
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "browserChannel": "chromium",
+              "documentType": "text/html",
+              "focused": true,
+              "visibility": "visible",
+              "captureFlag": false,
+              "moves": [
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "DIV"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "DIV"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "DIV"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "target": "circle"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                },
+                {
+                  "id": 1,
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "target": "svg"
+                }
+              ],
+              "events": [
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerdown",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "gotpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 1,
+                  "trusted": true,
+                  "owner": 1,
+                  "calls": 0
+                },
+                {
+                  "type": "pointerup",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                },
+                {
+                  "type": "lostpointercapture",
+                  "id": 1,
+                  "pointerType": "mouse",
+                  "buttons": 0,
+                  "trusted": true,
+                  "owner": null,
+                  "calls": 0
+                }
+              ],
+              "releaseRequests": [
+                {
+                  "id": 1,
+                  "captured": true,
+                  "owner": null
+                }
+              ],
+              "concurrentOutcome": "capture-canceled-then-fresh-commit",
+              "calls": [
+                {
+                  "kind": "curve",
+                  "points": [
+                    {
+                      "beat": 0,
+                      "value": 32
+                    },
+                    {
+                      "beat": 2,
+                      "value": 123
+                    },
+                    {
+                      "beat": 4,
+                      "value": 32
+                    }
+                  ]
+                }
+              ],
+              "owner": null,
+              "recoveredCameraX": 33.333333333333336,
+              "evidence": "Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification."
+            }
+          },
+          {
+            "title": "desktop simultaneous native mouse and pen contacts retain the first owner @boundary @gesture-lifecycle",
+            "receipt": {
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "outcome": "capture-canceled-then-fresh-commit",
+              "capture": {
+                "nativeLossBeforeRelease": true,
+                "explicitReleaseWhileCaptured": false,
+                "eventCount": 4
+              },
+              "events": {
+                "contacts": [
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  },
+                  {
+                    "id": 2,
+                    "type": "pen",
+                    "trusted": true,
+                    "owner": 1
+                  },
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  }
+                ],
+                "releases": [
+                  {
+                    "id": 2,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  },
+                  {
+                    "id": 1,
+                    "owner": null,
+                    "actions": 0,
+                    "trusted": true
+                  },
+                  {
+                    "id": 1,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  }
+                ],
+                "pointerEvents": [
+                  {
+                    "type": "gotpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "pointerup",
+                    "id": 2,
+                    "trusted": true
+                  },
+                  {
+                    "type": "lostpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "pointerup",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "gotpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "pointerup",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "lostpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  }
+                ],
+                "captureReleases": [
+                  {
+                    "id": 1,
+                    "captured": false
+                  },
+                  {
+                    "id": 1,
+                    "captured": true
+                  },
+                  {
+                    "id": 1,
+                    "captured": false
+                  }
+                ]
+              },
+              "mobileEmulation": false,
+              "evidence": "Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; capture transfer is controlled; no physical tablet qualification."
+            }
+          },
+          {
+            "title": "desktop native capture transfer cancels a pattern draft before fresh input @boundary @gesture-lifecycle",
+            "receipt": {
+              "viewport": {
+                "width": 1920,
+                "height": 1080
+              },
+              "outcome": "capture-canceled-then-fresh-commit",
+              "capture": {
+                "nativeLossBeforeRelease": true,
+                "explicitReleaseWhileCaptured": false,
+                "eventCount": 2
+              },
+              "events": {
+                "contacts": [
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  },
+                  {
+                    "id": 1,
+                    "type": "mouse",
+                    "trusted": true,
+                    "owner": 1
+                  }
+                ],
+                "releases": [
+                  {
+                    "id": 1,
+                    "owner": 1,
+                    "actions": 0,
+                    "trusted": true
+                  }
+                ],
+                "pointerEvents": [
+                  {
+                    "type": "gotpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "lostpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "gotpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "pointerup",
+                    "id": 1,
+                    "trusted": true
+                  },
+                  {
+                    "type": "lostpointercapture",
+                    "id": 1,
+                    "trusted": true
+                  }
+                ],
+                "captureReleases": [
+                  {
+                    "id": 1,
+                    "captured": false
+                  },
+                  {
+                    "id": 1,
+                    "captured": true
+                  },
+                  {
+                    "id": 1,
+                    "captured": false
+                  }
+                ]
+              },
+              "mobileEmulation": false,
+              "evidence": "Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; capture transfer is controlled; no physical tablet qualification."
+            }
+          }
+        ],
+        "scope": "Actual1920x1080 desktop mouse/pen browser events and controlled native capture transfer. Isolated callback and production terrain history scopes remain explicit; no physical tablet or OS-background claim."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "nodeRepeated": false,
+      "fullLocalSuiteRepeated": false
+    },
+    "fixtureCorrections": [
+      "A new wrapper initially lacked Playwright fixture destructuring and failed collection; corrected before running acceptance.",
+      "The old pattern concurrency fixture also assumed ownership survived a real capture loss, producing a null dereference. Apply the same trusted-loss/zero-edit/fresh-edit contract.",
+      "Capture-transfer qualification must acquire native capture first and stay separate from concurrent pen packets. Switching emulated pointer type can clear pending/active mouse capture before the planned transfer; do not invent got/lost events or skip the assertion."
+    ],
+    "ci358": {
+      "head": "8d8565f92151f2f826dc970ca1c311b6d4f4d373",
+      "runId": 40923521656,
+      "mainJob": 123622813710,
+      "conclusion": "failure",
+      "desktopPassed": 26,
+      "workstationPassed": 196,
+      "workstationFailed": 1,
+      "nodeCoverageExecuted": false,
+      "otherThreeJobs": "success",
+      "reason": "Curve concurrent contact loses owning mouse capture before owning release; draft cancels and Apply remains disabled. The test waited for Apply then CDP detach obscured the original timeout. All16 earlier capture-acquisition failures pass under full Chromium.",
+      "artifacts": [
+        {
+          "path": ".tmp/ci358-workstation.zip",
+          "bytes": 530718,
+          "sha256": "6de25511c50580fa7f40fe88b1dec32bcdd332e1b186a5f679766d154fffecf8"
+        },
+        {
+          "path": ".tmp/ci358-failures.zip",
+          "bytes": 15518879,
+          "sha256": "f52d88c78a5253ecf530e42d3ec3eae3ef3ffe0720672e87f1df21096b312b4b"
+        },
+        {
+          "path": ".tmp/ci358-contact-trace.zip",
+          "bytes": 217527,
+          "sha256": "7c36bcbb21ca41f3920f67e40b3175fd4a6fede383baf29e3239b2be8a261c84"
+        }
+      ],
+      "nativeLossAttribution": "The trace establishes trusted capture loss and cancellation; the new release observer independently checks for any premature application release. Do not claim a physical-device root cause."
+    },
+    "ci359": {
+      "head": "bac00ea6fae574ab7b663dd2d350c1eccd98eddb",
+      "runId": 40925211471,
+      "mainJob": 123628755156,
+      "conclusion": "failure",
+      "desktopPassed": 26,
+      "workstationPassed": 200,
+      "workstationFailed": 2,
+      "failures": [
+        "Same curve concurrent Apply wait",
+        "Canceled actual beforeunload preserves world/document but transport playing becomes false"
+      ],
+      "clockInputJourneys": "All five pass in independent Linux main CI",
+      "otherThreeJobs": "success",
+      "nodeCoverageExecuted": false
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "sourceFiles": [
+      {
+        "path": "e2e/procgen-workstation-gesture-controls.spec.js",
+        "bytes": 20412,
+        "sha256": "9bd7e60b086e28ba9cb327b95e9539a08a8b68444bdacd9aa1263d50ac1b2e30"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 48038,
+        "sha256": "aa0c2986381f1e4caf93fac55d98c01afe5e41e6f4b57f3fe5a5a2135355421d"
+      }
+    ],
+    "remaining": "Independent Linux qualification of the revised capture contract; inspect359 canceled-beforeunload transport state, then resume typed physical-time export and the remaining backlog. No full clean CI claim."
   }
 }

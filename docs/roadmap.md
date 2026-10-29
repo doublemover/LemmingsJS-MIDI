@@ -9323,3 +9323,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   of its catch-up/suspension/external-clock matrix.358 independent main CI remains
   in workstation smoke; its engine and both native codec jobs pass.350 is still
   the last verified full green checkpoint. Continue solo through remaining work.
+
+### Continuation 361 - native capture loss through concurrent input
+
+- Full Chromium qualifies the16 previously failing Linux capture-acquisition
+  preconditions.358 main passes26 desktop and196 workstation cases, failing one
+  curve concurrency case that cancels after trusted capture loss and then waits
+  for disabled Apply. CDP cleanup had obscured the original wait.
+- Qualify healthy concurrent commits and actual capture-loss cancellation as
+  separate outcomes. Observe native release calls; reject any premature
+  application release. Cancellation requires zero edits, restored draft, retired
+  owner and a fresh successful captured edit. Keep native capture assertions.
+- Add deterministic curve/pattern capture transfers after actual mouse capture;
+  do not mix this setup with emulated pen device transitions. All39 affected
+  desktop journeys pass, including fresh camera recovery and production terrain
+  Apply/Undo/Redo. Formatting/types/undefined/category checks pass; no Node or full
+  local suite is repeated for these browser-only changes.
+- 359 main passes26 desktop/200 workstation cases, including all five native
+  clock-input cases. It fails the old curve wait and one canceled-beforeunload
+  case whose world survives but transport stops. Engine/native jobs pass. Inspect
+  that remaining lifecycle state next; typed source-time export remains queued.
+ 350 remains the last verified full green head; Linux follow-through is pending.

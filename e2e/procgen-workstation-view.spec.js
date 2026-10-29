@@ -449,33 +449,54 @@ test('desktop native pen events keep one captured transaction and ignore a forei
   } finally { await session.detach(); }
 });
 
-test('desktop simultaneous native mouse and pen contacts retain the first owner @boundary @gesture-lifecycle', async ({ page }, testInfo) => {
+for (const transferCapture of [false, true]) test((transferCapture ? 'desktop native capture transfer cancels a pattern draft before fresh input' : 'desktop simultaneous native mouse and pen contacts retain the first owner') + ' @boundary @gesture-lifecycle', async ({ page }, testInfo) => {
   await ready(page, 1); await useWorkstationControl(page, page.getByLabel('Step editing tool'), {}, 'selectOption', 'draw');
   await page.evaluate(async () => {
-    const f = window.workstationViewTest, arbiter = (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document); f.contacts = []; f.releases = [];
+    const f = window.workstationViewTest, arbiter = (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document); f.contacts = []; f.releases = []; f.pointerEvents = []; f.captureReleases = [];
+    const grid = document.querySelector('.studio-sequences'), release = grid.releasePointerCapture;
+    grid.releasePointerCapture = function(id) { f.captureReleases.push({ id, captured: this.hasPointerCapture(id) }); return release.call(this, id); };
+    for (const type of ['gotpointercapture', 'lostpointercapture', 'pointerup']) grid.addEventListener(type, event => f.pointerEvents.push({ type, id: event.pointerId, trusted: event.isTrusted }));
     document.querySelector('.studio-sequences').addEventListener('pointerdown', event => f.contacts.push({ id: event.pointerId, type: event.pointerType, trusted: event.isTrusted, owner: arbiter.inspect()?.pointerId }));
     document.querySelector('.studio-sequences').addEventListener('pointerup', event => f.releases.push({ id: event.pointerId, owner: arbiter.inspect()?.pointerId ?? null, actions: f.actions.length, trusted: event.isTrusted }));
   });
   const target = page.locator('.studio-cell:not(.enabled)').first(); await target.scrollIntoViewIfNeeded();
   const box = await target.boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
   await page.mouse.move(x, y); await page.mouse.down();
-  const session = await page.context().newCDPSession(page);
+  if (transferCapture) {
+    await page.mouse.move(x + 2, y);
+    await expect.poll(() => page.evaluate(() => window.workstationViewTest.pointerEvents.some(event => event.type === 'gotpointercapture' && event.trusted))).toBe(true);
+  }
+  const session = transferCapture ? null : await page.context().newCDPSession(page);
   try {
-    await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'pen' });
-    await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, pointerType: 'pen', button: 'left', buttons: 1, clickCount: 1, force: 0.5 });
+    if (session) {
+      await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'pen' });
+      await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, pointerType: 'pen', button: 'left', buttons: 1, clickCount: 1, force: 0.5 });
+    }
     const contacts = await page.evaluate(() => window.workstationViewTest.contacts);
-    expect(contacts.map(contact => contact.type)).toEqual(['mouse', 'pen']); expect(contacts.every(contact => contact.trusted)).toBe(true);
-    expect(new Set(contacts.map(contact => contact.id)).size).toBe(2);
-    expect(contacts[1].owner).toBe(contacts[0].id);
+    expect(contacts.map(contact => contact.type)).toEqual(transferCapture ? ['mouse'] : ['mouse', 'pen']); expect(contacts.every(contact => contact.trusted)).toBe(true);
+    expect(new Set(contacts.map(contact => contact.id)).size).toBe(transferCapture ? 1 : 2);
+    if (!transferCapture) expect(contacts[1].owner).toBe(contacts[0].id);
     expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
-    await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1 });
+    if (session) await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1 });
     expect(await page.evaluate(() => window.workstationViewTest.actions.length)).toBe(0);
-    expect(await page.evaluate(async () => (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document).inspect().pointerId)).toBe(contacts[0].id);
+    if (transferCapture) {
+      await page.evaluate(id => { const grid = document.querySelector('.studio-sequences'); if (grid.hasPointerCapture(id)) { const foreign = document.createElement('div'); document.body.append(foreign); foreign.setPointerCapture(id); } }, contacts[0].id);
+      await page.mouse.move(x + 1, y);
+    }
+    const beforeRelease = await page.evaluate(async () => (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document).inspect()?.pointerId ?? null);
+    if (beforeRelease != null) expect(beforeRelease).toBe(contacts[0].id);
     await page.mouse.up();
+    const capture = await page.evaluate(id => { const f = window.workstationViewTest, lost = f.pointerEvents.findIndex(event => event.type === 'lostpointercapture' && event.id === id && event.trusted), up = f.pointerEvents.findIndex(event => event.type === 'pointerup' && event.id === id); return { nativeLossBeforeRelease: lost >= 0 && (up < 0 || lost < up), explicitReleaseWhileCaptured: f.captureReleases.some(request => request.id === id && request.captured), eventCount: f.pointerEvents.length }; }, contacts[0].id);
+    if (transferCapture || beforeRelease == null) expect(capture.nativeLossBeforeRelease).toBe(true);
+    if (capture.nativeLossBeforeRelease) {
+      expect(capture.explicitReleaseWhileCaptured).toBe(false); expect(await page.evaluate(() => window.workstationViewTest.actions)).toEqual([]);
+      await target.hover(); await page.mouse.down(); await page.mouse.move(x + 4, y, { steps: 3 });
+      await expect.poll(() => page.evaluate(count => window.workstationViewTest.pointerEvents.slice(count).some(event => event.type === 'gotpointercapture' && event.trusted), capture.eventCount)).toBe(true); await page.mouse.up();
+    }
     expect(await page.evaluate(() => window.workstationViewTest.actions.map(action => action.type))).toEqual(['procgen/pattern']);
     expect(await page.evaluate(async () => (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document).inspect())).toBe(null);
-    await testInfo.attach('desktop-concurrent-pointer-ownership.json', { contentType: 'application/json', body: JSON.stringify({ viewport: page.viewportSize(), events: await page.evaluate(() => ({ contacts: window.workstationViewTest.contacts, releases: window.workstationViewTest.releases })), mobileEmulation: false, evidence: 'Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; no physical tablet qualification.' }) });
-  } finally { await session.detach(); }
+    await testInfo.attach('desktop-concurrent-pointer-ownership.json', { contentType: 'application/json', body: JSON.stringify({ viewport: page.viewportSize(), outcome: capture.nativeLossBeforeRelease ? 'capture-canceled-then-fresh-commit' : 'committed-first-owner', capture, events: await page.evaluate(() => ({ contacts: window.workstationViewTest.contacts, releases: window.workstationViewTest.releases, pointerEvents: window.workstationViewTest.pointerEvents, captureReleases: window.workstationViewTest.captureReleases })), mobileEmulation: false, evidence: 'Browser-injected trusted native mouse and pen on unchanged1920x1080 desktop; capture transfer is controlled; no physical tablet qualification.' }) });
+  } finally { if (session && !page.isClosed()) await session.detach(); }
 });
 
 

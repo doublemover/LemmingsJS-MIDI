@@ -15,7 +15,7 @@ const setup = async (page, kind) => {
     const { getPointerGestureArbiter } = await import('/js/app/controls/PointerGestureArbiter.js');
     const arbiter = getPointerGestureArbiter(document), calls = [], events = [], originalIdentity = {};
     let identity = originalIdentity;
-    const f = window.controlsFixture = { kind, calls, events, arbiter, getIdentity: () => identity, moves: [] };
+    const f = window.controlsFixture = { kind, calls, events, arbiter, getIdentity: () => identity, moves: [], releaseRequests: [], concurrentOutcome: null };
     document.addEventListener('pointermove', event => { if (f.moves.length < 16) f.moves.push({ id: event.pointerId, buttons: event.buttons, trusted: event.isTrusted, owner: arbiter.inspect()?.pointerId ?? null, target: event.target.tagName }); }, true);
     if (kind === 'curve') {
       const { createAutomationCurveEditor } = await import('/js/app/controls/AutomationCurveEditor.js');
@@ -46,6 +46,8 @@ const setup = async (page, kind) => {
       f.changeSource = () => { project = { ...project, procgen: { ...project.procgen, revision: project.procgen.revision + 1 } }; f.widget.refresh(); project = originalProject; f.widget.refresh(); };
       f.dispose = () => f.widget.dispose();
     }
+    const release = f.target.releasePointerCapture;
+    f.target.releasePointerCapture = function(id) { f.releaseRequests.push({ id, captured: this.hasPointerCapture(id), owner: arbiter.inspect()?.pointerId ?? null }); return release.call(this, id); };
     for (const type of ['pointerdown', 'pointerup', 'gotpointercapture', 'lostpointercapture', 'pointercancel']) f.target.addEventListener(type, event => events.push({ type, id: event.pointerId, pointerType: event.pointerType, buttons: event.buttons, trusted: event.isTrusted, owner: arbiter.inspect()?.pointerId ?? null, calls: calls.length }));
     f.before = f.value();
   }, kind);
@@ -89,7 +91,7 @@ const recoverCamera = async page => {
 
 const receipt = async (page, testInfo, mode) => testInfo.attach('desktop-control-gesture.json', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(mode => {
   const f = window.controlsFixture;
-  return { kind: f.kind, mode, viewport: { width: window.innerWidth, height: window.innerHeight }, browserChannel: 'chromium', documentType: document.contentType, focused: document.hasFocus(), visibility: document.visibilityState, captureFlag: f.target.hasPointerCapture?.(f.arbiter.inspect()?.pointerId ?? -1) ?? null, moves: f.moves, events: f.events, calls: f.calls, owner: f.arbiter.inspect(), recoveredCameraX: f.camera?.renderer.cameraX ?? null, evidence: 'Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification.' };
+  return { kind: f.kind, mode, viewport: { width: window.innerWidth, height: window.innerHeight }, browserChannel: 'chromium', documentType: document.contentType, focused: document.hasFocus(), visibility: document.visibilityState, captureFlag: f.target.hasPointerCapture?.(f.arbiter.inspect()?.pointerId ?? -1) ?? null, moves: f.moves, events: f.events, releaseRequests: f.releaseRequests, concurrentOutcome: f.concurrentOutcome, calls: f.calls, owner: f.arbiter.inspect(), recoveredCameraX: f.camera?.renderer.cameraX ?? null, evidence: 'Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification.' };
 }, mode)) });
 
 test.afterEach(async ({ page }, testInfo) => {
@@ -117,26 +119,45 @@ for (const kind of ['terrain', 'curve', 'dock']) {
       await recoverCamera(page); await receipt(page, testInfo, interruption);
     });
   }
-  test(kind + ' concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls', async ({ page }, testInfo) => {
-    await setup(page, kind); await start(page, kind, { pending: true });
+  const concurrentContacts = async ({ page }, testInfo, { transferCapture = false } = {}) => {
+    await setup(page, kind); await start(page, kind, { pending: !transferCapture });
     const target = kind === 'curve' ? page.locator('.studio-curve-editor circle[data-point="1"]') : kind === 'dock' ? page.locator('#fixture-resize') : page.getByRole('dialog', { name: 'Physical terrain and fragment authoring' }).locator('canvas');
-    const bounds = await target.boundingBox(), x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2, session = await page.context().newCDPSession(page);
+    const bounds = await target.boundingBox(), x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2, session = transferCapture ? null : await page.context().newCDPSession(page);
     try {
-      await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'pen' });
-      await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, pointerType: 'pen', button: 'left', buttons: 1, clickCount: 1, force: 0.5 });
+      if (session) {
+        await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, pointerType: 'pen' });
+        await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, pointerType: 'pen', button: 'left', buttons: 1, clickCount: 1, force: 0.5 });
+      }
       const down = await page.evaluate(() => window.controlsFixture.events.filter(event => event.type === 'pointerdown'));
-      expect(down.map(event => event.pointerType)).toEqual(['mouse', 'pen']); expect(down.every(event => event.trusted)).toBe(true); expect(new Set(down.map(event => event.id)).size).toBe(2);
-      await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1 });
+      expect(down.map(event => event.pointerType)).toEqual(transferCapture ? ['mouse'] : ['mouse', 'pen']); expect(down.every(event => event.trusted)).toBe(true); expect(new Set(down.map(event => event.id)).size).toBe(transferCapture ? 1 : 2);
+      if (session) await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, pointerType: 'pen', button: 'left', buttons: 0, clickCount: 1 });
       expect(await page.evaluate(() => window.controlsFixture.arbiter.inspect().pointerId)).toBe(down[0].id);
       expect(await page.evaluate(() => window.controlsFixture.calls.length)).toBe(0);
+      if (transferCapture) await page.evaluate(id => { if (window.controlsFixture.target.hasPointerCapture(id)) { const foreign = document.createElement('div'); foreign.id = 'foreign-capture'; document.body.append(foreign); foreign.setPointerCapture(id); } }, down[0].id);
       await page.mouse.move(x + 12, y - (kind === 'dock' ? 8 : 35), { steps: 3 }); await page.mouse.up();
       expect(await page.evaluate(() => window.controlsFixture.arbiter.inspect())).toBe(null);
-      if (kind === 'curve') { await page.getByRole('button', { name: 'Apply curve', exact: true }).click(); expect(await page.evaluate(() => window.controlsFixture.calls)).toHaveLength(1); }
+      if (kind === 'curve') {
+        const capture = await page.evaluate(id => {
+          const f = window.controlsFixture, lost = f.events.findIndex(event => event.type === 'lostpointercapture' && event.id === id && event.trusted), up = f.events.findIndex(event => event.type === 'pointerup' && event.id === id);
+          return { nativeLossBeforeRelease: lost >= 0 && (up < 0 || lost < up), explicitReleaseWhileCaptured: f.releaseRequests.some(request => request.id === id && request.captured), value: f.value(), before: f.before, eventCount: f.events.length };
+        }, down[0].id);
+        if (transferCapture) expect(capture.nativeLossBeforeRelease).toBe(true);
+        const apply = page.getByRole('button', { name: 'Apply curve', exact: true });
+        if (capture.nativeLossBeforeRelease) {
+          expect(capture.explicitReleaseWhileCaptured).toBe(false); expect(capture.value).toEqual(capture.before); expect(await page.evaluate(() => window.controlsFixture.calls)).toEqual([]); await expect(apply).toBeDisabled();
+          await page.evaluate(() => { window.controlsFixture.concurrentOutcome = 'capture-canceled-then-fresh-commit'; });
+          const fresh = await start(page, kind); await expect.poll(() => page.evaluate(count => window.controlsFixture.events.slice(count).some(event => event.type === 'gotpointercapture' && event.trusted), capture.eventCount)).toBe(true);
+          await page.mouse.move(fresh.x, fresh.y, { steps: 3 }); await page.mouse.up();
+        } else await page.evaluate(() => { window.controlsFixture.concurrentOutcome = 'committed-first-owner'; });
+        await expect(apply).toBeEnabled(); await apply.click(); expect(await page.evaluate(() => window.controlsFixture.calls)).toHaveLength(1);
+      }
       else if (kind === 'terrain') { expect(await retainedTerrainSelection(page)).toBeGreaterThan(1); await page.getByRole('button', { name: 'Apply terrain + physical Undo', exact: true }).click(); expect(await page.evaluate(() => window.controlsFixture.calls.filter(call => call.kind === 'terrain'))).toHaveLength(1); }
       else expect(await page.evaluate(() => window.controlsFixture.calls)).toHaveLength(1);
       await recoverCamera(page); await receipt(page, testInfo, 'concurrent-mouse-pen');
-    } finally { await session.detach(); }
-  });
+    } finally { if (session && !page.isClosed()) await session.detach(); }
+  };
+  test(kind + ' concurrent native contacts preserve one transaction and fresh input @boundary @gesture-controls', concurrentContacts);
+  if (kind === 'curve') test('curve native capture transfer cancels before a fresh edit commits @boundary @gesture-controls', async ({ page }, testInfo) => concurrentContacts({ page }, testInfo, { transferCapture: true }));
 }
 
 test('production native terrain selection applies once and retains physical Undo and Redo @boundary @gesture-controls', async ({ page }, testInfo) => {
