@@ -8572,3 +8572,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   gates; coverage90.72% lines/statements,83.71% branches,88.42% functions. This
   capture is Partial at55936 finite frames after a128-frame clock gap.322's
   separate Ready61952-frame capture is retained.325 onward are excluded.
+
+### Continuation 327 — completed-batch overflow and explicit recovery
+
+- Close the remaining #1113 dense-boundary check with real1024/1025-actor worlds
+  and the unchanged4096 normal/256 terminal-fact limits. A held source ends on
+  overflow and remains disarmed through the next complete boundary. Explicit
+  rearm starts a fresh voice identity; it does not resurrect the old held state.
+- Compare whole fact/snapshot digests, intent identities and recovery frontiers
+  across independent main-thread and real Node/browser execution workers. Transfer
+  actual committed batches to another live engine; only an explicit rearm message
+  clears its recovery state. The desktop instrument shows and executes recovery.
+- All41 grouped physical-batch/engine/playback Node cases and two native cases
+  pass. Initial fixtures incorrectly placed the blocker in air or kept semantic
+  transport paused; grounding the actual blocker and enabling semantic transport
+  for the deliberate step exercise the intended domain without activating output.
+  Earlier failure logs remain in the receipt. #1113 can close; no hardware or
+  acoustic qualification is inferred.
+- Full325 CI is green:6843 Node/10 pre-existing pending,145 browser (24desktop/
+  121workstation), all14 capabilities and static/MCP/benchmark/policy/dependency
+  gates. Coverage90.72% lines/statements,83.72% branches,88.43% functions; its
+  separate capture is Ready at103681 finite frames with no clock gap.326 onward
+  remain outside that checkpoint.

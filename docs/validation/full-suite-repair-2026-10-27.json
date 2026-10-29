@@ -818,45 +818,41 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "4c04377590c70b074d19f7a2310a4ff46174ffdc",
+    "head": "8fd1402fae07944485baeafff81201132924ba93",
     "status": "success",
-    "run": 40811307105,
-    "job": 123242004002,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40811307105/job/123242004002",
-    "nodePassed": 6836,
+    "run": 40813874178,
+    "job": 123250287608,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40813874178/job/123250287608",
+    "nodePassed": 6843,
     "nodePending": 10,
-    "browserPassed": 144,
+    "browserPassed": 145,
     "desktopPassed": 24,
-    "workstationSmokePassed": 120,
+    "workstationSmokePassed": 121,
     "workstationCapabilities": 14,
     "coverage": {
       "lines": 90.72,
       "statements": 90.72,
-      "branches": 83.71,
-      "functions": 88.42
+      "branches": 83.72,
+      "functions": 88.43
     },
     "masterCapture": {
-      "state": "Partial",
-      "frames": 55936,
-      "captured": 55936,
-      "stopReason": "noncontiguous-render-clock",
-      "clockDiscontinuity": {
-        "actualFrame": 85376,
-        "expectedFrame": 85504,
-        "frames": 128
-      },
-      "peak": 0.0228269100189209,
+      "state": "Ready",
+      "frames": 103681,
+      "captured": 103681,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null,
+      "peak": 0.02335798740386963,
       "nonfinite": 0
     },
     "benchmark": "success",
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "Includes323/324; excludes325 onward.",
+    "scope": "Includes325; excludes326 onward.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci324-green.log",
-      "bytes": 1171106,
-      "sha256": "cbfc97a41810d3c5039320d35980ad64af9bf0045f568e8f02f4a05579f1c12e"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci325-green.log",
+      "bytes": 1170554,
+      "sha256": "8ef102ed1e64a42be186c95a6fb8e5ce5a4bfdfc393b448c037326f63d43a669"
     }
   },
   "continuation264": {
@@ -26913,7 +26909,44 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Pending exact-head publication. Full322 is green and recorded here; full324 is separately in progress.",
+      "remoteCi": {
+        "head": "8fd1402fae07944485baeafff81201132924ba93",
+        "status": "success",
+        "run": 40813874178,
+        "job": 123250287608,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40813874178/job/123250287608",
+        "nodePassed": 6843,
+        "nodePending": 10,
+        "browserPassed": 145,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 121,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.72,
+          "statements": 90.72,
+          "branches": 83.72,
+          "functions": 88.43
+        },
+        "masterCapture": {
+          "state": "Ready",
+          "frames": 103681,
+          "captured": 103681,
+          "stopReason": "user-stop",
+          "clockDiscontinuity": null,
+          "peak": 0.02335798740386963,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes325; excludes326 onward.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci325-green.log",
+          "bytes": 1170554,
+          "sha256": "8ef102ed1e64a42be186c95a6fb8e5ce5a4bfdfc393b448c037326f63d43a669"
+        }
+      },
       "scopeLimits": [
         "Wider generated-source/cache residency normalization and complete speed/intervention/contact continuation negative corpus remain open under1223.",
         "Private controlled-cache proofs use the existing portable evidence checksum, not a cryptographic asset signature.",
@@ -27275,6 +27308,226 @@
         "state": "open-implemented-partial",
         "resolvedGap": "Controlled and generated terrain edit-residency/cold restoration identity.",
         "remaining": "Generated descriptor/collision cache normalization and full continuation/negative corpus."
+      }
+    }
+  },
+  "continuation327": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "title": "Qualify actual dense physical batches and explicit recovery",
+    "sourceBase": "5cdba45c913abc6a6e3e49d2af67c2dc97879dec",
+    "issues": [
+      1113
+    ],
+    "development": [
+      "Add real1024/1025-actor overflow and subsequent complete/rearm fixtures against unchanged production collectors and engine.",
+      "Run independent real worlds/engines on main thread and actual Node/browser workers, transfer whole committed batches to another live engine, and compare full fact/snapshot digests plus voice/recovery frontiers.",
+      "Exercise visible desktop recovery warning/action on the real performance shell, preserving world and disabled output."
+    ],
+    "validation": {
+      "node": {
+        "passed": 41,
+        "failed": 0,
+        "scope": "Actual dense overflow, completed physical batch, causal intent engine and physical playback owners. Includes decoded-mask two-builder bookkeeping, sequential dig/work ordering, generation closure, listener quarantine, no failed-tick publication and reentrant mutation rejection.",
+        "earlierFailure": {
+          "failed": 3,
+          "cause": "The initial held blocker was in air and correctly exited blocking in the same tick. Grounding it exercises an actual held source."
+        }
+      },
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "durationMs": 3927.706,
+        "scope": "Native desktop and module Worker whole-batch transfer with exact fresh-run digests; live instrument1025-actor overflow, visible explicit rearm and no live output activation.",
+        "earlierFailure": {
+          "passed": 1,
+          "failed": 1,
+          "cause": "The first UI fixture kept semantic transport paused, so physical playback intentionally skipped the deliberate step. Run semantic transport only for that source boundary, then pause."
+        }
+      },
+      "collectorLimits": {
+        "normalFacts": 4096,
+        "terminalFacts": 256,
+        "changed": false
+      },
+      "checks": [
+        "format",
+        "browser category selection",
+        "whitespace",
+        "production sources unchanged from326, whose critical types/undefined/provenance checks passed"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending publication of these additional acceptance fixtures. Full325 green is recorded here; full326 remains separate/in progress.",
+      "scopeLimits": [
+        "Portable fact/snapshot checksums and same-current-runtime worker equivalence do not establish archived execution identity.",
+        "No acoustic, physical MIDI or renderer throughput qualification is implied."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-categories-final.log",
+        "bytes": 2973,
+        "sha256": "ecd1b4af7142e4ef0b15708bfe72cc22705c3489b465459070b2853a5a06c45f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-categories.log",
+        "bytes": 2973,
+        "sha256": "ecd1b4af7142e4ef0b15708bfe72cc22705c3489b465459070b2853a5a06c45f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format-hashes.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format-transfer.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format-ui-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format-ui.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-native-final.log",
+        "bytes": 665,
+        "sha256": "3778c39364070f62e5d8bf9272bfee04aba704a234123155053e274f8fdd8fca"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-native-hashes.log",
+        "bytes": 666,
+        "sha256": "a133c0355e17e53e471c2e4d6f7b0f24862765b9c0afe47e2756b5e9a8496baa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-native-transfer.log",
+        "bytes": 666,
+        "sha256": "646c99d9df8d3f7adacc5792eb85eac70f3b80997ee12855263a1d723da40812"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-native-ui.log",
+        "bytes": 3986,
+        "sha256": "894d7dfb8fa8b2bc7e9895d1cb1e1f9360f4ea18e1d09ea126353ec78617816a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-native.log",
+        "bytes": 475,
+        "sha256": "b3f7f2c9e17546d30eaf0fc904caaff2cdec4c06d46506a16b9bdf53fe9671c5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-node-final.log",
+        "bytes": 3983,
+        "sha256": "ae7ba6f767ab99a9b59693880ece86b1b912c71e2d6cfa1bf60e5df1d5bcf10b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-node-hashes.log",
+        "bytes": 3984,
+        "sha256": "bca403661e3480115598fb4a54ffcb7f56fc2d265aff9ea4ab6f516a45355778"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-node-transfer.log",
+        "bytes": 3981,
+        "sha256": "c35515be1d8077c24f52dfb7bd157b0cec6203bc6f85fc3c3ab34e9165489b26"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-node.log",
+        "bytes": 5872,
+        "sha256": "f738a8ae248812e65ae6316e25ad9322192a07e632a7e0c67c093cb3dda97646"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog327-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci325-green.log",
+        "bytes": 1170554,
+        "sha256": "8ef102ed1e64a42be186c95a6fb8e5ce5a4bfdfc393b448c037326f63d43a669"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog327-physical-overflow-results.json",
+        "bytes": 4354,
+        "sha256": "eafb78ce4949b45e9d999556ae533412a8ec10cd0efd53f645505555bb541d9e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog327-physical-overflow-ui-results.json",
+        "bytes": 10023,
+        "sha256": "cc047ae1210492fbfad6327e6813c8e7a76996534e2333f27fd62c9abfab18da"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog327-physical-overflow-final-results.json",
+        "bytes": 5511,
+        "sha256": "5e29af0203c7ad3f39806e00ecb2d13239d0dae65fec633541f53a940b8cf357"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog327-physical-overflow-hashes-results.json",
+        "bytes": 5511,
+        "sha256": "677362b7ce0230717928bec7388ec5e7938db4224400eaf1a2594d9161e5bf07"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog327-physical-overflow-transfer-results.json",
+        "bytes": 5511,
+        "sha256": "15981ffdeb8ac21737ebd1cc7f91d05b9d31dddde2ea4f9869cb9193dc0b8231"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-327-coverage-transfer\\coverage-summary.json",
+        "bytes": 169249,
+        "sha256": "a836985b11040bb064aec5dc8157174556ee5402e47665c48e79935d95cee2a3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci325-green-report.json",
+        "bytes": 852,
+        "sha256": "5b1c815bf2ed3a5a6db94f083e38a1632751c00ff6ad6d2ffaebab106a4b162b"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "test/helpers/physicalBatchOverflow.js",
+        "bytes": 2644,
+        "sha256": "826cdfff593f2cdafdf357382c08d3f04b1b509f85572caeae491cee0609e697"
+      },
+      {
+        "path": "test/helpers/physicalBatchOverflowWorker.js",
+        "bytes": 365,
+        "sha256": "8d1efe71a2b686248d3f6369db0bd1788698976ef092f9bf426878835195abbf"
+      },
+      {
+        "path": "test/procgen-physical-batch-overflow.test.js",
+        "bytes": 3055,
+        "sha256": "3dc17d50dc3e20f60b03f6ed5b44a9670b9e33b77f80246f526e6d9059e075c2"
+      },
+      {
+        "path": "e2e/helpers/physicalBatchOverflow.worker.js",
+        "bytes": 447,
+        "sha256": "0ad846979978aa13f7aa2c87c17c29819c266d6b8b2ea788bb485bd9493714b4"
+      },
+      {
+        "path": "e2e/procgen-workstation-physical-batch-overflow.spec.js",
+        "bytes": 4547,
+        "sha256": "4bf179d4eeb56be1ee48e439bc7d9954ca2b1512bab25b1de37f16fc77f6a3f0"
+      }
+    ],
+    "issueStatus": {
+      "1113": {
+        "state": "completed",
+        "scope": "Existing complete-batch contract passes the full324/325 suite plus current41 Node/two native overflow/recovery/worker acceptance fixtures."
       }
     }
   }
