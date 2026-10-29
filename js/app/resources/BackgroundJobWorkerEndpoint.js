@@ -41,11 +41,14 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       const result = await compute(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });
       input = null; if (phase !== 'computing') return;
       const transfers = source.kind === 'compile-scene-terrain' && result.value?.storage instanceof Uint8Array ? [result.value.storage.buffer] : ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
-        ['encode-recorded-midi', 'encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
+        ['encode-midi-clip', 'encode-recorded-midi', 'encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
           source.kind === 'render-scene-rehearsal' && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :
             ['encode-native-render', 'render-causal-sine-take', 'render-shape-body-calibration'].includes(source.kind) && Array.isArray(result.value?.files) && result.value.files.length <= 25 ? result.value.files.map(file => file.bytes.buffer) :
               source.kind === 'build-shape-body-content' && Array.isArray(result.value?.contents) && result.value.contents.length <= 8 ? result.value.contents.map(file => file.bytes.buffer) : [];
       if (source.kind === 'prepare-stretch-core-image' && result.value?.moduleBytes instanceof Uint8Array && result.value?.heapBytes instanceof Uint8Array) transfers.push(result.value.moduleBytes.buffer, result.value.heapBytes.buffer);
+      if (source.kind === 'decode-midi-clip') for (const columns of [result.value?.configuration, result.value?.sequence]) {
+        if (columns?.ticks instanceof Float64Array && columns?.offsets instanceof Uint32Array && columns?.words instanceof Uint32Array) transfers.push(columns.ticks.buffer, columns.offsets.buffer, columns.words.buffer);
+      }
       if (['decompose-sound-seed', 'fit-sound-seed-modes', 'compose-sound-seed-components', 'warp-sound-seed'].includes(source.kind)) {
         for (const entry of [...(result.value?.components || []), ...(result.value?.recombined ? [result.value.recombined] : [])]) {
           if (entry?.bytes instanceof Uint8Array && entry?.waveform?.minMax instanceof Float32Array) transfers.push(entry.bytes.buffer, entry.waveform.minMax.buffer);

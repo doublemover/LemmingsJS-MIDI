@@ -9445,3 +9445,38 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Keep #986/#1093 open for integrated physical-take protocol export, the remaining
   clock matrix, source/time placement UI, endpoint epochs, full lowering reports
   and independently qualified lossless UMP Clip Files. Continue solo.
+
+### Continuation 366 - original UMP Clip File codec and full green checkpoint
+
+- Implement the published Clip header, big-endian UMP framing, DCS/DCTPQ,
+  configuration ordering and distinct Start/End boundaries. Preserve exact groups,
+  MIDI2 release/control resolution, Flex tempo/meter and equal-time presentation.
+  Explicit section end ticks retain configuration duration and trailing silence;
+  long gaps insert bounded clockstamp/NOOP pairs without compressing time.
+- Snapshot typed input columns before yielding; preflight exact output size and
+  multipart workspace. Validate complete imported files, framing, markers,
+  safe tick sums and multipart completion before exposing owned result columns.
+  Preserve unknown data without dispatch. Refuse prohibited Property Exchange
+  and explicitly unsupported untimed profile prefaces/timed profile copies.
+- Add worker-only encode/decode jobs using admitted paged transport and original
+  result-buffer transfers. Retain cancellation/source ownership. Add the codec
+  to critical checkJs and MIDI2 test selection; pin development-only independent
+  file readers in the lockfile and update the worker provenance closure.
+- Final grouped qualification:119 Node cases; codec100% scoped lines,
+  96.15%functions/95.78%branches; one1920×1080 native desktop worker case compares
+  all100000 UMP events and timestamps through independent jzz-midi-smf1.9.9,
+  verifies canceled-source retirement and zero retained accounted memory.
+  Independent Node fixtures cover both writer directions, elapsed tempo timing,
+  group/release/per-note/Flex precision, unisons, maximum deltas and invalid input.
+  Correct the initial independent helper call and immutable-generation test URL;
+  preserve both failed fixture attempts in canonical evidence. No full local rerun.
+- Promote364 at c068278a to the latest verified full green checkpoint:7134 Node
+  passes/10preexisting pending,26 desktop/211 workstation/18 engine cases,
+  all14 workstation capability gates, Windows/Linux8829-command native codec
+  jobs, benchmark/MCP/policy/dependency review green. Coverage90.8%lines,
+  83.9%branches/88.62%functions. All1136 workstation and1248 engine source
+  entries match the published Git tree; all8 native source entries match on both
+  platforms. This checkpoint is separate from subsequent implementation commits.
+- Keep #1093 open for original UMP capture, source/endpoint/epoch/time projection,
+  product file controls and full compatibility loss reports. No device/DAW claim.
+  Keep #986 open for physical-take projection and the remaining clock matrix.

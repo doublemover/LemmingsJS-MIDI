@@ -138,6 +138,8 @@
     "eslint": "^9.28.0",
     "http-server": "^14.1.1",
     "jsdom": "26.1.0",
+    "jzz": "1.9.6",
+    "jzz-midi-smf": "1.9.9",
     "knip": "^6.40.0",
     "mocha": "^11.5.0",
     "node-unrar-js": "^2.0.2",

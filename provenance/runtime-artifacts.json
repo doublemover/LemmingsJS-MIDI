@@ -20,8 +20,12 @@
       "licenseFile": "js/vendor/jquery.js",
       "reproductionStatus": "source-artifact-hash-unverified",
       "classification": "precache",
-      "entryPoints": ["service-worker.js"],
-      "files": ["js/vendor/jquery.js"],
+      "entryPoints": [
+        "service-worker.js"
+      ],
+      "files": [
+        "js/vendor/jquery.js"
+      ],
       "fileCount": 1,
       "sha256": "d0f289f78a7df0bae8f9b5ae0ada0b93b75c961672bc3593c7a4c8f6a31a05f6"
     },
@@ -33,8 +37,13 @@
       "licenseFile": "js/vendor/webmidi.js",
       "reproductionStatus": "source-artifact-hash-unverified",
       "classification": "runtime",
-      "entryPoints": ["index.html", "procgen.html"],
-      "files": ["js/vendor/webmidi.js"],
+      "entryPoints": [
+        "index.html",
+        "procgen.html"
+      ],
+      "files": [
+        "js/vendor/webmidi.js"
+      ],
       "fileCount": 1,
       "sha256": "b54f0b1c8d2c47902439bfcaedfb924108f760d040750190c132cfd8d4a3afe2"
     },
@@ -46,7 +55,9 @@
       "licenseFile": "js/vendor/hqx/LICENSE",
       "reproductionStatus": "generated-input-and-recipe-unverified",
       "classification": "generated",
-      "entryPoints": ["js/render/display/DisplayImageShared.js"],
+      "entryPoints": [
+        "js/render/display/DisplayImageShared.js"
+      ],
       "directory": "js/vendor/hqx",
       "fileCount": 5,
       "sha256": "c67b250ff436d9fcbac0d1adfb8f8a37fc02a63dc6457d0ddf481e065b78fd9f"
@@ -59,7 +70,10 @@
       "licenseFile": "assets/icons/lucide/LICENSE",
       "reproductionStatus": "upstream-commit-unverified; local notice also identifies MIT-derived icons",
       "classification": "runtime",
-      "entryPoints": ["css/game.css", "css/editor.css"],
+      "entryPoints": [
+        "css/game.css",
+        "css/editor.css"
+      ],
       "directory": "assets/icons/lucide",
       "fileCount": 50,
       "sha256": "22da3793f4ceb3dce740d1102cd13faa019ec9caa73d0b76049760de2543d67f"
@@ -72,7 +86,9 @@
       "licenseFile": "provenance/schema/LICENSE",
       "reproductionStatus": "pinned-upstream-source-copy",
       "classification": "development",
-      "entryPoints": ["scripts/check-runtime-provenance.mjs"],
+      "entryPoints": [
+        "scripts/check-runtime-provenance.mjs"
+      ],
       "directory": "provenance/schema",
       "fileCount": 4,
       "sha256": "71d2c79048c24a658782cd12ed7aed8aff38255fe017a2457f746f765dd078cc"
@@ -84,8 +100,12 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-source",
       "classification": "source",
-      "entryPoints": ["js/app/registerServiceWorker.js"],
-      "files": ["service-worker.js"],
+      "entryPoints": [
+        "js/app/registerServiceWorker.js"
+      ],
+      "files": [
+        "service-worker.js"
+      ],
       "fileCount": 1,
       "sha256": "7343667833e5eecfb3d291788721678aad563b614728e0e994304538d78615d9"
     },
@@ -96,8 +116,15 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-immutable-module-worker",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/survey/ProcgenSurveyDashboard.js"],
-      "files": ["js/app/procgen/survey/ProcgenSurveyExecution.js", "js/app/procgen/survey/ProcgenSurveyReplayBudget.js", "js/app/procgen/survey/ProcgenSurveyReplaySession.js", "js/app/procgen/survey/ProcgenSurveyReplayWorker.js"],
+      "entryPoints": [
+        "js/app/procgen/survey/ProcgenSurveyDashboard.js"
+      ],
+      "files": [
+        "js/app/procgen/survey/ProcgenSurveyExecution.js",
+        "js/app/procgen/survey/ProcgenSurveyReplayBudget.js",
+        "js/app/procgen/survey/ProcgenSurveyReplaySession.js",
+        "js/app/procgen/survey/ProcgenSurveyReplayWorker.js"
+      ],
       "fileCount": 4,
       "sha256": "6d5adf7256666b74ef8bef66cc70f9a7b5b2797450c092f64565219f70b32bdf"
     },
@@ -389,6 +416,10 @@
         "js/midi/content/TravelColorationRecipes.js",
         "js/midi/content/VocoderBankProfile.js",
         "js/midi/content/WindModel.js",
+        "js/midi/protocol/MidiClipFile.js",
+        "js/midi/protocol/MidiProtocolLowering.js",
+        "js/midi/protocol/UmpPacketCodec.js",
+        "js/midi/protocol/UmpPayloadCollector.js",
         "js/render/BaseImageInfo.js",
         "js/render/ColorPalette.js",
         "js/render/Frame.js",
@@ -401,8 +432,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 282,
-      "sha256": "baa389f6b02b1dfa2baab8c5374d4f71baed62f105019c71efd7315302f0a469"
+      "fileCount": 286,
+      "sha256": "587f1afe7ba9392603275a4720a3b4ba9d5afc7756873a13b2a8c8a8a405b424"
     },
     {
       "id": "lemmings-timing-worker-source",
@@ -411,8 +442,12 @@
       "license": "NOASSERTION",
       "reproductionStatus": "first-party-inline-blob-worker",
       "classification": "source",
-      "entryPoints": ["js/app/procgen/workstation/ProcgenTimingDriver.js"],
-      "files": ["js/app/procgen/workstation/ProcgenTimingDriver.js"],
+      "entryPoints": [
+        "js/app/procgen/workstation/ProcgenTimingDriver.js"
+      ],
+      "files": [
+        "js/app/procgen/workstation/ProcgenTimingDriver.js"
+      ],
       "fileCount": 1,
       "sha256": "b60fa0011a6f0f62db23aa2f193b3e9609b6184c576f197d3d81c1cf50cc6718"
     },

@@ -28,6 +28,7 @@ import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMateri
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
+import { encodeMidiClipFile, decodeMidiClipFile } from '../../midi/protocol/MidiClipFile.js';
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 
 export { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
@@ -107,6 +108,14 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'encode-midi-clip' || kind === 'decode-midi-clip') {
+    const controls = { signal, current, maxBytes, estimatedPeakBytes, onProgress, yieldControl };
+    const value = kind === 'encode-midi-clip' ? await encodeMidiClipFile(input, controls) : await decodeMidiClipFile(input?.bytes, controls); guard(signal, current);
+    const columnsBytes = columns => columns.ticks.byteLength + columns.offsets.byteLength + columns.words.byteLength;
+    const outputBytes = kind === 'encode-midi-clip' ? value.bytes.byteLength : columnsBytes(value.configuration) + columnsBytes(value.sequence);
+    return { value, inputBytes: kind === 'encode-midi-clip' ? value.report.inputBytes : input.bytes.byteLength,
+      nodes: 32, retainedBytes: outputBytes * 2 + 65536 };
+  }
   if (kind === 'encode-recorded-midi') {
     const value = await encodeRecordedMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
     return { value, inputBytes: input.snapshot.count * 25 + new TextEncoder().encode(JSON.stringify({ outputIds: input.snapshot.outputIds, window: input.window, options: input.options })).byteLength, nodes: 32 + input.snapshot.outputIds.length,

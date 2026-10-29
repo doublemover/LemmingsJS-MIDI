@@ -60,6 +60,61 @@ prefix. Without a captured tempo, the caller-declared fallback is explicit.
 Current UI tempo cannot replace a captured boundary.
 
 This is compatibility export of captured MIDI1 channel bytes. A user-facing source
-layer/time-placement picker, full semantic/UMP loss reporting, endpoint epoch
-projection and independently qualified lossless Clip Files remain #1093 work.
+layer/time-placement picker, full semantic/UMP loss reporting and endpoint epoch
+projection remain #1093 work. The file codec below consumes original UMP snapshots.
 Physical source-score export uses the separate typed #986 contract.
+
+## Original UMP Clip File codec
+
+`MidiClipFile.js` encodes and decodes the published
+[MIDI Clip File v1.0](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-116-U_v1-0_MIDI_Clip_File_Specification.pdf)
+wire structure using the existing
+[UMP v1.1.2](https://amei-music.github.io/midi2.0-docs/amei-pdf/M2-104-UM_v1-1-2_UMP_and_MIDI_2-0_Protocol_Specification.pdf)
+packet codec. These APIs require original UMP words. Promoting a captured MIDI1
+value cannot recover its discarded resolution or establish MIDI2 capture evidence.
+
+`encodeMidiClipFile` accepts explicit `ppq` (1–65535), `configurationEndTick`,
+`endTick`, optional `configuration` and required `sequence`. Each event section
+uses `Float64Array ticks`, `Uint32Array offsets` and `Uint32Array words`; offsets
+have one more entry than ticks and delimit complete packets. Ticks are safe,
+nonnegative, ordered integers. Equal-time presentation order is unchanged.
+The configuration and sequence have separate origins; the latter begins at Start
+of Clip. Explicit end ticks preserve setup duration and trailing sequence silence.
+Tempo/meter Flex words retain their original values, without rewriting ticks or
+using current UI tempo. A configuration tempo, when present, is first at zero;
+its optional meter immediately follows at zero.
+
+The writer owns resolution, clockstamp and Start/End messages. It writes the
+eight-byte file signature followed by big-endian UMP words. Gaps beyond the
+20-bit clockstamp range insert NOOPs between clockstamps, including gaps before
+Start and End. It preserves all packet words, groups, MIDI2 note/release values,
+per-note controls and supported multipart SysEx/Flex data. Unknown packets remain
+opaque data. Attribution and endpoint IDs belong in an external manifest, never
+invented Clip fields. The caller must select one endpoint/epoch before encoding;
+group numbers alone cannot distinguish endpoints.
+
+`decodeMidiClipFile` validates the complete structure before returning owned
+columns and a report. It accepts shared clockstamps for simultaneous payloads,
+requires distinct marker clockstamps, checks section order, packet framing,
+multipart completion and the final file boundary. It never invokes a transport
+or configures hardware. Property Exchange is refused. Untimed Set Profile On
+prefaces are explicitly unsupported; timed copies are refused rather than moved
+or silently omitted. Imported unknown messages are retained as data.
+
+Both APIs snapshot owned fixed buffers before their first yield and reject
+shared/resizable inputs. File size is at most64MiB, with at most262144 decoded
+payload packets including gap NOOPs; callers may lower these limits. Preparation
+preflights exact output growth and charges copied columns, output and a bounded
+multipart workspace. It checks cancellation between yielded slices. The
+`encode-midi-clip` and `decode-midi-clip` jobs require an admitted dedicated worker
+and transfer the resulting byte buffer or six owned columns through the existing
+paged result owner. They do not fall back to parsing large files on the UI thread.
+
+Independent file tests use pinned development-only `jzz-midi-smf@1.9.9` and its
+`jzz@1.9.6` API. Fixtures compare exact UMP words/ticks in both directions, precise
+elapsed tempo timing, multiple groups,16-bit release velocity, per-note bend,
+simultaneous unisons, tempo/meter changes, maximum delta splits, malformed input
+and deterministic re-export. The product still needs original UMP capture,
+source/endpoint/epoch/time projection, export/import controls and complete
+compatibility loss reports before #1093 can close. No DAW or hardware receiver
+qualification follows from these file-reader checks.

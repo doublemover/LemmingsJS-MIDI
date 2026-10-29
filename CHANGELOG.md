@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Encode and validate bounded UMP MIDI Clip Files in admitted workers, preserving original words, configuration/sequence timing and long silent gaps.
+
 - Prepare recorded MIDI files per output route, preserving independent same-channel voices, captured tempo and cancellable source ownership.
 
 - Release partial CCTV surfaces immediately on allocation or context failure, preserving shared render resources.

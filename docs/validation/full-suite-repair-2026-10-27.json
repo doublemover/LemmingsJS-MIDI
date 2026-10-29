@@ -818,56 +818,46 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+    "head": "c068278a4b3c71441fbabcd7315524d44115473c",
     "status": "success",
-    "run": 40891278513,
-    "job": 123508431766,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40891278513",
-    "engineJob": 123508431268,
+    "run": 40940934600,
+    "job": 123683811739,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40940934600",
+    "engineJob": 123683811526,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7030,
+    "nodePassed": 7134,
     "nodePending": 10,
-    "browserPassed": 198,
-    "desktopPassed": 24,
-    "workstationSmokePassed": 156,
+    "browserPassed": 255,
+    "desktopPassed": 26,
+    "workstationSmokePassed": 211,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.78,
-      "statements": 90.78,
-      "branches": 83.81,
-      "functions": 88.54
-    },
-    "masterCapture": {
-      "state": "Ready",
-      "frames": 59649,
-      "captured": 59649,
-      "stopReason": "user-stop",
-      "clockDiscontinuity": null,
-      "peak": 0.023256301879882812,
-      "nonfinite": 0,
-      "scope": "Actual native browser worklet digital capture; no acoustic or power-loss/disk durability claim."
+      "lines": 90.8,
+      "statements": 90.8,
+      "branches": 83.9,
+      "functions": 88.62
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 33042,
+      "totalDurationMs": 36119,
       "measurementValid": true,
       "failures": [],
       "metrics": {
-        "perfP95Frame": 83.40000000000055,
-        "perfP50Tps": 98.9315393747709,
-        "historyRatio": 0.585,
-        "antsAvgMs": 18.01,
-        "tileCompositionAvgMs": 3.6,
-        "overlayPlaneAvgMs": 13.17,
-        "scaledBlitAvgMs": 23.71
+        "perfP95Frame": 83.30000000000018,
+        "perfP50Tps": 92.75163174167695,
+        "historyRatio": 0.5856666666666667,
+        "antsAvgMs": 14.18,
+        "tileCompositionAvgMs": 4.13,
+        "overlayPlaneAvgMs": 19.26,
+        "scaledBlitAvgMs": 26.73
       }
     },
     "mcp": "success",
@@ -875,14 +865,14 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1247,
+      "files": 1248,
       "configuredAudioBackend": "pulseaudio-null-sink",
+      "closureDigest": "fb3eebc98bd848eecfb7f87aedd7488693be8e925fa7af0a01c34e372c0a25c4",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
       "facts": 1078,
       "ticks": 64,
-      "closureDigest": "9d9dcf963bb8b93d9cad919f3e699815fb906dfd0aac9c4776b38110d48044e8",
       "nativeAudio": [
         {
           "project": "chromium-semantic",
@@ -903,90 +893,69 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123508431864,
-      "windowsJob": 123508431691,
+      "linuxJob": 123683811529,
+      "windowsJob": 123683811346,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
+      "verifiedSourceFiles": 8,
       "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
-      "outputIdentical": true
+      "outputIdentical": true,
+      "deviceIO": false,
+      "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "05b33ddbc1fcb00712f565ce0c15fdd76ae9b098",
+      "testedPrMergeHead": "503a093a889d07dde0407380fcf92c278e2c7bfd",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1128,
-      "inventorySha256": "f74a3b6e0d7526c5ffcb5420bd30d57e6c5049d7b5223c2449710a2696bc8b75",
-      "changedRuntimeHashAgreement": [
-        {
-          "path": "js/app/procgen/workstation/ProcgenPatternEngine.js",
-          "sha256": "c4f52bb5a9092744f3297aecaef1e773dd360431ba7a2be3470fd52bd465d2c5",
-          "matches": true
-        },
-        {
-          "path": "js/app/procgen/workstation/SinkAdmissionRegistry.js",
-          "sha256": "c79f611f43901de685711209ded33fa1ddb46157a59699b0e8fb5d2a2fccb0bc",
-          "matches": true
-        },
-        {
-          "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
-          "sha256": "d807417be76f5f3d8ddd5537596bbc4447f9300bfb082b00b4583ec9532d1ce9",
-          "matches": true
-        },
-        {
-          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
-          "sha256": "3cbadd9482ef8c63eac5db51ae67c6807e15369d5d6eb26a8835be35c04bcc2c",
-          "matches": true
-        },
-        {
-          "path": "js/midi/scheduler/MidiSchedulerChannelMethods.js",
-          "sha256": "e90c81576b6088cf2ae625e850beda915f5e05eb1eb1d75d65157e7e7d88d4e6",
-          "matches": true
-        }
-      ]
+      "inventoryFiles": 1136,
+      "inventorySha256": "4e3fe0bd7e4695c540063d802d2772afe0a46ef74d0079ac517b867a6afedea2",
+      "allWorkstationSourceFilesMatchPublishedHead": true,
+      "engineInventoryFiles": 1248,
+      "allEngineSourceFilesMatchPublishedHead": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci350-main.zip",
-        "bytes": 547231,
-        "sha256": "5497d2260bbfa5f44f76fd0b01fb934796c3fffe1e9e2090bc5a1805453531f4"
+        "path": ".tmp/ci364-main.zip",
+        "bytes": 648017,
+        "sha256": "8f004b517609d6a7d6c41f5919d61c191f30009c5c0c1943a25e590b8fb6aa03"
       },
       {
-        "path": ".tmp/ci350-engine.zip",
-        "bytes": 152418,
-        "sha256": "2d5ecbdbec3d08369ff8bb87927dba6d6549154346c33f6a26845f603a789b71"
+        "path": ".tmp/ci364-engine.zip",
+        "bytes": 153718,
+        "sha256": "afdb1abc408eaf61ede40028e728e327fd80b85a7154e26964f53b903eb90d34"
       },
       {
-        "path": ".tmp/ci350-linux.zip",
+        "path": ".tmp/ci364-linux.zip",
         "bytes": 2247,
-        "sha256": "a83a079eec2aae0cca621cd67e0721c957762ac898e9f8526cd7cfb98bdb6d53"
+        "sha256": "54ac05bce9490d41e08393993fbb5b061453e4770339f0aa530c57d25f3c8b1c"
       },
       {
-        "path": ".tmp/ci350-windows.zip",
-        "bytes": 2147,
-        "sha256": "6741c6c4b3b8413db146c1be1c285d9f97c7bd872ec400785345cb6bcb65b937"
+        "path": ".tmp/ci364-windows.zip",
+        "bytes": 2148,
+        "sha256": "2c44e562d91d10722a67bfb46a80e2c5ac39cc5c13df2bd07ccf63c8d7061205"
       },
       {
-        "path": ".tmp/ci350-main-workstation-result-qualification.json",
-        "bytes": 182114,
-        "sha256": "d9baca85fc71cbb3cf060c71ffb3465293d51223c65fbcc55056cd4e6328973e"
+        "path": ".tmp/ci364-main-workstation-result-qualification.json",
+        "bytes": 183404,
+        "sha256": "4cd495481ad5d57318008e905776e774d3df521e1b8b7fbbe192d8e817815131"
       },
       {
-        "path": ".tmp/ci350-engine-lifecycle-engine-qualification.json",
-        "bytes": 242419,
-        "sha256": "330c5eae8bbeba040198a478c958f0767630981031103f6fda899f1079adcd40"
+        "path": ".tmp/ci364-engine-lifecycle-engine-qualification.json",
+        "bytes": 242615,
+        "sha256": "48b68a838ba78f8de1c3302cb6415922ded747a7ab2994b266f5aa308d7c8db6"
       },
       {
-        "path": ".tmp/ci350-linux-native-midi-codec-qualification.json",
+        "path": ".tmp/ci364-linux-native-midi-codec-qualification.json",
         "bytes": 7876,
-        "sha256": "6257c2a41b84327fca36a5fd0c4eae39e8a9fe3adbe181a2b8a1941beeaf90d4"
+        "sha256": "b7a812e5e9e6e1149974f248bd8f4c06b5beb273d2ba02113228bb12f601729b"
       },
       {
-        "path": ".tmp/ci350-windows-native-midi-codec-qualification.json",
+        "path": ".tmp/ci364-windows-native-midi-codec-qualification.json",
         "bytes": 7748,
-        "sha256": "347616f3e903255d111f65212dd71602cfb607cf3e8dc149a6f324247efcf06f"
+        "sha256": "e5f4376aa1fa57aea81f319762c3be08a5b1898ed899b259b5ab64e0cba51b1c"
       }
     ],
-    "scope": "All four required jobs at the named branch/PR-merge checkpoint; later source and issue-specific device/acceptance work is independent."
+    "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -67651,5 +67620,635 @@
       }
     ],
     "remaining": "#986 physical-take-to-protocol integration and complete clock export matrix; #1093 source/time placement UI, endpoint epochs, semantic lowering losses and independently qualified lossless UMP Clip Files. All-workstation type coverage remains #1089. Current full CI remains independent."
+  },
+  "continuation366": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "issues": [
+      1093,
+      986
+    ],
+    "scope": "Original-UMP Clip File codec and admitted worker qualification; product capture/route/epoch/time projection remains open.",
+    "implementation": {
+      "format": "M2-116-U v1.0 with M2-104-UM v1.1.2 UMP framing",
+      "source": "owned typed tick/offset/word columns captured before first yield",
+      "configuration": "DCS-zero and nonzero DCTPQ; initial tempo/meter ordering; explicit setup duration",
+      "sequence": "Start-relative ticks, exact UMP words, stable equal-time order, explicit trailing silence",
+      "longGaps": "20-bit DCS with interleaved NOOP, exact preflight before allocation/iteration",
+      "imports": "whole-file framing/ordering/section/multipart validation before result publication; no hardware dispatch",
+      "unknown": "preserved as opaque original words",
+      "unsupported": "Untimed Set Profile On preface refused explicitly; timed Profile On and Property Exchange refused.",
+      "bounds": {
+        "fileBytes": 67108864,
+        "eventsIncludingNoops": 262144,
+        "multipartWorkspaceBytes": 33554432,
+        "maximumRetainedMultipartPackets": 65536
+      },
+      "workerKinds": [
+        "encode-midi-clip",
+        "decode-midi-clip"
+      ],
+      "criticalTypes": true,
+      "workerInventory": {
+        "files": 286,
+        "sha256": "587f1afe7ba9392603275a4720a3b4ba9d5afc7756873a13b2a8c8a8a405b424"
+      },
+      "remaining": [
+        "Original UMP capture under authoritative per-sink receipts",
+        "Source/endpoint/epoch/time projection and completeness manifest",
+        "Product export/import controls",
+        "Complete MIDI1 lowering loss report",
+        "Physical-take protocol projection and remaining clock matrix (#986)"
+      ]
+    },
+    "qualification": {
+      "nodePassed": 119,
+      "scope": "Nine related Node files; no full local repeat",
+      "coverage": {
+        "codec": {
+          "lines": {
+            "total": 200,
+            "covered": 200,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 26,
+            "covered": 25,
+            "skipped": 0,
+            "pct": 96.15
+          },
+          "statements": {
+            "total": 200,
+            "covered": 200,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 190,
+            "covered": 182,
+            "skipped": 0,
+            "pct": 95.78
+          }
+        },
+        "total": {
+          "lines": {
+            "total": 242,
+            "covered": 240,
+            "skipped": 0,
+            "pct": 99.17
+          },
+          "statements": {
+            "total": 242,
+            "covered": 240,
+            "skipped": 0,
+            "pct": 99.17
+          },
+          "functions": {
+            "total": 35,
+            "covered": 33,
+            "skipped": 0,
+            "pct": 94.28
+          },
+          "branches": {
+            "total": 249,
+            "covered": 232,
+            "skipped": 0,
+            "pct": 93.17
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        }
+      },
+      "browser": {
+        "passed": 1,
+        "project": "workstation",
+        "viewport": {
+          "width": 1920,
+          "height": 1080,
+          "dpr": 1
+        },
+        "events": 100000,
+        "exactIndependentWordsAndTicks": 100000,
+        "fileBytes": 1200056,
+        "fileSha256": "66eaa5fc2adbea98f575862f835d26d3999013b18a6c929da7476d3cfa416e03",
+        "sourceWordSha256": "6f465a18fec1b2ca3376a252e4c3b2ed83038b8df7c37c2079fc40400651be72",
+        "independentReader": "jzz-midi-smf@1.9.9/jzz@1.9.6",
+        "canceled": true,
+        "accountedAfterRelease": 0,
+        "physics": 0,
+        "ownerTimerTurns": 87,
+        "encodedReceipt": {
+          "protocol": 3,
+          "jobId": "background-1",
+          "kind": "encode-midi-clip",
+          "ownerId": "native-clip",
+          "ownerEpoch": 1,
+          "sourceRevision": "original-ump:1",
+          "state": "computed",
+          "publication": "not-committed",
+          "method": "dedicated-worker",
+          "queueWaitMs": 0,
+          "elapsedMs": 257.69999998807907,
+          "inputBytes": 2000008,
+          "nodes": 32,
+          "retainedBytes": 4002064,
+          "inputTransport": {
+            "schema": "owned-background-snapshot-pages/v1",
+            "packets": 60,
+            "operations": 83,
+            "bytes": 2006376,
+            "maximumSliceMs": 0.19999998807907104,
+            "maximumPostMessageMs": 0.10000002384185791,
+            "elapsedMs": 18.400000005960464,
+            "stagingBytes": 131072
+          },
+          "outputTransport": {
+            "mode": "acknowledged-snapshot-pages",
+            "packets": 1,
+            "operations": 57,
+            "bytes": 5082,
+            "ownedTransferredBytes": 1200056,
+            "maximumSliceMs": 0.19999998807907104,
+            "elapsedMs": 1.800000011920929,
+            "retainedEstimateBytes": 2403516
+          },
+          "executionIdentity": {
+            "receiptVersion": 3,
+            "activeExecution": "bound",
+            "buildId": "57846a365fb7c0a05706a7f1379956af55fadfee53d9cfc8a001ad03792dd0ae",
+            "closureDigest": "a0f936de7986799dc6323b8a27d676cb83dfe5e5a17b49a4ff5aeadddc7bd8ec",
+            "assetDigest": "5de944c40bd817eba2cbcad7a7d84f5af202c7d3dfc1c8b2a0c9551c004a658c",
+            "codeDigest": "303b45ab820b483d63135200f0809fb9008297865fc87133f91f9e2e943bc0cb",
+            "harnessVersion": "browser-survey-v1",
+            "identityRecipe": "normalized-data-slot-v2-instruments",
+            "instrumentArtifacts": [
+              {
+                "engineId": "native-fm",
+                "engineVersion": 1,
+                "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+              },
+              {
+                "engineId": "native-modal",
+                "engineVersion": 1,
+                "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+              },
+              {
+                "engineId": "native-oscillator",
+                "engineVersion": 1,
+                "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+              },
+              {
+                "engineId": "native-sample",
+                "engineVersion": 1,
+                "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+              },
+              {
+                "engineId": "worklet-choir",
+                "engineVersion": 1,
+                "artifactHash": "cda1ed87cbe79a2659d1b81ad3bbb3e65973084f8cdcb9754ee30bfb8261719f"
+              },
+              {
+                "engineId": "worklet-friction",
+                "engineVersion": 1,
+                "artifactHash": "d37b2213b6fe4cdbe0294eb5ca72aaa57e98a444b364e63bb5b79b356bdfe9c2"
+              },
+              {
+                "engineId": "worklet-granular",
+                "engineVersion": 1,
+                "artifactHash": "e9619e82d42e60fc6558c8654a53edd929247778b11ea1ff39f1e55e24e814db"
+              },
+              {
+                "engineId": "worklet-pluck",
+                "engineVersion": 1,
+                "artifactHash": "8b85fc5ca2c581cb0ffc60a05c0099e9d6e6dbf72ec4e237fea9420f9f5e055c"
+              },
+              {
+                "engineId": "worklet-sample",
+                "engineVersion": 1,
+                "artifactHash": "ae18ae4029197281af0ce72b025d7805f392ae5a63a1d8b526ec96eb007cb6b0"
+              },
+              {
+                "engineId": "worklet-seed-layers",
+                "engineVersion": 1,
+                "artifactHash": "3fef10cf73b6594b67b60b8ceb7cd723133c91657d06f13a5a07fd43af819b22"
+              },
+              {
+                "engineId": "worklet-sine",
+                "engineVersion": 1,
+                "artifactHash": "2e84b40dbe9584293e3b39971cf4569bb0236cc04379ab807b2fa19aba16201b"
+              },
+              {
+                "engineId": "worklet-spectrum",
+                "engineVersion": 1,
+                "artifactHash": "e0950751dd3958aaad3ee76b662e2687d7cc644d8cbb6991453207374808f69d"
+              },
+              {
+                "engineId": "worklet-texture",
+                "engineVersion": 1,
+                "artifactHash": "f39f1bdf42c5ca7b498e91010ca3e1ec09a399e4d2edd916c102c420871197ba"
+              },
+              {
+                "engineId": "worklet-wind",
+                "engineVersion": 1,
+                "artifactHash": "5784e827cf3df2d96df1490c9a403ba7e933f328acf0b22b85abc47a163d3e96"
+              }
+            ],
+            "stateSchema": 5,
+            "realmId": "2402d16a-cac7-416c-987c-9c4f696e5e99",
+            "capabilityProfile": "browser-background-jobs",
+            "binding": "immutable-application-generation"
+          }
+        },
+        "decodedReceipt": {
+          "protocol": 3,
+          "jobId": "background-2",
+          "kind": "decode-midi-clip",
+          "ownerId": "native-clip",
+          "ownerEpoch": 1,
+          "sourceRevision": "original-ump:1",
+          "state": "computed",
+          "publication": "not-committed",
+          "method": "dedicated-worker",
+          "queueWaitMs": 0,
+          "elapsedMs": 458.40000000596046,
+          "inputBytes": 1200056,
+          "nodes": 32,
+          "retainedBytes": 4065552,
+          "inputTransport": {
+            "schema": "owned-background-snapshot-pages/v1",
+            "packets": 36,
+            "operations": 42,
+            "bytes": 1203208,
+            "maximumSliceMs": 0.10000002384185791,
+            "maximumPostMessageMs": 0.10000002384185791,
+            "elapsedMs": 15.900000005960464,
+            "stagingBytes": 131072
+          },
+          "outputTransport": {
+            "mode": "acknowledged-snapshot-pages",
+            "packets": 1,
+            "operations": 93,
+            "bytes": 8374,
+            "ownedTransferredBytes": 2000008,
+            "maximumSliceMs": 0.09999999403953552,
+            "elapsedMs": 1.300000011920929,
+            "retainedEstimateBytes": 4005720
+          },
+          "executionIdentity": {
+            "receiptVersion": 3,
+            "activeExecution": "bound",
+            "buildId": "57846a365fb7c0a05706a7f1379956af55fadfee53d9cfc8a001ad03792dd0ae",
+            "closureDigest": "a0f936de7986799dc6323b8a27d676cb83dfe5e5a17b49a4ff5aeadddc7bd8ec",
+            "assetDigest": "5de944c40bd817eba2cbcad7a7d84f5af202c7d3dfc1c8b2a0c9551c004a658c",
+            "codeDigest": "303b45ab820b483d63135200f0809fb9008297865fc87133f91f9e2e943bc0cb",
+            "harnessVersion": "browser-survey-v1",
+            "identityRecipe": "normalized-data-slot-v2-instruments",
+            "instrumentArtifacts": [
+              {
+                "engineId": "native-fm",
+                "engineVersion": 1,
+                "artifactHash": "73331dc4756464f69c17134f5e140446a73d9f9c73ea90b20a92c163fb3ee684"
+              },
+              {
+                "engineId": "native-modal",
+                "engineVersion": 1,
+                "artifactHash": "054540ad0381c3e71e6ff89b1a6b3de3e105716bcdbf2ff461de0389ffd33253"
+              },
+              {
+                "engineId": "native-oscillator",
+                "engineVersion": 1,
+                "artifactHash": "dee9a1f7aa1003fd659b232f7283c0f00a84f47a10123caa9d05ac93aab2e35a"
+              },
+              {
+                "engineId": "native-sample",
+                "engineVersion": 1,
+                "artifactHash": "2e9b252a8debe4ae088b0377ff9bd4232b8f9f67e6bbdd2feba6dd6fbcc361e4"
+              },
+              {
+                "engineId": "worklet-choir",
+                "engineVersion": 1,
+                "artifactHash": "cda1ed87cbe79a2659d1b81ad3bbb3e65973084f8cdcb9754ee30bfb8261719f"
+              },
+              {
+                "engineId": "worklet-friction",
+                "engineVersion": 1,
+                "artifactHash": "d37b2213b6fe4cdbe0294eb5ca72aaa57e98a444b364e63bb5b79b356bdfe9c2"
+              },
+              {
+                "engineId": "worklet-granular",
+                "engineVersion": 1,
+                "artifactHash": "e9619e82d42e60fc6558c8654a53edd929247778b11ea1ff39f1e55e24e814db"
+              },
+              {
+                "engineId": "worklet-pluck",
+                "engineVersion": 1,
+                "artifactHash": "8b85fc5ca2c581cb0ffc60a05c0099e9d6e6dbf72ec4e237fea9420f9f5e055c"
+              },
+              {
+                "engineId": "worklet-sample",
+                "engineVersion": 1,
+                "artifactHash": "ae18ae4029197281af0ce72b025d7805f392ae5a63a1d8b526ec96eb007cb6b0"
+              },
+              {
+                "engineId": "worklet-seed-layers",
+                "engineVersion": 1,
+                "artifactHash": "3fef10cf73b6594b67b60b8ceb7cd723133c91657d06f13a5a07fd43af819b22"
+              },
+              {
+                "engineId": "worklet-sine",
+                "engineVersion": 1,
+                "artifactHash": "2e84b40dbe9584293e3b39971cf4569bb0236cc04379ab807b2fa19aba16201b"
+              },
+              {
+                "engineId": "worklet-spectrum",
+                "engineVersion": 1,
+                "artifactHash": "e0950751dd3958aaad3ee76b662e2687d7cc644d8cbb6991453207374808f69d"
+              },
+              {
+                "engineId": "worklet-texture",
+                "engineVersion": 1,
+                "artifactHash": "f39f1bdf42c5ca7b498e91010ca3e1ec09a399e4d2edd916c102c420871197ba"
+              },
+              {
+                "engineId": "worklet-wind",
+                "engineVersion": 1,
+                "artifactHash": "5784e827cf3df2d96df1490c9a403ba7e933f328acf0b22b85abc47a163d3e96"
+              }
+            ],
+            "stateSchema": 5,
+            "realmId": "4c49389e-dc43-4e97-88f1-a12316fe0381",
+            "capabilityProfile": "browser-background-jobs",
+            "binding": "immutable-application-generation"
+          }
+        },
+        "scope": "native-source-bound-file-codec-worker; synthetic-original-UMP-fixture; no capture UI, hardware setup, DAW or receiver claim"
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run depcheck",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "browserCollection": {
+        "full": 244,
+        "smoke": 214,
+        "files": 53
+      },
+      "initialFailures": [
+        {
+          "nodePassed": 103,
+          "nodeFailed": 1,
+          "cause": "Independent fixture called the 7-bit noteOn helper with 16-bit velocity.",
+          "correction": "Use the independent umpNoteOn/umpNoteOff helpers; original implementation unchanged."
+        },
+        {
+          "browserFailed": 1,
+          "cause": "Fixture used a nonexistent unversioned deployed module URL.",
+          "correction": "Resolve modules from the actual immutable generation URL; runtime unchanged."
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".tmp/rook366-node-first.log",
+          "bytes": 9620,
+          "sha256": "b8902c46c07800e16052da081d1f69f2ad9d46050819e2da1f223a7aba1cd055"
+        },
+        {
+          "path": ".tmp/rook366-node-final.log",
+          "bytes": 11099,
+          "sha256": "e013f51df3ba8e0c5119440b871a236498c86aa22bdf9ad77b61724028aacca2"
+        },
+        {
+          "path": ".tmp/rook366-browser-final.json",
+          "bytes": 8849,
+          "sha256": "63f4fb4e9cbabcea7fe0f080172ff9d000de1e7174e772140261fe360e46a56d"
+        },
+        {
+          "path": ".tmp/rook366-browser-ready.json",
+          "bytes": 14621,
+          "sha256": "084b78c06bee2f18aab57a40408c045f9412672359e1ff3577ef6633269e64f8"
+        },
+        {
+          "path": ".tmp/rook366-browser-ready.log",
+          "bytes": 457,
+          "sha256": "60546360ae391b4ab7519811408bc71b2684f598b923a1af15d8bbe708a2f32a"
+        },
+        {
+          "path": ".tmp/rook366-coverage/coverage-summary.json",
+          "bytes": 1020,
+          "sha256": "df08bb0c4f46b24fe77f54b0be2f75ae0647ce7dc9553aa15f30a328213ce838"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/midi/protocol/MidiClipFile.js",
+        "bytes": 16512,
+        "sha256": "ce99300672c645ca19b1f9ba7de8c942ae7fa702d2603374bdac320d42ec398b"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "bytes": 44775,
+        "sha256": "6fddd679c27e9776df84d96c65c0f044871357507ea76fb021852488b17b9f91"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "bytes": 2285,
+        "sha256": "528fac0f89344d3cd82fd104717b1ab0a05038be513f299362ecc2c1859ccffe"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "bytes": 8216,
+        "sha256": "2f1ba4c3049c387f9167e1b191a005d1a88172e53304535c1b3c6c8fecaf0276"
+      },
+      {
+        "path": "test/midi/midi-clip-file.test.js",
+        "bytes": 13340,
+        "sha256": "53f33d03d39527f36bba9d2321e66e2141607b572e0ace87cabe321b791c0fb0"
+      },
+      {
+        "path": "test/midi/midi-clip-worker.test.js",
+        "bytes": 4387,
+        "sha256": "344ade39566c92abf8906cbd0d9b5274acee453968b50eb0c9593cf1c06690ae"
+      },
+      {
+        "path": "e2e/procgen-workstation-midi-clip.spec.js",
+        "bytes": 6423,
+        "sha256": "36512bc16eede7ff7c09006b0a75d8220502356e6778c6edd8d88d02a27161c6"
+      },
+      {
+        "path": "scripts/runTests.js",
+        "bytes": 16995,
+        "sha256": "cfd8098b863fd7326827bb5c9116009468c64034d3d6462a71b5e77e3e349b83"
+      },
+      {
+        "path": "tsconfig.checkjs.json",
+        "bytes": 1290,
+        "sha256": "8a41f1ca3d8d479eeb7829095be46a235d20bdaa9bf0d403dfd660aa1bd922ed"
+      },
+      {
+        "path": "package.json",
+        "bytes": 9276,
+        "sha256": "761163a48610134be89aa5d10f3f1c2cdfb670699dd38ec193c8da60e3d1905b"
+      },
+      {
+        "path": "package-lock.json",
+        "bytes": 197459,
+        "sha256": "35fcd9e0a5382088f3af223f66f56c553d1ff390369492661164992a8002229f"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21917,
+        "sha256": "c544b96df0965b06a0c865d75798d7b916a28a478289a937a1b29ec861947107"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "c068278a4b3c71441fbabcd7315524d44115473c",
+      "status": "success",
+      "run": 40940934600,
+      "job": 123683811739,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40940934600",
+      "engineJob": 123683811526,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7134,
+      "nodePending": 10,
+      "browserPassed": 255,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 211,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.8,
+        "statements": 90.8,
+        "branches": 83.9,
+        "functions": 88.62
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 36119,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.30000000000018,
+          "perfP50Tps": 92.75163174167695,
+          "historyRatio": 0.5856666666666667,
+          "antsAvgMs": 14.18,
+          "tileCompositionAvgMs": 4.13,
+          "overlayPlaneAvgMs": 19.26,
+          "scaledBlitAvgMs": 26.73
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1248,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "fb3eebc98bd848eecfb7f87aedd7488693be8e925fa7af0a01c34e372c0a25c4",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123683811529,
+        "windowsJob": 123683811346,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "503a093a889d07dde0407380fcf92c278e2c7bfd",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1136,
+        "inventorySha256": "4e3fe0bd7e4695c540063d802d2772afe0a46ef74d0079ac517b867a6afedea2",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1248,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci364-main.zip",
+          "bytes": 648017,
+          "sha256": "8f004b517609d6a7d6c41f5919d61c191f30009c5c0c1943a25e590b8fb6aa03"
+        },
+        {
+          "path": ".tmp/ci364-engine.zip",
+          "bytes": 153718,
+          "sha256": "afdb1abc408eaf61ede40028e728e327fd80b85a7154e26964f53b903eb90d34"
+        },
+        {
+          "path": ".tmp/ci364-linux.zip",
+          "bytes": 2247,
+          "sha256": "54ac05bce9490d41e08393993fbb5b061453e4770339f0aa530c57d25f3c8b1c"
+        },
+        {
+          "path": ".tmp/ci364-windows.zip",
+          "bytes": 2148,
+          "sha256": "2c44e562d91d10722a67bfb46a80e2c5ac39cc5c13df2bd07ccf63c8d7061205"
+        },
+        {
+          "path": ".tmp/ci364-main-workstation-result-qualification.json",
+          "bytes": 183404,
+          "sha256": "4cd495481ad5d57318008e905776e774d3df521e1b8b7fbbe192d8e817815131"
+        },
+        {
+          "path": ".tmp/ci364-engine-lifecycle-engine-qualification.json",
+          "bytes": 242615,
+          "sha256": "48b68a838ba78f8de1c3302cb6415922ded747a7ab2994b266f5aa308d7c8db6"
+        },
+        {
+          "path": ".tmp/ci364-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "b7a812e5e9e6e1149974f248bd8f4c06b5beb273d2ba02113228bb12f601729b"
+        },
+        {
+          "path": ".tmp/ci364-windows-native-midi-codec-qualification.json",
+          "bytes": 7748,
+          "sha256": "e5f4376aa1fa57aea81f319762c3be08a5b1898ed899b259b5ab64e0cba51b1c"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    }
   }
 }
