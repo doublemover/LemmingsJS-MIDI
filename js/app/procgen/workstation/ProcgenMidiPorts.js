@@ -5,6 +5,8 @@ import { createMpeZonePlan } from '../../../midi/scheduler/MpeZonePlan.js';
 import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelBytes } from './ProcgenMidiBytes.js';
 import { createMidiRecordingRangeIndex } from './MidiRecordingRangeIndex.js';
 import { snapshotMidiRecording, recordingExportPeakBytes } from './MidiRecordingExportSnapshot.js';
+import { createProcgenMidiPerformance } from './ProcgenMidiPerformance.js';
+import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const byte = value => Math.min(127, Math.max(0, Math.round(Number(value) || 0)));
 const channelByte = channel => Math.min(15, Math.max(0, (Number(channel) || 1) - 1));
@@ -64,7 +66,8 @@ export function encodeProcgenMidi(event) {
 }
 
 export function createProcgenMidiPorts({ transport, now = () => performance.now(), scheduler: suppliedScheduler, schedulerConfig = { defaultChannel: 1 },
-  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000, resourceBudget = null } = {}) {
+  onMonitor = () => {}, onLearn = () => {}, onRecord = () => {}, onState = () => {}, onInputSafety = () => {}, maxRecordedEvents = 100000, resourceBudget = null,
+  performanceCoordinator, createOutputAdmission, canActivate = () => true } = {}) {
   const scheduler = suppliedScheduler || new MidiScheduler(schedulerConfig);
   let input = null, noteOutput = null, clockOutput = null, removeInput = null;
   let thru = false, recording = false, learn = null, disposed = false, records = [], droppedRecords = 0;
@@ -90,7 +93,25 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   const retiredPorts = new WeakSet(), retiredOutputIds = new Set();
   const activationFailures = new Map();
   let routeRevision = 0, outputEpoch = 0, lastRouteLoss = null, lastCleanup = null, activeIntentKey = '';
-  let lastConfigurationFailure = null;
+  let lastConfigurationFailure = null, ownershipUncertain = 0, disposalReceipt = null;
+  const outputBindings = new WeakMap();
+  const performance = createProcgenMidiPerformance({ transport, resourceBudget, coordinator: performanceCoordinator, createOutputAdmission, canActivate,
+    hasOutputs: () => activeOutputs.size > 0, onState: () => report(),
+    releaseOutputs(reason, stopInput) {
+      const finish = () => {
+        if (stopInput) { recording = false; thru = false; }
+        flush({ reason });
+        for (const [id] of activeOutputs) retireOutput(id, reason);
+        syncSchedulerOutputs();
+        if (ownershipUncertain) throw new Error('An owned MIDI release remains unconfirmed.');
+      };
+      if (rawDispatchDepth || scheduler._outputCallbackDepth) return Promise.resolve().then(finish);
+      return finish();
+    } });
+  const outputGuard = (port, cleanup = false) => {
+    const binding = outputBindings.get(port); return performance ? () => binding?.check(cleanup) === true : null;
+  };
+  if (performance) scheduler.setOutputAdmissionFactory?.(port => outputBindings.get(port)?.check || (() => false));
   const resolveOutput = outputId => {
     const id = outputId == null || outputId === '' ? noteOutput?.id : outputId;
     return activeOutputs.get(String(id))?.port || null;
@@ -104,6 +125,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const state = scheduler.getOutputRouteState?.(id);
       if (state?.connectionEpoch != null) { if (route.connectionEpoch !== state.connectionEpoch) controllerMutations.invalidateEndpoint(id); route.connectionEpoch = state.connectionEpoch; route.routeRevision = state.routeRevision; }
     }
+    performance?.outputsChanged();
   };
   const activateOutput = (port, intent = {}) => {
     if (!port?.id || port.state === 'disconnected') return false;
@@ -118,7 +140,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       if (required.some(channel => !intent.channels.includes(channel))) return invalid('mpe-channel-scope');
     }
     activationFailures.delete(id);
-    if (current?.port === port) {
+    if (current?.port === port && (!performance || current.binding?.isCurrent())) {
       const binding = route => JSON.stringify([route.channels, route.exclusiveChannels, route.protocolLowering]);
       if (binding(current.intent) === binding(intent)) { current.intent = intent; return true; }
       retireOutput(id, 'route-policy-changed'); scheduler.rearmOutput?.(port.id);
@@ -126,15 +148,25 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (current) retireOutput(id, 'route-replaced');
     retiredPorts.delete(port);
     retiredOutputIds.delete(id);
-    activeOutputs.set(id, { port, intent, loweredVoices: new Map(), connectionEpoch: ++outputEpoch, routeRevision: ++routeRevision });
+    const binding = performance?.bind();
+    if (performance && !binding) return invalid('performance-ownership-required');
+    if (binding) outputBindings.set(port, binding);
+    activeOutputs.set(id, { port, intent, binding, loweredVoices: new Map(), connectionEpoch: ++outputEpoch, routeRevision: ++routeRevision });
     return true;
   };
   function retireOutput(id, reason) {
     const route = activeOutputs.get(String(id));
     if (!route) return;
+    route.binding?.retire();
     flushRawPort(route.port, reason);
     controllerMutations.invalidateEndpoint(String(id));
     activeOutputs.delete(String(id)); retiredPorts.add(route.port); routeRevision++;
+    if (performance) {
+      scheduler.setOutputs?.([...activeOutputs.values()].map(value => value.port));
+      scheduler.setOutput(resolveOutput());
+      ownershipUncertain = Math.max(ownershipUncertain, scheduler.lastCleanup?.uncertain || 0);
+      route.binding?.finish();
+    }
     retiredOutputIds.add(String(id));
     for (const [key, voice] of thruNotes) if (voice.port === route.port) thruNotes.delete(key);
     lastRouteLoss = { outputId: String(id), reason, connectionEpoch: route.connectionEpoch,
@@ -179,6 +211,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       return state?.mpeReady !== false && state?.ownedVoiceAdmissionReady !== false;
     }).map(([id]) => id),
     routeRevision, lastRouteLoss, lastLowering, lastInputSafety, lastCallbackError, lastConfigurationFailure, lastCleanup: lastCleanup || scheduler.lastCleanup || null,
+    performance: performance?.state() ?? null,
     outputRoutes: outputRouteState(), recordedEvents: retainedEvents, droppedRecords,
     recordingComplete: !incompleteReason, incompleteReason, incompleteReasons: [...incompleteReasons], firstLostSequence,
     retainedRange,
@@ -309,14 +342,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     if (voices) {
       for (const [key, voice] of voices) if (voice.end != null && voice.end <= timestamp) voices.delete(key);
       const future = [...voices.values()].some(voice => voice.start > timestamp || voice.end > timestamp);
-      const cleared = future && clearProcgenMidiQueue(port);
+      const cleared = future && clearProcgenMidiQueue(port, outputGuard(port, true));
       for (const voice of voices.values()) {
         if (cleared && voice.start > timestamp) { cleanup.queuedRemoved++; continue; }
         const releaseTime = !cleared && voice.start > timestamp ? voice.start + 1 : timestamp;
         if (releaseTime > timestamp) { cleanup.uncertain++; cleanup.effectiveBoundary = Math.max(cleanup.effectiveBoundary, releaseTime); }
         const data = [0x80 | (voice.channel - 1), voice.note, 0];
         try {
-          if (sendProcgenMidiBytes(port, data, releaseTime)) {
+          if (sendProcgenMidiBytes(port, data, releaseTime, outputGuard(port, true))) {
             cleanup.releaseSubmitted++;
             scheduler._recordSent?.({ timeMs: now(), count: 1, bytes: data.length, outputId: port.id, phase: 'off' }, now());
             record({ data, timestamp: releaseTime, submittedMs: now(), outputId: port.id, direction: 'output', source: 'cleanup', reason,
@@ -336,7 +369,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       const base = channel - 1;
       for (const data of [[0xb0 | base, 64, 0], [0xb0 | base, 123, 0], [0xb0 | base, 120, 0], [0xe0 | base, 0, 64]]) {
         try {
-          if (!sendProcgenMidiBytes(port, data, timestamp)) { cleanup.uncertain++; continue; }
+          if (!sendProcgenMidiBytes(port, data, timestamp, outputGuard(port, true))) { cleanup.uncertain++; continue; }
           scheduler._recordSent?.({ timeMs: now(), count: 1, bytes: data.length, outputId: port.id, phase: 'off' }, now());
           record({ data, timestamp, submittedMs: now(), outputId: port.id, direction: 'output', source: 'cleanup', reason,
             connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? routeRevision,
@@ -346,6 +379,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     }
     usedChannels.delete(port);
     sustainedChannels.delete(port);
+    if (performance) { ownershipUncertain += cleanup.uncertain; cleanup.uncertain = ownershipUncertain; }
     lastCleanup = Object.freeze(cleanup);
     controllerMutations.invalidateEndpoint(String(port?.id));
     return lastCleanup;
@@ -375,7 +409,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       }
       let accepted;
       rawDispatchDepth++;
-      try { accepted = sendProcgenMidiBytes(port, data, timestamp); } finally { rawDispatchDepth--; }
+      try { accepted = sendProcgenMidiBytes(port, data, timestamp, outputGuard(port)); } finally { rawDispatchDepth--; }
       if (!accepted) {
         scheduler._releaseReservation?.(ownedReservationId, true);
         retireOutput(String(port.id), 'output-send-rejected'); syncSchedulerOutputs(); report(); return false;
@@ -426,6 +460,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       cleanup.effectiveBoundary = Math.max(cleanup.effectiveBoundary, result.effectiveBoundary);
       if (result.sharedPedalHeld) cleanup.sharedPedalHeld = true;
     }
+    if (performance) { ownershipUncertain = Math.max(ownershipUncertain, cleanup.uncertain); cleanup.uncertain = ownershipUncertain; }
     lastCleanup = Object.freeze(cleanup);
     controllerMutations.clear();
     for (const route of activeOutputs.values()) route.loweredVoices.clear();
@@ -455,7 +490,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         try {
           let accepted;
           rawDispatchDepth++;
-          try { accepted = sendProcgenMidiBytes(entry.port, data, releaseTime); } finally { rawDispatchDepth--; }
+          try { accepted = sendProcgenMidiBytes(entry.port, data, releaseTime, outputGuard(entry.port, true)); } finally { rawDispatchDepth--; }
           if (accepted) {
             cleanup.releaseSubmitted++;
             scheduler._recordSent?.({ timeMs: now(), count: 1, bytes: data.length, outputId: entry.port.id, phase: 'off' }, now());
@@ -468,6 +503,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         } catch { cleanup.uncertain++; }
       }
     }
+    if (performance) { ownershipUncertain += cleanup.uncertain; cleanup.uncertain = ownershipUncertain; }
     lastCleanup = Object.freeze(cleanup);
     return lastCleanup;
   }
@@ -695,6 +731,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
   }
   return {
     getState, getOperationalState, receiveMidi, flush, panic, recordOutput, getRecordingIndexState: () => recordingRange.diagnostics(),
+    setPerformanceDocumentIdentity: value => performance?.setDocumentIdentity(value),
+    stopPerformance: reason => performance?.stop(reason, true),
     bindControllerBaseline(options) {
       const id = String(options?.outputId ?? noteOutput?.id ?? ''), route = activeOutputs.get(id);
       if (disposed || !route || options?.connectionEpoch !== route.connectionEpoch) return Object.freeze({ ok: false, reason: 'route-epoch-mismatch' });
@@ -751,7 +789,8 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       }
       syncSchedulerOutputs(); report(); return true;
     },
-    setClockOutput(port) {
+    setClockOutput(port, options) {
+      if (performance) { clockOutput = port || null; return performance.selectClock(port, options); }
       if (clockOutput === port || disposed) return;
       clearProcgenMidiQueue(clockOutput); transport?.setClockOutput(port);
       clockOutput = port || null; report();
@@ -918,21 +957,21 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       let lostActive = false;
       for (const [id, route] of activeOutputs) if (route.port.state === 'disconnected') { retireOutput(id, 'port-disconnected'); lostActive = true; }
       if (lostActive) syncSchedulerOutputs();
-      if (clockOutput?.state === 'disconnected') { transport?.setClockOutput(null); clockOutput = null; lostActive = true; }
+      if (clockOutput?.state === 'disconnected') { if (performance) void performance.selectClock(null); else transport?.setClockOutput(null); clockOutput = null; lostActive = true; }
       const connected = [...noteOutputs.values()].filter(port => port?.state !== 'disconnected');
       if (connected.length !== noteOutputs.size) this.setNoteOutputs(connected);
       if (lostActive) report();
       return !lostActive && !lostInput;
     },
     dispose() {
-      if (disposed) return;
-      clearTimeout(sensingTimer); sensingTimer = null;
-      panic(); removeInput?.(); removeInput = null; input = null; noteOutput = null; clockOutput = null;
-      noteOutputs.clear();
-      activeOutputs.clear(); routeIntents.clear(); rawVoices.clear();
-      controllerMutations.dispose();
-      removeSubmissionObserver?.();
-      if (!suppliedScheduler) scheduler.dispose(); recording = false; recordingRange.dispose(); disposed = true;
+      if (disposalReceipt) return disposalReceipt;
+      disposalReceipt = createProcgenRetirementScope().retire([
+        { name: 'midi-performance', run: () => performance ? performance.dispose() : panic() },
+        { name: 'input-listeners', run: () => { clearTimeout(sensingTimer); sensingTimer = null; removeInput?.(); removeInput = null; input = null; } },
+        { name: 'output-scheduler', run: () => { if (!suppliedScheduler) return scheduler.dispose(); } },
+        { name: 'recording-owner', run: () => { removeSubmissionObserver?.(); controllerMutations.dispose(); recording = false; recordingRange.dispose(); disposed = true;
+          noteOutput = null; clockOutput = null; noteOutputs.clear(); activeOutputs.clear(); routeIntents.clear(); rawVoices.clear(); } }
+      ]); return disposalReceipt;
     }
   };
 }

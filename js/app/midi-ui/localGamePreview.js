@@ -57,8 +57,9 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     generation += 1;
     status = disposed ? 'disposed' : 'off';
     detach();
-    audio.stop();
+    const receipt = audio.stop();
     if (!disposed) report('off', 'Browser preview is off.');
+    return receipt;
   };
   const syncConfig = () => {
     if (!router || disposed) return false;

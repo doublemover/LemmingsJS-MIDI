@@ -1,3 +1,5 @@
+import { withMidiSubmissionGuard } from '../../../midi/scheduler/MidiByteSubmission.js';
+
 export function validProcgenMidiChannelBytes(bytes) {
   if (!bytes || !Number.isInteger(bytes.length) || bytes.length < 2 || bytes.length > 3) return false;
   const status = bytes[0];
@@ -7,16 +9,18 @@ export function validProcgenMidiChannelBytes(bytes) {
   return true;
 }
 
-export function sendProcgenMidiBytes(port, bytes, timestamp) {
+export function sendProcgenMidiBytes(port, bytes, timestamp, isCurrent = null) {
   if (!port || port.state === 'disconnected') return false;
   // WebMidi.js wraps the native MIDIOutput timestamp in an options object.
-  return port.send(Array.from(bytes), port.channels ? { time: timestamp } : timestamp) !== false;
+  const data = Array.from(bytes), send = port.send, options = port.channels ? { time: timestamp } : timestamp;
+  if (isCurrent) { try { if (isCurrent() !== true) return false; } catch { return false; } }
+  return withMidiSubmissionGuard(port, isCurrent, () => send.call(port, data, options)) !== false;
 }
 
-export function clearProcgenMidiQueue(port) {
+export function clearProcgenMidiQueue(port, isCurrent = null) {
   if (!port || port.state === 'disconnected' || typeof port.clear !== 'function' ||
       (port._midiOutput && typeof port._midiOutput.clear !== 'function')) return false;
-  try { return port.clear() !== false; } catch { return false; }
+  try { const clear = port.clear; if (isCurrent && isCurrent() !== true) return false; return withMidiSubmissionGuard(port, isCurrent, () => clear.call(port)) !== false; } catch { return false; }
 }
 
 export function songPositionBytes(beat) {

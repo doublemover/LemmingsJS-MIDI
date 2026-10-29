@@ -67,6 +67,20 @@ function fakeIndexedDb({ failFirst = false, blocked = false, pending = false } =
 }
 
 describe('ProcGen session storage connection lifecycle', () => {
+  it('admits a small stored document using its revision-bound lane count while other resources remain owned', async () => {
+    const adapter = fakeIndexedDb(), budget = createResourceBudget({ limitBytes: 240 * 1048576 }), token = {};
+    budget.reserve({ token, owner: 'live-world', category: 'other', bytes: 64 * 1048576, pinned: true });
+    const jobs = createBackgroundJobService({ Worker: null }), storage = createProcgenSessionStorage(adapter, { budgetAdapter: budget, backgroundJobs: jobs });
+    try {
+      await storage.saveDocument('doc:small', 0, session('small'), 'small-commit');
+      expect(adapter.metadata.get('doc:small').laneCount).to.equal(1);
+      const source = await storage.loadDocumentOwned('doc:small'); expect(source.session.name).to.equal('small'); source.release();
+      adapter.metadata.get('doc:small').laneCount = 2;
+      try { await storage.loadDocumentOwned('doc:small'); throw new Error('Unexpected admission'); }
+      catch (error) { expect(error.name).to.equal('ConflictError'); }
+      expect(budget.diagnostics().accountedBytes).to.equal(64 * 1048576);
+    } finally { storage.close(); jobs.dispose(); budget.release({ token, owner: 'live-world' }); }
+  });
   it('writes legacy recovery source provenance atomically beside its generation', async () => {
     const adapter = fakeIndexedDb(), storage = createProcgenSessionStorage(adapter), buildId = 'a'.repeat(64);
     const receipt = await storage.saveRecovery({ ...session('bound'), executionIdentity: { activeExecution: 'bound', buildId, deploymentRoot: 'https://app.invalid/lemmings/' } });

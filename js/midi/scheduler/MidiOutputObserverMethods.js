@@ -18,6 +18,16 @@ const submittedMidiBytes = (method, channel, args) => {
   return null;
 };
 const midiOutputObserverMethods = {
+  setOutputAdmission(check = null) {
+    if (check != null && typeof check !== 'function') throw new TypeError('Invalid output admission predicate.');
+    this._outputAdmissionFactory = check ? () => check : null;
+  },
+
+  setOutputAdmissionFactory(create = null) {
+    if (create != null && typeof create !== 'function') throw new TypeError('Invalid output admission provider.');
+    this._outputAdmissionFactory = create;
+  },
+
   addSubmissionObserver(listener) {
     if (typeof listener !== 'function') return () => {};
     this._submissionObservers.add(listener);
@@ -76,11 +86,15 @@ const midiOutputObserverMethods = {
     if (typeof send !== 'function' || output?.state === 'disconnected') return false;
     const capturing = this._captureEnabled();
     const observing = this._submissionObservers?.size > 0;
+    let admission = null;
+    if (this._outputAdmissionFactory) try { admission = this._outputAdmissionFactory(output, meta); } catch { admission = false; }
+    const canSubmit = this._outputAdmissionFactory ? () => { try { return typeof admission === 'function' && admission(this._cleanupDepth > 0 && meta.reason !== 'mpe-init') === true; } catch { return false; } } : null;
     const invoke = () => {
+      if (canSubmit && !canSubmit()) return false;
       this._outputCallbackDepth = (this._outputCallbackDepth || 0) + 1;
       try { return send.apply(target, args); } finally { this._outputCallbackDepth--; }
     };
-    if (!capturing && !observing) return invoke();
+    if (!capturing && !observing && !canSubmit) return invoke();
     if (output?.supportsPerNoteInstrument && capturing && (method === 'sendNoteOn' || method === 'sendNoteOff')) {
       args = [args[0], { ...args[1], capture: { ...meta, observedByScheduler: true } }];
     }
@@ -108,9 +122,12 @@ const midiOutputObserverMethods = {
         try { listener(receipt); } catch { /* An observer cannot alter output admission. */ }
       }
     };
-    const byteObservation = observing && !output?.supportsPerNoteInstrument ? observeMidiByteSubmission(output,
-      event => notify({ ...event, encodingEvidence: 'adapter-byte-boundary' })) : null;
+    let byteObservation = null;
     try {
+      if ((observing || canSubmit) && !output?.supportsPerNoteInstrument) {
+        byteObservation = observeMidiByteSubmission(output, event => notify({ ...event, encodingEvidence: 'adapter-byte-boundary' }), canSubmit);
+        if (canSubmit && output?.channels && typeof output.send === 'function' && !byteObservation) return false;
+      }
       const result = invoke();
       if (capturing) this._observe('api-dispatch', { ...fields, accepted: result !== false,
         ...(result === false ? { reason: 'returned-false' } : {}) });

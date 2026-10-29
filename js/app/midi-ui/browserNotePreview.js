@@ -147,7 +147,7 @@ class BrowserNotePreview {
     };
     this.output = this._createOutput();
     this._performanceCoordinator = performanceCoordinator === undefined ? getBrowserPerformanceLease({ resourceBudget }) : performanceCoordinator;
-    this._performanceToken = null; this._performanceStopReceipt = null; this._performanceContextClosing = null; this._performanceDisposalStopReceipt = null;
+    this._performanceToken = null; this._performanceStopReceipt = null; this._performanceContextClosing = null; this._performanceDisposalStopReceipt = null; this._performanceReleaseCompletion = null; this._performanceRolesKey = null;
     this._performanceStops = new Set();
     this._performanceSource = this._performanceCoordinator?.register({ scope: this._captureScope, role: 'live',
       stop: (reason, receipt) => this._stopForPerformanceLease(reason, receipt) }) || null;
@@ -251,7 +251,7 @@ class BrowserNotePreview {
         status: session.disposed ? 'disposed' : this._retirementFaults.has(id) ? 'error' : session.starting ? 'unlocking' : session.enabled ? state.status : ['error', 'unsupported', 'interrupted'].includes(state.status) ? state.status : 'idle',
         message: session.disposed ? 'Local audio session is closed.' : session.enabled || session.starting ? state.message : 'Local audio session is off.' };
     };
-    session.report = () => { for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } this._reportCaptureProvenance(); };
+    session.report = () => { this._syncPerformanceRoles(); for (const listener of session.listeners) { try { listener(getState()); } catch { /* Session observers do not own audio. */ } } this._reportCaptureProvenance(); };
     session.cancel = () => {
       session.generation++; session.enabled = false; session.starting = false;
       const operation = session.enableOperation; session.enableOperation = null; session.enablePromise = null;
@@ -480,14 +480,14 @@ class BrowserNotePreview {
         typeof onRetire !== 'function' || this._pcmCaptureTaps.size) throw new Error('The browser master capture tap is unavailable.');
     const tap = this._limiter, entry = { onRetire, context }, retirement = createProcgenRetirementScope();
     this._pcmCaptureTaps.add(entry);
-    this._performanceSource?.setRoles(['live', 'capture']);
+    this._syncPerformanceRoles();
     try { tap.connect(node); }
     catch (error) {
-      try { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); this._performanceSource?.setRoles(['live']); } catch { /* An uncertain native connection keeps its tap slot. */ }
+      try { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); this._syncPerformanceRoles(); } catch { /* An uncertain native connection keeps its tap slot. */ }
       throw error;
     }
     return Object.freeze({ release: () => {
-      const receipt = retirement.retire([{ name: 'master-capture-tap', run: () => { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); this._performanceSource?.setRoles(['live']); } }]);
+      const receipt = retirement.retire([{ name: 'master-capture-tap', run: () => { tap.disconnect(node); this._pcmCaptureTaps.delete(entry); this._syncPerformanceRoles(); } }]);
       if (receipt.outcome !== 'complete') throw Object.assign(new Error('Master capture tap retirement is unresolved.'), { retirement: receipt });
       return true;
     } });
@@ -545,6 +545,7 @@ class BrowserNotePreview {
   _setStatus(status, message) {
     this._status = status;
     this._message = message;
+    this._syncPerformanceRoles();
     this._reportCaptureProvenance();
     for (const listener of this._listeners) {
       try { listener(this.getState()); } catch { /* UI callbacks must not break audio cleanup. */ }
@@ -552,9 +553,20 @@ class BrowserNotePreview {
     for (const session of this._sessions.values()) session.report();
   }
 
+  _syncPerformanceRoles() {
+    if (!this._performanceSource) return;
+    const roles = new Set();
+    if (this._defaultEnabled) roles.add('live');
+    for (const session of this._sessions.values()) if (!session.disposed && session.enabled) roles.add(session.workloadClass);
+    if (this._pcmCaptureTaps.size) roles.add('capture');
+    const values = [...roles].sort(), key = values.join(':');
+    if (key === this._performanceRolesKey) return;
+    this._performanceRolesKey = key; this._performanceSource.setRoles(values);
+  }
+
   async enable(owner = null, { takeOver = false } = {}) {
     if (this._stopping) return false;
-    if (this._performanceStopReceipt && (this._performanceStopReceipt.state !== 'retired' || this._performanceStopReceipt.outcome !== 'complete')) return false;
+    if (this._performanceStopReceipt?.state === 'retired' && this._performanceStopReceipt.outcome !== 'complete') return false;
     if (this._retirementFaults.has(owner)) return false;
     if (this._disposed) return false;
     if (!this._createContext) {
@@ -631,6 +643,8 @@ class BrowserNotePreview {
       if (this._performanceSource) {
         const controller = new AbortController(), cancel = () => controller.abort(); this._pendingEnables.add(cancel); this._sessions.get(owner)?.pending.add(cancel);
         try {
+          if (this._performanceReleaseCompletion && !await this._performanceReleaseCompletion) return false;
+          if (controller.signal.aborted || this._disposed || generation !== this._generation) return false;
           const token = await this._performanceSource.acquire({ signal: controller.signal, takeOver });
           if (!token || this._disposed || generation !== this._generation) {
             if (!this._disposed && generation === this._generation) this._setStatus('performance-busy', this._performanceMessage());
@@ -639,6 +653,8 @@ class BrowserNotePreview {
           this._performanceToken = token;
         } finally { this._pendingEnables.delete(cancel); this._sessions.get(owner)?.pending.delete(cancel); }
       }
+      if (context.state === 'suspended' && this._performanceSource) await context.resume();
+      if (this._disposed || generation !== this._generation) return false;
       if (context.state !== 'running') throw new Error('Audio context is not running.');
       if (!this._enabled) this._setMixEnabled(true);
       this._enabled = true;
@@ -742,6 +758,13 @@ class BrowserNotePreview {
 
   takeOverPerformance() { return this.enable(null, { takeOver: true }); }
   setPerformanceDocumentIdentity(value) { this._performanceSource?.setDocumentIdentity(value); }
+  canAdmitPerformanceOutput(cleanup = false) { return (!this._disposed || cleanup) && (this._performanceSource
+    ? this._performanceSource.isCurrent(this._performanceToken) || cleanup && this._performanceSource.canRelease(this._performanceToken) : this._ready()); }
+  createPerformanceOutputAdmission() {
+    const token = this._performanceToken, generation = this._generation;
+    return cleanup => (!this._disposed && generation === this._generation || cleanup) && (this._performanceSource
+      ? this._performanceSource.isCurrent(token) || cleanup && this._performanceSource.canRelease(token) : this._ready());
+  }
   registerPerformanceStop(stop) {
     if (this._disposed || typeof stop !== 'function' || this._performanceStops.size === 8) throw new Error('Performance stop registration is unavailable.');
     this._performanceStops.add(stop); return () => this._performanceStops.delete(stop);
@@ -767,7 +790,7 @@ class BrowserNotePreview {
         this._createContext ? 'Browser preview is off.' : 'Browser audio is not supported.'); } }
     ]); } finally {
       this._stopping = false;
-      if (!performanceStop && this._performanceSource) void this._performanceSource.release({ receipt: this._stopScope.getReceipt() });
+      if (!performanceStop && this._performanceSource) this._performanceReleaseCompletion = this._performanceSource.release({ receipt: this._stopScope.getReceipt() });
     }
   }
 

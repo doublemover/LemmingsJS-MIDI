@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Coordinate reviewed MIDI, raw/thru messages and standalone clock output with browser performance ownership, explicit takeover and acknowledged cleanup.
+- Admit saved-project checksum work using revision-bound lane metadata instead of reserving a maximum-size document for every load.
+
 - Bind observed contacts to exact retained modal loss masks, aggregate independent owners and fence manual automation before physical ownership.
 
 - Add Felt Bridge's six-mode shared body and independently releasable positive mode-loss masks with live/offline controls and exact preparation-state transfer.

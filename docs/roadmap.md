@@ -8858,3 +8858,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   smoke. #985 awaits original-acceptance review after clean current CI, preserving
   the existing cold-save/scheduling/heap limits. 334 remains the latest complete
   green CI checkpoint. Continue solo, with implementation frontloaded.
+
+### Continuation 342 - owned MIDI performance and foreground admission
+
+- Bind reviewed MIDI/router, native byte lowering, raw/thru and standalone clock
+  output to the shared performance lease. Independent workstation ownership and
+  generation-bound cleanup keep failed releases owned. Saved/reconnected clock
+  targets require explicit activation; late arming preserves external clock input.
+- Preserve instrument preparation when no MIDI output was acquired, wait for prior
+  audio retirement before reactivation, and report actual live/cue/capture roles.
+  Offer explicit MIDI takeover after destination review; Web Locks stay authoritative.
+- Store revision-bound lane counts for small-document checksum admission. The
+  saved-load overlap and measured-worklet failures from 341 CI pass locally.
+- All 573 grouped Node tests and 35 distinct native desktop cases pass. The final
+  35-case runtime batch passed 32; its three old takeover expectations were fixed
+  in fixtures only, then all seven ownership journeys passed on the same runtime.
+  Capture handoff is Partial:panic with 9,472 source/received frames, no indexed gap
+  and an acknowledged end. Separate user-stop capture is Ready with 53,760 finite
+  frames and peak 0.0228269100189209. Neither establishes external MIDI acoustics.
+- Keep #1193 open for actual frozen/BFCache/failure/cancel qualification. Continue
+  with raw-batch route fencing and that lifecycle matrix while full CI runs. #985
+  still awaits current clean CI and original-acceptance review; #998 needs actual
+  desktop screen-reader evidence. Latest complete green CI remains 334.

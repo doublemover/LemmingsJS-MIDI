@@ -18,7 +18,8 @@ export function createBrowserPerformanceLease({ locks = globalThis.navigator?.lo
   const sources = new Map(), peers = new Map(), listeners = [], tokens = new WeakMap(), observers = new Set([onState]);
   let status = 'idle', reason = null, epoch = 0, sequence = 0, held = false, heldEpoch = -1, uncoordinated = false, locksUnavailable = false, disposed = false, finalized = false, disposalWork = null, channel = null;
   let holdRelease = null, released = null, attempt = null, pendingTakeover = null, stopping = null, otherOwner = null, activeRequests = 0;
-  const snapshot = () => Object.freeze({ protocol: PROTOCOL, applicationScope: LOCK, clientId, leaseEpoch: epoch, status, reason,
+  const snapshot = () => Object.freeze({ protocol: PROTOCOL, applicationScope: LOCK, clientId, leaseEpoch: epoch,
+    status: status === 'idle' && otherOwner ? 'busy' : status, reason: status === 'idle' && otherOwner ? 'another-tab-owns-performance' : reason,
     exclusive: held && !uncoordinated, coordination: uncoordinated ? 'uncoordinated' : locks?.request ? 'web-locks' : 'unavailable',
     heldResourceScopes: Object.freeze([...sources.values()].filter(source => source.active || source.unknown).map(source => source.scope)),
     roles: Object.freeze([...new Set([...sources.values()].filter(source => source.active).flatMap(source => source.roles))]),
@@ -39,7 +40,7 @@ export function createBrowserPerformanceLease({ locks = globalThis.navigator?.lo
   };
   const ready = () => held && !disposed && !stopping && !['blocked', 'stopping'].includes(status);
   const releaseIfIdle = async () => {
-    if (!held || stopping || activeRequests || [...sources.values()].some(source => source.active || source.unknown || source.pending)) return false;
+    if (!held || stopping || activeRequests || [...sources.values()].some(source => source.active || source.unknown || source.pending || source.retiring)) return false;
     held = false; const release = holdRelease, completion = released, releasedEpoch = epoch; holdRelease = null; released = null; release?.();
     try { await completion; } catch { if (epoch === releasedEpoch) setState('blocked', 'lock-release-unconfirmed'); return false; }
     if (!held && epoch === releasedEpoch) setState(disposed ? 'disposed' : 'idle'); finalizeDisposed(); return true;
@@ -81,35 +82,40 @@ export function createBrowserPerformanceLease({ locks = globalThis.navigator?.lo
     return promise;
   };
   const retireSources = (selected, stopReason, priorStop = null) => {
-    for (const source of selected) { source.generation++; source.active = false; }
+    for (const source of selected) { if (source.active || source.unknown) source.cleanupGeneration ??= source.generation; source.generation++; source.active = false; }
     return createProcgenRetirementScope({ deadlineMs: timeoutMs }).retire(selected.map(source => ({ name: source.scope, run: async () => {
-      const receipt = await source.stop(stopReason, selected.length === 1 ? priorStop : null); if (!receipt || typeof receipt !== 'object') throw failure('stop-frontier-unconfirmed');
+      const receipt = await source.stop(stopReason, selected.length === 1 ? priorStop : null); if (receipt?.schema !== 'lemmings-retirement/v1' || typeof receipt.completion?.then !== 'function') throw failure('stop-frontier-unconfirmed');
       await receipt.completion; if (receipt.outcome !== 'complete') throw failure('stop-frontier-unconfirmed'); source.unknown = false;
     } })));
   };
   const stopAll = (stopReason = 'performer-stopped') => {
     if (stopping) return stopping;
     let resolve; const completion = new Promise(done => { resolve = done; }); stopping = completion;
+    const selected = [...sources.values()]; for (const source of selected) { if (source.active || source.unknown) source.cleanupGeneration ??= source.generation; source.unknown = source.active || source.unknown; source.pendingController?.abort(); }
+    pendingTakeover?.settle(false);
     advanceEpoch(); if (attempt) { attempt.canceled = true; attempt.resolve(false); } setState('stopping', stopReason);
-    const selected = [...sources.values()]; for (const source of selected) source.unknown = source.active || source.unknown;
     const receipt = retireSources(selected, stopReason);
     receipt.completion.then(async () => {
-      const complete = receipt.outcome === 'complete'; stopping = null;
-      if (complete) { for (const source of selected) source.unknown = false; await releaseIfIdle(); }
+      let complete = receipt.outcome === 'complete';
+      const retired = await Promise.allSettled(selected.map(source => source.retiring).filter(Boolean));
+      if (retired.some(result => result.status !== 'fulfilled' || result.value !== true)) complete = false;
+      await Promise.allSettled(selected.map(source => source.pending).filter(Boolean)); stopping = null;
+      if (complete) { for (const source of selected) { source.unknown = false; source.cleanupGeneration = null; } await releaseIfIdle(); }
       else { for (const source of selected) source.unknown = true; setState('blocked', 'stop-frontier-unconfirmed'); }
       finalizeDisposed(); resolve(Object.freeze({ complete, receipt }));
     }); return completion;
   };
   const releaseSource = (source, priorStop = null) => {
     if (source.retiring) return source.retiring;
-    if (!source.active && !source.unknown && !source.pending) return Promise.resolve(true);
+    if (!source.active && !source.unknown && !source.pending && (!priorStop || priorStop.schema === 'lemmings-retirement/v1' && priorStop.state === 'retired' && priorStop.outcome === 'complete')) return Promise.resolve(true);
     let resolve; const completion = new Promise(done => { resolve = done; }); source.retiring = completion;
     source.unknown = source.active || source.unknown;
+    source.pendingController?.abort();
     const receipt = retireSources([source], 'source-stopped', priorStop);
     receipt.completion.then(async () => {
       source.retiring = null;
       if (receipt.outcome !== 'complete') { source.unknown = true; setState('blocked', 'stop-frontier-unconfirmed'); resolve(false); return; }
-      source.unknown = false; await releaseIfIdle(); resolve(true);
+      source.unknown = false; if (!stopping) source.cleanupGeneration = null; await releaseIfIdle(); resolve(true);
     }); return completion;
   };
   const waitForClaim = (work, signal) => new Promise(resolve => {
@@ -154,25 +160,26 @@ export function createBrowserPerformanceLease({ locks = globalThis.navigator?.lo
     subscribe(observer) { if (disposed || typeof observer !== 'function' || observers.size === 64) throw failure('observer-capacity'); observers.add(observer); return () => observers.delete(observer); },
     register({ scope, role = 'live', stop } = {}) {
       if (disposed || !/^[a-z0-9-]{1,64}$/.test(scope || '') || !ROLES.has(role) || typeof stop !== 'function' || sources.has(scope) || sources.size === 32) throw failure('invalid-resource-registration');
-      const source = { scope, roles: [role], stop, active: false, unknown: false, closed: false, documentIdentity: null, pending: null, retiring: null, generation: 0 }; sources.set(scope, source);
+      const source = { scope, roles: [role], stop, active: false, unknown: false, closed: false, documentIdentity: null, pending: null, pendingController: null, retiring: null, generation: 0, cleanupGeneration: null }; sources.set(scope, source);
       return Object.freeze({
         acquire({ signal, takeOver: transfer = false } = {}) {
-          if (source.closed) return Promise.resolve(null); if (source.pending) return source.pending; if (disposed || source.retiring || source.unknown || stopping) return Promise.resolve(null);
+          if (source.closed || signal?.aborted) return Promise.resolve(null); if (source.pending) return source.pending; if (disposed || source.retiring || source.unknown || stopping) return Promise.resolve(null);
           if (source.active && ready()) { const token = Object.freeze({ clientId, leaseEpoch: epoch, scope }); tokens.set(token, { source, generation: source.generation, epoch }); return Promise.resolve(token); }
+          const controller = new AbortController(), cancel = () => controller.abort(signal.reason); signal?.addEventListener('abort', cancel, { once: true }); source.pendingController = controller;
           const generation = source.generation; activeRequests++; let resolve;
           const operation = new Promise(done => { resolve = done; }); source.pending = operation;
           void (async () => {
             try {
-              const granted = await waitForClaim(transfer ? takeOver({ signal }) : attemptClaim(), signal);
-              if (!granted || source.closed || signal?.aborted || generation !== source.generation || !ready()) return null;
-              source.active = true; const token = Object.freeze({ clientId, leaseEpoch: epoch, scope }); tokens.set(token, { source, generation, epoch }); report(); send('status'); return token;
-            } finally { activeRequests--; source.pending = null; void releaseIfIdle(); finalizeDisposed(); }
+              const granted = await waitForClaim(transfer ? takeOver({ signal: controller.signal }) : attemptClaim(), controller.signal);
+              if (!granted || source.closed || controller.signal.aborted || generation !== source.generation || !ready()) return null;
+              source.active = true; source.cleanupGeneration = null; const token = Object.freeze({ clientId, leaseEpoch: epoch, scope }); tokens.set(token, { source, generation, epoch }); report(); send('status'); return token;
+            } finally { signal?.removeEventListener('abort', cancel); activeRequests--; source.pending = null; source.pendingController = null; void releaseIfIdle(); finalizeDisposed(); }
           })().then(resolve, () => resolve(null)); return operation;
         },
         isCurrent(token) { const owned = tokens.get(token); return owned?.source === source && owned.generation === source.generation && owned.epoch === epoch && source.active && ready(); },
-        canRelease(token) { const owned = tokens.get(token); return owned?.source === source && owned.epoch === heldEpoch && held && (source.unknown || !!stopping); },
+        canRelease(token) { const owned = tokens.get(token); return owned?.source === source && owned.epoch === heldEpoch && owned.generation === source.cleanupGeneration && held && (source.unknown || !!stopping); },
         setDocumentIdentity(value) { if (source.closed) return false; if (value != null && (typeof value !== 'string' || !value.length || value.length > 128)) throw failure('invalid-document-identity'); source.documentIdentity = value; report(); return true; },
-        setRoles(roles) { if (source.closed) return false; if (!Array.isArray(roles) || !roles.length || roles.length > 3 || roles.some(role => !ROLES.has(role))) throw failure('invalid-resource-roles'); source.roles = [...new Set(roles)]; report(); send('status'); return true; },
+        setRoles(roles) { if (source.closed) return false; if (!Array.isArray(roles) || roles.length > 3 || roles.some(role => !ROLES.has(role))) throw failure('invalid-resource-roles'); source.roles = [...new Set(roles)]; report(); send('status'); return true; },
         release: ({ receipt = null } = {}) => releaseSource(source, receipt),
         async dispose({ receipt = null } = {}) { source.closed = true; const complete = await releaseSource(source, receipt); if (complete) { sources.delete(scope); report(); } return complete; }
       });

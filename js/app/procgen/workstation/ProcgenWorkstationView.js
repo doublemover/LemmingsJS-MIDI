@@ -736,6 +736,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       midiRouteView.element.__ownedControl = true; nextFields.append(midiRouteView.element.isConnected ? controlTree.retain(midiRouteView.element) : midiRouteView.element);
       labeled('Channel', input(lane.channel, channel => changeLane({ channel }), { min: 1, max: 16 }), nextFields);
       labeled('Clock output', select([['', 'Off'], ...ports.outputs.map(p => [p.id, p.name || p.id])], state.clockOutputId || '', id => handlers.clockOutput?.(id), 'MIDI clock output'), nextFields);
+      nextFields.append(button('Activate selected MIDI clock', () => handlers.activateClockOutput?.()));
       labeled('MIDI Thru', input(state.thru, value => handlers.thru?.(value), { type: 'checkbox' }), nextFields);
       labeled('Owned external program (zero based)', input(lane.externalProgram ?? '', externalProgram => changeLane({ externalProgram }), { min: 0, max: 127, nullable: true }), nextFields);
       labeled('External percussion mapping', input(lane.externalPercussion, externalPercussion => changeLane({ externalPercussion }), { type: 'checkbox' }), nextFields);

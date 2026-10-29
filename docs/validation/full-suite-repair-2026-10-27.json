@@ -34048,5 +34048,249 @@
         "sha256": "359d2a1c8dc756cfb3f67dccd24c62f72d32fe4660533abb78ae0377ad0d4767"
       }
     ]
+  },
+  "continuation342": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "0602a8f05409cb4bec9cf35bb41f4fdada95bd13",
+    "scope": "Bind reviewed MIDI/router, raw/thru and standalone clock submission and cleanup to cooperative browser performance ownership; repair small-document load admission.",
+    "implementation": [
+      "Per-method bound admission predicates guard WebMidi lowering and actual native send/clear boundaries. Reentrant replacement cannot grant a stale multi-packet method fresh authority. MPE setup remains new admission, while owned cleanup uses its retiring source generation only.",
+      "An independently registered bounded workstation MIDI owner retains notes, thru cleanup and clock frontiers after the parent router retires. Failed releases remain monotonically uncertain and retain the native lock; no unrelated all-device Panic.",
+      "Selected clock destinations do not arm after restore/discovery/reconnect. Explicit activation claims the lease before attaching output; future accepted clock timestamps retire through queue clear or their bounded API submission frontier. External clock input is not stopped by a late clock-output claim.",
+      "Unused MIDI catalog synchronization no longer halts transport and cancels native instrument preparation. Audio reactivation waits for prior ownership retirement; live/cue/capture roles derive from actual enabled owners and taps.",
+      "Takeover is offered for a reviewed MIDI destination as soon as peer status is advertised; Web Locks remain authoritative. UI fixtures wait for that explicit action before one click.",
+      "Stored document metadata retains lane count with its revision. Owned load admission uses that count and rejects mismatched/stale metadata rather than allocating the 1024-lane checksum peak for a small document."
+    ],
+    "validation": {
+      "node": {
+        "command": "c8 --check-coverage=false mocha: 22 affected files (commands retained in session logs)",
+        "passing": 573,
+        "failing": 0,
+        "log": ".tmp/rook342-node-qualified.log",
+        "coverageReport": ".tmp/coverage-rook342-final/coverage-summary.json",
+        "coverage": {
+          "BrowserPerformanceLease": {
+            "lines": 99,
+            "branches": 86.49,
+            "functions": 100
+          },
+          "ProcgenMidiPerformance": {
+            "lines": 96.96,
+            "branches": 78.57,
+            "functions": 70.37
+          },
+          "ProcgenMidiPorts": {
+            "lines": 94.67,
+            "branches": 85.55,
+            "functions": 89.21
+          },
+          "ProcgenMidiOutput": {
+            "lines": 89.3,
+            "branches": 76.79,
+            "functions": 90.9
+          },
+          "MidiByteSubmission": {
+            "lines": 100,
+            "branches": 73.91,
+            "functions": 100
+          },
+          "ProcgenTransport": {
+            "lines": 100,
+            "branches": 87.5,
+            "functions": 93.75
+          },
+          "ProcgenSessionStorage": {
+            "lines": 92.55,
+            "branches": 73.26,
+            "functions": 75.55
+          }
+        }
+      },
+      "browser": {
+        "minimumViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "distinctPassing": 35,
+        "skipped": 0,
+        "qualification": "32 passing in the 35-case runtime batch; its only 3 failures were old two-click takeover expectations. After updating only those fixtures for proactively advertised takeover, all 7 ownership journeys pass on the same runtime. Union: 35 distinct passing desktop cases, not a claim that the intermediate 35-case run was green.",
+        "reports": [
+          ".tmp/rook342-browser-qualified.json",
+          ".tmp/rook342-browser-lease-final.json"
+        ],
+        "covered": [
+          "Real same-origin Web Locks across controlled WebMidi byte adapters and native browser audio, owned held-note/thru cleanup, explicit return takeover",
+          "Standalone clock requires activation and remains disarmed after reconnect/reload",
+          "Native capture-worklet handoff, concurrent pages, owner closure, missing and blocked Locks",
+          "Saved-project preference-worker overlap, corrupted preferences, authored pages",
+          "External clock input, paused checkpoint and recovery/New",
+          "Physical instrument preparation, real measured worklet actor output, all sound library workflows and master capture"
+        ]
+      },
+      "nativeCapture": {
+        "handoff": {
+          "state": "Partial",
+          "reason": "panic",
+          "sourceFrames": 9472,
+          "receivedFrames": 9472,
+          "indexedGaps": 0,
+          "endAcknowledged": true,
+          "evidence": "Actual capture worklet and native context suspension; abrupt owned stop, not Ready."
+        },
+        "userStop": {
+          "state": "Ready",
+          "frames": 53760,
+          "capturedFrames": 53760,
+          "peak": 0.0228269100189209,
+          "nonfinite": 0,
+          "clockDiscontinuity": null,
+          "stopReason": "user-stop"
+        },
+        "limits": "Browser API/capture evidence only; controlled MIDI adapters do not establish hardware receiver or acoustic delivery. PCM held in memory is not a filesystem durability claim."
+      },
+      "static": [
+        "npm run format",
+        "npm run check-undefined",
+        "npm run typecheck:critical",
+        "npm run provenance:check (10 components,350 files)",
+        "git diff --cached --check; guarded before publication"
+      ],
+      "fullLocalSuite": "Deferred; no full local repeat."
+    },
+    "failureHistory": {
+      "ci341": {
+        "run": 40848178286,
+        "job": 123360746534,
+        "desktopPassing": 24,
+        "workstationPassing": 140,
+        "workstationFailing": 2,
+        "failures": [
+          "Owned saved load reserved335708160accounted bytes with179987876available.",
+          "Pinned worklet produced no measured actor output."
+        ],
+        "laterCoverageMcpBenchmark": "Not reached."
+      },
+      "initialLocalNode": "490pass/1clock fixture timeout (adapter lacked outer clear); then569pass/1role fixture expectation corrected to model actual enabled live/cue owners.",
+      "initialBrowser": {
+        "passing": 29,
+        "failing": 6,
+        "report": ".tmp/rook342-browser-initial.json",
+        "repairs": [
+          "Avoid halting an unused MIDI owner, which canceled default native preparation and silenced capture.",
+          "Preserve external clock input during async output activation.",
+          "Advertise peer ownership in inactive UI; align takeover fixtures with that explicit action."
+        ]
+      },
+      "laterBrowser": {
+        "passing": 32,
+        "failing": 3,
+        "report": ".tmp/rook342-browser-qualified.json",
+        "cause": "Runtime passed its affected cases; ownership fixtures still expected a preliminary activation denial before takeover. Final fixture-only correction passes7/7."
+      }
+    },
+    "remaining": [
+      "#1193: actual frozen-owner/BFCache/native-failure/cancellation matrix and wider engine qualification. Keep open.",
+      "Native bridge/device qualification remains with the corresponding MIDI ownership issues; these tests use controlled WebMidi adapters.",
+      "#985: review original acceptance after current full CI passes; preserve recorded cold-save/scheduling/heap limitations.",
+      "#998: real desktop screen-reader smoke remains."
+    ],
+    "sourceFiles": [
+      {
+        "path": "e2e/procgen-workstation-performance-lease.spec.js",
+        "bytes": 9779,
+        "sha256": "31f969bd147d827e5e73d7798c5b21880a9195945cb9fbf308ae8700a86abf5b"
+      },
+      {
+        "path": "js/app/midi-ui/BrowserPerformanceLease.js",
+        "bytes": 19614,
+        "sha256": "c1fe81c4f2e1e451df6851b0d5c839a692028efe44ba21af7d1819c89dfc3766"
+      },
+      {
+        "path": "js/app/midi-ui/browserNotePreview.js",
+        "bytes": 91386,
+        "sha256": "4cea9d5cb279422b57cc20115b9753f6bc6567386d846d8388fd55eda82420ed"
+      },
+      {
+        "path": "js/app/midi-ui/localGamePreview.js",
+        "bytes": 7438,
+        "sha256": "4fc2d5dfa0bbb8e4e976c81a6696b1c9d563f47cccb66b8db5ee49540e837260"
+      },
+      {
+        "path": "js/app/procgen/ProcgenMidiOutput.js",
+        "bytes": 20497,
+        "sha256": "a7ecc3da48305f9518e0807cdab5716f07286088bad490d21f48cad3c219ba0e"
+      },
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "bytes": 48280,
+        "sha256": "4cba49df0b58198a517854bee30c64da96004aa27c0c90f0cb97064086792a10"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiBytes.js",
+        "bytes": 1734,
+        "sha256": "fe2882ca20a94a629e914d184b03e84dc4c242487ed58b9525e50fbd8951988a"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "bytes": 69648,
+        "sha256": "cd88350e436c2250f30c2a8e96a2c21d7f988b61e760027e9eeb9655dff5766a"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenOperationalState.js",
+        "bytes": 13239,
+        "sha256": "ed8c9a03ac72e7286542e72af48f9bf0cff3bb1b563d60c1598e8eae650c1972"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSessionStorage.js",
+        "bytes": 37266,
+        "sha256": "ee2ade4af1f68fede77ab6ed09e7ebe521908541134bd3ca5739e0b888741640"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenTransport.js",
+        "bytes": 11531,
+        "sha256": "a392d1a4e24ae50e491ecb93b2e2e5b4119c1a90301d9080d92b6d196954ddcf"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 210804,
+        "sha256": "d165e54a93c6b37ecca8e28330725d447c7fe7552025ae5a85f6efb67ea0abd8"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 137518,
+        "sha256": "dc99a8cd692a391b26854cab290e1127d51211fe82329709642085c5e520c69e"
+      },
+      {
+        "path": "js/midi/scheduler/MidiByteSubmission.js",
+        "bytes": 5176,
+        "sha256": "ed70c1c2cdd979a5d2b2846aec3a5fcff897dc33bac9b74b756c8b047f6f53aa"
+      },
+      {
+        "path": "js/midi/scheduler/MidiOutputObserverMethods.js",
+        "bytes": 8651,
+        "sha256": "0bef0c388be0469fea62aa4c6725b9bbc740091154ea6c44e1298410ded4835a"
+      },
+      {
+        "path": "test/midi/browser-note-preview.test.js",
+        "bytes": 120852,
+        "sha256": "ed6daf91b12f9213d21e53e7b6cbf3491fa1f9eb40ee77c5a47a0a61544e15fd"
+      },
+      {
+        "path": "test/procgen-session-storage.test.js",
+        "bytes": 20937,
+        "sha256": "0917dd71857a3f3fd120bd8a5702283d04edde8c1f65fd0992f5bcc48d9d179d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPerformance.js",
+        "bytes": 6169,
+        "sha256": "261fd82690ec3bbf3a64160202caedb80878d810b1377fdbd4968ee451e3c017"
+      },
+      {
+        "path": "test/midi/procgen-performance-admission.test.js",
+        "bytes": 10134,
+        "sha256": "93980595faa1f06fde4f894a41e121e3c05e5ba025866c757a78484bf110d959"
+      }
+    ]
   }
 }

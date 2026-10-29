@@ -172,7 +172,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
           store.put({ id, kind: 'document', revision: receipt.revision, commitId, name: session.name, savedAt: session.savedAt,
             createdAt: current?.createdAt || session.savedAt, session });
           transaction.objectStore('projectMetadata').put({ id, revision: receipt.revision, name: session.name,
-            savedAt: session.savedAt, createdAt: current?.createdAt || session.savedAt });
+            savedAt: session.savedAt, createdAt: current?.createdAt || session.savedAt, laneCount: session.world.laneCount });
         };
         transaction.oncomplete = () => resolve(receipt);
         transaction.onabort = () => reject(conflict || storageFailure(transaction.error || request.error || namedError('AbortError', 'Document write aborted')));
@@ -190,7 +190,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
           if (request.result) return;
           store.put(record);
           if (record.kind === 'document') transaction.objectStore('projectMetadata').put({ id: record.id, revision: record.revision,
-            name: record.name, savedAt: record.savedAt, createdAt: record.createdAt });
+            name: record.name, savedAt: record.savedAt, createdAt: record.createdAt, laneCount: record.session.world.laneCount });
         };
         transaction.oncomplete = () => resolve();
         transaction.onabort = () => reject(storageFailure(transaction.error || request.error));
@@ -304,11 +304,14 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     async loadDocumentOwned(id, { signal } = {}) {
       let record, computed;
       try {
+        const metadata = await operation('readonly', store => store.get(id), 'projectMetadata', signal);
+        const laneCount = Number.isInteger(metadata?.laneCount) && metadata.laneCount >= 1 && metadata.laneCount <= 1024 ? metadata.laneCount : 1024;
         computed = await checksumSnapshot(async () => {
           record = await operation('readonly', store => store.get(id), 'sessions', signal);
           if (!record || record.kind !== 'document') throw new Error('Project not found.');
+          if (metadata?.laneCount != null && (metadata.revision !== record.revision || laneCount !== record.session?.world?.laneCount)) throw namedError('ConflictError', 'Stored project admission metadata changed. Select the project again.');
           return record.session;
-        }, { signal });
+        }, { signal, laneCount });
         const result = ownedSource(computed, { kind: 'document', id, revision: record.revision, name: record.name, savedAt: record.savedAt,
           checksum: computed.checksum, verification: 'stored-document-snapshot' });
         record = null; computed = null; return result;

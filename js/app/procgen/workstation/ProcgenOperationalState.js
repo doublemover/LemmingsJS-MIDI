@@ -34,7 +34,8 @@ export function createProcgenOperationalSnapshot({ simulation = {}, transport = 
   if (simulationState === 'preparing') add(95, 'world-preparing', 'The next world is preparing. Output readiness is unchanged.');
   if (['expired', 'unavailable'].includes(sensing.mode) && midi.inputId) add(92, 'controller-observation', sensing.mode === 'expired' ?
     'Controller Active Sensing expired. Port connectivity and clock health are separate.' : 'Controller liveness is unavailable: ' + text(sensing.reason, 'the host cannot observe it') + '.', ['inspect-midi', 'Review controller input']);
-  if (!hardware && audio.performanceLease?.status === 'busy') add(98, 'performance-owned-elsewhere', 'Another tab owns browser performance output. Taking over stops and finalizes its owned performance first.', ['take-over-output', 'Take over browser output']);
+  if ((output.performanceLease || audio.performanceLease)?.status === 'busy') add(98, 'performance-owned-elsewhere', 'Another tab owns performance output. Taking over stops and finalizes its owned performance first.',
+    !hardware || permission === 'granted' && selectedId ? ['take-over-output', hardware ? 'Take over MIDI output' : 'Take over browser output'] : ['discover', 'Discover MIDI outputs']);
   if (!hardware && audio.status === 'resource-limited') add(90, 'audio-budget', text(audio.message, 'Browser audio resources are unavailable. Stop another workload and retry.'), ['listen', 'Retry browser audio']);
   else if (!hardware && (output.status === 'error' || audio.status === 'error') && !(contextState === 'suspended' && audio.status === 'interrupted')) add(88, 'audio-error', text(output.message || audio.message, 'Browser audio could not start.'), ['listen', 'Retry browser audio']);
   if (hardware && route?.configurationFailure || hardware && route?.activationFailure || hardware && route?.mpeReady === false) add(87, 'route-configuration',

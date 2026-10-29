@@ -237,6 +237,16 @@ const setup = (options = {}, context = new FakeContext()) => {
 };
 
 describe('browser audio cross-context performance boundaries', () => {
+  it('reports cue and live roles from enabled owners and reacquires after a completed local stop', async () => {
+    const f = performanceEnvironment(), a = f.make(), { preview } = setup({ performanceCoordinator: a.lease, cueVoices: 1 });
+    const live = preview.createSession('owned-live'); expect(await live.enable()).to.equal(true);
+    await preview.prepareCueRoute({ mode: 'rehearsal' }); const cue = preview.createSession('owned-cue', { workloadClass: 'cue' });
+    expect(await cue.enable()).to.equal(true); expect(a.lease.state().roles).to.deep.equal(['cue', 'live']);
+    await live.stop().completion; expect(a.lease.state().roles).to.deep.equal(['cue']);
+    const stopped = preview.stop(); await stopped.completion;
+    expect(await preview.enable()).to.equal(true); expect(a.lease.state().roles).to.deep.equal(['live']);
+    await preview.dispose(); await a.lease.dispose();
+  });
   it('unlocks within the gesture but admits notes and capture only for the winning page', async () => {
     const f = performanceEnvironment(), a = f.make(), b = f.make(), first = setup({ performanceCoordinator: a.lease }, new FakeContext('suspended')),
       second = setup({ performanceCoordinator: b.lease }, new FakeContext('suspended'));

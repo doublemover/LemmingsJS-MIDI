@@ -506,6 +506,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   const recordingViewState = midiState => ({ ...midiState, recordingOrigin,
     foreignRecording: !!(midiState.recordedEvents && recordingOrigin && recordingOrigin.generation !== documentGeneration) });
   ports = createProcgenMidiPorts({ transport, now, resourceBudget, schedulerConfig: projectToMidiConfig(project),
+    createOutputAdmission: () => legacy.local.createOutputAdmission?.(), canActivate: () => !stageSession?.active() && !worldBusy,
     onMonitor(event) { const endpoint = ports?.getState(); if (endpoint?.inputId) macroGestures.observeController(event, { endpointId: endpoint.inputId, endpointEpoch: endpoint.inputLiveness.connectionEpoch }); state.lastMidi = event.type === 'system' ? `MIDI ${event.data[0].toString(16).toUpperCase()}` : `${event.type} · ch ${event.channel} · ${event.note ?? event.controller ?? ''} ${event.velocity ?? event.value ?? ''}`; view?.midi?.(state.lastMidi); },
     onState(midiState) {
       const endpoint = { id: midiState.inputId, epoch: midiState.inputLiveness.connectionEpoch }, prior = macroInputEndpoint; macroInputEndpoint = endpoint;
@@ -579,7 +580,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   });
   const devices = () => ({ inputs: Array.from(window.WebMidi?.inputs || []).filter(port => port.state !== 'disconnected'), outputs: Array.from(window.WebMidi?.outputs || []).filter(port => port.state !== 'disconnected') });
   let routedPortReferences = [];
-  const syncPorts = ({ rearm = false, rearmDefault = false } = {}) => {
+  const syncPorts = ({ rearm = false, rearmDefault = false, rearmClock = false } = {}) => {
     const available = devices(), outputState = legacy.local.getState();
     const midiEnabled = outputState.selectedBackend === 'midi' && outputState.enabled;
     const selectedOutput = midiEnabled ? available.outputs.find(port => port.id === outputState.outputId) || null : null;
@@ -602,7 +603,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     ports.setActiveNoteOutputs?.([...laneRoutes].map(([outputId, laneIndices]) => ({ outputId, laneIndices, role: 'lane-note' })),
       rearm ? { rearm: true } : undefined);
     ports.setInput(selectedInput);
-    ports.setClockOutput(selectedClock);
+    void ports.setClockOutput(selectedClock, { arm: rearmClock });
   };
   const recordCausalControl = (kind, payload) => {
     if (!causalTake) return;
@@ -937,7 +938,9 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const bindRuntime = ({ session, historyRestore = false } = {}) => {
     if (disposed) return null;
-    legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
+    if (legacy.local.setPerformanceDocumentIdentity) legacy.local.setPerformanceDocumentIdentity('workstation:' + documentGeneration);
+    else legacy.local.audio?.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
+    ports.setPerformanceDocumentIdentity?.('workstation:' + documentGeneration);
     let sessionIdentity = null;
     if (session) { sessionIdentity = sessionIdentities.get(session); if (!sessionIdentity) { sessionIdentity = Object.freeze({}); sessionIdentities.set(session, sessionIdentity); } }
     const next = runtime(); if (!next || (next === boundRuntime && sessionIdentity === boundSession)) return next;
@@ -1921,7 +1924,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     cancelLearn() { cancelInputEdits('canceled by user'); },
     input(id) { cancelInputEdits('input changed'); state.inputId = id || null; syncPorts(); view.renderInspector(); persist(); },
-    clockOutput(id) { state.clockOutputId = id || null; syncPorts(); persist(); },
+    clockOutput(id) { state.clockOutputId = id || null; syncPorts({ rearmClock: true }); persist(); },
+    activateClockOutput() { syncPorts({ rearmClock: true }); },
     thru(value) { state.thru = !!value; ports.configure({ thru: state.thru }); },
     connect: safe(async () => {
       const request = ++midiConnectSerial, generation = documentGeneration, world = runtime()?.world;
