@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.js';
 import { useWorkstationControl } from '../e2e/helpers/workstationChrome.js';
 
 const playback = page => page.evaluate(() => window.__PROCGEN_STUDIO__.getPlaybackState());
@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
   });
   page.on('pageerror', error => { void test.info().attach('native-page-error.txt', { body: String(error.stack || error), contentType: 'text/plain' }); });
 });
-test.afterEach(async ({ page, browser }, testInfo) => {
+test.afterEach(async ({ page, nativeBrowser: browser }, testInfo) => {
   if (testInfo.status !== testInfo.expectedStatus && !page.isClosed()) await evidence(page, browser, testInfo, 'portable-failure-state.json').catch(() => {});
 });
 const historyReturn = async page => { await page.goto('about:blank'); await page.goBack({ waitUntil: 'commit' }); await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.workstationEnabled); };
@@ -26,11 +26,12 @@ const evidence = async (page, browser, testInfo, name, extra = {}) => {
     project: { mode: window.__PROCGEN_STUDIO__.getStartupPlan().mode, seed: window.__PROCGEN_LANES__.world.seed, laneName: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name },
     capabilities: { audioContext: typeof (window.AudioContext || window.webkitAudioContext) === 'function' },
     navigation: { type: performance.getEntriesByType('navigation')[0]?.type, reasons: performance.getEntriesByType('navigation')[0]?.notRestoredReasons?.toJSON?.() || null } }));
-  await testInfo.attach(name, { body: JSON.stringify({ project: testInfo.project.name, browser: browser.version(), source, ...extra }, null, 2), contentType: 'application/json' });
+  await testInfo.attach(name, { body: JSON.stringify({ project: testInfo.project.name, browser: browser.version(), configuredAudioBackend: testInfo.config.metadata.audioBackend,
+    configuredRenderer: testInfo.project.use.launchOptions?.firefoxUserPrefs ? 'software-webrender-requested' : 'browser-default-unqualified', source, ...extra }, null, 2), contentType: 'application/json' });
   return source;
 };
 
-test('cold history reconstructs saved editor preferences without autoplay', async ({ page, browser }, testInfo) => {
+test('cold history reconstructs saved editor preferences without autoplay', async ({ page, nativeBrowser: browser }, testInfo) => {
   // Playwright disables Firefox/WebKit BFCache; Chromium's separate native fixture tests actual retained worlds.
   await boot(page, '');
   const before = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Portable cached source' } });
@@ -43,7 +44,7 @@ test('cold history reconstructs saved editor preferences without autoplay', asyn
   expect(after.output.enabled).toBe(false); expect(after.transport.playing).toBe(false);
 });
 
-test('native project transactions retain the exact named revision across reload and explicit stored load', async ({ page, browser }, testInfo) => {
+test('native project transactions retain the exact named revision across reload and explicit stored load', async ({ page, nativeBrowser: browser }, testInfo) => {
   await boot(page);
   await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }), { button: 'Save' }, 'click');
   const naming = page.getByRole('dialog', { name: 'Project name', exact: true });
@@ -63,7 +64,7 @@ test('native project transactions retain the exact named revision across reload 
   expect(after.output.enabled).toBe(false); expect(after.transport.playing).toBe(false);
 });
 
-test('native audio navigation requires fresh activation and absent audio remains unavailable', async ({ page, browser }, testInfo) => {
+test('native audio navigation requires fresh activation and absent audio remains unavailable', async ({ page, nativeBrowser: browser }, testInfo) => {
   await boot(page);
   const supported = await page.evaluate(() => typeof (window.AudioContext || window.webkitAudioContext) === 'function');
   await page.locator('#procgenListen').click();
@@ -80,7 +81,7 @@ test('native audio navigation requires fresh activation and absent audio remains
   await page.locator('#procgenListen').click(); await expect.poll(async () => (await playback(page)).enabled).toBe(true);
 });
 
-test('cold history never invents durable recovery when native storage is unavailable', async ({ page, browser }, testInfo) => {
+test('cold history never invents durable recovery when native storage is unavailable', async ({ page, nativeBrowser: browser }, testInfo) => {
   await page.addInitScript(() => Object.defineProperty(window, 'indexedDB', { configurable: true, value: { open() { throw new window.DOMException('Controlled unavailable storage', 'SecurityError'); } } }));
   await boot(page);
   const before = await page.evaluate(async () => { const studio = window.__PROCGEN_STUDIO__; studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Portable unsaved source' } });

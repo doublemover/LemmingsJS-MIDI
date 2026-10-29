@@ -8957,3 +8957,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   dependency/MCP/benchmark gates. Its capture is explicitly Partial:50,048 finite
   frames after a128-frame render-clock discontinuity. Preserve prior Ready evidence
   separately. #1009 and #1086 remain open for their remaining platform matrix.
+
+### Continuation 347 - native semantic parity and independent engine gates
+
+- All11 native engine cases pass without retries/skips/crashes on the final local
+  profile. Chromium153.0.8010.12, Firefox155 and WebKit26.6 produce identical initial
+  and final physics hashes, the same eight asset identities and1,078 complete
+  causal facts across64 actual ticks of the same eight-lane recipe. Muted physics
+  parity does not qualify rendered PCM or acoustic/device behavior.
+- Require all three engines and every expected case, complete/nonempty causal
+  evidence, paused transport, observer cleanup and matching physics/causal/assets.
+  Eight fault-injection checks plus adjacent config/catalog checks pass24 Node
+  cases. A before/after1,246-file runtime closure and exact harness hashes reject
+  source changes during qualification; CI retains the complete inventory artifact.
+- Each destructive journey owns a separate browser process; Firefox requests
+  software WebRender explicitly. Earlier native boot crashes remain recorded:
+  process isolation alone did not eliminate them. Three diagnostic audio repeats
+  passed; the final eleven-case profile passed once. No universal stability or
+  hardware GPU claim follows from those observations.
+-346's Linux engine job passed six cases but Firefox audio stayed suspended and
+  another boot crashed. Provision a PulseAudio null sink for digital CI audio;
+  Linux execution of this fix remains pending. Windows WebKit's absent AudioContext
+  remains explicit. Do not label346 fully green merely from its separate main job.
+- Continue solo through the remaining backlog; #1086 retains denied/unavailable
+  capability, graphics, owner-count and physical-device qualification, and #1009
+  retains actual desktop background and Firefox/WebKit BFCache journeys.

@@ -107,11 +107,23 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx playwright install --with-deps firefox webkit
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Prepare virtual audio output
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pulseaudio pulseaudio-utils
+          pulseaudio --start --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=lemmings_ci
+          pactl set-default-sink lemmings_ci
+          pactl info
       - run: npm run test-e2e:lifecycle
+        env:
+          LEMMINGS_LIFECYCLE_AUDIO_BACKEND: pulseaudio-null-sink
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: lifecycle-engine-receipts
-          path: .tmp/lifecycle-engine-results.json
+          path: |
+            .tmp/lifecycle-engine-results.json
+            .tmp/lifecycle-engine-qualification.json
           if-no-files-found: error

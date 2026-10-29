@@ -2,8 +2,10 @@ import { defineConfig } from '@playwright/test';
 import base from './playwright.config.js';
 
 export default defineConfig({ ...base, testDir: './e2e-portable', workers: 1, timeout: 60000,
+  metadata: { audioBackend: process.env.LEMMINGS_LIFECYCLE_AUDIO_BACKEND || 'system-default-unqualified' },
   projects: [
-    { name: 'firefox-lifecycle', use: { browserName: 'firefox' } },
+    { name: 'chromium-semantic', testMatch: 'semantic.spec.js', use: { browserName: 'chromium' } },
+    { name: 'firefox-lifecycle', use: { browserName: 'firefox', launchOptions: { firefoxUserPrefs: { 'layers.acceleration.disabled': true, 'gfx.webrender.software': true } } } },
     { name: 'webkit-lifecycle', use: { browserName: 'webkit' } }
   ],
   use: { ...base.use, permissions: [], launchOptions: {} }
