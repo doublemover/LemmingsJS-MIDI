@@ -9507,3 +9507,38 @@ export-budget acknowledgments still prevent a false complete receipt.
   expected label and pass all three route journeys without changing runtime.
   Preserve #986/#1093 for physical-take and original-UMP product integration,
   remaining clock cases and complete compatibility loss reporting. Continue solo.
+
+### Continuation 368 - bounded original UMP ingress capture
+
+- Capture each original UMP request once before route lowering or relative-control
+  resolution. Preserve exact words, source resolution/identities, numeric IDs and
+  endpoint epochs without claiming that the original packet was submitted.
+  Keep byte adapter observations separate. Refused route/lowering requests remain
+  authored intent; repeated identical requests remain distinct.
+- Preserve explicit score beats; retain missing beats as unmapped and qualify
+  original source completeness. This is captured-request coverage, not inferred
+  note-boundary closure. Bound attributed metadata and total retained estimates;
+  charge growing owned reservations and retain unknown retirement. Keep capture
+  refusal from changing musical delivery. Share existing cap/clear/source owners.
+- Select original UMP versus MIDI1 in recording inspection. Tag original packets
+  outside compatibility columns, refuse UMP-only MIDI1 export and report excluded
+  originals in mixed files. The direct writer also refuses implicit lowering;
+  direct note balancing now respects known connection/route boundaries.
+- Continue original source projection, completeness/boundary sidecars and product
+  Clip controls under #1093. Retain #986's physical-take/clock matrix work. Frontload
+  each related development span before grouped checks; no full local repeat.
+- Qualification:220 grouped Node cases and two native1920×1080 journeys pass.
+  Original capture has100%scoped lines/functions and90.41%branches. Native original
+  requests retain all16 packets once, with refused lowering distinguished from
+  capture; UMP-only compatibility refusal retains the previous file. The existing
+  100000-event independent Clip worker roundtrip remains exact. Mixed compatibility
+  files count excluded originals and retain only the selected MIDI1 messages.
+- Promote365/c1d14e99 to the verified full green checkpoint:7145 Node passes with
+  10preexisting pending,26desktop/213workstation/18engine cases, all14 capabilities,
+  both native codec jobs and benchmark/MCP/policy/dependency checks. Coverage is
+  90.77%lines/83.91%branches/88.62%functions. Verify all1138 workstation,1249engine
+  and8native source entries against that Git tree and both native output hashes.
+  Later366 engine CI records17passes and a Firefox content-process signal11 during
+  initial boot before the project transaction; retain diagnostics. GitHub refuses
+  its isolated rerun while the overall workflow is still running; retry only that
+  job once the workflow finishes. Root cause remains unproven.

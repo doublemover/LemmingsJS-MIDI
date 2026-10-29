@@ -18,10 +18,11 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
   guard();
   const { timing, messages, routes } = snapshot, ppq = Math.max(24, Math.min(32767, Math.round(Number(options.ppq) || 480)));
   const keep = new Uint8Array(count), next = new Uint32Array(count), ticks = new Float64Array(count), pending = new Map();
-  let omittedOnsets = 0, omittedReleases = 0, retained = 0, firstTempo = null;
+  let omittedOnsets = 0, omittedReleases = 0, retained = 0, firstTempo = null, originalUmpInputs = 0;
   const counts = new Uint32Array(snapshot.outputIds.length * 2);
   for (let index = 0; index < count; index++) {
     const kind = messages[index * 5 + 4];
+    if (kind === 4) originalUmpInputs++;
     if (kind === 1 || kind === 2) {
       if (routes[index] >= snapshot.outputIds.length) throw new TypeError('Malformed recorded MIDI route.');
       counts[routes[index] * 2 + kind - 1]++;
@@ -32,10 +33,11 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
     }
     if (index % 4096 === 4095) await checkpoint('selecting-recording-evidence', index + 1);
   }
+  if (originalUmpInputs && !counts.some(value => value > 0)) throw Object.assign(new Error('Original UMP intent requires an explicit MIDI1 lowering plan; this source has no captured MIDI1 output.'), { code: 'original-ump-needs-lowering' });
   const plan = planRecordedMidiExport(snapshot, options, counts, firstTempo?.beat ?? null), submitted = plan.sourceLayer === 'api-accepted', evidence = submitted ? 1 : 2;
   for (let index = 0; index < count; index++) {
     const m = index * 5, kind = messages[m + 4], status = messages[m], family = status & 0xf0, length = messages[m + 3];
-    if (kind > 3 || !Number.isFinite(timing[index * 2])) throw new RangeError('Malformed recording column.');
+    if (kind > 4 || !Number.isFinite(timing[index * 2]) || kind === 4 && (status || messages[m + 1] || messages[m + 2] || length)) throw new RangeError('Malformed recording column.');
     if (kind === 1 || kind === 2) {
       if (status < 0x80 || status >= 0xf0 || length !== ([0xc0, 0xd0].includes(family) ? 2 : 3) || messages[m + 1] > 127 || messages[m + 2] > 127 || routes[index] >= snapshot.outputIds.length)
         throw new TypeError('Malformed recorded MIDI message.');
@@ -68,7 +70,8 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
   const exportPlan = Object.freeze({ ...plan, selectedOutputHash: routeHash, ppq, initialTempo });
   const manifest = { schema: 'procgen-recording-window/v1', complete, reason, reasons: window.incompleteReasons,
     evidence: submitted ? 'api-accepted' : 'intent-render', retainedRange: window.retainedRange, firstLostSequence: window.firstLostSequence,
-    droppedRecords: window.droppedRecords, droppedCategories: window.droppedCategories, omittedOnsets, omittedReleases, exportPlan };
+    droppedRecords: window.droppedRecords, droppedCategories: window.droppedCategories, omittedOnsets, omittedReleases, exportPlan,
+    ...(originalUmpInputs ? { excludedOriginalUmpIntents: originalUmpInputs } : {}) };
   const payload = new TextEncoder().encode(JSON.stringify(manifest)); if (payload.length > 4096) throw new RangeError('Recording manifest exceeds the 4 KiB export limit.');
   const denominator = [1, 2, 4, 8, 16, 32].includes(options.beatUnit) ? options.beatUnit : 4;
   const initial = [0, ...smfTempo(initialTempo.bpm), 0, 0xff, 0x58, 4, Math.min(255, Math.max(1, Math.round(options.beatsPerBar) || 4)), Math.log2(denominator), 24, 8,

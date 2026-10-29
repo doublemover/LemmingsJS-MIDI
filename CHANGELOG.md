@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Capture original UMP intent before lowering with owned words, explicit source timing and bounded attribution; refuse empty MIDI1 exports of UMP-only sources.
+
 - Expose recorded MIDI source and timing choices, rebase from captured recording boundaries, and keep reused output connection epochs and route revisions separate.
 
 - Encode and validate bounded UMP MIDI Clip Files in admitted workers, preserving original words, configuration/sequence timing and long silent gaps.

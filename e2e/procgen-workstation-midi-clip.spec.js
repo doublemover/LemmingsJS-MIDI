@@ -7,6 +7,28 @@ import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 installSmf(JZZ);
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
+test('original native UMP intent capture stays separate from accepted MIDI1 and cannot export empty success @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=8');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.__PROCGEN_LANES__.pause();
+    studio.handlers.record(true); studio.ports.recordEvent({ type: 'cc', controller: 74, value: 10, beat: 0, timestamp: performance.now() }); studio.handlers.record(false);
+    await studio.handlers.exportMidi(); const previous = studio.getExportState().artifact.artifactId;
+    studio.handlers.clearMidiRecording(); studio.handlers.record(true);
+    const words = [0x41923c00, 0x12340000], outcomes = [];
+    for (let index = 0; index < 16; index++) { words[1] = (0x12340000 + index * 65536) >>> 0; outcomes.push(studio.ports.sendEvent({ umpWords: words, beat: 8 + index / 960, timestamp: performance.now(), intentId: 'original-' + index })); }
+    words[1] = 0; studio.handlers.record(false);
+    const rows = studio.ports.getRecording({ protocol: 'ump' }).filter(row => row.type === 'umpIntent'), state = studio.ports.getState();
+    if (rows.length !== 16 || rows.some((row, index) => row.umpWords[1] !== 0x12340000 + index * 65536 || row.publication !== 'authored-not-submitted') || outcomes.some(Boolean)) throw new Error('Original UMP capture differs from its refused lowering requests.');
+    await studio.handlers.exportMidi();
+    if (studio.getExportState().artifact.artifactId !== previous || studio.getExportState().preparation) throw new Error('An original-UMP-only recording published an empty compatibility file.');
+    return { original: state.originalUmp, recorded: rows.length, outcomes, previousRetained: true, first: rows[0], last: rows.at(-1),
+      physics: window.__PROCGEN_LANES__.world.tickIndex, scope: 'Native authored UMP ingress before unavailable route/lowering; no API submission, hardware receiver or product Clip-export claim.' };
+  });
+  expect(result.original.recorded).toBe(16); expect(result.original.complete).toBe(true); expect(result.previousRetained).toBe(true);
+  await testInfo.attach('original-ump-intent-capture', { body: JSON.stringify(result), contentType: 'application/json' });
+});
 test('native worker Clip encoding/import preserves 100000 UMP events and retires a canceled source @boundary', async ({ page }, testInfo) => {
   test.setTimeout(120000);
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=8');

@@ -15,7 +15,8 @@ export async function snapshotMidiRecording({ records, count, signal, isCurrent,
   let textUnits = 0, sliceStart = now(), firstTempoBeat = null;
   for (let index = 0; index < count; index++) {
     const event = records[index], t = index * 2, m = index * 5;
-    if (!event.cancelled && (event.type === 'tempo' || event.direction === 'output' && ['api-accepted', 'intent-render'].includes(event.evidence))) {
+    if (!event.cancelled && event.type === 'umpIntent') messages[m + 4] = 4;
+    if (!event.cancelled && event.type !== 'umpIntent' && (event.type === 'tempo' || event.direction === 'output' && ['api-accepted', 'intent-render'].includes(event.evidence))) {
       timing[t] = smfBeat(event.beat);
       if (event.type === 'tempo') { timing[t + 1] = event.bpm; messages[m + 4] = 3; if (firstTempoBeat == null || timing[t] < firstTempoBeat) firstTempoBeat = timing[t]; }
       else {

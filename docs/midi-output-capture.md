@@ -81,6 +81,38 @@ Physical source-score export uses the separate typed #986 contract.
 
 ## Original UMP Clip File codec
 
+The ports owner now captures original `sendEvent({umpWords, ...})` requests once,
+before any MIDI1 lowering or stateful relative-controller resolution. These are
+`umpIntent` rows with `publication: authored-not-submitted`. They retain exact
+owned words, original attribution, output/connection/route identities and explicit
+score beats. A rejected route or lowering policy does not turn authored UMP into
+an accepted output trace. Repeated equal words remain separate requests. MIDI1
+messages produced by lowering retain their separate adapter-accepted evidence.
+
+`ports.getRecording({protocol: 'ump'})` selects these original rows and transport
+boundaries; `protocol: 'midi1'` selects byte observations and boundaries. Default
+`all` retains both artifacts. `getState().originalUmp` reports captured-request
+coverage, drops, unmapped source times and the metadata reservation. That coverage
+does not establish a closed note lifecycle or receiver submission. Missing score
+beats remain null with `source-clock-unmapped`; current tempo is not substituted.
+Original IDs are preserved within explicit bounds or the capture refuses the row,
+rather than truncating an identity. Numeric safe-integer IDs remain numbers.
+
+Original capture shares the recording prefix/cap/clear lifecycle, with an extra
+32MiB metadata/word estimate bound, at most100000 requests and a separately
+charged growing reservation. Clear/disposal require acknowledged retirement;
+unknown retirement stays charged. It copies only the current packet and bounded
+attribution per request. Capture refusal does not change live lowering/delivery.
+The compatibility snapshot tags original UMP separately. A UMP-only source is
+refused as MIDI1 export; mixed byte exports count excluded original intents in
+their manifest. Neither direct nor worker compatibility writers silently treat
+original UMP as an empty successful file. Direct note balancing also respects
+known connection epochs and route revisions.
+
+The product still needs a selected original-UMP source projection, boundary/loss
+sidecar and Clip export/import controls. The following codec consumes explicit
+original-word snapshots; the capture API alone does not complete that product path.
+
 `MidiClipFile.js` encodes and decodes the published
 [MIDI Clip File v1.0](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-116-U_v1-0_MIDI_Clip_File_Specification.pdf)
 wire structure using the existing

@@ -13,7 +13,7 @@ export function selectBalancedProcgenRecording(events = []) {
     const isOn = family === 0x90 && data[2] > 0;
     const isOff = family === 0x80 || (family === 0x90 && data[2] === 0);
     if (!isOn && !isOff) { keep[index] = 1; continue; }
-    const key = `${event.outputId ?? ''}:${(data[0] || 0) & 15}:${data[1]}`;
+    const key = JSON.stringify([event.outputId ?? '', event.connectionEpoch ?? null, event.routeRevision ?? null, (data[0] || 0) & 15, data[1]]);
     if (isOn) {
       let queue = pending.get(key);
       if (!queue) { queue = { indexes: [], head: 0 }; pending.set(key, queue); }
@@ -57,6 +57,7 @@ function encodeMappedMidi(events, { bpm = 120, ppq = 480, beatsPerBar = 4, beatU
     timeline.push({ tick: 0, data: [0xff, 0x01, ...variable(payload.length), ...payload] });
   }
   for (const event of events) {
+    if (event?.type === 'umpIntent' || event?.umpWords && !event.data?.length) throw Object.assign(new Error('Original UMP intent requires an explicit MIDI1 lowering plan.'), { code: 'original-ump-needs-lowering' });
     const tick = smfBeatTick(event?.beat, ppq);
     if (event.type === 'tempo') { timeline.push({ tick, data: tempo(event.bpm) }); continue; }
     const messages = encodeProcgenMidi(event);
