@@ -45,11 +45,15 @@ export function createProcgenMidiPerformance({ transport, resourceBudget = null,
     ]);
     return retirement;
   }
-  const releaseIdle = () => {
-    if (disposed || stopOwner || hasOutputs() || clockArmed || clockPreparing || release || !token && !claim) return;
-    const receipt = stop('outputs-disabled');
+  const releaseStopped = receipt => {
+    if (release) return release;
     const work = source.release({ receipt }); release = work;
     work.then(complete => { if (complete) { token = null; for (const binding of bindings) binding.closed = true; bindings.clear(); retirement = null; stopOwner = null; } }, () => {}).finally(() => { if (release === work) release = null; onState(); });
+    return work;
+  };
+  const releaseIdle = () => {
+    if (disposed || stopOwner || hasOutputs() || clockArmed || clockPreparing || release || !token && !claim) return;
+    releaseStopped(stop('outputs-disabled'));
   };
   return Object.freeze({
     bind() {
@@ -86,7 +90,7 @@ export function createProcgenMidiPerformance({ transport, resourceBudget = null,
     },
     state: () => Object.freeze({ clockArmed, clockPreparing, performanceLease: coordinator.state(), retirement }),
     setDocumentIdentity: value => source.setDocumentIdentity(value),
-    stop,
+    stop(reason, stopInput = true) { const receipt = stop(reason, stopInput); void releaseStopped(receipt); return receipt; },
     dispose() {
       if (disposed) return disposal;
       disposed = true; const receipt = stop('disposed', true);

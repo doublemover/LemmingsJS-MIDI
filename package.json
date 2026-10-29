@@ -94,7 +94,8 @@
     "check:browser-categories": "node scripts/check-browser-categories.js",
     "qualify:workstation-gates": "node scripts/qualify-workstation-gates.js",
     "test-e2e:workstation:smoke": "node scripts/check-browser-categories.js && cross-env PLAYWRIGHT_JSON_OUTPUT_NAME=.tmp/workstation-results.json node scripts/run-browser-boundaries.js --project=workstation --grep @boundary --workers=1 --reporter=list,json && node scripts/check-browser-results.js --smoke",
-    "test-e2e:workstation": "node scripts/check-browser-categories.js && cross-env PLAYWRIGHT_JSON_OUTPUT_NAME=.tmp/workstation-results.json node scripts/run-browser-boundaries.js --project=workstation --workers=1 --reporter=list,json && node scripts/check-browser-results.js"
+    "test-e2e:workstation": "node scripts/check-browser-categories.js && cross-env PLAYWRIGHT_JSON_OUTPUT_NAME=.tmp/workstation-results.json node scripts/run-browser-boundaries.js --project=workstation --workers=1 --reporter=list,json && node scripts/check-browser-results.js",
+    "test-e2e:lifecycle": "cross-env PLAYWRIGHT_JSON_OUTPUT_NAME=.tmp/lifecycle-engine-results.json node scripts/run-browser-boundaries.js --config=playwright.lifecycle.config.js --workers=1 --reporter=list,json"
   },
   "c8": {
     "check-coverage": true,

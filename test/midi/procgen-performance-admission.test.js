@@ -28,6 +28,17 @@ const managed = async (extra = {}) => {
 };
 
 describe('performance ownership at actual MIDI submissions', () => {
+  it('releases a direct stop and builds a fresh cleanup frontier after reactivation under the same parent lease', async () => {
+    const f = await managed();
+    try {
+      f.ports.setNoteOutput(f.port); await turn(); expect(f.ports.sendEvent({ data: [0x90, 60, 100] })).to.equal(true);
+      const stopped = f.ports.stopPerformance('page-hidden'); await stopped.completion; await turn();
+      expect(stopped.outcome).to.equal('complete'); expect(f.parent.isCurrent(f.token)).to.equal(true);
+      f.ports.setNoteOutput(f.port, { rearm: true }); await turn(); expect(f.ports.sendEvent({ data: [0x90, 61, 100] })).to.equal(true);
+      expect(await f.peer.lease.takeOver()).to.equal(true);
+      expect(f.packets.filter(packet => (packet.data[0] & 0xf0) === 0x80).map(packet => packet.data[1])).to.deep.equal([60, 61]);
+    } finally { await f.close(); }
+  });
   it('does not halt transport or cancel preparation when an unused managed note catalog is synchronized', async () => {
     const f = await managed();
     try {

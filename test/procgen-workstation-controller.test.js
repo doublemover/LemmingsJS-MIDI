@@ -21,13 +21,13 @@ function target() {
     removeEventListener(type, fn) { events.get(type)?.delete(fn); }, emit(type, event = {}) { for (const fn of events.get(type) || []) fn(event); } };
 }
 function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth', outputId = null, search = '', persisted = null, startupSettings = {}, storageOverride = null,
-  laneCount = 1, windowTimers = {}, backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe, resourceBudget = null } = {}) {
+  laneCount = 1, windowTimers = {}, navigationType = 'navigate', backgroundJobs, worldFactory = null, physicalOnly = false, audio, getInstrumentCatalog, outputSubscribe, resourceBudget = null } = {}) {
   let time = 0, paused = false, enabled = false;
   const elements = new Map(['procgenPause', 'procgenPanic', 'procgenSpeed', 'procgenSpeedUp', 'procgenSpeedDown', 'procgenSpeedReadout'].map(id => [id, target()]));
   const document = { ...target(), getElementById: id => elements.get(id) || null };
   const values = new Map(), stored = new Map(), calls = [], positions = [], statuses = [], storageReceipts = [], exportStates = [], restarts = [], captures = [];
   if (persisted) values.set('lemmings.procgen.workstation.v1', JSON.stringify(persisted));
-  const window = { ...target(), ...windowTimers, WebMidi: webMidi, location: { search }, performance: { now: () => time }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
+  const window = { ...target(), ...windowTimers, WebMidi: webMidi, location: { search }, performance: { now: () => time, getEntriesByType: () => [{ type: navigationType }] }, localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     crypto: { getRandomValues(value) { value[0] = 91; } }, prompt: () => 'Test song' };
   const scheduler = { tickMs: 60, sendNote(spec, meta) { calls.push({ spec, meta }); return true; }, allNotesOff() {}, output: { channels: { 1: { sendControlChange() {} } } } };
   let throwCamera = false;
@@ -66,6 +66,33 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('reconstructs a cold history entry paused and still permits explicit Play and subsequent world rebuilds', async () => {
+    const f = setup({ navigationType: 'back_forward', search: '?recipe=1&seed=42&lanes=8', laneCount: 8 });
+    try {
+      f.studio.bindRuntime(); expect(f.studio.transport.getState().playing).to.equal(false); expect(f.legacy.isPaused()).to.equal(true);
+      expect(f.statuses).to.include('Page restored paused. Press Play to resume.');
+      f.studio.play(); expect(f.studio.transport.getState().playing).to.equal(true);
+      expect(await f.studio.handlers.replay()).to.equal(true); expect(f.studio.transport.getState().playing).to.equal(true);
+    } finally { await f.studio.dispose().completion; }
+  });
+  it('revokes output, recording and MIDI thru on visibility suspension without rearming them on return', async () => {
+    const sent = [], input = { id: 'hidden-keys', addListener() {}, removeListener() {} }, port = { id: 'hidden-output', send(data) { sent.push([...data]); } };
+    const webMidi = { enabled: true, inputs: [input], outputs: [port], addListener() {}, removeListener() {} };
+    const f = setup({ webMidi, backend: 'midi', outputId: port.id }); let stops = 0;
+    const getState = f.legacy.local.getState;
+    f.legacy.local.stop = () => { stops++; f.legacy.local.getState = () => ({ ...getState(), enabled: false }); };
+    try {
+      f.enable(); f.studio.bindRuntime(); f.studio.handlers.input(input.id); f.studio.handlers.thru(true); f.studio.handlers.record(true);
+      f.studio.ports.receiveMidi([0x90, 60, 100], 0); expect(sent.some(data => data[0] === 0x90 && data[1] === 60)).to.equal(true);
+      f.document.hidden = true; f.document.emit('visibilitychange');
+      expect(stops).to.equal(1); expect(f.studio.state).to.include({ recording: false, thru: false });
+      expect(f.studio.ports.getState()).to.include({ recording: false, thru: false }); expect(f.studio.transport.getState().playing).to.equal(false);
+      const recorded = f.studio.ports.getRecording().length; f.studio.ports.receiveMidi([0x90, 61, 100], 1);
+      f.document.hidden = false; f.document.emit('visibilitychange'); f.studio.ports.receiveMidi([0x90, 62, 100], 2);
+      expect(sent.some(data => data[0] === 0x90 && data[1] !== 60)).to.equal(false); expect(f.studio.ports.getRecording()).to.have.length(recorded);
+      expect(f.legacy.local.getState().enabled).to.equal(false); expect(f.studio.transport.getState().playing).to.equal(false);
+    } finally { await f.studio.dispose().completion; }
+  });
   it('does not enable a late MIDI library after Panic cancels Connect', async () => {
     const f = setup(); let script, requests = 0;
     f.document.createElement = () => ({ remove() {} }); f.document.head = { append(value) { script = value; } };

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Restore reconstructed browser history entries paused, disarm MIDI thru and recording on page suspension, and release stopped performance registrations before reactivation.
+
 - Reject raw MIDI note and controller plans when reservation callbacks replace their captured output route.
 
 - Coordinate reviewed MIDI, raw/thru messages and standalone clock output with browser performance ownership, explicit takeover and acknowledged cleanup.

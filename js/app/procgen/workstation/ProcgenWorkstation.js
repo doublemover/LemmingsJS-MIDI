@@ -109,6 +109,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   resourceBudget = null, startupIntent, startupSource = null, savedPreferences, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, prepareSceneWorld = null, getInstrumentCatalog }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
+  const coldHistoryReturn = window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward';
   let saved = savedPreferences;
   if (saved === undefined) try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { saved = null; }
   const savedDock = saved?.version === 1 ? saved.ui : null;
@@ -1082,7 +1083,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
       onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
-    if (!session && !pendingResume && !project.procgen.sceneOrigin) play();
+    if (!session && !pendingResume && !project.procgen.sceneOrigin && (startupCommitted || !coldHistoryReturn)) play();
+    if (!startupCommitted && coldHistoryReturn) status('Page restored paused. Press Play to resume.');
     if (!startupCommitted && startupPlan.mode === 'document') {
       documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
       savedRevision = editRevision; lastSavedAt = session?.savedAt || null;
@@ -2181,12 +2183,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalWorkbenchSourceSerial++;
     const workbench = causalWorkbench;
     if (workbench) void workbench.dispose().then(() => { if (causalWorkbench === workbench) causalWorkbench = null; }, error => status('Branch recovery: ' + error.message));
-    beforeRestart(); persist({ immediate: true }); recover();
+    state.thru = false; ports.configure({ recording: false, thru: false });
+    beforeRestart(); ports.stopPerformance?.(reason); legacy.local.stop?.();
+    persist({ immediate: true }); recover();
     if (causalTake || causalTakeStart) void stopCausalTake({ reason }).catch(error => status('Causal take finalization: ' + error.message));
     status('Page suspended. Press Play after returning to resume.');
   }, restore: ({ paused }) => {
     if (!paused) return;
     transport.pause(); ports.flush(); view?.transport(transport.getState());
+    if (state.tab === 'MIDI') view?.renderInspector?.();
     status('Page restored paused. Press Play to resume.');
   } });
   listeners.push(() => pageLifecycle.dispose());

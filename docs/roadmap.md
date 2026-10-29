@@ -8932,3 +8932,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   #1009 remains open for the wider-engine/background lifecycle matrix. Matching
   Firefox/WebKit runtimes are installed for the next separate qualification.
   Continue solo with implementation frontloaded; no repeated full local suite.
+
+### Continuation 346 - cold history and complete performance suspension
+
+- Fix cold history reconstruction restarting musical transport; only the initial
+  reconstructed entry is held paused. Explicit Play and later requested rebuilds
+  remain available. Page suspension now disarms recording/thru and stops browser
+  and MIDI performance output; direct MIDI Stop retires its registration before
+  reactivation, so a subsequent takeover releases the new generation's notes.
+- Grouped qualification:270 Node passes and12 actual Chromium lifecycle passes.
+  Eight distinct Firefox155/WebKit26.6 desktop cases qualify cold history,
+  saved preferences, exact named revision2 reload/load and unavailable recovery.
+  The final eight-case run passed seven; one Firefox process crashed before its
+  assertions, then the isolated unchanged case passed. Retain the initial failures.
+- Firefox qualifies real native audio reactivation. Windows WebKit has no native
+  AudioContext and qualifies honest unavailable output only. Playwright disables
+  those engines' BFCache; do not count cold reconstruction as retained-world
+  qualification. An unavailable store cannot preserve unsaved source after realm
+  destruction. Actual desktop background/foreground remains unqualified: native
+  window minimization and tab switching did not emit document.hidden here.
+- Add separate Firefox/WebKit CI coverage without inherited Chromium flags or
+  MIDI grants. Full345 CI is independently green:7,002 Node passes,10 pre-existing
+  pending,180 browser passes, all14 capabilities and static/provenance/policy/
+  dependency/MCP/benchmark gates. Its capture is explicitly Partial:50,048 finite
+  frames after a128-frame render-clock discontinuity. Preserve prior Ready evidence
+  separately. #1009 and #1086 remain open for their remaining platform matrix.
