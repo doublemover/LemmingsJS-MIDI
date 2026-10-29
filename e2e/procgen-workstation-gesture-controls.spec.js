@@ -6,7 +6,7 @@ const setup = async (page, kind) => {
     await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
     await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
   } else {
-    await page.goto('/README.md');
+    await page.goto('/test/support/desktop-controls.html');
     await page.setContent('<style>body{margin:40px}svg{display:block;width:600px;height:270px}circle{fill:orange}.fixture-shell{height:800px}#fixture-resize{display:block;width:600px;height:30px;background:#aaa}</style>');
   }
   await page.evaluate(async kind => {
@@ -51,15 +51,17 @@ const setup = async (page, kind) => {
 
 const start = async (page, kind, { captureFailure = false, pending = false } = {}) => {
   const point = kind === 'curve' ? page.locator('.studio-curve-editor circle[data-point="1"]') : kind === 'dock' ? page.locator('#fixture-resize') : page.getByRole('dialog', { name: 'Physical terrain and fragment authoring' }).locator('canvas');
-  await point.scrollIntoViewIfNeeded();
+  await page.bringToFront(); await point.hover();
   const box = await point.boundingBox(), x = box.x + box.width / 2, y = box.y + box.height / 2;
   if (captureFailure) await page.evaluate(() => { window.controlsFixture.target.setPointerCapture = () => { throw new window.DOMException('Controlled capture rejection', 'NotFoundError'); }; });
-  await page.mouse.move(x, y); await page.mouse.down(); if (!pending) await page.mouse.move(x + 12, y - 35, { steps: 3 });
+  await page.mouse.move(x, y); await page.mouse.down();
+  if (!pending && !captureFailure) await page.mouse.move(x + 1, y, { steps: 2 });
   if (!captureFailure && !pending) {
     await expect.poll(() => page.evaluate(() => window.controlsFixture.events.some(event => event.type === 'gotpointercapture' && event.trusted))).toBe(true);
     expect(await page.evaluate(() => window.controlsFixture.arbiter.inspect())).not.toBe(null);
-    if (kind !== 'terrain') expect(await page.evaluate(() => window.controlsFixture.value())).not.toEqual(await page.evaluate(() => window.controlsFixture.before));
   }
+  if (!pending) await page.mouse.move(x + 12, y - 35, { steps: 3 });
+  if (!captureFailure && !pending && kind !== 'terrain') expect(await page.evaluate(() => window.controlsFixture.value())).not.toEqual(await page.evaluate(() => window.controlsFixture.before));
   return { x: x + 12, y: y - 35 };
 };
 

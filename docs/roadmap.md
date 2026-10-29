@@ -9206,3 +9206,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   Linux's geometric target center was at a clipped row edge; the fixture now
   chooses the actual visible hover point and waits for trusted capture. New Linux
   CI remains independent.350 is still the last verified full green checkpoint.
+
+### Continuation 355 - combined native output acceptance
+
+- Finish #1059 software acceptance with one replacement physical owner sending the
+  same actual completed builder boundary to native browser audio and the
+  production MIDI scheduler. The old owner retires completely first.
+- Four native browser journeys pass: both sinks succeed, MIDI independently
+  refuses, actual AudioContext suspension preserves MIDI, and pre-submission
+  cancellation produces zero PCM peak and zero MIDI notes. Successful native PCM
+  windows are finite; actual retirement completes with zero remaining voice
+  owners and sessions. The MIDI adapter is virtual and explicitly authorized by
+  the trusted enable action; receiver/acoustic qualification remains separate.
+- All37 affected desktop control journeys also pass with real HTML document
+  fixtures, foreground pages and capture acquired inside the native target.
+  Keep native capture assertions. The combined grouped result is41 passes; no
+  Node/full local suite is repeated for these browser-only fixtures.
+- 353 Linux main failed19 capture preconditions (174 workstation passes); engine
+  and both native codec jobs passed.354 main failed one existing desktop startup
+  wait (25 desktop passes) before workstation execution; its other three jobs
+  passed. Current fixture fixes still need independent Linux CI.350 remains the
+  last verified full green checkpoint; address the desktop startup wait next.

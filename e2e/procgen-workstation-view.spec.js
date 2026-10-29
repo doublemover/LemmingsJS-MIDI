@@ -2,7 +2,7 @@ import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 
 const ready = async (page, count = 8, steps = 16) => {
-  await page.goto('/README.md');
+  await page.goto('/test/support/desktop-controls.html');
   await page.setContent('<style>.studio-stage{position:relative;width:800px;height:608px}.studio-cell{min-width:24px}.studio-sequences{position:absolute;inset:0}.studio-sequence{position:absolute;display:grid;width:100%}</style><header id="procgenTopbar"></header><canvas id="gameCanvas"></canvas>');
   await page.evaluate(async ({ count, steps }) => {
     const { createProcgenWorkstationView } = await import('/js/app/procgen/workstation/ProcgenWorkstationView.js');
@@ -22,6 +22,7 @@ const ready = async (page, count = 8, steps = 16) => {
     view.render();
     window.workstationViewTest = { view, state, calls, actions, runtime, dispatch, handlers, getProject: () => project, replaceProject: next => { project = next; view.render(); } };
   }, { count, steps });
+  await page.bringToFront();
 };
 
 test('MIDI route diagnostics update inline without losing selector focus or silently choosing fallback @boundary', async ({ page }) => {
