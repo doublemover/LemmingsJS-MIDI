@@ -15,6 +15,9 @@ const assertRecovery = result => {
 };
 describe('real dense physical batch overflow recovery', function() {
   this.timeout(20000); const results = new Map();
+  it('imports its execution-worker entry safely during recursive main-thread discovery', async () => {
+    await import('./helpers/physicalBatchOverflowWorker.js');
+  });
   for (const actorCount of [1024, 1025]) it('ends held output and requires explicit recovery after ' + actorCount + ' actual actors overflow', () => {
     const result = physicalBatchOverflow({ actorCount }); assertRecovery(result); results.set(actorCount, result);
   });

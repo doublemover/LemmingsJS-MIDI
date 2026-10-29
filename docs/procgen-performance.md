@@ -71,9 +71,30 @@ reported as dropped publications, never as a partially updated frame.
 
 `scripts/bench-actor-projections.js` contains deterministic 8/128/1024-lane
 reference/indexed comparisons and a dirty-row candidate measurement. It reports
-p50/p95/p99 and owner counters; it does not select a production algorithm or
-qualify browser pixels, physical-event equivalence or acoustic behavior. The
-harness and new lease regressions have been written but not executed.
+p50/p95/p99 and owner counters. Draw rows and the bounded wide-sprite list are
+constructed in the same actor publication pass. Camera-only queries use those
+immutable rows; diagnostic retained counts do not traverse all lanes. Rejected
+publication after an appearance, geometry or world change cannot expose the old
+frame as current. Existing leases retain their original immutable facts.
+
+The 1,000-iteration run after 100 warmup publications visits 32 draw candidates
+(33 at p99 in one sparse-dirty case) for eight visible rows at every lane count.
+Draw-query p50/p95/p99 in milliseconds for the fully dirty cases is
+8 lanes: 0.0026/0.0064/0.0141, 128: 0.0036/0.0058/0.0088, and
+1,024: 0.0053/0.0072/0.0100. Those timings include counter reads. Draw queries
+publish zero additional projection versions. Estimated retained bytes are
+55,488/872,448/6,972,416, with twice those amounts during publication replacement.
+These are conservative admission estimates and publication counts, not sampled
+V8 allocation counts or browser frame-rate guarantees. The dirty-row candidate
+remains experimental.
+
+The grouped 61-case Node cohort passes geometry, reference leaders/actions,
+lease pressure, restore, camera/CCTV and real batch/intent/checkpoint equivalence.
+Six native desktop cases pass unchanged recovery/effect pixel behavior and a
+live actor iterator trap during rendering and CCTV queries. Native dimensions
+are at least 1920x1080. The source-bound continuation329 receipt records commands,
+results and limits; acoustic behavior and terrain-residency-only contact reads
+remain separate qualification.
 
 ### Authored edit propagation
 

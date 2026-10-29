@@ -12,15 +12,15 @@ export class ProcgenActorProjection {
   }
   publish(world) {
     if (this.disposed) return null;
-    const bytes = 1024 + world.actors.length * 1536 + world.laneCount * (256 + PROCGEN_ACTION_LABELS.length * 8), token = {};
+    const bytes = 1024 + world.actors.length * (1536 + 8 * 8) + world.laneCount * (320 + PROCGEN_ACTION_LABELS.length * 8), token = {};
     if (this.versions.size >= this.maxVersions || this.bytes + bytes > this.maxBytes) { this.dropped++; return null; }
     try { this.budget?.reserve({ token, owner: 'actor-projection', generation: world.generation, category: 'live', bytes, pinned: true, reloadable: false }); }
     catch { this.dropped++; return null; }
     try {
-      const count = world.laneCount, physicalRows = Array.from({ length: count }, () => []), semanticLanes = Array.from({ length: count }, () => []);
+      const count = world.laneCount, physicalRows = Array.from({ length: count }, () => []), semanticLanes = Array.from({ length: count }, () => []), drawRows = Array.from({ length: count }, () => []), wideDrawActors = [];
       const physicalLeaders = new Array(count).fill(null), semanticLeaders = new Array(count).fill(null), observationLeaders = new Array(count).fill(null);
       const actionMasks = new Array(count).fill(0), actionOrders = new Array(count).fill(0), actionCounts = new Array(count * PROCGEN_ACTION_LABELS.length).fill(0);
-      const actors = [], liveActors = new Map(), codes = createProcgenActionCodes(world.actions), height = world.laneHeight || 96;
+      const actors = [], liveActors = new Map(), codes = createProcgenActionCodes(world.actions), height = world.laneHeight || 96; let semanticActorCount = 0;
       for (const source of world.actors) {
         if (source.failureReason || source.removed) continue;
         liveActors.set(source.id, source);
@@ -33,11 +33,16 @@ export class ProcgenActorProjection {
           lookRight: source.lookRight !== false, frameIndex: source.frameIndex ?? 0, actionCode: code ?? -1,
           actionName: String(PROCGEN_ACTION_LABELS[code] || source.action?.actionName || '').slice(0, 64), hasAction: !!source.action, drawBounds: bounds });
         actors.push(actor);
+        let top = actor.y - 32, bottom = actor.y + 32;
+        if (bounds) { top = Math.min(top, bounds.y); bottom = Math.max(bottom, bounds.y + bounds.height); }
+        const first = Math.max(0, Math.floor(top / height)), last = Math.min(count - 1, Math.floor(bottom / height));
+        if (last - first >= 8) wideDrawActors.push(actor);
+        else for (let row = first; row <= last; row++) drawRows[row].push(actor);
         if (!Number.isFinite(actor.x) || !Number.isFinite(actor.y)) continue;
         const physical = Math.floor(actor.y / height), lane = actor.laneIndex;
         if (physical >= 0 && physical < count) { physicalRows[physical].push(actor); if (leading(physicalLeaders[physical], actor)) physicalLeaders[physical] = actor; }
         if (!Number.isInteger(lane) || lane < 0 || lane >= count) continue;
-        semanticLanes[lane].push(actor); if (leading(semanticLeaders[lane], actor)) semanticLeaders[lane] = actor;
+        semanticLanes[lane].push(actor); semanticActorCount++; if (leading(semanticLeaders[lane], actor)) semanticLeaders[lane] = actor;
         if (actor.hasAction && leading(observationLeaders[lane], actor)) observationLeaders[lane] = actor;
         if (code != null) {
           const bit = 1 << code;
@@ -49,7 +54,7 @@ export class ProcgenActorProjection {
         revision: `${world.generation}:${world.tickIndex}:${++this.serial}`, batchId: world.soundEvents?.pendingBatchIdentity?.() ?? world._completedPhysicalBatchId ?? null,
         physicalSnapshotRevision: world._completedPhysicalSnapshot?.revision ?? null,
         drawBoundsRevision: world.sprites?.activePreference || world.sprites?.getPreference?.() || 'default',
-        actors: Object.freeze(actors), physicalRows: freezeRows(physicalRows), semanticLanes: freezeRows(semanticLanes),
+        actors: Object.freeze(actors), physicalRows: freezeRows(physicalRows), semanticLanes: freezeRows(semanticLanes), drawRows: freezeRows(drawRows), wideDrawActors: Object.freeze(wideDrawActors), semanticActorCount,
         physicalLeaders: Object.freeze(physicalLeaders), semanticLeaders: Object.freeze(semanticLeaders), observationLeaders: Object.freeze(observationLeaders),
         actionMasks: Object.freeze(actionMasks), actionOrders: Object.freeze(actionOrders), actionCounts: Object.freeze(actionCounts) });
       const previous = this.current, entry = { frame, liveActors, token, bytes, readers: 0 };

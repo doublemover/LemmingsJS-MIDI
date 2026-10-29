@@ -8616,3 +8616,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   gates; coverage90.72% lines/statements,83.73% branches,88.43% functions. Its
   capture is Ready at55552 finite frames without a gap. All current production
   changes are included;327/328 add acceptance fixtures to that source.
+
+### Continuation 329 — shared completed draw rows and discovery repair
+
+- Build bounded draw rows and wide-sprite membership in the completed actor pass,
+  removing the second live scan from rendering. Cache retained counts directly;
+  keep geometry/appearance/generation ownership current under lease pressure.
+  Existing immutable leases retain exact prior facts and event-batch identity.
+- All61 grouped Node cases and six native desktop cases pass. Real worlds with
+  and without indexed consumers produce identical batches, intents and physical
+  checkpoint hashes. Native camera/CCTV/render queries pass with live iteration
+  trapped; unchanged pixels, effects and recovery remain qualified at1920x1080+.
+- The1000-sample8/128/1024-lane benchmark visits32 candidates (33 at p99 in one
+  sparse case), with zero extra projection publications per draw query. Retained
+  admission estimates are55488/872448/6972416bytes; these are not V8 heap samples.
+  #1053 retains non-materializing contact sampling and broader allocation evidence.
+- Full327 and328 passed browser/static/MCP/benchmark gates, then failed recursive
+  Node discovery because the worker fixture executed on the main thread. Guard
+  that entry and explicitly import it in the regression cohort. Preserve both
+  failed checkpoints; full326 remains the latest verified green production run.

@@ -88,9 +88,10 @@ row sampled 5,760,000 clip pixels and allocated 4,800 image arrays. Both modes
 retained an estimated 6,410,880 bytes after the scenario. This demonstrates work
 removal in this fixture; the distributions are one short local run on a shared development host with concurrent agent work; they are not release gates.
 
-The animated scenario still exposes the existing full actor draw-bounds refresh:
+The earlier animated scenario exposed a separate full actor draw-bounds refresh:
 200 frames scanned 1,600, 25,600 and 204,800 actors at 8, 128 and 1024 total lanes.
-Cached clipping does not resolve that separate projection optimization.
+Continuation329 moves draw-row construction into the completed actor publication.
+Cached clipping and completed actor projection address separate work.
 
 `e2e/procgen-render-recovery.spec.js` passed three production-layout checks on the
 installed Edge browser: an injected terrain upload exception restored identical
@@ -103,9 +104,11 @@ other browsers. The bundled Playwright Chromium executable was unavailable.
 
 ## Completed lane action facts
 
-The existing completed actor publication now includes pooled per-lane action
-masks, counts and numeric first-seen label order. Eleven action labels use 54
-bytes per lane for these typed arrays, with no new arrays per completed tick.
+The completed actor publication includes immutable per-lane action masks, counts
+and numeric first-seen label order. Eleven labels have a logical packed size of
+54 bytes per lane; the structured-cloneable frozen JavaScript arrays are included
+in the conservative projection admission estimate. Each publication owns its
+arrays until every lease releases.
 Musical observations reuse the semantic leader and action facts, keeping contact
 sampling lazy and reusing observation slots. Terrain-only edits do not rebuild
 the fallback actor index. Label order matches the previous actor traversal order.
@@ -116,8 +119,10 @@ unchanged while that tick runs. Tests compare indexed leaders/order/counts with
 reference traversal over deterministic transfers, removals and equal-X ties at
 8/128/1024 lanes, and cover same-tick generation/action-owner replacement.
 
-This does not yet provide leased immutable render buffers for workers, nor
-remove the full draw-bounds pass recorded above. Contact queries still use the
+Draw rows and wide-sprite membership now share the completed immutable frame;
+there is no second live-actor scan when drawing. Native pixel/effect/recovery
+fixtures and real physical-batch/music/checkpoint parity pass. This does not
+provide pooled transferable raster buffers for workers. Contact queries still use the
 world's authoritative terrain reads, which can recompose an evicted collision
 cache entry; an explicit read-only residency/unknown API is a separate remaining
 part of the shared projection work.

@@ -12,15 +12,17 @@ for (const lanes of [8, 128, 1024]) for (const dirtyFraction of [1, .1]) {
   const actors = Array.from({ length: lanes * 4 }, (_, id) => ({ id, x: id % 17, y: Math.floor(id / 4) * 96 + 60, laneIndex: Math.floor(id / 4), action: {} }));
   const world = { actors, actions: {}, laneCount: lanes, laneHeight: 96, generation: 1, tickIndex: 0 }, index = new ProcgenActorVisibility(world);
   const dirtyBuckets = Array.from({ length: lanes }, () => new Map()), oldRows = new Map();
-  const timings = { publication: [], indexedQuery: [], referenceQuery: [], dirtyCandidate: [] };
+  const timings = { publication: [], indexedQuery: [], drawQuery: [], referenceQuery: [], dirtyCandidate: [] };
+  const drawVisits = [], queryAllocations = [];
   for (const actor of actors) { dirtyBuckets[Math.floor(actor.y / 96)].set(actor.id, { ...actor }); oldRows.set(actor.id, Math.floor(actor.y / 96)); }
   for (let tick = 0; tick < iterations + 100; tick++) {
     world.tickIndex++; const dirty = [];
-    for (let id = tick % 10; id < actors.length; id += dirtyFraction === 1 ? 1 : 10) {
+    for (let id = dirtyFraction === 1 ? 0 : tick % 10; id < actors.length; id += dirtyFraction === 1 ? 1 : 10) {
       const actor = actors[id]; actor.x = (actor.x + 13) % 997; actor.y = ((Math.floor(id / 4) + tick % 3) % lanes) * 96 + 60; dirty.push(actor);
     }
     const begin = performance.now(); index.publish(); const published = performance.now();
     const actual = index.physicalLeader(0, 8); const queried = performance.now();
+    const beforeDraw = index.getStats(), visible = index.query(0, 8 * 96 - 1), afterDraw = index.getStats(), drawn = performance.now();
     let expected = null;
     for (const actor of actors) if (Math.floor(actor.y / 96) < 8 && better(expected, actor)) expected = actor;
     const referenced = performance.now();
@@ -33,13 +35,18 @@ for (const lanes of [8, 128, 1024]) for (const dirtyFraction of [1, .1]) {
     const frozenRows = new Map([...changedRows].map(row => [row, Object.freeze([...dirtyBuckets[row].values()])]));
     const dirtyDone = performance.now();
     assert.equal(actual?.id, expected?.id); assert.ok(frozenRows.size <= lanes);
+    assert.equal(visible.length, actors.filter(actor => Math.floor(actor.y / 96) < 8).length);
+    assert.equal(afterDraw.drawScans, 0); assert.equal(afterDraw.actorScans, beforeDraw.actorScans);
     if (tick >= 100) {
       timings.publication.push(published - begin); timings.indexedQuery.push(queried - published);
-      timings.referenceQuery.push(referenced - queried); timings.dirtyCandidate.push(dirtyDone - referenced);
+      timings.drawQuery.push(drawn - queried); timings.referenceQuery.push(referenced - drawn); timings.dirtyCandidate.push(dirtyDone - referenced);
+      drawVisits.push(afterDraw.queryVisits - beforeDraw.queryVisits); queryAllocations.push(afterDraw.projection.allocations - beforeDraw.projection.allocations);
     }
   }
-  results.push({ lanes, actors: actors.length, visibleRows: 8, dirtyFraction, timingsMs: Object.fromEntries(Object.entries(timings).map(([key, values]) => [key, summary(values)])), counters: index.getStats() });
+  results.push({ lanes, actors: actors.length, visibleRows: 8, dirtyFraction, timingsMs: Object.fromEntries(Object.entries(timings).map(([key, values]) => [key, summary(values)])),
+    drawCandidateVisits: summary(drawVisits), drawProjectionAllocations: summary(queryAllocations), counters: index.getStats() });
   index.dispose();
 }
-process.stdout.write(JSON.stringify({ schema: 'actor-projection-benchmark/v1', iterations, runtime: process.version,
+process.stdout.write(JSON.stringify({ schema: 'actor-projection-benchmark/v2', iterations, warmup: 100, runtime: process.version,
+  allocationScope: 'Projection version publications are counted; retained/peak bytes are conservative admission estimates, not sampled V8 heap or counts of every JavaScript allocation.',
   qualification: 'mechanical-projection-only; no browser, pixels, physical-event equivalence, or production dirty-index selection', results }, null, 2) + '\n');

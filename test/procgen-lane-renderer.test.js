@@ -101,7 +101,7 @@ describe('bounded shared-lane renderer', () => {
     const renderer = new ProcgenLaneRenderer({ canvas, world, assets: { groundPieces: [] }, windowRef: { devicePixelRatio: 1, performance } }); renderer.follow = false;
     const actor = world.actors[63]; actor.x = 10000; let draws = 0;
     actor.action = { spriteProvider: { getActorDrawBounds: () => ({ x: 10, y: 10, width: 16, height: 22 }) } }; actor.render = () => draws++;
-    renderer.render(); expect(draws).to.equal(1); expect(renderer.actorVisibility.wide).to.include(actor);
+    renderer.render(); expect(draws).to.equal(1); expect(renderer.actorVisibility.wide.map(value => value.id)).to.include(actor.id);
     renderer.actorVisibility.query(0, world.height); expect(renderer.actorVisibility.candidates.filter(value => value === actor)).to.have.length(1);
     actor.removed = true; world.tickIndex++; renderer.render(false); expect(draws).to.equal(1); expect(renderer.actorVisibility.bounds.has(actor)).to.equal(false); renderer.dispose(); world.dispose();
   });

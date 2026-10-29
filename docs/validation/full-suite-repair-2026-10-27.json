@@ -27692,5 +27692,572 @@
         "scope": "Release policy/source command and actual desktop performance surface, with explicit finite capacity semantics and render-cadence-independent births/intents."
       }
     }
+  },
+  "continuation329": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "ef9c320e82fb0669e692553c2c5a797f0f209ccd",
+    "scope": "One completed actor pass owns physical, semantic and bounded draw buckets; stale publication refusal, constant-time retained diagnostics and import-safe execution fixture.",
+    "validation": {
+      "node": {
+        "passed": 61,
+        "failed": 0,
+        "command": "npx c8 --check-coverage=false --reporter=json-summary --reports-dir=%TEMP%/lemmings-rook-329-coverage mocha test/procgen-actor-projection.test.js test/procgen-actor-action-index.test.js test/procgen-lane-observation.test.js test/procgen-lane-renderer.test.js test/procgen-camera-timing.test.js test/procgen-cctv.test.js test/procgen-cctv-director.test.js test/procgen-physical-batch-overflow.test.js test/mocha-fixture-discovery.test.js",
+        "scope": "Leased immutable geometry/pressure/restore; actual128-tick physical batch/intent/checkpoint parity; camera/CCTV/action reference comparisons; real execution transfer and fixture discovery.",
+        "coverage": {
+          "ProcgenActorProjection": {
+            "lines": 95.23,
+            "branches": 91.66,
+            "functions": 100
+          },
+          "ProcgenActorVisibility": {
+            "lines": 100,
+            "branches": 91.86,
+            "functions": 100
+          }
+        },
+        "coverageFollowup": "Budget refusal and retirement-adapter faults account for remaining projection lines; add scoped resource fault injection before claiming complete owner coverage."
+      },
+      "browser": {
+        "passed": 6,
+        "failed": 0,
+        "durationMs": 16857.388,
+        "scope": "Native minimum-desktop production pixels, DPR1/2 effects, paint/context/disposal recovery and real render/camera/CCTV with trapped live actor iteration."
+      },
+      "benchmark": {
+        "schema": "actor-projection-benchmark/v2",
+        "iterations": 1000,
+        "warmup": 100,
+        "runtime": "v26.12.1",
+        "allocationScope": "Projection version publications are counted; retained/peak bytes are conservative admission estimates, not sampled V8 heap or counts of every JavaScript allocation.",
+        "qualification": "mechanical-projection-only; no browser, pixels, physical-event equivalence, or production dirty-index selection",
+        "results": [
+          {
+            "lanes": 8,
+            "actors": 32,
+            "visibleRows": 8,
+            "dirtyFraction": 1,
+            "timingsMs": {
+              "publication": {
+                "p50": 0.013500000000000512,
+                "p95": 0.030400000000000205,
+                "p99": 0.08769999999999811
+              },
+              "indexedQuery": {
+                "p50": 0.0013999999999967372,
+                "p95": 0.004699999999999704,
+                "p99": 0.007600000000003604
+              },
+              "drawQuery": {
+                "p50": 0.002600000000001046,
+                "p95": 0.006399999999999295,
+                "p99": 0.014100000000006219
+              },
+              "referenceQuery": {
+                "p50": 0.00030000000000285354,
+                "p95": 0.0016000000000033765,
+                "p99": 0.002400000000001512
+              },
+              "dirtyCandidate": {
+                "p50": 0.0049999999999954525,
+                "p95": 0.010899999999999466,
+                "p99": 0.022500000000000853
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 32,
+              "p99": 32
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 35200,
+              "drawScans": 0,
+              "queryVisits": 44000,
+              "deferredPublications": 0,
+              "actionIndexBytes": 432,
+              "projection": {
+                "estimatedBytes": 55488,
+                "peakBytes": 110976,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 32
+            }
+          },
+          {
+            "lanes": 8,
+            "actors": 32,
+            "visibleRows": 8,
+            "dirtyFraction": 0.1,
+            "timingsMs": {
+              "publication": {
+                "p50": 0.013900000000006685,
+                "p95": 0.021100000000004115,
+                "p99": 0.037599999999997635
+              },
+              "indexedQuery": {
+                "p50": 0.001300000000000523,
+                "p95": 0.0020999999999986585,
+                "p99": 0.004300000000000637
+              },
+              "drawQuery": {
+                "p50": 0.0027000000000043656,
+                "p95": 0.0040000000000048885,
+                "p99": 0.007099999999994111
+              },
+              "referenceQuery": {
+                "p50": 0.00039999999999906777,
+                "p95": 0.0018000000000029104,
+                "p99": 0.0027000000000043656
+              },
+              "dirtyCandidate": {
+                "p50": 0.0016999999999995907,
+                "p95": 0.0027000000000043656,
+                "p99": 0.004800000000003024
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 32,
+              "p99": 32
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 35200,
+              "drawScans": 0,
+              "queryVisits": 44000,
+              "deferredPublications": 0,
+              "actionIndexBytes": 432,
+              "projection": {
+                "estimatedBytes": 55488,
+                "peakBytes": 110976,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 32
+            }
+          },
+          {
+            "lanes": 128,
+            "actors": 512,
+            "visibleRows": 8,
+            "dirtyFraction": 1,
+            "timingsMs": {
+              "publication": {
+                "p50": 0.16399999999998727,
+                "p95": 0.2541999999999973,
+                "p99": 0.48799999999999955
+              },
+              "indexedQuery": {
+                "p50": 0.0017000000000280124,
+                "p95": 0.004300000000000637,
+                "p99": 0.006799999999998363
+              },
+              "drawQuery": {
+                "p50": 0.0036000000000058208,
+                "p95": 0.005799999999993588,
+                "p99": 0.008800000000007913
+              },
+              "referenceQuery": {
+                "p50": 0.0011000000000080945,
+                "p95": 0.0036000000000058208,
+                "p99": 0.017500000000012506
+              },
+              "dirtyCandidate": {
+                "p50": 0.07679999999999154,
+                "p95": 0.1022000000000105,
+                "p99": 0.13939999999999486
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 32,
+              "p99": 32
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 563200,
+              "drawScans": 0,
+              "queryVisits": 44000,
+              "deferredPublications": 0,
+              "actionIndexBytes": 6912,
+              "projection": {
+                "estimatedBytes": 872448,
+                "peakBytes": 1744896,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 512
+            }
+          },
+          {
+            "lanes": 128,
+            "actors": 512,
+            "visibleRows": 8,
+            "dirtyFraction": 0.1,
+            "timingsMs": {
+              "publication": {
+                "p50": 0.15629999999998745,
+                "p95": 0.2085999999999899,
+                "p99": 0.34359999999992397
+              },
+              "indexedQuery": {
+                "p50": 0.0017000000000280124,
+                "p95": 0.003400000000056025,
+                "p99": 0.0060000000000854925
+              },
+              "drawQuery": {
+                "p50": 0.0036000000000058208,
+                "p95": 0.005400000000008731,
+                "p99": 0.00830000000007658
+              },
+              "referenceQuery": {
+                "p50": 0.0012000000000398359,
+                "p95": 0.005699999999990268,
+                "p99": 0.017699999999990723
+              },
+              "dirtyCandidate": {
+                "p50": 0.019099999999980355,
+                "p95": 0.02600000000001046,
+                "p99": 0.03099999999994907
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 32,
+              "p99": 32
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 563200,
+              "drawScans": 0,
+              "queryVisits": 44000,
+              "deferredPublications": 0,
+              "actionIndexBytes": 6912,
+              "projection": {
+                "estimatedBytes": 872448,
+                "peakBytes": 1744896,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 512
+            }
+          },
+          {
+            "lanes": 1024,
+            "actors": 4096,
+            "visibleRows": 8,
+            "dirtyFraction": 1,
+            "timingsMs": {
+              "publication": {
+                "p50": 1.2813000000001011,
+                "p95": 1.7531000000001313,
+                "p99": 1.8564000000001215
+              },
+              "indexedQuery": {
+                "p50": 0.0026000000000294676,
+                "p95": 0.006499999999959982,
+                "p99": 0.00830000000041764
+              },
+              "drawQuery": {
+                "p50": 0.005300000000261207,
+                "p95": 0.0072000000000116415,
+                "p99": 0.010000000000218279
+              },
+              "referenceQuery": {
+                "p50": 0.008900000000039654,
+                "p95": 0.02549999999996544,
+                "p99": 0.02640000000008058
+              },
+              "dirtyCandidate": {
+                "p50": 0.6399999999998727,
+                "p95": 0.7178000000000111,
+                "p99": 0.97199999999998
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 32,
+              "p99": 32
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 4505600,
+              "drawScans": 0,
+              "queryVisits": 44000,
+              "deferredPublications": 0,
+              "actionIndexBytes": 55296,
+              "projection": {
+                "estimatedBytes": 6972416,
+                "peakBytes": 13944832,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 4096
+            }
+          },
+          {
+            "lanes": 1024,
+            "actors": 4096,
+            "visibleRows": 8,
+            "dirtyFraction": 0.1,
+            "timingsMs": {
+              "publication": {
+                "p50": 1.413300000000163,
+                "p95": 3.9742999999998574,
+                "p99": 4.824399999999514
+              },
+              "indexedQuery": {
+                "p50": 0.004699999999957072,
+                "p95": 0.0072000000000116415,
+                "p99": 0.008700000000317232
+              },
+              "drawQuery": {
+                "p50": 0.007300000000213913,
+                "p95": 0.014000000000123691,
+                "p99": 0.01749999999992724
+              },
+              "referenceQuery": {
+                "p50": 0.008299999999962893,
+                "p95": 0.01710000000002765,
+                "p99": 0.044800000000122964
+              },
+              "dirtyCandidate": {
+                "p50": 0.1447000000002845,
+                "p95": 0.24359999999978754,
+                "p99": 2.6370999999999185
+              }
+            },
+            "drawCandidateVisits": {
+              "p50": 32,
+              "p95": 33,
+              "p99": 33
+            },
+            "drawProjectionAllocations": {
+              "p50": 0,
+              "p95": 0,
+              "p99": 0
+            },
+            "counters": {
+              "revision": "1:1100:1100",
+              "publications": 1100,
+              "rebuilds": 1100,
+              "actorScans": 4505600,
+              "drawScans": 0,
+              "queryVisits": 44003,
+              "deferredPublications": 0,
+              "actionIndexBytes": 55296,
+              "projection": {
+                "estimatedBytes": 6972416,
+                "peakBytes": 13944832,
+                "versions": 1,
+                "leases": 0,
+                "allocations": 1100,
+                "dropped": 0,
+                "retirementFailures": 0
+              },
+              "retainedActors": 4096
+            }
+          }
+        ]
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10components/349files",
+        "browser categories",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": [
+        {
+          "head": "8b1886d74f5874198cbdc1c9fa3f8d3194b98eff",
+          "run": 40816986569,
+          "job": 123260263769,
+          "result": "failed",
+          "scope": "All browser/static/MCP/benchmark gates passed; recursive Mocha aborted before running tests because worker fixture executed on main thread. Low coverage is a consequence of discovery abortion."
+        },
+        {
+          "head": "ef9c320e82fb0669e692553c2c5a797f0f209ccd",
+          "run": 40818706939,
+          "job": 123265821297,
+          "result": "failed",
+          "scope": "Same main-thread execution fixture discovery failure; repaired in this continuation."
+        }
+      ],
+      "scopeLimits": [
+        "Timing measurements are local mechanical queries including diagnostics, not browser frame rates or native heap allocation profiles.",
+        "Terrain-residency-only contact observation remains under#1053; no acoustic or physical-device qualification."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-categories.log",
+        "bytes": 3005,
+        "sha256": "fb8549b608b2322116617f4be62b2b22bf57f8cf9d866b5d256fa91e428afdc5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-format.log",
+        "bytes": 312,
+        "sha256": "b9e2094da11aed2aa6817c99c5ed962baaf369cdf9e7a8704f2d5a2414a0cdb9"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-native.log",
+        "bytes": 1573,
+        "sha256": "5cc4bc3163e350277dfc537747590bca0bdb5682e516ae2ba6aff1f8ec21db52"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-node.log",
+        "bytes": 6225,
+        "sha256": "c45795924b1d21c95c938efb53b7044c0752efbbc55e48bde325229978d7ee98"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci327-failed.log",
+        "bytes": 253697,
+        "sha256": "6fc4f7468221b6e441750dc0d99dc75ddbc4e7179ba79b9af02157fbb93735ba"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog329-actor-projection-results.json",
+        "bytes": 218516,
+        "sha256": "28d8f8a106a590f676e40ceb0d2253b3a4056382a5e293a643c6726ad21833fb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog329-projection-benchmark.json",
+        "bytes": 10245,
+        "sha256": "6d7e924645b392076e6995f8f03ed396528513f6917e7ec9038286dec3d5fc10"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-329-coverage\\coverage-summary.json",
+        "bytes": 170620,
+        "sha256": "e06aca94874568cc8f456c8951bca97ddda0c3a6eee21b09a2ed07a4cd009ff6"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/ProcgenActorProjection.js",
+        "bytes": 7635,
+        "sha256": "fa0bb3419ed96cc07210ddce04bc09a6e72071ee1a5083dfaed479f22856750e"
+      },
+      {
+        "path": "js/app/procgen/ProcgenActorVisibility.js",
+        "bytes": 7773,
+        "sha256": "f57e4c5515c018874218c4088585f09d935a1884a235eb3334e31798792eb4a1"
+      },
+      {
+        "path": "scripts/bench-actor-projections.js",
+        "bytes": 4466,
+        "sha256": "f59730fc6f1d574f5fbf66b8b538ee8c564c6ea765c9b30acc748f3da6609b97"
+      },
+      {
+        "path": "scripts/bench-procgen-optimization.mjs",
+        "bytes": 6836,
+        "sha256": "6db31cbcbb36b49b22fca1b0ee69bc9dea825f0edc4fb2bc12541a4684d6e6d8"
+      },
+      {
+        "path": "test/procgen-actor-projection.test.js",
+        "bytes": 11504,
+        "sha256": "e9cee4e8725655151b3f54c81e51080d5ad53f5e4c3fbd975c620d106b1db7a6"
+      },
+      {
+        "path": "test/procgen-lane-renderer.test.js",
+        "bytes": 15340,
+        "sha256": "27f99842a7848d515a38d9360b0681159f4355fe8e3a901612af93fd614bf517"
+      },
+      {
+        "path": "test/procgen-physical-batch-overflow.test.js",
+        "bytes": 3226,
+        "sha256": "1e8f1c76a49b3b4d6b5795ea67bdb4a1b2c6d11b7341fbedd08f259c2ce3aaf2"
+      },
+      {
+        "path": "test/helpers/physicalBatchOverflowWorker.js",
+        "bytes": 406,
+        "sha256": "3dfea4058af735f036f9a1f40be5c332a4ba4b05fda3e6d156c9639e57b57022"
+      },
+      {
+        "path": "e2e/procgen-workstation-actor-projection.spec.js",
+        "bytes": 3530,
+        "sha256": "ab3e7a48b71a14bda281ecc004b554f73b8716a4e65e412bf09ba5ed53179932"
+      }
+    ],
+    "issueStatus": {
+      "1053": {
+        "state": "open",
+        "remaining": "Non-materializing terrain contact sampling and broader allocation evidence."
+      }
+    }
   }
 }
