@@ -8803,3 +8803,26 @@ export-budget acknowledgments still prevent a false complete receipt.
   close reasonably if that run is clean, preserving cold-save/heap/timing limits.
   Then continue independent backlog work; #1193cross-tab performance ownership
   and #1162combined memory qualification remain separate open requirements.
+
+### Continuation 339 — foreground preference quiescence and command dismissal
+
+- Full338CI passed static/provenance,24desktop and135workstation cases, then
+  rejected saved-project load:335708160candidate bytes with325301913available
+  while background preferences retained memory. Keep the shared cap unchanged.
+- Foreground load/save/import/export/rebuild work cancels active preferences and
+  awaits actual producer retirement. Nested holds retain only the latest revision;
+  stale document work is discarded before encoding. Unknown retirement blocks
+  admission and is reported through disposal rather than claiming released memory.
+  Paged writes and stored-checkpoint preparation await cancellation quiescence.
+- The repaired native load exposed a Project menu overlay intercepting the World
+  tab afterward. Activated commands now close their menu, preserve editing fields
+  and return focus only when a dialog has not taken it.
+- All252 grouped Node cases and20 distinct native desktop journeys pass, including
+  deliberately stalled native preference work, save/load/reroll/replay/New/Undo,
+  current preference resumption, corruption and dock persistence. Writer/pages/
+  retirement helper lines reach100%; broader branches and combined native-memory
+  qualification remain separate. Collection is167full/137smoke across46files.
+- Publish this repair with its own full CI.334 remains the latest completely
+  verified green checkpoint;338did not reach coverage/MCP/benchmark. Review #985
+  against its original acceptance after clean CI, retaining measured cold-save,
+  scheduling and heap limits. Resume preserved #1193cross-tab work independently.

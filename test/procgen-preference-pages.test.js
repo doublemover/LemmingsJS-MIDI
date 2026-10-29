@@ -23,6 +23,18 @@ const failure = async work => { try { await work(); } catch (error) { return err
 const currentRoot = f => { const head = f.records.get('preferences:head'); return f.records.get('preferences:slot:' + head.slot); };
 
 describe('bounded atomic authored preference pages', () => {
+  it('waits for canceled page producers before allowing another save or discarding their stage', async () => {
+    let entered, retire; const started = new Promise(resolve => { entered = resolve; }), producer = new Promise(resolve => { retire = resolve; });
+    const f = setup({ beforeCompute: ({ signal }) => new Promise((_resolve, reject) => {
+        entered(); signal.addEventListener('abort', () => reject(Object.assign(new Error('Paused'), { backgroundRetirementCompletion: producer })), { once: true });
+      }) }), controller = new AbortController();
+    const saving = failure(() => f.store.save(authored(), { revision: 0, signal: controller.signal })); await started; controller.abort();
+    await new Promise(resolve => setImmediate(resolve));
+    expect((await failure(() => f.store.save(authored(), { revision: 1 }))).message).to.include('already pending');
+    expect(f.records.get('preferences:stages').entries).to.have.length(1);
+    retire({ phase: 'canceled' }); expect((await saving).message).to.equal('Paused');
+    expect(f.records.get('preferences:stages').entries).to.deep.equal([]); expect(f.budget.diagnostics().accountedBytes).to.equal(0); f.store.dispose();
+  });
   it('round trips exact authored data through bounded worker groups and releases every prepared page', async () => {
     const f = setup(), value = authored(); expect(await f.store.load()).to.equal(null);
     expect(await f.store.save(value, { revision: 7 })).to.deep.equal({ durable: true, generation: 1, revision: 7 });

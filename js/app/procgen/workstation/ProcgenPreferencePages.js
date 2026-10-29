@@ -1,7 +1,7 @@
 import { encodeRecoveryProject, decodeRecoveryProject } from './ProcgenRecoveryProjectPages.js';
 import { isSealedMidiProjectNode, copyMidiProjectSnapshot } from '../../../midi/project/MidiProjectSnapshot.js';
 import { yieldBackgroundTask } from '../../resources/BackgroundTaskYield.js';
-import { requireSynchronousResourceAcknowledgement, retireBackgroundResult } from '../../resources/ResourceRetirement.js';
+import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, awaitBackgroundFailureRetirement } from '../../resources/ResourceRetirement.js';
 
 const PREFIX = 'preferences:page:', HEAD = 'preferences:head', STAGES = 'preferences:stages', slotKey = slot => 'preferences:slot:' + slot;
 const MAX_REFS = 1152, MAX_PENDING_BYTES = 32 * 1048576, MAX_PROJECT_UTF8_BYTES = 64 * 1048576, STAGE_LEASE_MS = 120000;
@@ -129,8 +129,10 @@ export function createProcgenPreferencePages({ open, jobs, resourceBudget, isCur
   });
   const compute = async (kind, value, context, peak, maxBytes) => {
     check(context); if (serial === Number.MAX_SAFE_INTEGER) fail('job identity exhausted.'); stats.workerJobs++;
-    return jobs.compute({ kind, ownerId: owner, ownerEpoch: 1, sourceRevision: 'preferences:' + (++serial), estimatedPeakBytes: peak,
-      maxBytes, priority: 'recovery', budgetAdapter: resourceBudget, signal: context.signal, isCurrent: () => !retired && isCurrent(context.db) && context.current(), prepareInput: () => value });
+    try {
+      return await jobs.compute({ kind, ownerId: owner, ownerEpoch: 1, sourceRevision: 'preferences:' + (++serial), estimatedPeakBytes: peak,
+        maxBytes, priority: 'recovery', budgetAdapter: resourceBudget, signal: context.signal, isCurrent: () => !retired && isCurrent(context.db) && context.current(), prepareInput: () => value });
+    } catch (error) { await awaitBackgroundFailureRetirement(error); throw error; }
   };
   return {
     async save(value, { revision, signal, isCurrent: current = () => true } = {}) {

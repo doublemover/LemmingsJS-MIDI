@@ -1,6 +1,6 @@
 import { getActiveExecutionIdentity, getApplicationDeploymentRoot } from '../../../runtime/ActiveExecutionIdentity.js';
 import { RECOVERY_DATABASE_NAME, RECOVERY_DATABASE_VERSION, GENERATION_PIN_STORE, recoveryGenerationPin, upgradeBrowserGenerationPins, withBrowserGenerationRetentionLock } from '../../../runtime/BrowserGenerationPins.js';
-import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
+import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary, awaitBackgroundFailureRetirement } from '../../resources/ResourceRetirement.js';
 import { createProcgenRecoveryPageStore } from './ProcgenRecoveryPageStore.js';
 import { createProcgenPreferencePages } from './ProcgenPreferencePages.js';
 import { validateProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
@@ -69,7 +69,11 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
       computed.signal?.addEventListener('abort', jobAborted, { once: true }); if (computed.signal?.aborted) jobAborted();
       controller.signal.throwIfAborted();
       return { checksum: computed.value, get snapshot() { controller.signal.throwIfAborted(); if (!snapshot) throw namedError('AbortError', 'Checkpoint source was released'); return snapshot; }, signal: controller.signal, release };
-    } catch (error) { try { release(); } catch (retirementError) { error.retirementError = retirementError; } throw error; }
+    } catch (error) {
+      try { await awaitBackgroundFailureRetirement(error); }
+      finally { release(); }
+      throw error;
+    }
   };
   const ownedSource = (computed, metadata) => {
     let owner = computed;

@@ -78,6 +78,18 @@ describe('owned workstation command chrome', () => {
     const options = { document, window, topbar: document.querySelector('header'), footer: document.querySelector('footer'), health: document.querySelector('#health'), setupFields: [document.querySelector('#field')] };
     return { dom, window, document, options };
   };
+  it('closes completed commands without retaining an overlay or stealing focus from a dialog', () => {
+    const f = mount(), chrome = createWorkstationChrome(f.options), command = f.document.querySelector('footer button');
+    try {
+      chrome.reveal(command); command.focus(); command.click();
+      const menu = command.closest('details'); expect(menu.open).to.equal(false); expect(menu.querySelector('.studio-command-menu-body').hidden).to.equal(true);
+      expect(f.document.activeElement).to.equal(menu.querySelector('summary'));
+      const dialog = f.document.createElement('dialog'), input = f.document.createElement('input'); dialog.append(input); f.document.body.append(dialog);
+      command.addEventListener('click', () => { dialog.setAttribute('open', ''); input.focus(); }); chrome.reveal(command); command.click();
+      expect(menu.open).to.equal(false); expect(f.document.activeElement).to.equal(input);
+      const field = f.document.querySelector('#field'); chrome.reveal(field); field.querySelector('input').click(); expect(field.closest('details').open).to.equal(true);
+    } finally { chrome.dispose(); f.window.close(); }
+  });
   it('preserves exact native nodes and listeners through A to B replacement and stale disposal', () => {
     const f = mount(), field = f.document.querySelector('#field'), input = field.querySelector('input'), save = f.document.querySelector('footer button'); let clicks = 0; save.addEventListener('click', () => clicks++);
     const a = createWorkstationChrome(f.options), b = createWorkstationChrome(f.options); try {

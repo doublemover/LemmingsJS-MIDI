@@ -802,6 +802,30 @@ describe('ProcGen workstation orchestration', () => {
     expect(durable.project.procgen.lanes[0].patterns[0].steps.slice(0, 2).map(step => step.note)).to.deep.equal([45, 46]);
     f.studio.dispose();
   });
+  for (const cancel of [false, true]) it('quiesces background preferences before owned document admission' + (cancel ? ' and honors canceled selections' : ''), async () => {
+    const timers = []; let f, session, started, retire, admitted = 0, saves = 0;
+    const producer = new Promise(resolve => { retire = resolve; }), entered = new Promise(resolve => { started = resolve; });
+    const budget = createResourceBudget({ limitBytes: 4096 }), background = {};
+    const storage = { async listDocumentPage() { return { items: [{ id: 'doc:chosen', name: 'Chosen' }], nextCursor: null }; },
+      savePreferences(_value, { signal }) {
+        if (saves++) return Promise.resolve({ durable: true });
+        budget.reserve({ token: background, owner: 'preferences', category: 'checkpoint', bytes: 3072, pinned: true }); started();
+        return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(Object.assign(new Error('Paused'), { backgroundRetirementCompletion: producer })), { once: true }));
+      },
+      async loadDocumentOwned() {
+        const foreground = {}; budget.reserve({ token: foreground, owner: 'load', category: 'checkpoint', bytes: 3072, pinned: true }); admitted++;
+        return { id: 'doc:chosen', revision: 1, session, release() { budget.release({ token: foreground, owner: 'load' }); } };
+      }, close() {} };
+    f = setup({ storageOverride: storage, windowTimers: { setTimeout(callback, delay) { timers.push({ callback, delay }); return timers.length; }, clearTimeout(id) { timers[id - 1] = null; } } });
+    f.studio.bindRuntime(); session = f.studio.capture(); timers.find(timer => timer?.delay === 250).callback(); await entered;
+    f.view.showProjectPage = (_page, load) => { f.view.choose = load; }; await f.studio.handlers.load();
+    const loading = f.view.choose('doc:chosen'); await new Promise(resolve => setImmediate(resolve));
+    expect(admitted).to.equal(0); expect(f.studio.getPreferenceState()).to.include({ active: true, suspended: true });
+    if (cancel) f.studio.handlers.cancelProjectPicker();
+    budget.release({ token: background, owner: 'preferences' }); retire({ phase: 'canceled' });
+    expect(await loading).to.equal(!cancel); expect(admitted).to.equal(cancel ? 0 : 1); expect(budget.diagnostics().accountedBytes).to.equal(0);
+    expect(f.studio.getPreferenceState().suspended).to.equal(false); await f.studio.dispose().completion;
+  });
   it('prepares a recipe with declared lanes and speed without inheriting a saved project', () => {
     const savedProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
     const persisted = { version: 1, project: savedProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' }, ui: { slot: 2 } };

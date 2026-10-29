@@ -27,6 +27,10 @@ export function createWorkstationChrome({ document, window, topbar, footer, heal
       if (menu.open) { for (const other of menus) if (other !== menu) close(other); placeAnchoredControl({ element: body, anchor: summary, window, preferAbove: footer.contains(menu) }); }
     });
     on(summary, 'keydown', event => { if (event.key === 'Enter' || event.key === ' ') event.stopPropagation(); });
+    on(body, 'click', event => {
+      const command = event.target?.closest?.('button[data-command-group]');
+      if (owns() && !event.defaultPrevented && command && !command.disabled && command.closest('.studio-command-menu') === menu) close(menu, body.contains(document.activeElement));
+    });
     return body;
   }
   function create(name, parent) {

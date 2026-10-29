@@ -33521,5 +33521,224 @@
         "sha256": "810c6368836d5a08dbf21429806d3f70c6fd4a277bf99e6f377f7b92174a3391"
       }
     ]
+  },
+  "continuation339": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "9ddbd31195e8a3f55b60354c1452d3a63e44dc73",
+    "scope": "Foreground document/world work preempts coalesced preference encoding without raising the shared memory cap; completed command menus release their overlay.",
+    "implementation": [
+      "Preference holds abort the active background writer, await actual producer/result retirement, retain only the latest pending revision and reject unknown retirement. Nested holds are idempotent; stale generations are dropped before encoding. Disposal waits for the same frontier and reports unresolved retirement.",
+      "Paged preference encoding and owned stored-checkpoint preparation await BackgroundJobService cancellation retirement rather than treating an early abort rejection as resource release. Frozen failure reasons remain supported.",
+      "Saved-project loading, named saves, project imports/exports and world rebuilds hold preferences through their foreground resource lifetime. Selected-load cancellation is rechecked after quiescence, and the owned loaded source is released before preferences resume.",
+      "Command buttons close their owned menu after activation, retain editing controls and preserve dialog focus; the Project overlay no longer intercepts the World tab after a successful load."
+    ],
+    "validation": {
+      "node": {
+        "passed": 252,
+        "failed": 0,
+        "command": "node node_modules/c8/bin/c8.js --check-coverage=false --reporter=json-summary --reports-dir=.tmp/coverage-rook339-final node_modules/mocha/bin/mocha.js test/resource-retirement.test.js test/procgen-preference-writer.test.js test/procgen-preference-pages.test.js test/background-preference-pages.test.js test/procgen-workstation-controller.test.js test/procgen-session-storage.test.js test/background-job-service.test.js test/background-job-worker-endpoint.test.js test/compact-instrument-chrome.test.js --reporter dot",
+        "scope": "Real shared-budget admission after delayed cancellation, nested holds, stale generations, frozen failures, unknown retirement refusal, disposal/flush and reentrant observers; prior controller/storage/worker coverage plus command-overlay and dialog-focus regressions.",
+        "coverageFollowup": "Remaining focused branch gaps include asynchronous cleanup refusal combinations, overlapping save/import/export invalidation and storage connection faults; these scoped percentages do not represent complete browser/native memory ownership.",
+        "coverage": {
+          "ProcgenPreferencePages.js": {
+            "lines": 100,
+            "branches": 87.5,
+            "functions": 97.77
+          },
+          "ProcgenPreferenceWriter.js": {
+            "lines": 100,
+            "branches": 91.59,
+            "functions": 94.44
+          },
+          "ProcgenSessionStorage.js": {
+            "lines": 92.51,
+            "branches": 73.09,
+            "functions": 75.55
+          },
+          "WorkstationChrome.js": {
+            "lines": 97.64,
+            "branches": 84.37,
+            "functions": 84.61
+          },
+          "ResourceRetirement.js": {
+            "lines": 100,
+            "branches": 96.15,
+            "functions": 100
+          }
+        }
+      },
+      "static": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "node scripts/check-runtime-provenance.mjs (10 components,350 files)",
+        "git diff --check",
+        "browser category collection:167 full/137 smoke across46 files"
+      ],
+      "priorCiFailure": {
+        "head": "9ddbd31195e8a3f55b60354c1452d3a63e44dc73",
+        "run": 40834909516,
+        "job": 123317314586,
+        "status": "failure",
+        "passedDesktop": 24,
+        "passedWorkstation": 135,
+        "failedWorkstation": 1,
+        "failedCase": "live musical edits undo and survive save/load, reroll and same-seed replay",
+        "cause": "An active preference worker retained resources needed by the owned document load:335708160 candidate bytes versus325301913 available. The fixed shared cap remains unchanged.",
+        "scope": "Static/provenance and other browser cases passed; later coverage/MCP/benchmark stages did not run.",
+        "log": {
+          "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci338-failure.log",
+          "bytes": 147810,
+          "sha256": "21ca07eb4ce2bc0c8be6a01c68c1b85e52efa5e12c95657ac67135dfead0506a"
+        }
+      },
+      "intermediateFailures": [
+        {
+          "nodePassed": 237,
+          "nodeFailed": 2,
+          "cause": "The two new controller regressions called a nonexistent budget.dispose method after their load/cancellation/resource assertions passed. Corrected test teardown; subsequent239case run passed."
+        },
+        {
+          "browserPassed": 18,
+          "browserFailed": 2,
+          "cause": "The new preference-worker fixture lacked a hidden command-menu opening hint. Separately, the now-successful original saved-project load exposed a real Project overlay left open over the World tab. Corrected the fixture and command dismissal, retaining native and unit regression coverage."
+        }
+      ],
+      "browser": {
+        "passedDistinct": 20,
+        "failedFinal": 0,
+        "command": "node scripts/run-browser-boundaries.js e2e/procgen-workstation-workflow.spec.js e2e/procgen-workstation-preference-pages.spec.js e2e/procgen-workstation-dock.spec.js --workers=1 --project=workstation --reporter=list,json",
+        "viewportMinimum": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Actual stalled native preference worker, owned saved-project load and current preference resumption; save/load/reroll/replay/New/Undo, MIDI capture/export, local audio, automation, dock1920/2560/3840 and preference corruption/explicit startup."
+      },
+      "latestFullCi": {
+        "head": "55b0b425b3f7c8f7b5526fa926b99305b1f132a4",
+        "status": "success",
+        "run": 40825384660,
+        "job": 123287116682,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40825384660/job/123287116682",
+        "nodePassed": 6886,
+        "nodePending": 10,
+        "browserPassed": 155,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 131,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.74,
+          "statements": 90.74,
+          "branches": 83.79,
+          "functions": 88.48
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 80640,
+          "captured": 80640,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 110080,
+            "expectedFrame": 110208,
+            "frames": 128
+          },
+          "peak": 0.007517695426940918,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes334 and all prior published fixes; excludes335 staged authored preferences. Capture remains separate from code/CI success.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci334-green.log",
+          "bytes": 1180505,
+          "sha256": "7d8209bd75c46e54d62d8e00cb77f0fa788d6d8ba29f50dfe26dc4ae7a535ba2"
+        }
+      }
+    },
+    "limits": [
+      "The latest fully verified green CI remains continuation334. This repair needs its own full CI; scoped checks are not a complete-suite claim.",
+      "The stalled-worker native case withholds one actual preference worker input acknowledgment and verifies its native termination and current-document persistence. It is controlled fault injection, not a claim about universal worker timing or total browser/native allocations.",
+      "Minimum supported browser viewport remains1920x1080 desktop. Cross-tab audio/MIDI/capture coordination remains independent work under1193."
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "next": "Review original acceptance and all source-bound performance receipts after this resource repair has clean full CI; keep cold-save, scheduling and heap limits explicit."
+      },
+      "1193": {
+        "state": "open",
+        "next": "Resume the preserved unpublished cooperative cross-tab lease implementation after publishing the foreground resource repair."
+      }
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/resources/ResourceRetirement.js",
+        "bytes": 1693,
+        "sha256": "bbf3875e70fdda56fae1879b51d2d236dc4b04e48ccf0148d656219aa28092de"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPreferenceWriter.js",
+        "bytes": 7330,
+        "sha256": "7d8e945d0e932ffb210b5bb58daf845b003801de3720d46f1626979047dab6d2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPreferencePages.js",
+        "bytes": 21529,
+        "sha256": "bb3a46b691c219175ae292b69d371c66b6b84716cb2a1e193ca7058f72634835"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSessionStorage.js",
+        "bytes": 36678,
+        "sha256": "739bbbb7f8892dead62b7367c6ec91b8b87debf3aa3d2f1a78b6ba1530ae75d7"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 209328,
+        "sha256": "46307445841ca834413491f1ada1c4ce9cb5166b70377837c6b5eece913ee61c"
+      },
+      {
+        "path": "js/app/procgen/workstation/WorkstationChrome.js",
+        "bytes": 7299,
+        "sha256": "1b08bb9f6e10a1f3decd5648b288628b19c1db5e2c77ebd4bdfe6bbab5190b9d"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21412,
+        "sha256": "cc75e4e17a2cde304615ba48374d2c3895d0645c4741f702bd67e65e63a02d6d"
+      },
+      {
+        "path": "test/compact-instrument-chrome.test.js",
+        "bytes": 13520,
+        "sha256": "811dfeb40a91659ad9caa7fbc71a707747582891dbf6c260a2ad50d72428026f"
+      },
+      {
+        "path": "test/procgen-preference-pages.test.js",
+        "bytes": 14594,
+        "sha256": "3eb0cbca0498f3c3be866e1569e7cb0f67a39c7d0f7c94aaa43a21de2bff41b6"
+      },
+      {
+        "path": "test/procgen-preference-writer.test.js",
+        "bytes": 12087,
+        "sha256": "d873f02a21513a026e25f3a3b174f3d5272d751946e68e99cdd26b677f36af06"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 121819,
+        "sha256": "bb2d82bbd3670d13e0023db9a3dcee9c84164dcefb5443b748bc64f54a7959dd"
+      },
+      {
+        "path": "test/resource-retirement.test.js",
+        "bytes": 2414,
+        "sha256": "7c5a17d39540a7a18cfcfdf167e8c423d0ac38f7ccdcecf87fe1f2d195ab2aa5"
+      },
+      {
+        "path": "e2e/procgen-workstation-preference-pages.spec.js",
+        "bytes": 9339,
+        "sha256": "d412b62c854ef93a75785effe462412e6e6465d224268154f27628d3d5d03d84"
+      }
+    ]
   }
 }

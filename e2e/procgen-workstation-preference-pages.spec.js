@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 
 async function corruptStoredPreferences(page, corruption) {
   await page.evaluate(async corruption => {
@@ -22,6 +23,38 @@ async function bootSavedPreferences(page) {
   await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.__PROCGEN_LANES__.pause(); studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Saved source' } }); });
   await page.waitForFunction(() => { const studio = window.__PROCGEN_STUDIO__, state = studio.getPreferenceState(); return state?.pendingRevision == null && state.durableRevision === studio.getDocumentState().editRevision; });
 }
+
+test('an owned saved-project load cancels an in-flight native preference worker and resumes current preferences', { tag: ['@boundary', '@workstation-storage'] }, async ({ page }, testInfo) => {
+  test.setTimeout(120000);
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker; window.preferenceOverlap = { armed: false, blocked: 0, terminated: 0 };
+    window.Worker = class extends NativeWorker {
+      postMessage(message, ...options) {
+        if (window.preferenceOverlap.armed && message?.type === 'input-start' && message.kind === 'encode-preference-pages') {
+          window.preferenceOverlap.armed = false; window.preferenceOverlap.blocked++; this.blockedPreference = true; return;
+        }
+        return super.postMessage(message, ...options);
+      }
+      terminate() { if (this.blockedPreference) { this.blockedPreference = false; window.preferenceOverlap.terminated++; } return super.terminate(); }
+    };
+  });
+  await bootSavedPreferences(page);
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }), { button: 'Save' }, 'click');
+  const naming = page.getByRole('dialog', { name: 'Project name', exact: true });
+  await naming.getByRole('textbox').fill('Foreground selection'); await naming.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.studio-status')).toContainText('Saved Foreground selection');
+  await page.evaluate(() => { window.preferenceOverlap.armed = true; window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Newer dirty source' } }); });
+  await page.waitForFunction(() => window.preferenceOverlap.blocked === 1 && window.__PROCGEN_STUDIO__.getPreferenceState().active);
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
+  await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: /Foreground selection/ }).click();
+  await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
+  await page.waitForFunction(() => { const studio = window.__PROCGEN_STUDIO__, state = studio.getPreferenceState(); return !state.active && !state.suspended && state.pendingRevision == null && state.durableRevision === studio.getDocumentState().editRevision; });
+  const receipt = await page.evaluate(() => ({ worker: window.preferenceOverlap, preferences: window.__PROCGEN_STUDIO__.getPreferenceState(),
+    name: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name, playing: window.__PROCGEN_STUDIO__.transport.getState().playing }));
+  expect(receipt.worker).toEqual({ armed: false, blocked: 1, terminated: 1 }); expect(receipt.name).toBe('Saved source'); expect(receipt.playing).toBe(false);
+  expect(receipt.preferences.lastError).toBe(null); expect(receipt.preferences.retirementUnknown).toBe(false); expect(receipt.preferences.storage.pendingBytes).toBe(0);
+  await testInfo.attach('foreground-preference-overlap.json', { body: JSON.stringify(receipt, null, 2), contentType: 'application/json' });
+});
 
 test('corrupt committed preferences refuse previous setup without falling back to a legacy score', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(120000); await bootSavedPreferences(page);
