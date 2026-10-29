@@ -57797,5 +57797,504 @@
         "sha256": "f67c59f213d87d8482513eec99f3d61888b58645c6f010d676efb982d52da541"
       }
     ]
+  },
+  "continuation360": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Own nominal paused steps and fail closed at refused take clock inputs",
+    "issues": [
+      986
+    ],
+    "implementation": [
+      "Expose transport nominalSpeed independently of paused/waiting effectiveSpeed0. Route native Step through the physical control owner, admit stopped nominal-rate input before one completed real tick and restore/admit zero afterward.",
+      "Return explicit admission success from clock/tempo capture. Refusal or exception halts transport before its physical pump, preserves the partial take/recovery path, and fences subsequent Play and Step until capture ownership is retired or recovered.",
+      "Reopen all five native keyboard takes through the production comparison workbench; match completed batches, semantic/timeline/replay-settings component state and canonical physics without changing the live world. Compatibility evidence remains distinct from exact archived execution."
+    ],
+    "validation": {
+      "node": {
+        "passed": 215,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook360-node.log",
+          "bytes": 20705,
+          "sha256": "0fa362460643458a3d77cfb6a5b6e5fdec612f07274fa43cb20f529141e8e383"
+        },
+        "coverageReport": {
+          "path": ".tmp/rook360-coverage/coverage-summary.json",
+          "bytes": 1417,
+          "sha256": "458731a960a25f53312d1518de14c62b8d781acbd7aa3b86c2cc923a172b093c"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 3098,
+              "covered": 2628,
+              "skipped": 0,
+              "pct": 84.82
+            },
+            "statements": {
+              "total": 3098,
+              "covered": 2628,
+              "skipped": 0,
+              "pct": 84.82
+            },
+            "functions": {
+              "total": 484,
+              "covered": 343,
+              "skipped": 0,
+              "pct": 70.86
+            },
+            "branches": {
+              "total": 2370,
+              "covered": 1686,
+              "skipped": 0,
+              "pct": 71.13
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenUiController.js": {
+            "lines": {
+              "total": 545,
+              "covered": 511,
+              "skipped": 0,
+              "pct": 93.76
+            },
+            "functions": {
+              "total": 100,
+              "covered": 72,
+              "skipped": 0,
+              "pct": 72
+            },
+            "statements": {
+              "total": 545,
+              "covered": 511,
+              "skipped": 0,
+              "pct": 93.76
+            },
+            "branches": {
+              "total": 463,
+              "covered": 340,
+              "skipped": 0,
+              "pct": 73.43
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenTransport.js": {
+            "lines": {
+              "total": 196,
+              "covered": 182,
+              "skipped": 0,
+              "pct": 92.85
+            },
+            "functions": {
+              "total": 30,
+              "covered": 25,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "statements": {
+              "total": 196,
+              "covered": 182,
+              "skipped": 0,
+              "pct": 92.85
+            },
+            "branches": {
+              "total": 183,
+              "covered": 151,
+              "skipped": 0,
+              "pct": 82.51
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenWorkstation.js": {
+            "lines": {
+              "total": 2357,
+              "covered": 1935,
+              "skipped": 0,
+              "pct": 82.09
+            },
+            "functions": {
+              "total": 354,
+              "covered": 246,
+              "skipped": 0,
+              "pct": 69.49
+            },
+            "statements": {
+              "total": 2357,
+              "covered": 1935,
+              "skipped": 0,
+              "pct": 82.09
+            },
+            "branches": {
+              "total": 1724,
+              "covered": 1195,
+              "skipped": 0,
+              "pct": 69.31
+            }
+          }
+        },
+        "scope": "Grouped controller, transport, UI and causal re-performance tests, including an existing10000-tick exact retained state/fact/intent parity case. Scoped coverage is not the project-wide gate."
+      },
+      "browser": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T18:00:16.928Z",
+          "duration": 14707.499000000002,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook360-browser-qualified.json",
+          "bytes": 30306,
+          "sha256": "35765153e2ef9e36fe66cf12038d79e750048ece7e17974aa3bb612dada84be1"
+        },
+        "log": {
+          "path": ".tmp/rook360-browser-qualified.log",
+          "bytes": 1316,
+          "sha256": "36e963124af105d3033b39f4e2b3b8792b86ac768a5f2bde8b7d3c12bf8f4eb6"
+        },
+        "receipts": [
+          {
+            "scenario": "game-unlinked",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "nominalSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 2,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 3,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0,
+            "replay": {
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "exactQualified": false,
+              "comparedBatches": 5,
+              "comparedIntents": 0,
+              "actualPhysicsHash": "4089fcb6fc13b7f9186994116b213bb7e1d410381454fdd8622d6321e08acce1",
+              "finalWorldParity": "matched-at-captured-component-checkpoint",
+              "firstDivergence": null,
+              "checkpointComparisons": [
+                {
+                  "actualPhysicsHash": "4089fcb6fc13b7f9186994116b213bb7e1d410381454fdd8622d6321e08acce1",
+                  "checkpointId": "[\"take:f7bab9bb-d59c-495a-82ab-36459d20b6e1\",\"checkpoint\",13]",
+                  "exactQualified": false,
+                  "expectedPhysicsHash": "4089fcb6fc13b7f9186994116b213bb7e1d410381454fdd8622d6321e08acce1",
+                  "firstStateDifference": null,
+                  "physicalMatch": true,
+                  "replaySettingsMatch": true,
+                  "semanticMatch": true,
+                  "sequence": 13,
+                  "status": "validated-by-current-runtime-reperformance",
+                  "tick": 5,
+                  "timelineMatch": true
+                }
+              ]
+            },
+            "liveWorldUnchanged": true
+          },
+          {
+            "scenario": "bpm-linked-clamped",
+            "nativeKeydown": true,
+            "interruption": "controlled-window-blur",
+            "requestedGameSpeed": 5,
+            "nominalSpeed": 3.3333333333333335,
+            "effectiveSpeed": 3.3333333333333335,
+            "timer": 3.3333333333333335,
+            "complete": true,
+            "input": {
+              "sequence": 3,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 3.3333333333333335,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 4,
+              "tick": 1,
+              "tickDurationMs": 18
+            },
+            "finalTimer": 0,
+            "replay": {
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "exactQualified": false,
+              "comparedBatches": 9,
+              "comparedIntents": 0,
+              "actualPhysicsHash": "f46d2eb584cd2d84294ea23669a681940eb900b89724702fcd3412a12c6e0464",
+              "finalWorldParity": "matched-at-captured-component-checkpoint",
+              "firstDivergence": null,
+              "checkpointComparisons": [
+                {
+                  "actualPhysicsHash": "f46d2eb584cd2d84294ea23669a681940eb900b89724702fcd3412a12c6e0464",
+                  "checkpointId": "[\"take:2a79fcbc-5910-4a4d-a549-911b00eed347\",\"checkpoint\",22]",
+                  "exactQualified": false,
+                  "expectedPhysicsHash": "f46d2eb584cd2d84294ea23669a681940eb900b89724702fcd3412a12c6e0464",
+                  "firstStateDifference": null,
+                  "physicalMatch": true,
+                  "replaySettingsMatch": true,
+                  "semanticMatch": true,
+                  "sequence": 22,
+                  "status": "validated-by-current-runtime-reperformance",
+                  "tick": 9,
+                  "timelineMatch": true
+                }
+              ]
+            },
+            "liveWorldUnchanged": true
+          },
+          {
+            "scenario": "game-linked",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "nominalSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 3,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 4,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0,
+            "replay": {
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "exactQualified": false,
+              "comparedBatches": 4,
+              "comparedIntents": 0,
+              "actualPhysicsHash": "133251841099b52aff737ce43a23398406bc94c359b8ee342f505e143ddcb676",
+              "finalWorldParity": "matched-at-captured-component-checkpoint",
+              "firstDivergence": null,
+              "checkpointComparisons": [
+                {
+                  "actualPhysicsHash": "133251841099b52aff737ce43a23398406bc94c359b8ee342f505e143ddcb676",
+                  "checkpointId": "[\"take:3e75ae57-6c78-4185-b52c-bec64fe96532\",\"checkpoint\",12]",
+                  "exactQualified": false,
+                  "expectedPhysicsHash": "133251841099b52aff737ce43a23398406bc94c359b8ee342f505e143ddcb676",
+                  "firstStateDifference": null,
+                  "physicalMatch": true,
+                  "replaySettingsMatch": true,
+                  "semanticMatch": true,
+                  "sequence": 12,
+                  "status": "validated-by-current-runtime-reperformance",
+                  "tick": 4,
+                  "timelineMatch": true
+                }
+              ]
+            },
+            "liveWorldUnchanged": true
+          },
+          {
+            "scenario": "bpm-unlinked",
+            "nativeKeydown": true,
+            "interruption": "controlled-window-blur",
+            "requestedGameSpeed": 5,
+            "nominalSpeed": 5,
+            "effectiveSpeed": 5,
+            "timer": 5,
+            "complete": true,
+            "input": {
+              "sequence": 2,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": true,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 3,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0,
+            "replay": {
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "exactQualified": false,
+              "comparedBatches": 13,
+              "comparedIntents": 0,
+              "actualPhysicsHash": "57ff2caf87a5d282041beb9616343b1097455f928e76b27cc84c92041131fe4f",
+              "finalWorldParity": "matched-at-captured-component-checkpoint",
+              "firstDivergence": null,
+              "checkpointComparisons": [
+                {
+                  "actualPhysicsHash": "57ff2caf87a5d282041beb9616343b1097455f928e76b27cc84c92041131fe4f",
+                  "checkpointId": "[\"take:3f48db52-74b1-462d-b64d-c5fe3038a902\",\"checkpoint\",29]",
+                  "exactQualified": false,
+                  "expectedPhysicsHash": "57ff2caf87a5d282041beb9616343b1097455f928e76b27cc84c92041131fe4f",
+                  "firstStateDifference": null,
+                  "physicalMatch": true,
+                  "replaySettingsMatch": true,
+                  "semanticMatch": true,
+                  "sequence": 29,
+                  "status": "validated-by-current-runtime-reperformance",
+                  "tick": 13,
+                  "timelineMatch": true
+                }
+              ]
+            },
+            "liveWorldUnchanged": true
+          },
+          {
+            "scenario": "paused",
+            "nativeKeydown": true,
+            "interruption": "native-keyup",
+            "requestedGameSpeed": 5,
+            "nominalSpeed": 5,
+            "effectiveSpeed": 0,
+            "timer": 0,
+            "complete": true,
+            "input": {
+              "sequence": 1,
+              "tick": 0,
+              "payload": {
+                "kind": "transport-state",
+                "playing": false,
+                "speedFactor": 5,
+                "version": 2
+              }
+            },
+            "batch": {
+              "sequence": 2,
+              "tick": 1,
+              "tickDurationMs": 12
+            },
+            "finalTimer": 0,
+            "replay": {
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "exactQualified": false,
+              "comparedBatches": 1,
+              "comparedIntents": 0,
+              "actualPhysicsHash": "39836800ddd13ba6cafdf57cb3f59916b76ac08c025df58a314b87488780e1f1",
+              "finalWorldParity": "matched-at-captured-component-checkpoint",
+              "firstDivergence": null,
+              "checkpointComparisons": [
+                {
+                  "actualPhysicsHash": "39836800ddd13ba6cafdf57cb3f59916b76ac08c025df58a314b87488780e1f1",
+                  "checkpointId": "[\"take:f30148dc-7296-4420-b840-f3fe75acc088\",\"checkpoint\",4]",
+                  "exactQualified": false,
+                  "expectedPhysicsHash": "39836800ddd13ba6cafdf57cb3f59916b76ac08c025df58a314b87488780e1f1",
+                  "firstStateDifference": null,
+                  "physicalMatch": true,
+                  "replaySettingsMatch": true,
+                  "semanticMatch": true,
+                  "sequence": 4,
+                  "status": "validated-by-current-runtime-reperformance",
+                  "tick": 1,
+                  "timelineMatch": true
+                }
+              ]
+            },
+            "liveWorldUnchanged": true
+          }
+        ],
+        "scope": "Native1920x1080 desktop keyboard, actual pump/paused Step, real persisted journal and production isolated workbench re-performance. No receiver, OS-background or archived exact-execution claim."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "workerInventoryUnchanged": true,
+      "fullLocalSuiteRepeated": false
+    },
+    "fixtureCorrections": [
+      "The failed-storage control must request a component checkpoint to actually flush the denied durable prefix; an ordinary marker alone did not exercise that failure.",
+      "Initial paused browser selection mistakenly chose the post-step zero-rate restoration input. Select the pre-step nominal-rate input and preserve its sequence/tick precedence assertion. The actual replay already matched."
+    ],
+    "supersedes359PausedStep": "The old60000ms zero-speed floor remains in historical359 evidence. The new owned Step records12ms at nominal5x while restoring paused effective0.",
+    "ci358": {
+      "runId": 40923521656,
+      "head": "8d8565f92151f2f826dc970ca1c311b6d4f4d373",
+      "mainJob": 123622813710,
+      "status": "in_progress",
+      "mainObservedStage": "workstation browser smoke",
+      "otherThreeJobs": "success",
+      "noFullGreenClaim": true
+    },
+    "remaining986": [
+      "Typed physical-source/epoch/segment-to-export lowering with crop origin, quantization and causal tie ordering.",
+      "Remaining catch-up/suspension/external-clock/export acceptance matrix; current checks qualify named input/replay journeys, not the entire issue."
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/ProcgenUiController.js",
+        "bytes": 48368,
+        "sha256": "1c569ccd6d5f37dfde8052cc243fe0e20668846ff333f0cc09ae6cb982592a3b"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenTransport.js",
+        "bytes": 11604,
+        "sha256": "8451b14dc8d7ef46debf3ad00e992ed0f8539d6c1253c1dfc1fdeb32a101dab1"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 214347,
+        "sha256": "78602584db3a8b6cf310a0d4e1c51bda9311761ec058eec1818c92b7b31a4e7d"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 128494,
+        "sha256": "e09da271ce77b088a90486738baa22a56af42f1f6df19a46a7586b16f3afbcb8"
+      },
+      {
+        "path": "test/procgen-workstation-transport.test.js",
+        "bytes": 16227,
+        "sha256": "a04f96811b823e6de83b7bc74741ffe47ace62b681ed1485c3464509f6d5f741"
+      },
+      {
+        "path": "e2e/procgen-workstation-transport.spec.js",
+        "bytes": 11458,
+        "sha256": "e0c043924106820c0f01131bc3e6f0fc55073ba013e2e771b8cffa77cc7f0d03"
+      }
+    ]
   }
 }

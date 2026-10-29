@@ -15,6 +15,13 @@ function fixture(options = {}) {
 }
 
 describe('ProcGen workstation independent transport', () => {
+  it('retains a nominal step rate while pause or external-clock waiting keeps effective speed zero', () => {
+    const f = fixture({ linked: true, speedMode: 'bpm', bpm: 180 });
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.play();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 1.5 }); f.transport.pause();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.configure({ clockSource: 'external' }); f.transport.play();
+    expect(f.transport.getState()).to.include({ nominalSpeed: 1.5, effectiveSpeed: 0 }); f.transport.dispose();
+  });
   it('retires the timing driver after a flushing callback fails', () => {
     const f = fixture({ onFlush() { throw new Error('flush refused'); } });
     const receipt = f.transport.dispose();

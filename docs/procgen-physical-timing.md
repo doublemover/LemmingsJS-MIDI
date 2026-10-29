@@ -45,3 +45,18 @@ projecting their labels. The projection cannot overwrite the effective timer,
 including a clamped linked BPM or paused clock. Native keyboard qualification
 records real physical pump batches between keydown and keyup/controlled blur;
 that ordering evidence is distinct from full take re-performance qualification.
+
+## Paused steps and take-control admission
+
+Transport state exposes `nominalSpeed` independently of `effectiveSpeed`. Pause or
+external-clock waiting keeps effective speed zero. An explicit physical Step owns
+one nominal-rate tick: admit a stopped transport observation with that nominal
+speed, perform the real boundary, restore zero, and admit the restored clock.
+The journal can replay these two clock inputs around the completed batch without
+claiming that paused interpretation emitted musical output.
+
+If an active take refuses a tempo/clock observation, the workstation halts before
+its physical pump and refuses Play/Step until that take is saved or recovered.
+This is an admission and recovery boundary, not a guarantee that a previously
+accepted asynchronous storage write can never fail. The retained durable prefix
+and coverage gaps continue to describe that failure.

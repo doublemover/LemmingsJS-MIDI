@@ -25,9 +25,10 @@ export function createProcgenTransport(options = {}) {
   let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null;
   const beatAt = timestamp => playing && clockSource === 'internal'
     ? Math.min(Number.MAX_SAFE_INTEGER / 24, anchorBeat + Math.max(0, timestamp - anchorMs) * (bpm / 60000)) : anchorBeat;
-  const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource,
+  const nominalSpeed = () => linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed;
+  const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource, nominalSpeed: nominalSpeed(),
     effectiveSpeed: playing && (clockSource !== 'external' || clockStatus === 'locked')
-      ? (linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed) : 0,
+      ? nominalSpeed() : 0,
     tempoLocked: clockSource === 'external', clockStatus, reason });
   const report = () => { const state = getState(); onPosition(state); return state; };
   const speed = () => onSpeed(getState().effectiveSpeed);

@@ -66,6 +66,33 @@ function setup({ lookaheadMs = 0, webMidi, historyBytesLimit, backend = 'synth',
 }
 
 describe('ProcGen workstation orchestration', () => {
+  it('records a paused nominal-rate step before its real physical boundary and restores the stopped clock', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };
+    const f = setup({ storageOverride: storage, physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, seed: 7, assists: false }) });
+    try {
+      f.studio.bindRuntime(); f.studio.transport.pause(); f.studio.handlers.transport({ gameSpeed: 5, linked: false, speedMode: 'game' });
+      const world = f.runtime.world, batches = []; f.runtime.lanes.step = () => world.step(); world.soundEvents.onBatch.on(batch => batches.push(batch));
+      const takeId = (await f.studio.handlers.startCausalTake()).takeId;
+      expect(f.physicalOwner.step()).to.equal(true); expect(world.tickIndex).to.equal(1); expect(world.timer.speedFactor).to.equal(0); expect(batches[0].tickDurationMs).to.equal(12);
+      expect((await f.studio.stopCausalTake()).complete).to.equal(true); const records = (await createProcgenCausalJournal({ storage }).query({ takeId })).records;
+      const before = records.find(record => record.kind === 'input-observation' && record.payload.speedFactor === 5), batch = records.find(record => record.kind === 'physical-batch'), after = records.find(record => record.kind === 'input-observation' && record.payload.speedFactor === 0);
+      expect(before.tick).to.equal(0); expect(before.sequence).to.be.lessThan(batch.sequence); expect(after.tick).to.equal(1); expect(after.sequence).to.be.greaterThan(batch.sequence);
+    } finally { await f.studio.dispose().completion; f.runtime.world.dispose(); }
+  });
+  it('halts before another physical pump or manual step after the active take refuses a clock control', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(); let rejectCommit = false, deniedCommits = 0;
+    const storage = { ...memory.storage, close() {}, commitCausalTake(request) { if (rejectCommit) { deniedCommits++; return Promise.reject(new Error('Clock capture storage denied')); } return memory.storage.commitCausalTake(request); } };
+    const f = setup({ storageOverride: storage, physicalOnly: true, worldFactory: () => new ProcgenLaneWorld({ masks, seed: 7, assists: false }) });
+    try {
+      f.studio.bindRuntime(); f.studio.play(); await f.studio.handlers.startCausalTake(); f.runtime.world.step(); rejectCommit = true;
+      try { await f.studio.handlers.markCausalTake('Denied durable prefix', { checkpoint: true }); } catch {}
+      expect(deniedCommits).to.be.greaterThan(0);
+      const tick = f.runtime.world.tickIndex, pumps = f.positions.length;
+      f.physicalOwner.speed(5); expect(f.studio.transport.getState().playing).to.equal(false); expect(f.runtime.world.timer.speedFactor).to.equal(0); expect(f.positions.length).to.equal(pumps);
+      f.runtime.lanes.step = () => f.runtime.world.step(); expect(f.physicalOwner.step()).to.equal(false); f.studio.play(); expect(f.studio.transport.getState().playing).to.equal(false); expect(f.runtime.world.tickIndex).to.equal(tick);
+      rejectCommit = false; await f.studio.stopCausalTake();
+    } finally { rejectCommit = false; await f.studio.dispose().completion; f.runtime.world.dispose(); }
+  });
   it('reconstructs a cold history entry paused and still permits explicit Play and subsequent world rebuilds', async () => {
     const f = setup({ navigationType: 'back_forward', search: '?recipe=1&seed=42&lanes=8', laneCount: 8 });
     try {

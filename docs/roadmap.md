@@ -9304,3 +9304,22 @@ export-budget acknowledgments still prevent a false complete receipt.
 - 358 main CI has reached workstation smoke; engine and both native codec jobs
   pass. Linux full Chromium capture qualification is still independent.350 remains
   the last verified full green checkpoint. Continue solo through the backlog.
+
+### Continuation 360 - nominal paused Step and rejected take controls
+
+- Separate transport nominalSpeed from paused/waiting effective0. The physical
+  control owner records nominal input, performs one real Step and records restored
+  zero. At5x the source interval is12ms, replacing359's observed60000ms floor.
+- Refused/throwing active-take clock input halts before the physical pump and
+  fences further Play/Step until the take is saved or recovered. A denied actual
+  durable checkpoint supplies the regression; storage admission is not a promise
+  that previously accepted asynchronous persistence cannot later fail.
+- All215 grouped controller/transport/UI/re-performance cases pass, including
+ 10000-tick retained state/fact/intent parity. All five native keyboard journeys
+  reopen through the production comparison workbench and match physical, semantic,
+  timeline and replay-settings checkpoints without changing the live world.
+  Scoped coverage, static/provenance/category checks pass; no full local rerun.
+- Keep #986 open for typed physical-source export/crop/quantization and the rest
+  of its catch-up/suspension/external-clock matrix.358 independent main CI remains
+  in workstation smoke; its engine and both native codec jobs pass.350 is still
+  the last verified full green checkpoint. Continue solo through remaining work.

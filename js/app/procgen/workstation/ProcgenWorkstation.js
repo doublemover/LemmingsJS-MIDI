@@ -135,7 +135,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let ports, engine, lastPlaying = false, lastLegacySpeed = legacy.settings.speed, pendingResume = false, lastTempo = null;
   let savedName = 'Untitled session', documentId = null, documentRevision = 0, clipboard = null, loadSerial = 0, suppressPersistence = false;
   let recordingOrigin = null;
-  let lastCausalTransport = null;
+  let lastCausalTransport = null, causalClockBlocked = false;
   let operationSerial = 0, currentOperation = null;
   let lastRecovery = now(), recoveryPending = false, recoveryTimer = null, persistTimer = null, recoveryAbort = null;
   const recoverySnapshotStats = { calls: 0, totalMs: 0, maximumMs: 0, lastMs: null };
@@ -471,7 +471,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (disposed) return;
       if (physicalAuthoringAbort && position.playing) { transport.pause(); return; }
       if (position.playing !== lastPlaying) { lastPlaying = position.playing; legacy.setPaused(!position.playing); }
-      recordAcceptedCausalTransport(position);
+      if (!recordAcceptedCausalTransport(position)) {
+        if (position.playing) transport.pause();
+        view?.transport(transport.getState()); return;
+      }
       if (position.playing) runtime()?.lanes?.pump?.(position.timestamp);
       syncWorldSeed(); observeFrame(position.timestamp);
       if (position.bpm !== lastTempo) { lastTempo = position.bpm; ports?.recordTempo(position.bpm, position.beat, position.timestamp); }
@@ -624,7 +627,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     void ports.setClockOutput(selectedClock, { arm: rearmClock });
   };
   const recordCausalControl = (kind, payload) => {
-    if (!causalTake) return;
+    if (!causalTake) return true;
     const world = runtime()?.world, tick = Number.isSafeInteger(world?.tickIndex) && world.tickIndex >= 0 ? world.tickIndex : 0;
     const generation = Number.isSafeInteger(world?.generation) && world.generation >= 0 ? world.generation : 0;
     const boundary = { tick, generation };
@@ -633,23 +636,29 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (receipt.status !== 'accepted') {
         causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-rejected' });
         status(`Causal take control record was not admitted: ${receipt.reason}.`);
+        return false;
       }
+      return true;
     } catch (error) {
       try { causalTake.markGap({ kind: 'all', firstTick: tick, lastTick: tick, generation, reason: 'control-record-exception' }); } catch { /* Finalization retains the writer failure. */ }
       status('Causal take control record failed: ' + error.message);
+      return false;
     }
   };
   let pageLifecycle = null;
   function recordAcceptedCausalTransport(position) {
-    if (!lastCausalTransport || !causalTake || causalTakeStop) return;
+    if (!lastCausalTransport || !causalTake || causalTakeStop) return true;
+    if (causalClockBlocked) return false;
     const previous = lastCausalTransport;
-    if (previous.bpm !== position.bpm) recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: position.bpm });
+    if (previous.bpm !== position.bpm && !recordCausalControl('timeline', { version: 1, kind: 'tempo', bpm: position.bpm })) { causalClockBlocked = true; return false; }
     if (previous.playing !== position.playing || previous.speedFactor !== position.effectiveSpeed)
-      recordCausalControl('input', { version: 2, kind: 'transport-state', playing: position.playing, speedFactor: position.effectiveSpeed });
+      if (!recordCausalControl('input', { version: 2, kind: 'transport-state', playing: position.playing, speedFactor: position.effectiveSpeed })) { causalClockBlocked = true; return false; }
     if (previous.bpm !== position.bpm || previous.playing !== position.playing || previous.speedFactor !== position.effectiveSpeed)
       lastCausalTransport = { playing: position.playing, bpm: position.bpm, speedFactor: position.effectiveSpeed };
+    return true;
   }
   const play = () => {
+    if (causalClockBlocked && causalTake) { status('Save or recover the stopped take before playing.'); return; }
     if (physicalAuthoringAbort) { status('Wait for physical history preparation before playing.'); return; }
     if (pageLifecycle && !pageLifecycle.resumeExplicitly()) { status('Page is suspended; return to the visible instrument before pressing Play.'); return; }
     const held = pendingResume ? engine.snapshot().active : null; pendingResume = false;
@@ -879,7 +888,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         await recorder.stop({ boundaryState: causalBoundary(), reason: 'source-replaced-during-arm' });
         throw new Error(causalTakeArmCanceled ? 'Causal take arming was canceled.' : 'The world changed while the causal take was arming.');
       }
-      causalTake = recorder; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes); sampledMacroRevision = macroGestures.revision();
+      causalTake = recorder; causalClockBlocked = false; sampledMacroPerformance = captureCausalPerformanceState(project.procgen.lanes); sampledMacroRevision = macroGestures.revision();
       lastCausalTransport = { playing: wasPlaying, bpm: transport.getState().bpm, speedFactor: sourceRuntime.world.timer.speedFactor };
       lastCausalInspection = null;
       causalTakeErrorReported = false;
@@ -2231,6 +2240,19 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     getShareExportDescriptor, prepareShareExport, revealPreparedExport: () => view?.revealPreparedExport?.(),
     canRestart: () => !stageSession?.active() || stageSession.reject(), outputChanged: refreshSceneCue, operationalChanged: () => view?.refreshOperational?.(),
     speed(value) { configureTransport({ gameSpeed: value }); legacy.setSpeed(value, { owned: true }); lastLegacySpeed = legacy.settings.speed; persist(); refreshSceneCue(); return value; },
+    step() {
+      const source = runtime(), timer = source?.world?.timer;
+      if (disposed || worldBusy || stageSession?.active() || causalTakeStart || causalTakeStop || causalClockBlocked && causalTake || !timer || typeof source.lanes?.step !== 'function') return false;
+      transport.pause(); if (causalClockBlocked && causalTake) return false;
+      const state = transport.getState(), speedFactor = state.nominalSpeed;
+      if (!recordCausalControl('input', { version: 2, kind: 'transport-state', playing: false, speedFactor })) { causalClockBlocked = true; return false; }
+      timer.speedFactor = speedFactor;
+      try { source.lanes.step(); return true; }
+      finally {
+        timer.speedFactor = 0;
+        if (!recordCausalControl('input', { version: 2, kind: 'transport-state', playing: false, speedFactor: 0 })) causalClockBlocked = true;
+      }
+    },
     nuke(laneId) {
       const world = runtime()?.world; if (!canWorldShortcut('nuke')) return false;
       const command = { id: `manual-nuke:${world.generation}:${world.tickIndex}:${++interventionSerial}`, kind: laneId == null ? 'nuke-all' : 'nuke-lane',

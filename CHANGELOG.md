@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Step paused physics at its recorded nominal rate, restore the stopped clock afterward, and halt before physical pumping when an active take refuses a clock input.
+
 - Preserve the transport clock when projecting legacy speed controls, and reject unmapped or unrepresentable recorded MIDI times instead of exporting them at tick zero.
 
 - Match real walking, hoisting and terminal action names in sustained voice policies while preserving physical source facts and independently owned transitions.

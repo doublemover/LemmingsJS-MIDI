@@ -401,7 +401,7 @@ const createProcgenUiController = ({ document, window, getRuntime, restart, reso
     physicalControlOwner?.operationalChanged?.();
   };
   listen(byId('procgenPause'), 'click', () => setPaused(!paused));
-  const stepOnce = () => { if (!paused) setPaused(true); getRuntime()?.lanes?.step(); };
+  const stepOnce = () => { if (physicalControlOwner?.step) return physicalControlOwner.step(); if (!paused) setPaused(true); getRuntime()?.lanes?.step(); };
   listen(byId('procgenStep'), 'click', stepOnce);
   listen(byId('procgenFollow'), 'click', () => { camera()?.followFrontier(); byId('gameCanvas')?.focus?.(); });
   for (const [id, factor] of [['procgenZoomOut', 1 / 1.1], ['procgenZoomIn', 1.1]]) listen(byId(id), 'click', () => camera()?.setZoom(camera().getState().scale * factor));

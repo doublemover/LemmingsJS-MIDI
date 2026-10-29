@@ -30,15 +30,18 @@ for (const scenario of [
     const storage = createProcgenSessionStorage();
     try {
       const records = (await createProcgenCausalJournal({ storage }).query({ takeId: before.takeId })).records;
-      const input = records.find(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.speedFactor === captured.state.effectiveSpeed);
+      const input = records.find(record => record.kind === 'input-observation' && record.payload.kind === 'transport-state' && record.payload.speedFactor === (scenario.paused ? captured.state.nominalSpeed : captured.state.effectiveSpeed));
       const batch = records.find(record => record.kind === 'physical-batch' && record.tick > (input?.tick ?? before.tick));
-      return { scenario: scenario.name, nativeKeydown: true, interruption: scenario.blur ? 'controlled-window-blur' : 'native-keyup', requestedGameSpeed: captured.state.gameSpeed, effectiveSpeed: captured.state.effectiveSpeed, timer: captured.timer, complete: stopped.complete,
-        input: input && { sequence: input.sequence, tick: input.tick, payload: input.payload }, batch: batch && { sequence: batch.sequence, tick: batch.tick, tickDurationMs: batch.payload.tickDurationMs }, finalTimer: api.world.timer.speedFactor };
+      const liveWorld = api.world; await studio.handlers.selectCausalTake(before.takeId); const replay = await studio.handlers.compareCausalTake();
+      return { scenario: scenario.name, nativeKeydown: true, interruption: scenario.blur ? 'controlled-window-blur' : 'native-keyup', requestedGameSpeed: captured.state.gameSpeed, nominalSpeed: captured.state.nominalSpeed, effectiveSpeed: captured.state.effectiveSpeed, timer: captured.timer, complete: stopped.complete,
+        input: input && { sequence: input.sequence, tick: input.tick, payload: input.payload }, batch: batch && { sequence: batch.sequence, tick: batch.tick, tickDurationMs: batch.payload.tickDurationMs }, finalTimer: api.world.timer.speedFactor,
+        replay: replay?.receipt || null, liveWorldUnchanged: api.world === liveWorld };
     } finally { storage.close(); }
   }, { before, scenario, captured });
   await page.keyboard.up('Equal'); await testInfo.attach('physical-clock-input.json', { body: JSON.stringify(result), contentType: 'application/json' });
   expect(result.complete).toBe(true); expect(result.finalTimer).toBe(0); expect(result.batch).toBeTruthy();
-  if (!scenario.paused) { expect(result.input.sequence).toBeLessThan(result.batch.sequence); expect(result.input.tick).toBeLessThan(result.batch.tick); expect(result.batch.tickDurationMs).toBeCloseTo(60 / result.effectiveSpeed, 8); }
+  expect(result.replay?.compatibilityMatch, JSON.stringify(result.replay)).toBe(true); expect(result.liveWorldUnchanged).toBe(true);
+  expect(result.input.sequence).toBeLessThan(result.batch.sequence); expect(result.input.tick).toBeLessThan(result.batch.tick); expect(result.batch.tickDurationMs).toBeCloseTo(60 / (scenario.paused ? result.nominalSpeed : result.effectiveSpeed), 8);
 });
 
 async function ready(page) {
