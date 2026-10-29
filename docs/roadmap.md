@@ -9412,3 +9412,9 @@ export-budget acknowledgments still prevent a false complete receipt.
   pause of the unavailable-storage journey; retain diagnostics and rerun only that
   failed job.363 engine and both codec jobs pass; full coverage remains separate.
  350 remains the latest verified fully green checkpoint until all four jobs pass.
+
+- Published364 camera fixture is Git-normalized LF. Its original qualified raw
+  hash used CRLF; the publication guard error did not stop the commit chain.
+  Compare the exact published tree, retain the mismatch and correction, and
+  re-run all77 affected Node cases successfully against the published bytes.
+  Other five source hashes and final native browser/runtime bytes match exactly.

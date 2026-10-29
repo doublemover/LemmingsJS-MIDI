@@ -66765,5 +66765,66 @@
       }
     ],
     "remaining": "Independent full CI of the new camera fixture/current source; broader #1086 native platform matrix and remaining backlog. No native GPU reset, process-memory, acoustic or all-issues-complete claim."
+  },
+  "continuation364SourceBinding": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "head": "c068278a4b3c71441fbabcd7315524d44115473c",
+    "reason": "Commit/push proceeded despite the preceding source-hash tool returning an error. Inspect every result before dependent publication. One camera test was canonicalized from CRLF to LF by Git; all five other qualified source hashes match exactly.",
+    "mismatch": {
+      "path": "test/procgen-camera-timing.test.js",
+      "qualified": "7fd5fa9584b283e4d7ac06a4077e85fdaca5cc365b854b7d2bb69577c6f716ad",
+      "published": "198f46c20db201627596bdbb7dece1de995ab8c0f68a48c9c4095bf447497435",
+      "workingBytes": 8454,
+      "publishedBytes": 8350,
+      "exact": false,
+      "lineEndingOnly": true
+    },
+    "publishedSourceFiles": [
+      {
+        "path": "js/app/procgen/ProcgenCctv.js",
+        "bytes": 14003,
+        "sha256": "f9a3367d6d36271367dc16c104b8c9bd8323801a06b84743a3aeca0288395072"
+      },
+      {
+        "path": "scripts/BrowserTestCatalog.js",
+        "bytes": 4775,
+        "sha256": "0b7c3c8f43e6d198f70250147176692d406d4644b117d7a242f038b9d93ffb3d"
+      },
+      {
+        "path": "test/procgen-camera-timing.test.js",
+        "bytes": 8350,
+        "sha256": "198f46c20db201627596bdbb7dece1de995ab8c0f68a48c9c4095bf447497435"
+      },
+      {
+        "path": "test/procgen-cctv.test.js",
+        "bytes": 10637,
+        "sha256": "be621d99bc057301438c49fcd9d6f7cb8996c06d8604fea85f9e1c483deb53c0"
+      },
+      {
+        "path": "test/procgen-render-lifecycle.test.js",
+        "bytes": 20395,
+        "sha256": "b7cab87076406b984833af70850936cc95b110ad536ec845b808bb9a82e53b66"
+      },
+      {
+        "path": "e2e/procgen-render-recovery.spec.js",
+        "bytes": 18892,
+        "sha256": "6a629025aab9f17fac7f84c49a6b0728fb8f1bc8deeecf7ada1b53e9fb07b048"
+      }
+    ],
+    "validation": {
+      "node": {
+        "passed": 77,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook364-node-published.log",
+          "bytes": 115,
+          "sha256": "7b6e7625c6c39ebf65fc4de94fdaf63d0cf6d64427b3fcde5bcf9012e3c306d6"
+        }
+      },
+      "runtimeSourceChanged": false,
+      "browserRepeated": false,
+      "scope": "Re-run the affected77 Node cases against the exact published camera bytes. No application source changed; all final native browser source/runtime hashes remain identical."
+    }
   }
 }
