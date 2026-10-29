@@ -263,3 +263,30 @@ changes, no-target reentry, DPR logical restore and reduced-motion Follow, with
 unchanged world data. CSS-scaled pointer pan uses the shared content rectangle
 and owning pointer ID. These are deterministic controller checks; before/after
 motion clips and the full browser cadence matrix remain unqualified.
+
+## Owned CCTV construction and native retirement qualification
+
+CCTV construction owns each native surface as soon as it is created. A failed
+allocation, null context or throwing context releases all partial surfaces before
+the error reaches the render host; shared parent canvases and immutable art remain
+owned by their original renderer. A physical step exception propagates as a
+simulation failure and never becomes a recoverable paint error.
+
+The required workstation browser selection now includes the render-recovery
+fixtures. They preserve production projection ownership while injecting main,
+terrain, object and scenery context failures, a paint callback exception and
+CCTV construction failure at the owned frame callback. DPR1/2 cases compare exact
+native RGBA hashes and physical/event hashes, including a real actor CCTV raster.
+The separately scheduled DOM cause layer must become visible and retain its text
+and geometry before comparison; its100ms cadence is not part of canvas paint.
+Retries under a persistent fault remain degraded; restoring the API permits
+explicit recovery without notes or world changes. Synthetic contextlost coverage
+remains labelled separately from a native GPU reset.
+
+A separate native Chromium journey replaces display resources and resizes desktop
+rasters100 times, checks the same repeated layout does not allocate or clear again,
+and samples JavaScript heap after explicit CDP garbage collection. It also expands
+the actual viewport from1920×1080 to3840×2160 and restores the source pixels.
+RGBA ledger estimates are checked against64MiB. Heap samples exclude native/GPU
+allocations and do not establish a process-wide memory bound. Exact results and
+source hashes are retained in the canonical continuation364 qualification.

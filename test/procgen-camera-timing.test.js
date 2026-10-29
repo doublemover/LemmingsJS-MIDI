@@ -92,7 +92,7 @@ describe('ProcGen camera refresh-cadence qualification', () => {
 
 it('maps pointer deltas through the actual CSS content scale and preserves pointer ownership', () => {
   const events = new Map(), renderer = { scale: 3, cameraX: 100, cameraY: 0, follow: false,
-    canvas: { width: 900, height: 600, clientWidth: 900, clientHeight: 600, getBoundingClientRect: () => ({ left: 10, top: 20, width: 450, height: 300 }),
+    canvas: { width: 900, height: 600, clientWidth: 900, clientHeight: 600, ownerDocument: new globalThis.EventTarget(), getBoundingClientRect: () => ({ left: 10, top: 20, width: 450, height: 300 }),
       addEventListener: (name, handler) => events.set(name, handler), removeEventListener: name => events.delete(name), focus() {}, setPointerCapture() {} },
     world: { height: 1024 * 96, laneCount: 1, actors: [] }, window: { devicePixelRatio: 1 }, render() {} };
   const camera = createProcgenCameraController(renderer);

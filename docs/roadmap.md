@@ -9384,3 +9384,31 @@ export-budget acknowledgments still prevent a false complete receipt.
   suspension export integration, route-aware ExportPlan and lossless UMP Clip
   files are not supplied by this timing API. Current full CI remains independent;
  350 is still the latest verified full green head. Continue solo through backlog.
+
+### Continuation 364 - native display recovery and CCTV partial ownership
+
+- Release each partial CCTV surface immediately after allocation/null/throwing
+  context failure; retain shared parent surfaces. Keep physical step failures out
+  of paint recovery. The final77 affected Node cases pass.
+- Add render-recovery fixtures to the required workstation project and PR smoke.
+  Exercise native DPR1/2 context/scenery/callback/CCTV faults, failed retries,
+  living actor rasters, exact native RGBA, physical/event hashes and overlay state.
+- Exercise100 native recovery/desktop-raster cycles on one retained renderer,
+  repeated unchanged layouts, actual1920×1080→3840×2160→1920×1080 viewport changes
+  and post-GC JS heap samples. All six distinct final browser cases pass in two
+  disjoint groups. Peak ledger62,411,468 bytes stays below64MiB; post-GC JS heap
+  grows547,056 bytes. Exact source/overlay/CCTV/world hashes match. Close #1057
+  software acceptance; broader platform scope remains under #1086.
+- Preserve initial fixture failures: private projection mutation competed with
+  the owning view; PNG clips included the separately scheduled DOM cause layer.
+  Native RGBA stayed identical. Compare native pixels and overlay text/geometry
+  after its100ms display cadence refresh, without changing production layout.
+- 361 full CI passes26 desktop/204 workstation and all engine/native jobs, but
+  retains the same two Node listener failures fixed in362 (7096 passes/10pending).
+  362 main passes7100 Node cases/10pending, leaving a camera mock that lets
+  document guards overwrite its only canvas pointerup handler; give it a distinct
+  native EventTarget document without changing ownership assertions.
+  362 engine CI has17 passes and a Firefox signal11 process crash during initial
+  pause of the unavailable-storage journey; retain diagnostics and rerun only that
+  failed job.363 engine and both codec jobs pass; full coverage remains separate.
+ 350 remains the latest verified fully green checkpoint until all four jobs pass.

@@ -107,6 +107,17 @@ describe('ProcGen display resource lifecycle', () => {
     expect(callbacks.size).to.equal(2); expect(runtime.renderer.getDisplayState().state).to.equal('recovering');
     expect(world.tickIndex).to.equal(0); runtime.stop();
   });
+  it('propagates physical step failure without reporting a paint failure or retrying physics', () => {
+    const { canvas, world, windowRef, callbacks } = fixture({ runtime: true });
+    const runtime = createProcgenLaneRuntime({ canvas, assets: { groundPieces: [] }, initialWorld: world, windowRef }); let attempts = 0;
+    world.step = () => { attempts++; throw Error('Injected physical step failure'); };
+    try {
+      callbacks.get(1)(0);
+      expect(() => callbacks.get(2)(60)).to.throw('Injected physical step failure');
+      expect(attempts).to.equal(1); expect(runtime.renderer.getDisplayState().state).to.equal('ready');
+      expect(callbacks.size).to.equal(2);
+    } finally { runtime.stop(); }
+  });
 
   it('releases construction resources and provider leases when initial frame registration throws', () => {
     const { canvas, canvases, world, windowRef, documentListeners } = fixture({ runtime: true, rafFailure: true });

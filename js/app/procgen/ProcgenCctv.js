@@ -91,14 +91,14 @@ class ProcgenCctv {
     if (selectionKey !== this.lastSelectionKey) { this.lastSelectionKey = selectionKey; try { this.onChange?.(state); } catch { /* Controls cannot interrupt rendering. */ } }
   }
   createView() {
-    const r = this.renderer, view = Object.create(r);
-    view.buffer = r.resources.canvas(); view.bufferContext = view.buffer.getContext('2d', { alpha: false });
-    view.terrainBuffer = r.resources.canvas(); view.terrainContext = view.terrainBuffer.getContext('2d', { alpha: false });
-    view.objectBuffer = r.resources.canvas(); view.objectContext = view.objectBuffer.getContext('2d');
-    if (!view.bufferContext || !view.terrainContext || !view.objectContext) {
-      for (const canvas of [view.buffer, view.terrainBuffer, view.objectBuffer]) r.resources.release(canvas);
-      throw new Error('CCTV canvas context unavailable');
-    }
+    const r = this.renderer, view = Object.create(r), created = [];
+    try {
+      for (const [surface, context, alpha] of [['buffer', 'bufferContext', false], ['terrainBuffer', 'terrainContext', false], ['objectBuffer', 'objectContext', true]]) {
+        const canvas = r.resources.canvas(); created.push(canvas); view[surface] = canvas;
+        view[context] = canvas.getContext('2d', { alpha });
+        if (!view[context]) throw new Error('CCTV canvas context unavailable');
+      }
+    } catch (error) { for (const canvas of created) r.resources.release(canvas); throw error; }
     view.imageKey = {}; view.sceneryImageKey = {};
     view.tileRevisions = new Map(); view.actorDots = new Map(); view.objectDots = new Map(); view.objectPlacements = [];
     view.rasterStep = 1; view.image = null; view.lastTerrainKey = ''; view.lastGeometryKey = ''; view.lastPlacementKey = ''; view.lastObjectKey = '';

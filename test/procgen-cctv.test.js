@@ -14,6 +14,21 @@ const fixture = (count = 64, enabled = true) => {
   return { renderer, world, canvas, advance: ms => { now += ms; } };
 };
 describe('bounded live procgen CCTV', () => {
+  for (const kind of ['allocation', 'null-context', 'throwing-context']) it('retires partial CCTV construction after ' + kind + ' failure without clearing shared surfaces', () => {
+    const { renderer } = fixture(8, false), resources = renderer.resources, original = resources.canvas, created = [], before = resources.getStats();
+    resources.canvas = function() {
+      if (created.length === 1 && kind === 'allocation') throw Error('Injected CCTV allocation');
+      const canvas = original.call(this); created.push(canvas);
+      if (created.length === 2) canvas.getContext = () => { if (kind === 'throwing-context') throw Error('Injected CCTV context'); return null; };
+      return canvas;
+    };
+    try {
+      expect(() => renderer.cctv.createView()).to.throw(kind === 'null-context' ? 'unavailable' : 'Injected CCTV');
+      expect(created.every(canvas => canvas.width === 0 && canvas.height === 0 && !resources.entries.has(canvas) && !resources.contextListeners.has(canvas))).to.equal(true);
+      expect(resources.getStats().estimatedBytes).to.equal(before.estimatedBytes);
+      expect(resources.entries.has(renderer.buffer)).to.equal(true);
+    } finally { resources.canvas = original; renderer.dispose(); }
+  });
   it('starts disabled and avoids overview scans while retaining deliberate pins', () => {
     const { renderer } = fixture(64, false); renderer.camera.setZoom(0);
     expect(renderer.cctv.getState().enabled).to.equal(false); expect(renderer.overviewBandHeight).to.equal(0);
