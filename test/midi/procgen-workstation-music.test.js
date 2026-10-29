@@ -352,15 +352,18 @@ describe('Procgen workstation authoritative pattern clock', function() {
     expect(restored.notes[0].spec.timeMs).to.equal(5000);
     expect(restored.notes[0].spec).to.include({ resumed: true });
     expect(restored.notes[0].spec.envelope).to.include({ attack: 0, decay: 0 });
-    expect(restored.engine.snapshot()).to.deep.equal(first.engine.snapshot());
+    const resumed = restored.engine.snapshot(), original = first.engine.snapshot();
+    expect(resumed.active.map(({ receipt, ...voice }) => voice)).to.deep.equal(original.active.map(({ receipt, ...voice }) => voice));
+    expect(resumed.active[0].receipt).to.include({ status: 'accepted', ackState: 'scheduled', targetTime: 5000 });
+    expect(resumed.active[0].receipt.receiptId).not.to.equal(original.active[0].receipt.receiptId);
   });
 
   it('does not replay prior drum attacks and preserves attacks of future scheduled notes on resume', function() {
     const run = setup({ lanes: [createProcgenLane(0, { role: 'texture' }), createProcgenLane(1, { role: 'drums' })] });
     const activeNotes = [
-      { spec: { note: 60, envelope: { attack: 0.7, decay: 0.2, sustain: 0.8 }, durationMs: 1000 }, meta: { laneId: 'lane-1', beat: 0.5 }, endBeat: 2 },
-      { spec: { note: 36, percussion: true, durationMs: 1000 }, meta: { laneId: 'lane-2', beat: 0 }, endBeat: 2 },
-      { spec: { note: 38, percussion: true, durationMs: 1000 }, meta: { laneId: 'lane-2', beat: 0.5 }, endBeat: 2 }
+      { spec: { note: 60, envelope: { attack: 0.7, decay: 0.2, sustain: 0.8 }, durationMs: 1000 }, meta: { laneId: 'lane-1', beat: 0.5 }, endBeat: 2, receipt: { status: 'accepted', sinkId: 'test' } },
+      { spec: { note: 36, percussion: true, durationMs: 1000 }, meta: { laneId: 'lane-2', beat: 0 }, endBeat: 2, receipt: { status: 'accepted', sinkId: 'test' } },
+      { spec: { note: 38, percussion: true, durationMs: 1000 }, meta: { laneId: 'lane-2', beat: 0.5 }, endBeat: 2, receipt: { status: 'accepted', sinkId: 'test' } }
     ];
     run.engine.resume({ beat: 0.25, timestamp: 5000, bpm: 120, activeNotes });
     expect(run.notes.map(item => item.spec.note)).to.deep.equal([60, 38]);

@@ -180,6 +180,11 @@ const midiSchedulerChannelMethods = {
     if (id && output) this._outputsById.set(id, output);
   },
 
+  getOutputAdmissionIdentity(outputId = null) {
+    const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
+    return { outputId: this._resolveOutputId(outputId), connectionEpoch: lease?.connectionEpoch ?? null, routeRevision: lease?.routeRevision ?? this._routeRevision };
+  },
+
   getOutputRouteState(outputId = null) {
     const output = this._resolveOutput(outputId), lease = this._outputLeases.get(output);
     return { outputId: this._resolveOutputId(outputId), active: !!lease, available: !!output && output.state !== 'disconnected',

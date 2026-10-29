@@ -387,6 +387,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     lastHistoryGroup = history ? historyGroup : null;
     project = publishedProject;
+    engine?.cancelPendingAdmissions();
     projectRevision++; macroGestures.reconcile(); soundTransactions.reconcile(); physicalPlayback?.synchronizeLaneMix();
     if (instrumentRefsChanged) void physicalPlayback?.synchronizeLaneInstruments(project.procgen.lanes).catch(error => status('Lane instrument requirements: ' + error.message));
     editRevision++; storageStatus(); refreshSceneCue();
@@ -454,6 +455,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     },
     onSpeed(speed) { const timer = runtime()?.world?.timer; if (timer) timer.speedFactor = speed; },
     onFlush(reason) {
+      engine?.flush();
       ports?.flush(); router()?.scheduler?.allNotesOff?.();
       physicalPlayback?.stop();
       if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) { engine?.reset(); pendingResume = false; }
@@ -524,12 +526,20 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   });
   const localEnabled = () => legacy.local.getState().enabled && legacy.local.getState().selectedBackend !== 'midi';
   let outputEpoch = 0;
-  const admission = (status, sinkId, spec, meta, reason = null) => ({ status, reason, sinkId,
-    eventId: meta?.eventId ?? meta?.automationEventId ?? null, voiceId: meta?.voiceId ?? null,
-    connectionEpoch: outputEpoch, targetTime: spec?.timeMs ?? null, timeDomain: 'performance-ms',
+  const admission = (status, sinkId, spec, meta, reason = null) => Object.freeze({ schema: 'lemmings-sink-admission/v1', ...meta?.admissionIdentity, status, reason, sinkId,
+    eventId: meta?.eventId ?? meta?.automationEventId ?? meta?.admissionIdentity?.eventId ?? null, voiceId: meta?.voiceId ?? meta?.admissionIdentity?.voiceId ?? null,
+    connectionEpoch: meta?.admissionIdentity?.connectionEpoch ?? outputEpoch, targetTime: spec?.timeMs ?? null, timeDomain: 'performance-ms',
     ackState: status === 'accepted' ? 'scheduled' : 'none' });
+  const sinkIdentity = lane => {
+    const output = legacy.local.getState(), local = output.selectedBackend !== 'midi';
+    const route = local ? router()?.scheduler?.getOutputAdmissionIdentity?.(null) : ports.getOutputAdmissionIdentity(lane?.outputId);
+    return { sinkId: local ? 'local-preview' : route?.sinkId || 'midi-default', connectionEpoch: route?.connectionEpoch ?? outputEpoch,
+      routeRevision: route?.routeRevision ?? outputEpoch };
+  };
+  const targetSink = (meta, sinkId) => (!meta.targetSinkId || meta.targetSinkId === sinkId) && (!meta.targetSinkIds || meta.targetSinkIds.includes(sinkId));
   engine = createProcgenPatternEngine({ getProject: () => project, now,
-    getSinkKey: () => { const output = legacy.local.getState(); return `${output.selectedBackend}:${output.outputId || ''}:${output.enabled}:${outputEpoch}`; },
+    getSinkKey: lane => { const output = legacy.local.getState(), route = sinkIdentity(lane); return JSON.stringify([output.selectedBackend, output.outputId, output.enabled, outputEpoch, lane?.outputId, lane?.channel, route.connectionEpoch, route.routeRevision]); },
+    getAdmissionIdentity: lane => { const world = runtime()?.world; return { worldId: world?.worldId ?? null, generation: world?.generation ?? null, ...sinkIdentity(lane) }; },
     getLaneDistance: index => runtime()?.world?.frontiers?.[index] || 0,
     getLaneObservation: index => laneObserver?.(index),
     getLaneSpatialPosition: index => {
@@ -537,6 +547,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return { x: observed?.x, y: observed?.y, levelWidth: world?.width, levelHeight: world?.height };
     },
     emit(spec, meta) {
+      const sinkId = meta.admissionIdentity?.sinkId;
+      if (!targetSink(meta, sinkId)) return admission('rejected', sinkId, spec, meta, 'sink-not-targeted');
       if (!transport.getState().playing) return admission('rejected', null, spec, meta, 'transport-stopped');
       if (localEnabled()) {
         const scheduler = router()?.scheduler;
@@ -548,12 +560,15 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         return admission('rejected', 'local-preview', spec, meta, 'scheduler-rejected');
       }
       if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
-        if (ports.sendNote(spec, meta)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
-        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+        if (ports.sendNote(spec, meta)) return admission('accepted', sinkId, spec, meta);
+        budgetNotice(); return admission('rejected', sinkId, spec, meta, 'output-rejected');
       }
       return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
     emitCC(spec, meta) {
+      const sinkId = meta.admissionIdentity?.sinkId;
+      if (!transport.getState().playing) return admission('rejected', sinkId, spec, meta, 'transport-stopped');
+      if (!targetSink(meta, sinkId)) return admission('rejected', sinkId, spec, meta, 'sink-not-targeted');
       const event = { ...spec, type: 'cc', timestamp: spec.timeMs };
       if (localEnabled()) {
         const scheduler = router()?.scheduler, channel = scheduler?.output?.channels?.[spec.channel];
@@ -572,8 +587,8 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         finally { scheduler?._releaseReservation?.(reservation?.reservationId, true); }
       }
       if (legacy.local.getState().selectedBackend === 'midi' && legacy.local.getState().enabled) {
-        if (ports.sendEvent(event)) return admission('accepted', spec.outputId || 'midi-default', spec, meta);
-        budgetNotice(); return admission('rejected', spec.outputId || 'midi-default', spec, meta, 'output-rejected');
+        if (ports.sendEvent(event)) return admission('accepted', sinkId, spec, meta);
+        budgetNotice(); return admission('rejected', sinkId, spec, meta, 'output-rejected');
       }
       return admission('rejected', null, spec, meta, 'no-enabled-sink');
     },
@@ -591,7 +606,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const selectedInput = available.inputs.find(port => port.id === state.inputId) || null;
     const selectedClock = available.outputs.find(port => port.id === state.clockOutputId) || null;
     const references = [selectedOutput, selectedInput, selectedClock, ...routedOutputs];
-    if (references.length !== routedPortReferences.length || references.some((port, index) => port !== routedPortReferences[index])) outputEpoch++;
+    if (references.length !== routedPortReferences.length || references.some((port, index) => port !== routedPortReferences[index])) { outputEpoch++; engine?.cancelPendingAdmissions('output-epoch-changed'); }
     routedPortReferences = references;
     const laneRoutes = new Map();
     if (midiEnabled) project.procgen.lanes.forEach((lane, index) => {

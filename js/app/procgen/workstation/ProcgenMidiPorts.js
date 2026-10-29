@@ -199,6 +199,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     inputPortConnected: input ? input.state !== 'disconnected' : null,
     inputLiveness: Object.freeze({ sourceRoute: input?.id || null, connectionEpoch: inputEpoch, observationDomain: 'performance-now', activeSensingVisibility, ...inputLiveness }),
     routeRevision, outputRoutes: outputRouteState(), pressure: scheduler.getOutputPressure?.(now(), noteOutput?.id) || null });
+  const getOutputAdmissionIdentity = (outputId = null) => {
+    const id = outputId == null || outputId === '' ? noteOutput?.id : outputId, route = activeOutputs.get(String(id));
+    return Object.freeze({ sinkId: id || 'midi-default', connectionEpoch: route?.connectionEpoch ?? null, routeRevision: route?.routeRevision ?? routeRevision });
+  };
   const getState = () => { const retainedRange = recordingRange.snapshot(); return ({ inputId: input?.id || null, noteOutputId: noteOutput?.id || null,
     clockOutputId: clockOutput?.id || null, thru, recording, learning: !!learn,
     inputPortConnected: input ? input.state !== 'disconnected' : null,
@@ -731,7 +735,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     return true;
   }
   return {
-    getState, getOperationalState, receiveMidi, flush, panic, recordOutput, getRecordingIndexState: () => recordingRange.diagnostics(),
+    getState, getOperationalState, getOutputAdmissionIdentity, receiveMidi, flush, panic, recordOutput, getRecordingIndexState: () => recordingRange.diagnostics(),
     setPerformanceDocumentIdentity: value => performance?.setDocumentIdentity(value),
     stopPerformance: reason => performance?.stop(reason, true),
     bindControllerBaseline(options) {

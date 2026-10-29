@@ -9049,3 +9049,37 @@ export-budget acknowledgments still prevent a false complete receipt.
   export assertion (expected note79, received69). It never reached workstation
   smoke/coverage, so348 is not a full green checkpoint. This span fixes that edit
   path; keep347 as the latest fully verified checkpoint until all new jobs pass.
+
+### Continuation 350 - bounded pattern admissions and immutable sink receipts
+
+- Add a bounded immutable sink receipt registry with full supplied causal/route
+  identity, sequence/version checks, explicit target and acknowledgement clocks,
+  monotone evidence stages and a bounded history ring. Unknown physical batch
+  identity remains null. A later acknowledgement cannot rewrite a newer receipt
+  or a retired route. [Contract](sink-admission.md).
+- Give deferred pattern notes a cancellable pending owner, separate from active
+  voices. Validate generation, route, mute/solo, slot and deadline at settlement;
+  cancel on transport flush, project/route changes, reset and controller edits.
+  Keep uncertain cancellation charged against the bound. Deferred checkpoint
+  diagnostics never restore as sounding notes. Resume targets only an accepted
+  sink in the same route, while restoring counters preserves deterministic IDs.
+- Track controller acceptance per sink, retry only refused targets, suppress
+  duplicate pending values and cancel obsolete deferred values before replacement.
+  Attempt budgets stay separate from active admission. Production selected
+  preview/MIDI callbacks return frozen captured identities and honor retry targets.
+- Grouped validation:218 Node cases and seven real 1920x1080 desktop journeys
+  pass, plus format/critical types/undefined/provenance. Focused eleven-case
+  diagnostic coverage: registry100% lines/statements/functions,85.88% branches;
+  pattern engine80% lines/statements,71.67% branches,78% functions. The focused
+  subset intentionally omits much of the existing musical/automation matrix;
+  use the grouped musical suite to cover it, and extend invalid identity,
+  cancellation acknowledgement and receipt-capacity boundaries where useful.
+- Keep #1059 open for the remaining canonical physical-dispatcher receipt identity,
+  acknowledgement/deferred integration and actual combined-output acceptance.
+  Shared resource charging remains with its resource owner; pattern callback
+  conformance is not physical hardware qualification.
+- 349's native codec jobs pass on both Windows and Linux. Its engine job passed17
+  cases but Firefox's target crashed during initial boot of the audio-navigation
+  case; its whole workflow is not green. Preserve the failure. Add browser process
+  debug logs and failure trace uploads without retries or changing required cases.
+  The main job remains independent and the last full green checkpoint stays347.

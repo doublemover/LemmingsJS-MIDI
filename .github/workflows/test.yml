@@ -141,6 +141,7 @@ jobs:
       - run: npm run test-e2e:lifecycle
         env:
           LEMMINGS_LIFECYCLE_AUDIO_BACKEND: pulseaudio-null-sink
+          DEBUG: pw:browser
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -149,3 +150,10 @@ jobs:
             .tmp/lifecycle-engine-results.json
             .tmp/lifecycle-engine-qualification.json
           if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: lifecycle-engine-diagnostics
+          path: test-results
+          if-no-files-found: warn
+          retention-days: 7

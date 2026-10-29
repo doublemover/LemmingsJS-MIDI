@@ -44940,5 +44940,1002 @@
         "sha256": "1c4990b7b623df116ddef14b8160ea748ff822ba06e66b4d914f6cb56b22ec85"
       }
     ]
+  },
+  "continuation350": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "e809366d612d194aae93ef83330217abf3da9360",
+    "scope": "Bounded pattern pending admissions, separate sink outcomes and immutable receipt transitions; solo, no worktrees; grouped affected validation.",
+    "implementation": [
+      "Create bounded immutable SinkAdmissionRegistry: complete supplied causal/route identities, monotone stages, sequence/version checks, separate target and acknowledgement clock domains, bounded history ring and protected unresolved receipts.",
+      "Own deferred notes outside active state. Cancel on reset/flush, route/generation/audibility/slot/deadline/controller-definition changes; late replies cannot revive them. Unconfirmed cancellation remains bounded and consumes capacity.",
+      "Keep per-sink CC caches and targeted latest-value retry. Coalesce identical pending values and cancel obsolete ones before replacement. Keep attempt budgets independent from active accounting.",
+      "Capture production route identities before preview/MIDI dispatch. Honor per-sink retry/resume targets, reject stale echoed epochs, cancel at project/port/transport boundaries and retain only accepted matching-route resume state.",
+      "Persist validated sequence cursors without restoring deferred jobs as sounding notes.",
+      "Retain Firefox crash evidence and add browser process diagnostics/failure trace upload without retries or removing cases."
+    ],
+    "validation": {
+      "node": {
+        "passed": 218,
+        "failed": 0,
+        "files": [
+          "test/midi/procgen-sink-admission.test.js",
+          "test/midi/procgen-workstation-music.test.js",
+          "test/procgen-workstation-midi.test.js",
+          "test/procgen-workstation-controller.test.js",
+          "test/midi/midi-routing-leases.test.js"
+        ],
+        "log": {
+          "path": ".tmp/rook350-qualified-node.log",
+          "bytes": 20809,
+          "sha256": "781e1651a2e3d4a80064fd8688bfdae71512aedb8b1ee4fb85ec269693a17fd9"
+        }
+      },
+      "browser": {
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "desktop": {
+          "startTime": "2026-10-29T14:22:43.320Z",
+          "duration": 8727.716999999999,
+          "expected": 2,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "workstation": {
+          "startTime": "2026-10-29T14:22:52.643Z",
+          "duration": 37770.468,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "journeys": [
+          "legacy musical span edit durability",
+          "explicit selected MIDI and disconnect",
+          "failed explicit MIDI library load retry",
+          "installed offline MIDI loading and Panic",
+          "sustained synth gate / phrase checkpoint resume",
+          "external clock loss / reconnect",
+          "paused exact recovery and New defaults"
+        ],
+        "logs": [
+          {
+            "path": ".tmp/rook350-qualified-desktop.log",
+            "bytes": 599,
+            "sha256": "0cac5b42cc94ed4585882f8ae6d29cabbab6d765e5e70ad61b3fcb0f438c057a"
+          },
+          {
+            "path": ".tmp/rook350-qualified-workstation.log",
+            "bytes": 1256,
+            "sha256": "75c354e6dd8b41092c31c643f81784e8d1446649eacc5aed0050d8934f6ed1ff"
+          }
+        ]
+      },
+      "coverage": {
+        "scope": "Focused 11-case diagnostic, overlapping grouped tests; whole-project thresholds unchanged.",
+        "summary": {
+          "total": {
+            "lines": {
+              "total": 459,
+              "covered": 379,
+              "skipped": 0,
+              "pct": 82.57
+            },
+            "statements": {
+              "total": 459,
+              "covered": 379,
+              "skipped": 0,
+              "pct": 82.57
+            },
+            "functions": {
+              "total": 58,
+              "covered": 47,
+              "skipped": 0,
+              "pct": 81.03
+            },
+            "branches": {
+              "total": 378,
+              "covered": 283,
+              "skipped": 0,
+              "pct": 74.86
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPatternEngine.js": {
+            "lines": {
+              "total": 400,
+              "covered": 320,
+              "skipped": 0,
+              "pct": 80
+            },
+            "functions": {
+              "total": 50,
+              "covered": 39,
+              "skipped": 0,
+              "pct": 78
+            },
+            "statements": {
+              "total": 400,
+              "covered": 320,
+              "skipped": 0,
+              "pct": 80
+            },
+            "branches": {
+              "total": 293,
+              "covered": 210,
+              "skipped": 0,
+              "pct": 71.67
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SinkAdmissionRegistry.js": {
+            "lines": {
+              "total": 59,
+              "covered": 59,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 8,
+              "covered": 8,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 59,
+              "covered": 59,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 85,
+              "covered": 73,
+              "skipped": 0,
+              "pct": 85.88
+            }
+          }
+        },
+        "remaining": "Musical/automation branches are exercised by the grouped existing suite; add invalid identity, explicit cancellation acknowledgement and receipt-capacity boundaries where useful."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check: 10 components / 350 files",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "initialFailure": "First grouped run passed217/failed1: old future-note resume fixture supplied no typed accepted receipts. Updated it deliberately, retaining drum/future attack timing assertions. Resume now produces a separate admission receipt rather than treating historical admission as a new scheduled fact."
+    },
+    "nativeCi349": {
+      "head": "e809366d612d194aae93ef83330217abf3da9360",
+      "run": 40886097447,
+      "windowsJob": 123490098345,
+      "linuxJob": 123490098455,
+      "status": "both native jobs success",
+      "sourceIdenticalAcrossPlatforms": true,
+      "sourceIdenticalToLocal": true,
+      "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+      "linux": {
+        "schema": "lemmings-native-midi-codec-qualification/v1",
+        "status": "passed",
+        "platform": "linux",
+        "arch": "x64",
+        "osRelease": "7.0.0-1017-azure",
+        "node": "v20.20.2",
+        "scope": "codec-and-synchronous-controlled-raw-sender-only",
+        "deviceIO": false,
+        "shippingTransportQualified": false,
+        "source": [
+          {
+            "path": "native/midi-codec/dependencies.json",
+            "bytes": 688,
+            "sha256": "6ea62b6259cafa4e6e6f3c8608f6b95c93e0122b5ffe2764c9c5fb2c4983ec92"
+          },
+          {
+            "path": "native/midi-codec/CMakeLists.txt",
+            "bytes": 2886,
+            "sha256": "b22ce0701164a880056e8c3b424ed7912a2c1d5b983db12e6fcbdbede8d88bc9"
+          },
+          {
+            "path": "native/midi-codec/UmpBatchGuard.hpp",
+            "bytes": 6696,
+            "sha256": "a20fa3d6690c858589546ecbd3e4f91671d62a6f8525800a0d7a67711ef00a0a"
+          },
+          {
+            "path": "native/midi-codec/peer.cpp",
+            "bytes": 9827,
+            "sha256": "7eef5938fa405406e41d30bba23c9a1f0a5580f09d0dc6b3820fa1512bef0cb3"
+          },
+          {
+            "path": "scripts/NativeMidiCodecCorpus.js",
+            "bytes": 8524,
+            "sha256": "e9272a2243116e566f449729ec7248b1ad0b088c5bfb989690f6b19a28ee599c"
+          },
+          {
+            "path": "scripts/qualify-native-midi-codec.js",
+            "bytes": 6217,
+            "sha256": "70f4f0a0304ef9251503aca7b330b550cc81571017a89f3fd72b033102851cea"
+          },
+          {
+            "path": "js/midi/protocol/UmpPacketCodec.js",
+            "bytes": 16496,
+            "sha256": "e3c1f99e149a5b14e0c2e7d5239537e55b3c747dc497a4bd65d057f775446b74"
+          },
+          {
+            "path": "js/midi/protocol/MidiProtocolLowering.js",
+            "bytes": 8849,
+            "sha256": "1c4990b7b623df116ddef14b8160ea748ff822ba06e66b4d914f6cb56b22ec85"
+          }
+        ],
+        "dependencies": {
+          "schema": "lemmings-native-midi-codec-dependencies/v1",
+          "ni_midi2": {
+            "repository": "https://github.com/midi2-dev/ni-midi2.git",
+            "revision": "26e008c10b18e2397d7b65e184b71da3327e78d1",
+            "license": "MIT"
+          },
+          "cmidi2": {
+            "repository": "https://github.com/atsushieno/cmidi2.git",
+            "revision": "49d4fb19a8e79b287e472b0a6d3a0e083fe77c53",
+            "license": "MIT"
+          },
+          "libremidi": {
+            "repository": "https://github.com/celtera/libremidi.git",
+            "revision": "291c7b9154b54a10f69bed9691fc0dca9dc6eeab",
+            "license": "BSD-2-Clause AND MIT",
+            "scope": "Header/API compatibility and packet containers; no native device transport is enabled by this target."
+          }
+        },
+        "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+        "cmake": "cmake version 4.4.4",
+        "executable": {
+          "bytes": 76992,
+          "sha256": "2248c9b68cb834eb5d0aef0d15a250ba4b1015d5e3afc15b84a566a0f52152ab"
+        },
+        "peerProcessWallMs": 39.80412400000023,
+        "corpus": {
+          "commands": 8829,
+          "inputBytes": 233874,
+          "inputSha256": "6a4422d1abd117978aed0f6fd96dca0576a188267810338ff26f5d5196f9e0ab",
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "seed": "0x6d696469",
+          "seededWholeBatchCases": 2048,
+          "typedConstructorCases": 5379,
+          "scalingCases": 1304
+        },
+        "widths": [
+          {
+            "type": 0,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 1,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 2,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 3,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 4,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 5,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 4,
+            "libremidiIterator": 4,
+            "niRoundtrip": true
+          },
+          {
+            "type": 6,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 7,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 8,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 9,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 10,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 11,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 12,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 13,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 14,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 15,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          }
+        ],
+        "knownPeerLimits": {
+          "libremidiTypedFlexAndStreamWordCount": 0,
+          "cmidi2ReservedWidthsAreNotFramingAuthority": true,
+          "cmidi2LowNoteVelocitiesBecomeZero": true,
+          "niMidi1ParameterLoweringUnavailable": true
+        },
+        "loweringProbes": [
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              1
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323583,
+            "cmidi2Bytes": [
+              144,
+              60,
+              127
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              9,
+              176,
+              38,
+              13
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              0,
+              176,
+              38,
+              63
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              127,
+              176,
+              38,
+              127
+            ]
+          }
+        ],
+        "protocolRejections": [
+          {
+            "name": "line-capacity",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "embedded-nul",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "carriage-return",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "unterminated",
+            "exitCode": 2,
+            "reason": "unterminated-command"
+          }
+        ]
+      },
+      "windows": {
+        "schema": "lemmings-native-midi-codec-qualification/v1",
+        "status": "passed",
+        "platform": "win32",
+        "arch": "x64",
+        "osRelease": "10.0.26100",
+        "node": "v20.20.2",
+        "scope": "codec-and-synchronous-controlled-raw-sender-only",
+        "deviceIO": false,
+        "shippingTransportQualified": false,
+        "source": [
+          {
+            "path": "native/midi-codec/dependencies.json",
+            "bytes": 688,
+            "sha256": "6ea62b6259cafa4e6e6f3c8608f6b95c93e0122b5ffe2764c9c5fb2c4983ec92"
+          },
+          {
+            "path": "native/midi-codec/CMakeLists.txt",
+            "bytes": 2886,
+            "sha256": "b22ce0701164a880056e8c3b424ed7912a2c1d5b983db12e6fcbdbede8d88bc9"
+          },
+          {
+            "path": "native/midi-codec/UmpBatchGuard.hpp",
+            "bytes": 6696,
+            "sha256": "a20fa3d6690c858589546ecbd3e4f91671d62a6f8525800a0d7a67711ef00a0a"
+          },
+          {
+            "path": "native/midi-codec/peer.cpp",
+            "bytes": 9827,
+            "sha256": "7eef5938fa405406e41d30bba23c9a1f0a5580f09d0dc6b3820fa1512bef0cb3"
+          },
+          {
+            "path": "scripts/NativeMidiCodecCorpus.js",
+            "bytes": 8524,
+            "sha256": "e9272a2243116e566f449729ec7248b1ad0b088c5bfb989690f6b19a28ee599c"
+          },
+          {
+            "path": "scripts/qualify-native-midi-codec.js",
+            "bytes": 6217,
+            "sha256": "70f4f0a0304ef9251503aca7b330b550cc81571017a89f3fd72b033102851cea"
+          },
+          {
+            "path": "js/midi/protocol/UmpPacketCodec.js",
+            "bytes": 16496,
+            "sha256": "e3c1f99e149a5b14e0c2e7d5239537e55b3c747dc497a4bd65d057f775446b74"
+          },
+          {
+            "path": "js/midi/protocol/MidiProtocolLowering.js",
+            "bytes": 8849,
+            "sha256": "1c4990b7b623df116ddef14b8160ea748ff822ba06e66b4d914f6cb56b22ec85"
+          }
+        ],
+        "dependencies": {
+          "schema": "lemmings-native-midi-codec-dependencies/v1",
+          "ni_midi2": {
+            "repository": "https://github.com/midi2-dev/ni-midi2.git",
+            "revision": "26e008c10b18e2397d7b65e184b71da3327e78d1",
+            "license": "MIT"
+          },
+          "cmidi2": {
+            "repository": "https://github.com/atsushieno/cmidi2.git",
+            "revision": "49d4fb19a8e79b287e472b0a6d3a0e083fe77c53",
+            "license": "MIT"
+          },
+          "libremidi": {
+            "repository": "https://github.com/celtera/libremidi.git",
+            "revision": "291c7b9154b54a10f69bed9691fc0dca9dc6eeab",
+            "license": "BSD-2-Clause AND MIT",
+            "scope": "Header/API compatibility and packet containers; no native device transport is enabled by this target."
+          }
+        },
+        "compiler": "clang version 20.1.8\nTarget: x86_64-pc-windows-msvc\nThread model: posix\nInstalledDir: C:\\Program Files\\LLVM\\bin",
+        "cmake": "cmake version 4.4.4",
+        "executable": {
+          "bytes": 50176,
+          "sha256": "5d5be87893512b7c1d41bb55767c533ae7113bdffb51ac732e8562de83dbaaf7"
+        },
+        "peerProcessWallMs": 113.11710000000312,
+        "corpus": {
+          "commands": 8829,
+          "inputBytes": 233874,
+          "inputSha256": "6a4422d1abd117978aed0f6fd96dca0576a188267810338ff26f5d5196f9e0ab",
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "seed": "0x6d696469",
+          "seededWholeBatchCases": 2048,
+          "typedConstructorCases": 5379,
+          "scalingCases": 1304
+        },
+        "widths": [
+          {
+            "type": 0,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 1,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 2,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 3,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 4,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 5,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 4,
+            "libremidiIterator": 4,
+            "niRoundtrip": true
+          },
+          {
+            "type": 6,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 7,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 8,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 9,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 10,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 11,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 12,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 13,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 14,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 15,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          }
+        ],
+        "knownPeerLimits": {
+          "libremidiTypedFlexAndStreamWordCount": 0,
+          "cmidi2ReservedWidthsAreNotFramingAuthority": true,
+          "cmidi2LowNoteVelocitiesBecomeZero": true,
+          "niMidi1ParameterLoweringUnavailable": true
+        },
+        "loweringProbes": [
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              1
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323583,
+            "cmidi2Bytes": [
+              144,
+              60,
+              127
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              9,
+              176,
+              38,
+              13
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              0,
+              176,
+              38,
+              63
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              127,
+              176,
+              38,
+              127
+            ]
+          }
+        ],
+        "protocolRejections": [
+          {
+            "name": "line-capacity",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "embedded-nul",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "carriage-return",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "unterminated",
+            "exitCode": 2,
+            "reason": "unterminated-command"
+          }
+        ]
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci349-native-linux.zip",
+          "bytes": 2246,
+          "sha256": "50b377be25c5d4f1a94750a950fb9fa629d1488ab8094d8f5af325629e1bda84"
+        },
+        {
+          "path": ".tmp/ci349-native-windows.zip",
+          "bytes": 2147,
+          "sha256": "5773b5d92e6e24c3e794cacf981379739bfcea07af12e424f3b646b50b867098"
+        }
+      ]
+    },
+    "latestFullCi": {
+      "head": "e809366d612d194aae93ef83330217abf3da9360",
+      "run": 40886097447,
+      "status": "not green",
+      "engine": {
+        "job": 123490098017,
+        "status": "failed",
+        "passed": 17,
+        "failed": 1,
+        "error": "Firefox target crashed during initial boot of native audio navigation at lifecycle.spec.js:8. No retry or skipped case."
+      },
+      "main": {
+        "job": 123490098951,
+        "status": "in progress at last observation",
+        "currentStep": "workstation smoke; desktop boundaries and prior static gates passed"
+      },
+      "latestFullyVerifiedHead": "89fa0f1c1145a250219fd041f809b8300913e301"
+    },
+    "issueStatus": {
+      "1059": "open: pattern contract is implemented/qualified; canonical physical dispatcher full receipt identity/acknowledgement/deferred integration and actual combined-output acceptance remain",
+      "1086": "open: retain latest Firefox process crash and broader native/device matrix"
+    },
+    "limits": [
+      "No physical device, receiver processing or acoustic pass from typed callback/unit or digital browser success.",
+      "The selected workstation backend remains explicit; multi-sink callback contract tests do not invent a simultaneous hardware UI mode.",
+      "Deferred cancellation must explicitly acknowledge retirement. Unknown cleanup is retained; no false clean or audible-state claim."
+    ],
+    "sourceFiles": [
+      {
+        "path": ".github/workflows/test.yml",
+        "bytes": 6745,
+        "sha256": "efcbff156c4720c6457411ec730b7cefe56b19765d56437a8bb6b6b5719ef84a"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPatternEngine.js",
+        "bytes": 30126,
+        "sha256": "c4f52bb5a9092744f3297aecaef1e773dd360431ba7a2be3470fd52bd465d2c5"
+      },
+      {
+        "path": "js/app/procgen/workstation/SinkAdmissionRegistry.js",
+        "bytes": 5195,
+        "sha256": "c79f611f43901de685711209ded33fa1ddb46157a59699b0e8fb5d2a2fccb0bc"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "bytes": 70237,
+        "sha256": "d807417be76f5f3d8ddd5537596bbc4447f9300bfb082b00b4583ec9532d1ce9"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 212803,
+        "sha256": "3cbadd9482ef8c63eac5db51ae67c6807e15369d5d6eb26a8835be35c04bcc2c"
+      },
+      {
+        "path": "js/midi/scheduler/MidiSchedulerChannelMethods.js",
+        "bytes": 31272,
+        "sha256": "e90c81576b6088cf2ae625e850beda915f5e05eb1eb1d75d65157e7e7d88d4e6"
+      },
+      {
+        "path": "test/midi/procgen-workstation-music.test.js",
+        "bytes": 31678,
+        "sha256": "bf7d4fc8bf4eb99c268cea54fb7b5d424a8f411e0966a127d5b88824ba62ab73"
+      },
+      {
+        "path": "test/midi/procgen-sink-admission.test.js",
+        "bytes": 13023,
+        "sha256": "48755598e3ebaedf9ba801d1796dcb3053fc5e285c4aca9d81857e92e46909fc"
+      }
+    ]
   }
 }
