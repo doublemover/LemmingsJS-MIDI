@@ -116,9 +116,38 @@ their manifest. Neither direct nor worker compatibility writers silently treat
 original UMP as an empty successful file. Direct note balancing also respects
 known connection epochs and route revisions.
 
-The product still needs a selected original-UMP source projection, boundary/loss
-sidecar and Clip export/import controls. The following codec consumes explicit
-original-word snapshots; the capture API alone does not complete that product path.
+The Project menu offers **MIDI2 Clip**, **MIDI** (compatible MIDI1), and project
+export. Clip export selects original authored UMP intent only; submitted UMP
+recording is unavailable and is explicitly refused rather than reconstructed from
+MIDI1 observations. `createRecordingExportSource({protocol: 'ump'})` yields a
+bounded owned prefix containing original words, attribution and captured tempo.
+The worker independently validates rows, output/connection/route identity, clock
+order and the selected route. Each Clip contains one endpoint connection; equal
+packets and intentional unisons remain separate. Backwards score clocks require
+a separate clock segment, and unmapped times refuse export. This source is an
+authored score recording, not the physical-take timeline projection.
+
+Choose retained beat positions or recording-boundary rebasing using **MIDI file
+timing**. Clip uses960PPQ and reports nearest-tick quantization. Choose either
+captured transport tempo or original Flex tempo at the file origin. Captured
+transport boundaries create labelled derived Flex tempo packets, rounded to the
+format's10ns-per-quarter unit; the current UI BPM is never substituted. Original
+Flex tempo is preserved exactly and refuses a conflicting transport overlay.
+Initial meter and trailing duration remain unobserved unless retained in the
+source; no meter or release packets are invented to repair note boundaries.
+
+**Save Clip manifest** explicitly downloads optional JSON beside the prepared
+Clip. It contains source identities, per-packet attribution, output identity,
+coverage, quantization, the selected ExportPlan and a SHA-256 binding to the exact
+Clip bytes. Capture completeness and unverified note-boundary coverage are
+separate. This manifest is external to UMP. Downloading it preserves the prepared
+Clip for Retry file; replacement/discard retires both artifacts. Failed or canceled
+preparation keeps the previous pair.
+
+**Inspect Clip** validates a selected file in an admitted worker before exposing
+it as a prepared, unchanged file. Setup, SysEx and notes remain data. Inspection
+does not change the project, physical world or output devices, and does not
+implement playback/project import. Invalid files retain the previous artifact.
 
 `MidiClipFile.js` encodes and decodes the published
 [MIDI Clip File v1.0](https://amei.or.jp/midistandardcommittee/MIDI2.0/MIDI2.0-DOCS/M2-116-U_v1-0_MIDI_Clip_File_Specification.pdf)
@@ -168,7 +197,8 @@ Independent file tests use pinned development-only `jzz-midi-smf@1.9.9` and its
 `jzz@1.9.6` API. Fixtures compare exact UMP words/ticks in both directions, precise
 elapsed tempo timing, multiple groups,16-bit release velocity, per-note bend,
 simultaneous unisons, tempo/meter changes, maximum delta splits, malformed input
-and deterministic re-export. The product still needs original UMP capture,
-source/endpoint/epoch/time projection, export/import controls and complete
-compatibility loss reports before #1093 can close. No DAW or hardware receiver
-qualification follows from these file-reader checks.
+and deterministic re-export. Original authored-source projection, optional
+attribution and desktop Clip controls are now integrated. Physical-take protocol
+projection, submitted UMP capture, complete compatibility loss reports and the
+remaining unsupported Clip features/DAW retention still keep #1093 open. No DAW
+or hardware receiver qualification follows from these file-reader checks.

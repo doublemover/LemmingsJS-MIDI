@@ -28,6 +28,7 @@ import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMateri
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
 import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
+import { encodeRecordedUmpClip } from '../procgen/workstation/RecordedUmpClipExport.js';
 import { encodeMidiClipFile, decodeMidiClipFile } from '../../midi/protocol/MidiClipFile.js';
 import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 
@@ -108,6 +109,18 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       !Number.isSafeInteger(maxStringBytes) || maxStringBytes < 1 || maxStringBytes > MAX_BYTES ||
       expectedInputHash != null && !/^[a-f0-9]{64}$/.test(expectedInputHash)) throw problem('invalid-contract', 'Unsupported background job kernel contract.');
   guard(signal, current);
+  if (kind === 'encode-recorded-ump-clip') {
+    const value = await encodeRecordedUmpClip(input, { signal, current, estimatedPeakBytes, maxBytes, crypto, onProgress, yieldControl }); guard(signal, current);
+    const snapshot = input.snapshot;
+    return { value, inputBytes: snapshot.beats.byteLength + snapshot.offsets.byteLength + snapshot.words.byteLength + snapshot.routes.byteLength + snapshot.sourceIndices.byteLength +
+      snapshot.tempoBeats.byteLength + snapshot.tempoBpms.byteLength + snapshot.tempoIndices.byteLength + snapshot.outputEpochs.byteLength + snapshot.routeCounts.byteLength +
+      new TextEncoder().encode(JSON.stringify({ attribution: snapshot.attribution, outputIds: snapshot.outputIds, window: input.window, options: input.options })).byteLength,
+    nodes: 64, retainedBytes: (value.bytes.byteLength + value.manifestBytes.byteLength) * 2 + 65536 };
+  }
+  if (kind === 'inspect-midi-clip') {
+    const value = await decodeMidiClipFile(input?.bytes, { signal, current, maxBytes, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
+    return { value: { report: value.report, ppq: value.ppq, endTick: value.endTick }, inputBytes: input.bytes.byteLength, nodes: 32, retainedBytes: 65536 };
+  }
   if (kind === 'encode-midi-clip' || kind === 'decode-midi-clip') {
     const controls = { signal, current, maxBytes, estimatedPeakBytes, onProgress, yieldControl };
     const value = kind === 'encode-midi-clip' ? await encodeMidiClipFile(input, controls) : await decodeMidiClipFile(input?.bytes, controls); guard(signal, current);

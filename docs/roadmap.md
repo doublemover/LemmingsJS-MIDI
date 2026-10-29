@@ -9565,3 +9565,36 @@ export-budget acknowledgments still prevent a false complete receipt.
   agree. Keep the original Firefox signal11 failure, diagnostics, earlier403
   retry refusal and successful isolated18case rerun; root cause remains unproven.
   Later development has its own qualification scope. Continue solo.
+
+### Continuation 370 - original UMP Clip product projection and safe inspection
+
+- Build a retained original-word source with bounded attribution and captured
+  tempo. Independently validate its complete packet/route/epoch/clock inventory
+  in an admitted worker. Select one output connection; retain equal-time order
+  and deliberate unisons. Never reconstruct original UMP from byte aliases.
+- Expose original authored Clip intent, explicit tempo authority and existing
+  route/timing controls. Preserve original Flex tempo; reject a transport overlay,
+  absent clocks and backwards score segments. Report960PPQ nearest-tick placement;
+  captured transport generates labelled derived Flex tempo. Initial meter, note
+  closure and trailing duration are not invented.
+- Offer optional external attribution/coverage JSON with exact Clip SHA-256,
+  source identity, packet indices and ExportPlan. Prepare both owned artifacts
+  before replacing the previous pair. Manifest delivery keeps Clip retry ready;
+  cancellation/failure keeps the old pair and retirement disposes both.
+- Validate imports in a worker as data, preserving the unchanged validated file
+  for explicit delivery. Setup/notes never reach hardware; project/physical
+  playback import remains unavailable. Keep physical-take protocol projection,
+  submitted UMP capture, full compatibility losses, unsupported Clip prefaces and
+  independent DAW/receiver work open under #986/#1093/#1063. Continue solo.
+- Final260 related Node cases and six native1920×1080 journeys pass. Both new
+  critical-typed modules have100%lines; combined88.88%functions/82.41%branches.
+  Native controls independently preserve selected original words/ticks, bind the
+  optional manifest to file bytes, retain canceled/invalid prior exports and leave
+  world/document state unchanged on inspection. The100000-event independent
+  roundtrip and all three existing route/source/timing journeys remain green.
+  Browser collection is247full/217smoke across53files. No full local repeat.
+- Promote368/338df071 to the full green checkpoint:7175Node/10preexisting pending,
+  26desktop/216workstation/18engine,14capabilities, both native codec jobs and
+  benchmark/MCP/policy/dependency checks. Verify1141workstation/1252engine and
+  both8file native inventories against that Git tree. Coverage90.79%lines,
+  83.95%branches,88.64%functions. Later source has independent CI scope.

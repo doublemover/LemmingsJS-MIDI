@@ -353,6 +353,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   }
   exportSourceLabel.append(midiExportSource); exportPlacementLabel.append(midiExportPlacement);
   midiExportChoices.append(exportSourceLabel, exportPlacementLabel, node('p', 'Choose source and timing for the next MIDI file. Submitted means accepted by the MIDI API; receiver playback is unverified. Intent renders authored messages. Files keep known output connection changes separate.'));
+  const clipExportChoices = node('fieldset'), clipExportTempo = node('select'); clipExportChoices.append(node('legend', 'MIDI2 Clip file'));
+  const clipTempoLabel = node('label', 'Clip tempo source '); clipExportTempo.setAttribute('aria-label', 'Clip tempo source');
+  for (const [value, text] of [['captured-transport', 'Captured transport tempo'], ['original-flex', 'Original Flex tempo at file start']]) {
+    const option = node('option', text); option.value = value; clipExportTempo.append(option);
+  }
+  clipTempoLabel.append(clipExportTempo); clipExportChoices.append(clipTempoLabel, node('p', 'Original authored UMP intent only; submitted UMP recording is unavailable. Keeps groups and precise values for one output connection. Uses the MIDI file timing choice above. Note boundaries remain unverified. The optional manifest contains attribution, coverage and source identities.'));
+  const inspectClipInput = node('input'); inspectClipInput.type = 'file'; inspectClipInput.accept = '.midi2,.clip'; inspectClipInput.hidden = true; inspectClipInput.setAttribute('aria-label', 'Inspect MIDI2 Clip file');
+  on(inspectClipInput, 'change', () => { const file = inspectClipInput.files?.[0]; inspectClipInput.value = ''; if (file) handlers.inspectMidiClip?.(file); });
+  clipExportChoices.append(inspectClipInput);
   const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export'); exportDesk.hidden = true;
   const exportSummary = node('summary', 'No prepared file');
   const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
@@ -360,6 +369,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const savePrepared = button('Save file', () => handlers.savePreparedExport?.(), 'Stream the prepared file to a selected destination'); savePrepared.disabled = true;
   const cancelDelivery = button('Cancel delivery', () => handlers.cancelExportDelivery?.(), 'Stop the current file write but keep the prepared file'); cancelDelivery.disabled = true;
   const discardPrepared = button('Discard file', () => handlers.discardExport?.(), 'Release the prepared file without changing the project'); discardPrepared.disabled = true;
+  const saveClipManifest = button('Save Clip manifest', () => handlers.exportClipManifest?.(), 'Download optional attribution and coverage separately; contains source identities'); saveClipManifest.disabled = true;
   const exportRouteField = node('fieldset', null, 'studio-midi-export-routes'); exportRouteField.hidden = true;
   const exportRouteLegend = node('legend', 'Choose recorded output'), exportRouteHelp = node('p'), exportRouteFilter = node('input');
   exportRouteFilter.type = 'search'; exportRouteFilter.setAttribute('aria-label', 'Find recorded MIDI output');
@@ -396,10 +406,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const exportRouteCancel = button('Cancel output choice', () => finishExportRouteChoice(exportRouteChoice, Object.assign(new Error('MIDI output selection canceled.'), { code: 'midi-export-choice-canceled' })));
   on(exportRouteFilter, 'input', () => { if (exportRouteChoice) { exportRouteChoice.page = 0; paintExportRoutes(); } });
   exportRouteField.append(exportRouteLegend, exportRouteHelp, exportRouteFilter, exportRouteList, exportRoutePage, exportRoutePrevious, exportRouteNext, exportRouteCancel);
-  exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared, exportRouteField);
+  exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, saveClipManifest, cancelDelivery, discardPrepared, exportRouteField);
   footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), inMenu('Project', button('Save As', () => handlers.saveAs?.())),
     button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', button('Load', () => handlers.load?.())), inMenu('Project', button('New', () => handlers.new?.())),
     inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', midiExportChoices), inMenu('Project', button('MIDI', () => handlers.exportMidi?.({ sourceLayer: midiExportSource.value, placement: midiExportPlacement.value }), 'Prepare a compatible MIDI1 file from the selected source and timing')),
+    inMenu('Project', clipExportChoices), inMenu('Project', button('MIDI2 Clip', () => handlers.exportMidi?.({ format: 'ump', sourceLayer: 'authored-intent', placement: midiExportPlacement.value, tempoSource: clipExportTempo.value }), 'Export original authored UMP intent for one recorded output connection')),
+    inMenu('Project', button('Inspect Clip', () => inspectClipInput.click(), 'Validate an imported Clip as data; setup and notes are never sent')),
     inMenu('World tools', button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo')),
     inMenu('World tools', button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases')),
     inMenu('World tools', button('Physical scene…', () => handlers.openPhysicalScene?.(), 'Author physical gates, cargo stations and their causal instruments')),
@@ -1312,10 +1324,11 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         paintExportRoutes(); exportRouteFilter.focus({ preventScroll: true });
       });
     },
-    exportState(artifact, delivery, preparation = null) {
+    exportState(artifact, delivery, preparation = null, manifest = null) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';
-      midiExportSource.disabled = midiExportPlacement.disabled = !!preparation;
+      midiExportSource.disabled = midiExportPlacement.disabled = clipExportTempo.disabled = !!preparation;
+      saveClipManifest.disabled = !manifest?.retained || Date.now() >= manifest.expiresAt || !!preparation;
       exportDesk.hidden = !preparation && !artifact?.retained && !delivery?.errorKind && !['writing', 'failed', 'interrupted', 'canceled'].includes(delivery?.state);
       retryExport.disabled = !ready || !artifact.deliveryModes?.includes('anchor');
       savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';

@@ -255,6 +255,7 @@
         "js/app/procgen/workstation/CausalStoredSourceVerification.js",
         "js/app/procgen/workstation/LaneMixState.js",
         "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
+        "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
         "js/app/procgen/workstation/PerformanceScene.js",
         "js/app/procgen/workstation/PerformanceSceneRecipe.js",
         "js/app/procgen/workstation/PerformanceSceneRehearsalRender.js",
@@ -267,6 +268,7 @@
         "js/app/procgen/workstation/ProcgenSmfBytes.js",
         "js/app/procgen/workstation/RecordedMidiEncoding.js",
         "js/app/procgen/workstation/RecordedMidiExportPlan.js",
+        "js/app/procgen/workstation/RecordedUmpClipExport.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
@@ -432,8 +434,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 286,
-      "sha256": "e9a10ab0932994506f2e6bcc6a2c032b3911928d0039d06b99e674c6849a374d"
+      "fileCount": 288,
+      "sha256": "d5c5ad2335f04703f995f5ad189ab729aac97ac8c24ed7dc9ebe319a42bccce2"
     },
     {
       "id": "lemmings-timing-worker-source",

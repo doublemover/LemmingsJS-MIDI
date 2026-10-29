@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import JZZ from 'jzz';
 import installSmf from 'jzz-midi-smf';
+import { readFile } from 'node:fs/promises';
+import { revealWorkstationControl } from './helpers/workstationChrome.js';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 installSmf(JZZ);
 
@@ -28,6 +30,51 @@ test('original native UMP intent capture stays separate from accepted MIDI1 and 
   });
   expect(result.original.recorded).toBe(16); expect(result.original.complete).toBe(true); expect(result.previousRetained).toBe(true);
   await testInfo.attach('original-ump-intent-capture', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+test('native product Clip controls choose an original output, save optional attribution and validate imports as data @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(120000);
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=8');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
+  const before = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.__PROCGEN_LANES__.pause();
+    studio.handlers.record(true); studio.ports.clearRecording(); studio.ports.recordTempo(90, 8, performance.now());
+    for (const [outputId, firstBeat] of [['original-A', 8], ['original-B', 10]]) {
+      studio.ports.sendEvent({ umpWords: [0x4f923c00, 0x12340000], outputId, beat: firstBeat, timestamp: performance.now(), actorId: outputId, intentId: 77 });
+      studio.ports.sendEvent({ umpWords: [0x4f823c00, 0xabcd0000], outputId, beat: firstBeat + 1, timestamp: performance.now(), actorId: outputId, intentId: 77 });
+    }
+    studio.handlers.record(false); return { physics: window.__PROCGEN_LANES__.world.tickIndex, revision: studio.getDocumentState().editRevision };
+  });
+  const timing = page.getByRole('combobox', { name: 'MIDI file timing', includeHidden: true }); await revealWorkstationControl(page, timing); await timing.selectOption('rebase-recording-start');
+  const clipButton = page.getByRole('button', { name: 'MIDI2 Clip', exact: true }); await revealWorkstationControl(page, clipButton); await clipButton.click();
+  const routes = page.locator('.studio-midi-export-routes'); await expect(routes).toBeVisible();
+  const downloading = page.waitForEvent('download'); await routes.getByRole('button', { name: /original-B/ }).click();
+  const download = await downloading, bytes = await readFile(await download.path()), independent = new JZZ.MIDI.Clip(bytes);
+  expect(download.suggestedFilename()).toBe('procgen-performance-output-2-intent.midi2');
+  const raw = Array.from(independent).filter(message => message[0] >> 4 === 4);
+  expect(raw.map(message => message.tt)).toEqual([1920, 2880]); expect(raw.map(message => Array.from(message))).toEqual([[0x4f, 0x92, 0x3c, 0, 0x12, 0x34, 0, 0], [0x4f, 0x82, 0x3c, 0, 0xab, 0xcd, 0, 0]]);
+  const prepared = await page.evaluate(() => window.__PROCGEN_STUDIO__.getExportState()); expect(prepared.preparationReceipt.method).toBe('dedicated-worker'); expect(prepared.manifest.retained).toBe(true);
+  const manifestButton = page.getByRole('button', { name: 'Save Clip manifest', exact: true }); await revealWorkstationControl(page, manifestButton);
+  const manifestDownloading = page.waitForEvent('download'); await manifestButton.click(); const manifestFile = await manifestDownloading, manifestBytes = await readFile(await manifestFile.path()), manifest = JSON.parse(manifestBytes.toString());
+  expect(manifest.originalPackets).toBe(2); expect(manifest.exportPlan.excludedRouteMessages).toBe(2); expect(manifest.outputIdentity.outputId).toBe('original-B');
+  expect(manifest.clipSha256).toBe(createHash('sha256').update(bytes).digest('hex')); expect(manifest.coverage.recordingId).toMatch(/.+/);
+  expect(manifest.attribution.map(row => row.attribution.actorId)).toEqual(['original-B', 'original-B']); expect(manifest.attribution[0].attribution.intentId).toBe(77);
+  const cancellation = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, previous = studio.getExportState().artifact.artifactId, sidecar = studio.getExportState().manifest.artifactId;
+    const pending = studio.handlers.exportMidi({ format: 'ump' }); studio.handlers.cancelExportDelivery(); await pending;
+    await studio.handlers.inspectMidiClip(new Blob([new Uint8Array(56)]));
+    return { previousRetained: studio.getExportState().artifact.artifactId === previous, sidecarRetained: studio.getExportState().manifest.artifactId === sidecar };
+  }); expect(cancellation).toEqual({ previousRetained: true, sidecarRetained: true });
+  await page.evaluate(async data => { await window.__PROCGEN_STUDIO__.handlers.inspectMidiClip(new Blob([new Uint8Array(data)])); }, Array.from(bytes));
+  const imported = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; return { ...studio.getExportState(), physics: window.__PROCGEN_LANES__.world.tickIndex,
+    revision: studio.getDocumentState().editRevision, original: studio.ports.getState().originalUmp }; });
+  expect(imported.artifact.suggestedFilename).toBe('validated-import.midi2'); expect(imported.delivery).toBeNull(); expect(imported.manifest).toBeNull();
+  expect(imported.preparationReceipt.method).toBe('dedicated-worker'); expect(imported.physics).toBe(before.physics); expect(imported.revision).toBe(before.revision); expect(imported.original.recorded).toBe(4);
+  await expect(manifestButton).toBeDisabled();
+  const retry = page.getByRole('button', { name: 'Retry file', exact: true }); await revealWorkstationControl(page, retry); const retrying = page.waitForEvent('download'); await retry.click();
+  expect(await readFile(await (await retrying).path())).toEqual(bytes);
+  await testInfo.attach('original-clip-product-export', { body: JSON.stringify({ before, prepared, imported, cancellation, manifest, clipSha256: createHash('sha256').update(bytes).digest('hex'),
+    optionalManifestSha256: createHash('sha256').update(manifestBytes).digest('hex'), independentReader: 'jzz-midi-smf@1.9.9/jzz@1.9.6',
+    scope: 'Original authored UMP score source, native worker and desktop controls; separate output and optional attribution, safe data-only import. No accepted UMP backend, physical-take playback import, DAW or hardware claim.' }), contentType: 'application/json' });
 });
 test('native worker Clip encoding/import preserves 100000 UMP events and retires a canceled source @boundary', async ({ page }, testInfo) => {
   test.setTimeout(120000);

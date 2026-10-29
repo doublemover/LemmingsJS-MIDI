@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Export original authored UMP Clips per output connection with explicit tempo authority, optional SHA-bound attribution manifests, and safe worker-only import inspection.
+
 - Commit original UMP capture before observer callbacks, fence stale commands after route or Panic changes, and retain export metadata ownership until snapshot producers release.
 
 - Capture original UMP intent before lowering with owned words, explicit source timing and bounded attribution; refuse empty MIDI1 exports of UMP-only sources.

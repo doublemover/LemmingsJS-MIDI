@@ -6,6 +6,7 @@ import { clearProcgenMidiQueue, sendProcgenMidiBytes, validProcgenMidiChannelByt
 import { createMidiRecordingRangeIndex } from './MidiRecordingRangeIndex.js';
 import { createOriginalUmpCapture } from './OriginalUmpCapture.js';
 import { snapshotMidiRecording, recordingExportPeakBytes } from './MidiRecordingExportSnapshot.js';
+import { snapshotOriginalUmpRecording, originalUmpExportPeakBytes } from './OriginalUmpRecordingSnapshot.js';
 import { createProcgenMidiPerformance } from './ProcgenMidiPerformance.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
@@ -958,17 +959,18 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         (protocol === 'all' || protocol === (event.type === 'umpIntent' ? 'ump' : 'midi1') || event.type === 'tempo'))
         .map(event => ({ ...event, data: [...event.data] }));
     },
-    createRecordingExportSource() {
+    createRecordingExportSource({ protocol = 'midi1' } = {}) {
       if (disposed) throw new Error('The recording owner retired.');
+      if (!['midi1', 'ump'].includes(protocol)) throw new RangeError('Select an original UMP or MIDI1 recording source.');
       let source = records, producers = 0, released = false;
-      const count = source.length, mutation = recordingMutation, state = getState(), estimatedPeakBytes = recordingExportPeakBytes(count), retention = originalUmpCapture.retain();
+      const count = source.length, mutation = recordingMutation, state = getState(), estimatedPeakBytes = protocol === 'ump' ? originalUmpExportPeakBytes(state.originalUmp.retainedEstimateBytes) : recordingExportPeakBytes(count), retention = originalUmpCapture.retain();
       const isCurrent = () => !disposed && source != null && source === records && mutation === recordingMutation;
       const release = () => { source = null; if (producers) return false; if (!released) { retention.release(); released = true; } return true; };
-      return Object.freeze({ id: recordingId, state, count, revision: mutation, inputBytes: count * 25 + 2 * 1048576, estimatedPeakBytes, isCurrent,
+      return Object.freeze({ id: recordingId, state, count, revision: mutation, inputBytes: protocol === 'ump' ? Math.min(64 * 1048576, state.originalUmp.retainedEstimateBytes * 2 + count * 20 + 2 * 1048576) : count * 25 + 2 * 1048576, estimatedPeakBytes, isCurrent,
         async prepareInput(options) {
           if (!isCurrent()) throw new Error('The recording changed before MIDI export preparation.');
           producers++;
-          try { const snapshot = await snapshotMidiRecording({ ...options, records: source, count, isCurrent }); if (!isCurrent()) throw new Error('The recording changed during MIDI export preparation.'); return snapshot; }
+          try { const snapshot = await (protocol === 'ump' ? snapshotOriginalUmpRecording : snapshotMidiRecording)({ ...options, records: source, count, isCurrent }); if (!isCurrent()) throw new Error('The recording changed during MIDI export preparation.'); return snapshot; }
           finally { producers--; if (source == null) release(); }
         }, release });
     },

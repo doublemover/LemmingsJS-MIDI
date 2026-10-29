@@ -1,5 +1,6 @@
 import { createLazyWorkstationToolGate } from './LazyWorkstationToolGate.js';
 import { planRecordedMidiExport } from './RecordedMidiExportPlan.js';
+import { planOriginalUmpClip } from './OriginalUmpRecordingSnapshot.js';
 import { loadDeferredWebMidi } from '../DeferredWebMidi.js';
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -1214,17 +1215,21 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       return snapshotSession(name);
     } finally { if (resume && wasPlaying) play(); }
   };
-  let preparedExport = null, lastDelivery = null, activeExportAbort = null, midiExportPreparation = null, archiveExportPreparation = null, lastMidiExportReceipt = null, exportPreparationRevision = 0;
+  let preparedExport = null, preparedManifest = null, lastDelivery = null, activeExportAbort = null, midiExportPreparation = null, archiveExportPreparation = null, lastMidiExportReceipt = null, exportPreparationRevision = 0;
   const archiveExportTasks = new Set();
   const exportPreparationState = () => archiveExportPreparation && !archiveExportPreparation.controller.signal.aborted ? Object.freeze({ kind: 'causal-take', phase: 'verifying sources', completedUnits: 0, totalUnits: null }) : midiExportPreparation && !midiExportPreparation.controller.signal.aborted ? Object.freeze({ kind: 'midi', phase: midiExportPreparation.phase,
     completedUnits: midiExportPreparation.completedUnits, totalUnits: midiExportPreparation.totalUnits }) : null;
-  const publishExportState = () => { if (!disposed) view?.exportState?.(preparedExport?.metadata() || null, lastDelivery, exportPreparationState()); };
-  const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null }) => {
+  const publishExportState = () => { if (!disposed) view?.exportState?.(preparedExport?.metadata() || null, lastDelivery, exportPreparationState(), preparedManifest?.metadata() || null); };
+  const prepareDownload = ({ bytes, filename, type, sourceRef, formatVersion, lossRef = null, manifestBytes = null }) => {
     if (disposed) throw new Error('The export owner is retired.');
-    ++exportPreparationRevision;
     const artifact = prepareExportArtifact({ bytes, immutableSourceRef: sourceRef, formatVersion,
       mediaType: type, suggestedFilename: filename, coverageLossReportRef: lossRef, budgetAdapter: resourceBudget });
-    preparedExport?.discard(); preparedExport = artifact; lastDelivery = null; publishExportState();
+    let manifest = null;
+    try { if (manifestBytes) manifest = prepareExportArtifact({ bytes: manifestBytes, immutableSourceRef: sourceRef, formatVersion: 'procgen-original-ump-sidecar/v1',
+      mediaType: 'application/json', suggestedFilename: filename + '.json', budgetAdapter: resourceBudget }); }
+    catch (error) { artifact.discard(); throw error; }
+    ++exportPreparationRevision;
+    preparedExport?.discard(); preparedManifest?.discard(); preparedExport = artifact; preparedManifest = manifest; lastDelivery = null; publishExportState();
     artifact.digest().then(() => { if (preparedExport === artifact && !disposed) publishExportState(); });
     return artifact;
   };
@@ -1246,7 +1251,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       try {
         const prepared = await prepareCausalTakeArchive({ journal, storage, takeId, resourceBudget, jobs: backgroundJobs, signal: controller.signal });
         if (!isCurrent()) { prepared.artifact.discard(); return Object.freeze({ status: 'superseded', takeId }); }
-        preparedExport?.discard(); preparedExport = prepared.artifact; lastDelivery = null;
+        preparedExport?.discard(); preparedManifest?.discard(); preparedManifest = null; preparedExport = prepared.artifact; lastDelivery = null;
         publishExportState(); status(`Causal take ${prepared.manifest.takeName} archive ready. Use Save file to stream its verified source records.`);
         return prepared.artifact.metadata();
       } catch (error) { if (!isCurrent()) return Object.freeze({ status: 'superseded', takeId }); throw error; }
@@ -1292,46 +1297,51 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } catch (error) { if (!ownsOperation(lease) || request !== exportPreparationRevision || generation !== documentGeneration) return null; throw error; }
     finally { try { computed?.release(); } finally { signal?.removeEventListener('abort', cancel); finishOperation(lease); preferenceHold?.release(); } }
   };
-  const prepareMidiExport = async ({ outputRouteId, outputRouteIndex, sourceLayer = 'auto', placement = 'retained-absolute-beat' } = {}) => {
+  const prepareMidiExport = async ({ format = 'midi1', outputRouteId, outputRouteIndex, sourceLayer, placement = 'retained-absolute-beat', tempoSource = 'captured-transport' } = {}) => {
+    if (!['midi1', 'ump'].includes(format)) throw new RangeError('Choose original UMP Clip or compatible MIDI1.');
+    const clip = format === 'ump', planner = clip ? planOriginalUmpClip : planRecordedMidiExport;
+    sourceLayer ??= clip ? 'authored-intent' : 'auto';
     archiveExportPreparation?.controller.abort();
     if (currentOperation?.kind === 'export') currentOperation.controller.abort();
     midiExportPreparation?.controller.abort();
-    const controller = new AbortController(), source = ports.createRecordingExportSource(), generation = documentGeneration, id = recordingOrigin ? recordingOrigin.documentId : documentId,
+    const controller = new AbortController(), source = ports.createRecordingExportSource({ protocol: clip ? 'ump' : 'midi1' }), generation = documentGeneration, id = recordingOrigin ? recordingOrigin.documentId : documentId,
       request = ++exportPreparationRevision, state = source.state;
     const pending = { controller, phase: 'queued', completedUnits: 0, totalUnits: source.count }; midiExportPreparation = pending; publishExportState();
     const isCurrent = () => !disposed && !controller.signal.aborted && documentGeneration === generation && request === exportPreparationRevision && source.isCurrent();
     let computed = null;
     try {
       const options = { bpm: transport.getState().bpm, beatsPerBar: project.transport?.timeSignature?.beats, beatUnit: project.transport?.timeSignature?.unit, sourceLayer, placement,
+        ...(clip ? { tempoSource, ppq: 960 } : {}),
         ...(outputRouteId === undefined ? {} : { outputRouteId }), ...(outputRouteIndex === undefined ? {} : { outputRouteIndex }) };
-      const window = { recordingComplete: state.recordingComplete, incompleteReason: state.incompleteReason, incompleteReasons: state.incompleteReasons,
+      const window = { recordingId: source.id, recordingRevision: source.revision, recordingComplete: state.recordingComplete, originalComplete: state.originalUmp.complete, originalReason: state.originalUmp.reason, originalDropped: state.originalUmp.dropped, originalUnmappedTimes: state.originalUmp.unmappedTimes, incompleteReason: state.incompleteReason, incompleteReasons: state.incompleteReasons,
         retainedRange: state.retainedRange, firstLostSequence: state.firstLostSequence, droppedRecords: state.droppedRecords, droppedCategories: state.droppedCategories };
-      computed = await backgroundJobs.compute({ kind: 'encode-recorded-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation,
+      computed = await backgroundJobs.compute({ kind: clip ? 'encode-recorded-ump-clip' : 'encode-recorded-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation,
         sourceRevision: `${source.id}:${source.revision}:${source.count}`, inputBytes: source.inputBytes, estimatedPeakBytes: source.estimatedPeakBytes,
         signal: controller.signal, budgetAdapter: resourceBudget, isCurrent, retainInput: true, releasePreparedInput: source.release,
         prepareInput: async ({ signal }) => {
           const snapshot = await source.prepareInput({ signal, onProgress: progress => {
             if (isCurrent()) { Object.assign(pending, progress); publishExportState(); }
           } });
-          try { planRecordedMidiExport(snapshot, options); }
+          try { planner(snapshot, options); }
           catch (error) {
             if (error.code !== 'midi-export-route-selection-required' || !view?.chooseMidiExportRoute) throw error;
             signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed before output selection.');
             pending.phase = 'Choose recorded output'; publishExportState();
             options.outputRouteIndex = await view.chooseMidiExportRoute(error.routes, { evidence: error.evidence, signal, isCurrent, selection: 'route-index' });
             signal.throwIfAborted(); if (!isCurrent()) throw new Error('The recorded source changed while choosing its output.');
-            planRecordedMidiExport(snapshot, options);
+            planner(snapshot, options);
           }
           return { snapshot, window, options };
         }, onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
       if (!isCurrent()) return null;
-      const { bytes, manifest } = computed.value;
+      const { bytes, manifestBytes } = computed.value, manifest = clip ? computed.value.report : computed.value.manifest;
       const routeSuffix = manifest.exportPlan.routeCount > 1 ? '-output-' + manifest.exportPlan.selectedRouteOrdinal : '';
-      const artifact = prepareDownload({ bytes, filename: 'procgen-performance' + routeSuffix + (manifest.complete ? '' : '-partial') + '.mid', type: 'audio/midi',
+      const artifact = prepareDownload({ bytes, filename: 'procgen-performance' + routeSuffix + (clip ? '-intent' : '') + (manifest.complete ? '' : '-partial') + (clip ? '.midi2' : '.mid'), type: clip ? 'application/octet-stream' : 'audio/midi', manifestBytes,
         sourceRef: `recording:${source.id}:${id ?? 'unsaved'}:${source.revision}:${source.count}:${state.retainedRange.firstSequence ?? 0}:${state.retainedRange.lastSequence ?? 0}`,
-        formatVersion: 'smf1/v1', lossRef: 'embedded-midi-manifest' });
+        formatVersion: clip ? 'midi-clip-file/v1' : 'smf1/v1', lossRef: clip ? 'optional-original-ump-sidecar' : 'embedded-midi-manifest' });
       lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
       if (deliverPrepared()?.state === 'delivery-requested') {
+        if (clip) { status(`${manifest.complete ? 'Original' : 'Partial original'} UMP intent Clip download requested. Note boundaries remain unverified. Save the optional manifest to retain attribution and coverage; it includes source identities.`); return artifact.metadata(); }
         const evidence = manifest.evidence === 'api-accepted' ? 'submitted output' : 'rendered preview intent';
         const reasons = state.incompleteReasons.length ? state.incompleteReasons.join(', ') : manifest.reason;
         status(manifest.complete ? `Recorded ${evidence} download requested. Check your browser downloads.` :
@@ -1344,6 +1354,28 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       throw error;
     }
     finally { computed?.release(); source.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
+  };
+  const inspectMidiClip = async file => {
+    if (!(file instanceof Blob) || file.size < 56 || file.size > 64 * 1048576) throw new RangeError('Choose a MIDI Clip File between56bytes and64MiB.');
+    archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort();
+    if (currentOperation?.kind === 'export') currentOperation.controller.abort();
+    const controller = new AbortController(), generation = documentGeneration, request = ++exportPreparationRevision;
+    const pending = { controller, phase: 'validating imported Clip', completedUnits: 0, totalUnits: file.size }; midiExportPreparation = pending; publishExportState();
+    const isCurrent = () => !disposed && !controller.signal.aborted && generation === documentGeneration && request === exportPreparationRevision;
+    let computed = null;
+    try {
+      computed = await backgroundJobs.compute({ kind: 'inspect-midi-clip', ownerId: 'procgen-midi-export', ownerEpoch: generation, sourceRevision: 'import:' + request,
+        inputBytes: file.size, estimatedPeakBytes: 64 * 1048576 + file.size * 6, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
+        prepareInput: async () => ({ bytes: new Uint8Array(await file.arrayBuffer()) }),
+        onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
+      if (!isCurrent()) return null;
+      const artifact = prepareDownload({ bytes: file, filename: 'validated-import.midi2', type: 'application/octet-stream', sourceRef: 'validated-clip-import:' + request,
+        formatVersion: 'midi-clip-file/v1', lossRef: 'validated-data-only-no-hardware-or-project-import' });
+      lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
+      status(`Clip validated at${computed.value.ppq}PPQ. No setup or notes were sent. The unchanged file is ready for Save file or Retry file; project and physical playback import remain unavailable.`);
+      return artifact.metadata();
+    } catch (error) { if (!isCurrent()) return null; throw error; }
+    finally { computed?.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
   const getShareExportDescriptor = () => {
     const world = runtime()?.world, takeId = selectedCausalTakeId || lastCausalTake?.takeId;
@@ -2098,6 +2130,13 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }),
     export: safe(() => prepareProjectExport()),
     exportMidi: safe(prepareMidiExport),
+    inspectMidiClip: safe(inspectMidiClip),
+    exportClipManifest() {
+      if (!preparedManifest) { status('No optional Clip manifest is prepared.'); return null; }
+      const receipt = deliverArtifactToAnchor(preparedManifest, { document, windowRef: window });
+      status(receipt.state === 'delivery-requested' ? 'Optional Clip attribution and coverage manifest download requested. It contains source identities.' : 'The manifest remains prepared; retry its download.');
+      publishExportState(); return receipt;
+    },
     retryExport() {
       const receipt = deliverPrepared();
       if (!receipt) { status('No prepared file is available to retry.'); return null; }
@@ -2110,7 +2149,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (currentOperation?.kind === 'export') currentOperation.controller.abort();
       ++exportPreparationRevision;
       if (!preparedExport) { publishExportState(); if (preparing) status('File preparation canceled. The source project is unchanged.'); return preparing; }
-      preparedExport.discard(); preparedExport = null; lastDelivery = null;
+      preparedExport.discard(); preparedManifest?.discard(); preparedExport = preparedManifest = null; lastDelivery = null;
       publishExportState(); status('Prepared file discarded. The source project is unchanged.'); return true;
     },
     cancelExportDelivery() {
@@ -2289,7 +2328,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   prepareSettings(); setLegacyProject(project, { persist: false }); legacy.setSpeed(transport.getState().gameSpeed); lastLegacySpeed = legacy.settings.speed; view.render(); view.transport(transport.getState()); storageStatus();
   return { getProject: () => project, getInputEditLease: () => inputLease && Object.freeze({ ...inputLease }),
     getMidiRecordingState: () => Object.freeze(recordingViewState(ports.getState())),
-    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, delivery: lastDelivery, preparation: exportPreparationState(),
+    getExportState: () => Object.freeze({ artifact: preparedExport?.metadata() || null, manifest: preparedManifest?.metadata() || null, delivery: lastDelivery, preparation: exportPreparationState(),
       preparationReceipt: lastMidiExportReceipt?.artifactId === preparedExport?.artifactId ? lastMidiExportReceipt?.receipt || null : null }),
     getDisplayDiagnostics: () => view.displayScheduler?.diagnostics() || null,
     getNavigationDiagnostics: () => view.navigationDiagnostics?.() || null,
@@ -2330,7 +2369,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         { name: 'recovery-timer', run: () => { if (timer != null) window.clearTimeout?.(timer); } },
         { name: 'persist-timer', run: () => { if (pendingPersist != null) window.clearTimeout?.(pendingPersist); } },
         { name: 'physical-control-owner', run: () => releasePhysicalControls?.() },
-        { name: 'prepared-export', run: () => { archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort(); activeExportAbort?.abort(); preparedExport?.discard(); } },
+        { name: 'prepared-export', run: () => { archiveExportPreparation?.controller.abort(); midiExportPreparation?.controller.abort(); activeExportAbort?.abort(); try { preparedExport?.discard(); } finally { preparedManifest?.discard(); } } },
         { name: 'router-hook', run: () => unhookRouter?.() },
         { name: 'world-hook', run: () => unhookWorld?.() },
         { name: 'macro-gestures', run: () => macroGestures.dispose() },
