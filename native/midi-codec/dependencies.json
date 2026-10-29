@@ -1,0 +1,19 @@
+{
+  "schema": "lemmings-native-midi-codec-dependencies/v1",
+  "ni_midi2": {
+    "repository": "https://github.com/midi2-dev/ni-midi2.git",
+    "revision": "26e008c10b18e2397d7b65e184b71da3327e78d1",
+    "license": "MIT"
+  },
+  "cmidi2": {
+    "repository": "https://github.com/atsushieno/cmidi2.git",
+    "revision": "49d4fb19a8e79b287e472b0a6d3a0e083fe77c53",
+    "license": "MIT"
+  },
+  "libremidi": {
+    "repository": "https://github.com/celtera/libremidi.git",
+    "revision": "291c7b9154b54a10f69bed9691fc0dca9dc6eeab",
+    "license": "BSD-2-Clause AND MIT",
+    "scope": "Header/API compatibility and packet containers; no native device transport is enabled by this target."
+  }
+}

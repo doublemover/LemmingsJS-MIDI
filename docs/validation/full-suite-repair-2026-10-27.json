@@ -44423,5 +44423,522 @@
         "normalization": "Retained complete decoded mainjob text with LF line endings."
       }
     }
+  },
+  "continuation349": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "64e99f437d8f88bd880fed05ffd64c0d1ecd3562",
+    "scope": "Pinned native codec qualification and focused MIDI editor draft ownership; solo, no worktrees, grouped affected validation.",
+    "implementation": [
+      "Add original C++20 private-snapshot whole-batch guard and bounded peer with full immutable dependency pins. Use actual stdx::error::is_set semantics, explicit raw pointer/count, first-failure retention and unconfirmed failed packet.",
+      "Cross actual NI/cmidi2 typed constructors and native big-endian serialization with the JS codec; retain known Flex/Stream width, reserved framing and conversion limits. No OS/device transport is instantiated.",
+      "Preserve focused textual/numeric drafts on unchanged-project refreshes; explicit project edits still replace the field.",
+      "Add Windows/Linux native codec CI matrix with source-bound artifacts."
+    ],
+    "validation": {
+      "nativeCodec": {
+        "schema": "lemmings-native-midi-codec-qualification/v1",
+        "status": "passed",
+        "platform": "win32",
+        "arch": "x64",
+        "osRelease": "10.0.26300",
+        "node": "v26.12.1",
+        "scope": "codec-and-synchronous-controlled-raw-sender-only",
+        "deviceIO": false,
+        "shippingTransportQualified": false,
+        "source": [
+          {
+            "path": "native/midi-codec/dependencies.json",
+            "bytes": 688,
+            "sha256": "6ea62b6259cafa4e6e6f3c8608f6b95c93e0122b5ffe2764c9c5fb2c4983ec92"
+          },
+          {
+            "path": "native/midi-codec/CMakeLists.txt",
+            "bytes": 2886,
+            "sha256": "b22ce0701164a880056e8c3b424ed7912a2c1d5b983db12e6fcbdbede8d88bc9"
+          },
+          {
+            "path": "native/midi-codec/UmpBatchGuard.hpp",
+            "bytes": 6696,
+            "sha256": "a20fa3d6690c858589546ecbd3e4f91671d62a6f8525800a0d7a67711ef00a0a"
+          },
+          {
+            "path": "native/midi-codec/peer.cpp",
+            "bytes": 9827,
+            "sha256": "7eef5938fa405406e41d30bba23c9a1f0a5580f09d0dc6b3820fa1512bef0cb3"
+          },
+          {
+            "path": "scripts/NativeMidiCodecCorpus.js",
+            "bytes": 8524,
+            "sha256": "e9272a2243116e566f449729ec7248b1ad0b088c5bfb989690f6b19a28ee599c"
+          },
+          {
+            "path": "scripts/qualify-native-midi-codec.js",
+            "bytes": 6217,
+            "sha256": "70f4f0a0304ef9251503aca7b330b550cc81571017a89f3fd72b033102851cea"
+          },
+          {
+            "path": "js/midi/protocol/UmpPacketCodec.js",
+            "bytes": 16496,
+            "sha256": "e3c1f99e149a5b14e0c2e7d5239537e55b3c747dc497a4bd65d057f775446b74"
+          },
+          {
+            "path": "js/midi/protocol/MidiProtocolLowering.js",
+            "bytes": 8849,
+            "sha256": "1c4990b7b623df116ddef14b8160ea748ff822ba06e66b4d914f6cb56b22ec85"
+          }
+        ],
+        "dependencies": {
+          "schema": "lemmings-native-midi-codec-dependencies/v1",
+          "ni_midi2": {
+            "repository": "https://github.com/midi2-dev/ni-midi2.git",
+            "revision": "26e008c10b18e2397d7b65e184b71da3327e78d1",
+            "license": "MIT"
+          },
+          "cmidi2": {
+            "repository": "https://github.com/atsushieno/cmidi2.git",
+            "revision": "49d4fb19a8e79b287e472b0a6d3a0e083fe77c53",
+            "license": "MIT"
+          },
+          "libremidi": {
+            "repository": "https://github.com/celtera/libremidi.git",
+            "revision": "291c7b9154b54a10f69bed9691fc0dca9dc6eeab",
+            "license": "BSD-2-Clause AND MIT",
+            "scope": "Header/API compatibility and packet containers; no native device transport is enabled by this target."
+          }
+        },
+        "compiler": "clang version 22.1.6 (https://github.com/llvm/llvm-project fc4aad7b5db3fff421df9a9637605b9ca5667881)\nTarget: x86_64-pc-windows-msvc\nThread model: posix\nInstalledDir: C:\\Program Files\\LLVM\\bin",
+        "cmake": "cmake version 4.2.3",
+        "executable": {
+          "bytes": 650240,
+          "sha256": "6e61e38f9dc89ce0adef732a56bf1b3a978ee7c4bea5bd9fc1a3c36b2a16bfb8"
+        },
+        "peerProcessWallMs": 203.77449999999953,
+        "corpus": {
+          "commands": 8829,
+          "inputBytes": 233874,
+          "inputSha256": "6a4422d1abd117978aed0f6fd96dca0576a188267810338ff26f5d5196f9e0ab",
+          "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+          "seed": "0x6d696469",
+          "seededWholeBatchCases": 2048,
+          "typedConstructorCases": 5379,
+          "scalingCases": 1304
+        },
+        "widths": [
+          {
+            "type": 0,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 1,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 2,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 1,
+            "libremidiIterator": 1,
+            "niRoundtrip": true
+          },
+          {
+            "type": 3,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 4,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 2,
+            "libremidi": 2,
+            "libremidiIterator": 2,
+            "niRoundtrip": true
+          },
+          {
+            "type": 5,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 4,
+            "libremidiIterator": 4,
+            "niRoundtrip": true
+          },
+          {
+            "type": 6,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 7,
+            "guard": 1,
+            "ni": 1,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 8,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 9,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 10,
+            "guard": 2,
+            "ni": 2,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 11,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 12,
+            "guard": 3,
+            "ni": 3,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 13,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 14,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 1,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          },
+          {
+            "type": 15,
+            "guard": 4,
+            "ni": 4,
+            "cmidi2": 4,
+            "libremidi": 0,
+            "libremidiIterator": 0,
+            "niRoundtrip": true
+          }
+        ],
+        "knownPeerLimits": {
+          "libremidiTypedFlexAndStreamWordCount": 0,
+          "cmidi2ReservedWidthsAreNotFramingAuthority": true,
+          "cmidi2LowNoteVelocitiesBecomeZero": true,
+          "niMidi1ParameterLoweringUnavailable": true
+        },
+        "loweringProbes": [
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              0
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323457,
+            "cmidi2Bytes": [
+              144,
+              60,
+              1
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": 546323583,
+            "cmidi2Bytes": [
+              144,
+              60,
+              127
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              9,
+              176,
+              38,
+              13
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              0,
+              176,
+              38,
+              63
+            ]
+          },
+          {
+            "kind": "lower",
+            "niWord": null,
+            "cmidi2Bytes": [
+              176,
+              101,
+              0,
+              176,
+              100,
+              0,
+              176,
+              6,
+              127,
+              176,
+              38,
+              127
+            ]
+          }
+        ],
+        "protocolRejections": [
+          {
+            "name": "line-capacity",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "embedded-nul",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "carriage-return",
+            "exitCode": 2,
+            "reason": "line-bound-or-encoding"
+          },
+          {
+            "name": "unterminated",
+            "exitCode": 2,
+            "reason": "unterminated-command"
+          }
+        ]
+      },
+      "node": {
+        "passed": 93,
+        "failed": 0,
+        "command": "node node_modules/mocha/bin/mocha.js test/midi/midi-ui-controller.test.js",
+        "log": {
+          "path": ".tmp/rook349-midi-ui-node.log",
+          "bytes": 7972,
+          "sha256": "d860d144889756e70827a8968a4569d733dc02d398a721bab4ccffa1d918362e"
+        }
+      },
+      "desktop": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "cases": [
+          "MIDI project persists across reload",
+          "MIDI project file/template export/import/reset/reload",
+          "selected direct source note learning"
+        ],
+        "log": {
+          "path": ".tmp/rook349-midi-ui-browser.log",
+          "bytes": 7381,
+          "sha256": "52004dd40bd6a38c12cc823daab761fdd246b31607c582ec1e6e3954ba2f65b3"
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check: 10 components / 350 files",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "initialNativeFailures": [
+        "Initial compile exposed incorrect bool conversion of stdx::error and required explicit ni-midi2 view. Corrected to actual pinned APIs.",
+        "First complete corpus passed, but Windows text stdin stripped CR before protocol rejection. Binary stdin/stdout makes the exact byte boundary explicit."
+      ],
+      "finalNativeLog": {
+        "path": ".tmp/rook349-native-codec-publish.log",
+        "bytes": 368,
+        "sha256": "9e66b64978538c641d85a73a858caf14ca4e1e28f2f885f98033a450b3c3d26d"
+      }
+    },
+    "latestFullCi": {
+      "head": "64e99f437d8f88bd880fed05ffd64c0d1ecd3562",
+      "run": 40879068027,
+      "status": "failed",
+      "mainJob": {
+        "id": 123465402696,
+        "status": "failed",
+        "desktopPassed": 23,
+        "desktopFailed": 1,
+        "failure": "MIDI project export expected edited note 79, received 69; fixed in this span.",
+        "laterSmokeAndCoverage": "not reached"
+      },
+      "engineJob": {
+        "id": 123465403237,
+        "status": "success",
+        "passed": 18
+      },
+      "latestFullyVerifiedHead": "89fa0f1c1145a250219fd041f809b8300913e301"
+    },
+    "issueStatus": {
+      "977": "open: shipping companion/transport, canonical native ingress and OS/device matrices remain",
+      "980": "open: remaining semantic type decoding and shipping native/bridge integration remain",
+      "1094": "open: workflow/peer/OS/device conformance remains",
+      "1143": "open: actual transport allocation/retirement and partial delivery faults remain"
+    },
+    "limits": [
+      "Codec and synchronous controlled sender only; no native device I/O, asynchronous buffer lifetime, timestamps, driver/receiver/acoustic pass.",
+      "Peer-process wall time includes startup and protocol; not device latency or isolated codec throughput.",
+      "Earlier full checkpoint 347 remains authoritative until all new required CI jobs pass."
+    ],
+    "sourceFiles": [
+      {
+        "path": ".github/workflows/test.yml",
+        "bytes": 6457,
+        "sha256": "57c196e220fcd804cbfe5b4ad6488c3fdc24920727f9f82f29fe55f6b7ea94eb"
+      },
+      {
+        "path": "package.json",
+        "bytes": 9227,
+        "sha256": "99b395f2eb692c96062cb3dd85afee49d83ff4eb647d9a8996b1e678f0b0032f"
+      },
+      {
+        "path": "js/app/midiUiController.js",
+        "bytes": 172846,
+        "sha256": "dc380dfc97021652d799a57fd286d59bb898cee4ebcad9f00b4a61864351e3dc"
+      },
+      {
+        "path": "test/midi/midi-ui-controller.test.js",
+        "bytes": 160011,
+        "sha256": "563f124083f56015ccbc25e5097e30db52c5f61cbb35f7167de0599a2d5dca18"
+      },
+      {
+        "path": "native/midi-codec/dependencies.json",
+        "bytes": 688,
+        "sha256": "6ea62b6259cafa4e6e6f3c8608f6b95c93e0122b5ffe2764c9c5fb2c4983ec92"
+      },
+      {
+        "path": "native/midi-codec/CMakeLists.txt",
+        "bytes": 2886,
+        "sha256": "b22ce0701164a880056e8c3b424ed7912a2c1d5b983db12e6fcbdbede8d88bc9"
+      },
+      {
+        "path": "native/midi-codec/UmpBatchGuard.hpp",
+        "bytes": 6696,
+        "sha256": "a20fa3d6690c858589546ecbd3e4f91671d62a6f8525800a0d7a67711ef00a0a"
+      },
+      {
+        "path": "native/midi-codec/peer.cpp",
+        "bytes": 9827,
+        "sha256": "7eef5938fa405406e41d30bba23c9a1f0a5580f09d0dc6b3820fa1512bef0cb3"
+      },
+      {
+        "path": "scripts/NativeMidiCodecCorpus.js",
+        "bytes": 8524,
+        "sha256": "e9272a2243116e566f449729ec7248b1ad0b088c5bfb989690f6b19a28ee599c"
+      },
+      {
+        "path": "scripts/qualify-native-midi-codec.js",
+        "bytes": 6217,
+        "sha256": "70f4f0a0304ef9251503aca7b330b550cc81571017a89f3fd72b033102851cea"
+      },
+      {
+        "path": "js/midi/protocol/UmpPacketCodec.js",
+        "bytes": 16496,
+        "sha256": "e3c1f99e149a5b14e0c2e7d5239537e55b3c747dc497a4bd65d057f775446b74"
+      },
+      {
+        "path": "js/midi/protocol/MidiProtocolLowering.js",
+        "bytes": 8849,
+        "sha256": "1c4990b7b623df116ddef14b8160ea748ff822ba06e66b4d914f6cb56b22ec85"
+      }
+    ]
   }
 }

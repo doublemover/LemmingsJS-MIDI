@@ -97,6 +97,28 @@ jobs:
           name: coverage
           path: coverage
 
+  native-midi-codec:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run qualify:native-midi-codec
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: native-midi-codec-${{ matrix.os }}
+          path: .tmp/native-midi-codec-qualification.json
+          if-no-files-found: error
+
   lifecycle-engines:
     runs-on: ubuntu-latest
     steps:

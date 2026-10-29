@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve focused MIDI editor drafts during background refreshes so exported projects retain the committed note value.
+
 - Report both current and legacy browser MIDI security denials explicitly, without retrying access or switching outputs automatically.
 
 - Restore reconstructed browser history entries paused, disarm MIDI thru and recording on page suspension, and release stopped performance registrations before reactivation.

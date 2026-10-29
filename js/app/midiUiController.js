@@ -155,7 +155,7 @@ const setText = (element, value) => {
   if (element && element.textContent !== String(value)) element.textContent = value;
 };
 
-const setInputValue = (element, value) => {
+const writeInputValue = (element, value) => {
   if (!element) return;
   const next = value == null ? '' : String(value);
   if (element.value !== next) element.value = next;
@@ -287,6 +287,12 @@ const createMidiUiController = ({
   const domListeners = [];
   const outputLog = [];
   let project = null;
+  let renderedProject = null, preserveFocusedInput = false;
+  const setInputValue = (element, value) => {
+    if (preserveFocusedInput && element === document?.activeElement &&
+        (element?.tagName === 'TEXTAREA' || element?.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button', 'file', 'color'].includes(element.type))) return;
+    writeInputValue(element, value);
+  };
   let projectNeedsFactory = false;
   let bound = false;
   let activeMidiInput = null;
@@ -2694,6 +2700,7 @@ const createMidiUiController = ({
     try {
       syncRuntimeSources();
       applyProjectToRuntime();
+      preserveFocusedInput = project === renderedProject;
       renderTransport();
       renderSourceList();
       renderTrackList();
@@ -2707,6 +2714,8 @@ const createMidiUiController = ({
       localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
+      renderedProject = project;
+      preserveFocusedInput = false;
       rendering = false;
       uiMetrics.renderCount += 1;
       uiMetrics.lastRenderAt = Date.now();

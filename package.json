@@ -11,6 +11,7 @@
     "prepare:stretch-core": "node scripts/materialize-stretch-core.mjs",
     "qualify:seed-warp": "node scripts/qualify-seed-warp.mjs",
     "qualify:stretch-core": "node scripts/qualify-stretch-core.mjs",
+    "qualify:native-midi-codec": "node scripts/qualify-native-midi-codec.js",
     "build:browser": "node scripts/build-browser-runtime.js",
     "build:sounds": "node scripts/build-sound-content.js",
     "build:shape-foundry": "node scripts/build-shape-foundry.mjs",

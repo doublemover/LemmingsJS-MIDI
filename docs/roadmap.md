@@ -9018,3 +9018,34 @@ export-budget acknowledgments still prevent a false complete receipt.
   document-identity and local-state callbacks; native ownership journeys exercise
   these paths separately. Continue the named remaining #1086/#1009 matrix and
   the lane-transfer acceptance before considering those broader issues complete.
+
+### Continuation 349 - executable native codec and focused editor ownership
+
+- Build a pinned C++20 peer from original application sources, ni-midi2, cmidi2
+  and libremidi headers. Keep external sources unchanged in the ignored dependency
+  cache; reject revision drift, tracked changes and untracked dependency files.
+  Windows qualification passes 8,829 commands plus four bounded protocol faults:
+  5,379 valid typed constructor comparisons, 1,304 scaling cases, 2,048 seeded
+  whole-batch cases, literal family packets, maximum capacity, malformed tails,
+  caller mutation and each later callback error/exception position. Native
+  big-endian bytes cross the JS codec without losing word order or payload bits.
+- Use the actual pinned error API (`stdx::error::is_set()`), private input snapshot,
+  complete prevalidation and explicit pointer/count boundary. Preserve accepted
+  prefixes and failed-packet uncertainty. The pinned libremidi typed container
+  still reports zero Flex/Stream words; cmidi2's reserved widths and low-velocity
+  lowering and ni-midi2's absent parameter lowering remain explicit limitations.
+  This is controlled synchronous callback qualification, with no OS/device I/O.
+  Add Windows/Linux CI jobs; [build and scope](native-midi-codec.md).
+- Keep #977/#980/#1143/#1094 open for actual companion/transport integration,
+  canonical native ingress, remaining type/bridge semantics, allocation/retirement
+  faults and OS/device/workflow matrices. Codec receipts do not qualify those.
+- Fix a focused numeric draft overwritten by a background MIDI UI refresh.
+  Preserve the focused field only while the project identity is unchanged;
+  explicit edits still replace it. Both regressions pass among 93 controller
+  tests; three native 1920x1080 desktop journeys cover export/reload, persistence
+  and selected-source learning. Critical types, undefined calls and provenance
+  also pass. No full local suite was repeated.
+- 348's 18-case Linux engine job passed, but its main job failed one desktop
+  export assertion (expected note79, received69). It never reached workstation
+  smoke/coverage, so348 is not a full green checkpoint. This span fixes that edit
+  path; keep347 as the latest fully verified checkpoint until all new jobs pass.
