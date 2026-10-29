@@ -463,9 +463,11 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       if (['seek', 'stopped', 'midi-start', 'restored'].includes(reason)) { engine?.reset(); pendingResume = false; }
       else pendingResume = (engine?.getState().beat ?? -1) >= 0;
     },
-    onStop(reason) {
+    onStop(reason, position) {
       transportStopGeneration++;
-      if (!disposed && ['clock-lost', 'suspended', 'clock-overload', 'output-disconnected'].includes(reason)) status('Transport stopped: ' + reason.replaceAll('-', ' ') + '. Press Play or send MIDI Start/Continue to resume.');
+      if (!disposed && ['clock-lost', 'suspended', 'clock-overload', 'output-disconnected'].includes(reason)) status(reason === 'suspended' && position?.lastDiscontinuity?.source === 'host-wake-gap'
+        ? `Transport stopped after a ${Math.round(position.lastDiscontinuity.gapMs)} ms timing gap. Press Play to resume.`
+        : 'Transport stopped: ' + reason.replaceAll('-', ' ') + '. Press Play or send MIDI Start/Continue to resume.');
     },
     onPosition(position) {
       if (disposed) return;

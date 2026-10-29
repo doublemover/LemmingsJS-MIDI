@@ -85,8 +85,17 @@ describe('ProcGen workstation independent transport', () => {
     f.wake(2000);
     expect(f.beats).to.have.length(count);
     expect(f.transport.getState()).to.include({ playing: false, clockStatus: 'suspended' });
+    expect(f.transport.getState().lastDiscontinuity).to.include({ source: 'host-wake-gap', timeDomain: 'performance-ms', gapMs: 2000, limitMs: 250 });
+    expect(Object.isFrozen(f.transport.getState().lastDiscontinuity)).to.equal(true);
     f.wake(2010); expect(f.beats).to.have.length(count);
-    f.transport.play(); expect(f.transport.getState().playing).to.equal(true); f.transport.dispose();
+    f.transport.play(); expect(f.transport.getState()).to.include({ playing: true, lastDiscontinuity: null }); f.transport.dispose();
+  });
+  it('distinguishes a failed timing driver from an external message delivered beyond the wake limit', () => {
+    const local = fixture(); local.transport.play(); const count = local.beats.length;
+    local.transport.pump({ suspended: true, reason: 'worker-runtime-failure' });
+    expect(local.transport.getState().lastDiscontinuity).to.include({ source: 'timing-driver-suspended', driverReason: 'worker-runtime-failure', gapMs: 0 }); expect(local.beats).to.have.length(count); local.transport.dispose();
+    const external = fixture({ clockSource: 'external' }); external.transport.play(); external.time(300);
+    expect(external.transport.receiveMidi([0xf8], 0)).to.equal(false); expect(external.transport.getState().lastDiscontinuity).to.include({ source: 'external-message-delay', gapMs: 300, messageDelayMs: 300, limitMs: 250 }); expect(external.beats).to.have.length(0); external.transport.dispose();
   });
 
   it('external clock locks tempo, consumes SPP, estimates jitter, and never echoes clock or transport', () => {
@@ -177,6 +186,7 @@ describe('ProcGen workstation independent transport', () => {
     expect(f.beats).to.have.length(30);
     f.time(831); f.transport.receiveMidi([0xf8], 831);
     expect(f.transport.getState()).to.include({ playing: false, clockStatus: 'suspended' });
+    expect(f.transport.getState().lastDiscontinuity).to.include({ source: 'host-wake-gap', gapMs: 251, messageDelayMs: 0, limitMs: 250 });
     expect(f.beats).to.have.length(30); f.transport.dispose();
   });
 

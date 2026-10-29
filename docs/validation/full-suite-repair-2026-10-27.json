@@ -58978,5 +58978,1128 @@
       }
     ],
     "remaining": "Independent Linux qualification of the revised capture contract; inspect359 canceled-beforeunload transport state, then resume typed physical-time export and the remaining backlog. No full clean CI claim."
+  },
+  "continuation362": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Retire gesture guards and retain measured transport discontinuity evidence",
+    "issues": [
+      986,
+      1000,
+      1009,
+      1086
+    ],
+    "implementation": [
+      "Install document/window guards only during active gesture ownership. Finish/cancel removes listeners and pending fallback timers before reentrant cancellation can acquire a new owner. Roll back partial listener registration and preserve release-capture ownership.",
+      "Record immutable discontinuity source, performance-ms observation/previous-wake/gap/limit and driver reason. Keep the existing250ms guard unchanged; explicit Play clears prior discontinuity. Report measured host gap in the workstation.",
+      "Actual canceled beforeunload requires exact world/document/revision, running native context and unchanged lease. A halted transport requires a measured unsafe host-wake gap. A deliberate400ms held prompt qualifies the stop and explicit Play on the same world/lease."
+    ],
+    "validation": {
+      "node": {
+        "passed": 131,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook362-node-final.log",
+          "bytes": 476,
+          "sha256": "b2f7a609e59080ce8aba0a55ccc3ad2e513c93cd7f893f2f0132086a6a430da4"
+        },
+        "coverageReport": {
+          "path": ".tmp/rook362-final-coverage/coverage-summary.json",
+          "bytes": 1027,
+          "sha256": "a35fde1992e64c7c84c83773a441d47462fc8aac2c575e4e6bbf7b273edc95e1"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 281,
+              "covered": 267,
+              "skipped": 0,
+              "pct": 95.01
+            },
+            "statements": {
+              "total": 281,
+              "covered": 267,
+              "skipped": 0,
+              "pct": 95.01
+            },
+            "functions": {
+              "total": 47,
+              "covered": 41,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "branches": {
+              "total": 270,
+              "covered": 230,
+              "skipped": 0,
+              "pct": 85.18
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\PointerGestureArbiter.js": {
+            "lines": {
+              "total": 76,
+              "covered": 76,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 17,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 76,
+              "covered": 76,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 85,
+              "covered": 79,
+              "skipped": 0,
+              "pct": 92.94
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenTransport.js": {
+            "lines": {
+              "total": 205,
+              "covered": 191,
+              "skipped": 0,
+              "pct": 93.17
+            },
+            "functions": {
+              "total": 30,
+              "covered": 24,
+              "skipped": 0,
+              "pct": 80
+            },
+            "statements": {
+              "total": 205,
+              "covered": 191,
+              "skipped": 0,
+              "pct": 93.17
+            },
+            "branches": {
+              "total": 185,
+              "covered": 151,
+              "skipped": 0,
+              "pct": 81.62
+            }
+          }
+        },
+        "earlierScopedPass": {
+          "passed": 154,
+          "log": {
+            "path": ".tmp/rook362-node-qualified.log",
+            "bytes": 14580,
+            "sha256": "d66b2295418180a40d84f1ae9c024095d32c061a104773bd6559929bf89d2982"
+          },
+          "scope": "Transport/workstation focused pass before the final shared-arbiter fix; overlaps final checks and is not an additive pass count."
+        }
+      },
+      "browser": {
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T18:43:39.524Z",
+          "duration": 66511.882,
+          "expected": 45,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook362-browser-final.json",
+          "bytes": 190610,
+          "sha256": "cc8eaa94545ae2c4339e69bab44dc634fcf83a856c485820a982e12d7ef20ead"
+        },
+        "log": {
+          "path": ".tmp/rook362-browser-final.log",
+          "bytes": 8506,
+          "sha256": "4f1dfe53ef36d3fcc477e332701846b2d17994ecf1dda0468037141631bd2943"
+        },
+        "unloadReceipts": [
+          {
+            "title": "canceling a real beforeunload dialog preserves the edited world and its live performance owner",
+            "attachments": [
+              {
+                "name": "actual-canceled-beforeunload.json",
+                "body": {
+                  "holdDialogMs": 0,
+                  "before": {
+                    "url": "http://127.0.0.1:56662/procgen.html?e2e=1&recipe=1&seed=42&lanes=8",
+                    "revision": 1,
+                    "marker": "fafdb370-e11d-4375-9cf6-6c42b9b5936f",
+                    "transport": {
+                      "version": 1,
+                      "playing": true,
+                      "timestamp": 2380.7000000178814,
+                      "beat": 0.2075999999642372,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "nominalSpeed": 3,
+                      "effectiveSpeed": 3,
+                      "tempoLocked": false,
+                      "clockStatus": "internal",
+                      "reason": "playing",
+                      "lastDiscontinuity": null
+                    },
+                    "output": {
+                      "status": "live",
+                      "message": "Listening to game notes in the browser. No MIDI is sent.",
+                      "enabled": true,
+                      "audio": {
+                        "status": "ready",
+                        "message": "Browser preview is on. No MIDI is sent.",
+                        "enabled": true,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "e2101a8497becd05c280886f8f7a9821",
+                          "leaseEpoch": 1,
+                          "status": "owned",
+                          "reason": null,
+                          "exclusive": true,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [
+                            "audio-1"
+                          ],
+                          "roles": [
+                            "live"
+                          ],
+                          "activeDocumentIdentities": [
+                            "workstation:1"
+                          ],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 1,
+                        "contextState": "running",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 2,
+                          "exactBytes": 19916,
+                          "estimatedBytes": 69632,
+                          "peakDeclaredBytes": 89548,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": true,
+                        "mixLatencyMs": 6,
+                        "mixMakeupCompensation": 0.647,
+                        "mixReductionDb": -20.893999099731445,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "local-browser-audio",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    }
+                  },
+                  "after": {
+                    "history": {
+                      "marker": "fafdb370-e11d-4375-9cf6-6c42b9b5936f",
+                      "pagehides": [],
+                      "pageshows": [
+                        false
+                      ]
+                    },
+                    "sameWorld": true,
+                    "revision": 1,
+                    "name": "Canceled navigation source",
+                    "output": {
+                      "status": "live",
+                      "message": "Listening to game notes in the browser. No MIDI is sent.",
+                      "enabled": true,
+                      "audio": {
+                        "status": "ready",
+                        "message": "Browser preview is on. No MIDI is sent.",
+                        "enabled": true,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "e2101a8497becd05c280886f8f7a9821",
+                          "leaseEpoch": 1,
+                          "status": "owned",
+                          "reason": null,
+                          "exclusive": true,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [
+                            "audio-1"
+                          ],
+                          "roles": [
+                            "live"
+                          ],
+                          "activeDocumentIdentities": [
+                            "workstation:1"
+                          ],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 1,
+                        "contextState": "running",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 2,
+                          "exactBytes": 19916,
+                          "estimatedBytes": 69632,
+                          "peakDeclaredBytes": 89548,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": true,
+                        "mixLatencyMs": 6,
+                        "mixMakeupCompensation": 0.647,
+                        "mixReductionDb": -18.09198570251465,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "local-browser-audio",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": true,
+                      "timestamp": 2434.800000011921,
+                      "beat": 0.5321999999284744,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "nominalSpeed": 3,
+                      "effectiveSpeed": 3,
+                      "tempoLocked": false,
+                      "clockStatus": "internal",
+                      "reason": "playing",
+                      "lastDiscontinuity": null
+                    }
+                  }
+                }
+              },
+              {
+                "name": "canceled-beforeunload-explicit-play.json",
+                "body": {
+                  "transport": {
+                    "version": 1,
+                    "playing": true,
+                    "timestamp": 2456.5999999940395,
+                    "beat": 0.6629999998211861,
+                    "bpm": 360,
+                    "baseBpm": 120,
+                    "gameSpeed": 3,
+                    "speedMode": "game",
+                    "linked": true,
+                    "clockSource": "internal",
+                    "nominalSpeed": 3,
+                    "effectiveSpeed": 3,
+                    "tempoLocked": false,
+                    "clockStatus": "internal",
+                    "reason": "playing",
+                    "lastDiscontinuity": null
+                  },
+                  "output": {
+                    "status": "live",
+                    "message": "Listening to game notes in the browser. No MIDI is sent.",
+                    "enabled": true,
+                    "audio": {
+                      "status": "ready",
+                      "message": "Browser preview is on. No MIDI is sent.",
+                      "enabled": true,
+                      "performanceLease": {
+                        "protocol": "lemmings-performance/v1",
+                        "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                        "clientId": "e2101a8497becd05c280886f8f7a9821",
+                        "leaseEpoch": 1,
+                        "status": "owned",
+                        "reason": null,
+                        "exclusive": true,
+                        "coordination": "web-locks",
+                        "heldResourceScopes": [
+                          "audio-1"
+                        ],
+                        "roles": [
+                          "live"
+                        ],
+                        "activeDocumentIdentities": [
+                          "workstation:1"
+                        ],
+                        "otherOwner": null,
+                        "pendingRequests": 0,
+                        "disposed": false
+                      },
+                      "contextEpoch": 1,
+                      "contextState": "running",
+                      "resourceAccounting": {
+                        "enabled": true,
+                        "reservations": 2,
+                        "exactBytes": 19916,
+                        "estimatedBytes": 69632,
+                        "peakDeclaredBytes": 89548,
+                        "denials": 0,
+                        "maxReservations": 512,
+                        "consumerOwnedReservations": 1,
+                        "unreconciledReservations": 0,
+                        "browserResidentBytes": null,
+                        "evidenceClass": "declared-storage-and-native-estimates"
+                      },
+                      "retirement": null,
+                      "retiredVoices": 0,
+                      "unclosedContext": false,
+                      "activeVoices": 0,
+                      "sharedMix": true,
+                      "sessionCount": 1,
+                      "instrumentBackends": 1,
+                      "maxInstrumentBackends": 20,
+                      "maxVoices": 32,
+                      "maxScheduledVoices": 96,
+                      "workload": {
+                        "liveCostUnits": 32,
+                        "cueCostUnits": 16,
+                        "aggregateCostUnits": 48,
+                        "liveVoices": 32,
+                        "cueVoices": 4,
+                        "aggregateVoices": 36,
+                        "liveSourceReservations": 64,
+                        "cueSourceReservations": 32,
+                        "cueCanStealLive": false
+                      },
+                      "monitorRoute": {
+                        "state": "muted",
+                        "mode": "muted",
+                        "muted": true,
+                        "revision": 0,
+                        "cueIncludedInMasterCapture": false,
+                        "physicalSeparation": "not-claimed",
+                        "cueGain": 0.5,
+                        "message": "Choose an explicit prelisten route."
+                      },
+                      "audition": {
+                        "foreground": null,
+                        "active": false,
+                        "acceptedSources": 0,
+                        "maxSources": 2,
+                        "unresolvedOwnership": false,
+                        "disposed": false
+                      },
+                      "voiceSteals": 0,
+                      "voiceDrops": 0,
+                      "mixCompression": true,
+                      "mixLatencyMs": 6,
+                      "mixMakeupCompensation": 0.647,
+                      "mixReductionDb": -17.097553253173828,
+                      "pendingNotes": 0,
+                      "masterVolume": 0.7
+                    },
+                    "selectedBackend": "synth",
+                    "backend": "local-browser-audio",
+                    "outputId": null,
+                    "outputName": null,
+                    "outputGeneration": 0,
+                    "activeNotes": 0,
+                    "pendingNotes": 0,
+                    "pressure": {
+                      "throttled": false,
+                      "dropped": 0,
+                      "reason": null,
+                      "messages": 0,
+                      "bytes": 0,
+                      "maxBytes": 3906,
+                      "budgetProfile": null,
+                      "sharedLink": null,
+                      "historyAggregations": 0,
+                      "historyDetail": "messages",
+                      "lastReservationIssue": null,
+                      "maxMessages": 900,
+                      "laneCount": 1,
+                      "pendingNotes": 0,
+                      "oldestDeadline": null
+                    }
+                  },
+                  "sameWorld": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "canceling a real beforeunload dialog preserves the edited world and its live performance owner after a measured unsafe wake gap",
+            "attachments": [
+              {
+                "name": "actual-canceled-beforeunload.json",
+                "body": {
+                  "holdDialogMs": 400,
+                  "before": {
+                    "url": "http://127.0.0.1:56662/procgen.html?e2e=1&recipe=1&seed=42&lanes=8",
+                    "revision": 1,
+                    "marker": "ea5e7a0f-6afd-4c89-8b70-96dc30650985",
+                    "transport": {
+                      "version": 1,
+                      "playing": true,
+                      "timestamp": 2290.199999988079,
+                      "beat": 0.20579999989271164,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "nominalSpeed": 3,
+                      "effectiveSpeed": 3,
+                      "tempoLocked": false,
+                      "clockStatus": "internal",
+                      "reason": "playing",
+                      "lastDiscontinuity": null
+                    },
+                    "output": {
+                      "status": "live",
+                      "message": "Listening to game notes in the browser. No MIDI is sent.",
+                      "enabled": true,
+                      "audio": {
+                        "status": "ready",
+                        "message": "Browser preview is on. No MIDI is sent.",
+                        "enabled": true,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "469c5633201744030ffcd906fa0185d1",
+                          "leaseEpoch": 1,
+                          "status": "owned",
+                          "reason": null,
+                          "exclusive": true,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [
+                            "audio-1"
+                          ],
+                          "roles": [
+                            "live"
+                          ],
+                          "activeDocumentIdentities": [
+                            "workstation:1"
+                          ],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 1,
+                        "contextState": "running",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 2,
+                          "exactBytes": 19916,
+                          "estimatedBytes": 69632,
+                          "peakDeclaredBytes": 89548,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": true,
+                        "mixLatencyMs": 6,
+                        "mixMakeupCompensation": 0.647,
+                        "mixReductionDb": -19.785154342651367,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "local-browser-audio",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    }
+                  },
+                  "after": {
+                    "history": {
+                      "marker": "ea5e7a0f-6afd-4c89-8b70-96dc30650985",
+                      "pagehides": [],
+                      "pageshows": [
+                        false
+                      ]
+                    },
+                    "sameWorld": true,
+                    "revision": 1,
+                    "name": "Canceled navigation source",
+                    "output": {
+                      "status": "live",
+                      "message": "Listening to game notes in the browser. No MIDI is sent.",
+                      "enabled": true,
+                      "audio": {
+                        "status": "ready",
+                        "message": "Browser preview is on. No MIDI is sent.",
+                        "enabled": true,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "469c5633201744030ffcd906fa0185d1",
+                          "leaseEpoch": 1,
+                          "status": "owned",
+                          "reason": null,
+                          "exclusive": true,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [
+                            "audio-1"
+                          ],
+                          "roles": [
+                            "live"
+                          ],
+                          "activeDocumentIdentities": [
+                            "workstation:1"
+                          ],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 1,
+                        "contextState": "running",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 2,
+                          "exactBytes": 19916,
+                          "estimatedBytes": 69632,
+                          "peakDeclaredBytes": 89548,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": true,
+                        "mixLatencyMs": 6,
+                        "mixMakeupCompensation": 0.647,
+                        "mixReductionDb": -4.67669153213501,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "local-browser-audio",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 2762.5,
+                      "beat": 2.848799999892712,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "nominalSpeed": 3,
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "suspended",
+                      "reason": "suspended",
+                      "lastDiscontinuity": {
+                        "source": "host-wake-gap",
+                        "timeDomain": "performance-ms",
+                        "observedAtMs": 2730.699999988079,
+                        "previousWakeMs": 2288.699999988079,
+                        "gapMs": 442,
+                        "limitMs": 250,
+                        "driverReason": null
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "name": "canceled-beforeunload-explicit-play.json",
+                "body": {
+                  "transport": {
+                    "version": 1,
+                    "playing": true,
+                    "timestamp": 2778.0999999940395,
+                    "beat": 2.8577999998927117,
+                    "bpm": 360,
+                    "baseBpm": 120,
+                    "gameSpeed": 3,
+                    "speedMode": "game",
+                    "linked": true,
+                    "clockSource": "internal",
+                    "nominalSpeed": 3,
+                    "effectiveSpeed": 3,
+                    "tempoLocked": false,
+                    "clockStatus": "internal",
+                    "reason": "playing",
+                    "lastDiscontinuity": null
+                  },
+                  "output": {
+                    "status": "live",
+                    "message": "Listening to game notes in the browser. No MIDI is sent.",
+                    "enabled": true,
+                    "audio": {
+                      "status": "ready",
+                      "message": "Browser preview is on. No MIDI is sent.",
+                      "enabled": true,
+                      "performanceLease": {
+                        "protocol": "lemmings-performance/v1",
+                        "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                        "clientId": "469c5633201744030ffcd906fa0185d1",
+                        "leaseEpoch": 1,
+                        "status": "owned",
+                        "reason": null,
+                        "exclusive": true,
+                        "coordination": "web-locks",
+                        "heldResourceScopes": [
+                          "audio-1"
+                        ],
+                        "roles": [
+                          "live"
+                        ],
+                        "activeDocumentIdentities": [
+                          "workstation:1"
+                        ],
+                        "otherOwner": null,
+                        "pendingRequests": 0,
+                        "disposed": false
+                      },
+                      "contextEpoch": 1,
+                      "contextState": "running",
+                      "resourceAccounting": {
+                        "enabled": true,
+                        "reservations": 2,
+                        "exactBytes": 19916,
+                        "estimatedBytes": 69632,
+                        "peakDeclaredBytes": 89548,
+                        "denials": 0,
+                        "maxReservations": 512,
+                        "consumerOwnedReservations": 1,
+                        "unreconciledReservations": 0,
+                        "browserResidentBytes": null,
+                        "evidenceClass": "declared-storage-and-native-estimates"
+                      },
+                      "retirement": null,
+                      "retiredVoices": 0,
+                      "unclosedContext": false,
+                      "activeVoices": 0,
+                      "sharedMix": true,
+                      "sessionCount": 1,
+                      "instrumentBackends": 1,
+                      "maxInstrumentBackends": 20,
+                      "maxVoices": 32,
+                      "maxScheduledVoices": 96,
+                      "workload": {
+                        "liveCostUnits": 32,
+                        "cueCostUnits": 16,
+                        "aggregateCostUnits": 48,
+                        "liveVoices": 32,
+                        "cueVoices": 4,
+                        "aggregateVoices": 36,
+                        "liveSourceReservations": 64,
+                        "cueSourceReservations": 32,
+                        "cueCanStealLive": false
+                      },
+                      "monitorRoute": {
+                        "state": "muted",
+                        "mode": "muted",
+                        "muted": true,
+                        "revision": 0,
+                        "cueIncludedInMasterCapture": false,
+                        "physicalSeparation": "not-claimed",
+                        "cueGain": 0.5,
+                        "message": "Choose an explicit prelisten route."
+                      },
+                      "audition": {
+                        "foreground": null,
+                        "active": false,
+                        "acceptedSources": 0,
+                        "maxSources": 2,
+                        "unresolvedOwnership": false,
+                        "disposed": false
+                      },
+                      "voiceSteals": 0,
+                      "voiceDrops": 0,
+                      "mixCompression": true,
+                      "mixLatencyMs": 6,
+                      "mixMakeupCompensation": 0.647,
+                      "mixReductionDb": -4.562981605529785,
+                      "pendingNotes": 0,
+                      "masterVolume": 0.7
+                    },
+                    "selectedBackend": "synth",
+                    "backend": "local-browser-audio",
+                    "outputId": null,
+                    "outputName": null,
+                    "outputGeneration": 0,
+                    "activeNotes": 0,
+                    "pendingNotes": 0,
+                    "pressure": {
+                      "throttled": false,
+                      "dropped": 0,
+                      "reason": null,
+                      "messages": 0,
+                      "bytes": 0,
+                      "maxBytes": 3906,
+                      "budgetProfile": null,
+                      "sharedLink": null,
+                      "historyAggregations": 0,
+                      "historyDetail": "messages",
+                      "lastReservationIssue": null,
+                      "maxMessages": 900,
+                      "laneCount": 1,
+                      "pendingNotes": 0,
+                      "oldestDeadline": null
+                    }
+                  },
+                  "sameWorld": true
+                }
+              }
+            ]
+          }
+        ],
+        "scope": "Native1920x1080 desktop gesture and Chromium retained-world lifecycle. No physical tablet, OS-background or Firefox/WebKit retained-world claim."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check (10components/350files)",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "fixtureCorrections": [
+      "The added listener-count observer originally keyed by handler, merging two event registrations that intentionally share a callback. Key by type so each registration is counted.",
+      "The first grouped invocation named a nonexistent capture test; Mocha warned and still collected the real files. The final explicit existing-file invocation has no missing patterns."
+    ],
+    "ci360": {
+      "head": "1e76760707102113034e2b9f19213498babe45bf",
+      "runId": 40927135533,
+      "mainJob": 123635531455,
+      "conclusion": "failure",
+      "desktopPassed": 26,
+      "workstationPassed": 202,
+      "enginePassed": 18,
+      "otherThreeJobs": "success",
+      "node": {
+        "passed": 7096,
+        "pending": 10,
+        "failed": 2
+      },
+      "failures": [
+        "procgen-controls-config: camera.dispose leaves2 arbiter listeners on its canvas fallback document",
+        "procgen-render-lifecycle: failed initial frame registration leaves5 document arbiter listeners"
+      ],
+      "rootCause": "The shared pointer arbiter eagerly installed document guards without an active lease or retirement. Both actual assertions are listener counts, not a camera-coordinate or resource-budget failure.",
+      "coverage": {
+        "lines": 90.8,
+        "statements": 90.8,
+        "branches": 83.86,
+        "functions": 88.6
+      },
+      "coverageThresholdsPass": true
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "conclusion": "success"
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/controls/PointerGestureArbiter.js",
+        "bytes": 4711,
+        "sha256": "16d7ecbc0d41ef255f9958ad5cc847546502da77ee59d1c830f181f0da604bed"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenTransport.js",
+        "bytes": 12405,
+        "sha256": "de369c4224a21d53555ff265383bdae4d737d53fd0f8cb8d1b4771d5334efaa2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 214572,
+        "sha256": "385de732f33d5eb4650fa1ec6d38b4d97abdbc6f83266f824ab9e1e732798990"
+      },
+      {
+        "path": "test/pointer-gesture-lifecycle.test.js",
+        "bytes": 10677,
+        "sha256": "4695155af9e96907e8dfa1f2980d08fc6c3a4af43f8da6717a9c1759a5e6fb56"
+      },
+      {
+        "path": "test/procgen-workstation-transport.test.js",
+        "bytes": 17549,
+        "sha256": "6c245615a6f3b2853aea06a4a9bb5ab2fc5eb79bd8f89c90d188374a682955fd"
+      },
+      {
+        "path": "e2e/procgen-workstation-native-lifecycle.spec.js",
+        "bytes": 30764,
+        "sha256": "264a8c5e0b7001c3e2e835849b3f0e5d7d8a8fe82c6825265ef33b6447f5ae29"
+      }
+    ],
+    "remaining": "Independent current-head full CI, typed physical-source export and named remaining platform/backlog acceptance. #1009 remains open."
   }
 }

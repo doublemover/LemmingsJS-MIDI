@@ -22,14 +22,14 @@ export function createProcgenTransport(options = {}) {
   const retirement = createProcgenRetirementScope();
   let lastWake = anchorMs, lastClock = null, waitingSince = anchorMs, intervals = [];
   let clockOutput = options.clockOutput || null, reason = 'ready', clockStatus = 'stopped';
-  let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null;
+  let outputAdmission = null, clockHorizon = 0, clockStopFailure = null, clockRetirement = null, lastDiscontinuity = null;
   const beatAt = timestamp => playing && clockSource === 'internal'
     ? Math.min(Number.MAX_SAFE_INTEGER / 24, anchorBeat + Math.max(0, timestamp - anchorMs) * (bpm / 60000)) : anchorBeat;
   const nominalSpeed = () => linked && (speedMode === 'bpm' || clockSource === 'external') ? bpm / 120 : gameSpeed;
   const getState = () => ({ version: 1, playing, timestamp: now(), beat: beatAt(now()), bpm, baseBpm, gameSpeed, speedMode, linked, clockSource, nominalSpeed: nominalSpeed(),
     effectiveSpeed: playing && (clockSource !== 'external' || clockStatus === 'locked')
       ? nominalSpeed() : 0,
-    tempoLocked: clockSource === 'external', clockStatus, reason });
+    tempoLocked: clockSource === 'external', clockStatus, reason, lastDiscontinuity });
   const report = () => { const state = getState(); onPosition(state); return state; };
   const speed = () => onSpeed(getState().effectiveSpeed);
   const send = (bytes, timestamp = now(), cleanup = false) => {
@@ -60,7 +60,11 @@ export function createProcgenTransport(options = {}) {
   function pump(signal) {
     if (!playing || disposed) return getState();
     const timestamp = now();
-    if (signal?.suspended || timestamp - lastWake > suspensionMs) return halt('suspended');
+    if (signal?.suspended || timestamp - lastWake > suspensionMs) {
+      lastDiscontinuity = Object.freeze({ source: signal?.suspended ? 'timing-driver-suspended' : 'host-wake-gap', timeDomain: 'performance-ms', observedAtMs: timestamp, previousWakeMs: lastWake,
+        gapMs: timestamp - lastWake, limitMs: suspensionMs, driverReason: typeof signal?.reason === 'string' ? signal.reason.slice(0, 128) : null });
+      return halt('suspended');
+    }
     lastWake = timestamp;
     if (clockSource === 'external') {
       if (timestamp - (lastClock ?? waitingSince) > clockLossMs) return halt('clock-lost');
@@ -78,7 +82,7 @@ export function createProcgenTransport(options = {}) {
   }
   function play() {
     if (disposed || playing) return getState();
-    playing = true; reason = 'playing'; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
+    playing = true; reason = 'playing'; lastDiscontinuity = null; anchorMs = now(); lastWake = anchorMs; waitingSince = anchorMs;
     lastClock = null; intervals = [];
     if (clockSource === 'internal') nextPulse = Math.ceil(anchorBeat * 24 - 1e-9);
     clockStatus = clockSource === 'external' ? 'waiting' : 'internal';
@@ -124,7 +128,12 @@ export function createProcgenTransport(options = {}) {
     if (data[0] === 0xfc) { halt('midi-stop'); return true; }
     if (data[0] === 0xf2 && data.length >= 3) { seek(((data[2] & 127) * 128 + (data[1] & 127)) / 4); return true; }
     if (data[0] !== 0xf8 || !playing) return false;
-    if (now() - timestamp > suspensionMs || now() - lastWake > suspensionMs) { halt('suspended'); return false; }
+    const receivedAt = now();
+    if (receivedAt - timestamp > suspensionMs || receivedAt - lastWake > suspensionMs) {
+      lastDiscontinuity = Object.freeze({ source: receivedAt - timestamp > suspensionMs ? 'external-message-delay' : 'host-wake-gap', timeDomain: 'performance-ms', observedAtMs: receivedAt,
+        previousWakeMs: lastWake, gapMs: receivedAt - lastWake, messageDelayMs: receivedAt - timestamp, limitMs: suspensionMs });
+      halt('suspended'); return false;
+    }
     if (lastClock !== null && timestamp - lastClock > clockLossMs) { halt('clock-lost'); return false; }
     if (lastClock !== null && timestamp <= lastClock) return false;
     // Accepted clock input also wakes musical scheduling, independently of the

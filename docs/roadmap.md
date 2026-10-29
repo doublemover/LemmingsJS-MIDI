@@ -9344,3 +9344,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   case whose world survives but transport stops. Engine/native jobs pass. Inspect
   that remaining lifecycle state next; typed source-time export remains queued.
  350 remains the last verified full green head; Linux follow-through is pending.
+
+### Continuation 362 - measured wake gaps and gesture guard lifetime
+
+- Retain the existing250ms unsafe-wake policy and expose immutable performance-ms
+  diagnostics for host stalls, failed timing drivers and delayed external MIDI.
+  A canceled unload preserves the exact edited world, audio context and lease;
+  a measured unsafe gap stops transport and requires explicit Play.
+- Bind document/window pointer guards only for an active gesture. Finish, cancel,
+  throwing retirement and failed registration remove listeners and pending release
+  fallback timers before a callback can acquire a replacement owner. This fixes
+  both360 full-suite failures: camera disposal and failed renderer construction.
+- All131 grouped ownership/transport/runtime/re-performance cases and45 native
+  desktop capture/lifecycle journeys pass. Source hashes and exact442ms unsafe
+  wake evidence are retained in canonical continuation362; no full local suite is repeated.
+- Full360 CI passes26 desktop,202 workstation and18 engine cases plus both native
+  codec jobs, but its Node suite has7096 passes,10 pending and two listener-cleanup
+  failures. Coverage thresholds pass (90.8% lines,83.86% branches,88.6% functions).
+  These are fixed here; independent CI follow-through remains.350 is still the
+  latest verified full green checkpoint. #1009 retains the named supported-engine
+  BFCache/background gaps; typed source-time export is the next development span.

@@ -18,6 +18,24 @@ describe('desktop gesture lifetime ownership', () => {
   });
   afterEach(() => { arbiter.cancel('test-cleanup'); dom.window.close(); });
   const acquire = (overrides = {}) => arbiter.acquire({ pointerId: 1, targetKey: 'paint', identity: 'a', getIdentity: () => 'a', captureTarget: canvas, ...overrides });
+  it('binds document guards only while owned and releases them across reentrant cancellation', () => {
+    const listeners = new Map();
+    const target = () => ({ addEventListener(type, handler) { listeners.set(type, handler); }, removeEventListener(type, handler) { expect(listeners.get(type)).to.equal(handler); listeners.delete(type); } });
+    const host = target(); host.defaultView = target();
+    const scoped = getPointerGestureArbiter(host), begin = onCancel => scoped.acquire({ pointerId: 1, targetKey: 'draft', identity: 'a', getIdentity: () => 'a', onCancel });
+    expect(listeners.size).to.equal(0); expect(getPointerGestureArbiter(host)).to.equal(scoped);
+    const first = begin(); expect(listeners.size).to.equal(7); first.finish({ pointerId: 1 }); expect(listeners.size).to.equal(0);
+    let replacement;
+    begin(() => { expect(listeners.size).to.equal(0); replacement = begin(); }); scoped.cancel('replace');
+    expect(listeners.size).to.equal(7); replacement.finish({ pointerId: 1 }); expect(listeners.size).to.equal(0);
+    begin(() => { throw Error('retired'); }); expect(() => scoped.cancel('retire')).to.throw('retired'); expect(listeners.size).to.equal(0);
+  });
+  it('rolls back partial listener registration when the document rejects a guard', () => {
+    const handlers = new Set(), host = { addEventListener(type, handler) { if (type === 'keydown') throw Error('closed document'); handlers.add(handler); }, removeEventListener(type, handler) { handlers.delete(handler); } };
+    const scoped = getPointerGestureArbiter(host);
+    expect(() => scoped.acquire({ targetKey: 'draft', identity: 'a', getIdentity: () => 'a' })).to.throw('closed document');
+    expect(scoped.inspect()).to.equal(null); expect(handlers.size).to.equal(0);
+  });
   it('retires an unhandled owning release after pending capture disappears and ignores foreign releases', async () => {
     const reasons = []; acquire({ onCancel: reason => reasons.push(reason) });
     document.body.dispatchEvent(pointer('pointerup', 2)); await new Promise(resolve => setTimeout(resolve, 0)); expect(arbiter.inspect().pointerId).to.equal(1);

@@ -92,7 +92,7 @@ test('closing an in-flight world rebuild preserves the last named source and onl
   await testInfo.attach('owner-closed-during-world-rebuild.json', { body: JSON.stringify({ before, starting, after }, null, 2), contentType: 'application/json' });
 });
 
-test('canceling a real beforeunload dialog preserves the edited world and its live performance owner', { tag: '@boundary' }, async ({ page }, testInfo) => {
+for (const holdDialogMs of [0, 400]) test('canceling a real beforeunload dialog preserves the edited world and its live performance owner' + (holdDialogMs ? ' after a measured unsafe wake gap' : ''), { tag: '@boundary' }, async ({ page }, testInfo) => {
   test.setTimeout(120000); await installHistoryReceipt(page); await boot(page);
   await page.locator('#procgenListen').click(); await expect.poll(async () => (await output(page)).enabled).toBe(true);
   const before = await page.evaluate(() => {
@@ -100,19 +100,26 @@ test('canceling a real beforeunload dialog preserves the edited world and its li
     window.nativeHistoryWorld = window.__PROCGEN_LANES__.world;
     window.preventNativeUnload = event => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', window.preventNativeUnload);
-    return { url: window.location.href, revision: studio.getDocumentState().editRevision, marker: window.nativeHistoryReceipt.marker };
+    return { url: window.location.href, revision: studio.getDocumentState().editRevision, marker: window.nativeHistoryReceipt.marker, transport: studio.transport.getState(), output: studio.getPlaybackState() };
   });
   try {
     const requested = page.waitForEvent('dialog'); await page.evaluate(() => window.setTimeout(() => { window.location.href = 'about:blank'; }, 0));
-    const dialog = await requested; expect(dialog.type()).toBe('beforeunload'); await dialog.dismiss();
+    const dialog = await requested; expect(dialog.type()).toBe('beforeunload'); if (holdDialogMs) await new Promise(resolve => setTimeout(resolve, holdDialogMs)); await dialog.dismiss();
+    if (holdDialogMs) await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().playing)).toBe(false);
     expect(page.url()).toBe(before.url);
     const after = await page.evaluate(() => ({ history: window.nativeHistoryReceipt, sameWorld: window.nativeHistoryWorld === window.__PROCGEN_LANES__.world,
       revision: window.__PROCGEN_STUDIO__.getDocumentState().editRevision, name: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name,
-      output: window.__PROCGEN_STUDIO__.getPlaybackState(), playing: window.__PROCGEN_STUDIO__.transport.getState().playing }));
+      output: window.__PROCGEN_STUDIO__.getPlaybackState(), transport: window.__PROCGEN_STUDIO__.transport.getState() }));
+    await testInfo.attach('actual-canceled-beforeunload.json', { body: JSON.stringify({ holdDialogMs, before, after }, null, 2), contentType: 'application/json' });
     expect(after.history.marker).toBe(before.marker); expect(after.history.pagehides).toEqual([]); expect(after.sameWorld).toBe(true);
-    expect(after.revision).toBe(before.revision); expect(after.name).toBe('Canceled navigation source'); expect(after.playing).toBe(true);
+    expect(after.revision).toBe(before.revision); expect(after.name).toBe('Canceled navigation source');
+    if (!after.transport.playing) {
+      expect(after.transport.reason).toBe('suspended'); expect(after.transport.lastDiscontinuity.source).toBe('host-wake-gap'); expect(after.transport.lastDiscontinuity.gapMs).toBeGreaterThan(after.transport.lastDiscontinuity.limitMs);
+    }
     expect(after.output.enabled).toBe(true); expect(after.output.audio.contextState).toBe('running'); expect(after.output.audio.performanceLease.exclusive).toBe(true);
-    await testInfo.attach('actual-canceled-beforeunload.json', { body: JSON.stringify({ before, after }, null, 2), contentType: 'application/json' });
+    const resumed = await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__; studio.play(); return { transport: studio.transport.getState(), output: studio.getPlaybackState(), sameWorld: window.nativeHistoryWorld === window.__PROCGEN_LANES__.world }; });
+    expect(resumed.transport.playing).toBe(true); expect(resumed.sameWorld).toBe(true); expect(resumed.output.audio.performanceLease.leaseEpoch).toBe(before.output.audio.performanceLease.leaseEpoch);
+    await testInfo.attach('canceled-beforeunload-explicit-play.json', { body: JSON.stringify(resumed), contentType: 'application/json' });
   } finally { await page.evaluate(() => window.removeEventListener('beforeunload', window.preventNativeUnload)).catch(() => {}); }
 });
 
