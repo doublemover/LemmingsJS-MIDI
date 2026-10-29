@@ -29397,5 +29397,271 @@
         "remaining": "Navigation/view propagation and complete controller/120Hz/capture/launch/persistence latency and task budget qualification."
       }
     }
+  },
+  "continuation333": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "744cd7bb",
+    "scope": "Private authored project copy with verified immutable subtree sharing; keep startup metadata under its original small journal limits and authored tree under existing verifier limits.",
+    "validation": {
+      "node": {
+        "passed": 172,
+        "failed": 0,
+        "duration": "6s",
+        "scope": "128/1024lane four64-step-pattern startup, detached mutable input, immutable sharing, sparse/null-prototype shape, accessors/cycles/classes/scalars/depth rejection, controller/recovery page atomicity.",
+        "coverage": {
+          "MidiProjectSnapshot": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 97.82
+          },
+          "ProcgenStartupIntent": {
+            "lines": 88.58,
+            "functions": 71.42,
+            "branches": 82.02
+          }
+        },
+        "coverageFollowup": "Additional startup-source cancellation/catalog/failure branches remain beyond this ownership cohort; the snapshot copy owner is fully covered by lines/functions."
+      },
+      "browser": {
+        "passed": 4,
+        "failed": 0,
+        "durationMs": 12898.748,
+        "scope": "Native minimum-desktop optional-module refusal, recipe versus prior setup, malformed recipe preservation, actual document/recovery startup paused and conflict rejection."
+      },
+      "editBenchmark": {
+        "initialFailure": "The broader explicit browser benchmark aborted startup at the causal journal300000-node metadata limit before obtaining complete timing. Diagnostic stack identifies resolveProcgenStartupIntent; preserve both original and diagnostic failures.",
+        "finalPassed": 1,
+        "finalFailed": 0,
+        "durationMs": 8115.692000000001,
+        "measurements": [
+          {
+            "lanes": 8,
+            "steps": 64,
+            "scope": "browser reducer/view and synthetic workstation host; no audio or IndexedDB",
+            "editMs": {
+              "p50": 1.2000000029802322,
+              "p95": 1.5,
+              "p99": 2.3999999910593033,
+              "over16": 0
+            },
+            "launchMs": {
+              "p50": 3.5999999940395355,
+              "p95": 5.399999991059303,
+              "p99": 10,
+              "over16": 1
+            },
+            "heapDeltaBytes": null,
+            "controllerMs": {
+              "p50": 0.3999999910593033,
+              "p95": 0.5,
+              "p99": 0.5,
+              "over16": 0
+            },
+            "captureMs": {
+              "p50": 0.7999999970197678,
+              "p95": 1,
+              "p99": 1.6000000089406967,
+              "over16": 0
+            }
+          },
+          {
+            "lanes": 128,
+            "steps": 64,
+            "scope": "browser reducer/view and synthetic workstation host; no audio or IndexedDB",
+            "editMs": {
+              "p50": 1.2999999970197678,
+              "p95": 1.5,
+              "p99": 1.9000000059604645,
+              "over16": 0
+            },
+            "launchMs": {
+              "p50": 3.5999999940395355,
+              "p95": 4.5,
+              "p99": 8.600000008940697,
+              "over16": 1
+            },
+            "heapDeltaBytes": null,
+            "controllerMs": {
+              "p50": 0.5,
+              "p95": 0.6000000089406967,
+              "p99": 0.9000000059604645,
+              "over16": 0
+            },
+            "captureMs": {
+              "p50": 0.7999999970197678,
+              "p95": 1.1000000089406967,
+              "p99": 1.7000000029802322,
+              "over16": 0
+            }
+          },
+          {
+            "lanes": 1024,
+            "steps": 64,
+            "scope": "browser reducer/view and synthetic workstation host; no audio or IndexedDB",
+            "editMs": {
+              "p50": 2,
+              "p95": 3.0999999940395355,
+              "p99": 4.299999997019768,
+              "over16": 0
+            },
+            "launchMs": {
+              "p50": 3.7000000029802322,
+              "p95": 5.899999991059303,
+              "p99": 13.600000008940697,
+              "over16": 0
+            },
+            "heapDeltaBytes": null,
+            "controllerMs": {
+              "p50": 1.3999999910593033,
+              "p95": 2.0999999940395355,
+              "p99": 2.4000000059604645,
+              "over16": 0
+            },
+            "captureMs": {
+              "p50": 2.7999999970197678,
+              "p95": 3.5,
+              "p99": 3.8999999910593033,
+              "over16": 0
+            }
+          }
+        ],
+        "scope": "Browser reducer/view plus synthetic workstation host,120samples per operation/size. No real audio/IndexedDB or120Hz schedule. Heap deltas unavailable; smaller launch cases each had one task over16ms.",
+        "taskBudgetQualified": false
+      },
+      "limits": {
+        "startupMetadataBytes": 8388608,
+        "startupMetadataNodes": 300000,
+        "authoredObjectNodes": 4000000,
+        "authoredDepth": 48,
+        "authoredPropertiesPerNode": 262144,
+        "policy": "Existing limits unchanged; project ownership no longer uses a journal metadata serialization."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10components/349files",
+        "browser categories",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "329 progressing through coverage; later full runs remain separate. Latest verified green326.",
+      "scopeLimits": [
+        "Passing the explicit benchmark does not establish a production whole-controller/persistence task budget."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-categories.log",
+        "bytes": 3126,
+        "sha256": "f359e0319ff184e58c2f815ae21c8f68558e3f5d6a04f543c8ed1ee347656ec2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-edit-cost-diagnostic.log",
+        "bytes": 5601,
+        "sha256": "da2530bd25a89b5b0833b24cdb7a37bad637840c3ef8329330ee347ff2f6a839"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-edit-cost.log",
+        "bytes": 1883,
+        "sha256": "3599a6a17217fde8c4a5f9ea6f365681c975bb4e71ad10a808f4a017fbadfcf8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-native.log",
+        "bytes": 934,
+        "sha256": "6e99d4e286f8d66bbb812d583d47637d311e0661f51f2e0b36c5dda8f6482713"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-node.log",
+        "bytes": 16162,
+        "sha256": "8f2cca03f5c76608335d7009938d49930b2e980e15fec7e74745fb189d314c1c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog333-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog332-edit-cost.log",
+        "bytes": 4529,
+        "sha256": "b3b319f378bc88b96c504c9d7fdc59c4087f52e32972bf90cfb1a084ed0d4458"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog332-edit-cost-results.json",
+        "bytes": 10530,
+        "sha256": "86f4767a7b5d1d1dd3d5adc503fb9a0df04f26e36d2890f0d91db8ea9f2a62ee"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog333-edit-cost-diagnostic-results.json",
+        "bytes": 13090,
+        "sha256": "aabf19fdf29c5d453f6653f43ffe3bd7c8dcb31a125279edaeed0dcbd71824c4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog333-edit-cost-results.json",
+        "bytes": 6022,
+        "sha256": "0d59dbcfc6cb2516380c7a686f57d1d68c6b45f4491b4efa44ca54110ca88421"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog333-startup-results.json",
+        "bytes": 7585,
+        "sha256": "1cc54909264138235d80693df32c2867bef7974789c4ebf9a0fafa0bcfd2e366"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-333-coverage\\coverage-summary.json",
+        "bytes": 248180,
+        "sha256": "ae9b5406f2cd61fe6f3e1dbbadb5c48a1fac531b7e698291a3a7ec325fcfdd76"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/midi/project/MidiProjectSnapshot.js",
+        "bytes": 2500,
+        "sha256": "8735a6c9207350dad6ed17b4a6403a4415d253c9a1a576245f58fd3e3f556f4d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenStartupIntent.js",
+        "bytes": 17951,
+        "sha256": "0880202be5dfbf26e0750ab8d2bf0974391431b7aa5da0d9d0507ccf42ed3399"
+      },
+      {
+        "path": "test/midi/project-snapshot.test.js",
+        "bytes": 2671,
+        "sha256": "808a5901740db2ce033a52c4aabdc877a17a5ff71ad954dc5d06e97d15de8960"
+      },
+      {
+        "path": "test/procgen-startup-intent.test.js",
+        "bytes": 13351,
+        "sha256": "43cc90b013f6904e0a9e840641f82152327c0a444467c5f16a752e24afd1eb20"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 35955,
+        "sha256": "71224aa4b7ee492771dc6db12615ce2b8522b437bfd90ff96c5a8a58b768f76a"
+      }
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "remaining": "Production view/navigation and end-to-end120Hz/controller/capture/launch/persistence task-budget qualification."
+      }
+    }
   }
 }

@@ -8,6 +8,7 @@ import { procgenMusicDefaults } from '../ProcgenMusicProject.js';
 import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
 import { validateProcgenSession } from './ProcgenSessionStorage.js';
 import { cloneJournalData } from './CausalJournalCanonical.js';
+import { copyMidiProjectSnapshot } from '../../../midi/project/MidiProjectSnapshot.js';
 import { hashSurveyValue } from '../survey/ProcgenSurveyCanonical.js';
 import { validateSceneRecipeShareIdentity, sceneRecipeShareIdentity } from './ProcgenSceneRecipeShare.js';
 import { materializePerformanceSceneProject } from './PerformanceSceneProject.js';
@@ -111,7 +112,7 @@ const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartup
   if (mode === 'document' || mode === 'recovery') {
     const artifact = validateProcgenSession(session);
     if (artifact.project.procgen?.version !== 2) throw new Error('Startup document requires explicit legacy conversion before reopening');
-    const snapshot = cloneJournalData({ project: artifact.project, settings: artifact.settings, transport: artifact.transport }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
+    const snapshot = { project: copyMidiProjectSnapshot(sanitizeMidiProject(artifact.project)), ...cloneJournalData({ settings: artifact.settings, transport: artifact.transport }, { maxBytes: 8 * 1048576, maxNodes: 300000 }) };
     project = createProcgenWorkstationProject(sanitizeMidiProject(snapshot.project));
     if (project.procgen.lanes.length !== artifact.world.laneCount || project.procgen.seed !== artifact.world.seed) throw new Error('Startup document and checkpoint dimensions or seed differ');
     if (mode === 'document' && (documentIdentity?.id !== intent.documentId || !Number.isSafeInteger(documentIdentity.revision) ||
@@ -176,7 +177,8 @@ const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartup
     provenance.seed = 'fresh-seed'; provenance.laneCount = 'preference-or-default'; provenance.speed = 'preference-or-default';
   }
   const identity = hashSurveyValue({ mode, sourceIdentity, worldOptions, transport, lanes: project.procgen.lanes.map(lane => [lane.family, lane.role, lane.patch]) });
-  return cloneJournalData({ schemaVersion: 1, intentId: `startup-v1:${mode}:${identity}`, presence: intent.presence,
-    mode, sourceRevision: sourceIdentity?.revision ?? sourceIdentity?.version ?? 1, sourceIdentity, project, worldOptions, transport, provenance, diagnostics }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
+  const metadata = cloneJournalData({ schemaVersion: 1, intentId: `startup-v1:${mode}:${identity}`, presence: intent.presence,
+    mode, sourceRevision: sourceIdentity?.revision ?? sourceIdentity?.version ?? 1, sourceIdentity, worldOptions, transport, provenance, diagnostics }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
+  return Object.freeze({ ...metadata, project: copyMidiProjectSnapshot(project) });
 };
 export { resolveProcgenStartupIntent };

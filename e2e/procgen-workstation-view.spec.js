@@ -282,10 +282,12 @@ test('draw and erase gestures commit one reducer action for an entire stroke', a
 
 test('benchmark 64-step edit and simultaneous launch latency @benchmark', async ({ page }) => {
   test.skip(!process.env.LEMMINGS_BENCH, 'Run explicitly with LEMMINGS_BENCH=1');
+  test.setTimeout(180000);
   const results = [];
   for (const laneCount of [8, 128, 1024]) {
     await ready(page, laneCount, 64);
     results.push(await page.evaluate(async () => {
+      Error.stackTraceLimit = 64;
       const fixture = window.workstationViewTest, samples = [], launchSamples = [];
       const percentile = (values, fraction) => [...values].sort((a, b) => a - b)[Math.min(values.length - 1, Math.floor(values.length * fraction))];
       for (let index = 0; index < 20; index++) fixture.dispatch({ type: 'procgen/step', laneId: 'lane-1', slot: 0, index: 0, patch: { note: index % 2 ? 60 : 61 } });

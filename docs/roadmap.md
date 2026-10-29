@@ -8686,3 +8686,18 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Lane mix and change-index owners reach100% scoped lines/functions. Refresh the
   bound worker provenance digest without changing its280-file closure. #985 stays
   open for navigation/view propagation and complete controller/persistence latency.
+
+### Continuation 333 — authored startup ownership at ensemble capacity
+
+- The broader benchmark exposed startup cloning a full project through the small
+  journal metadata quota. Copy and freeze the project through the existing authored
+  snapshot verifier, sharing only its privately verified immutable subtrees. Keep
+  the original metadata quota and authored tree limits; do not serialize a large
+  project just to transfer in-memory ownership. Input remains mutable and detached.
+- All172 grouped snapshot/startup/controller/recovery cases and four native
+  startup/document/recovery journeys pass, including128/1024-lane64-step projects.
+  The explicit three-size browser benchmark now runs. Controller edit p99 is
+  0.5/0.9/2.4ms; full results and the prior admission failures are retained.
+- The synthetic host excludes real audio/IndexedDB and120Hz scheduling. Smaller
+  launch cases each contain one task over16ms; heap data is unavailable. #985
+  remains open for production propagation and full task-budget qualification.

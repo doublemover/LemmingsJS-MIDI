@@ -8,6 +8,14 @@ describe('ProcGen startup intent', () => {
   const legacyProject = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
   const saved = { version: 1, project: legacyProject, transport: { bpm: 60, gameSpeed: 0.5, speedMode: 'bpm' } };
   const base = { seed: 91, legacyProject, legacySettings: { laneCount: 8, speed: 3, pack: 2 } };
+  for (const laneCount of [128, 1024]) it('owns a full64-step project across ' + laneCount + ' lanes without the small journal metadata limit', function() {
+    this.timeout(15000);
+    const original = createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: laneCount }, () => ({ mode: 'pattern', patternPurpose: 'Startup capacity qualification', patterns: Array.from({ length: 4 }, () => ({ length: 64 })) })) });
+    const plan = resolveProcgenStartupIntent({ seed: 91, legacyProject: original, legacySettings: { laneCount } });
+    expect(plan.project.procgen.lanes).to.have.length(laneCount); expect(plan.project.procgen.lanes.at(-1).patterns[3].steps).to.have.length(64);
+    expect(Object.isFrozen(plan)).to.equal(true); expect(Object.isFrozen(plan.project.procgen.lanes[0].patterns[0].steps[0])).to.equal(true);
+    const name = plan.project.procgen.lanes[0].name; original.procgen.lanes[0].name = 'Later mutable input'; expect(plan.project.procgen.lanes[0].name).to.equal(name);
+  });
   it('resolves one portable recipe independently of unrelated saved state', () => {
     const search = '?seed=999&lanes=3&speed=2&pack=4';
     const empty = resolveProcgenStartupIntent({ ...base, search });

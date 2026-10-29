@@ -144,6 +144,23 @@ All144 affected Node cases and six desktop browser cases pass, including actual
 field/IME/row/launch behavior. #985 remains open for navigation/view and full
 controller/persistence measurement against its named task budget.
 
+Continuation333 fixes large authored startup ownership without increasing the
+small journal metadata quota. The project uses an owned copy through the existing
+authored snapshot verifier (four million object nodes, depth48,262144 properties
+per node); only verified immutable subtrees may be shared. Unsealed input remains
+mutable and detached. Metadata retains its8MiB/300000-value bound. No intermediate
+whole-project JSON string is needed for this ownership transfer.
+
+Both128- and1024-lane projects with four64-step patterns per lane now resolve,
+and172 grouped snapshot/startup/controller/recovery cases plus four native
+startup/recipe/document/recovery journeys pass. The explicit browser benchmark
+also completes all three lane counts. Controller-edit p50/p95/p99 milliseconds
+are0.4/0.5/0.5,0.5/0.6/0.9 and1.4/2.1/2.4 for8/128/1024lanes. MIDI-capture
+p99 is1.6/1.7/3.9; simultaneous-launch p99 is10.0/8.6/13.6, with one sample over
+16ms in each smaller launch case. The browser reducer/view and synthetic host
+exclude real audio, IndexedDB and120Hz scheduling; heap readings were unavailable.
+These observations do not close #985's production/controller/persistence gate.
+
 `scripts/profile-procgen-editing.mjs` measures 8/128/1024 lanes with 64-step
 patterns, 120 Hz scalar/cell input, actual MIDI ingress/capture and batched launch
 acknowledgments. Reports separate latency percentiles, long tasks, heap observations,
