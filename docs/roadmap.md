@@ -8406,3 +8406,15 @@ export-budget acknowledgments still prevent a false complete receipt.
   identity/source refusal and paused silent tick0. Source hashes, failure and
   receipts are retained in the canonical validation record. Full CI is pending
   publication. Continuation317 replay work above is still local development.
+
+### Continuation 319 — late fullscreen request ownership
+
+- Retire a late fullscreen entry after its owner was disposed. Bind callbacks to
+  the active root owner and document generation; an obsolete request/disposal
+  cannot exit a newer owner of the same root or restore earlier focus. Preserve
+  actual browser-event authority, rejection and rapid queued exit behavior.
+- All6 component cases and2 real desktop browser journeys pass. Native
+  Permissions-Policy denial preserves paused world/project/document/output
+  ownership and retry; actual entry/exit retains the same world/canvas and
+  accepted geometry at1920x1080 and2560x1440. Full CI is pending publication.
+  #1203 stays open for the remaining desktop zoom/DPR/draft/accessibility matrix.

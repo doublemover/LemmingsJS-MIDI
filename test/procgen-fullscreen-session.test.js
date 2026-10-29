@@ -11,9 +11,10 @@ const fixture = () => {
     addEventListener(name, listener) { listeners.set(name, listener); },
     removeEventListener(name, listener) { if (listeners.get(name) === listener) listeners.delete(name); },
     exitFullscreen() { calls.push('exit'); this.fullscreenElement = null; listeners.get('fullscreenchange')?.(); return Promise.resolve(); } };
-  const session = createProcgenFullscreenSession({ document, root, control, getGeneration: () => 7,
+  let generation = 7;
+  const session = createProcgenFullscreenSession({ document, root, control, getGeneration: () => generation,
     onTransition: state => calls.push(state), onReflow: () => calls.push('reflow'), onStatus: message => calls.push(message), focusFallback: () => control });
-  return { document, root, control, prior, session, listeners, calls };
+  return { document, root, control, prior, session, listeners, calls, setGeneration(value) { generation = value; } };
 };
 
 describe('ProcGen fullscreen presentation session', () => {
@@ -56,5 +57,32 @@ describe('ProcGen fullscreen presentation session', () => {
     f.session.dispose(); resolve(); await entering;
     expect(f.calls).not.to.include('focus-prior');
     expect(f.listeners.size).to.equal(0);
+  });
+
+  it('exits its exact root when a retired request enters after disposal', async () => {
+    const f = fixture(); let resolve;
+    f.root.requestFullscreen = () => new Promise(done => { resolve = done; });
+    const entering = f.session.enter(); f.session.dispose();
+    f.document.fullscreenElement = f.root; resolve(); expect(await entering).to.equal(false);
+    expect(f.document.fullscreenElement).to.equal(null); expect(f.calls.filter(value => value === 'exit')).to.have.length(1);
+    expect(f.calls).not.to.include('focus-prior'); expect(f.listeners.size).to.equal(0);
+  });
+
+  it('does not let an obsolete completion or disposal exit a newer owner of the same root', async () => {
+    const f = fixture(); let resolve;
+    f.root.requestFullscreen = () => new Promise(done => { resolve = done; });
+    const entering = f.session.enter();
+    const next = createProcgenFullscreenSession({ document: f.document, root: f.root, control: f.control });
+    f.document.fullscreenElement = f.root; f.session.dispose(); resolve(); await entering;
+    expect(f.document.fullscreenElement).to.equal(f.root); expect(f.calls).not.to.include('exit');
+    expect(next.getState().entered).to.equal(true); next.dispose(); await Promise.resolve(); expect(f.calls).to.include('exit');
+  });
+
+  it('rejects a pending entry after the document generation changes without restoring old focus', async () => {
+    const f = fixture(); let resolve;
+    f.root.requestFullscreen = () => new Promise(done => { resolve = done; });
+    const entering = f.session.enter(); f.setGeneration(8); f.document.fullscreenElement = f.root;
+    f.listeners.get('fullscreenchange')(); resolve(); await entering;
+    expect(f.document.fullscreenElement).to.equal(null); expect(f.calls).not.to.include('focus-prior'); f.session.dispose();
   });
 });

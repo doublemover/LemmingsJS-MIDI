@@ -24347,5 +24347,100 @@
         "scope": "This recipe navigation does not close the wider scene and asset corpus."
       }
     }
+  },
+  "continuation319": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Fence late fullscreen entries by presentation owner and document generation",
+    "sourceBase": "324eb403ac08611c430df38fd48a6ff64fa79ce5",
+    "issues": [
+      1203
+    ],
+    "development": [
+      "Track the current owner for each presentation root. A retired pending request that later enters must exit its exact root; stale completions/disposal cannot exit a newer owner of that root.",
+      "Fence pending entry to its document generation, refuse disconnected/replaced owners, reconcile actual fullscreenElement events and keep stale focus restoration suppressed. Preserve ordinary enter/exit, rapid queued exit, browser-owned escape and request rejection behavior."
+    ],
+    "validation": {
+      "node": {
+        "passed": 6,
+        "failed": 0,
+        "scope": "Actual document ownership, queued rapid exit, failure/disposal, late disposed entry cleanup, newer same-root owner and pending document generation change."
+      },
+      "browser": {
+        "passed": 2,
+        "failed": 0,
+        "scope": "Actual Chromium fullscreen entry/exit, same world/canvas and coherent accepted geometry at1920x1080 and2560x1440; native Permissions-Policy fullscreen denial preserves paused tick, project/document/output ownership and exposes retry."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending publication; preceding316 full CI is green.",
+      "scopeLimits": [
+        "No blanket cross-browser or assistive-technology certification. High-DPR/200% zoom, invalid numeric/scene draft combinations and the complete desktop accessibility/lifecycle matrix remain open under1203.",
+        "This does not change Stage mode, world/audio clocks, permission grants or output ownership."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog319-native.log",
+        "bytes": 646,
+        "sha256": "3d716b32802ee72b595baf9b83eb2d3668c72e7bc21ec02fa5d220528bd80980"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog319-node.log",
+        "bytes": 594,
+        "sha256": "3cde06d8d97910844b90b3914ab5b92dd005d6be54046266995708c5a6d3d4f0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog319-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog319-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog319-fullscreen-results.json",
+        "bytes": 5465,
+        "sha256": "a5bd6509257948a6f8d621f598712e2c033c9da43698b60ccb25d43d4bf25d99"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-319-coverage\\coverage-summary.json",
+        "bytes": 689,
+        "sha256": "94acf6e0e0345604a7ed59e19a59f8a602527de14e3f75187eb957c9b42820db"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenFullscreenSession.js",
+        "bytes": 5000,
+        "sha256": "fcb5bb814d77820dc76fb379e842ad3c94c93d8f857c121a17af3ccf9b816f10"
+      },
+      {
+        "path": "test/procgen-fullscreen-session.test.js",
+        "bytes": 5203,
+        "sha256": "76f465091fface0cdb1e256ef2882c992113274555ed12d7624bab7d179e9ef5"
+      },
+      {
+        "path": "e2e/procgen-workstation-fullscreen.spec.js",
+        "bytes": 5461,
+        "sha256": "e111d34566b540edb11a5d9ad58a697e2860a5bd5856193e5f888409a5cb2877"
+      }
+    ],
+    "issueStatus": {
+      "1203": {
+        "state": "open-implemented-partial",
+        "remaining": "Complete desktop zoom/DPR/draft/keyboard/AT and browser lifecycle qualification; late owner/generation cleanup and native policy denial now pass."
+      }
+    }
   }
 }
