@@ -384,12 +384,13 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
     controllerMutations.invalidateEndpoint(String(port?.id));
     return lastCleanup;
   }
-  const raw = (data, timestamp = now(), meta = {}, capture = true) => {
+  const raw = (data, timestamp = now(), meta = {}, capture = true, expectedRoute = null) => {
     if (!validProcgenMidiChannelBytes(data) || !Number.isFinite(timestamp) || timestamp < 0) return false;
     const port = outputForIntent(meta.outputId);
     if (disposed || !port || data[0] >= 0xf0) return false;
     if (rawDispatchDepth || scheduler._outputCallbackDepth) return false;
     const route = activeOutputs.get(String(port.id)), channel = (data[0] & 15) + 1;
+    if (expectedRoute && route !== expectedRoute) return false;
     if (route?.intent.channels && !route.intent.channels.includes(channel)) return false;
     const maxPending = Math.min(4096, Math.max(1, scheduler.config?.limits?.maxPendingRawVoices ?? 1024));
     if ((data[0] & 0xf0) === 0x90 && data[2] && (rawVoices.get(port)?.size || 0) >= maxPending && !rawVoices.get(port)?.has(`${data[0] & 15}:${data[1]}`)) {
@@ -684,7 +685,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       for (const data of plan.messages) {
         attemptedMessages++;
         if (!raw(data, timestamp, { ...event, umpWords: plan.sourceWords, outputId: port.id, sourceProtocol: 'midi2', sourceUmp: plan.sourceWords,
-          sourceGroup: plan.address.group, loweringLosses: plan.losses, ...(mutation ? { rawRelativeGesture: mutation.rawGestureWords, controllerOperation: 'set', controllerRawValue: mutation.rawValue } : {}), reservationId: reservation?.reservationId }, false)) return false;
+          sourceGroup: plan.address.group, loweringLosses: plan.losses, ...(mutation ? { rawRelativeGesture: mutation.rawGestureWords, controllerOperation: 'set', controllerRawValue: mutation.rawValue } : {}), reservationId: reservation?.reservationId }, false, route)) return false;
         submittedMessages++;
         if (victimKey != null && submittedMessages === 1) route.loweredVoices.delete(victimKey);
       }
@@ -850,13 +851,14 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       if (!messages.length || !messages.every(validProcgenMidiChannelBytes)) return false;
       const port = outputForIntent(event.outputId);
       if (disposed || !port) return false;
+      const route = activeOutputs.get(String(port.id));
       const planned = messages.filter(data => !isReleasePacket(data));
       const reservation = planned.length ? scheduler.evaluateAndReserve?.({ on: { timeMs: timestamp,
         count: planned.length, bytes: planned.reduce((sum, data) => sum + data.length, 0) } }, { ...event, outputId: port.id }, now()) : null;
       if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), { ...event, outputId: port.id }); return false; }
       try {
         for (const data of messages) if (!raw(data, timestamp, { ...event, outputId: port.id,
-          reservationId: isReleasePacket(data) ? null : reservation?.reservationId, reservationPhase: isReleasePacket(data) ? 'off' : 'on' }, false)) return false;
+          reservationId: isReleasePacket(data) ? null : reservation?.reservationId, reservationPhase: isReleasePacket(data) ? 'off' : 'on' }, false, route)) return false;
         return true;
       } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
     },
@@ -894,7 +896,7 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
       if (!Number.isFinite(timestamp) || timestamp < 0 || [spec.durationMs, spec.durationTicks].some(value => value != null && (!Number.isFinite(value) || value < 0))) return false;
       const port = outputForIntent(spec.outputId);
       if (disposed || !port) return false;
-      const durationMs = duration(spec), outputId = spec.outputId ?? port.id ?? null;
+      const durationMs = duration(spec), outputId = spec.outputId ?? port.id ?? null, route = activeOutputs.get(String(port.id));
       if (port.channels) {
         const allowed = activeOutputs.get(String(port.id))?.intent.channels;
         if (allowed) {
@@ -911,10 +913,10 @@ export function createProcgenMidiPorts({ transport, now = () => performance.now(
         off: { timeMs: timestamp + durationMs, count: durationMs ? 1 : 0, bytes: durationMs ? 3 : 0 } }, { ...meta, outputId }, now());
       if (reservation && !reservation.ok) { scheduler.recordThrottle?.(reservation.reason, now(), meta); return false; }
       try {
-        for (const data of messages) if (!raw(data, timestamp, { ...meta, outputId, reservationId: reservation?.reservationId }, false)) return false;
+        for (const data of messages) if (!raw(data, timestamp, { ...meta, outputId, reservationId: reservation?.reservationId }, false, route)) return false;
         if (durationMs && !raw([0x80 | channelByte(spec.channel), byte(spec.note), byte(spec.releaseVelocity)], timestamp + durationMs,
           { ...meta, beat: meta.beat == null ? undefined : meta.beat + durationMs * (meta.bpm ?? transport?.getState()?.bpm ?? 120) / 60000,
-            outputId, reservationId: reservation?.reservationId, reservationPhase: 'off' }, false)) return false;
+            outputId, reservationId: reservation?.reservationId, reservationPhase: 'off' }, false, route)) return false;
         return true;
       } finally { scheduler._releaseReservation?.(reservation?.reservationId, true); }
     },

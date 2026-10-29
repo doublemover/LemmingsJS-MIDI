@@ -8880,3 +8880,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   with raw-batch route fencing and that lifecycle matrix while full CI runs. #985
   still awaits current clean CI and original-acceptance review; #998 needs actual
   desktop screen-reader evidence. Latest complete green CI remains 334.
+
+### Continuation 343 - raw route plans and actual native lifecycle
+
+- Capture raw MIDI plan routes before reservation and reject replacement callbacks
+  across bank/program, UMP lowering and raw note setup. All106 grouped Node cases pass.
+- Qualify actual Chromium freeze/thaw and BFCache history return, native shutdown
+  refusal, canceled takeover, absent BroadcastChannel, reload during a pending
+  performance claim, and closure during actual worklet capture. All7 lifecycle
+  cases and19 distinct adjacent native desktop journeys pass across final batches.
+  The same realm receives pagehide.persisted and pageshow.persisted, returns paused
+  without output ownership, and requires explicit activation. No retained capture
+  PCM is claimed after destroying its owner realm.
+- Fix harness eligibility: require HTTP revalidation without no-store and select
+  full Chromium new-headless mode for BFCache. Preserve the initial browser reasons
+  and the two corrected error-state fixture expectations in continuation343.
+- Close #1193 against its default same-origin desktop contract. Keep #1009 open for
+  remaining recovery/storage/canceled-navigation and wider supported-engine cases.
+  Full342 CI is still running;334 remains the latest complete green checkpoint.
+  Continue solo through the remaining backlog while full CI completes.

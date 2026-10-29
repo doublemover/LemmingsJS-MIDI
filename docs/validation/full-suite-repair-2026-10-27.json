@@ -34292,5 +34292,187 @@
         "sha256": "93980595faa1f06fde4f894a41e121e3c05e5ba025866c757a78484bf110d959"
       }
     ]
+  },
+  "continuation343": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "f5236b7481295d79ff879edd4ab3109f4d21b6ee",
+    "scope": "Fence raw MIDI plans through reservation callbacks and qualify actual Chromium performance lifecycle boundaries.",
+    "implementation": [
+      "Capture the exact route for raw bank/program, lowered UMP and raw note plans before reservation admission; reject a callback-replaced route instead of sending an old plan to a fresh destination.",
+      "The owned browser boundary server requires HTTP revalidation with no-cache,must-revalidate. Its former no-store header prohibited BFCache when JavaScript made network requests. Checkout responses still require revalidation.",
+      "The lifecycle fixture explicitly uses the full Chromium channel in new headless mode with BackForwardCache enabled; the default headless shell reports BackForwardCacheDisabledForDelegate. No production lifecycle code was modified to make the fixture cacheable."
+    ],
+    "validation": {
+      "node": {
+        "passing": 106,
+        "failing": 0,
+        "files": [
+          "test/browser-boundary-server.test.js",
+          "test/midi/midi-protocol-lowering.test.js",
+          "test/midi/procgen-performance-admission.test.js",
+          "test/midi/midi-routing-leases.test.js",
+          "test/midi/midi-reservation-transactions.test.js",
+          "test/procgen-workstation-midi.test.js",
+          "test/midi/midi-input-safety-ownership.test.js"
+        ],
+        "log": ".tmp/rook343-node-batch.log"
+      },
+      "native": {
+        "minimumViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "distinctPassing": 19,
+        "skipped": 0,
+        "qualification": "17/19 cases passed on the final runtime/server in rook343-native-matrix; its only two failures expected off where genuine refusal correctly reports error. After fixture-only correction, all7 native lifecycle cases pass, including those two. Union:19 distinct passing desktop cases. The7 ownership and5 storage journeys retain the same runtime/server.",
+        "reports": [
+          ".tmp/rook343-native-matrix.json",
+          ".tmp/rook343-native-matrix-final.json"
+        ],
+        "actualHistory": {
+          "sameRealm": true,
+          "pagehidePersisted": [
+            true
+          ],
+          "pageshowPersisted": [
+            false,
+            true
+          ],
+          "notRestored": [],
+          "returnedTransportPlaying": false,
+          "returnedExclusive": false,
+          "returnedOutputEnabled": false,
+          "freshActivationRequired": true
+        },
+        "actualFreeze": {
+          "method": "Chromium Page.setWebLifecycleState frozen/active, not dispatched DOM events",
+          "oldNativeContext": "suspended",
+          "oldOutputEnabled": false,
+          "oldTransportPlaying": false,
+          "noAutomaticThawPlayback": true
+        },
+        "actualOwnerClosedDuringCapture": {
+          "capture": "Real native capture worklet acknowledged recording before owner realm destruction.",
+          "nativeLockReleased": true,
+          "peerAutoplay": false,
+          "retainedPcm": "Not claimed; owner realm and its in-memory PCM were destroyed."
+        },
+        "controlledNativeFailure": {
+          "method": "Actual AudioContext subclass rejects suspend before forwarding the native operation.",
+          "oldContextState": "running",
+          "oldLeaseStatus": "blocked",
+          "peerEnabled": false,
+          "nativeLocksHeld": 1,
+          "subsequentOwnerCloseReleases": true,
+          "evidence": "Controlled native-API failure injection, not an observed hardware fault."
+        },
+        "canceledTakeover": {
+          "method": "Delay actual native suspend completion; explicitly cancel incoming ownership; then execute and acknowledge the real native suspension.",
+          "peerRemainsOff": true,
+          "pendingRequests": 0,
+          "noQueuedPlayback": true
+        },
+        "missingBroadcastChannel": {
+          "actualWebLocks": true,
+          "takeoverRefused": "handoff-channel-unavailable",
+          "oldOwnerContinues": true,
+          "peerRemainsOffAfterOwnerClosure": true
+        },
+        "reloadDuringClaim": {
+          "method": "Delay the first navigator.locks.request before native submission, after actual AudioContext preparation.",
+          "beforeContextState": "running",
+          "afterReloadContextState": "not-created",
+          "afterReloadEnabled": false,
+          "heldLocksAfterReload": 0,
+          "explicitFreshActivationPasses": true
+        },
+        "scope": "Chromium desktop native lifecycle and actual browser audio/capture APIs. WebMidi adapter/hardware acoustics, filesystem durability and wider browser engines are not inferred."
+      },
+      "static": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check (10components,350files)",
+        "guarded staged whitespace and source/index hash comparison before commit"
+      ]
+    },
+    "failureHistory": {
+      "initialLifecycle": {
+        "passing": 1,
+        "failing": 1,
+        "report": ".tmp/rook343-lifecycle-initial.json",
+        "reason": "History reloaded: no-store response policy with JS network requests, plus the headless-shell delegate."
+      },
+      "afterHttpRevalidation": {
+        "passing": 13,
+        "failing": 1,
+        "report": ".tmp/rook343-lifecycle-revalidate.json",
+        "cdpReasons": [
+          "BrowsingInstanceNotSwapped",
+          "BackForwardCacheDisabledForDelegate"
+        ],
+        "resolution": "Select full Chromium channel for the real lifecycle fixture."
+      },
+      "firstFullChromium": {
+        "passing": 2,
+        "failing": 0,
+        "report": ".tmp/rook343-native-chromium.json",
+        "actualBfcacheVerified": true
+      },
+      "expandedMatrix": {
+        "passing": 17,
+        "failing": 2,
+        "report": ".tmp/rook343-native-matrix.json",
+        "reason": "Refusal fixtures incorrectly expected off instead of the truthful error state. Runtime behavior was already fail-closed; only expectations changed."
+      },
+      "finalLifecycle": {
+        "passing": 7,
+        "failing": 0,
+        "report": ".tmp/rook343-native-matrix-final.json"
+      }
+    },
+    "references": [
+      "https://web.dev/articles/bfcache",
+      "https://playwright.dev/docs/browsers#chromium-new-headless-mode"
+    ],
+    "issueDisposition": {
+      "1009": "Keep open for the remaining recovery/storage/canceled-navigation and supported-engine lifecycle acceptance beyond this performance ownership matrix.",
+      "1193": "Default same-origin desktop performance lease implementation and named lifecycle/ownership acceptance qualified. Close with this source-bound evidence; do not claim a current full green CI or hardware/acoustic result."
+    },
+    "currentFullCi": {
+      "head": "f5236b7481295d79ff879edd4ab3109f4d21b6ee",
+      "run": 40859216351,
+      "job": 123397852640,
+      "state": "in_progress-at-evidence-recording",
+      "latestCompleteGreenContinuation": 334
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+        "bytes": 69862,
+        "sha256": "1e3861b204d24ca86f31c243c5e1f974b29a5e9ad3449e8b192aea62036dc5c7"
+      },
+      {
+        "path": "scripts/run-browser-boundaries.js",
+        "bytes": 2281,
+        "sha256": "6ed6c09a09aace8a82012433fb40e45e133270c3412460e5fbd9a6b961f89a79"
+      },
+      {
+        "path": "test/browser-boundary-server.test.js",
+        "bytes": 2637,
+        "sha256": "9cb077dfdc34c7bc33fe7694dce13f53403638f89e0522fb8ec290e651b984ce"
+      },
+      {
+        "path": "test/midi/midi-protocol-lowering.test.js",
+        "bytes": 12920,
+        "sha256": "333c53135d12381b973bc9cbc3c80515a52fccfb6bef38e19c77ca85df9f546f"
+      },
+      {
+        "path": "e2e/procgen-workstation-native-lifecycle.spec.js",
+        "bytes": 14209,
+        "sha256": "20a0aa172a7e67cf71e4800a3e2f60c860a6b802df2764ccd3de154f7252679d"
+      }
+    ]
   }
 }

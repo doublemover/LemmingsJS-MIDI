@@ -20,6 +20,21 @@ const fixture = (limits = {}) => {
 };
 
 describe('explicit MIDI 2 to MIDI 1 endpoint lowering', function() {
+  for (const kind of ['bank', 'ump-bank', 'raw-note']) it(`does not submit an old ${kind} plan when reservation callbacks replace its route`, () => {
+    const f = fixture({ maxEventsPerSecond: 100 }), replacement = { id: f.output.id, send(data) { f.messages.push(['replacement', ...data]); return true; } };
+    const reserve = f.scheduler.evaluateAndReserve; let replaced = false;
+    f.scheduler.evaluateAndReserve = function(...args) {
+      const result = reserve.apply(this, args);
+      if (!replaced) { replaced = true; f.ports.setNoteOutput(replacement, { rearm: true }); }
+      return result;
+    };
+    try {
+      const result = kind === 'bank' ? f.ports.sendEvent({ type: 'bank', msb: 6, lsb: 7 }) : kind === 'ump-bank' ? f.ports.sendEvent({ umpWords: [0x40c00001, 0x05000607] }) :
+        f.ports.sendNote({ note: 60, bankMsb: 6, bankLsb: 7, program: 5, durationMs: 100 });
+      expect(result).to.equal(false); expect(f.messages).to.deep.equal([]);
+      expect(f.scheduler.getRateSnapshot(0).next.count).to.equal(0);
+    } finally { f.dispose(); }
+  });
   it('matches normative scaling extrema, center and asymmetric reference values', function() {
     for (const [input, bits16, bits32] of [[0, 0, 0], [5, 2560, 167772160], [64, 32768, 2147483648],
       [70, 35888, 2352005900], [96, 49412, 3238268993], [120, 61895, 4056358001], [127, 65535, 4294967295]]) {

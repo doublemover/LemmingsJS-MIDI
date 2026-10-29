@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Reject raw MIDI note and controller plans when reservation callbacks replace their captured output route.
+
 - Coordinate reviewed MIDI, raw/thru messages and standalone clock output with browser performance ownership, explicit takeover and acknowledged cleanup.
 - Admit saved-project checksum work using revision-bound lane metadata instead of reserving a maximum-size document for every load.
 

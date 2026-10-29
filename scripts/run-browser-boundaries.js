@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const playwrightCli = require.resolve('@playwright/test/cli');
 
 const withBoundaryServer = async run => {
-  const server = httpServer.createServer({ root: repoRoot, cache: -1, showDir: 'false' }).server;
+  const server = httpServer.createServer({ root: repoRoot, cache: 'no-cache, must-revalidate', showDir: 'false' }).server;
   const sockets = new Set();
   server.on('connection', socket => { sockets.add(socket); socket.once('close', () => sockets.delete(socket)); });
   await new Promise((resolve, reject) => {
