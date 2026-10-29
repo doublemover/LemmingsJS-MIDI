@@ -193,12 +193,15 @@ const installProcgenBootListeners = () => {
           procgenUi.settings.seed = resolveProcgenSeed(params);
           try {
             startupStorage = createProcgenSessionStorage(window.indexedDB, { budgetAdapter: procgenResourceBudget });
+            let savedPreferences; const restorePrevious = !startupIntent.mode || startupIntent.mode === 'previous-setup';
+            try { savedPreferences = await startupStorage.loadPreferences({ signal: controller.signal, includeProject: restorePrevious }); }
+            catch (error) { controller.signal.throwIfAborted(); if (restorePrevious && (error.code === 'invalid-preferences' || error.preferenceSourcePublished)) throw error; }
             startupSource = await loadProcgenStartupSource(startupIntent, { storage: startupStorage, signal: controller.signal });
             controller.signal.throwIfAborted();
             procgenStudio = createProcgenWorkstation({ document, window, legacy: procgenUi, getRuntime: () => activeProcgenRuntime,
               restart: options => init({ ...options, startupOwner: controller.signal }),
               prepareSceneWorld: options => initWorkstation({ ...options, prepareOnly: true }),
-              prepareInspectionWorld: request => import('./procgen/workstation/ProcgenInspectionWorld.js').then(module => module.prepareProcgenInspectionWorld({ ...request, rootPath: activeProcgenRuntime?.assetRootPath, resourceBudget: procgenResourceBudget })), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
+              prepareInspectionWorld: request => import('./procgen/workstation/ProcgenInspectionWorld.js').then(module => module.prepareProcgenInspectionWorld({ ...request, rootPath: activeProcgenRuntime?.assetRootPath, resourceBudget: procgenResourceBudget })), resourceBudget: procgenResourceBudget, startupIntent, startupSource, savedPreferences: savedPreferences || undefined, storage: startupStorage });
             storageTransferred = true;
             procgenStudio.prepareSettings();
             if (startupSource.sceneSelection) {

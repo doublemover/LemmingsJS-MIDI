@@ -289,6 +289,17 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     return { value, inputBytes: metadata.bytes, nodes: metadata.nodes };
   }
   const metadata = await inspectValue(input, options, { allowBinary: ['decode-recovery-page', 'recovery-checksum', 'render-sound-controls', 'render-causal-sine-take', 'render-causal-source-pcm', 'encode-native-render', 'render-scene-rehearsal'].includes(kind) });
+  if (kind === 'encode-preference-pages') {
+    if (!Array.isArray(input) || input.length < 1 || input.length > 8) throw problem('invalid-data', 'Preference encoding needs one to eight owned pages.');
+    const value = []; let retainedBytes = 4096;
+    for (const page of input) {
+      if (!page || Object.keys(page).some(key => !['value', 'maxBytes'].includes(key)) || !Number.isSafeInteger(page.maxBytes) || page.maxBytes < 1 || page.maxBytes > 16 * 1048576) throw problem('invalid-data', 'Invalid preference page boundary.');
+      const text = JSON.stringify(page.value); if (typeof text !== 'string' || encodedLength(text) > page.maxBytes) throw problem('output-capacity', 'Preference page exceeds its byte bound.');
+      retainedBytes += text.length * 2 + 64; if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Preference encoding exceeds its retained capacity.');
+      value.push(text); guard(signal, current);
+    }
+    return { value, inputBytes: metadata.bytes, nodes: metadata.nodes, retainedBytes };
+  }
   if (kind === 'build-circuit-workshop') {
     if (!input || Object.keys(input).some(key => !['variant', 'applicationBuildId'].includes(key)) || typeof input.variant !== 'string' || !/^[a-f0-9]{64}$/.test(input.applicationBuildId || '') || estimatedPeakBytes < 128 * 1048576) throw problem('invalid-contract', 'Original kit preparation needs its exact application, named variant and complete worker overlap.');
     const catalog = await getNativeInstrumentCatalog(); guard(signal, current);

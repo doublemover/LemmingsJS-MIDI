@@ -106,11 +106,12 @@ function rollbackWorldProject(previous, staged, current) {
 export function createProcgenWorkstation({ document, window, legacy, getRuntime, restart,
   createView = createProcgenWorkstationView, storage = createProcgenSessionStorage(window.indexedDB),
   captureCheckpoint = captureProcgenCheckpoint, transportOptions = {}, historyBytesLimit = 32 * 1024 * 1024,
-  resourceBudget = null, startupIntent, startupSource = null, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, prepareSceneWorld = null, getInstrumentCatalog }) {
+  resourceBudget = null, startupIntent, startupSource = null, savedPreferences, backgroundJobs = backgroundJobService, prepareInspectionWorld = null, prepareSceneWorld = null, getInstrumentCatalog }) {
   if (!Number.isSafeInteger(historyBytesLimit) || historyBytesLimit < 1024) throw new Error('Invalid history byte limit.');
   const now = () => window.performance?.now?.() ?? performance.now();
-  let saved = null;
-  try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { /* Keep the default project. */ }
+  let saved = savedPreferences;
+  if (saved === undefined) try { saved = JSON.parse(window.localStorage?.getItem(STORAGE_KEY) || 'null'); } catch { saved = null; }
+  const savedDock = saved?.version === 1 ? saved.ui : null;
   if (saved?.version !== 1 || !saved.project || typeof saved.project !== 'object') saved = null;
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
   const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', ...(startupIntent ? { intent: startupIntent } : {}), seed: initialSeed,
@@ -120,7 +121,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let project = sealMidiProjectSnapshot(markCanonicalMidiProject(startupPlan.project));
   const state = { laneId: project.procgen.lanes[0].id, slot: 0, step: 0, tab: 'Lane', tool: 'select', layout: 'strip',
     inspectorWidth: 304, firstLane: 0, minimumRow: 64, hazardSpacing: 160, observerMode: 'overview', observerLane: null, observerHold: 6,
-    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}), ...normalizeWorkstationDockPreferences(saved?.ui) };
+    inputId: null, clockOutputId: null, thru: false, recording: false, lastMidi: '', ...(startupPlan.mode === 'previous-setup' ? saved?.ui || {} : {}), ...normalizeWorkstationDockPreferences(savedDock) };
   let acceptedWorldSettings = { ...legacy.settings, hazardSpacing: legacy.settings.hazardSpacing ?? state.hazardSpacing };
   state.hazardSpacing = acceptedWorldSettings.hazardSpacing;
   state.recording = false; state.thru = false; state.inputId = null; state.clockOutputId = null;
@@ -289,6 +290,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (selectedLane) { state.firstLane = selectedLane.index; render.followLaneIndex = selectedLane.index; render.camera?.followFrontier?.(); view?.layout?.(); view?.launched?.(); }
   };
   const preferenceWriter = window.setTimeout ? createProcgenPreferenceWriter({ jobs: backgroundJobs, resourceBudget,
+    authoredStorage: typeof storage.savePreferences === 'function' ? storage : null,
     storage: window.localStorage, key: STORAGE_KEY, getGeneration: () => documentGeneration,
     onState: result => { if (result.error) status('Project preferences could not be stored. Export a project file to save.'); } }) : null;
   const writePersist = () => {

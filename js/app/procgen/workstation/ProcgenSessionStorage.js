@@ -2,6 +2,7 @@ import { getActiveExecutionIdentity, getApplicationDeploymentRoot } from '../../
 import { RECOVERY_DATABASE_NAME, RECOVERY_DATABASE_VERSION, GENERATION_PIN_STORE, recoveryGenerationPin, upgradeBrowserGenerationPins, withBrowserGenerationRetentionLock } from '../../../runtime/BrowserGenerationPins.js';
 import { requireSynchronousResourceAcknowledgement, retireBackgroundResult, resourceRetirementSummary } from '../../resources/ResourceRetirement.js';
 import { createProcgenRecoveryPageStore } from './ProcgenRecoveryPageStore.js';
+import { createProcgenPreferencePages } from './ProcgenPreferencePages.js';
 import { validateProcgenRecoveryJournal } from './ProcgenRecoveryJournal.js';
 import { backgroundJobService } from '../../resources/BackgroundJobService.js';
 import { upgradeCausalJournalStores, createCausalJournalStorage } from './ProcgenCausalJournalStorage.js';
@@ -276,15 +277,20 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     try { await work; } finally { if (migration === work) migration = null; }
   };
   const recoveryPages = createProcgenRecoveryPageStore({ open, jobs: backgroundJobs, resourceBudget: budgetAdapter, isCurrent: () => !retired, validateSession: validateProcgenSession });
+  const preferencePages = createProcgenPreferencePages({ open,
+    jobs: backgroundJobs, resourceBudget: budgetAdapter, isCurrent: db => !retired && (!db || db === database) });
   const causalJournalStorage = createCausalJournalStorage({ open, available: db => !retired && db === database, wrapFailure: storageFailure });
   return {
     ...causalJournalStorage,
+    savePreferences: (value, options) => preferencePages.save(value, options),
+    loadPreferences: options => preferencePages.load(options),
+    getPreferenceDiagnostics: () => preferencePages.diagnostics(),
     openCausalWorkerSource: typeof globalThis.Worker === 'function' && indexedDB === globalThis.indexedDB ? async () => {
       const db = await open(); if (retired || database !== db) throw new Error('Causal source connection changed.');
       return { signal: lifetime.signal, isCurrent: () => !retired && database === db };
     } : null,
     supportsRecoveryFactory: true,
-    getState: () => ({ state, error: lastError, generation, retired, recoveryPages: recoveryPages.stats() }),
+    getState: () => ({ state, error: lastError, generation, retired, recoveryPages: recoveryPages.stats(), preferencePages: preferencePages.diagnostics() }),
     saveDocument,
     async loadDocument(id, { signal } = {}) {
       const record = await operation('readonly', store => store.get(id), 'sessions', signal);
@@ -466,7 +472,7 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
     async remove(id) { await operation('readwrite', (store, transaction) => { transaction.objectStore('projectMetadata').delete(id); return store.delete(id); }, ['sessions', 'projectMetadata']); },
     close() {
       if (retired) return;
-      retired = true; generation++; recoveryPages.dispose();
+      retired = true; generation++; recoveryPages.dispose(); preferencePages.dispose();
       lifetime.abort(namedError('AbortError', 'Project storage closed'));
       const pending = opening; opening = null;
       pending?.reject(new Error('Project storage closed'));

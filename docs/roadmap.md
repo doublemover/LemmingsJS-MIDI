@@ -8720,3 +8720,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   gates. Coverage90.72% lines/statements,83.75% branches,88.46% functions. Its
   capture is Partial at58880finite frames after a128-frame clock discontinuity.
   Earlier Ready captures remain separate.330 onward require their own full runs.
+
+### Continuation 335 — bounded authored preference publication
+
+- Store authored fields and lanes as small IndexedDB pages. Encode up to eight
+  lanes per admitted worker, stage bounded batches, then atomically publish the
+  complete generation and collect only pages outside the two retained generations.
+  Reuse privately verified immutable subtrees. Keep the existing shared resource
+  caps and a32MiB private encoded overlap; interrupted writes retain the previous
+  committed score. Expiring writer leases permit bounded orphan cleanup.
+- Read a consistent generation in one native transaction with small per-page
+  decoding. Full previous-setup restoration refuses corruption; explicit startup
+  authority can ignore unrelated corrupt preferences. Retain separate physical
+  recovery/checkpoint semantics and legacy custom-adapter compatibility.
+- All237 grouped Node cases and12 distinct desktop journeys pass. The actual
+  four64-step-pattern workload saves and reloads8/128/1024lanes with960 admitted
+  and recorded MIDI packets per size. Peak live encoded staging stays below831KB;
+  measured save callbacks stay below3ms. The1024case finishes persistence57.7s
+  after edits and reloads in10.972s. Actual throughput is120.19/120.15/99.17Hz;
+  launch samples still exceed16ms at every size. #985 remains open for these
+  concrete latency/task-budget findings and broader authored memory ownership.
+- Full334 CI is green:6886Node,155browser (24desktop/131workstation), all14
+  capabilities and static/MCP/benchmark/policy/dependency gates. Coverage90.74%
+  lines/statements,83.79% branches,88.48% functions; ten pre-existing pending.
+  Its80640-frame capture is Partial after a128-frame clock discontinuity.335
+  requires its own full run; the capture does not change the successful CI result.

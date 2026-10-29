@@ -1,7 +1,25 @@
 import { expect } from 'chai';
 import { createProcgenPreferenceWriter } from '../js/app/procgen/workstation/ProcgenPreferenceWriter.js';
+import { sealMidiProjectSnapshot } from '../js/midi/project/MidiProjectSnapshot.js';
 
 describe('coalesced preference encoding ownership', () => {
+  it('commits detached authored metadata and shares only verified project branches through the paged store', async () => {
+    const commits = [], writes = []; let finish;
+    const project = sealMidiProjectSnapshot({ procgen: { lanes: [{ note: 60 }] } });
+    const writer = createProcgenPreferenceWriter({ getGeneration: () => 1, storage: { setItem() { writes.push(true); } },
+      authoredStorage: { async savePreferences(value, options) { commits.push({ value, options }); await new Promise(resolve => { finish = resolve; }); return { durable: true, retirement: { state: 'partial', failures: ['release refused'] } }; }, getPreferenceDiagnostics: () => ({ encodedPages: 1 }) } });
+    const source = { version: 1, project, ui: { tab: 'Lane' } }; writer.request(source, 4); source.ui.tab = 'changed';
+    expect(commits[0].value.project).to.equal(project); expect(commits[0].value.ui.tab).to.equal('Lane'); finish(); await writer.dispose();
+    expect(writes).to.deep.equal([]); expect(writer.state().durableRevision).to.equal(4); expect(writer.state().retirement.state).to.equal('partial');
+    expect(writer.state().storage).to.deep.equal({ encodedPages: 1 });
+  });
+  it('refuses unacknowledged authored commits and forwards document retirement cancellation', async () => {
+    let request; const writer = createProcgenPreferenceWriter({ getGeneration: () => 1,
+      authoredStorage: { async savePreferences(_value, options) { request = options; return { durable: false }; } } });
+    writer.request({ project: { procgen: { lanes: [] } } }, 0); await new Promise(resolve => setTimeout(resolve, 0));
+    expect(writer.state().lastError.message).to.include('not acknowledged'); expect(writer.state().durableRevision).to.equal(-1);
+    writer.request({ project: { procgen: { lanes: [] } } }, 1); await writer.dispose({ flush: false }); expect(request.signal.aborted).to.equal(true);
+  });
   it('retains one active and only the latest pending authored revision', async () => {
     const jobs = [], writes = [], states = []; let generation = 1;
     const writer = createProcgenPreferenceWriter({ key: 'project', getGeneration: () => generation,
