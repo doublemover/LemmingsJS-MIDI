@@ -10,7 +10,7 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
   if (!Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < recordingExportPeakBytes(count) || snapshot.schema !== RECORDING_EXPORT_SCHEMA ||
       !(snapshot.timing instanceof Float64Array) || snapshot.timing.length !== count * 2 || !(snapshot.messages instanceof Uint8Array) || snapshot.messages.length !== count * 5 ||
       !(snapshot.routes instanceof Uint32Array) || snapshot.routes.length !== count || !Array.isArray(snapshot.outputIds) || snapshot.outputIds.length > 4096 ||
-      [snapshot.timing, snapshot.messages, snapshot.routes].some(column => !(column.buffer instanceof ArrayBuffer)) || new Set(snapshot.outputIds).size !== snapshot.outputIds.length ||
+      [snapshot.timing, snapshot.messages, snapshot.routes].some(column => !(column.buffer instanceof ArrayBuffer)) ||
       snapshot.outputIds.some(id => typeof id !== 'string' || id.length > 4096) || snapshot.outputIds.reduce((sum, id) => sum + id.length, 0) > 524288 || !window || typeof window.recordingComplete !== 'boolean')
     throw new TypeError('Recorded MIDI requires its complete bounded source columns and workspace.');
   const guard = () => { signal?.throwIfAborted(); if (!current()) throw new Error('Recorded MIDI source ownership changed.'); };
@@ -32,7 +32,7 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
     }
     if (index % 4096 === 4095) await checkpoint('selecting-recording-evidence', index + 1);
   }
-  const plan = planRecordedMidiExport(snapshot, options, counts), submitted = plan.sourceLayer === 'api-accepted', evidence = submitted ? 1 : 2;
+  const plan = planRecordedMidiExport(snapshot, options, counts, firstTempo?.beat ?? null), submitted = plan.sourceLayer === 'api-accepted', evidence = submitted ? 1 : 2;
   for (let index = 0; index < count; index++) {
     const m = index * 5, kind = messages[m + 4], status = messages[m], family = status & 0xf0, length = messages[m + 3];
     if (kind > 3 || !Number.isFinite(timing[index * 2])) throw new RangeError('Malformed recording column.');
@@ -41,7 +41,7 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
         throw new TypeError('Malformed recorded MIDI message.');
     }
     if (kind === 3 || kind === evidence && routes[index] === plan.routeIndex) {
-      ticks[index] = smfBeatTick(timing[index * 2], ppq);
+      ticks[index] = smfBeatTick(timing[index * 2] - plan.originBeat, ppq);
       const on = family === 0x90 && messages[m + 2] > 0, off = family === 0x80 || family === 0x90 && !messages[m + 2];
       if (kind === 3) { smfTempo(timing[index * 2 + 1]); keep[index] = 1; retained++; }
       else if (!on && !off) { keep[index] = 1; retained++; }
@@ -64,7 +64,7 @@ export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}
   const complete = window.recordingComplete && !omittedOnsets && !omittedReleases, reason = window.incompleteReason || (complete ? null : 'unpaired-note-boundary');
   const routeHash = plan.routeIndex == null ? null : await hashData({ outputId: snapshot.outputIds[plan.routeIndex] }); guard();
   const initialTempo = Object.freeze({ source: firstTempo ? 'captured-boundary' : 'caller-declared', bpm: firstTempo?.bpm ?? options.bpm ?? 120,
-    firstCapturedBeat: firstTempo?.beat ?? null, unobservedPrefixBeats: firstTempo?.beat ?? null });
+    firstCapturedBeat: firstTempo?.beat ?? null, unobservedPrefixBeats: firstTempo ? plan.placement === 'rebase-recording-start' ? 0 : firstTempo.beat : null });
   const exportPlan = Object.freeze({ ...plan, selectedOutputHash: routeHash, ppq, initialTempo });
   const manifest = { schema: 'procgen-recording-window/v1', complete, reason, reasons: window.incompleteReasons,
     evidence: submitted ? 'api-accepted' : 'intent-render', retainedRange: window.retainedRange, firstLostSequence: window.firstLostSequence,

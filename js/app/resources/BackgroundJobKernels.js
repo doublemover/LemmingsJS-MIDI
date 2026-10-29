@@ -118,7 +118,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   }
   if (kind === 'encode-recorded-midi') {
     const value = await encodeRecordedMidi(input, { signal, current, estimatedPeakBytes, onProgress, yieldControl }); guard(signal, current);
-    return { value, inputBytes: input.snapshot.count * 25 + new TextEncoder().encode(JSON.stringify({ outputIds: input.snapshot.outputIds, window: input.window, options: input.options })).byteLength, nodes: 32 + input.snapshot.outputIds.length,
+    return { value, inputBytes: input.snapshot.count * 25 + (input.snapshot.outputEpochs?.byteLength ?? 0) + new TextEncoder().encode(JSON.stringify({ outputIds: input.snapshot.outputIds, window: input.window, options: input.options })).byteLength, nodes: 32 + input.snapshot.outputIds.length,
       retainedBytes: value.bytes.byteLength * 2 + 65536 };
   }
   if (kind === 'prepare-stretch-core-image') {

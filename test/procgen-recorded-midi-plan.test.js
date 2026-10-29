@@ -88,4 +88,59 @@ describe('explicit recorded MIDI output plan', () => {
     const result = await encode(await snapshot(take().filter(event => event.outputId === 'private-A')), { bpm: 90 });
     expect(result.manifest.exportPlan.initialTempo).to.deep.equal({ source: 'caller-declared', bpm: 90, firstCapturedBeat: null, unobservedPrefixBeats: null });
   });
+  it('separates reused output IDs by actual connection epoch and route revision', async () => {
+    const records = [7, 8].flatMap(connectionEpoch => [
+      { data: [0x90, 60, 100], beat: 9 }, { data: [0x90, 60, 100], beat: 9 },
+      { data: [0x80, 60, 0], beat: 11 }, { data: [0x80, 60, 0], beat: 11 }
+    ].map(event => ({ ...event, outputId: 'same-device', connectionEpoch, routeRevision: connectionEpoch + 10, direction: 'output', evidence: 'api-accepted' })));
+    const data = await snapshot(records); expect(data.outputIds).to.deep.equal(['same-device', 'same-device']);
+    expect(Array.from(data.outputEpochs)).to.deep.equal([7, 17, 8, 18]);
+    const ambiguous = await errorFrom(encode(data, { outputRouteId: 'same-device' }));
+    expect(ambiguous.code).to.equal('midi-export-route-selection-required'); expect(ambiguous.routes).to.have.length(2);
+    for (const outputRouteIndex of [0, 1]) {
+      const result = await encode(data, { outputRouteIndex }), parsed = parseSmf(result.bytes);
+      expect(result.manifest.exportPlan).to.include({ connectionEpoch: outputRouteIndex + 7, routeRevision: outputRouteIndex + 17, includedMessages: 4, excludedRouteMessages: 4 });
+      expect(parsed.filter(event => event.status === 0x90)).to.have.length(2); expect(parsed.filter(event => event.status === 0x80)).to.have.length(2);
+      expect(result.manifest.complete).to.equal(true);
+    }
+    const changedRevision = records.map((event, index) => ({ ...event, connectionEpoch: 7, routeRevision: index < 4 ? 17 : 18 }));
+    expect((await snapshot(changedRevision)).outputIds).to.have.length(2);
+  });
+  it('does not pair held notes across known or unknown connection boundaries', async () => {
+    const records = [{ data: [0x90, 60, 100], beat: 0, connectionEpoch: 7 }, { data: [0x80, 60, 0], beat: 1, connectionEpoch: 8 },
+      { data: [0x80, 60, 0], beat: 1 }].map(event => ({ ...event, outputId: 'same-device', direction: 'output', evidence: 'api-accepted' }));
+    const data = await snapshot(records); expect(data.outputIds).to.have.length(3);
+    for (const outputRouteIndex of [0, 1, 2]) {
+      const result = await encode(data, { outputRouteIndex }); expect(parseSmf(result.bytes).filter(event => event.status < 0xf0)).to.have.length(0);
+      expect(result.manifest.complete).to.equal(false);
+      if (outputRouteIndex === 2) expect(result.manifest.exportPlan).not.to.have.property('connectionEpoch');
+    }
+  });
+  it('rebases only from the captured boundary while preserving relative silence and tempo history', async () => {
+    const records = [{ type: 'tempo', beat: 8, bpm: 90 }, { type: 'tempo', beat: 10, bpm: 180 },
+      { direction: 'output', evidence: 'api-accepted', outputId: 'A', data: [0x90, 60, 100], beat: 9 },
+      { direction: 'output', evidence: 'api-accepted', outputId: 'A', data: [0x80, 60, 0], beat: 11 }];
+    const data = await snapshot(records), before = structuredClone(data), result = await encode(data, { placement: 'rebase-recording-start', bpm: 400 });
+    expect(data).to.deep.equal(before); expect(result.manifest.exportPlan).to.include({ placement: 'rebase-recording-start', originBeat: 8 });
+    expect(result.manifest.exportPlan.initialTempo).to.deep.equal({ source: 'captured-boundary', bpm: 90, firstCapturedBeat: 8, unobservedPrefixBeats: 0 });
+    expect(parseSmf(result.bytes).filter(event => event.type === 0x51).map(event => event.tick)).to.deep.equal([0, 0, 960]);
+    expect(parseSmf(result.bytes).filter(event => event.status < 0xf0).map(event => event.tick)).to.deep.equal([480, 1440]);
+    const absolute = await encode(data); expect(absolute.manifest.exportPlan.originBeat).to.equal(0);
+    expect(parseSmf(absolute.bytes).find(event => event.status === 0x90).tick).to.equal(4320);
+  });
+  it('independently rejects forged origins, invalid epoch tables and unknown placement/selection', async () => {
+    const data = await snapshot(take().filter(event => event.outputId === 'private-A')); data.firstTempoBeat = 7;
+    expect(await errorFrom(encode(data, { placement: 'rebase-recording-start' }))).to.be.instanceOf(RangeError);
+    for (const options of [{ placement: 'current-ui-beat' }, { outputRouteIndex: -1 }, { outputRouteIndex: 99 }, { outputRouteIndex: 0.5 }, { outputRouteId: 'missing', outputRouteIndex: 0 }])
+      expect(await errorFrom(encode(data, options))).to.be.instanceOf(RangeError);
+    const epochData = await snapshot(take().filter(event => event.outputId === 'private-A'));
+    for (const outputEpochs of [[], new Float64Array(1), new Float64Array([NaN, 0]), new Float64Array([-2, 0]), new Float64Array([0.5, 0]), new Float64Array(new SharedArrayBuffer(16))])
+      expect(() => planRecordedMidiExport({ ...epochData, outputEpochs })).to.throw('epoch inventory');
+    const duplicate = { ...epochData, outputIds: ['A', 'A'], routeCounts: new Uint32Array([1, 0, 1, 0]), outputEpochs: new Float64Array([1, 2, 1, 2]) };
+    expect(() => planRecordedMidiExport(duplicate)).to.throw('unique');
+    for (const connectionEpoch of [-2, 0.5, NaN, Number.MAX_SAFE_INTEGER + 1, '7'])
+      expect(await errorFrom(snapshot([{ direction: 'output', evidence: 'api-accepted', outputId: 'A', data: [0xb0, 1, 1], beat: 0, connectionEpoch }]))).to.be.instanceOf(RangeError);
+    const predates = await snapshot([{ type: 'tempo', beat: 8, bpm: 120 }, { direction: 'output', evidence: 'api-accepted', outputId: 'A', data: [0xb0, 1, 1], beat: 7 }]);
+    expect(await errorFrom(encode(predates, { placement: 'rebase-recording-start' }))).to.be.instanceOf(RangeError);
+  });
 });

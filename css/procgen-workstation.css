@@ -223,6 +223,10 @@ body.procgen-workstation {
 .studio-export-desk summary { cursor: pointer; overflow-wrap: anywhere; }
 .studio-export-details { display: block; margin: 4px 0; overflow-wrap: anywhere; }
 .studio-midi-export-routes { min-width:0; margin-top:6px; padding:6px; }
+.studio-midi-export-choices { min-width:0; margin:4px 0; padding:6px; }
+.studio-midi-export-choices label { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:4px 0; }
+.studio-midi-export-choices select { min-width:0; max-width:28ch; }
+.studio-midi-export-choices p { max-width:54ch; margin:4px 0; white-space:normal; }
 .studio-midi-export-routes[hidden] { display:none; }
 .studio-midi-export-routes > p { margin:2px 0 5px; }
 .studio-midi-export-routes > input { width:28ch; max-width:100%; }

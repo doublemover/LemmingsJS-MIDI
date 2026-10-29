@@ -9480,3 +9480,30 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Keep #1093 open for original UMP capture, source/endpoint/epoch/time projection,
   product file controls and full compatibility loss reports. No device/DAW claim.
   Keep #986 open for physical-take projection and the remaining clock matrix.
+
+### Continuation 367 - recorded MIDI source, time and connection projection
+
+- Expose submitted-output preference, submitted-only and authored-intent choices
+  plus original-position or recording-boundary timing in the Project menu.
+  Hold those choices during preparation; later choices preserve prepared files.
+  Refusing an empty requested source layer preserves the previous artifact.
+- Partition snapshot routes by output ID, connection epoch and route revision.
+  Reused IDs require an explicit captured route-index selection when ambiguous;
+  balancing and file serialization never pair voices across these boundaries.
+  Preserve simultaneous unisons. Label unrecorded connection identity; do not
+  infer missing historical epochs. Carry known numeric identity in the manifest.
+- Rebase from the earliest captured transport boundary, retaining all relative
+  silence and tempo values. The worker derives the origin from actual tempo rows
+  independently; forged/missing summaries and predating selected messages fail.
+  Original-position defaults retain their existing complete reference bytes.
+- Group related Node and desktop export qualification after implementation;
+  cover source selection, origin/tempo placement, reused endpoint identities,
+  route revision/unknown boundaries, refusal/cancellation and large worker jobs.
+  Final233 Node cases pass; snapshot has100%lines/functions/branches, planner
+  100%lines/functions and95.65%branches. Five distinct native desktop journeys
+  pass: three final route/source/time cases plus unchanged100000-event Clip and
+  99990-event compatibility worker cases. Retain the intermediate exact-label
+  fixture failure after adding “connection unrecorded”; update that exact
+  expected label and pass all three route journeys without changing runtime.
+  Preserve #986/#1093 for physical-take and original-UMP product integration,
+  remaining clock cases and complete compatibility loss reporting. Continue solo.

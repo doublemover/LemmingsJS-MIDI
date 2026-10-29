@@ -41,13 +41,21 @@ writing bytes. The current MIDI action prefers API-accepted output when present,
 otherwise it labels authored MIDI intent. Input and forwarded output copies are
 not combined. API callers may request `sourceLayer` explicitly. The planner is
 included in critical checkJs and uses the snapshot producer's bounded route
-inventory; the worker independently rebuilds and validates that inventory.
+inventory; the worker independently rebuilds and validates that inventory. The
+Project menu exposes source and file-timing choices for the next preparation.
+Choose submitted output only, authored intent, or the default preference for
+submitted output. No input/Thru copies are combined with the chosen layer.
 
 If multiple recorded outputs share channels, a nonmodal, searchable16-row chooser
 requires one output per file. The admitted original prefix remains owned while
 choosing. Cancel, source replacement or view retirement retires the request and
 preserves the previous prepared file. Each selected output keeps its original
-channels and all deliberate unisons. Import separate files onto the intended
+channels and all deliberate unisons. A reused output ID is split again by its
+recorded connection epoch and route revision. The chooser names known epochs and
+labels unrecorded connection identity; missing historical identity is not guessed.
+API callers can select the captured route index, while a plain output ID still
+requires a choice when several epochs share it. Notes cannot pair across these
+boundaries. Import separate files onto the intended
 receiver routes; the files do not configure DAW routing.
 
 The embedded `exportPlan` records source layer, selected output hash/ordinal,
@@ -57,11 +65,18 @@ inside the selected output; pending future releases are not invented. Captured
 tempo boundaries determine the initial tempo, preserving all later tempo records.
 If capture starts after beat zero, the manifest names the unobserved silent
 prefix. Without a captured tempo, the caller-declared fallback is explicit.
-Current UI tempo cannot replace a captured boundary.
+Current UI tempo cannot replace a captured boundary. File timing defaults to the
+original absolute beat position. “Start at recording boundary” subtracts the
+earliest captured transport boundary from every selected event and tempo change,
+retaining relative silence and captured tempo values. It refuses an absent
+boundary or selected messages that predate it. The worker recomputes this origin
+from actual tempo rows instead of trusting a host summary. Choices are disabled
+while preparation owns the source; changing a choice does not alter a prepared
+file. Numeric epoch/revision and time-origin choices accompany the manifest.
 
-This is compatibility export of captured MIDI1 channel bytes. A user-facing source
-layer/time-placement picker, full semantic/UMP loss reporting and endpoint epoch
-projection remain #1093 work. The file codec below consumes original UMP snapshots.
+This is compatibility export of captured MIDI1 channel bytes. Full semantic/UMP
+loss reporting and original-UMP capture/projection remain #1093 work. The file
+codec below consumes original UMP snapshots.
 Physical source-score export uses the separate typed #986 contract.
 
 ## Original UMP Clip File codec

@@ -341,6 +341,18 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     inMenu('Edit', button('Copy', () => handlers.copy?.())), inMenu('Edit', button('Paste', () => handlers.paste?.())), button('Undo', () => handlers.undo?.()), button('Redo', () => handlers.redo?.()));
   const records = button('● Record', () => handlers.record?.(!state.recording), 'Record MIDI input into the selected phrase'); records.id = 'studioRecord';
   const clearRecords = button('Clear MIDI recording', () => handlers.clearMidiRecording?.(), 'Clear the retained MIDI recording after stopping; prepared files and causal takes remain available'); clearRecords.id = 'studioClearRecording'; clearRecords.disabled = true;
+  const midiExportChoices = node('fieldset', null, 'studio-midi-export-choices'), midiExportSource = node('select'), midiExportPlacement = node('select');
+  midiExportChoices.append(node('legend', 'Compatible MIDI1 file'));
+  const exportSourceLabel = node('label', 'MIDI export source '); midiExportSource.setAttribute('aria-label', 'MIDI export source');
+  for (const [value, text] of [['auto', 'Prefer submitted output'], ['api-accepted', 'Submitted output only'], ['intent-render', 'Authored MIDI intent']]) {
+    const option = node('option', text); option.value = value; midiExportSource.append(option);
+  }
+  const exportPlacementLabel = node('label', 'MIDI file timing '); midiExportPlacement.setAttribute('aria-label', 'MIDI file timing');
+  for (const [value, text] of [['retained-absolute-beat', 'Keep original beat position'], ['rebase-recording-start', 'Start at recording boundary']]) {
+    const option = node('option', text); option.value = value; midiExportPlacement.append(option);
+  }
+  exportSourceLabel.append(midiExportSource); exportPlacementLabel.append(midiExportPlacement);
+  midiExportChoices.append(exportSourceLabel, exportPlacementLabel, node('p', 'Choose source and timing for the next MIDI file. Submitted means accepted by the MIDI API; receiver playback is unverified. Intent renders authored messages. Files keep known output connection changes separate.'));
   const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export'); exportDesk.hidden = true;
   const exportSummary = node('summary', 'No prepared file');
   const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
@@ -371,8 +383,9 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     owner.page = Math.max(0, Math.min(owner.page, Math.max(0, Math.ceil(matches.length / 16) - 1)));
     const first = owner.page * 16; exportRouteList.replaceChildren();
     for (const route of matches.slice(first, first + 16)) {
-      const control = node('button', 'Prepare output ' + route.ordinal + ' · ' + (route.outputId || 'Unassigned output').slice(0, 80)); control.type = 'button'; control.title = route.outputId || 'Unassigned output';
-      control.addEventListener('click', () => { if (exportRouteChoice === owner && control.isConnected && validateExportRouteChoice()) finishExportRouteChoice(owner, null, route.outputId); });
+      const epoch = route.connectionEpoch == null ? ' · connection unrecorded' : ' · connection ' + route.connectionEpoch, revision = route.routeRevision == null ? '' : ' · route ' + route.routeRevision;
+      const control = node('button', 'Prepare output ' + route.ordinal + ' · ' + (route.outputId || 'Unassigned output').slice(0, 80) + epoch + revision); control.type = 'button'; control.title = (route.outputId || 'Unassigned output') + epoch + revision;
+      control.addEventListener('click', () => { if (exportRouteChoice === owner && control.isConnected && validateExportRouteChoice()) finishExportRouteChoice(owner, null, owner.selection === 'route-index' ? route.index : route.outputId); });
       exportRouteList.append(control);
     }
     exportRoutePage.textContent = matches.length ? `Outputs ${first + 1}–${Math.min(first + 16, matches.length)} of ${matches.length}` : 'No matching recorded outputs';
@@ -386,7 +399,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   exportDesk.append(exportSummary, exportDetails, retryExport, savePrepared, cancelDelivery, discardPrepared, exportRouteField);
   footer.append(inMenu('Edit', records), inMenu('Edit', clearRecords), status, storageStatus, recoveryStatus, button('Save', () => handlers.save?.()), inMenu('Project', button('Save As', () => handlers.saveAs?.())),
     button('Scenes', () => handlers.scenes?.(), 'Inspect and explicitly prepare a paused physical score'), inMenu('Project', button('Rename', () => handlers.rename?.())), inMenu('Project', button('Load', () => handlers.load?.())), inMenu('Project', button('New', () => handlers.new?.())),
-    inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', button('MIDI', () => handlers.exportMidi?.())),
+    inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', midiExportChoices), inMenu('Project', button('MIDI', () => handlers.exportMidi?.({ sourceLayer: midiExportSource.value, placement: midiExportPlacement.value }), 'Prepare a compatible MIDI1 file from the selected source and timing')),
     inMenu('World tools', button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo')),
     inMenu('World tools', button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases')),
     inMenu('World tools', button('Physical scene…', () => handlers.openPhysicalScene?.(), 'Author physical gates, cargo stations and their causal instruments')),
@@ -1284,24 +1297,25 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       exportDesk.open = true; exportDesk.scrollIntoView?.({ block: 'nearest' });
       (savePrepared.disabled ? retryExport : savePrepared).focus?.({ preventScroll: true });
     },
-    chooseMidiExportRoute(routes, { evidence, signal, isCurrent }) {
+    chooseMidiExportRoute(routes, { evidence, signal, isCurrent, selection = 'output-id' }) {
       signal?.throwIfAborted();
       if (disposed || !isCurrent()) return Promise.reject(new Error('The recorded MIDI source is no longer available.'));
       if (!Array.isArray(routes) || routes.length < 2 || routes.length > 4096) return Promise.reject(new Error('A bounded recorded-output choice is required.'));
       finishExportRouteChoice(exportRouteChoice, new Error('A newer MIDI output selection replaced this request.'));
       return new Promise((resolve, reject) => {
-        const owner = { resolve, reject, signal, isCurrent, page: 0, routes: routes.map((route, index) => ({ ...route, ordinal: index + 1, search: String(route.outputId).toLowerCase() })) };
+        const owner = { resolve, reject, signal, isCurrent, selection, page: 0, routes: routes.map((route, index) => ({ ...route, ordinal: index + 1, search: (String(route.outputId) + ' ' + (route.connectionEpoch ?? '') + ' ' + (route.routeRevision ?? '')).toLowerCase() })) };
         owner.abort = () => finishExportRouteChoice(owner, signal.reason || new Error('MIDI export canceled.'));
         exportRouteChoice = owner; signal?.addEventListener('abort', owner.abort, { once: true });
         exportRouteFilter.value = ''; exportRouteField.hidden = false; exportDesk.hidden = false; exportDesk.open = true;
         exportRouteHelp.textContent = (evidence === 'api-accepted' ? 'Recorded output accepted by MIDI APIs.' : 'Authored MIDI intent; no receiver submission is claimed.') +
-          ' Each file preserves one recorded output. Import each file onto its corresponding output; original channel numbers are retained.';
+          ' Files keep known output connections and route revisions separate. Unrecorded connection identity remains unverified. Import each file onto its corresponding output; original channel numbers are retained.';
         paintExportRoutes(); exportRouteFilter.focus({ preventScroll: true });
       });
     },
     exportState(artifact, delivery, preparation = null) {
       const ready = !!artifact?.retained && Date.now() < artifact.expiresAt;
       const writing = delivery?.state === 'writing';
+      midiExportSource.disabled = midiExportPlacement.disabled = !!preparation;
       exportDesk.hidden = !preparation && !artifact?.retained && !delivery?.errorKind && !['writing', 'failed', 'interrupted', 'canceled'].includes(delivery?.state);
       retryExport.disabled = !ready || !artifact.deliveryModes?.includes('anchor');
       savePrepared.disabled = !ready || writing || typeof window.showSaveFilePicker !== 'function';
