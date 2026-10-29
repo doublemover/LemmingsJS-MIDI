@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Release held MIDI voices when their stable lane becomes silent or unavailable, fence queued attacks at submission, and report unsupported crossfades without inventing replacement voices.
+
 - Own deferred physical output and immutable per-sink acknowledgements across route changes, preserve driver receipt identity, and keep semantic-only responses out of active notes and controller caches.
 
 - Preserve terrain drag ownership across competing contacts, cancel source-replaced curve/dock drafts, and retire unhandled releases without interrupting window-level paint commits.

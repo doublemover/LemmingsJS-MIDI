@@ -8,7 +8,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
   if (!ports || typeof getLanes !== 'function' || typeof isEnabled !== 'function' || typeof now !== 'function' ||
       !Number.isSafeInteger(maxVoices) || maxVoices < 1 || maxVoices > 256 || !Number.isFinite(delayMs) || delayMs < 1 || delayMs > 1000) throw new Error('Invalid causal MIDI sink configuration.');
   const executions = new Map(), retirement = createProcgenRetirementScope();
-  let disposed = false, anchor = null, latestReceipt = null;
+  let disposed = false, anchor = null, latestReceipt = null, laneSource = null, laneIds = new Map(), soloCount = 0, lastReconciliation = null;
   const enabled = () => { try { return !disposed && isEnabled() === true; } catch { return false; } };
   const currentMicroseconds = () => {
     const value = Math.floor(now() * 1000); return Number.isSafeInteger(value) && value >= 0 ? value : null;
@@ -24,7 +24,13 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
     if (outcome.status === 'accepted' && (['submitted', 'expression-submission', 'initial-expression-submission'].includes(outcome.stage) || entry.terminalIntent && outcome.terminal?.state === 'release-submitted')) entry.admission?.acknowledge({ ackState: 'driver-submitted', acknowledgedTime: receipt.submittedAtMs, acknowledgementTimeDomain: 'performance-ms' });
     try { onReceipt(receipt); } catch { /* Diagnostics cannot change output ownership. */ }
   };
-  const laneFor = id => typeof id === 'number' ? getLanes()[id] : getLanes().find(lane => lane.id === id);
+  const readLanes = () => {
+    const lanes = getLanes();
+    if (lanes !== laneSource) { laneIds = new Map(lanes.map(lane => [lane.id, lane])); soloCount = lanes.reduce((count, lane) => count + Number(!!lane.solo && !lane.mute), 0); laneSource = lanes; }
+    return lanes;
+  };
+  const laneFor = id => { const lanes = readLanes(); return typeof id === 'number' ? lanes[id] : laneIds.get(id); };
+  const unavailable = lane => !lane ? 'midi-lane-unavailable' : lane.mute || (lane.gain ?? 1) <= 0 ? 'midi-lane-muted' : soloCount && !lane.solo ? 'midi-lane-solo-suppressed' : null;
   const stateFor = execution => executions.get(execution);
   const ownedCount = () => { let count = 0; for (const state of executions.values()) count += state.voices.size; return count; };
   const expressionFor = (entry, expression) => {
@@ -75,6 +81,7 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
     begin(intent, targetMicroseconds, execution, admission) {
       const state = stateFor(execution), lane = laneFor(intent.laneId);
       if (!state || state.closed || !enabled() || intent.generation !== state.generation || !lane) return reject('midi-execution-unavailable');
+      const silence = unavailable(lane); if (silence) return reject(silence);
       if ([...executions.values()].some(owner => [...owner.voices.values()].some(entry => entry.uncertain))) return reject('midi-retirement-unknown');
       if (state.voices.has(intent.voiceId)) return reject('duplicate-midi-voice');
       if (ownedCount() >= maxVoices) return reject('causal-midi-voice-capacity');
@@ -85,11 +92,15 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
       if (!Number.isFinite(baseCents) || !Number.isFinite(offset) || reference <= 0 || !Number.isInteger(note) || note < 0 || note > 127 || !unit(intent.velocity01) || intent.velocity01 === 0) return reject('midi-pitch-or-velocity-unrepresentable');
       const memberRange = route.mpeZone?.memberRange ? route.mpeZone.memberRange.semitones + route.mpeZone.memberRange.cents / 100 : null;
       const entry = { intent, handle: null, note, baseCents, initialOffset: offset, mpe: !!route.mpeZone && !lane.externalPercussion, memberRange, outputId: route.outputId, uncertain: false,
-        sinkId: 'physical-midi:' + intent.route, executionEpoch: state.epoch, admission,
+        sinkId: 'physical-midi:' + intent.route, executionEpoch: state.epoch, admission, laneId: lane.id, safetyReason: null,
         routeIdentity: ports.getOutputAdmissionIdentity?.(route.outputId) ?? { connectionEpoch: null, routeRevision: ports.getRouteRevision() } };
       const expression = expressionFor(entry, intent.expression || {});
       if (expression.error) return reject(expression.error);
       const losses = [...expression.losses];
+      if (intent.voiceTransition?.kind === 'crossfade') {
+        if (!Number.isFinite(intent.voiceTransition.seconds) || intent.voiceTransition.seconds < 0) return reject('invalid-midi-transition');
+        losses.push({ kind: 'voice-crossfade-unavailable', requestedSeconds: intent.voiceTransition.seconds, represented: 'release-and-attack' });
+      }
       if (!entry.mpe && Math.abs(cents - note * 100) > 1e-8) losses.push({ kind: 'midi1-semitone-quantization', requestedCents: cents, representedCents: note * 100 });
       const initialBend = entry.mpe ? memberRange === 0 && Math.abs(cents - note * 100) < 1e-8 ? 0 : (cents - note * 100) / (memberRange * 100) : null;
       if (entry.mpe && (!Number.isFinite(initialBend) || Math.abs(initialBend) > 1)) return reject('mpe-pitch-range-exceeded');
@@ -100,11 +111,12 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
         ...(entry.mpe ? { mpe: true, pitchBend: initialBend } : {}) },
       { intentId: intent.intentId, onsetId: intent.onsetId, batchId: intent.batchId, voiceId: intent.voiceId, sourceEventIds: intent.sourceEventIds,
         generation: intent.generation, laneIndex: getLanes().indexOf(lane), laneCount: getLanes().length, source: 'physical-intent' },
-      { canSubmit: enabled, onSubmitted: receipt => report(entry, receipt), onTerminal: terminal => {
+      { canSubmit: () => { readLanes(); const reason = enabled() ? unavailable(laneIds.get(entry.laneId)) : 'midi-output-disabled'; if (reason) entry.safetyReason = reason; return !reason; }, onSubmitted: receipt => report(entry, receipt), onTerminal: terminal => {
         entry.uncertain = terminal.state === 'uncertain';
         if (!entry.uncertain) state.voices.delete(intent.voiceId);
         const failed = entry.uncertain || terminal.state === 'cancelled' && !state.closed && !entry.terminalIntent;
-        report(entry.terminalIntent ? { ...entry, intent: entry.terminalIntent, admission: entry.terminalAdmission } : entry, { status: failed ? 'rejected' : 'accepted', stage: 'voice-terminal', terminal, reason: entry.uncertain ? 'release-unconfirmed' : failed ? terminal.reason : null });
+        const source = entry.safetyReason ? { ...entry, terminalIntent: null, admission: null } : entry.terminalIntent ? { ...entry, intent: entry.terminalIntent, admission: entry.terminalAdmission } : entry;
+        report(source, { status: failed ? 'rejected' : 'accepted', stage: 'voice-terminal', terminal, reason: entry.uncertain ? 'release-unconfirmed' : entry.safetyReason || (failed ? terminal.reason : null) });
       } });
       if (outcome.status !== 'accepted') {
         if (outcome.handle && outcome.terminal?.state === 'uncertain') { entry.handle = outcome.handle; entry.uncertain = true; state.voices.set(intent.voiceId, entry); }
@@ -137,16 +149,19 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
     transferVoiceLane(voiceId, laneId, targetMicroseconds, execution) {
       const entry = stateFor(execution)?.voices.get(voiceId), lane = laneFor(laneId);
       if (!entry || !lane) return reject('midi-voice-unavailable');
+      const silence = unavailable(lane); if (silence) return reject(silence);
       const route = ports.getNoteRoute(lane.outputId);
       if (route.status !== 'accepted' || route.outputId !== entry.outputId) return Object.freeze({ status: 'degraded', stage: 'semantic-observation', outputRequested: false, reason: 'held-midi-route-pinned-until-release' });
-      return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false });
+      entry.laneId = lane.id; return Object.freeze({ status: 'accepted', stage: 'semantic-observation', outputRequested: false });
     },
     end(voiceId, options, targetMicroseconds, execution, causeIntent, admission) {
       const state = stateFor(execution), entry = state?.voices.get(voiceId);
       if (!entry) return Object.freeze({ status: 'accepted', stage: 'already-retired', outputRequested: false });
+      if (options?.transitionPolicy === 'crossfade' && (!Number.isFinite(options.seconds) || options.seconds < 0)) return reject('invalid-midi-transition');
       entry.terminalIntent = causeIntent || entry.intent; entry.terminalAdmission = admission;
       const timeMs = targetMicroseconds / 1000 + (options?.mode === 'one-shot' ? options.tailSeconds * 1000 : 0);
-      return ports.endOwnedVoice(entry.handle, { timeMs, reason: options?.mode === 'one-shot' ? 'physical-one-shot-ended' : 'physical-voice-ended' });
+      const outcome = ports.endOwnedVoice(entry.handle, { timeMs, reason: options?.mode === 'one-shot' ? 'physical-one-shot-ended' : 'physical-voice-ended' });
+      return outcome.status === 'accepted' && options?.transitionPolicy === 'crossfade' ? Object.freeze({ ...outcome, status: 'degraded', reason: 'midi-representation-loss', losses: Object.freeze([Object.freeze({ kind: 'voice-crossfade-unavailable', requestedSeconds: options.seconds, represented: 'release-and-attack' })]) }) : outcome;
     },
     cancelGenerationWithReceipt(generation, execution) {
       const state = stateFor(execution);
@@ -159,8 +174,22 @@ export function createCausalMidiSink({ ports, getLanes, isEnabled, now, onReceip
     if (targetFrame > current) return { status: 'accepted', targetFrame };
     return intent.kind === 'end' ? { status: 'accepted', targetFrame: current, repair: 'late-release' } : reject(intent.kind === 'begin' ? 'late-attack' : 'stale-expression');
   };
+  const synchronizeLaneMix = () => {
+    const lanes = readLanes(), active = enabled();
+    if (lastReconciliation?.lanes === lanes && lastReconciliation.enabled === active) return lastReconciliation.receipt;
+    const outcomes = [];
+    for (const state of executions.values()) for (const entry of [...state.voices.values()]) {
+      const reason = active ? unavailable(laneIds.get(entry.laneId)) : 'midi-output-disabled'; if (!reason || entry.uncertain) continue;
+      entry.safetyReason = reason;
+      let outcome; try { outcome = ports.endOwnedVoice(entry.handle, { timeMs: now(), reason }); } catch { outcome = reject('midi-lane-release-failed'); }
+      if (outcome?.status !== 'accepted') entry.uncertain = true;
+      outcomes.push(Object.freeze({ voiceId: entry.intent.voiceId, laneId: entry.laneId, status: outcome?.status === 'accepted' ? 'accepted' : 'rejected', reason: outcome?.status === 'accepted' ? reason : outcome?.reason || 'midi-lane-release-failed' }));
+    }
+    const receipt = Object.freeze({ status: outcomes.some(value => value.status === 'rejected') ? 'rejected' : 'accepted', outcomes: Object.freeze(outcomes) });
+    lastReconciliation = { lanes, enabled: active, receipt }; return receipt;
+  };
   return {
-    enabled,
+    enabled, synchronizeLaneMix,
     lastOutcome: () => latestReceipt,
     observe(score, { bpm, executionEpoch }) {
       if (!enabled()) return;

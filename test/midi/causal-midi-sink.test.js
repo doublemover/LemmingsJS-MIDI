@@ -27,10 +27,39 @@ const fixture = (clock, { mpe = true, lanes = [{ id: 'lane-1', channel: 1, outpu
   const dispatcher = createCausalIntentDispatcher({ sinks: sink.sinks, executionEpoch: () => 'execution-1',
     toTargetFrame: (score, batch, value, target) => target.toTargetFrame(score), latePolicy: context => context.sink.latePolicy(context), onReceipt: receipt => receipts.push(receipt) });
   const dispatch = values => dispatcher.dispatch(values, { batchId: 'batch-1', generation: 1 });
-  return { sink, ports, dispatcher, output, calls, receipts, events, dispatch, disable() { enabled = false; },
+  return { sink, ports, dispatcher, output, calls, receipts, events, dispatch, disable() { enabled = false; }, setLanes(next, { reconcile = true } = {}) { lanes = next; return reconcile ? sink.synchronizeLaneMix() : null; },
     dispose() { dispatcher.dispose(); sink.dispose(); ports.dispose(); } };
 };
 describe('physical intent scheduler/MIDI realization', () => {
+  it('retires held MIDI for mute, zero gain, solo suppression and removed stable lanes without rebound or false end acknowledgement', () => withFakeClockAndPerformance(clock => {
+    for (const kind of ['mute', 'zero-gain', 'solo', 'removed']) {
+      const lanes = [{ id: 'source', channel: 1, gain: 1 }, { id: 'other', channel: 1, gain: 1 }], f = fixture(clock, { lanes });
+      try {
+        f.sink.observe({ epoch: 'score-1', beat: 0 }, { bpm: 120, executionEpoch: 'execution-1' }); f.dispatch([intent()]); clock.tick(24);
+        const next = kind === 'removed' ? lanes.slice(1) : lanes.map((lane, index) => kind === 'solo' ? { ...lane, solo: index === 1 } : index === 0 ? { ...lane, ...(kind === 'mute' ? { mute: true } : { gain: 0 }) } : lane);
+        expect(f.setLanes(next).status).to.equal('accepted'); expect(f.sink.diagnostics().ownedVoices).to.equal(0); expect(f.calls.filter(call => call.type === 'noteOff')).to.have.length(1);
+        expect(f.events.at(-1).reason).to.equal(kind === 'removed' ? 'midi-lane-unavailable' : kind === 'solo' ? 'midi-lane-solo-suppressed' : 'midi-lane-muted');
+        f.setLanes(lanes); clock.tick(100); expect(f.calls.filter(call => call.type === 'noteOn')).to.have.length(1);
+      } finally { f.dispose(); }
+    }
+  }));
+  it('cancels an inaudible future MIDI attack and refuses a new one before submission', () => withFakeClockAndPerformance(clock => {
+    const lane = { id: 'source', channel: 1, gain: 1 }, f = fixture(clock, { lanes: [lane] });
+    try {
+      f.dispatch([intent()]); f.setLanes([{ ...lane, mute: true }]); clock.tick(100);
+      expect(f.calls.filter(call => call.type === 'noteOn')).to.have.length(0); expect(f.sink.diagnostics().ownedVoices).to.equal(0);
+      expect(f.receipts.some(receipt => receipt.ackState === 'driver-submitted')).to.equal(false);
+      expect(f.dispatch([intent('begin', 'new', 1)])[0].reason).to.equal('midi-lane-muted');
+    } finally { f.dispose(); }
+  }));
+  it('rechecks the current lane at the actual submission frontier before explicit reconciliation runs', () => withFakeClockAndPerformance(clock => {
+    const lane = { id: 'source', channel: 1, gain: 1 }, f = fixture(clock, { lanes: [lane] });
+    try {
+      f.dispatch([intent()]); f.setLanes([{ ...lane, mute: true }], { reconcile: false }); clock.tick(24);
+      expect(f.calls.filter(call => call.type === 'noteOn')).to.have.length(0); expect(f.sink.diagnostics().ownedVoices).to.equal(0);
+      expect(f.events.at(-1).reason).to.equal('midi-lane-muted'); expect(f.receipts.some(receipt => receipt.ackState === 'driver-submitted')).to.equal(false);
+    } finally { f.dispose(); }
+  }));
   it('advances the real scheduler submission into the canonical admission with captured route and causal identity', () => withFakeClockAndPerformance(clock => {
     const f = fixture(clock), source = intent('begin', 'voice-1', 0, { worldId: 'world', onsetId: 'native-onset' });
     try {

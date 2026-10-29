@@ -1,6 +1,8 @@
 import { useWorkstationControl } from './helpers/workstationChrome.js';
 import { expect, test } from '@playwright/test';
 
+test.use({ channel: 'chromium' });
+
 const ready = async (page, count = 8, steps = 16) => {
   await page.goto('/test/support/desktop-controls.html');
   await page.setContent('<style>.studio-stage{position:relative;width:800px;height:608px}.studio-cell{min-width:24px}.studio-sequences{position:absolute;inset:0}.studio-sequence{position:absolute;display:grid;width:100%}</style><header id="procgenTopbar"></header><canvas id="gameCanvas"></canvas>');

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.use({ channel: 'chromium' });
+
 const setup = async (page, kind) => {
   if (kind === 'terrain') {
     await page.goto('/procgen.html?e2e=1&recipe=1&seed=42&lanes=1&output=midi');
@@ -13,7 +15,8 @@ const setup = async (page, kind) => {
     const { getPointerGestureArbiter } = await import('/js/app/controls/PointerGestureArbiter.js');
     const arbiter = getPointerGestureArbiter(document), calls = [], events = [], originalIdentity = {};
     let identity = originalIdentity;
-    const f = window.controlsFixture = { kind, calls, events, arbiter, getIdentity: () => identity };
+    const f = window.controlsFixture = { kind, calls, events, arbiter, getIdentity: () => identity, moves: [] };
+    document.addEventListener('pointermove', event => { if (f.moves.length < 16) f.moves.push({ id: event.pointerId, buttons: event.buttons, trusted: event.isTrusted, owner: arbiter.inspect()?.pointerId ?? null, target: event.target.tagName }); }, true);
     if (kind === 'curve') {
       const { createAutomationCurveEditor } = await import('/js/app/controls/AutomationCurveEditor.js');
       const curve = { id: 'native-curve', length: 4, axis: 'beat', mode: 'linear', points: [{ beat: 0, value: 32 }, { beat: 2, value: 100 }, { beat: 4, value: 32 }] };
@@ -86,7 +89,7 @@ const recoverCamera = async page => {
 
 const receipt = async (page, testInfo, mode) => testInfo.attach('desktop-control-gesture.json', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(mode => {
   const f = window.controlsFixture;
-  return { kind: f.kind, mode, viewport: { width: window.innerWidth, height: window.innerHeight }, events: f.events, calls: f.calls, owner: f.arbiter.inspect(), recoveredCameraX: f.camera?.renderer.cameraX ?? null, evidence: 'Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification.' };
+  return { kind: f.kind, mode, viewport: { width: window.innerWidth, height: window.innerHeight }, browserChannel: 'chromium', documentType: document.contentType, focused: document.hasFocus(), visibility: document.visibilityState, captureFlag: f.target.hasPointerCapture?.(f.arbiter.inspect()?.pointerId ?? -1) ?? null, moves: f.moves, events: f.events, calls: f.calls, owner: f.arbiter.inspect(), recoveredCameraX: f.camera?.renderer.cameraX ?? null, evidence: 'Real controls and browser-injected native desktop mouse/pen. Terrain preview reads the actual paused game world; commit callbacks in this isolated control fixture are observed boundaries, not physical history or device qualification.' };
 }, mode)) });
 
 test.afterEach(async ({ page }, testInfo) => {

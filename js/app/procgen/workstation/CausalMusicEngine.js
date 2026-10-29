@@ -342,8 +342,9 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
         if (policy.policy === 'carry' && destination && destination.available !== false) {
           record.laneId = fact.laneId; output.push(intentFor(batch, fact, record.instrument, 'update', record.voiceId, null, batch.generation, {}, { transfer })); continue;
         }
-        const transition = policy.policy === 'revoice' ? { kind: 'crossfade', seconds: policy.crossfadeSeconds, fromVoiceId: record.voiceId } : null;
-        endVoice(batch, record, { ...fact, ...(transition ? { voiceTransition: transition } : {}) }, destination?.available === false ? 'transfer-destination-unavailable' : 'voice-transfer', output);
+        const destinationAvailable = !!destination && destination.available !== false;
+        const transition = policy.policy === 'revoice' && destinationAvailable ? { kind: 'crossfade', seconds: policy.crossfadeSeconds, fromVoiceId: record.voiceId } : null;
+        endVoice(batch, record, { ...fact, ...(transition ? { voiceTransition: transition } : {}) }, destinationAvailable ? 'voice-transfer' : 'transfer-destination-unavailable', output);
         if (policy.policy === 'silentHandoff' || !destination || destination.available === false) { suppressed.set(record.voiceId, { ...record, laneId: fact.laneId }); continue; }
         if (begins >= sourceBeginLimit || active.size + suppressed.size >= sourceVoiceLimit || tones.resolve(record.instrument, fact.actorId, record.instrument.pitchCents).status !== 'complete') { reject(record.instrument); continue; }
         const rootVoiceId = record.rootVoiceId || record.voiceId, voiceId = `${rootVoiceId}:handoff:${fact.causalSequence}`;

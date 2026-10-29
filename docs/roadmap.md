@@ -9242,3 +9242,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   lanes and paused transport. Formatting, critical types and undefined calls pass;
   no full local or Node suite is repeated. Continue remaining transfer/backlog
   work while the independent CI matrix runs.
+
+### Continuation 357 - held actor transfer and MIDI lane safety
+
+- Qualify #1058 with actual floating/climbing actions, two opposite same-pitch
+  actors, all four policies, before/after checkpoint restoration, mute, disconnect
+  and reversed production lane projection. Five resumed completed batches, intents
+  and full causal state match with canonical physics hashes. Retire every output
+  owner with balanced scheduler attacks/releases. Close the software acceptance.
+- Reconcile held MIDI owners when lanes become muted, zero gain, solo suppressed
+  or removed. Recheck stable lane identity at the actual queued driver frontier;
+  restored controls create no rebound attack. Preserve uncertain release ownership.
+- Report MIDI crossfade as an explicit release-and-attack representation loss.
+  Unavailable destinations release without a nonexistent replacement crossfade.
+- Final grouped validation:87 Node cases,23 real transfer/safety scenarios and41
+  desktop browser journeys pass. Critical types, formatting, undefined-call and
+  category checks pass. Coverage is scoped to this subset; no full local rerun.
+- 356 Linux desktop startup passes, but main CI still fails16 native capture
+  preconditions (181 workstation passes). Engine CI has17 passes and one Firefox
+  process crash; both native codec platforms pass. Full Chromium/new headless
+  passes the control group locally with added native move/capture diagnostics;
+  independent Linux qualification remains.350 is still the last full green head.

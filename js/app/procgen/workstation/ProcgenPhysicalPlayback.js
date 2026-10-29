@@ -217,7 +217,9 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
       const change = declaredSourceLanes && procgenLaneCollectionChange(declaredSourceLanes, lanes);
       if (!change || change.structural) session?.configureLaneSources?.(lanes.map(lane => lane.id)); declaredSourceLanes = lanes;
     }
-    laneMix.synchronize(lanes); const revision = laneMix.revision(), context = audio?.getAudioContext?.();
+    laneMix.synchronize(lanes);
+    for (const output of additionalOutputs) { try { output.synchronizeLaneMix?.(); } catch { /* Output safety reconciliation cannot stop the physical world. */ } }
+    const revision = laneMix.revision(), context = audio?.getAudioContext?.();
     if (lastMixPublication?.revision === revision && lastMixPublication.context === context && lastMixPublication.executionEpoch === executionEpoch) return { status: 'accepted', stage: 'unchanged' };
     const receipt = routed?.synchronizeLaneMix(clock.currentFrame()) || { status: 'rejected', reason: 'lane-mix-renderer-unavailable' };
     if (receipt.status === 'accepted') lastMixPublication = { revision, context, executionEpoch }; return receipt;

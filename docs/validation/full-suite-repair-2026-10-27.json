@@ -55850,5 +55850,697 @@
         "sha256": "ee6dce92d440cd24bc3a30baad3e8471e4be820ea0db91abcb08ddedbe8c9cd3"
       }
     ]
+  },
+  "continuation357": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Real held-actor transfers, live MIDI lane safety and honest crossfade fallback",
+    "issues": [
+      1058
+    ],
+    "implementation": [
+      "Reconcile immutable lane mix changes against held MIDI owners: mute, zero gain, solo suppression, removed stable lane and disabled output release once; restored controls do not reattack. Recheck current stable lane again at actual queued submission. Retain uncertain release ownership and original source receipt identity.",
+      "Revoice on MIDI explicitly reports crossfade unavailable with release-and-attack representation loss. An unavailable destination ends ownership without claiming a crossfade to a nonexistent replacement.",
+      "Actual world floating/climbing actions cross opposite stripes with two same-pitch actors. Every policy retains physical event, actor, onset, current/birth lane and voice lineage, with balanced real scheduler note submissions and zero retirement owners.",
+      "Checkpoint fixtures restore actual physical and score-clock state with production causal performance inputs. The next five full batches, intents and full causal snapshots match, together with canonical physics hashes; raw retained checkpoint bytes are not claimed identical.",
+      "Use full Chromium/new headless for the two native control files, retaining capture preconditions and adding native move/button/capture diagnostics. Windows grouped pass qualifies this configuration locally; Linux remains independent."
+    ],
+    "validation": {
+      "node": {
+        "passed": 87,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook357-node-final.log",
+          "bytes": 8938,
+          "sha256": "b25cc165b76cc2641f9c7bcb12a9be66ee51f53fe43a449d7a5832b6353a74a1"
+        },
+        "receipt": {
+          "path": ".tmp/rook357-transfer-final.json",
+          "bytes": 9489,
+          "sha256": "6c8fdacc90b8133910df6d82ef8f2011f88bec6f8ec708b6918b8d3b8ed09842"
+        },
+        "scenarios": [
+          {
+            "kind": "policy",
+            "policy": "carry",
+            "transfers": [
+              {
+                "actorId": 0,
+                "previousLaneId": 0,
+                "laneId": 1,
+                "birthLaneId": 0,
+                "eventId": "transfer-world:1:2:0:11"
+              },
+              {
+                "actorId": 1,
+                "previousLaneId": 1,
+                "laneId": 0,
+                "birthLaneId": 1,
+                "eventId": "transfer-world:1:3:0:16"
+              }
+            ],
+            "activeOwnership": [
+              {
+                "actorId": 0,
+                "voiceId": "transfer-world:1:crossing-held:r1:0:action:2",
+                "laneId": 1
+              },
+              {
+                "actorId": 1,
+                "voiceId": "transfer-world:1:crossing-held:r1:1:action:2",
+                "laneId": 0
+              }
+            ],
+            "displayOrder": [
+              1,
+              0
+            ],
+            "noteOns": 2,
+            "noteOffs": 2,
+            "retirement": "complete",
+            "midiOwned": 0
+          },
+          {
+            "kind": "policy",
+            "policy": "revoice",
+            "transfers": [
+              {
+                "actorId": 0,
+                "previousLaneId": 0,
+                "laneId": 1,
+                "birthLaneId": 0,
+                "eventId": "transfer-world:1:2:0:11"
+              },
+              {
+                "actorId": 1,
+                "previousLaneId": 1,
+                "laneId": 0,
+                "birthLaneId": 1,
+                "eventId": "transfer-world:1:3:0:16"
+              }
+            ],
+            "activeOwnership": [
+              {
+                "actorId": 0,
+                "voiceId": "transfer-world:1:crossing-held:r1:0:action:2:handoff:11",
+                "laneId": 1
+              },
+              {
+                "actorId": 1,
+                "voiceId": "transfer-world:1:crossing-held:r1:1:action:2:handoff:16",
+                "laneId": 0
+              }
+            ],
+            "displayOrder": [
+              1,
+              0
+            ],
+            "noteOns": 2,
+            "noteOffs": 2,
+            "retirement": "complete",
+            "midiOwned": 0
+          },
+          {
+            "kind": "policy",
+            "policy": "releaseAndAttack",
+            "transfers": [
+              {
+                "actorId": 0,
+                "previousLaneId": 0,
+                "laneId": 1,
+                "birthLaneId": 0,
+                "eventId": "transfer-world:1:2:0:11"
+              },
+              {
+                "actorId": 1,
+                "previousLaneId": 1,
+                "laneId": 0,
+                "birthLaneId": 1,
+                "eventId": "transfer-world:1:3:0:16"
+              }
+            ],
+            "activeOwnership": [
+              {
+                "actorId": 0,
+                "voiceId": "transfer-world:1:crossing-held:r1:0:action:2:handoff:11",
+                "laneId": 1
+              },
+              {
+                "actorId": 1,
+                "voiceId": "transfer-world:1:crossing-held:r1:1:action:2:handoff:16",
+                "laneId": 0
+              }
+            ],
+            "displayOrder": [
+              1,
+              0
+            ],
+            "noteOns": 2,
+            "noteOffs": 2,
+            "retirement": "complete",
+            "midiOwned": 0
+          },
+          {
+            "kind": "policy",
+            "policy": "silentHandoff",
+            "transfers": [
+              {
+                "actorId": 0,
+                "previousLaneId": 0,
+                "laneId": 1,
+                "birthLaneId": 0,
+                "eventId": "transfer-world:1:2:0:11"
+              },
+              {
+                "actorId": 1,
+                "previousLaneId": 1,
+                "laneId": 0,
+                "birthLaneId": 1,
+                "eventId": "transfer-world:1:3:0:16"
+              }
+            ],
+            "activeOwnership": [],
+            "displayOrder": [
+              1,
+              0
+            ],
+            "noteOns": 2,
+            "noteOffs": 2,
+            "retirement": "complete",
+            "midiOwned": 0
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "carry",
+            "cut": "before",
+            "tick": 6,
+            "physics": {
+              "actualHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "expectedHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 2,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "carry",
+            "cut": "after",
+            "tick": 9,
+            "physics": {
+              "actualHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "expectedHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 0,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "revoice",
+            "cut": "before",
+            "tick": 6,
+            "physics": {
+              "actualHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "expectedHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 4,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "revoice",
+            "cut": "after",
+            "tick": 9,
+            "physics": {
+              "actualHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "expectedHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 0,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "releaseAndAttack",
+            "cut": "before",
+            "tick": 6,
+            "physics": {
+              "actualHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "expectedHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 4,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "releaseAndAttack",
+            "cut": "after",
+            "tick": 9,
+            "physics": {
+              "actualHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "expectedHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 0,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "silentHandoff",
+            "cut": "before",
+            "tick": 6,
+            "physics": {
+              "actualHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "expectedHash": "f6eb8df2540e39bd2f117a5b6d580eddbf151ecda7869b48f964104694848dbc",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 2,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "checkpoint",
+            "policy": "silentHandoff",
+            "cut": "after",
+            "tick": 9,
+            "physics": {
+              "actualHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "expectedHash": "1b0f0d2eccd4aace80afca6cee96dc1844841ae24d70f2f0a7f110863b3f5d3e",
+              "firstDifference": null,
+              "matched": true,
+              "schema": "lemmings-physics-comparison",
+              "version": 2
+            },
+            "identicalCompletedBatches": 5,
+            "identicalIntents": 0,
+            "identicalFullCausalSnapshot": true
+          },
+          {
+            "kind": "muted-destination",
+            "policy": "carry",
+            "noReboundAttack": true,
+            "midiOwned": 0
+          },
+          {
+            "kind": "muted-destination",
+            "policy": "revoice",
+            "noReboundAttack": true,
+            "midiOwned": 0
+          },
+          {
+            "kind": "muted-destination",
+            "policy": "releaseAndAttack",
+            "noReboundAttack": true,
+            "midiOwned": 0
+          },
+          {
+            "kind": "muted-destination",
+            "policy": "silentHandoff",
+            "noReboundAttack": true,
+            "midiOwned": 0
+          },
+          {
+            "kind": "disconnected",
+            "policy": "carry",
+            "ownedNotes": 0,
+            "midiOwned": 0
+          },
+          {
+            "kind": "disconnected",
+            "policy": "revoice",
+            "ownedNotes": 0,
+            "midiOwned": 0
+          },
+          {
+            "kind": "disconnected",
+            "policy": "releaseAndAttack",
+            "ownedNotes": 0,
+            "midiOwned": 0
+          },
+          {
+            "kind": "disconnected",
+            "policy": "silentHandoff",
+            "ownedNotes": 0,
+            "midiOwned": 0
+          },
+          {
+            "kind": "live-mix-safety",
+            "patch": {
+              "mute": true
+            },
+            "heldAfterChange": 1,
+            "reboundAttacks": 0
+          },
+          {
+            "kind": "live-mix-safety",
+            "patch": {
+              "gain": 0
+            },
+            "heldAfterChange": 1,
+            "reboundAttacks": 0
+          },
+          {
+            "kind": "live-mix-safety",
+            "patch": {
+              "solo": true
+            },
+            "heldAfterChange": 1,
+            "reboundAttacks": 0
+          }
+        ],
+        "coverageReport": {
+          "path": ".tmp/rook357-coverage-final/coverage-summary.json",
+          "bytes": 2132,
+          "sha256": "5eb6672dd264606611e84ff7a4a612408940597659ae06c5943a9f681b27a785"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 2374,
+              "covered": 1683,
+              "skipped": 0,
+              "pct": 70.89
+            },
+            "statements": {
+              "total": 2374,
+              "covered": 1683,
+              "skipped": 0,
+              "pct": 70.89
+            },
+            "functions": {
+              "total": 297,
+              "covered": 176,
+              "skipped": 0,
+              "pct": 59.25
+            },
+            "branches": {
+              "total": 1592,
+              "covered": 869,
+              "skipped": 0,
+              "pct": 54.58
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenLaneWorld.js": {
+            "lines": {
+              "total": 1224,
+              "covered": 731,
+              "skipped": 0,
+              "pct": 59.72
+            },
+            "functions": {
+              "total": 110,
+              "covered": 53,
+              "skipped": 0,
+              "pct": 48.18
+            },
+            "statements": {
+              "total": 1224,
+              "covered": 731,
+              "skipped": 0,
+              "pct": 59.72
+            },
+            "branches": {
+              "total": 386,
+              "covered": 171,
+              "skipped": 0,
+              "pct": 44.3
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMidiSink.js": {
+            "lines": {
+              "total": 209,
+              "covered": 202,
+              "skipped": 0,
+              "pct": 96.65
+            },
+            "functions": {
+              "total": 40,
+              "covered": 37,
+              "skipped": 0,
+              "pct": 92.5
+            },
+            "statements": {
+              "total": 209,
+              "covered": 202,
+              "skipped": 0,
+              "pct": 96.65
+            },
+            "branches": {
+              "total": 254,
+              "covered": 193,
+              "skipped": 0,
+              "pct": 75.98
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMusicEngine.js": {
+            "lines": {
+              "total": 621,
+              "covered": 505,
+              "skipped": 0,
+              "pct": 81.32
+            },
+            "functions": {
+              "total": 40,
+              "covered": 33,
+              "skipped": 0,
+              "pct": 82.5
+            },
+            "statements": {
+              "total": 621,
+              "covered": 505,
+              "skipped": 0,
+              "pct": 81.32
+            },
+            "branches": {
+              "total": 687,
+              "covered": 343,
+              "skipped": 0,
+              "pct": 49.92
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenLaneProjection.js": {
+            "lines": {
+              "total": 15,
+              "covered": 13,
+              "skipped": 0,
+              "pct": 86.66
+            },
+            "functions": {
+              "total": 3,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 66.66
+            },
+            "statements": {
+              "total": 15,
+              "covered": 13,
+              "skipped": 0,
+              "pct": 86.66
+            },
+            "branches": {
+              "total": 11,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 45.45
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPhysicalPlayback.js": {
+            "lines": {
+              "total": 305,
+              "covered": 232,
+              "skipped": 0,
+              "pct": 76.06
+            },
+            "functions": {
+              "total": 104,
+              "covered": 51,
+              "skipped": 0,
+              "pct": 49.03
+            },
+            "statements": {
+              "total": 305,
+              "covered": 232,
+              "skipped": 0,
+              "pct": 76.06
+            },
+            "branches": {
+              "total": 254,
+              "covered": 157,
+              "skipped": 0,
+              "pct": 61.81
+            }
+          }
+        },
+        "scope": "Affected transfer, action voice, routing, MIDI sink/admission, physical playback and causal visual cases. Subset coverage is not the project-wide gate."
+      },
+      "browser": {
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T17:22:57.307Z",
+          "duration": 48187.541,
+          "expected": 41,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook357-browser-final.json",
+          "bytes": 310394,
+          "sha256": "2f31f6f97bae755d2cabce14e8af07f1a5771ec548455a18e13e0b5648e44238"
+        },
+        "log": {
+          "path": ".tmp/rook357-browser-final.log",
+          "bytes": 7814,
+          "sha256": "5ea2af3ddf086ecc399adf497d89d9f344a54b4bb7c6c5fc2443085ba94e3d7b"
+        },
+        "scope": "37 native desktop controls plus four actual combined native browser-audio/production MIDI scheduler journeys at1920x1080. Virtual MIDI adapter and digital PCM evidence, not physical receiver/acoustics."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "corrections": [
+      "Initial fixture runs lacked full canonical performance inputs or used raw retained graph checkpoint equality; restore now matches production inputs and compares canonical physical identity plus exact causal state.",
+      "The canonical lane factory defaults included percussion; explicit lead roles, non-percussion flags and MPE members expose two independent actual driver voices.",
+      "The initial crossfade-loss patch exposed a real unavailable-destination end intent incorrectly labeled crossfade; corrected before publication and the whole affected group rerun."
+    ],
+    "ci356": {
+      "runId": 40915004927,
+      "head": "da2107b47e0c2a8d90013d116141061a75d9f2b3",
+      "conclusion": "failure",
+      "jobs": {
+        "main": {
+          "id": 123592766937,
+          "conclusion": "failure",
+          "desktop": "all passed",
+          "workstation": {
+            "passed": 181,
+            "failed": 16,
+            "skipped": 0,
+            "flaky": 0,
+            "reason": "Native capture acquisition preconditions"
+          }
+        },
+        "engines": {
+          "id": 123592766829,
+          "conclusion": "failure",
+          "passed": 17,
+          "failed": 1,
+          "reason": "Firefox process crashed at first boot pause in named project transaction; no deterministic application failure established"
+        },
+        "nativeWindows": {
+          "id": 123592766398,
+          "conclusion": "success"
+        },
+        "nativeLinux": {
+          "id": 123592766914,
+          "conclusion": "success"
+        }
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci356-workstation.zip",
+          "bytes": 533132,
+          "sha256": "738872b13f1fe15135574a6cd6b679290decb7b97d5bebed2d729e4d51cf21d9"
+        },
+        {
+          "path": ".tmp/ci356-lifecycle-diagnostics.zip",
+          "bytes": 2702861,
+          "sha256": "003a924c34fd1e16c72c81a30f440601b2e539814f1228e07b8be4a4d9b82456"
+        }
+      ],
+      "observations": [
+        "Installed-generation desktop startup passes independent Linux CI after356.",
+        "Linux control receipts retain a trusted owning pointerdown but no gotpointercapture. Full Chromium channel comparison is not yet Linux-qualified.",
+        "Firefox crash trace is retained without retries or skipped acceptance."
+      ]
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "remaining": "Continue solo through remaining issue acceptance and independent Linux CI follow-through. Physical MIDI receiver, OS transport and acoustic qualification retain separate owners.",
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/CausalMidiSink.js",
+        "bytes": 19399,
+        "sha256": "3d3be1e97750780afa1c6845bab83349da79f18210c061a271cbaf3d3b95383c"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+        "bytes": 82370,
+        "sha256": "594d24e8a041b5e54e3e720872a2a7459c2898309053bff9b23faf6f24d194bf"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+        "bytes": 35005,
+        "sha256": "56c0f4259e5b55860677b97e3f048f4e13a24f240b92290fc6a2999c8ddd1730"
+      },
+      {
+        "path": "test/midi/causal-midi-sink.test.js",
+        "bytes": 16432,
+        "sha256": "614512588d48013feded68b06438541cb93aa414af711709c3c6496e31edd515"
+      },
+      {
+        "path": "test/procgen-held-transfer-integration.test.js",
+        "bytes": 13949,
+        "sha256": "08d8703242bd15bacd829dd791da3a61483102c468ae281deff33b13623596d5"
+      },
+      {
+        "path": "e2e/procgen-workstation-gesture-controls.spec.js",
+        "bytes": 17728,
+        "sha256": "3a380b12ff3d61d3f690ebd51d0cd36ca95c1bf869afb6d69b39c3f36ce87a96"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 45160,
+        "sha256": "453c485de031734d6009952a9943e9c1901b45f219bf0303fe9bc079b69d2476"
+      }
+    ]
   }
 }
