@@ -11,7 +11,7 @@ import { EventHandler } from '../js/util/EventHandler.js';
 import { createProcgenRetirementScope } from '../js/app/procgen/ProcgenRetirement.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
-import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { backgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
 
@@ -404,6 +404,46 @@ describe('ProcGen workstation orchestration', () => {
     expect(score).to.include({ takeId, generation: 1, timeDomain: 'physical-source-time' });
     expect(score.counts.physicalBatches).to.equal(1);
     await f.studio.dispose().completion;
+  });
+  it('stores an opted-in marker component at the captured sequence and waits for it before finalizing', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), budget = createResourceBudget();
+    let release, entered; const ready = new Promise(resolve => { entered = resolve; });
+    const storage = { ...memory.storage, close() {}, async commitCausalTake(request) {
+      if (request.checkpointRef?.sequence > 0 && !release) { entered(); await new Promise(resolve => { release = resolve; }); }
+      return memory.storage.commitCausalTake(request);
+    } };
+    const f = setup({ resourceBudget: budget, storageOverride: storage, physicalOnly: true,
+      worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); const world = f.runtime.world;
+    try {
+      const takeId = (await f.studio.handlers.startCausalTake()).takeId; world.step();
+      const hash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
+      const marker = f.studio.handlers.markCausalTake('Reusable fork', { checkpoint: true }); await ready;
+      let stopped = false; const stopping = f.studio.stopCausalTake().then(value => { stopped = true; return value; });
+      await Promise.resolve(); expect(stopped).to.equal(false); release();
+      const receipt = await marker; expect(receipt.checkpoint).to.include({ status: 'durable', sequence: receipt.lastSequence, tick: world.tickIndex });
+      expect((await stopping).complete).to.equal(true);
+      const journal = createProcgenCausalJournal({ storage }), source = await journal.openTake(takeId);
+      const ref = source.checkpoints.find(value => value.sequence === receipt.checkpoint.sequence);
+      expect(await hashProcgenPhysicsCheckpoint((await journal.readCheckpoint(ref)).world)).to.equal(hash);
+    } finally { await f.studio.dispose().completion; world.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+  it('refuses checkpoint workspace before copying or admitting a marker while ordinary markers remain available', async () => {
+    const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), budget = createResourceBudget();
+    const resourceBudget = { reserve(value) { if (value.kind === 'component-snapshot-workspace-estimate') throw new ResourceBudgetError('checkpoint', value.bytes, 0); return budget.reserve(value); }, release: value => budget.release(value) };
+    const f = setup({ resourceBudget, storageOverride: { ...memory.storage, close() {} }, physicalOnly: true,
+      worldFactory: () => new ProcgenLaneWorld({ masks, assists: false, seed: 7, laneCount: 1 }) });
+    f.studio.bindRuntime(); const world = f.runtime.world;
+    try {
+      const takeId = (await f.studio.handlers.startCausalTake()).takeId; world.step(); const captures = f.captures.length;
+      expect(await f.studio.handlers.markCausalTake('Refused snapshot', { checkpoint: true })).to.equal(false);
+      expect(f.captures).to.have.length(captures);
+      const marker = await f.studio.handlers.markCausalTake('Ordinary marker'); expect(marker.status).to.equal('accepted');
+      await f.studio.stopCausalTake(); const journal = createProcgenCausalJournal({ storage: memory.storage });
+      const records = await journal.query({ takeId, kinds: ['marker'] }); expect(records.records.map(value => value.payload.label)).to.deep.equal(['Ordinary marker']);
+    } finally { await f.studio.dispose().completion; world.dispose(); }
+    expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
   it('records graph edit, Undo and Redo as fresh monotonic mappings without replacing the world', async () => {
     const masks = await loadProcgenMasks(), memory = createMemoryCausalStore(), storage = { ...memory.storage, close() {} };

@@ -8291,7 +8291,7 @@ export-budget acknowledgments still prevent a false complete receipt.
   issues; #1092 remains open for the full intervention/input/corruption and
   archived-runtime qualification corpus. No full local suite is repeated.
 
-### Continuation 317 — bounded durable source worker windows (development)
+### Continuation 317 — bounded durable source worker windows
 
 - Verification and query pages now share bounded windows of at most16 chunks,
   4MiB canonical bytes and500000 canonical nodes. Admit memory before storage
@@ -8418,3 +8418,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   ownership and retry; actual entry/exit retains the same world/canvas and
   accepted geometry at1920x1080 and2560x1440. Full CI is pending publication.
   #1203 stays open for the remaining desktop zoom/DPR/draft/accessibility matrix.
+
+### Continuation 317 qualification completed
+
+- Reuse private canonical proofs for query decoding after rehashing current
+  bytes. Bind reference, byte/node inventory and record-count profile; freeze
+  the bounded proof inventory before queued input preparation. Corrupt bytes
+  and unknown proof retirement remain refused/charged. All93 affected cases
+  pass. The earlier uncached-marker native journey still exceeded600000ms
+  after a matched10000-tick replay and a matched5000-tick midpoint seek.
+- Add an explicit marker checkpoint option through the current recorder owner.
+  Reserve64MiB of estimated snapshot workspace before copying, store a real
+  component at the admitted marker sequence and serialize Stop behind storage.
+  Normal markers remain lightweight. All154 grouped controller/replay/branch/
+  source cases pass, including admission-before-copy and held checkpoint Stop.
+- The final4 actual native journeys pass, including the complete10000-tick
+  take:355544.2ms for the first replay,8030.9ms for zero-tick final comparison,
+  7429.3ms for zero-tick midpoint seek, independent32-tick branch, immutable
+  parent/live project, offline reopen and zero audio/MIDI permission requests.
+  The cohort also passes source corruption/missing/future-version repair and
+  the99991-record worker MIDI/reference export. Keep600s/180s/512MiB caps.
+- The named Node cohorts cover307 distinct affected cases. Exact archived
+  execution remains unbound; this native base window does not replace every
+  explicit intervention/terrain/transfer/tempo/external-input negative corpus.
+  #1092/#1162/#1234/#1161 stay open for their stated remaining scopes. Native
+  source hashes and every earlier failure are retained in the canonical receipt.

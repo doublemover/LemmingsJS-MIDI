@@ -362,6 +362,12 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
       return kind === 'chunk' ? { previousHash: value.previousHash, firstSequence: value.firstSequence, lastSequence: value.lastSequence } : { kind: 'checkpoint', ref };
     } finally { source.release(); }
   };
+  const inspectChunks = async function*(refs, options) {
+    if (sourceJobs) {
+      try { yield* sourceJobs.inspectChunks(refs, options); }
+      catch (error) { throw journalError(error.code || 'source-verification', error.message, { sourceId: error.sourceId, firstSequence: error.firstSequence, cause: error }); }
+    } else for (const ref of refs) yield { ref, metadata: await inspectSource('chunk', ref, options) };
+  };
   const checkQualifiedRevision = async (entry, signal) => {
     if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
     if (!entry.fingerprint || !storage.loadCausalTakeHead) return;
@@ -392,20 +398,31 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     };
     try {
       const refs = selectRefs(qualifiedTake, firstSequence, lastSequence, firstTick, lastTick, generation);
+      if (sourceJobs) {
+        const selectedRefs = refs.filter(ref => ref.lastSequence >= firstSequence && ref.firstSequence <= lastSequence && ref.lastTick >= firstTick && ref.firstTick <= lastTick &&
+          (generation == null || ref.generations.includes(generation)) && (!kinds || !ref.kinds || ref.kinds.some(kind => kinds.includes(kind))))
+          .map(ref => manifest.prefix && ref.takeId !== takeId ? { ...ref, throughSequence: Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence) } : ref);
+        for (let index = 0; index < selectedRefs.length;) {
+          signal?.throwIfAborted();
+          let window;
+          try { window = await sourceJobs.readWindow(selectedRefs, index, { signal, selection: { firstSequence, lastSequence, firstTick, lastTick, generation, kinds,
+            throughSequence: lastSequence, limit: Math.max(1, limit - records.length), maxBytes: records.length >= limit ? 1 : Math.max(1, maxPendingBytes - resultBytes), maxRecordBytes } }); }
+          catch (error) {
+            if (error?.name === 'ResourceBudgetError' && records.length) return await finish(Math.max(firstSequence, selectedRefs[index].firstSequence));
+            throw error;
+          }
+          const source = window.source; sources.push(source); const selected = source.value;
+          if (selected.records.length) { records.push(...selected.records); recordBytes.push(...selected.recordBytes); resultBytes += selected.bytes; }
+          else { source.release(); sources.pop(); }
+          if (selected.nextSequence != null) return await finish(selected.nextSequence);
+          index += window.refs.length;
+        }
+        return await finish(null);
+      }
       for (const ref of refs) {
         if (signal?.aborted) throw journalError('cancelled', 'Causal take query canceled.');
         if (ref.lastSequence < firstSequence || ref.firstSequence > lastSequence || ref.lastTick < firstTick || ref.firstTick > lastTick) continue;
         if (generation != null && !ref.generations.includes(generation) || kinds && ref.kinds && !ref.kinds.some(kind => kinds.includes(kind))) continue;
-        if (sourceJobs) {
-          const source = await readSourceOwned('chunk', ref, { signal, selection: { firstSequence, lastSequence, firstTick, lastTick, generation, kinds,
-            throughSequence: manifest.prefix && ref.takeId !== takeId ? Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence) : ref.lastSequence,
-            limit: Math.max(1, limit - records.length), maxBytes: records.length >= limit ? 1 : Math.max(1, maxPendingBytes - resultBytes), maxRecordBytes } });
-          sources.push(source); const selected = source.value;
-          if (selected.records.length) { records.push(...selected.records); recordBytes.push(...selected.recordBytes); resultBytes += selected.bytes; }
-          else { source.release(); sources.pop(); }
-          if (selected.nextSequence != null) return await finish(selected.nextSequence);
-          continue;
-        }
         const source = await readSourceOwned('chunk', ref, { signal }); sources.push(source); const chunk = source.value;
         for (const record of chunk.records) {
           if (manifest.prefix && ref.takeId !== takeId && record.sequence > Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence)) continue;
@@ -428,25 +445,36 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     const source = await queryOwned(options);
     try { return freezeJournalData(source.value); } finally { source.release(); }
   };
-  const verify = async (takeId, { signal } = {}) => {
+  const verify = async (takeId, { signal, onProgress = () => {} } = {}) => {
+    if (typeof onProgress !== 'function') throw new TypeError('Causal verification progress must be observable.');
     const qualification = await qualifyTake(takeId, { force: true, signal }), manifest = qualification.manifest;
     await inspectSource('checkpoint', manifest.initialCheckpoint, { signal });
-    let previousHash = manifest.rootHash, sequence = manifest.prefix?.throughSequence ?? 0;
-    for (const ref of manifest.chunks) {
-      signal?.throwIfAborted(); const chunk = await inspectSource('chunk', ref, { signal });
+    let previousHash = manifest.rootHash, sequence = manifest.prefix?.throughSequence ?? 0, completedChunks = 0, reportedChunks = 0;
+    const totalChunks = manifest.chunks.length + (manifest.prefix?.chunks.length || 0);
+    const reportProgress = completed => { if (completed <= reportedChunks) return; reportedChunks = completed;
+      try { onProgress(Object.freeze({ phase: 'verifying', completedChunks: completed, totalChunks })); } catch { /* Observation cannot alter source verification. */ }
+    };
+    const progress = () => { if (++completedChunks % 16 === 0 || completedChunks === totalChunks) {
+      reportProgress(completedChunks);
+    } };
+    const progressOptions = () => ({ signal, onProgress: value => reportProgress(completedChunks + value.completedChunks) });
+    for await (const { ref, metadata: chunk } of inspectChunks(manifest.chunks, progressOptions())) {
+      signal?.throwIfAborted();
       if (!validRange(ref) || chunk.previousHash !== previousHash || chunk.firstSequence !== sequence + 1) throw journalError('chain-divergence', 'The causal take diverges at a chunk boundary.', { firstSequence: ref.firstSequence, chunkId: ref.id });
       sequence = chunk.lastSequence; previousHash = ref.hash;
+      progress();
     }
     if (sequence !== manifest.durableSequence || previousHash !== manifest.canonicalHash) throw journalError('manifest-divergence', 'The causal take durable prefix does not match its manifest.', { firstSequence: sequence + 1 });
     if (manifest.prefix) {
       let prefixSequence = 0;
-      for (const ref of manifest.prefix.chunks) {
-        signal?.throwIfAborted(); await inspectSource('chunk', ref, { signal });
+      for await (const { ref } of inspectChunks(manifest.prefix.chunks, progressOptions())) {
+        signal?.throwIfAborted();
         const through = Math.min(manifest.prefix.throughSequence, ref.throughSequence ?? ref.lastSequence);
         if (!validRange(ref) || ref.firstSequence !== prefixSequence + 1 || through < ref.firstSequence || through > ref.lastSequence) {
           throw journalError('prefix-divergence', 'The shared causal prefix has a gap or overlapping source range.', { firstSequence: prefixSequence + 1, chunkId: ref.id });
         }
         prefixSequence = through;
+        progress();
       }
       if (prefixSequence !== manifest.prefix.throughSequence) throw journalError('prefix-divergence', 'The shared causal prefix is incomplete.', { firstSequence: prefixSequence + 1 });
     }
@@ -479,7 +507,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     if (chunks.length > maxChunks) throw new Error('Branch prefix index exceeds its budget.');
     const checkpoint = await storage.loadCausalCheckpoint(parent.initialCheckpoint.id);
     if (boundaryQualification && (boundaryQualification.sourceTakeId !== parentTakeId || boundaryQualification.sourceCanonicalHash !== parent.canonicalHash ||
-        boundaryQualification.sourceTakeRevision !== parent.revision || boundaryQualification.throughSequence !== throughSequence)) throw journalError('qualification-mismatch', 'Branch qualification does not bind this parent prefix.');
+        boundaryQualification.sourceTakeRevision !== parent.revision || boundaryQualification.throughSequence !== throughSequence ||
+        boundaryQualification.sourceFinalizationHash != null && boundaryQualification.sourceFinalizationHash !== parent.finalizationHash)) throw journalError('qualification-mismatch', 'Branch qualification does not bind this parent prefix.');
     const prefix = { version: 2, takeId: parentTakeId, revision: parent.revision, throughSequence, boundaryQualification,
       parentRootHash: parent.rootHash, parentChunkCount: parent.chunkCount, indexHash: await hashJournalData(chunks, { maxBytes: 8 * 1048576 }),
       parentHash: parent.canonicalHash, mode: 'immutable-prefix' };
@@ -494,7 +523,8 @@ const createProcgenCausalJournal = ({ storage, maxRecordBytes = 1048576, maxChun
     },
     readChunkOwned: (ref, options) => readSourceOwned('chunk', ref, options),
     readCheckpointOwned: (ref, options) => readSourceOwned('checkpoint', ref, options),
-    releaseQualifications: () => createProcgenRetirementScope().retire([...qualified.keys()].map(takeId => ({ name: 'take-qualification-' + takeId, run: () => forgetQualification(takeId) }))),
+    releaseQualifications: () => createProcgenRetirementScope().retire([...qualified.keys()].map(takeId => ({ name: 'take-qualification-' + takeId, run: () => forgetQualification(takeId) }))
+      .concat({ name: 'canonical-source-proofs', run: () => sourceJobs?.releaseProofs() })),
     qualificationDiagnostics: () => Object.freeze({ retained: qualified.size, estimatedBytes: qualifiedBytes, maximumBytes: 16 * 1048576 }) };
 };
 

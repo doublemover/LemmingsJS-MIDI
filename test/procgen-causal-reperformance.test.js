@@ -72,6 +72,24 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     return { ...store, journal, source, stopped, finalHash, runtime: options => createCausalReperformance({ journal, createWorld: make, sourceVersions: versions, assetRefs, ...options }) };
   };
 
+  it('retires each query page before admitting a component checkpoint at its exact boundary', async () => {
+    const { journal, source, finalHash, runtime } = await record(); let pages = 0; const checkpoints = new Set();
+    const ownedJournal = { ...journal,
+      async queryOwned(options) {
+        const value = await journal.query(options); pages++; let released = false;
+        return { get value() { if (released) throw new Error('Page retired'); return value; }, release() { if (released) return false; released = true; pages--; return true; } };
+      },
+      async readCheckpointOwned(ref) {
+        expect(pages, 'checkpoint decoding cannot overlap retained query output').to.equal(0); checkpoints.add(ref.sequence);
+        const value = await journal.readCheckpoint(ref); return { value, release: () => true };
+      } };
+    const service = runtime({ journal: ownedJournal }), result = await service.reperform({ takeId: source.takeId, executionEpoch: 'page-before-checkpoint', pageRecords: 1024 });
+    expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, actualPhysicsHash: finalHash, finalWorldParity: 'matched-at-captured-component-checkpoint' });
+    expect([...checkpoints].sort((a, b) => a - b)).to.deep.equal(source.checkpoints.map(value => value.sequence));
+    expect(result.receipt.checkpointComparisons).to.have.length(2); expect(pages).to.equal(0);
+    await service.dispose().completion;
+  });
+
   it('re-performs captured macro/seed edits and performance checkpoints at their actual physical boundaries', async () => {
     const { runtime, source } = await record({ performanceInputs: true }), service = runtime();
     const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'performance-inputs' });

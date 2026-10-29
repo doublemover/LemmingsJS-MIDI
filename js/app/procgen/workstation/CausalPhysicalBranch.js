@@ -5,13 +5,13 @@ import { cloneJournalData, journalError } from './CausalJournalCanonical.js';
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 
 const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId, throughSequence, takeId, takeName,
-  executionEpoch, mode = 'compatibility', signal, maxAdvanceTicks = 256, yieldEveryTicks = 32,
+  executionEpoch, mode = 'compatibility', signal, onProgress = () => {}, maxAdvanceTicks = 256, yieldEveryTicks = 32,
   yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) => {
   if (!journal || typeof journal.branch !== 'function' || !reperformance || typeof reperformance.reperform !== 'function' ||
       !Number.isSafeInteger(maxAdvanceTicks) || maxAdvanceTicks < 1 || maxAdvanceTicks > 4096 ||
       !Number.isSafeInteger(yieldEveryTicks) || yieldEveryTicks < 1 || yieldEveryTicks > maxAdvanceTicks || typeof yieldControl !== 'function') throw new Error('Invalid physical branch runtime.');
   const replay = await reperformance.reperform({ takeId: parentTakeId, throughSequence, executionEpoch, mode, signal,
-    retainWorld: true, useValidatedCheckpoint: false });
+    retainWorld: true, useValidatedCheckpoint: true, onProgress });
   if (!replay.session || !replay.receipt.compatibilityMatch || !replay.receipt.boundaryComplete) return { receipt: replay.receipt, branch: null };
   const session = replay.session, world = session.world;
   const check = () => signal?.throwIfAborted();
@@ -23,6 +23,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     const target = replay.receipt.targetSequence;
     const qualification = cloneJournalData({ schema: 'lemmings-physical-branch-boundary', version: 1, sourceTakeId: parentTakeId,
       sourceTakeRevision: parent.revision, sourceCanonicalHash: parent.canonicalHash, throughSequence: target,
+      sourceFinalizationHash: parent.finalizationHash || null, fromCheckpointSequence: replay.receipt.fromCheckpointSequence, ticksExecuted: replay.receipt.ticksExecuted,
       tick: world.tickIndex, generation: world.generation, actualPhysicsHash: replay.receipt.actualPhysicsHash,
       physicsStateSchema: replay.receipt.physicsStateSchema, executionIdentity: replay.receipt.executionIdentity,
       status: 'validated-by-current-runtime-reperformance', exactQualified: false });

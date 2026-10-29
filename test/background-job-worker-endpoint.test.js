@@ -1,7 +1,7 @@
 import { compileSceneTerrainLayout, verifyCompiledSceneTerrain } from '../js/app/procgen/SceneTerrainLayout.js';
 import { expect } from 'chai';
 import { createBackgroundJobWorkerEndpoint } from '../js/app/resources/BackgroundJobWorkerEndpoint.js';
-import { BACKGROUND_JOB_PROTOCOL } from '../js/app/resources/BackgroundJobKernels.js';
+import { BACKGROUND_JOB_PROTOCOL, runBackgroundJobKernel } from '../js/app/resources/BackgroundJobKernels.js';
 import { encodeBackgroundSnapshotPages, createBackgroundSnapshotReceiver, backgroundSnapshotTransfers } from '../js/app/resources/BackgroundSnapshotPages.js';
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
@@ -73,6 +73,14 @@ describe('background snapshot stream owner lifecycle', () => {
     try { await jobs.compute({ kind: 'parse-json', ownerId: 'partial-result', ownerEpoch: 1, sourceRevision: 'v1', estimatedPeakBytes: 16 * 1048576, signal: canceled.signal,
       prepareInput: () => JSON.stringify(Array(20000).fill(1)), releasePreparedInput: () => { released++; } }); } catch (error) { failure = error; }
     await failure.backgroundRetirementCompletion; expect(failure.message).to.include('document replaced'); expect(outputPages).to.be.at.least(2); expect(terminated).to.equal(1); expect(released).to.equal(1); expect(admission.diagnostics().memory.accountedBytes).to.equal(0); jobs.dispose(); admission.dispose();
+  });
+  it('uses the shared scheduler for default kernel yields', async () => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'scheduler'); let tasks = 0;
+    try {
+      Object.defineProperty(globalThis, 'scheduler', { configurable: true, value: { async postTask(_work, options) { tasks++; expect(options.priority).to.equal('background'); } } });
+      const result = await runBackgroundJobKernel('parse-json', '[' + Array(50000).fill('0').join(',') + ']', { maxBytes: 262144, estimatedPeakBytes: 8 * 1048576 });
+      expect(result.value).to.have.length(50000); expect(tasks).to.be.greaterThan(0);
+    } finally { if (previous) Object.defineProperty(globalThis, 'scheduler', previous); else delete globalThis.scheduler; }
   });
   it('uses postTask only when available and falls back to a macrotask without swallowing cancellation', async () => {
     let tasks = 0, timers = 0; const timer = callback => { timers++; callback(); };

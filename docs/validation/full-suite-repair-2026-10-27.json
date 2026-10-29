@@ -23726,10 +23726,10 @@
       },
       "browser": {
         "passed": 1,
-        "failed": 0,
-        "pending": 1,
+        "failed": 1,
+        "pending": 0,
         "skipped": 0,
-        "durationMs": null,
+        "durationMs": 658014.165,
         "viewport": [
           1920,
           1080
@@ -23737,7 +23737,8 @@
         "longTape": null,
         "smoke": null,
         "sourceDeltaToPublication": [],
-        "scope": "Actual production IndexedDB64-tick record/finalize/full physical replay, zero-tick validated final-checkpoint reuse, offline midpoint seek, independently stored32-tick branch and unchanged parent/live world/project through offline reopen passed in the current cohort log. The10000-tick case recorded/finalized all ticks and is still in full stored replay at publication; no successful long replay is claimed."
+        "scope": "Actual production IndexedDB64-tick record/finalize/full physical replay, zero-tick validated final-checkpoint reuse, offline midpoint seek, independently stored32-tick branch and unchanged parent/live world/project through offline reopen passed in the current cohort log. The10000-tick case recorded/finalized all ticks and is still in full stored replay at publication; no successful long replay is claimed.",
+        "subsequentResult": "The64-tick journey passed. The10000-tick journey reached stored replay after recording the window, then exceeded its600000ms test deadline. It is not qualified as passed; continuation317 replaces per-window verification startup with an owned sequential storage worker."
       },
       "earlierResults": [
         {
@@ -24440,6 +24441,1400 @@
       "1203": {
         "state": "open-implemented-partial",
         "remaining": "Complete desktop zoom/DPR/draft/keyboard/AT and browser lifecycle qualification; late owner/generation cleanup and native policy denial now pass."
+      }
+    }
+  },
+  "continuation317": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Own bounded stored-source verification and query worker windows",
+    "sourceBase": "657e74515d48cbeab21a7c32bdc86d43ced8182e",
+    "issues": [
+      1092,
+      1162,
+      1234,
+      1161
+    ],
+    "development": [
+      "Bound verification/query windows to16 chunks/4MiB canonical bytes/500000 canonical nodes; reserve before loading inputs, preflight aggregate representation, verify every hash/canonical object inventory, preserve order/page count/byte limits and branch cutoffs, and retain selected results under independent query leases.",
+      "For native IndexedDB sources, one admitted worker opens the fixed existing database read-only and verifies one chunk at a time, returning compact metadata for the unchanged host chain checks. Bind host storage lifetime and connection identity, reserve the maximum single-source overlap plus bounded metadata before reading, and never create/upgrade a missing database. No-worker/legacy storage retains the existing qualified fallback.",
+      "Defer seven optional DSP/rendering producers until their registered job runs and recheck cancellation/owner state before calling them. Literal imports stay in the trusted worker source closure. Static import inventory drops233 modules/1904198 bytes to111 modules/about741000 bytes; this is not measured browser startup latency or actual resident memory.",
+      "Carry bounded source ID/first sequence across worker failures and into workbench state. Retain the earlier receipt, clear failure on a new operation, permit retry after source repair, and expose verification/replay progress fenced to the current operation. Keep cancellation charges until actual preparation settles; unknown retirement remains charged.",
+      "Use the existing shared scheduler helper for default kernel yields rather than raw nested timers, preserving cancellation/timer fallback and all deadlines. Split causal source kernels from the broad producer kernel and share the same JSON/UTF8 validation implementation. The worker entry has7 static modules/33497 bytes and its causal path13/62536 before the native stored-reader dependency, while all280 first-party worker files remain in the trusted closure.",
+      "On ResourceBudgetError before query input preparation, halve the bounded window until a single source fits. If another decode cannot coexist with a nonempty retained page, return the owned page and exact first-unconsumed cursor. Release it before continuation. Preserve all record ordering, source bytes and hard caps; do not retry corruption or unknown retirement as memory pressure.",
+      "End query pages at component checkpoint boundaries and release their selected source results before admitting component decoding. A checkpoint can never overlap a retained query page; missing records at a boundary remain a source-prefix gap. Bind checkpoint proofs to take revision and finalization evidence, verify their restored physical hash, and count their actual encoded byte/node metadata. Permit a fresh isolated branch to reuse an already matched fork checkpoint after current-source verification; otherwise retain full replay. A private4096-entry/4MiB canonical-header cache still rereads and hashes current stored bytes on every inspection; only previously validated decoding is reused. Journal retirement waits for active inspections before releasing proof ownership; unknown retirement remains charged.",
+      "Allow an explicit marker checkpoint option through the current controller/recorder: reserve64MiB of estimated snapshot workspace before copying, sample accepted controls at the current committed physical boundary, store an actual component checkpoint at the admitted marker sequence and wait for pending storage before Stop. Ordinary markers remain lightweight. The native fixture uses the real durable component boundary and requireszero-tick verified midpoint reuse.",
+      "Keep default physical replay compatibility separate from exact archived execution. The native harness records wall time/worker constructions, asserts a finalized complete durable prefix, and checks silent replay, zero-tick verified-checkpoint reuse, offline seek, independent branch and immutable parent/live world/project."
+    ],
+    "validation": {
+      "node": {
+        "passed": 307,
+        "failed": 0,
+        "finalCacheAffectedPassed": 109,
+        "markerControllerReplayAffectedPassed": 154,
+        "finalQueryProofAffectedPassed": 93,
+        "checkpointPageAffectedPassed": 39,
+        "focusedCheckpointPagePassed": 1,
+        "scope": "300 broader grouped cases precede the final cache and checkpoint-overlap adjustments;109 cache/worker cases and39 later replay/branch/storage cases plus the corrected component-boundary fixture pass.307 distinct affected cases cover journal/branch/replay/worker/stream/byte accounting/source/storage/controller/MIDI export and deferred DSP/render/scene/bank/warp/stretch paths. Includes native-reader inventory refusal, no-upgrade/blocked/error late-open cleanup, readonly cancellation, memory-aware query windows/pages and the default shared scheduler.65 stored sources use one admitted verification worker; corrupt/missing sources and owner retirement preserve exact diagnostics and release accounting."
+      },
+      "browser": {
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "durationMs": 545532.7980000001,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "longTape": {
+          "ticks": 10000,
+          "initialTick": 68,
+          "durableSequence": 24185,
+          "admittedSequence": 24185,
+          "parentState": "finalized",
+          "parentComplete": true,
+          "parentTakeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+          "parentCanonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+          "comparisons": [
+            {
+              "durationMs": 355544.200000003,
+              "workerConstructions": 488,
+              "throughSequence": null,
+              "ticksExecuted": 10000
+            },
+            {
+              "durationMs": 8030.899999991059,
+              "workerConstructions": 5,
+              "throughSequence": null,
+              "ticksExecuted": 0
+            },
+            {
+              "durationMs": 7429.29999999702,
+              "workerConstructions": 5,
+              "throughSequence": 13202,
+              "ticksExecuted": 0
+            }
+          ],
+          "childTakeId": "take:be5b9fc7-b152-4e08-ab37-c331987ff1f7",
+          "childPrefix": {
+            "boundaryQualification": {
+              "actualPhysicsHash": "c905c34afd67caac27cc106a214f078d9ff6c907732e4587c9f075d26088fb17",
+              "exactQualified": false,
+              "executionIdentity": {
+                "reason": "active-module-graph-not-proven",
+                "status": "unbound"
+              },
+              "fromCheckpointSequence": 13202,
+              "generation": 1,
+              "physicsStateSchema": 2,
+              "schema": "lemmings-physical-branch-boundary",
+              "sourceCanonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+              "sourceFinalizationHash": "587f21be875825401624599da1b5c2901eab940cfa8d6681f28d8bd47a5e40d5",
+              "sourceTakeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+              "sourceTakeRevision": 885,
+              "status": "validated-by-current-runtime-reperformance",
+              "throughSequence": 13202,
+              "tick": 5068,
+              "ticksExecuted": 0,
+              "version": 1
+            },
+            "indexHash": "5b9d9aa4e343e1110ee1d53ffce4e2ac2bef1546ce49b0be7e8f9d14dd1f1ca9",
+            "mode": "immutable-prefix",
+            "parentChunkCount": 881,
+            "parentHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+            "parentRootHash": "d0d1b6312d1b745b06243a0f920ebf12cc3a79e02132d75f3e7af58f9a4fd0cc",
+            "revision": 885,
+            "takeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+            "throughSequence": 13202,
+            "version": 2
+          },
+          "sourceHash": "78e4469d611dc120939720e02495c4ef4b704c8881651b7b2c40d725c75c0c28",
+          "midpointHash": "c905c34afd67caac27cc106a214f078d9ff6c907732e4587c9f075d26088fb17",
+          "first": {
+            "actualPhysicsHash": "78e4469d611dc120939720e02495c4ef4b704c8881651b7b2c40d725c75c0c28",
+            "artifactIntegrity": {
+              "canonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+              "finalizationHash": "587f21be875825401624599da1b5c2901eab940cfa8d6681f28d8bd47a5e40d5",
+              "initialCheckpointHash": "edddafc87c9c30cf114fa4fd762a46b390426ee991e822d50f8828955e7d5703",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              },
+              {
+                "family": "bubble",
+                "id": "lemmings_ohNo-3",
+                "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionCycleCompleted",
+                "ActionEntered",
+                "ActionExited",
+                "ActorBorn",
+                "ActorLaneTransferred",
+                "ActorTerminated",
+                "ContactResolved",
+                "ContactSpanBegan",
+                "ContactSpanEnded",
+                "ContactSpanUpdated",
+                "CrewMemberArrived",
+                "CrewRouteConnected",
+                "CrewRouteOpened",
+                "DirectionChanged",
+                "FlightArcEnded",
+                "FlightArcStarted",
+                "FlightArcUpdated",
+                "MotionCommitted",
+                "RouteCompleted",
+                "RouteFailed",
+                "TerrainWorkCommitted",
+                "bashers",
+                "builders"
+              ],
+              "sourceRange": {
+                "firstTick": 69,
+                "lastTick": 10068,
+                "worldId": "procgen:42"
+              }
+            },
+            "checkpointComparisons": [
+              {
+                "actualPhysicsHash": "c905c34afd67caac27cc106a214f078d9ff6c907732e4587c9f075d26088fb17",
+                "checkpointId": "[\"take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db\",\"checkpoint\",13202]",
+                "exactQualified": false,
+                "expectedPhysicsHash": "c905c34afd67caac27cc106a214f078d9ff6c907732e4587c9f075d26088fb17",
+                "firstStateDifference": null,
+                "physicalMatch": true,
+                "replaySettingsMatch": true,
+                "semanticMatch": true,
+                "sequence": 13202,
+                "status": "validated-by-current-runtime-reperformance",
+                "tick": 5068,
+                "timelineMatch": true
+              },
+              {
+                "actualPhysicsHash": "78e4469d611dc120939720e02495c4ef4b704c8881651b7b2c40d725c75c0c28",
+                "checkpointId": "[\"take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db\",\"checkpoint\",24185]",
+                "exactQualified": false,
+                "expectedPhysicsHash": "78e4469d611dc120939720e02495c4ef4b704c8881651b7b2c40d725c75c0c28",
+                "firstStateDifference": null,
+                "physicalMatch": true,
+                "replaySettingsMatch": true,
+                "semanticMatch": true,
+                "sequence": 24185,
+                "status": "validated-by-current-runtime-reperformance",
+                "tick": 10068,
+                "timelineMatch": true
+              }
+            ],
+            "comparedBatches": 10000,
+            "comparedIntents": 10892,
+            "compatibilityMatch": true,
+            "exactQualified": false,
+            "executionEpoch": "take-workbench:1",
+            "executionIdentity": {
+              "reason": "active-module-graph-not-proven",
+              "status": "unbound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 0,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+            "sourceVersions": {
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+            "takeRevision": 885,
+            "targetSequence": 24185,
+            "throughSequence": 24185,
+            "tick": 10068,
+            "ticksExecuted": 10000,
+            "verifiedDurableSequence": 24185,
+            "version": 1
+          },
+          "repeated": {
+            "actualPhysicsHash": "78e4469d611dc120939720e02495c4ef4b704c8881651b7b2c40d725c75c0c28",
+            "artifactIntegrity": {
+              "canonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+              "finalizationHash": "587f21be875825401624599da1b5c2901eab940cfa8d6681f28d8bd47a5e40d5",
+              "initialCheckpointHash": "edddafc87c9c30cf114fa4fd762a46b390426ee991e822d50f8828955e7d5703",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              },
+              {
+                "family": "bubble",
+                "id": "lemmings_ohNo-3",
+                "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionCycleCompleted",
+                "ActionEntered",
+                "ActionExited",
+                "ActorBorn",
+                "ActorLaneTransferred",
+                "ActorTerminated",
+                "ContactResolved",
+                "ContactSpanBegan",
+                "ContactSpanEnded",
+                "ContactSpanUpdated",
+                "CrewMemberArrived",
+                "CrewRouteConnected",
+                "CrewRouteOpened",
+                "DirectionChanged",
+                "FlightArcEnded",
+                "FlightArcStarted",
+                "FlightArcUpdated",
+                "MotionCommitted",
+                "RouteCompleted",
+                "RouteFailed",
+                "TerrainWorkCommitted",
+                "bashers",
+                "builders"
+              ],
+              "sourceRange": {
+                "firstTick": 69,
+                "lastTick": 10068,
+                "worldId": "procgen:42"
+              }
+            },
+            "checkpointComparisons": [],
+            "comparedBatches": 0,
+            "comparedIntents": 0,
+            "compatibilityMatch": true,
+            "exactQualified": false,
+            "executionEpoch": "take-workbench:2",
+            "executionIdentity": {
+              "reason": "active-module-graph-not-proven",
+              "status": "unbound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 24185,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+            "sourceVersions": {
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+            "takeRevision": 885,
+            "targetSequence": 24185,
+            "throughSequence": 24185,
+            "tick": 10068,
+            "ticksExecuted": 0,
+            "verifiedDurableSequence": 24185,
+            "version": 1
+          },
+          "seek": {
+            "actualPhysicsHash": "c905c34afd67caac27cc106a214f078d9ff6c907732e4587c9f075d26088fb17",
+            "artifactIntegrity": {
+              "canonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+              "finalizationHash": "587f21be875825401624599da1b5c2901eab940cfa8d6681f28d8bd47a5e40d5",
+              "initialCheckpointHash": "edddafc87c9c30cf114fa4fd762a46b390426ee991e822d50f8828955e7d5703",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              },
+              {
+                "family": "bubble",
+                "id": "lemmings_ohNo-3",
+                "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionCycleCompleted",
+                "ActionEntered",
+                "ActionExited",
+                "ActorBorn",
+                "ActorTerminated",
+                "ContactResolved",
+                "ContactSpanBegan",
+                "ContactSpanEnded",
+                "ContactSpanUpdated",
+                "CrewMemberArrived",
+                "CrewRouteConnected",
+                "CrewRouteOpened",
+                "DirectionChanged",
+                "FlightArcEnded",
+                "FlightArcStarted",
+                "FlightArcUpdated",
+                "MotionCommitted",
+                "RouteCompleted",
+                "RouteFailed",
+                "TerrainWorkCommitted",
+                "bashers",
+                "builders"
+              ],
+              "sourceRange": {
+                "firstTick": 69,
+                "lastTick": 5068,
+                "worldId": "procgen:42"
+              }
+            },
+            "checkpointComparisons": [],
+            "comparedBatches": 0,
+            "comparedIntents": 0,
+            "compatibilityMatch": true,
+            "exactQualified": false,
+            "executionEpoch": "take-workbench:3",
+            "executionIdentity": {
+              "reason": "active-module-graph-not-proven",
+              "status": "unbound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 13202,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "3bb9b14b5d9e17a349f08fa83852d1328c6ba344218fb01c8bf24dd661748339",
+            "sourceVersions": {
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:c0683d35-3a65-4e32-8b47-d23c7bd5a1db",
+            "takeRevision": 885,
+            "targetSequence": 13202,
+            "throughSequence": 13202,
+            "tick": 5068,
+            "ticksExecuted": 0,
+            "verifiedDurableSequence": 24185,
+            "version": 1
+          },
+          "cache": {
+            "entries": 2,
+            "maximumEntries": 16,
+            "estimatedBytes": 23070,
+            "maximumBytes": 4194304,
+            "refusals": 0,
+            "failure": null,
+            "reservation": {
+              "enabled": true,
+              "owner": "causal-reperformance-checkpoint-cache",
+              "kind": "qualified-replay-checkpoints",
+              "category": "checkpoint",
+              "generation": 0,
+              "declaredBytes": 4198400,
+              "maxBytes": 536870912,
+              "state": "reserved",
+              "error": null
+            }
+          },
+          "sourceUnchanged": true,
+          "offlineReopen": true,
+          "audioContexts": 0,
+          "midiRequests": 0,
+          "scope": "actual-IDB-physical-compatibility-replay-and-immutable-branch;exact-archived-execution-and-acoustic-output-remain-unqualified"
+        },
+        "faults": {
+          "outcomes": [
+            {
+              "kind": "corrupt",
+              "failure": {
+                "code": "content-mismatch",
+                "message": "Stored causal bytes differ from their previously validated canonical proof.",
+                "sourceId": "[\"take:5790d9b6-3a14-426f-a669-50453a0d9153\",\"chunk\",1]",
+                "firstSequence": 1
+              }
+            },
+            {
+              "kind": "missing",
+              "failure": {
+                "code": "missing-chunk",
+                "message": "A stored causal chunk is missing or exceeds its byte inventory.",
+                "sourceId": "[\"take:5790d9b6-3a14-426f-a669-50453a0d9153\",\"chunk\",1]",
+                "firstSequence": 1
+              }
+            },
+            {
+              "kind": "future-source",
+              "reasons": [
+                "source-version-mismatch"
+              ]
+            }
+          ],
+          "parentTakeId": "take:5790d9b6-3a14-426f-a669-50453a0d9153",
+          "physicalHash": "df2df7c2820896e86f30cb3590f8e9fcd8f26b585e12d0a4b27416c79b654c38",
+          "unchanged": true,
+          "audioContexts": 0,
+          "midiRequests": 0
+        },
+        "sourceDeltaToPublication": [],
+        "scope": "Actual IndexedDB source corruption/missing/future-version refusal and repaired-source recovery,64/10000-tick complete physical tape replay/seek/branch/offline reopen with the original parent/live performance unchanged, and the existing99991-record actual worker MIDI/reference download. No audio context or MIDI request in physical inspection. Physical parity remains current-runtime compatibility."
+      },
+      "earlierResults": [
+        {
+          "nodePassed": 69,
+          "nodeFailed": 1,
+          "failure": "Cancellation fixture asserted release before accepted preparation settled; wait for actual settlement rather than weakening ownership."
+        },
+        {
+          "nodePassed": 104,
+          "nodeFailed": 0,
+          "scope": "Initial window batching, precise source failures and workbench repair path."
+        },
+        {
+          "nativePassed": 1,
+          "nativeFailed": 2,
+          "failure": "Initial corruption replacement matched no text in the first transport-only chunk; require a changed source byte. The batching-only10000-tick case also timed out in stored replay."
+        },
+        {
+          "nodePassed": 140,
+          "nodeFailed": 0,
+          "nativePassed": 2,
+          "nativeFailed": 1,
+          "failure": "DSP lazy loading and corrected fault journey pass; the10000-tick case still exceeds600000ms. Progress identifies804 source chunks and repeated worker/input startup before physics, motivating the sequential native read job."
+        },
+        {
+          "nodePassed": 104,
+          "nodeFailed": 3,
+          "failure": "First sequential-reader harness omitted its default yield and used non-protocol chunk progress fields. Supply default cooperative callbacks and translate completedUnits/totalUnits through the existing strict worker protocol. Model termination in the headless reader double; native output behavior is separately exercised."
+        },
+        {
+          "nodePassed": 272,
+          "focusedStoredReaderPassed": 6,
+          "nativePassed": 2,
+          "nativeFailed": 1,
+          "failure": "Sequential storage verification reached the unchanged180000ms admission deadline with raw timer yields. Use the shared scheduler helper already used by snapshot transport."
+        },
+        {
+          "workerStreamNodePassed": 41,
+          "nativePassed": 2,
+          "nativeFailed": 1,
+          "failure": "Faster verification reached physical tick4447, then a query window needed103073015 accounted bytes with96253463 available. Implement pre-load window shrinking and early owned-page return under actual pressure;85 affected tests pass."
+        },
+        {
+          "nativePassed": 2,
+          "nativeFailed": 1,
+          "failure": "Memory-aware paging completes10000 physical replay ticks and validates the final component state in413413.3ms with484 worker constructions; repeated final comparison executeszero ticks in40467.5ms with5 workers. The full seek/branch journey exceeds600000ms. Split the causal worker path to remove broad producer startup without changing the validation logic or deadlines."
+        },
+        {
+          "nativePassed": 3,
+          "nativeFailed": 1,
+          "failure": "Thin worker source faults,64 ticks and actual MIDI export pass. Full10000 replay matches in431064.4ms with504 worker constructions; repeated final comparison executeszero ticks in37863.1ms with5 workers. The600000ms complete journey still times out during later seek/branch. Correct checkpoint metadata accounting and evidence binding, reuse proved fork checkpoints in independent branches, and retain private canonical header proofs while always rereading and hashing current source bytes."
+        },
+        {
+          "affectedNodePassed": 57,
+          "failure": "The first new branch-cache fixture expected a full replay receipt on a boundary qualification; correct its assertion to the actual status/ticks contract. The production branch remained isolated."
+        },
+        {
+          "finalCacheAffectedNodePassed": 109,
+          "failed": 0,
+          "scope": "Checkpoint/finalization cache fences, independent branches, source-proof hash rechecks, corruption/missing/repair and worker/JSON/stream/MIDI boundaries."
+        },
+        {
+          "nativePassed": 3,
+          "nativeFailed": 1,
+          "failure": "The final-cache run replayed all10000 ticks, then component checkpoint admission needed150026775 accounted bytes with127477629 available. End source pages at component boundaries and acknowledge their retirement before admitting the checkpoint; preserve the512MiB budget. Source faults,64 ticks and MIDI export passed."
+        },
+        {
+          "nodePassed": 39,
+          "nodeFailed": 1,
+          "focusedNodePassed": 1,
+          "failure": "The added page/checkpoint overlap regression initially counted the initial preflight checkpoint twice incorrectly. Its corrected assertion compares unique requested boundaries to the manifest and passes; the other39 replay/branch/source cases already pass."
+        },
+        {
+          "nativePassed": 3,
+          "nativeFailed": 1,
+          "failure": "Retiring query pages fixes final checkpoint admission. Full10000 replay matches in436817.9ms; a fresh final checkpoint comparison executeszero ticks in9371.7ms. The midpoint marker has no component checkpoint, so the legitimate seek starts from the beginning and the aggregate600000ms workflow deadline expires. Extend the private canonical proof cache to query decoding: always hash current bytes and parse selected data; skip repeated full canonical/schema passes only under the same previously validated reference, inventories and record-count profile. All93 affected cases pass, including cached query corruption/repair and refused proof retirement remaining charged."
+        },
+        {
+          "nativePassed": 3,
+          "nativeFailed": 1,
+          "failure": "Private query proofs reduce full10000 replay to340487.4ms. A fresh final comparison executeszero ticks in9189.4ms; the legitimate uncached midpoint seek executes5000 ticks in128075.9ms. The aggregate600000ms workflow expires during the following independent branch replay. Add an explicit marker component checkpoint through the existing recorder/controller, keeping ordinary markers lightweight. Reserve the snapshot workspace before copying, bind the exact admitted sequence, serialize Stop behind pending checkpoint storage and require actual replay to match before reuse. All154 grouped controller/replay/branch/storage cases pass, including the two new admission/storage regressions."
+        }
+      ],
+      "coverage": {
+        "CausalSourceJobs.js": {
+          "lines": {
+            "total": 167,
+            "covered": 161,
+            "skipped": 0,
+            "pct": 96.4
+          },
+          "functions": {
+            "total": 17,
+            "covered": 16,
+            "skipped": 0,
+            "pct": 94.11
+          },
+          "statements": {
+            "total": 167,
+            "covered": 161,
+            "skipped": 0,
+            "pct": 96.4
+          },
+          "branches": {
+            "total": 139,
+            "covered": 109,
+            "skipped": 0,
+            "pct": 78.41
+          }
+        },
+        "CausalStoredSourceVerification.js": {
+          "lines": {
+            "total": 76,
+            "covered": 76,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 20,
+            "covered": 16,
+            "skipped": 0,
+            "pct": 80
+          },
+          "statements": {
+            "total": 76,
+            "covered": 76,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 80,
+            "covered": 70,
+            "skipped": 0,
+            "pct": 87.5
+          }
+        },
+        "CausalTakeWorkbench.js": {
+          "lines": {
+            "total": 94,
+            "covered": 90,
+            "skipped": 0,
+            "pct": 95.74
+          },
+          "functions": {
+            "total": 18,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 72.22
+          },
+          "statements": {
+            "total": 94,
+            "covered": 90,
+            "skipped": 0,
+            "pct": 95.74
+          },
+          "branches": {
+            "total": 81,
+            "covered": 53,
+            "skipped": 0,
+            "pct": 65.43
+          }
+        },
+        "ProcgenCausalJournal.js": {
+          "lines": {
+            "total": 531,
+            "covered": 518,
+            "skipped": 0,
+            "pct": 97.55
+          },
+          "functions": {
+            "total": 63,
+            "covered": 58,
+            "skipped": 0,
+            "pct": 92.06
+          },
+          "statements": {
+            "total": 531,
+            "covered": 518,
+            "skipped": 0,
+            "pct": 97.55
+          },
+          "branches": {
+            "total": 426,
+            "covered": 353,
+            "skipped": 0,
+            "pct": 82.86
+          }
+        },
+        "BackgroundJobService.js": {
+          "lines": {
+            "total": 198,
+            "covered": 195,
+            "skipped": 0,
+            "pct": 98.48
+          },
+          "functions": {
+            "total": 29,
+            "covered": 27,
+            "skipped": 0,
+            "pct": 93.1
+          },
+          "statements": {
+            "total": 198,
+            "covered": 195,
+            "skipped": 0,
+            "pct": 98.48
+          },
+          "branches": {
+            "total": 203,
+            "covered": 156,
+            "skipped": 0,
+            "pct": 76.84
+          }
+        },
+        "BackgroundJobWorkerEndpoint.js": {
+          "lines": {
+            "total": 63,
+            "covered": 59,
+            "skipped": 0,
+            "pct": 93.65
+          },
+          "functions": {
+            "total": 11,
+            "covered": 9,
+            "skipped": 0,
+            "pct": 81.81
+          },
+          "statements": {
+            "total": 63,
+            "covered": 59,
+            "skipped": 0,
+            "pct": 93.65
+          },
+          "branches": {
+            "total": 87,
+            "covered": 55,
+            "skipped": 0,
+            "pct": 63.21
+          }
+        }
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10 components/349 files;owned worker280 files",
+        "whitespace",
+        "browser category collection;all14 required capabilities"
+      ],
+      "markerCoverage": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-317-coverage-marker\\coverage-summary.json",
+        "bytes": 253359,
+        "sha256": "0bead867d6fd557f0a86bc79165bedbcaa2428f3b4f2651f532c1a68c823ce34"
+      },
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Exact-head317 CI pending publication; preceding316 full CI is green and promoted in its own entry.",
+      "scopeLimits": [
+        "Exact archived execution identity remains unbound and exactQualified staysfalse. Physical parity does not establish acoustic or hardware equivalence.",
+        "The10000-tick base journey does not replace the full explicit terrain intervention/transfer/tempo/external-input corpus or semantically invalid imported payload acceptance.",
+        "Static graph bytes, reservation accounting and harness wall time are distinct from measured actual memory or stable-runner performance/input/audio latency budgets.",
+        "Extend source lifecycle qualification to real schema-version/connection replacement during a pending read and near-limit native heap measurement; current error/late-open/cancel doubles and native corrupt/missing/future-source journeys remain separately scoped."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-branch-marker-focused.log",
+        "bytes": 1069,
+        "sha256": "2022a22ff8844acb590094016762b48aacfb68c07849cc0777e7d11d3d1c9f9e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-categories-pressure.log",
+        "bytes": 2646,
+        "sha256": "1e3a930a9e5d60f8efacde07dea44d488f1d35f3e1d1370c62c3776f1d02a4e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-categories.log",
+        "bytes": 2646,
+        "sha256": "1e3a930a9e5d60f8efacde07dea44d488f1d35f3e1d1370c62c3776f1d02a4e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-checkpoint-page.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-final-cache.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-lazy.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-marker-checkpoint.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-native-store.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-pressure.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-proof-cache.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-published.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-query-proof.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-storage-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-stored.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-thin.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format-yield.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-combined.log",
+        "bytes": 20183,
+        "sha256": "249bc6e9315d7a35757c09faca44dc855647a30ee9855f2c0c436f8494c24199"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-final.log",
+        "bytes": 19850,
+        "sha256": "d08acc282d18460680b2f1a92f6f2f567a476197ca0d45b419fcdaf11d4182f1"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-lazy.log",
+        "bytes": 14775,
+        "sha256": "097e6978634b21c1cd81c101934c5e75e14cb3ca93487efe38a1f74608a811c8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-marker.log",
+        "bytes": 13180,
+        "sha256": "b7f6438e407a8adf605f477bc09744a89cfca8a8d56b1427bcc44cb6416f7e9a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-pressure.log",
+        "bytes": 19343,
+        "sha256": "cbe9138f4cafb9b8d6b2646418df48c90d9601b8f6095ab9973176c6dac1bbce"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-query-proof.log",
+        "bytes": 19860,
+        "sha256": "8b0032a709ef2357137085d6eb10ecdf9d129a6cc12082a1b86215e7ffca2380"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-stored.log",
+        "bytes": 7492,
+        "sha256": "e7210ff3eb6326678ae28c302604afc521d20eb516d4c9fee56fcafc52deb20b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-thin.log",
+        "bytes": 19419,
+        "sha256": "a32a9e0aba27fcaaa104ccfb355ee9b05729fc58ba3b29146753a9a9d929f675"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native-yield.log",
+        "bytes": 10516,
+        "sha256": "2379e45fb34b9e52cd3dc9fd0129083fb97886e6061070d783b6914bf7587944"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-native.log",
+        "bytes": 8340,
+        "sha256": "dad720c61aa1b6269835a21af0b6b1e2e134227d25dc0c4828dd01cfdedc7dc8"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-branch-cache.log",
+        "bytes": 6647,
+        "sha256": "81e8be1085b5e92eb64fdfa06551e7ab60aad1416fb6050bcbc5a24209615be4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-checkpoint-page-focused.log",
+        "bytes": 194,
+        "sha256": "59e26082c3abd318702c6729d1be2fd57fbf5c33660e929dfb7752d12e36c1e0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-checkpoint-page.log",
+        "bytes": 4963,
+        "sha256": "29b38c89a850454a37f6c7e5c845069c3bc88539334d32f1bd9b6e6d5c474a64"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-final-cache.log",
+        "bytes": 11743,
+        "sha256": "33cd6d416c122257fe15fbdb222d7cc30c986643bac6fd63bc9305dfc1eeb78a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-final.log",
+        "bytes": 11226,
+        "sha256": "ba1ba7ee828b322f718eef1f45e25f6394a95bb49d6f625b7ecb188af95a951d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-lazy.log",
+        "bytes": 15976,
+        "sha256": "d8ecdad3448408b4a173d493acce36e88a1b51191600e90efd16ba150201d53e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-marker.log",
+        "bytes": 15645,
+        "sha256": "9fe850e6af26c764670de709ec3f36094ea73abd16613d4a45f23499a5579b8d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-native-store.log",
+        "bytes": 28649,
+        "sha256": "b49cd40b010f88995a77066a4c5d6dda70c57d1f9d723edde9359908790cd6ce"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-pressure.log",
+        "bytes": 9119,
+        "sha256": "949e867ea83610848744c0485fb4793d78b4428db87658fb48d39b63af8eef7e"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-proof-cache.log",
+        "bytes": 6261,
+        "sha256": "602b534f00d7c760c6dd07793f3f87f65165deff52411b14ab07f196fd71a2df"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-query-proof.log",
+        "bytes": 9956,
+        "sha256": "dbf4780c61b422883788e1d5f84fa83cc2c4de949bff689f4c668addcb024552"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-stored-fixed.log",
+        "bytes": 16678,
+        "sha256": "c4310b13172ecc48a6b7bc26cecb0daa092efaf6f9bb3f6458c0f38c81e53e0c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-stored.log",
+        "bytes": 14483,
+        "sha256": "1171adb595f9499cbfa22b09e2dff80e16f1afc2098493eee4d98edbee6faab7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-thin.log",
+        "bytes": 31583,
+        "sha256": "e350b28572f284034d9cb14bede6361a56b5a0f6a7039dad1229efcbed394154"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-yield.log",
+        "bytes": 4261,
+        "sha256": "67b62f96833b74ac310e9a65986e9848a506aad461b99af965dbcccca172374b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node.log",
+        "bytes": 7870,
+        "sha256": "87a773232b852a6c4e3e881ad508a50602cb9c57edc712e0d420cacb7b930344"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-checkpoint-page.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-final.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-lazy.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-marker.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-native-store.log",
+        "bytes": 142,
+        "sha256": "cf6262aef5fcced97cd736523f79d64f92f3f5a37a27ac1605b0b47b4411ff89"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-pressure.log",
+        "bytes": 142,
+        "sha256": "cf6262aef5fcced97cd736523f79d64f92f3f5a37a27ac1605b0b47b4411ff89"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-storage-final.log",
+        "bytes": 142,
+        "sha256": "cf6262aef5fcced97cd736523f79d64f92f3f5a37a27ac1605b0b47b4411ff89"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-thin.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance-yield.log",
+        "bytes": 142,
+        "sha256": "cf6262aef5fcced97cd736523f79d64f92f3f5a37a27ac1605b0b47b4411ff89"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-provenance.log",
+        "bytes": 142,
+        "sha256": "56b6dc6a7e2e5a6dc231acbcd70ddac86125774de025789ca8a097c01bd41b2a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-stored-final.log",
+        "bytes": 613,
+        "sha256": "15ff266b2116aa3f99c0a2379c85f9fedc2dc60aa976f5b31f97a493f6dad5cf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-stored-focused.log",
+        "bytes": 377,
+        "sha256": "cc8538416f044a3ac8acb617072e74fade6697c8222d7584595c98d8c9c4a0a0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-final.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-lazy.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-marker.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-native-store.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-pressure.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types-thin.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-final.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-lazy.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-marker.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-native-store.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-pressure.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined-thin.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-combined-results.json",
+        "bytes": 57316,
+        "sha256": "5ddd8d5985ae8acb26c1e5184d81263d4623abbbc0ac79618f5a48092b189502"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-final-results.json",
+        "bytes": 59827,
+        "sha256": "f256122ab6f5f8dfd74670c99e0b5d6a09c23efed4de36f655e5a7cf8be637dd"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-lazy-results.json",
+        "bytes": 43767,
+        "sha256": "4a08cc633e0cc1618542abe8b785abf473f5e2ea0e75609cb080cd0c9e68c571"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-marker-results.json",
+        "bytes": 64600,
+        "sha256": "83928ce0f1008b899877c93d34ad3a3da5c3b9b665fb002934eeeeedcc23de81"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-native-results.json",
+        "bytes": 27298,
+        "sha256": "08c0b695c7d79022afba4df18e0892b65208fce833afc47fa03b70b3f2e26c5f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-pressure-results.json",
+        "bytes": 49366,
+        "sha256": "0d9ca0306a1dc61bcb418a1c9b5f885e18b4d588ad29bdce2446e4e64395baaf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-query-proof-results.json",
+        "bytes": 56691,
+        "sha256": "53fb0d046feea9ea8278b45530ef753b524a66647883c5e0328db3fd746777d4"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-stored-results.json",
+        "bytes": 32187,
+        "sha256": "f1b9e32741f0410b0073ea99b3fa7e066a1c885abee4980fdc089ac91012eeaa"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-thin-results.json",
+        "bytes": 55779,
+        "sha256": "ac2ad3935db0858ccb4290c6a78e7abe08aeb2faf76034c721891f09a209ef97"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-causal-yield-results.json",
+        "bytes": 38247,
+        "sha256": "0dfe13ccb84aa8ea4968ccf251dce63e0718a5cfbc08ec0d8af327f0305fa64d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-node-inventory.json",
+        "bytes": 460,
+        "sha256": "ed89f1103c5722d04b9d3eb3f10058ca63564da1b7906ddc109d9bdfa24b745a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-source-paths.json",
+        "bytes": 1174,
+        "sha256": "4acc6672c06dd49f6e5fa3af5fc9bb7b653366e515b4e07836a2dc7499a3a61d"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-static-graph.json",
+        "bytes": 176,
+        "sha256": "43ba9da0a147029c8f7a0be491e619b488c2fde134702415ba2ba26b3b43bd1b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-static-thin.json",
+        "bytes": 120,
+        "sha256": "6a6212d37ecf92d840c4e5c3a06e26ba7e0bec74eb8b31de8fd71bde7059e6e2"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-317-coverage-query-proof\\coverage-summary.json",
+        "bytes": 170531,
+        "sha256": "3f2c2b349bdd29351243e9be3484321e11bb9eb5dfc512241463da82c54e9853"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-317-coverage-storage-final\\coverage-summary.json",
+        "bytes": 41788,
+        "sha256": "4a931c0f375e0da2fa3890385a5a1fd1228f6491149be0c47e778bf65ef03aae"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-captures\\causal-source-faults.json",
+        "bytes": 727,
+        "sha256": "0dc67b054d1512aaf4116dd5ad85916b97db07237bc447fa5bac77036e96ef46"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-captures\\durable-physical-tape-10000.json",
+        "bytes": 11213,
+        "sha256": "2948ea1a4021c8338e96a2413562e57cb2cd05d26a91e1ced763672325838184"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-captures\\durable-physical-tape-64.json",
+        "bytes": 10542,
+        "sha256": "87a753d420f862231185d23c7d9bf8d65d4eda76e595d4e590f3af781779e475"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog317-captures\\recorded-midi-worker-export.json",
+        "bytes": 4009,
+        "sha256": "5829a6beeb1f06632a3fe26ab08cc0ce2ddfacd5bc6d2f02e98f87659f9296ac"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "docs/procgen-workstation.md",
+        "bytes": 45974,
+        "sha256": "f3994c7c667cca8d348fec926bc965ef5c7a0946b7b2d34ccfeb1571e4aaa055"
+      },
+      {
+        "path": "docs/roadmap.md",
+        "bytes": 614488,
+        "sha256": "bddc9e2534ae7b12503ad299feceeac3c38d1c67f2b4e2e875c6d2b6996b5fc7"
+      },
+      {
+        "path": "e2e/procgen-workstation-causal-source-faults.spec.js",
+        "bytes": 6856,
+        "sha256": "0023442f59460b18c773188db162657dd6c80cc1fe41755f0a1f25a9bc77a44a"
+      },
+      {
+        "path": "e2e/procgen-workstation-durable-tape.spec.js",
+        "bytes": 10211,
+        "sha256": "82eee62d37294729d41b396e15149c7438afaa64bfa80e1e59cef8dadbaa1c93"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "bytes": 16710,
+        "sha256": "23396730f022b1bef391657e4949a0010ce02de233803d767c9d5464b4cf50be"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalReperformance.js",
+        "bytes": 38511,
+        "sha256": "2f0370186d004d7879adeb351f0f1a1134d16181e594651aeea2c819b8e9dd7f"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalSourceJobs.js",
+        "bytes": 14380,
+        "sha256": "fe866fef95ce44dde1a42826d32eed5244254a5e8abd71a2691e37bcf8c93ca9"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalStoredSourceVerification.js",
+        "bytes": 6749,
+        "sha256": "462de622b6c9a2d054a708bbca7399e8385e72a325ea7905e776b2b3f976c922"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalTakeWorkbench.js",
+        "bytes": 8631,
+        "sha256": "c7dbf26307ef18bde2648aeb9da91d84e5820d0c2f5faa744f51a6f50ccaaaca"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenCausalJournal.js",
+        "bytes": 43603,
+        "sha256": "be474b5fcdd7c1a30d6cab05c6aafb343c639becfd2f710b48fdb8246f4775bc"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSessionStorage.js",
+        "bytes": 36094,
+        "sha256": "cea4476e3a8b344ad346442bea943caad7d8a4c0475bcfe88bfc9f3e600b7fc3"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 202664,
+        "sha256": "2ce7bac04cbd7d01c749c8a6b083af519703c467e70c8a2fa5ab1809ba7a3ea1"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKernels.js",
+        "bytes": 42869,
+        "sha256": "494736a0de11b8ce023aa4ff7ef9672c3501f8bc8f57149a16e47e567250c74c"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobKinds.js",
+        "bytes": 2151,
+        "sha256": "007c879d3138cd56f9683666ef1fc69ff6eac5896272bbda53a8fa0d291432f8"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobService.js",
+        "bytes": 19783,
+        "sha256": "b898a7d3bde0d6b7a292f08efbca84452aec6b51977f0b638613d1120fe5af29"
+      },
+      {
+        "path": "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "bytes": 7843,
+        "sha256": "d24fbdaf69591cdba55271e6ac2e41299155be2831647857d9dc525ad5fc026a"
+      },
+      {
+        "path": "js/app/resources/BackgroundJsonInspector.js",
+        "bytes": 2402,
+        "sha256": "e40838d6631ad11611379eca0ace4f2fc89ce8fe3c42913c0b6d65f064b8f772"
+      },
+      {
+        "path": "js/app/resources/CausalSourceKernels.js",
+        "bytes": 11601,
+        "sha256": "380b843a420a7049dd5561824e93735caddd47c25944123374442e4e4dd8cb88"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21348,
+        "sha256": "09930c20dd28f43136e668aad4f46f7f46a57f79bf371d08547df25d407f5f19"
+      },
+      {
+        "path": "test/background-job-worker-endpoint.test.js",
+        "bytes": 10648,
+        "sha256": "e40798044e244ce1ba52b4ea62d267063b8b19cec4fe3d2cecefcce3c6a78a1d"
+      },
+      {
+        "path": "test/causal-stored-source-verification.test.js",
+        "bytes": 11068,
+        "sha256": "f3482596847b9b4dd6155d701d1a472e46ee6ac95f3e38092db5cee62fc86a1d"
+      },
+      {
+        "path": "test/procgen-causal-journal.test.js",
+        "bytes": 30017,
+        "sha256": "17db563144de1b004a6a2e25b27ca549eab0490d45dab1018a025a3a7480c755"
+      },
+      {
+        "path": "test/procgen-causal-physical-branch.test.js",
+        "bytes": 19039,
+        "sha256": "7486c94c5bac672d13c3a6938daf3bd57966d24ecda3b6f7447c725a68581e0b"
+      },
+      {
+        "path": "test/procgen-causal-reperformance.test.js",
+        "bytes": 33351,
+        "sha256": "4d4258ab052af3c3aba6ec525959a0abc7e298ef0767e9e19fe1d339d2702a9f"
+      },
+      {
+        "path": "test/procgen-workstation-controller.test.js",
+        "bytes": 112034,
+        "sha256": "48bedabead3fa1c78ca57a18c5f029bc47136327c39bb92188bd846086ae18b8"
+      }
+    ],
+    "issueStatus": {
+      "1092": {
+        "state": "open-implemented-partial",
+        "remaining": "Full explicit intervention/transfer/tempo/external-input and semantically invalid source corpus; exact archived runtime remains separate."
+      },
+      "1162": {
+        "state": "open-implemented-partial",
+        "progress": "Sequential source peak admission and lifecycle, independently retained query output; actual near-limit memory and combined workload scope remains."
+      },
+      "1234": {
+        "state": "open-implemented-partial",
+        "progress": "Bounded shared worker I/O/computation and precise retirement; full8/128/1024-lane mixed concurrency/fairness/latency remains."
+      },
+      "1161": {
+        "state": "open-implemented-partial",
+        "progress": "Optional worker DSP/rendering lazy loading; wider startup graph and measured startup scope remains."
       }
     }
   }

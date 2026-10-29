@@ -1,4 +1,5 @@
 import { createProcgenOperationalSnapshot } from './ProcgenOperationalState.js';
+import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { normalizeWorkstationDockPreferences } from './WorkstationDockState.js';
 import { createMidiParameterEvidence } from './MidiParameterEvidence.js';
 import { getActiveExecutionIdentity } from '../../../runtime/ActiveExecutionIdentity.js';
@@ -148,7 +149,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   let worldBusy = false, pendingWorldSettings = null;
   let laneObserver = null;
   let physicalScoreClock = createProcgenPhysicalScoreClock(), physicalClockError = false, physicalPlayback = null, physicalFeedback = null, physicalFeedbackView = null, physicalDomainEditor = null, feedbackEpoch = 0, worldInspector = null;
-  let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null;
+  let causalJournal = null, causalTake = null, causalTakeStart = null, causalTakeStop = null, causalMarkerCheckpoint = null;
   let causalWorkbench = null, causalWorkbenchLoading = null, causalWorkbenchSourceSerial = 0;
   let causalTakeArmCanceled = false;
   let lastCausalTake = null, lastCausalInspection = null, physicalReceiptBuffer = null, physicalProvenanceBuffer = null, physicalProvenanceDropped = 0, physicalReceiptBoundary = null, causalTakeErrorReported = false;
@@ -788,6 +789,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   };
   const stopCausalTake = async ({ reason = 'user-stop' } = {}) => {
     if (causalTakeStart) { try { await causalTakeStart; } catch { if (!causalTake) return lastCausalTake; } }
+    if (causalMarkerCheckpoint) await causalMarkerCheckpoint.catch(() => {});
     if (causalTakeStop) return causalTakeStop;
     if (!causalTake) return lastCausalTake;
     const recorder = causalTake;
@@ -866,15 +868,28 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     causalTakeArmCanceled = true; status('Canceling causal take preparation after storage responds.');
     return true;
   };
-  const markCausalTake = label => {
+  const markCausalTake = async (label, { checkpoint = false } = {}) => {
     if (!causalTake || causalTakeStop) throw new Error('Arm a causal take before adding a marker.');
-    const cursor = causalTake.status().sourceBoundary;
+    if (typeof checkpoint !== 'boolean' || checkpoint && causalMarkerCheckpoint) throw new Error('Wait for the active component checkpoint before requesting another.');
+    const recorder = causalTake, world = runtime()?.world, cursor = recorder.status().sourceBoundary;
     if (!Number.isSafeInteger(cursor?.tick) || !Number.isSafeInteger(cursor?.generation)) throw new Error('Record a committed physical batch before marking its boundary.');
-    const receipt = causalTake.mark({ label: String(label || 'Marker').slice(0, 120), boundary: 'last-committed-physical-tick' },
-      { tick: Math.max(0, cursor?.tick ?? 0), generation: cursor?.generation ?? 0 });
-    if (receipt.status !== 'accepted') throw new Error(`The causal marker was not admitted: ${receipt.reason}.`);
-    status(`Marker added at committed physical tick ${Math.max(0, cursor?.tick ?? 0)}.`);
-    return receipt;
+    let workspace = null, pending = null;
+    try {
+      let value = null;
+      if (checkpoint) {
+        if (!world || worldBusy || world.tickIndex !== cursor.tick || world.generation !== cursor.generation || !physicalPlayback) throw new Error('A component checkpoint needs the current committed physical boundary.');
+        workspace = createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-marker-checkpoint', kind: 'component-snapshot-workspace-estimate', bytes: 64 * 1048576 });
+        recordAcceptedCausalTransport(transport.getState()); sampleMacroPerformance(cursor);
+        value = { world: captureCheckpoint(world), engine: physicalPlayback.engine.snapshot(), timeline: physicalScoreClock.snapshot(),
+          replay: { version: 2, bpm: transport.getState().bpm, scoreTimeline: true, playing: transport.getState().playing } };
+      }
+      const receipt = recorder.mark({ label: String(label || 'Marker').slice(0, 120), boundary: 'last-committed-physical-tick' }, { tick: cursor.tick, generation: cursor.generation });
+      if (receipt.status !== 'accepted') throw new Error(`The causal marker was not admitted: ${receipt.reason}.`);
+      let component = null;
+      if (checkpoint) { pending = recorder.checkpoint({ value, tick: cursor.tick, generation: cursor.generation }); causalMarkerCheckpoint = pending; component = await pending; }
+      if (!disposed && causalTake === recorder) status(`Marker added at committed physical tick ${cursor.tick}${component ? ' with a durable component checkpoint' : ''}.`);
+      return component ? Object.freeze({ ...receipt, checkpoint: component }) : receipt;
+    } finally { if (causalMarkerCheckpoint === pending) causalMarkerCheckpoint = null; workspace?.release(); }
   };
   let causalInspectionRevision = 0;
   const inspectLastCausalTake = async () => {

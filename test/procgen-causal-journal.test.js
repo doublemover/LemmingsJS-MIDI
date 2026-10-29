@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { createProcgenCausalJournal, verifyManifestHashes } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
 import { canonicalJournalText } from '../js/app/procgen/workstation/CausalJournalCanonical.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
-import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
+import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { createBackgroundJobService } from '../js/app/resources/BackgroundJobService.js';
 import { createBackgroundWorkerAdmission } from '../js/app/resources/BackgroundWorkerAdmission.js';
 import { createTestBackgroundJobs } from './helpers/background-worker.js';
@@ -128,6 +128,71 @@ describe('durable causal take journal', function() {
     first.release(); await journal.releaseQualifications().completion;
     expect(second.value.coverage.gaps).to.have.length(1200); expect(budget.diagnostics().accountedBytes).to.be.greaterThan(0);
     second.release(); expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('verifies bounded chunk windows with fewer worker starts and exact corrupt/missing source diagnostics', async () => {
+    const budget = createResourceBudget(), ownedJobs = createTestBackgroundJobs(), kinds = [];
+    const jobs = { ...ownedJobs, compute(options) { kinds.push(options.kind); return ownedJobs.compute(options); } };
+    const { journal, chunks } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 1 });
+    const writer = await journal.createTake(definition('take:verification-windows'));
+    for (let tick = 1; tick <= 65; tick++) { writer.append(marker(tick)); await writer.flush(); } await writer.stop();
+    const progress = [];
+    expect((await journal.verify('take:verification-windows', { onProgress(value) { progress.push(value); if (value.completedChunks === 32) throw new Error('Observer failed'); } })).verifiedThroughSequence).to.equal(65);
+    expect(progress.map(value => value.completedChunks)).to.deep.equal([16, 32, 48, 64, 65]);
+    expect(kinds.filter(kind => kind === 'verify-causal-sources')).to.have.length(4);
+    expect(kinds.filter(kind => kind === 'verify-causal-source')).to.have.length(2);
+    const records = [...chunks.values()], corrupt = records[17], original = corrupt.canonical; corrupt.canonical = original.replace('marker:18', 'marker:x8');
+    let failure; try { await journal.verify('take:verification-windows'); } catch (error) { failure = error; }
+    expect(failure).to.include({ code: 'content-mismatch', sourceId: corrupt.id, firstSequence: 18 }); corrupt.canonical = original;
+    const missing = records[35]; chunks.delete(missing.id);
+    try { await journal.verify('take:verification-windows'); } catch (error) { failure = error; }
+    expect(failure).to.include({ code: 'missing-chunk', sourceId: missing.id, firstSequence: 36 }); chunks.set(missing.id, missing);
+    expect((await journal.verify('take:verification-windows')).verifiedThroughSequence).to.equal(65);
+    await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); ownedJobs.dispose();
+  });
+
+  it('cancels chunk-window input loading without retaining computed or prepared data', async () => {
+    const budget = createResourceBudget(), jobs = createTestBackgroundJobs(), controller = new AbortController();
+    const { journal, storage } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 1 });
+    const writer = await journal.createTake(definition('take:window-cancel'));
+    for (let tick = 1; tick <= 20; tick++) { writer.append(marker(tick)); await writer.flush(); } await writer.stop();
+    const load = storage.loadCausalChunk; let reads = 0;
+    storage.loadCausalChunk = async (...args) => { const value = await load(...args); if (++reads === 4) controller.abort(); return value; };
+    let failure; try { await journal.verify('take:window-cancel', { signal: controller.signal }); } catch (error) { failure = error; }
+    expect(failure).to.be.instanceOf(Error); expect(reads).to.equal(4);
+    await new Promise(resolve => setTimeout(resolve, 0)); await new Promise(resolve => setTimeout(resolve, 0));
+    await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); jobs.dispose();
+  });
+
+  it('shrinks a refused query window before materializing inputs and retains every ordered record', async () => {
+    const budget = createResourceBudget(), owned = createTestBackgroundJobs(); let denials = 0, reads = 0;
+    const jobs = { ...owned, compute(options) {
+      if (options.kind === 'verify-causal-sources' && options.estimatedPeakBytes > 220000) { denials++; throw new ResourceBudgetError('candidate', options.estimatedPeakBytes, 220000); }
+      return owned.compute(options);
+    } };
+    const { journal, storage } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 1 }), writer = await journal.createTake(definition('take:shrink-window'));
+    for (let tick = 1; tick <= 8; tick++) { writer.append({ ...marker(tick), payload: { text: 'x'.repeat(3000) } }); await writer.flush(); } await writer.stop();
+    const load = storage.loadCausalChunk; storage.loadCausalChunk = (...args) => { reads++; return load(...args); };
+    const page = await journal.queryOwned({ takeId: 'take:shrink-window', limit: 8 });
+    expect(page.value.records.map(record => record.tick)).to.deep.equal([1, 2, 3, 4, 5, 6, 7, 8]); expect(page.value.nextSequence).to.equal(null);
+    expect(denials).to.be.greaterThan(0); expect(reads).to.equal(8); page.release(); await journal.releaseQualifications().completion;
+    expect(budget.diagnostics().accountedBytes).to.equal(0); owned.dispose();
+  });
+
+  it('returns its owned page before decode pressure and resumes at the first unconsumed source', async () => {
+    const budget = createResourceBudget(), owned = createTestBackgroundJobs(); let block = false;
+    const jobs = { ...owned, async compute(options) {
+      if (options.priority === 'interactive' && block) throw new ResourceBudgetError('candidate', options.estimatedPeakBytes, 0);
+      const result = await owned.compute(options); if (options.priority === 'interactive') block = true; return result;
+    } };
+    const { journal } = setup({ resourceBudget: budget, jobs, maxChunkRecords: 1 }), writer = await journal.createTake(definition('take:pressure-page'));
+    for (let tick = 1; tick <= 20; tick++) { writer.append(marker(tick)); await writer.flush(); } await writer.stop();
+    const page = await journal.queryOwned({ takeId: 'take:pressure-page', limit: 20 });
+    expect(page.value.records.map(record => record.tick)).to.deep.equal(Array.from({ length: 16 }, (_, index) => index + 1)); expect(page.value.nextSequence).to.equal(17);
+    page.release(); block = false;
+    const rest = await journal.queryOwned({ takeId: 'take:pressure-page', firstSequence: 17, limit: 20 });
+    expect(rest.value.records.map(record => record.tick)).to.deep.equal([17, 18, 19, 20]); expect(rest.value.nextSequence).to.equal(null);
+    rest.release(); await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0); owned.dispose();
   });
 
   it('keeps the exact durable prefix on quota failure and releases pending memory only on explicit discard', async () => {

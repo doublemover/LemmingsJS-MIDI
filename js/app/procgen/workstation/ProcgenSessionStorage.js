@@ -279,6 +279,10 @@ const createProcgenSessionStorage = (indexedDB = globalThis.indexedDB, { openTim
   const causalJournalStorage = createCausalJournalStorage({ open, available: db => !retired && db === database, wrapFailure: storageFailure });
   return {
     ...causalJournalStorage,
+    openCausalWorkerSource: typeof globalThis.Worker === 'function' && indexedDB === globalThis.indexedDB ? async () => {
+      const db = await open(); if (retired || database !== db) throw new Error('Causal source connection changed.');
+      return { signal: lifetime.signal, isCurrent: () => !retired && database === db };
+    } : null,
     supportsRecoveryFactory: true,
     getState: () => ({ state, error: lastError, generation, retired, recoveryPages: recoveryPages.stats() }),
     saveDocument,

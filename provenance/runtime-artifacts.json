@@ -225,6 +225,7 @@
         "js/app/procgen/workstation/CausalPerformanceState.js",
         "js/app/procgen/workstation/CausalProbabilityPolicy.js",
         "js/app/procgen/workstation/CausalRandom.js",
+        "js/app/procgen/workstation/CausalStoredSourceVerification.js",
         "js/app/procgen/workstation/LaneMixState.js",
         "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
         "js/app/procgen/workstation/PerformanceScene.js",
@@ -268,9 +269,11 @@
         "js/app/resources/BackgroundJobService.js",
         "js/app/resources/BackgroundJobWorker.js",
         "js/app/resources/BackgroundJobWorkerEndpoint.js",
+        "js/app/resources/BackgroundJsonInspector.js",
         "js/app/resources/BackgroundSnapshotPages.js",
         "js/app/resources/BackgroundTaskYield.js",
         "js/app/resources/BackgroundWorkerAdmission.js",
+        "js/app/resources/CausalSourceKernels.js",
         "js/app/resources/CircuitWorkshopBuilder.js",
         "js/app/resources/FiniteFmExcitation.js",
         "js/app/resources/GroundAssetDecode.js",
@@ -390,13 +393,14 @@
         "js/render/PaletteImage.js",
         "js/render/TerrainImageInfo.js",
         "js/runtime/ActiveExecutionIdentity.js",
+        "js/runtime/BrowserGenerationPins.js",
         "js/steelSprites.json",
         "js/steelSpritesData.js",
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 276,
-      "sha256": "dc09962297971cc62b90f067622d3ef1a08357b9af076ab78562138f8c938578"
+      "fileCount": 280,
+      "sha256": "21a0c18828420d5a79082e8019b1a0831440a2922b02b71ba567cf042e56f474"
     },
     {
       "id": "lemmings-timing-worker-source",

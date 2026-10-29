@@ -13,6 +13,8 @@ import { createCausalTakeWorkbench } from '../js/app/procgen/workstation/CausalT
 import { captureProcgenCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
+import { finalizationEvidence } from '../js/app/procgen/workstation/CausalJournalValidation.js';
+import { hashJournalData } from '../js/app/procgen/workstation/CausalJournalCanonical.js';
 
 const versions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalMusic: 1, physicalBatch: 1 };
 const graph = revision => ({ version: 1, revision, instruments: [
@@ -25,7 +27,7 @@ describe('replay-qualified physical branch orchestration', function() {
   afterEach(() => { for (const jobs of jobOwners.splice(0)) jobs.dispose(); });
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
-  const fixture = async ({ futureGap = false } = {}) => {
+  const fixture = async ({ futureGap = false, checkpointAtFork = false } = {}) => {
     const store = createMemoryCausalStore(), control = { blocked: false }, jobs = createTestBackgroundJobs(); jobOwners.push(jobs);
     const storage = { ...store.storage, commitCausalTake: args => control.blocked ? Promise.reject(new Error('Storage suspended')) : store.storage.commitCausalTake(args) };
     const budget = createResourceBudget({ limitBytes: 256 * 1048576 }), journal = createProcgenCausalJournal({ storage, resourceBudget: budget, jobs });
@@ -38,7 +40,9 @@ describe('replay-qualified physical branch orchestration', function() {
     world.soundEvents.onBatch.on(batch => { clock.observe(batch, { bpm: 120 }); recorder.recordCommittedBatch({ batch, intents: engine.processBatch(batch) }); });
     for (let tick = 1; tick <= 20; tick++) {
       world.step();
-      if (tick === 6) fork = recorder.mark({ name: 'Fork here' }, { tick, generation: 1 }).lastSequence;
+      if (tick === 6) { fork = recorder.mark({ name: 'Fork here' }, { tick, generation: 1 }).lastSequence;
+        if (checkpointAtFork) await recorder.checkpoint({ value: snapshot(), tick, generation: 1 });
+      }
       if (tick === 10) { currentGraph = graph(9); recorder.recordMapping(currentGraph, { tick, generation: 1 }); }
     }
     if (futureGap) recorder.markGap({ kind: 'physical-facts', firstTick: 15, lastTick: 15, generation: 1, reason: 'future-only-gap' });
@@ -75,6 +79,44 @@ describe('replay-qualified physical branch orchestration', function() {
       expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);
     } finally { await workbench.dispose(); await journal.releaseQualifications().completion; }
     expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('retains bounded source failure diagnostics and clears them after a repaired source succeeds', async () => {
+    const { journal, budget, chunks } = await fixture(), parent = await journal.openTake('take:parent');
+    const workbench = createCausalTakeWorkbench({ journal, createWorld: make, resourceBudget: budget,
+      getRuntimeIdentity: () => ({ sourceVersions: versions, assetRefs: parent.assetRefs }) });
+    const passed = await workbench.open({ takeId: parent.takeId }); expect(passed.receipt.compatibilityMatch).to.equal(true);
+    const chunk = chunks.get(parent.chunks[0].id), original = chunk.canonical; chunk.canonical = original.replace('physical-batch', 'physical-botch');
+    let failure; try { await workbench.open({ takeId: parent.takeId }); } catch (error) { failure = error; }
+    expect(failure).to.be.instanceOf(Error); expect(workbench.state()).to.include({ phase: 'failed', busy: false });
+    expect(workbench.state().failure).to.include({ code: 'content-mismatch', sourceId: chunk.id, firstSequence: chunk.firstSequence });
+    expect(workbench.state().receipt).to.equal(passed.receipt); chunk.canonical = original;
+    const repaired = await workbench.open({ takeId: parent.takeId }); expect(repaired.receipt.compatibilityMatch).to.equal(true); expect(repaired.failure).to.equal(null);
+    await workbench.dispose(); await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('reuses a replay-proved marker in a fresh branch world while preserving its source', async () => {
+    const { journal, budget, fork, reperformance, open } = await fixture({ checkpointAtFork: true });
+    const parent = JSON.stringify(await journal.openTake('take:parent'));
+    const compared = await reperformance.reperform({ takeId: 'take:parent', throughSequence: fork, executionEpoch: 'qualify:marker' });
+    expect(compared.receipt, JSON.stringify(compared.receipt)).to.include({ compatibilityMatch: true, ticksExecuted: 6 });
+    const result = await open(); expect(result.receipt, JSON.stringify(result.receipt)).to.include({ status: 'validated-by-current-runtime-reperformance', ticksExecuted: 0, fromCheckpointSequence: fork, tick: 6, exactQualified: false });
+    expect((await result.branch.advance({ ticks: 2 })).tick).to.equal(8); expect((await result.branch.stop()).complete).to.equal(true);
+    await result.branch.dispose(); expect(JSON.stringify(await journal.openTake('take:parent'))).to.equal(parent);
+    await reperformance.dispose().completion; await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
+  });
+
+  it('invalidates retained checkpoint proof when finalization evidence changes without changing source chunks', async () => {
+    const { journal, budget, manifests } = await fixture(), parent = await journal.openTake('take:parent');
+    const workbench = createCausalTakeWorkbench({ journal, createWorld: make, resourceBudget: budget,
+      getRuntimeIdentity: () => ({ sourceVersions: versions, assetRefs: parent.assetRefs }) });
+    expect((await workbench.open({ takeId: parent.takeId })).receipt.ticksExecuted).to.equal(20);
+    expect((await workbench.open({ takeId: parent.takeId })).receipt).to.include({ ticksExecuted: 0, tick: 20 });
+    const manifest = manifests.get(parent.takeId); manifest.stopReason = 'replaced-finalization-evidence';
+    manifest.finalizationHash = await hashJournalData(finalizationEvidence(manifest), { maxBytes: 8 * 1048576 });
+    const compared = await workbench.open({ takeId: parent.takeId }); expect(compared.receipt).to.include({ compatibilityMatch: true, ticksExecuted: 20 });
+    expect(compared.receipt.artifactIntegrity.finalizationHash).to.equal(manifest.finalizationHash);
+    await workbench.dispose(); await journal.releaseQualifications().completion; expect(budget.diagnostics().accountedBytes).to.equal(0);
   });
 
   it('starts paused from a replayed marker, clips future gaps/revisions and replays the continued branch without altering its parent', async () => {

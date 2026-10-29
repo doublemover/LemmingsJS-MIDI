@@ -37,7 +37,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
   const forgetCheckpoint = key => { const old = checkpointQualifications.get(key); if (old) { cacheBytes -= old.retainedEstimate; checkpointQualifications.delete(key); } };
   const rememberCheckpoint = (key, entry) => {
     let retainedEstimate;
-    try { retainedEstimate = canonicalJournalText(entry, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text.length * 64 + 1024; }
+    try { const encoded = canonicalJournalText(entry, { maxBytes: 32 * 1048576, maxNodes: 4000000 }); retainedEstimate = encoded.bytes.byteLength * 2 + encoded.nodes * 64 + 1024; }
     catch (error) { cacheFailure = String(error.message).slice(0, 512); cacheRefusals++; return; }
     if (retainedEstimate > maxQualifiedCheckpointBytes || cacheReservation && !cacheReservation.isActive()) { cacheRefusals++; return; }
     try { cacheReservation ||= createOwnedResourceReservation({ budget: resourceBudget, owner: 'causal-reperformance-checkpoint-cache', kind: 'qualified-replay-checkpoints',
@@ -110,11 +110,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     if (!id(executionEpoch) || typeof onProgress !== 'function') throw new Error('Re-performance requires a separate execution epoch.');
     const qualification = await inspectTake({ takeId, throughSequence, mode, signal });
     if (qualification.status === 'unsupported') return { receipt: qualification, session: null };
-    const manifest = await journal.openTake(takeId), verified = await journal.verify(takeId, { signal });
+    const manifest = await journal.openTake(takeId), verified = await journal.verify(takeId, { signal, onProgress });
     const target = throughSequence ?? manifest.durableSequence;
     if (!Number.isSafeInteger(target) || target < 0 || target > manifest.durableSequence) throw new Error('Re-performance target is outside the durable prefix.');
     check(signal);
-    const scope = `${takeId}:${manifest.canonicalHash}:`, qualified = useValidatedCheckpoint
+    const scope = `${takeId}:${manifest.canonicalHash}:${manifest.revision}:${manifest.finalizationHash || 'recording'}:`, qualified = useValidatedCheckpoint
       ? [...checkpointQualifications.values()].filter(item => item.scope === scope && item.ref.sequence <= target).sort((a, b) => b.ref.sequence - a.ref.sequence)[0] : null;
     const ref = qualified?.ref || manifest.initialCheckpoint;
     if (qualified) { const key = scope + qualified.ref.id; checkpointQualifications.delete(key); checkpointQualifications.set(key, qualified); }
@@ -215,7 +215,9 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       const initialHash = await hashProcgenPhysicsCheckpoint(initial.world);
       check(signal);
       if (restoredHash !== initialHash) throw journalError('restore-divergence', 'Restored authoritative checkpoint state differs before the first replay tick.', { tick: world.tickIndex });
+      if (qualified && restoredHash !== qualified.physicalHash) throw journalError('restore-divergence', 'Restored checkpoint differs from its previously replayed physical proof.', { tick: world.tickIndex });
       physicalHash = restoredHash;
+      lastComparedTick = world.tickIndex;
       if (world.physicalAuthoring?.graph) current.graph = validateCausalInstrumentGraph(world.physicalAuthoring.graph);
       else world.configurePhysicalAuthoring?.(current.graph, []);
       clock = createProcgenPhysicalScoreClock();
@@ -236,10 +238,14 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       };
       world.soundEvents.onBatch.on(listener);
       const refsBySequence = new Map(manifest.checkpoints.filter(item => item.sequence > ref.sequence && item.sequence <= target).map(item => [item.sequence, item]));
-      let next = ref.sequence + 1;
+      const checkpointBoundaries = [...refsBySequence.keys()].sort((a, b) => a - b);
+      let next = ref.sequence + 1, checkpointIndex = 0;
       while (next <= target) {
         check(signal);
-        const pageSource = await borrowCausalPage(journal, { takeId, takeRevision: manifest.revision, firstSequence: next, lastSequence: target, limit: pageRecords, signal });
+        while (checkpointIndex < checkpointBoundaries.length && checkpointBoundaries[checkpointIndex] < next) checkpointIndex++;
+        const pageEnd = checkpointBoundaries[checkpointIndex] ?? target;
+        const pageSource = await borrowCausalPage(journal, { takeId, takeRevision: manifest.revision, firstSequence: next, lastSequence: pageEnd, limit: pageRecords, signal });
+        let nextPage = null;
         try {
           check(signal);
           const page = pageSource.value;
@@ -311,12 +317,14 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
                 input.kind === 'external-observation' && input.effect === 'observation-only' && id(input.sourceId))) throw journalError('unsupported-recorded-input', 'Unknown external input effect cannot be guessed during replay.', { firstSequence: record.sequence });
             }
             lastSequence = record.sequence;
-            if (refsBySequence.has(record.sequence)) { divergence = await compareCheckpoint(refsBySequence.get(record.sequence)); if (divergence) break; }
-            if (ticks - lastYieldTicks >= yieldEveryTicks) { lastYieldTicks = ticks; try { onProgress(Object.freeze({ takeId, sequence: lastSequence, targetSequence: target, ticks, tick: world.tickIndex })); } catch { /* Inspection does not change replay. */ } await yieldControl(); }
+            if (ticks - lastYieldTicks >= yieldEveryTicks) { lastYieldTicks = ticks; try { onProgress(Object.freeze({ phase: 'replaying', takeId, sequence: lastSequence, targetSequence: target, ticks, tick: world.tickIndex })); } catch { /* Inspection does not change replay. */ } await yieldControl(); }
           }
-          if (divergence || page.nextSequence == null) break;
-          next = page.nextSequence;
+          nextPage = page.nextSequence;
+          if (!divergence && nextPage == null && lastSequence !== pageEnd) throw journalError('source-prefix-gap', 'The retained source ends before its component boundary.', { firstSequence: lastSequence + 1 });
         } finally { retireCausalRead(pageSource); }
+        if (divergence) break;
+        if (refsBySequence.has(lastSequence)) { divergence = await compareCheckpoint(refsBySequence.get(lastSequence)); if (divergence) break; }
+        next = nextPage ?? lastSequence + 1;
       }
       check(signal);
       const finalCheckpoint = captureProcgenCheckpoint(world);
@@ -332,7 +340,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         throughSequence: lastSequence, targetSequence: target, tick: lastComparedTick, ticksExecuted: ticks, comparedBatches, comparedIntents,
         physicsStateSchema: 2, actualPhysicsHash: physicalHash, finalWorldParity: finalQualified && !divergence ? 'matched-at-captured-component-checkpoint' : 'unknown-no-validated-final-component-checkpoint',
         checkpointComparisons, boundaryComplete, captureInventory: inventory(), sourceVersions: runtimeVersions, assetRefs: runtimeAssets,
-        artifactIntegrity: { status: 'verified-durable-chain', initialCheckpointHash: manifest.initialCheckpoint.hash, canonicalHash: verified.canonicalHash },
+        artifactIntegrity: { status: 'verified-durable-chain', initialCheckpointHash: manifest.initialCheckpoint.hash, canonicalHash: verified.canonicalHash, finalizationHash: manifest.finalizationHash || null },
         inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false } });
       if (!retainWorld || divergence) { quiesce(); const cleanup = release(); await cleanup.completion;
         if (cleanup.outcome !== 'complete') throw journalError('retirement-unknown', 'The compared world has unresolved resource retirement.');

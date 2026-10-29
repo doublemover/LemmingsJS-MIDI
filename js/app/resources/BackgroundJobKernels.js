@@ -1,7 +1,5 @@
 import { buildCircuitWorkshop } from './CircuitWorkshopBuilder.js';
-import { prepareOwnedStretchCore } from './OwnedStretchCore.js';
 import { OWNED_STRETCH_CORE } from '../../midi/content/OwnedStretchCoreIdentity.js';
-import { bakeSeedWarp } from './SeedWarpBake.js';
 import { bakeFiniteFmExcitation } from './FiniteFmExcitation.js';
 import { deriveResonatorEndpoint } from '../../midi/content/ResonatorEndpointAdapters.js';
 import { renderResonatorMorphReference } from './ResonatorMorphReference.js';
@@ -19,39 +17,24 @@ import { decomposeSoundSeed } from './SeedDecomposition.js';
 import { analyzeSoundSeedWindow } from './SoundSeedWindowAnalysis.js';
 import { encodeProcgenRecoveryPage, decodeProcgenRecoveryPage } from '../procgen/workstation/ProcgenRecoveryPageCodec.js';
 import { analyzeImpulseResponse } from './ImpulseResponseAnalysis.js';
-import { encodeNativeOfflineRender } from './NativeOfflineEncoding.js';
 import { decodeWaveSource } from './WaveSourceDecode.js';
-import { computeOwnedSourceBank } from './OwnedSourceBankComputation.js';
 import { checksumProcgenRecovery } from '../procgen/workstation/ProcgenRecoveryChecksum.js';
 import { decodeGroundAssetSnapshot } from './GroundAssetDecode.js';
 import { canonicalDataText } from '../../core/CanonicalData.js';
 import { compileSoundContent } from '../../midi/content/SoundContentCompiler.js';
 import { getNativeInstrumentCatalog } from '../midi-ui/NativeInstrumentSchema.js';
-import { inspectCausalArchiveEntry, validateCausalChunk } from '../procgen/workstation/CausalArchiveEntry.js';
-import { renderOwnedSourceControls } from '../midi-ui/OwnedSourceControlRender.js';
+import { inspectCausalArchiveEntry } from '../procgen/workstation/CausalArchiveEntry.js';
 import { getProceduralSoundById } from '../../midi/content/ProceduralSoundMaterial.js';
 import { inspectWaveContainer } from '../midi-ui/AudioAssetRef.js';
 import { getOwnedSourceBankIdentity } from '../midi-ui/OwnedSourceBank.js';
-import { renderCausalOwnedTake } from '../midi-ui/CausalOwnedRender.js';
-import { renderPerformanceSceneRehearsal } from '../procgen/workstation/PerformanceSceneRehearsalRender.js';
 import { encodeRecordedMidi } from '../procgen/workstation/RecordedMidiEncoding.js';
+import { yieldBackgroundTask } from './BackgroundTaskYield.js';
 
 export { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
-import { BACKGROUND_JOB_KINDS } from './BackgroundJobKinds.js';
+import { BACKGROUND_JOB_KINDS, CAUSAL_SOURCE_JOB_KINDS } from './BackgroundJobKinds.js';
+import { backgroundJobError as problem, checkBackgroundJob as guard, encodedLength, inspectText } from './BackgroundJsonInspector.js';
 const MAX_BYTES = 64 * 1048576, MAX_NODES = 4000000;
-const problem = (code, message) => Object.assign(new Error(message), { code, name: 'BackgroundJobError' });
 const shared = value => typeof globalThis.SharedArrayBuffer === 'function' && (value instanceof globalThis.SharedArrayBuffer || value?.buffer instanceof globalThis.SharedArrayBuffer);
-const encodedLength = text => {
-  let bytes = 0;
-  for (let index = 0; index < text.length; index++) {
-    const code = text.charCodeAt(index);
-    if (code < 128) bytes++;
-    else if (code < 2048) bytes += 2;
-    else if (code >= 0xd800 && code <= 0xdbff && text.charCodeAt(index + 1) >= 0xdc00 && text.charCodeAt(index + 1) <= 0xdfff) { bytes += 4; index++; }
-    else bytes += 3;
-  }
-  return bytes;
-};
 const jsonStringBytes = text => {
   let bytes = 2;
   for (let index = 0; index < text.length; index++) {
@@ -63,26 +46,7 @@ const jsonStringBytes = text => {
   }
   return bytes;
 };
-const yieldTask = () => new Promise(resolve => setTimeout(resolve, 0));
-const guard = (signal, current) => { signal?.throwIfAborted(); if (current && !current()) throw problem('stale-owner', 'Background job source ownership changed.'); };
-const inspectText = async (text, { maxBytes, maxNodes, estimatedPeakBytes, signal, current, onProgress, yieldControl }) => {
-  if (typeof text !== 'string' || text.length > maxBytes) throw problem('input-capacity', 'JSON input exceeds the admitted byte bound.');
-  let depth = 0, quoted = false, escaped = false, token = true, nodes = 0;
-  for (let index = 0; index < text.length; index++) {
-    const char = text[index];
-    if (quoted) { if (escaped) escaped = false; else if (char === '\\') escaped = true; else if (char === '"') quoted = false; }
-    else if (char === '"') { quoted = true; token = false; nodes++; }
-    else if (char === '{' || char === '[') { if (++depth > 48) throw problem('structure-capacity', 'JSON exceeds the supported nesting depth.'); token = true; nodes++; }
-    else if (char === '}' || char === ']') { depth--; token = false; }
-    else if (char === ':' || char === ',') token = true;
-    else if (char !== ' ' && char !== '\n' && char !== '\t' && char !== '\r' && token) { token = false; nodes++; }
-    if (nodes > maxNodes || text.length * 8 + nodes * 32 > estimatedPeakBytes) throw problem('memory-capacity', 'JSON structure exceeds its admitted memory estimate.');
-    if ((index & 65535) === 65535) { guard(signal, current); onProgress({ phase: 'validating-json', completedUnits: index + 1, totalUnits: text.length }); await yieldControl(); }
-  }
-  guard(signal, current);
-  const bytes = encodedLength(text); if (bytes > maxBytes) throw problem('input-capacity', 'JSON UTF-8 input exceeds the admitted byte bound.');
-  return { bytes, nodes };
-};
+const yieldTask = () => yieldBackgroundTask();
 const inspectValue = async (value, { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl }, { allowBinary = false } = {}) => {
   const stack = [{ value, depth: 0 }], active = new WeakSet(); let units = 0, bytes = 0, nodes = 0, binaryBytes = 0;
   while (stack.length) {
@@ -154,6 +118,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     let core;
     try {
       onProgress({ phase: 'preparing-empty-stretch-image' });
+      const { prepareOwnedStretchCore } = await import('./OwnedStretchCore.js'); guard(signal, current);
       core = await prepareOwnedStretchCore(input.wasmBytes, { sampleRate: input.sampleRate, blockFrames: input.blockFrames, intervalFrames: input.intervalFrames, randomSeed: input.randomSeed, maximumHeapBytes: input.maximumHeapBytes, captureInitialImage: true, estimatedPeakBytes, signal, current, yieldControl }); guard(signal, current);
       const image = core.getInitialImage(), metadataBytes = canonicalDataText(image.metadata, { maxBytes: 65536, maxNodes: 4096 }).bytes.length;
       const value = Object.freeze({ ...image, applicationBuildId: execution.buildId });
@@ -231,6 +196,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
   if (kind === 'warp-sound-seed') {
     const metadata = canonicalDataText({ ...input, pcm: null, originBytes: null, wasmBytes: null }, { maxBytes: 65536, maxNodes: 8192 }), inputBytes = metadata.bytes.length + (input?.pcm?.byteLength || 0) + (input?.originBytes?.byteLength || 0) + (input?.wasmBytes?.byteLength || 0);
     if (inputBytes > maxBytes || estimatedPeakBytes < 128 * 1048576) throw problem('input-capacity', 'A finite seed warp needs its complete source/core and 128 MiB workspace.');
+    const { bakeSeedWarp } = await import('./SeedWarpBake.js'); guard(signal, current);
     const baked = await bakeSeedWarp(input, { estimatedPeakBytes, signal, current, yieldControl, onProgress }); guard(signal, current);
     const value = { schema: 'lemmings-seed-warp-result/v1', generation: input.generation, recipe: baked.recipe, recipeHash: baked.recipeHash, components: [{ kind: 'warped-seed', bytes: baked.bytes, assetHash: baked.assetHash, manifest: baked.manifest, waveform: baked.waveform }] };
     return { value, inputBytes, nodes: metadata.nodes, retainedBytes: baked.bytes.byteLength + baked.waveform.minMax.byteLength + canonicalDataText({ manifest: baked.manifest, recipe: baked.recipe }, { maxBytes: 524288, maxNodes: 65536 }).bytes.length * 32 + 131072 };
@@ -284,6 +250,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (!input || Object.keys(input).length !== 1 || typeof input.id !== 'string') throw problem('invalid-contract', 'Invalid fixed source bank request.');
     const expected = getOwnedSourceBankIdentity(input.id);
     if (estimatedPeakBytes < (input.id === 'sample-read-v1' ? 24 : 16) * 1048576 || maxBytes < expected.bytes) throw problem('memory-capacity', 'Fixed bank preparation needs its worker startup and copy reservation.');
+    const { computeOwnedSourceBank } = await import('./OwnedSourceBankComputation.js'); guard(signal, current);
     const value = await computeOwnedSourceBank(input.id, { signal, current, crypto, yieldControl });
     return { value, inputBytes: 128, nodes: 16, retainedBytes: expected.bytes + 16384 };
   }
@@ -300,50 +267,9 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (kind === 'asset-hash') return { value: hash, inputBytes: count, nodes: 1 };
   }
   const options = { maxBytes, maxNodes, maxStringBytes, estimatedPeakBytes, signal, current, onProgress, yieldControl };
-  if (kind === 'verify-causal-source') {
-    if (!input || Object.keys(input).some(key => !['kind', 'ref', 'canonical', 'metadataOnly', 'maxRecords', 'selection'].includes(key)) ||
-        !['chunk', 'checkpoint'].includes(input.kind) || typeof input.metadataOnly !== 'boolean' || !input.ref ||
-        typeof input.ref.id !== 'string' || input.ref.id.length > 256 || !/^[a-f0-9]{64}$/.test(input.ref.hash) ||
-        !Number.isSafeInteger(input.maxRecords) || input.maxRecords < 1 || input.maxRecords > 1024) throw problem('invalid-contract', 'Invalid causal source verification request.');
-    const referenceInventory = canonicalDataText(input.ref, { maxBytes: 16384, maxNodes: 4096 });
-    const metadata = await inspectText(input.canonical, options); guard(signal, current);
-    if (input.ref.bytes != null && metadata.bytes !== input.ref.bytes || metadata.bytes * 12 + metadata.nodes * 96 + 65536 > estimatedPeakBytes)
-      throw problem('memory-capacity', 'Causal source byte or structure inventory exceeds its admitted representation.');
-    const bytes = new TextEncoder().encode(input.canonical), digest = await crypto.subtle.digest('SHA-256', bytes); guard(signal, current);
-    const hash = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
-    if (hash !== input.ref.hash) throw problem('content-mismatch', 'Causal source differs from its immutable reference.');
-    const body = JSON.parse(input.canonical); guard(signal, current);
-    const encoded = canonicalDataText(body, { maxBytes, maxNodes });
-    if (encoded.text !== input.canonical || input.ref.nodes != null && encoded.nodes !== input.ref.nodes) throw problem('content-mismatch', 'Causal source is not the declared canonical object inventory.');
-    if (input.kind === 'chunk') validateCausalChunk(body, input.ref, input.maxRecords);
-    else if (!body || typeof body !== 'object' || Array.isArray(body)) throw problem('invalid-data', 'Causal checkpoint is not a component snapshot.');
-    let value = input.metadataOnly ? { kind: input.kind, ref: input.ref, bytes: metadata.bytes, nodes: encoded.nodes,
-      ...(input.kind === 'chunk' ? { previousHash: body.previousHash, firstSequence: body.firstSequence, lastSequence: body.lastSequence } : {}) } : body;
-    let retainedBytes = input.metadataOnly ? referenceInventory.bytes.byteLength * 2 + referenceInventory.nodes * 64 + 4096 : metadata.bytes * 2 + metadata.nodes * 64;
-    if (input.selection != null) {
-      const selected = input.selection, bounded = (number, minimum = 0) => Number.isSafeInteger(number) && number >= minimum;
-      if (input.kind !== 'chunk' || input.metadataOnly || typeof selected !== 'object' || Array.isArray(selected) ||
-          Object.keys(selected).some(key => !['firstSequence', 'lastSequence', 'firstTick', 'lastTick', 'generation', 'kinds', 'throughSequence', 'limit', 'maxBytes', 'maxRecordBytes'].includes(key)) ||
-          !bounded(selected.firstSequence, 1) || !bounded(selected.lastSequence, selected.firstSequence) || !bounded(selected.firstTick) || !bounded(selected.lastTick, selected.firstTick) ||
-          selected.generation != null && !bounded(selected.generation) || !bounded(selected.throughSequence) || !bounded(selected.limit, 1) || selected.limit > 65536 ||
-          !bounded(selected.maxBytes, 1) || selected.maxBytes > MAX_BYTES || !bounded(selected.maxRecordBytes, 1) || selected.maxRecordBytes > MAX_BYTES ||
-          selected.kinds != null && (!Array.isArray(selected.kinds) || selected.kinds.length > 8 || selected.kinds.some(kind => typeof kind !== 'string' || kind.length > 64)))
-        throw problem('invalid-contract', 'Invalid causal chunk query selection.');
-      const records = [], recordBytes = []; let selectedBytes = 0, selectedNodes = 0, nextSequence = null;
-      for (const record of body.records) {
-        if (record.sequence < selected.firstSequence || record.sequence > Math.min(selected.lastSequence, selected.throughSequence) ||
-            record.tick < selected.firstTick || record.tick > selected.lastTick || selected.generation != null && record.generation !== selected.generation ||
-            selected.kinds && !selected.kinds.includes(record.kind)) continue;
-        if (records.length === selected.limit) { nextSequence = record.sequence; break; }
-        const representation = canonicalDataText(record, { maxBytes: selected.maxRecordBytes, maxNodes });
-        if (selectedBytes + representation.bytes.byteLength > selected.maxBytes) { nextSequence = record.sequence; break; }
-        records.push(record); recordBytes.push(representation.bytes.byteLength); selectedBytes += representation.bytes.byteLength; selectedNodes += representation.nodes;
-      }
-      value = { records, recordBytes, bytes: selectedBytes, nodes: selectedNodes, nextSequence };
-      retainedBytes = selectedBytes * 2 + selectedNodes * 64 + records.length * 256 + 4096;
-    }
-    if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Verified source exceeds its result reservation.');
-    return { value, inputBytes: metadata.bytes, nodes: encoded.nodes, retainedBytes };
+  if (CAUSAL_SOURCE_JOB_KINDS.includes(kind)) {
+    const { runCausalSourceKernel } = await import('./CausalSourceKernels.js'); guard(signal, current);
+    return runCausalSourceKernel(kind, input, { ...options, crypto, expectedInputHash });
   }
   if (kind === 'parse-json' || kind === 'inspect-causal-archive-entry') {
     const metadata = await inspectText(input, options); guard(signal, current);
@@ -402,6 +328,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       if (host?.activeExecution !== 'bound' || host.applicationBuildId !== catalog.executionIdentity.buildId || host.hostRevision !== 'owned-native-effect-host-v2')
         throw problem('engine-identity-unbound', 'Native effect preparation must execute the same immutable application as its encoding worker.');
     }
+    const { encodeNativeOfflineRender } = await import('./NativeOfflineEncoding.js'); guard(signal, current);
     const value = await encodeNativeOfflineRender(input, { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes }); guard(signal, current);
     const retainedBytes = value.files ? value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144) : value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Native encoded files exceed their admitted retained storage.');
@@ -413,6 +340,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     const catalog = await getNativeInstrumentCatalog(), descriptor = catalog.descriptors.find(engine => engine.engineId === input.engineRequirement?.engineId); guard(signal, current);
     if (catalog.state !== 'bound-application-engines' || !descriptor || !['engineId', 'engineVersion', 'artifactHash', 'parameterSchemaHash'].every(key => input.engineRequirement?.[key] === descriptor[key]))
       throw problem('engine-identity-unbound', 'Sound control rendering requires its exact executing source artifact.');
+    const { renderOwnedSourceControls } = await import('../midi-ui/OwnedSourceControlRender.js'); guard(signal, current);
     const value = await renderOwnedSourceControls({ definition: input.definition, descriptor, sampleRate: input.sampleRate, source: input.source, pcm: input.pcm, sampleGesture: input.sampleGesture,
       applicationBuildId: catalog.executionIdentity.buildId }, { signal, yieldControl, onProgress }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 65536;
@@ -424,6 +352,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
     if (catalog.state !== 'bound-application-engines') throw problem('engine-identity-unbound', 'Scene rehearsal requires the exact executing audio and world artifacts.');
     const footprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
     if (estimatedPeakBytes < footprint + 64 * 1048576) throw problem('memory-capacity', 'Scene rehearsal source exceeds its admitted representation.');
+    const { renderPerformanceSceneRehearsal } = await import('../procgen/workstation/PerformanceSceneRehearsalRender.js'); guard(signal, current);
     const value = await renderPerformanceSceneRehearsal(input, { descriptors: catalog.descriptors, buildId: catalog.executionIdentity.buildId, signal, isCurrent: current, yieldControl, maxWorkingBytes: estimatedPeakBytes - footprint }); guard(signal, current);
     const retainedBytes = value.bytes.byteLength * 2 + 262144;
     if (retainedBytes > estimatedPeakBytes) throw problem('output-capacity', 'Scene rehearsal PCM exceeds its admitted result.');
@@ -437,6 +366,7 @@ export async function runBackgroundJobKernel(kind, input, { signal, current, max
       throw problem('engine-identity-unbound', 'Causal audio rendering requires its exact executing source artifact.');
     const sourceFootprint = (metadata.bytes - metadata.binaryBytes) * 12 + metadata.nodes * 192 + metadata.binaryBytes * 2;
     if (sourceFootprint + 8 * 1048576 > estimatedPeakBytes) throw problem('memory-capacity', 'Causal render source exceeds its admitted object and clone footprint.');
+    const { renderCausalOwnedTake } = await import('../midi-ui/CausalOwnedRender.js'); guard(signal, current);
     const value = await renderCausalOwnedTake({ ...input, ...(kind === 'render-causal-source-pcm' ? { outputMode: 'source-pcm' } : {}), descriptor, applicationBuildId: catalog.executionIdentity.buildId },
       { signal, yieldControl, onProgress, maxWorkingBytes: estimatedPeakBytes - sourceFootprint }); guard(signal, current);
     const retainedBytes = kind === 'render-causal-source-pcm' ? value.planes.reduce((sum, plane) => sum + plane.byteLength * 2, 262144) : value.files.reduce((sum, file) => sum + file.bytes.byteLength * 2 + 262144, 262144);

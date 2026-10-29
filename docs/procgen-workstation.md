@@ -186,14 +186,40 @@ memory and is not included in a project checkpoint; export it before closing.
 
 Physical-take comparisons retain up to16 verified checkpoint proofs within a
 4MiB metadata reservation. Repeated seeks can reuse a checkpoint only after
-replaying and matching it, with the same take, source versions, assets and live
-world owner. Resource pressure skips this optimization and permits a full replay.
+replaying and matching it, with the same take revision, finalization evidence,
+source versions, assets and live world owner. A branch uses a fresh isolated
+world; it can restore an already matched fork checkpoint after rechecking the
+stored source and restored physical hash. Resource pressure skips this optimization and permits a full replay.
 Closing the workbench retires the reservation. Comparisons and branches remain
 silent and report current-runtime physical compatibility; archived execution and
 acoustic equivalence require separate qualification. Accepted pause/resume and
 tempo changes are recorded in order, including the paused physical clock value.
+The marker controller API accepts an explicit `{ checkpoint: true }` option to
+store a component snapshot at the current committed source sequence. It
+reserves estimated snapshot workspace before copying; Stop waits for pending
+checkpoint storage. Ordinary markers stay lightweight. A stored checkpoint
+becomes reusable only after actual replay matches it.
 Durable chunks obey byte, record and structural limits together. An indivisible
 admission group above a limit is refused without advancing the stored prefix.
+Stored verification and query work use bounded worker windows: at most16 chunks,
+4MiB of canonical source bytes and500000 canonical nodes per window. Memory is
+reserved before storage reads; the worker still checks each source hash, object
+inventory and requested range. Failure details retain the source ID and first
+sequence, and a repaired source can be compared again without replacing the live
+project. A computed query retains its own reservation until its reader closes.
+Under memory pressure, queries admit a smaller window or return their current
+owned page with the exact next source cursor. A refused admission loads no chunk
+input. Releasing the page permits the next decode without dropping records.
+Native storage verification uses one admitted worker and readonly transactions
+against the existing database, returning compact metadata for chain checks. It
+does not create or upgrade a missing database. Storage retirement cancels that
+worker; legacy readers retain their existing bounded fallback. The reader may
+retain up to4096 canonical header proofs within a separate4MiB reservation.
+Every inspection still reads and hashes the current stored bytes. Prior proofs
+avoid repeating canonical/schema checks on unchanged content. Queries still
+decode their selected records, and every source is hashed again. Proof reuse
+also binds the record-count profile. Journal retirement waits
+for active readers before releasing their metadata ownership.
 
 Project and MIDI export show “Download requested” after the browser anchor
 clicks. The app cannot tell whether the browser saved the file; check the

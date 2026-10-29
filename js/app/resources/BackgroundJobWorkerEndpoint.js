@@ -1,13 +1,15 @@
-import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, runBackgroundJobKernel } from './BackgroundJobKernels.js';
+import { BACKGROUND_JOB_PROTOCOL, BACKGROUND_JOB_KINDS, CAUSAL_SOURCE_JOB_KINDS } from './BackgroundJobKinds.js';
 import { createBackgroundSnapshotReceiver, encodeBackgroundSnapshotPages, backgroundSnapshotTransfers } from './BackgroundSnapshotPages.js';
 import { getActiveExecutionIdentity, compareActiveExecutionIdentity } from '../../runtime/ActiveExecutionIdentity.js';
 
-export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel = runBackgroundJobKernel,
+export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel = null,
   identity = () => getActiveExecutionIdentity('browser-background-jobs'), compareIdentity = required => compareActiveExecutionIdentity(required, 'browser-background-jobs').matched } = {}) {
   let source = null, receiver = null, phase = 'new', outputAcknowledgment = null;
   const respond = (payload, transfers = []) => postMessage({ protocol: BACKGROUND_JOB_PROTOCOL, jobId: source?.jobId, ownerEpoch: source?.ownerEpoch, sourceRevision: source?.sourceRevision, ...payload }, transfers);
   const fail = error => { if (phase === 'closed') return; phase = 'closed'; receiver?.dispose(); receiver = null; outputAcknowledgment?.reject(error); outputAcknowledgment = null;
-    try { respond({ type: 'failed', error: { code: String(error.code || error.name).slice(0, 64), message: String(error.message || error).slice(0, 512) } }); } finally { close(); } };
+    try { respond({ type: 'failed', error: { code: String(error.code || error.name).slice(0, 64), message: String(error.message || error).slice(0, 512),
+      ...(typeof error.sourceId === 'string' && error.sourceId.length <= 256 ? { sourceId: error.sourceId } : {}),
+      ...(Number.isSafeInteger(error.firstSequence) && error.firstSequence >= 0 ? { firstSequence: error.firstSequence } : {}) } }); } finally { close(); } };
   const sendOutput = (payload, transfers = []) => new Promise((resolve, reject) => {
     if (phase !== 'sending' || outputAcknowledgment) throw new Error('Invalid result transport backpressure.');
     outputAcknowledgment = { sequence: payload.sequence, resolve, reject }; try { respond(payload, transfers); } catch (error) { outputAcknowledgment = null; reject(error); }
@@ -33,7 +35,10 @@ export function createBackgroundJobWorkerEndpoint({ postMessage, close, kernel =
       if (request.type === 'input-page') { const receipt = receiver.push(request.packet); respond({ type: 'input-ack', sequence: receipt.sequence }); return; }
       if (request.type !== 'input-end') throw new Error('Invalid background snapshot message.');
       let input = receiver.finish(request.sequence); receiver = null; phase = 'computing';
-      const result = await kernel(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });
+      const compute = kernel || (CAUSAL_SOURCE_JOB_KINDS.includes(source.kind) ? (await import('./CausalSourceKernels.js')).runCausalSourceKernel :
+        (await import('./BackgroundJobKernels.js')).runBackgroundJobKernel);
+      if (phase !== 'computing') return;
+      const result = await compute(source.kind, input, { ...source.limits, onProgress: progress => { if (phase === 'computing') respond({ type: 'progress', progress }); } });
       input = null; if (phase !== 'computing') return;
       const transfers = source.kind === 'compile-scene-terrain' && result.value?.storage instanceof Uint8Array ? [result.value.storage.buffer] : ['prepare-owned-source-bank', 'decode-wave-source', 'render-causal-source-pcm'].includes(source.kind) && Array.isArray(result.value?.planes) ? result.value.planes.map(plane => plane.buffer) :
         ['encode-recorded-midi', 'encode-recovery-page', 'encode-native-render', 'render-sound-controls', 'generate-procedural-sound'].includes(source.kind) && result.value?.bytes instanceof Uint8Array ? [result.value.bytes.buffer] :

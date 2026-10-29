@@ -112,7 +112,12 @@ export function createBackgroundJobService({ admission = backgroundWorkerAdmissi
                 const pending = acknowledgment; acknowledgment = null; pending.resolve(); return;
               }
               if (message.type === 'progress') { if (!inputReady) throw failure('early-progress', 'Worker computation preceded its completed snapshot.'); progress(message.progress); return; }
-              if (message.type === 'failed') { failed(failure(message.error?.code || 'worker-failed', String(message.error?.message || 'Background worker failed.').slice(0, 512))); return; }
+              if (message.type === 'failed') {
+                const error = failure(message.error?.code || 'worker-failed', String(message.error?.message || 'Background worker failed.').slice(0, 512));
+                if (typeof message.error?.sourceId === 'string' && message.error.sourceId.length <= 256) error.sourceId = message.error.sourceId;
+                if (Number.isSafeInteger(message.error?.firstSequence) && message.error.firstSequence >= 0) error.firstSequence = message.error.firstSequence;
+                failed(error); return;
+              }
               if (!inputReady) throw failure('early-result', 'Worker result preceded its completed input snapshot.');
               if (message.type === 'output-start') {
                 const metadata = message.metadata;
