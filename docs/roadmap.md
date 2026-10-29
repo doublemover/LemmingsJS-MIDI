@@ -9626,3 +9626,30 @@ export-budget acknowledgments still prevent a false complete receipt.
   multiple epochs, native/MPE/CI Profile targets and receiver/DAW qualification
   under #986/#1093/#1063. The single closed-epoch MIDI1 product path is implemented;
   those broader policies remain open. Continue solo while later CI proceeds.
+
+### Continuation 372 - captured clock-epoch selection and closed cuts
+
+- Select one captured clock epoch per physical MIDI file, with a searchable paged
+  desktop choice and explicit API epoch. Exclude world-clock epochs before the
+  initial captured boundary; report selected/excluded intents and epoch ordinal.
+- Validate the initial clock as a normalized value-preserving prefix of the final
+  clock. Compare fixed segment fields, independent of canonical property order.
+  Replay all retained semantic lifetimes and validate identity/epoch/time order,
+  including excluded prefixes. Refuse a note crossing either side of the chosen
+  cut; no pickup or release is invented. Retain global empty boundary requirements.
+- Final209 related Node cases and eight distinct native1920×1080 journeys pass.
+  Six unchanged Clip/route journeys pass in the initial group; both physical
+  journeys pass after fixture-only menu/transition corrections with identical
+  application and worker source. Preserve the initial7pass/1fixture-failure report.
+  The stored two-epoch fixture qualifies IndexedDB/worker/chooser behavior, not
+  actual generation-transition physics. All three timing/projection/epoch leaves
+  have100%lines; combined82.14%functions/91.27%branches. Collection249full/219smoke
+  across54files. Critical types/static/provenance checks pass; no full local repeat.
+- Promote369/9e7bffb6 to full green:7188Node/10preexisting pending,26desktop,
+  216workstation,18engine,14capabilities, both native codec jobs and benchmark/
+  MCP/policy/dependency checks. Verify1141workstation/1252engine/both8native source
+  inventories against that Git tree and identical native corpora/outputs. Coverage
+  90.79%lines/83.96%branches/88.65%functions. Later source remains separate CI.
+- Continue arbitrary boundary reconstruction, pause/external-clock/suspension
+  export matrix, actual generation-transition qualification and native/MPE/CI
+  Profile targets/receivers under #986/#1093/#1063. Continue solo.

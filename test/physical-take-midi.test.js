@@ -3,6 +3,7 @@ import JZZ from 'jzz';
 import installSmf from 'jzz-midi-smf';
 import { createProcgenPhysicalScoreClock } from '../js/app/procgen/workstation/ProcgenPhysicalScoreClock.js';
 import { encodePhysicalTakeMidi } from '../js/app/procgen/workstation/PhysicalTakeMidiProjection.js';
+import { physicalMidiEpochChoices } from '../js/app/procgen/workstation/PhysicalTakeMidiEpochs.js';
 import { createProcgenCausalJournal } from '../js/app/procgen/workstation/ProcgenCausalJournal.js';
 import { createCausalTakeRecorder, querySoundOnlyRevoiceOwned } from '../js/app/procgen/workstation/CausalTake.js';
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
@@ -29,8 +30,46 @@ const fixture = () => {
   return { clock, times, initialClock, intent, revoice };
 };
 const reject = async (work, message) => { let error; try { await work; } catch (caught) { error = caught; } expect(error).to.be.instanceOf(Error); if (message) expect(error.message).to.include(message); return error; };
+const multiEpoch = () => {
+  const f = fixture(); let timeMs = f.times[30];
+  f.clock.observe({ version: 1, worldId: 'source', generation: 2, tick: 30, sourceTimeMs: timeMs, tickDurationMs: 60 }, { bpm: 90 }); const boundary = structuredClone(f.clock.snapshot());
+  for (let tick = 31; tick <= 50; tick++) { timeMs += 30; f.times[tick] = timeMs; f.clock.observe({ version: 1, worldId: 'source', generation: 2, tick, sourceTimeMs: timeMs, tickDurationMs: 30 }, { bpm: 90 }); }
+  const newer = (kind, tick, voiceId = 'newer') => ({ ...f.intent(kind, tick, voiceId), generation: 2, intentId: 'epoch2-' + kind + '-' + tick });
+  f.revoice.intents.push(newer('begin', 34), newer('end', 40)); f.revoice.intentCount = f.revoice.intents.length;
+  f.revoice.finalBoundaryState.timeline = f.clock.snapshot(); f.revoice.finalBoundaryState.sourceTimeMs = timeMs;
+  return { ...f, boundary, newer };
+};
 
 describe('captured physical take MIDI1 projection', () => {
+  it('requires explicit epoch selection and preserves each independent origin without merging note/channel history', async () => {
+    const f = multiEpoch(), choices = physicalMidiEpochChoices(f.revoice);
+    const error = await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls), 'Choose one captured clock epoch'); expect(error.code).to.equal('physical-midi-epoch-choice-required');
+    expect(choices.map(choice => [choice.originTick, choice.endTick])).to.deep.equal([[0, 30], [30, 50]]);
+    const first = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { epoch: choices[0].epoch } }, controls), second = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { epoch: choices[1].epoch } }, controls);
+    expect(first.manifest.lowering.begins).to.equal(3); expect(second.manifest.lowering.begins).to.equal(1);
+    expect(first.manifest.epochSelection.excludedIntents).to.equal(2); expect(second.manifest.epochSelection.excludedIntents).to.equal(7);
+    expect(second.manifest.timing.origin.simTick).to.equal(30); expect(second.manifest.timing.end.simTick).to.equal(50);
+    expect(parseSmf(second.bytes).filter(row => (row.status & 0xf0) === 0x90).map(row => row.status & 15)).to.deep.equal([0]);
+  });
+  it('ignores clock epochs before the captured boundary and verifies the initial timeline remains a true prefix', async () => {
+    const f = multiEpoch(); f.revoice.boundary.state.timeline = f.boundary; f.revoice.boundary.state.sourceTimeMs = f.boundary.lastSourceTimeMs;
+    f.revoice.intents = f.revoice.intents.slice(-2); f.revoice.intentCount = 2;
+    expect(physicalMidiEpochChoices(f.revoice)).to.have.length(1);
+    const result = await encodePhysicalTakeMidi({ revoice: f.revoice }, controls); expect(result.manifest.epochSelection.available).to.equal(1); expect(result.manifest.timing.origin.simTick).to.equal(30);
+    f.revoice.boundary.state.timeline.timeline.epochs.at(-1).segments.at(-1).tempoBpm = 111;
+    await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls), 'preserved prefix');
+  });
+  it('refuses a note crossing either side of an epoch cut without inventing a pickup or release', async () => {
+    const f = multiEpoch(), choices = physicalMidiEpochChoices(f.revoice);
+    f.revoice.intents = [...f.revoice.intents.slice(0, -2).filter(intent => !(intent.kind === 'end' && intent.voiceId === 'A')), { ...f.newer('end', 31, 'A'), generation: 1 }, ...f.revoice.intents.slice(-2)];
+    for (const choice of choices) await reject(encodePhysicalTakeMidi({ revoice: f.revoice, options: { epoch: choice.epoch } }, controls), 'crosses the selected clock epoch');
+  });
+  it('rejects foreign/reversed epochs and uncovered times even in an excluded prefix', async () => {
+    for (const mutate of [source => { source.intents[0].scoreTime.simTick = 999; }, source => { source.intents[0].scoreTime.beat = 999; }, source => { source.intents[0].scoreTime.epoch = 'foreign'; }]) {
+      const f = multiEpoch(), epoch = physicalMidiEpochChoices(f.revoice)[1].epoch; mutate(f.revoice); await reject(encodePhysicalTakeMidi({ revoice: f.revoice, options: { epoch } }, controls));
+    }
+    await reject(encodePhysicalTakeMidi({ revoice: multiEpoch().revoice, options: { epoch: 'absent' } }, controls), 'outside this captured take');
+  });
   it('preserves same-pitch voices, captured timing, safe same-tick reuse and trailing crop silence with independent SMF parsing', async () => {
     const f = fixture(), result = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { program: 24 } }, controls), parsed = parseSmf(result.bytes);
     const on = parsed.filter(row => (row.status & 0xf0) === 0x90), off = parsed.filter(row => (row.status & 0xf0) === 0x80);
@@ -70,7 +109,7 @@ describe('captured physical take MIDI1 projection', () => {
       source => { source.coverage.status = 'unknown'; }, source => { source.intents[0].scoreTime.beat = 999; }, source => { source.intents[0].scoreTime.epoch = 'foreign'; }]) {
       const f = fixture(); change(f.revoice); await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls));
     }
-    const f = fixture(); f.revoice.intents.splice(-1); f.revoice.intentCount--; await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls), 'open semantic voices');
+    const f = fixture(); f.revoice.intents.splice(-1); f.revoice.intentCount--; await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls), 'open voices');
     await reject(encodePhysicalTakeMidi({ revoice: fixture().revoice, options: { origin: { epoch: fixture().clock.snapshot().timeline.currentEpoch, simTick: 11 } } }, controls), 'inside the declared crop');
   });
   it('cancels between bounded lowering slices without a published byte file', async () => {

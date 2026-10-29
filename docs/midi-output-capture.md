@@ -87,7 +87,8 @@ new realization of captured musical intent, separate from the recorded submitted
 output. Select the new melodic target program1–128; source timbre is replaced.
 
 The bounded source must have covered semantic history, retained empty initial and
-final voice inventories, no remaining page, and one captured physical-clock epoch.
+final voice inventories and no remaining page. Select one captured physical-clock
+epoch per file.
 Open note histories, unsupported prepared-body output, missing onsets, unknown
 expression and insufficient channel capacity refuse preparation. No pickups,
 releases, voice stealing or channel merges are invented.
@@ -110,10 +111,15 @@ take/revision/hash, timing error, capacity/assignment policy and lowering losses
 The receiver still has to honor the emitted channel/RPN/program messages; no
 historical hardware timbre or submitted-output reproduction is claimed.
 
-This first product path bounds input to8192 intents and8192 journal records.
-Arbitrary mid-note crop/state reconstruction, multiple clock epochs, MPE/CI
-Profile/UMP targets and the remaining pause/external-clock/suspension matrix stay
-separate work. Export/cancellation preserves the live world, project and previous
+This product path bounds input to8192 intents and8192 journal records. When a
+take spans several clock epochs, a searchable chooser selects one independent
+score origin. Epochs from before recording started are excluded. The worker
+validates the initial clock as a value-preserving prefix of its final history and
+replays captured voice lifetimes across the entire source. A note crossing either
+side of the selected epoch cut refuses export; no pickup or release is invented.
+The manifest reports selected/excluded intent counts and the epoch ordinal.
+Arbitrary mid-note crop/state reconstruction, MPE/CI Profile/UMP targets and the
+remaining pause/external-clock/suspension matrix stay separate work. Export/cancellation preserves the live world, project and previous
 prepared artifact.
 
 ## Original UMP Clip File codec

@@ -1,4 +1,4 @@
-import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
+import { selectPhysicalMidiEpoch } from './PhysicalTakeMidiEpochs.js';
 import { preparePhysicalMidiTiming } from './PhysicalMidiTiming.js';
 import { smfHeader, smfTempo, smfVariable, smfBeatTick } from './ProcgenSmfBytes.js';
 
@@ -16,14 +16,14 @@ const expressionFor = value => {
       value.pan01 != null && !bounded(value.pan01, -1, 1)) throw new Error('Choose a qualified lowering for unsupported physical note expression.');
   return value;
 };
-/** @typedef {{channels?: number[], ppq?: number, bendRangeSemitones?: number, program?: number, origin?: {epoch: string, simTick: number, subTick?: number}, end?: {epoch: string, simTick: number, subTick?: number}}} PhysicalMidiOptions */
+/** @typedef {{channels?: number[], ppq?: number, bendRangeSemitones?: number, program?: number, epoch?: string, origin?: {epoch: string, simTick: number, subTick?: number}, end?: {epoch: string, simTick: number, subTick?: number}}} PhysicalMidiOptions */
 /** @param {{revoice?: Record<string, any>, options?: PhysicalMidiOptions}} input
  * @param {{signal?: AbortSignal, current?: () => boolean, estimatedPeakBytes?: number, onProgress?: (progress: any) => void, yieldControl?: () => Promise<unknown>}} [controls] */
 export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { signal, current = () => true, estimatedPeakBytes,
   onProgress = () => {}, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
   const intents = revoice?.intents, channels = options.channels ?? defaultChannels, ppq = options.ppq ?? 960, bendRange = options.bendRangeSemitones ?? 2, program = options.program ?? 0;
   if (revoice?.version !== 1 || revoice.operation !== 'sound-only-revoice' || !text(revoice.takeId) || !natural(revoice.takeRevision) || !/^[a-f0-9]{64}$/.test(revoice.sourceCanonicalHash) ||
-      Object.keys(options).some(key => !['channels', 'ppq', 'bendRangeSemitones', 'program', 'origin', 'end'].includes(key)) || !Array.isArray(intents) || intents.length > 8192 || revoice.intentCount !== intents.length || revoice.nextSequence != null ||
+      Object.keys(options).some(key => !['channels', 'ppq', 'bendRangeSemitones', 'program', 'epoch', 'origin', 'end'].includes(key)) || options.epoch != null && !text(options.epoch) || !Array.isArray(intents) || intents.length > 8192 || revoice.intentCount !== intents.length || revoice.nextSequence != null ||
       revoice.coverage?.status !== 'known-covered' || revoice.boundary?.status !== 'captured-initial-state' || !Array.isArray(revoice.boundary.state?.voices) || revoice.boundary.state.voices.length ||
       !Array.isArray(revoice.finalBoundaryState?.voices) || revoice.finalBoundaryState.voices.length || !['finalized', 'partial'].includes(revoice.sourceState) ||
       !Array.isArray(channels) || !channels.length || channels.length > 15 || new Set(channels).size !== channels.length || channels.some(channel => !Number.isInteger(channel) || channel < 1 || channel > 16 || channel === 10) ||
@@ -33,11 +33,9 @@ export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { s
   const guard = () => { signal?.throwIfAborted(); if (!current()) throw new Error('The selected physical MIDI source changed.'); };
   const pulse = async completedUnits => { guard(); onProgress({ phase: 'lowering-physical-take', completedUnits, totalUnits: intents.length }); await yieldControl(); guard(); };
   guard();
-  const clock = createProcgenPhysicalScoreClock(); clock.restore(revoice.finalBoundaryState.timeline);
-  const saved = clock.snapshot();
-  if (saved.timeline.epochs.length !== 1) throw new Error('Physical MIDI currently requires one captured clock epoch; select a separate take at each generation boundary.');
-  const epoch = saved.timeline.epochs[0], firstClock = revoice.boundary.state.timeline;
-  const origin = options.origin ?? { epoch: epoch.epoch, simTick: firstClock?.lastTick ?? epoch.segments[0].simTickOrigin }, end = options.end ?? { epoch: epoch.epoch, simTick: saved.lastTick };
+  const selection = await selectPhysicalMidiEpoch(revoice, options.epoch, { signal, current, yieldControl });
+  const { saved, selected: epoch, sourceOrdinals } = selection;
+  const origin = options.origin ?? selection.origin, end = options.end ?? selection.end;
   const sourceTime = { version: 1, domain: 'simulation-tick', ordering: 'canonical-intent-order', clock: saved, origin, end };
   const events = [], active = new Map(), seen = new Set(), free = [...channels].sort((a, b) => a - b), initialized = new Set();
   const losses = { velocity7bit: 0, minimumNonzeroVelocity: 0, pressure7bit: 0, pan7bit: 0, pitch14bit: 0, maximumVelocityError: 0, maximumPressureError: 0, maximumPanError: 0, maximumPitchErrorCents: 0,
@@ -55,7 +53,7 @@ export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { s
     const encoded = Math.round(64 + value * (value < 0 ? 64 : 63)), decoded = (encoded - 64) / (encoded < 64 ? 64 : 63), error = Math.abs(value - decoded);
     if (error) losses.pan7bit++; losses.maximumPanError = Math.max(losses.maximumPanError, error); return encoded;
   };
-  for (let index = 0; index < intents.length; index++) {
+  for (const index of sourceOrdinals) {
     const intent = intents[index];
     if (intent?.version !== 1 || !['begin', 'update', 'end'].includes(intent.kind) || !text(intent.intentId) || seen.has(intent.intentId) || !text(intent.voiceId) ||
         !text(intent.worldId) || intent.worldId !== saved.worldId || !natural(intent.generation) || intent.scoreTime?.epoch !== epoch.epoch ||
@@ -105,6 +103,7 @@ export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { s
   const lowering = { schema: 'procgen-physical-midi-lowering/v1', sourceLayer: 'captured-musical-intent', evidence: 'new-midi1-revoice-not-submitted-output', protocol: 'midi1-independent-melodic-channels',
     channels: [...channels], program, bendRangeSemitones: bendRange, capacity: channels.length, capacityPolicy: 'reject-no-steal-no-merge', peakVoices, begins, updates, ends, losses };
   const manifest = { schema: 'procgen-physical-take-midi/v1', takeId: revoice.takeId, takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash,
+    epochSelection: { epoch: epoch.epoch, ordinal: selection.choices.indexOf(epoch) + 1, available: selection.choices.length, selectedIntents: sourceOrdinals.length, excludedIntents: intents.length - sourceOrdinals.length, boundaryPolicy: 'retained-closed-no-crossing-notes' },
     sourceComplete: revoice.sourceComplete === true, noteBoundaries: 'retained-closed-no-derived-pickups-or-releases', timing: timed.report, lowering };
   const payload = new TextEncoder().encode(JSON.stringify(manifest)); if (payload.length > 4096) throw new RangeError('Physical MIDI manifest exceeds4KiB.');
   const rows = [{ tick: 0, data: smfTempo(timed.bpm) }, { tick: 0, data: [0xff, 1, ...smfVariable(payload.length), ...payload] }];

@@ -365,7 +365,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const physicalMidiChoices = node('fieldset'), physicalMidiProgram = node('input'); physicalMidiChoices.append(node('legend', 'Physical take MIDI1 revoice'));
   physicalMidiProgram.type = 'number'; physicalMidiProgram.min = '1'; physicalMidiProgram.max = '128'; physicalMidiProgram.step = '1'; physicalMidiProgram.value = '1'; physicalMidiProgram.setAttribute('aria-label', 'Physical take MIDI program');
   const physicalMidiLabel = node('label', 'New target program (1–128) '); physicalMidiLabel.append(physicalMidiProgram);
-  physicalMidiChoices.append(physicalMidiLabel, node('p', 'Revoice the selected finished take using captured physical timing and one melodic program. Uses up to fifteen independent channels; timbre and expression resolution change. Requires covered, closed note boundaries and a single clock epoch. The file includes a lowering report.'));
+  physicalMidiChoices.append(physicalMidiLabel, node('p', 'Revoice the selected finished take using captured physical timing and one melodic program. Uses up to fifteen independent channels; timbre and expression resolution change. Select one captured clock epoch with covered, closed note boundaries. Notes crossing an epoch cut refuse export. The file includes a lowering report.'));
   const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export'); exportDesk.hidden = true;
   const exportSummary = node('summary', 'No prepared file');
   const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
@@ -397,12 +397,12 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     owner.page = Math.max(0, Math.min(owner.page, Math.max(0, Math.ceil(matches.length / 16) - 1)));
     const first = owner.page * 16; exportRouteList.replaceChildren();
     for (const route of matches.slice(first, first + 16)) {
-      const epoch = route.connectionEpoch == null ? ' · connection unrecorded' : ' · connection ' + route.connectionEpoch, revision = route.routeRevision == null ? '' : ' · route ' + route.routeRevision;
-      const control = node('button', 'Prepare output ' + route.ordinal + ' · ' + (route.outputId || 'Unassigned output').slice(0, 80) + epoch + revision); control.type = 'button'; control.title = (route.outputId || 'Unassigned output') + epoch + revision;
+      const epoch = owner.scope === 'clock-epoch' ? '' : route.connectionEpoch == null ? ' · connection unrecorded' : ' · connection ' + route.connectionEpoch, revision = route.routeRevision == null ? '' : ' · route ' + route.routeRevision;
+      const control = node('button', (owner.scope === 'clock-epoch' ? 'Prepare clock epoch ' : 'Prepare output ') + route.ordinal + ' · ' + (route.outputId || 'Unassigned output').slice(0, 80) + epoch + revision); control.type = 'button'; control.title = (route.outputId || 'Unassigned output') + epoch + revision;
       control.addEventListener('click', () => { if (exportRouteChoice === owner && control.isConnected && validateExportRouteChoice()) finishExportRouteChoice(owner, null, owner.selection === 'route-index' ? route.index : route.outputId); });
       exportRouteList.append(control);
     }
-    exportRoutePage.textContent = matches.length ? `Outputs ${first + 1}–${Math.min(first + 16, matches.length)} of ${matches.length}` : 'No matching recorded outputs';
+    exportRoutePage.textContent = matches.length ? `${owner.scope === 'clock-epoch' ? 'Clock epochs' : 'Outputs'} ${first + 1}–${Math.min(first + 16, matches.length)} of ${matches.length}` : owner.scope === 'clock-epoch' ? 'No matching captured clock epochs' : 'No matching recorded outputs';
     exportRoutePrevious.disabled = owner.page === 0; exportRouteNext.disabled = first + 16 >= matches.length;
   };
   const exportRoutePrevious = button('Previous recorded outputs', () => { if (exportRouteChoice) { exportRouteChoice.page--; paintExportRoutes(); } });
@@ -1314,17 +1314,23 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       exportDesk.open = true; exportDesk.scrollIntoView?.({ block: 'nearest' });
       (savePrepared.disabled ? retryExport : savePrepared).focus?.({ preventScroll: true });
     },
-    chooseMidiExportRoute(routes, { evidence, signal, isCurrent, selection = 'output-id' }) {
+    chooseMidiExportRoute(routes, { evidence, signal, isCurrent, selection = 'output-id', scope = 'output' }) {
       signal?.throwIfAborted();
       if (disposed || !isCurrent()) return Promise.reject(new Error('The recorded MIDI source is no longer available.'));
       if (!Array.isArray(routes) || routes.length < 2 || routes.length > 4096) return Promise.reject(new Error('A bounded recorded-output choice is required.'));
       finishExportRouteChoice(exportRouteChoice, new Error('A newer MIDI output selection replaced this request.'));
       return new Promise((resolve, reject) => {
-        const owner = { resolve, reject, signal, isCurrent, selection, page: 0, routes: routes.map((route, index) => ({ ...route, ordinal: index + 1, search: (String(route.outputId) + ' ' + (route.connectionEpoch ?? '') + ' ' + (route.routeRevision ?? '')).toLowerCase() })) };
+        const owner = { resolve, reject, signal, isCurrent, selection, scope, page: 0, routes: routes.map((route, index) => ({ ...route, ordinal: index + 1, search: (String(route.outputId) + ' ' + (route.connectionEpoch ?? '') + ' ' + (route.routeRevision ?? '')).toLowerCase() })) };
         owner.abort = () => finishExportRouteChoice(owner, signal.reason || new Error('MIDI export canceled.'));
         exportRouteChoice = owner; signal?.addEventListener('abort', owner.abort, { once: true });
         exportRouteFilter.value = ''; exportRouteField.hidden = false; exportDesk.hidden = false; exportDesk.open = true;
-        exportRouteHelp.textContent = (evidence === 'api-accepted' ? 'Recorded output accepted by MIDI APIs.' : 'Authored MIDI intent; no receiver submission is claimed.') +
+        exportRouteLegend.textContent = scope === 'clock-epoch' ? 'Choose captured clock epoch' : 'Choose recorded output';
+        exportRouteCancel.textContent = scope === 'clock-epoch' ? 'Cancel clock epoch choice' : 'Cancel output choice';
+        exportRoutePrevious.textContent = scope === 'clock-epoch' ? 'Previous clock epochs' : 'Previous recorded outputs';
+        exportRouteNext.textContent = scope === 'clock-epoch' ? 'Next clock epochs' : 'Next recorded outputs';
+        exportRouteFilter.setAttribute('aria-label', scope === 'clock-epoch' ? 'Find captured clock epoch' : 'Find recorded MIDI output');
+        exportRouteFilter.placeholder = scope === 'clock-epoch' ? 'Find captured clock epoch' : 'Find recorded MIDI output';
+        exportRouteHelp.textContent = scope === 'clock-epoch' ? 'One file uses one captured score origin. The worker checks retained note boundaries; crossing notes refuse the cut instead of creating pickups or releases.' : (evidence === 'api-accepted' ? 'Recorded output accepted by MIDI APIs.' : 'Authored MIDI intent; no receiver submission is claimed.') +
           ' Files keep known output connections and route revisions separate. Unrecorded connection identity remains unverified. Import each file onto its corresponding output; original channel numbers are retained.';
         paintExportRoutes(); exportRouteFilter.focus({ preventScroll: true });
       });

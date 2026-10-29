@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Select a captured physical clock epoch per MIDI file, verify preserved clock history and refuse note lifetimes crossing its boundaries.
+
 - Revoice finished physical takes to MIDI1 from captured timeline segments, preserving independent voices and note boundaries while reporting target timbre and expression losses.
 
 - Export original authored UMP Clips per output connection with explicit tempo authority, optional SHA-bound attribution manifests, and safe worker-only import inspection.
