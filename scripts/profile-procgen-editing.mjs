@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 
 const base = process.env.LEMMINGS_E2E_BASE_URL || 'http://127.0.0.1:8189';
 const browser = await chromium.launch({ headless: true, executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined });
-const sourceFiles = ['scripts/profile-procgen-editing.mjs', 'js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/ProcgenWorkstationView.js', 'js/app/procgen/workstation/ProcgenWorkstationProject.js', 'js/app/procgen/workstation/LaneNavigationMetadata.js', 'js/app/procgen/workstation/LaneNavigator.js', 'js/app/procgen/workstation/LaneMixState.js', 'js/app/procgen/workstation/ProcgenStartupIntent.js', 'js/app/procgen/workstation/ProcgenPreferenceWriter.js', 'js/app/procgen/workstation/ProcgenPreferencePages.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/resources/BackgroundJobKernels.js', 'js/app/resources/BackgroundSnapshotPages.js', 'js/app/resources/BackgroundJobService.js'];
+const sourceFiles = ['scripts/profile-procgen-editing.mjs', 'js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/ProcgenWorkstationView.js', 'js/app/procgen/workstation/ProcgenWorkstationProject.js', 'js/app/procgen/workstation/LaneNavigationMetadata.js', 'js/app/procgen/workstation/LaneNavigator.js', 'js/app/procgen/workstation/LaneNavigatorGroupsView.js', 'js/app/procgen/workstation/LaneMixState.js', 'js/app/procgen/workstation/ProcgenStartupIntent.js', 'js/app/procgen/workstation/ProcgenPreferenceWriter.js', 'js/app/procgen/workstation/ProcgenPreferencePages.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/resources/BackgroundJobKernels.js', 'js/app/resources/BackgroundSnapshotPages.js', 'js/app/resources/BackgroundJobService.js'];
 const report = { schema: 'procgen-edit-cost/v2', sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   sourceHashes: Object.fromEntries(sourceFiles.map(file => [file, createHash('sha256').update(readFileSync(file)).digest('hex')])),
   environment: { cpu: cpus()[0]?.model || null, node: process.version, browser: browser.version(), date: new Date().toISOString(), isolation: 'Shared local development host; not a dedicated reference-machine release gate.' }, cases: [], errors: [] };
@@ -26,8 +26,9 @@ try {
         const pattern = createProcgenPattern(lane.family, lane.role); pattern.length = 64; pattern.steps = Array.from({ length: 64 }, (_, index) => ({ ...pattern.steps[index % 16] }));
         studio.dispatch({ type: 'procgen/lane', laneId: lane.id, patch: { mode: 'pattern', patternPurpose: 'Performance harness: complementary control input', patterns: Array.from({ length: 4 }, () => pattern) } });
       }
-      const samples = { step: [], gain: [], midiCapture: [], launchAcknowledgment: [], schedulingLateness: [] }, longTasks = [];
-      const observer = new PerformanceObserver(list => longTasks.push(...list.getEntries().map(entry => entry.duration)));
+      const samples = { step: [], gain: [], midiCapture: [], launchAcknowledgment: [], schedulingLateness: [] }, observedTasks = [], phases = {}; let droppedTasks = 0;
+      const retainTasks = entries => { for (const entry of entries) { if (observedTasks.length < 4096) observedTasks.push({ startTime: entry.startTime, duration: entry.duration }); else droppedTasks++; } };
+      const observer = new PerformanceObserver(list => retainTasks(list.getEntries()));
       if (PerformanceObserver.supportedEntryTypes.includes('longtask')) observer.observe({ type: 'longtask', buffered: false });
       const heapBefore = performance.memory?.usedJSHeapSize ?? null, indexesBefore = procgenIndexDiagnostics();
       const physical = () => JSON.stringify({ tick: runtime.world.tickIndex, generation: runtime.world.generation, terrain: runtime.world.terrainRevision,
@@ -36,6 +37,7 @@ try {
       if (studio.handlers.record(true) !== true) throw new Error('The production recording owner did not arm.');
       const recordedBefore = studio.ports.getState().recordedEvents; let acceptedPackets = 0;
       const start = performance.now();
+      phases.trafficStart = start;
       for (let index = 0; index < 480; index++) {
         const deadline = start + index * 1000 / 120; await new Promise(resolve => setTimeout(resolve, Math.max(0, deadline - performance.now())));
         samples.schedulingLateness.push(Math.max(0, performance.now() - deadline));
@@ -45,23 +47,29 @@ try {
           ['midiCapture', () => { acceptedPackets += Number(studio.ports.receiveMidi([0x90, 60 + index % 12, 80], performance.now()) === true); acceptedPackets += Number(studio.ports.receiveMidi([0x80, 60 + index % 12, 0], performance.now() + 1) === true); }]
         ]) { const before = performance.now(); operation(); samples[kind].push(performance.now() - before); }
       }
-      const trafficElapsedMs = performance.now() - start;
+      const trafficElapsedMs = performance.now() - start; phases.trafficEnd = start + trafficElapsedMs;
       for (let index = 0; index < 64; index++) {
         const launches = studio.getProject().procgen.lanes.map(lane => ({ laneId: lane.id, slot: index % 4 })), before = performance.now();
         studio.dispatch({ type: 'procgen/launchedBatch', launches }); samples.launchAcknowledgment.push(performance.now() - before);
       }
+      phases.launchEnd = performance.now();
       const recordedAfter = studio.ports.getState().recordedEvents; studio.handlers.record(false);
       await new Promise(resolve => setTimeout(resolve, 300));
       const persistenceStarted = performance.now(), persistenceDeadline = persistenceStarted + 120000;
       while (studio.getPreferenceState()?.pendingRevision != null && performance.now() < persistenceDeadline) await new Promise(resolve => setTimeout(resolve, 20));
-      observer.disconnect();
+      phases.persistenceEnd = performance.now(); retainTasks(observer.takeRecords()); observer.disconnect();
+      const regions = [{ name: 'setup-overlap', start: 0, end: phases.trafficStart }, { name: 'traffic', start: phases.trafficStart, end: phases.trafficEnd },
+        { name: 'launch-burst', start: phases.trafficEnd, end: phases.launchEnd }, { name: 'preference-settle', start: phases.launchEnd, end: phases.persistenceEnd }];
+      const mainThreadTasks = observedTasks.map(task => ({ ...task, phases: regions.filter(region => task.startTime < region.end && task.startTime + task.duration > region.start).map(region => region.name) }));
       if (acceptedPackets !== 960 || recordedAfter - recordedBefore < 960) throw new Error('The production input/recording workload was incomplete.');
       if (physical() !== physicalBefore || studio.getPlaybackState().enabled) throw new Error('The edit benchmark changed physical state or activated output.');
       const summary = values => { values.sort((a, b) => a - b); return Object.fromEntries([['p50', .5], ['p95', .95], ['p99', .99]].map(([name, fraction]) => [name, values[Math.floor((values.length - 1) * fraction)] ?? null])); };
       const preferences = studio.getPreferenceState(), preferenceCurrent = preferences?.pendingRevision == null && preferences?.durableRevision === studio.getDocumentState().editRevision;
       return { laneCount, patternLength: 64, controllerTargetHz: 120, achievedIterationHz: 480000 / trafficElapsedMs, trafficElapsedMs,
         persistenceWaitMs: performance.now() - persistenceStarted, persistenceDeadlineMs: 120000, samples: Object.fromEntries(Object.entries(samples).map(([key, values]) => [key, { count: values.length, ...summary(values) }])),
-        longTasks, heapBefore, heapAfter: performance.memory?.usedJSHeapSize ?? null, indexesBefore, indexesAfter: procgenIndexDiagnostics(), preferences, preferenceCurrent,
+        longTasks: observedTasks.map(task => task.duration), mainThreadTasks: { observerMinimumMs: 50, capacity: 4096, dropped: droppedTasks, phases, tasks: mainThreadTasks,
+          trafficOnly: mainThreadTasks.filter(task => task.phases.length === 1 && task.phases[0] === 'traffic'), scope: 'Native Long Task observations cover tasks of at least50ms; overlapping phases are retained. Shorter asynchronous tasks are not certified below16ms.' },
+        heapBefore, heapAfter: performance.memory?.usedJSHeapSize ?? null, indexesBefore, indexesAfter: procgenIndexDiagnostics(), preferences, preferenceCurrent,
         workload: { acceptedPackets, recordedDelta: recordedAfter - recordedBefore, physicalUnchanged: true, outputEnabled: false },
         mixBefore, mixAfter: studio.getPhysicalOutputDiagnostics()?.laneMix, navigationBefore, navigationAfter: studio.getNavigationDiagnostics(),
         taskBudgetMs: 16, tasksOverBudget: Object.fromEntries(Object.entries(samples).filter(([key]) => key !== 'schedulingLateness').map(([key, values]) => [key, values.filter(value => value > 16).length])),

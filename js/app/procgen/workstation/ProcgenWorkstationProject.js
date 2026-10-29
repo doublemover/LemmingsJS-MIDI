@@ -183,17 +183,16 @@ const reduceCanonicalProcgenProjectValue = (project, action) => {
   if (action.type === 'procgen/launchedBatch') {
     if (!Array.isArray(action.launches) || !action.launches.length) return project;
     const byLane = new Map(action.launches.map(launch => [launch.laneId, launch.slot]));
-    let changed = false;
-    const updated = lanes.map(lane => {
-      const slot = byLane.get(lane.id);
+    let updated = null; const indices = procgenLaneIndex(lanes);
+    for (const [id, slot] of byLane) {
+      const index = indices.get(id); if (index == null) continue; const lane = lanes[index];
       if (!Number.isInteger(slot) || slot < 0 || slot >= lane.patterns.length ||
-          lane.activeSlot === slot && lane.queuedSlot == null) return lane;
-      changed = true;
+          lane.activeSlot === slot && lane.queuedSlot == null) continue;
       if (!Number.isSafeInteger((lane.revision || 0) + 1)) throw new Error('Lane revision exhausted.');
-      return { ...lane, revision: (lane.revision || 0) + 1, activeSlot: slot, queuedSlot: null };
-    });
-    if (changed) inheritProcgenLaneIndex(lanes, updated);
-    return changed ? { ...project, procgen: { ...procgen, lanes: updated } } : project;
+      updated ||= lanes.slice(); updated[index] = { ...lane, revision: (lane.revision || 0) + 1, activeSlot: slot, queuedSlot: null };
+    }
+    if (updated) inheritProcgenLaneIndex(lanes, updated);
+    return updated ? { ...project, procgen: { ...procgen, lanes: updated } } : project;
   }
   const index = procgenLaneIndex(lanes).get(action.laneId);
   if (index == null) return project;

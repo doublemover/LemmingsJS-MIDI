@@ -68,7 +68,11 @@ test('world selection has one explicit panel and cannot consume the graphical ed
 test('dock preferences survive an explicit new seed without restoring the previous music or physical source', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(60000); await ready(page); await inspectLane(page); const resize = page.getByRole('separator', { name: 'Resize instrument dock' }); await resize.focus(); await resize.press('ArrowUp');
   const height = Number(await resize.getAttribute('aria-valuenow'));
-  await page.waitForFunction(height => Object.keys(localStorage).some(key => { try { const value = JSON.parse(localStorage.getItem(key)); return value?.ui?.workspaceMode === 'inspect' && value.ui.dockHeight === height; } catch { return false; } }), height);
+  await expect.poll(() => page.evaluate(async () => {
+    const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js'), storage = createProcgenSessionStorage(window.indexedDB);
+    try { const value = await storage.loadPreferences({ includeProject: false }); return value ? { mode: value.ui.workspaceMode, height: value.ui.dockHeight } : null; }
+    finally { storage.close(); }
+  })).toEqual({ mode: 'inspect', height });
   await page.goto('/procgen.html?e2e=1&recipe=1&seed=43&lanes=8&output=midi'); await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain); await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
   await expect(page.locator('#procgenDeepDock')).toBeVisible(); await expect(resize).toHaveAttribute('aria-valuenow', String(height)); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.seed)).toBe(43); expect(await page.evaluate(() => window.__PROCGEN_STUDIO__.getProject().procgen.lanes.length)).toBe(8);
 });

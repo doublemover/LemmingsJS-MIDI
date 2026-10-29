@@ -8775,3 +8775,31 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Full336CI has passed provenance, static gates and desktop boundaries and is
   running workstation smoke;337 requires its own run. Full334 remains the latest
   completely verified CI checkpoint.
+
+### Continuation 338 — bounded search/summary and phased workload evidence
+
+- Cache one immutable search page and unchanged group presentation state.
+  Maintain indexed solo membership through current lane deltas; summarize only
+  solo/armed entries while preserving physical-order jump priority. Sparse launch
+  acknowledgments use lane ID lookup, retain unrelated identities and allocate
+  their lane array only on an actual change.186 Node cases pass.
+- Fourteen distinct native desktop journeys pass across navigation and dock
+  workflows; the existing optional ten-minute benchmark remains explicitly skipped.
+  Update the old dock persistence fixture to await the actual committed IndexedDB
+  preference header before navigating. This repairs the sole336CI browser failure
+  (134workstation and24desktop cases had passed; Node coverage did not run).
+- The full actual8/128/1024 profile again saves/reloads every score and records
+  all960 input packets per size. Search/index build once per size; indexed summary
+  visits1920members at every size rather than scanning the entire ensemble.
+  All individual edit/launch samples remain within16ms, and actual iteration rate
+  is about120Hz. Launch p99 is2.0/3.9/6.5ms; scheduling lateness p99 remains
+  3.17/14.33/80.80ms. The1024cold/coalesced save takes52.85s after editing and
+  reload10.026s. These timings come from a shared development host.
+- Retain bounded native Long Task timestamps and overlapping workload regions.
+  No observed task of at least50ms lies entirely inside the traffic phase; setup
+  and the deliberately unyielded64-launch burst overlap the observed tasks. This
+  does not certify all asynchronous work below16ms or establish hardware timing.
+- Review #985 against its original acceptance matrix when full338CI completes;
+  close reasonably if that run is clean, preserving cold-save/heap/timing limits.
+  Then continue independent backlog work; #1193cross-tab performance ownership
+  and #1162combined memory qualification remain separate open requirements.

@@ -7,6 +7,7 @@ const cleanName = value => String(value || '').trim().slice(0, 64);
 export function createLaneNavigationMetadata({ getState = () => ({}), setState = () => {} } = {}) {
   let source = null, lanes = [], indices = new Map(), labels = new Map(), groupsByLane = new Map(), identity, initialized = false, disposed = false, revision = 0, groupSerial = 0;
   let cacheVisiblePositions = new Map(), cacheOrderPositions = new Map();
+  const soloLaneIds = new Set();
   const stats = { fullBuilds: 0, incrementalUpdates: 0, rowVisits: 0, labelUpdates: 0 };
   let value = { version: 1, order: [], groups: [], collapsed: [], pinned: [] }, serialized = JSON.stringify(value), undo = [], redo = [], retainedBytes = 0, dropped = 0, cache = null;
   const normalize = data => {
@@ -43,6 +44,7 @@ export function createLaneNavigationMetadata({ getState = () => ({}), setState =
         for (const id of change.laneIds) {
           const index = indices.get(id); if (index == null) continue; stats.rowVisits++;
           const previous = lanes[index], lane = next[index]; lanes[index] = lane;
+          if (lane.solo) soloLaneIds.add(id); else soloLaneIds.delete(id);
           if (previous.name !== lane.name || previous.role !== lane.role) { labels.set(id, `${lane.name || ''} ${lane.role || ''} ${lane.id}`.toLocaleLowerCase()); labelsChanged = true; stats.labelUpdates++; }
           if (cache) {
             const visible = cacheVisiblePositions.get(id), ordered = cacheOrderPositions.get(id);
@@ -53,12 +55,14 @@ export function createLaneNavigationMetadata({ getState = () => ({}), setState =
       }
       if (next.length > 1024 || new Set(next.map(lane => lane.id)).size !== next.length) throw new Error('Invalid admitted lane identities.');
       const replacement = initialized && identity !== documentIdentity; source = next; lanes = next.slice(); indices = new Map(lanes.map((lane, index) => [lane.id, index])); stats.fullBuilds++; stats.rowVisits += lanes.length;
+      soloLaneIds.clear(); for (const lane of lanes) if (lane.solo) soloLaneIds.add(lane.id);
       labels = new Map(lanes.map(lane => [lane.id, `${lane.name || ''} ${lane.role || ''} ${lane.id}`.toLocaleLowerCase()]));
       if (replacement) { undo = []; redo = []; retainedBytes = 0; dropped = 0; groupSerial = 0; }
       const incoming = getState(); publish(replacement ? incoming !== value ? incoming : {} : initialized ? value : incoming); identity = documentIdentity; initialized = true; return revision;
     },
     get revision() { return revision; },
     allLanes: () => lanes,
+    soloLaneIds: () => soloLaneIds,
     diagnostics: () => ({ ...stats }),
     getState() { return { ...value, groups: value.groups.map(group => ({ ...group, laneIds: [...group.laneIds] })), order: [...value.order], collapsed: [...value.collapsed], pinned: [...value.pinned], undoCount: undo.length, redoCount: redo.length, retainedBytes, dropped }; },
     orderedLanes() { return value.order.map(id => lanes[indices.get(id)]); },
@@ -89,6 +93,6 @@ export function createLaneNavigationMetadata({ getState = () => ({}), setState =
     reveal(id) { const group = groupsByLane.get(id); return group && value.collapsed.includes(group) ? edit(draft => { draft.collapsed = draft.collapsed.filter(value => value !== group); }) : false; },
     undo() { if (disposed || !undo.length) return false; redo.push(serialized); publish(JSON.parse(undo.pop())); trim(); return true; },
     redo() { if (disposed || !redo.length) return false; undo.push(serialized); publish(JSON.parse(redo.pop())); trim(); return true; },
-    dispose() { disposed = true; source = null; lanes = []; indices.clear(); labels.clear(); groupsByLane.clear(); cacheVisiblePositions.clear(); cacheOrderPositions.clear(); undo = []; redo = []; cache = null; retainedBytes = 0; value = { version: 1, order: [], groups: [], collapsed: [], pinned: [] }; serialized = ''; }
+    dispose() { disposed = true; source = null; lanes = []; indices.clear(); labels.clear(); groupsByLane.clear(); soloLaneIds.clear(); cacheVisiblePositions.clear(); cacheOrderPositions.clear(); undo = []; redo = []; cache = null; retainedBytes = 0; value = { version: 1, order: [], groups: [], collapsed: [], pinned: [] }; serialized = ''; }
   };
 }

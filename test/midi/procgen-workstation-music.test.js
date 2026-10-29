@@ -246,6 +246,12 @@ describe('Procgen workstation authoritative pattern clock', function() {
     expect(project.procgen.lanes.every(lane => lane.activeSlot === 1 && lane.queuedSlot == null)).to.equal(true);
     expect(reduceMidiProject(project, { type: 'procgen/launchedBatch', launches: batches[0] })).to.equal(project);
   });
+  it('keeps sparse launch acknowledgments exact with duplicate, unknown, invalid and no-op targets', () => {
+    const project = sanitizeMidiProject(createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: 128 }, (_, index) => createProcgenLane(index)) }));
+    const next = reduceMidiProject(project, { type: 'procgen/launchedBatch', launches: [{ laneId: 'foreign', slot: 1 }, { laneId: 'lane-1', slot: 1 }, { laneId: 'lane-1', slot: 2 }, { laneId: 'lane-2', slot: .5 }] });
+    expect(next.procgen.lanes[0].activeSlot).to.equal(2); expect(next.procgen.lanes[1]).to.equal(project.procgen.lanes[1]); expect(next.procgen.lanes.at(-1)).to.equal(project.procgen.lanes.at(-1));
+    expect(reduceMidiProject(next, { type: 'procgen/launchedBatch', launches: [{ laneId: 'lane-1', slot: 2 }, { laneId: 'lane-2', slot: -1 }, { laneId: 'foreign', slot: 0 }] })).to.equal(next);
+  });
 
   it('keeps physical play outside the complementary pattern clock and never event-advances cells', function() {
     for (const mode of ['physical', 'pattern']) {

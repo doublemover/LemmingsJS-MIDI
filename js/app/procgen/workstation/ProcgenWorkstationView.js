@@ -308,8 +308,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     const source = getProject().procgen.lanes, identity = getDocumentIdentity();
     if (navigationInitialized && navigationIdentity !== identity) { state.laneQuery = ''; laneQueryAnchor = null; }
     navigationIdentity = identity; navigationInitialized = true; navigationMetadata.sync(source, identity);
-    const next = navigationMetadata.visible(state.laneQuery), changed = !navigationProjection || navigationProjection.laneIndices.join(',') !== next.laneIndices.join(',');
-    navigationProjection = next; navigator.sync(next.lanes, identity, { allLanes: navigationMetadata.allLanes() }); return changed;
+    const next = navigationMetadata.visible(state.laneQuery), changed = !navigationProjection || navigationProjection.laneIndices !== next.laneIndices && navigationProjection.laneIndices.join(',') !== next.laneIndices.join(',');
+    navigationProjection = next; navigator.sync(next.lanes, identity, { allLanes: navigationMetadata.allLanes(), soloLaneIds: navigationMetadata.soloLaneIds() }); return changed;
   }
   function changeLaneQuery(value) {
     if (disposed) return true;
@@ -1227,7 +1227,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } });
   const api = { render, patchStep, patchProject, layout, dock, revealLane, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     navigationDiagnostics() { const organization = navigationMetadata.getState(); return { ...navigator.summary(state.laneId, getArmedLaneIds()), mountedHeads: laneMixControls.size, mountedPans: lanePanControls.size, mountedDisplays: laneDisplays.size,
-      retainedDrafts: retainedLaneDrafts.size, organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped, projection: navigationMetadata.diagnostics() } }; },
+      retainedDrafts: retainedLaneDrafts.size, navigation: navigator.diagnostics(), organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped, projection: navigationMetadata.diagnostics() } }; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));

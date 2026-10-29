@@ -4,13 +4,16 @@ const integer = value => Number.isFinite(value) ? Math.trunc(value) : 0;
 export function createLaneNavigator({ firstLane = 0 } = {}) {
   let lanes = [], indices = new Map(), names = [], identity, initialized = false, disposed = false, anchor = null, first = Math.max(0, integer(firstLane)), count = 8;
   let all = [], allIndices = new Map();
+  let indexedSoloIds = null, searchCache = null;
+  const stats = { syncBuilds: 0, searchBuilds: 0, searchHits: 0, summaryVisits: 0 };
   let remainder = 0, wheelTime = null;
   const locate = index => { first = Math.max(0, Math.min(Math.max(0, lanes.length - count), integer(index))); anchor = lanes[first]?.id ?? null; return first; };
   return {
-    sync(next, documentIdentity, { allLanes = next } = {}) {
+    sync(next, documentIdentity, { allLanes = next, soloLaneIds = null } = {}) {
       if (disposed) return first;
       if (next.length > MAX_LANES || allLanes.length > MAX_LANES) throw new RangeError('Lane navigator exceeds the admitted lane count.');
-      if (initialized && next === lanes && all === allLanes && identity === documentIdentity) return first;
+      if (soloLaneIds != null && (!(soloLaneIds instanceof Set) || soloLaneIds.size > MAX_LANES)) throw new TypeError('Invalid indexed lane solos.');
+      if (initialized && next === lanes && all === allLanes && identity === documentIdentity) { indexedSoloIds = soloLaneIds; return first; }
       const changedDocument = initialized && identity !== documentIdentity, previous = lanes, previousFirst = first;
       const nextIndices = new Map(next.map((lane, index) => [lane.id, index]));
       if (nextIndices.size !== next.length) throw new Error('Lane navigator requires unique lane IDs.');
@@ -23,6 +26,7 @@ export function createLaneNavigator({ firstLane = 0 } = {}) {
         }
       }
       lanes = next; all = allLanes; allIndices = new Map(all.map((lane, index) => [lane.id, index])); names = all.map(lane => `${lane.name || ''} ${lane.role || ''} ${lane.id}`.toLocaleLowerCase()); identity = documentIdentity; initialized = true;
+      indexedSoloIds = soloLaneIds; searchCache = null; stats.syncBuilds++;
       return locate(anchor && indices.has(anchor) ? indices.get(anchor) : first);
     },
     window(visibleCount) { if (disposed) return first; count = Math.max(1, Math.min(8, integer(visibleCount))); return locate(first); },
@@ -39,21 +43,28 @@ export function createLaneNavigator({ firstLane = 0 } = {}) {
       remainder %= step; const old = first; locate(first + rows); if (first === old) remainder = 0; return first;
     },
     search(query = '', page = 0) {
-      const terms = String(query).slice(0, 256).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean), matches = [];
+      const text = String(query).slice(0, 256).trim().toLocaleLowerCase(), requestedPage = Math.max(0, integer(page));
+      if (searchCache?.query === text && searchCache.requestedPage === requestedPage) { stats.searchHits++; return searchCache.value; }
+      const terms = text.split(/\s+/).filter(Boolean), matches = []; stats.searchBuilds++;
       if (!disposed) for (let index = 0; index < all.length; index++) if (terms.every(term => names[index].includes(term))) matches.push(index);
       const offset = Math.max(0, Math.min(Math.max(0, Math.ceil(matches.length / PAGE_SIZE) - 1), integer(page))) * PAGE_SIZE;
-      return { total: matches.length, page: offset / PAGE_SIZE, pageSize: PAGE_SIZE, items: matches.slice(offset, offset + PAGE_SIZE).map(index => ({ id: all[index].id, name: String(all[index].name || ''), ordinal: index + 1 })) };
+      const value = Object.freeze({ total: matches.length, page: offset / PAGE_SIZE, pageSize: PAGE_SIZE, items: Object.freeze(matches.slice(offset, offset + PAGE_SIZE).map(index => Object.freeze({ id: all[index].id, name: String(all[index].name || ''), ordinal: index + 1 }))) });
+      searchCache = { query: text, requestedPage, value }; return value;
     },
     summary(selectedId, armedIds = []) {
       const visible = new Set(lanes.slice(first, first + count).map(lane => lane.id)), armed = new Set(armedIds), selected = allIndices.has(selectedId) && !visible.has(selectedId) ? selectedId : null;
       let soloCount = 0, armedCount = 0, soloId = null, armedId = null;
-      for (const lane of all) if (!visible.has(lane.id)) {
-        if (lane.solo) { soloCount++; soloId ??= lane.id; }
-        if (armed.has(lane.id)) { armedCount++; armedId ??= lane.id; }
-      }
+      if (indexedSoloIds) {
+        let soloIndex = Infinity, armedIndex = Infinity;
+        for (const id of indexedSoloIds) { stats.summaryVisits++; const index = allIndices.get(id); if (index == null || visible.has(id)) continue; soloCount++; if (index < soloIndex) { soloIndex = index; soloId = id; } }
+        for (const id of armed) { stats.summaryVisits++; const index = allIndices.get(id); if (index == null || visible.has(id)) continue; armedCount++; if (index < armedIndex) { armedIndex = index; armedId = id; } }
+      } else for (const lane of all) { stats.summaryVisits++; if (!visible.has(lane.id)) {
+        if (lane.solo) { soloCount++; soloId ??= lane.id; } if (armed.has(lane.id)) { armedCount++; armedId ??= lane.id; }
+      } }
       return { selected, soloCount, armedCount, target: selected || armedId || soloId, firstVisibleId: anchor, firstLane: first, visibleCount: Math.min(count, lanes.length), visibleTotal: lanes.length, total: all.length };
     },
-    dispose() { disposed = true; lanes = []; all = []; indices.clear(); allIndices.clear(); names = []; anchor = null; remainder = 0; wheelTime = null; }
+    diagnostics: () => ({ ...stats }),
+    dispose() { disposed = true; lanes = []; all = []; indices.clear(); allIndices.clear(); indexedSoloIds = null; searchCache = null; names = []; anchor = null; remainder = 0; wheelTime = null; }
   };
 }
 

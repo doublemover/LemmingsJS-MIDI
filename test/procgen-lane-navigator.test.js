@@ -5,6 +5,23 @@ import { createLaneNavigator, createLaneNavigatorView } from '../js/app/procgen/
 const lanes = count => Array.from({ length: count }, (_, index) => ({ id: 'lane-' + (index + 1), name: index === 63 ? 'Duplicate name' : 'Lane ' + (index + 1), role: 'melody', solo: false }));
 
 describe('stable bounded lane navigation', () => {
+  it('caches bounded detached search pages and invalidates names, IDs and document replacements', () => {
+    const original = lanes(128), navigator = createLaneNavigator(); navigator.sync(original, 1);
+    const first = navigator.search('', 0); expect(navigator.search('', 0)).to.equal(first); expect(first.items).to.have.length(16);
+    expect(() => { first.items[0].name = 'Poisoned'; }).to.throw(TypeError); expect(navigator.search('', 1).page).to.equal(1);
+    const renamed = original.map((lane, index) => index ? lane : { ...lane, name: 'Current name' }); navigator.sync(renamed, 1);
+    expect(navigator.search('current name').items[0]).to.include({ id: 'lane-1', name: 'Current name', ordinal: 1 });
+    navigator.sync([renamed[2]], 2); expect(navigator.search().items.map(lane => lane.id)).to.deep.equal(['lane-3']); navigator.dispose(); expect(navigator.search().total).to.equal(0);
+  });
+  it('uses indexed solo and armed members with source-order priority independent of toggle order', () => {
+    const source = lanes(1024), solos = new Set(['lane-1000', 'lane-900', 'foreign']), navigator = createLaneNavigator();
+    navigator.sync(source, 1, { soloLaneIds: solos });
+    expect(navigator.summary('lane-1', ['lane-998', 'lane-901', 'lane-1', 'foreign', 'lane-998'])).to.include({ soloCount: 2, armedCount: 2, target: 'lane-901' });
+    expect(navigator.summary('lane-1').target).to.equal('lane-900'); expect(navigator.diagnostics().summaryVisits).to.equal(10);
+    solos.delete('lane-900'); navigator.sync(source, 1, { soloLaneIds: solos }); expect(navigator.summary('lane-1').target).to.equal('lane-1000');
+    expect(() => navigator.sync(source, 1, { soloLaneIds: [] })).to.throw('indexed'); expect(navigator.summary('lane-1').soloCount).to.equal(1);
+    navigator.dispose(); expect(navigator.summary('lane-1')).to.include({ soloCount: 0, armedCount: 0 });
+  });
   for (const count of [1, 8, 64, 1024]) it(`searches and pages ${count} lanes without editing lane data`, () => {
     const source = lanes(count), original = JSON.stringify(source), navigator = createLaneNavigator(); navigator.sync(source, 'document'); navigator.window(8);
     expect(navigator.search().items.length).to.be.at.most(16); expect(navigator.search().total).to.equal(count);
