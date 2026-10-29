@@ -9,16 +9,20 @@ import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js'
 import { validateProcgenSession } from './ProcgenSessionStorage.js';
 import { cloneJournalData } from './CausalJournalCanonical.js';
 import { hashSurveyValue } from '../survey/ProcgenSurveyCanonical.js';
+import { validateSceneRecipeShareIdentity, sceneRecipeShareIdentity } from './ProcgenSceneRecipeShare.js';
+import { materializePerformanceSceneProject } from './PerformanceSceneProject.js';
 
 const RECIPE_KEYS = ['recipe', 'seed', 'lanes', 'speed', 'pack', 'laneHeight', 'preset', 'musicPreset', 'musicMode', 'phrases', 'decoration'];
-const STARTUP_KEYS = ['startup', 'document', 'documentRevision', ...RECIPE_KEYS];
+const SCENE_KEYS = ['sceneId', 'sceneRevision', 'sceneHash', 'sourceHash', 'scoreHash'];
+const STARTUP_KEYS = ['startup', 'document', 'documentRevision', ...RECIPE_KEYS, ...SCENE_KEYS];
 const startupModes = ['fresh', 'recipe', 'document', 'recovery', 'previous-setup'];
 const recipeDefaults = () => ({ laneCount: 8, laneHeight: DEFAULT_LANE_HEIGHT, pack: 1, speed: 3, preset: 'game-iron-ensemble', mode: 'steps', decoration: 'none',
   workerLimits: normalizeWorkerLimits(), populationPolicy: normalizePopulationPolicy() });
 export const parseProcgenStartupIntent = (search = '') => {
   const params = new URLSearchParams(search);
   if (params.toString().length > 8192) throw new Error('Startup URL exceeds the supported size');
-  if (['scene', 'sceneId', 'sceneRevision'].some(key => params.has(key))) throw new Error('Authored scene recipe links are unsupported by this build. Use its project or take artifact to verify the required scene assets.');
+  const hasScene = SCENE_KEYS.some(key => params.has(key));
+  if (params.has('scene') || hasScene && params.get('recipe') !== '2') throw new Error('Authored scene recipe links are unsupported without the version 2 scene identity and hashes. Use its project or take artifact to verify the required scene assets.');
   for (const key of STARTUP_KEYS) if (params.getAll(key).length > 1) throw new Error('Duplicate startup field: ' + key);
   const explicit = params.get('startup'), hasRecipe = RECIPE_KEYS.some(key => params.has(key));
   if (explicit != null && !startupModes.includes(explicit)) throw new Error('Unsupported startup mode');
@@ -30,14 +34,22 @@ export const parseProcgenStartupIntent = (search = '') => {
   if (mode === 'document' && (!documentId || documentId.length > 256 || /[\x00-\x1f\x7f]/.test(documentId))) throw new Error('Invalid startup document identity');
   const revision = params.has('documentRevision') ? Number(params.get('documentRevision')) : null;
   if (params.has('documentRevision') && (!params.get('documentRevision')?.trim() || !Number.isSafeInteger(revision) || revision < 1)) throw new Error('Invalid startup document revision');
-  return cloneJournalData({ schemaVersion: 1, mode, explicit: explicit != null, documentId, documentRevision: revision,
+  let sceneRecipe = null;
+  if (params.get('recipe') === '2') {
+    if (!hasScene) throw new Error('Unsupported recipe version 2 without a complete authored scene identity');
+    if (mode !== 'recipe' || RECIPE_KEYS.some(key => key !== 'recipe' && params.has(key))) throw new Error('Authored scene recipe conflicts with generator overrides');
+    const version = params.get('sceneRevision');
+    if (!/^[1-9][0-9]{0,9}$/.test(version || '')) throw new Error('Invalid authored scene recipe revision');
+    sceneRecipe = validateSceneRecipeShareIdentity({ id: params.get('sceneId'), version: Number(version), hash: params.get('sceneHash'), sourceHash: params.get('sourceHash'), recipeHash: params.get('scoreHash') });
+  }
+  return cloneJournalData({ schemaVersion: 1, mode, explicit: explicit != null, documentId, documentRevision: revision, ...(sceneRecipe ? { sceneRecipe } : {}),
     recipe: Object.fromEntries(RECIPE_KEYS.filter(key => params.has(key)).map(key => [key, params.get(key)])),
     presence: Object.fromEntries(STARTUP_KEYS.map(key => [key, params.has(key) ? 'explicit' : 'absent'])) });
 };
-export async function loadProcgenStartupSource(intent, { storage, signal, timeoutMs = 20000 } = {}) {
+export async function loadProcgenStartupSource(intent, { storage, signal, timeoutMs = 20000, getSceneCatalog = null } = {}) {
   signal?.throwIfAborted();
-  if (!['document', 'recovery'].includes(intent?.mode)) return { session: null, documentIdentity: null };
-  if (!storage || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000) throw new Error('Invalid startup source owner');
+  if (!intent?.sceneRecipe && !['document', 'recovery'].includes(intent?.mode)) return { session: null, documentIdentity: null };
+  if (!intent.sceneRecipe && !storage || !Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 120000 || getSceneCatalog !== null && typeof getSceneCatalog !== 'function') throw new Error('Invalid startup source owner');
   const controller = new AbortController();
   let timer, rejectInterrupted, handedOff = false;
   const interrupted = new Promise((_resolve, reject) => { rejectInterrupted = reject; });
@@ -49,6 +61,17 @@ export async function loadProcgenStartupSource(intent, { storage, signal, timeou
   const work = Promise.resolve().then(async () => {
     controller.signal.throwIfAborted(); let owner = null;
     try {
+      if (intent.sceneRecipe) {
+        const [sharing, project, installed] = await Promise.all([import('./ProcgenSceneRecipeShare.js'), import('./PerformanceSceneProject.js'), getSceneCatalog ? null : import('./PerformanceSceneInstalledCatalog.js')]);
+        controller.signal.throwIfAborted();
+        const catalog = await (getSceneCatalog ? getSceneCatalog({ signal: controller.signal }) : installed.createInstalledPerformanceSceneCatalog({ signal: controller.signal }));
+        const selection = await sharing.resolveSceneRecipeShare(intent.sceneRecipe, { catalog, signal: controller.signal });
+        controller.signal.throwIfAborted(); let retained = selection, recipe = project.materializePerformanceSceneProject(selection.origin);
+        return { session: null, documentIdentity: null, signal: controller.signal,
+          get sceneSelection() { controller.signal.throwIfAborted(); if (!retained) throw new Error('Startup source was released'); return retained; },
+          get sceneRecipe() { controller.signal.throwIfAborted(); if (!recipe) throw new Error('Startup source was released'); return recipe; },
+          release() { if (!retained) return; retained = recipe = null; cleanup(); controller.abort(new Error('Scene startup source retired')); } };
+      }
       if (intent.mode === 'document') {
         owner = storage.loadDocumentOwned ? await storage.loadDocumentOwned(intent.documentId, { signal: controller.signal }) : await storage.loadDocument(intent.documentId);
       } else if (storage.loadRecoveryOwned) owner = await storage.loadRecoveryOwned({ requireVerified: true, signal: controller.signal });
@@ -76,7 +99,7 @@ const boundedNumber = (params, key, min, max, integer = false) => {
   return value;
 };
 const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartupIntent(search), seed, legacyProject, legacySettings = {}, saved = null,
-  session = null, documentIdentity = null } = {}) => {
+  session = null, documentIdentity = null, sceneRecipe = null } = {}) => {
   if (intent.schemaVersion !== 1 || intent.mode != null && !startupModes.includes(intent.mode)) throw new Error('Unsupported startup intent');
   const params = new URLSearchParams(intent.recipe);
   const legacySaved = saved?.project?.procgen && saved.project.procgen.version !== 2;
@@ -98,6 +121,14 @@ const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartup
     transport = { ...snapshot.transport, playing: false };
     sourceIdentity = mode === 'document' ? { id: documentIdentity.id, revision: documentIdentity.revision } : { kind: 'verified-recovery', savedAt: artifact.savedAt || null };
     for (const key of Object.keys(worldOptions)) provenance[key] = mode + '-artifact';
+  } else if (mode === 'recipe' && intent.sceneRecipe) {
+    const identity = validateSceneRecipeShareIdentity(intent.sceneRecipe);
+    if (!sceneRecipe?.origin || JSON.stringify(sceneRecipeShareIdentity(sceneRecipe.origin)) !== JSON.stringify(identity)) throw new Error('The authored scene recipe requires verified source and asset preflight before startup');
+    const authored = materializePerformanceSceneProject(sceneRecipe.origin);
+    project = authored.project; worldOptions = { ...authored.settings };
+    transport = { ...authored.transport, playing: false, clockSource: 'internal', linked: true };
+    sourceIdentity = identity; for (const key of Object.keys(worldOptions)) provenance[key] = 'scene-recipe';
+    diagnostics.push('scene-recipe-requires-pinned-build-and-assets');
   } else if (mode === 'recipe') {
     if (params.has('recipe') && params.get('recipe') !== '1') throw new Error('Unsupported recipe version');
     if (params.has('recipe') && !params.has('seed')) throw new Error('Invalid recipe: a shared starting recipe requires its seed');
@@ -146,6 +177,6 @@ const resolveProcgenStartupIntent = ({ search = '', intent = parseProcgenStartup
   }
   const identity = hashSurveyValue({ mode, sourceIdentity, worldOptions, transport, lanes: project.procgen.lanes.map(lane => [lane.family, lane.role, lane.patch]) });
   return cloneJournalData({ schemaVersion: 1, intentId: `startup-v1:${mode}:${identity}`, presence: intent.presence,
-    mode, sourceRevision: sourceIdentity?.revision ?? 1, sourceIdentity, project, worldOptions, transport, provenance, diagnostics }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
+    mode, sourceRevision: sourceIdentity?.revision ?? sourceIdentity?.version ?? 1, sourceIdentity, project, worldOptions, transport, provenance, diagnostics }, { maxBytes: 8 * 1048576, maxNodes: 300000 });
 };
 export { resolveProcgenStartupIntent };

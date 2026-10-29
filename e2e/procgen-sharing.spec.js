@@ -1,5 +1,7 @@
 import { MIN_DESKTOP_VIEWPORT } from './helpers/desktopViewports.js';
 import { expect, test } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 
 const ready = async page => {
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
@@ -14,6 +16,63 @@ const semanticState = page => page.evaluate(() => {
   return { options: studio.getStartupPlan().worldOptions, actual: { seed: world.seed, lanes: world.laneCount, laneHeight: world.laneHeight, speed: world.timer.speedFactor },
     output: studio.getPlaybackState().enabled, recording: studio.state.recording, thru: studio.state.thru,
     devices: [studio.state.inputId, studio.state.clockOutputId, ...studio.getProject().procgen.lanes.map(lane => lane.outputId)] };
+});
+
+test('an authored scene recipe checks exact installed content and reopens stopped with clean or unrelated preferences', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(180000); await page.setViewportSize(MIN_DESKTOP_VIEWPORT);
+  await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) });
+  await page.addInitScript(() => {
+    window.sceneRecipeOutputRequests = { audio: 0, midi: 0 };
+    for (const name of ['AudioContext', 'webkitAudioContext']) if (window[name]) {
+      const Original = window[name]; window[name] = new Proxy(Original, { construct(target, args) { window.sceneRecipeOutputRequests.audio++; return Reflect.construct(target, args); } });
+    }
+    Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => { window.sceneRecipeOutputRequests.midi++; throw new Error('Unexpected output request'); } });
+  });
+  await page.goto('/dist/browser/procgen.html?e2e=1&recipe=1&seed=42&lanes=1'); await ready(page);
+  const prepared = await page.evaluate(async () => {
+    const root = new URL('./', location.href);
+    const { createInstalledPerformanceSceneCatalog } = await import(new URL('js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js', root));
+    const { createProcgenRecipeShareDescriptor } = await import(new URL('js/app/procgen/ProcgenUrlConfig.js', root));
+    const catalog = await createInstalledPerformanceSceneCatalog(), row = catalog.registry.findSupported({ id: 'crossing-corridors.4' });
+    const origin = await catalog.origin(catalog.registry.resolve(row));
+    const descriptor = createProcgenRecipeShareDescriptor({ url: location.href + '#private-recovery', sceneOrigin: origin, includeCamera: false });
+    return { url: descriptor.url, sceneHash: origin.sceneHash, sourceHash: origin.manifest.sourceVersion.hash, settings: descriptor.worldOptions,
+      graph: origin.manifest.causalMappings, sounds: origin.manifest.patchRefs.map(value => value.reference.definitionHash) };
+  });
+  for (const populated of [false, true]) {
+    await page.evaluate(async populated => {
+      localStorage.clear(); if (!populated) return;
+      const { createMidiProject } = await import('/js/midi/project/MidiProject.js');
+      const { createProcgenWorkstationProject } = await import('/js/app/procgen/workstation/ProcgenWorkstationProject.js');
+      const project = createProcgenWorkstationProject(createMidiProject(), { seed: 12, lanes: [{}, {}] });
+      localStorage.setItem('lemmings.procgen.workstation.v1', JSON.stringify({ version: 1, project, transport: { bpm: 60, gameSpeed: 0.5 }, ui: { recording: true, thru: true, inputId: 'private-input' } }));
+    }, populated);
+    const url = new URL(prepared.url); url.searchParams.set('e2e', '1'); await page.goto(url.href);
+    await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+    const actual = await page.evaluate(() => {
+      const studio = window.__PROCGEN_STUDIO__, project = studio.getProject(), world = window.__PROCGEN_LANES__.world;
+      return { mode: studio.getStartupPlan().mode, settings: studio.getStartupPlan().worldOptions, sourceIdentity: studio.getStartupPlan().sourceIdentity,
+        sceneHash: project.procgen.sceneOrigin.sceneHash, sourceHash: project.procgen.sceneOrigin.manifest.sourceVersion.hash,
+        graph: world.physicalAuthoring.graph, sounds: project.procgen.lanes.map(lane => lane.instrumentRef.definitionHash),
+        tick: world.tickIndex, playing: studio.transport.getState().playing, output: studio.getPlaybackState().enabled,
+        recording: studio.state.recording, thru: studio.state.thru, requests: window.sceneRecipeOutputRequests,
+        devices: [studio.state.inputId, studio.state.clockOutputId, ...project.procgen.lanes.map(lane => lane.outputId)] };
+    });
+    expect(actual).toMatchObject({ mode: 'recipe', settings: prepared.settings, sceneHash: prepared.sceneHash, sourceHash: prepared.sourceHash,
+      graph: prepared.graph, sounds: prepared.sounds, tick: 0, playing: false, output: false, recording: false, thru: false, requests: { audio: 0, midi: 0 } });
+    expect(actual.devices.every(value => value == null)).toBe(true); expect(actual.sourceIdentity.hash).toBe(prepared.sceneHash);
+    await openShare(page); await expect(page.getByRole('dialog')).toContainText('original authored scene');
+    await expect(page.getByRole('dialog')).toContainText('exact build, scene and assets');
+    expect(await page.locator('#procgenShareUrl').inputValue()).toBe(prepared.url); await page.keyboard.press('Escape');
+  }
+  const prior = '{"version":1,"project":{"saved":"keep-scene-recovery"}}';
+  await page.evaluate(value => localStorage.setItem('lemmings.procgen.workstation.v1', value), prior);
+  for (const [key, value, message] of [['sourceHash', 'f'.repeat(64), 'different application build'], ['sceneHash', 'f'.repeat(64), 'not installed'], ['sceneId', 'missing.scene', 'not installed']]) {
+    const url = new URL(prepared.url); url.searchParams.set(key, value); url.searchParams.set('e2e', '1'); await page.goto(url.href);
+    await expect(page.getByRole('alert')).toContainText(message);
+    expect(await page.evaluate(() => ({ saved: localStorage.getItem('lemmings.procgen.workstation.v1'), world: !!window.__PROCGEN_LANES__, requests: window.sceneRecipeOutputRequests })))
+      .toEqual({ saved: prior, world: false, requests: { audio: 0, midi: 0 } });
+  }
 });
 
 test('unsupported, oversized and unavailable scene recipe links preserve local recovery without output activation', async ({ page }) => {

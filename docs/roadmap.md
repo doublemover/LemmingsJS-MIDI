@@ -8290,3 +8290,119 @@ export-budget acknowledgments still prevent a false complete receipt.
   103296 finite frames without a clock gap. Fresh GitHub inventory:216 open
   issues; #1092 remains open for the full intervention/input/corruption and
   archived-runtime qualification corpus. No full local suite is repeated.
+
+### Continuation 317 — bounded durable source worker windows (development)
+
+- Verification and query pages now share bounded windows of at most16 chunks,
+  4MiB canonical bytes and500000 canonical nodes. Admit memory before storage
+  reads, preflight aggregate decoded shape before parsing, then verify every
+  source hash/canonical inventory and selected range. Keep atomic source order,
+  page count/byte limits and ancestor branch cutoffs. Retain selected results
+  under the query lease and release workers/input without dropping that charge.
+- Preserve bounded source ID and first sequence across worker failures and the
+  workbench's failure state. Keep the prior receipt, clear failure on a new
+  operation and permit comparison after repairing the source. Cancel continues
+  charging input until actual preparation settles; unknown retirement stays
+  charged. Refresh only the first-party worker provenance hash.
+- All104 grouped journal/branch/replay/worker/source cases pass. A65-chunk trace
+  uses four16-chunk jobs plus one single-chunk job and the initial checkpoint;
+  every reference still verifies. Corrupt and missing sources retain their exact
+  sequence/ID, cancellation releases after settlement and restored sources work.
+  The native64-tick full replay/seek/branch passes with batching. The earlier316
+  10000-tick cohort finalized all ticks but hit its600-second stored-replay
+  deadline. Preserve that timeout; long qualification remains pending here.
+- Native actual IndexedDB fault qualification is in progress. Preserve its
+  initial ineffective corruption fixture, which selected a string absent from
+  the first transport-only chunk; require an actual changed byte before the
+  negative comparison. No successful corruption journey is claimed yet.
+- Defer seven optional DSP/rendering producers until their registered job runs,
+  then recheck cancellation/owner state before calling them. Their literal
+  imports remain in the trusted worker closure. The worker's static graph drops
+  from233 modules/1904198 bytes to111 modules/about741000 bytes; this is source inventory,
+  not a measured startup or interaction-latency budget. Add bounded verification
+  and physical replay progress to the workbench, fenced to its active operation.
+- All140 grouped cases pass after lazy loading, including actual worker/kernel
+  paths for rendering, fixed banks, scene rehearsal, warp and initial stretch
+  image restoration. Types, undefined calls, provenance and the145-full/115-smoke
+  browser catalog pass. Final native fault/short/long cohort is running on this
+  build. Preserve the earlier batching-only long-run timeout as well; batching
+  alone has not qualified the full10000-tick journey.
+- Native sequential verification now uses one admitted worker with a fixed,
+  existing IndexedDB database and readonly transactions, one source chunk at a
+  time. Return bounded metadata to the unchanged host chain checks; bind host
+  storage lifetime/connection and close native readers on completion or failure.
+  Refuse schema creation/upgrade and retain legacy/no-worker behavior.
+- All272 grouped affected cases pass, followed by6 stored-reader lifecycle cases
+  and41 worker/stream cases (283 distinct named cases across the cohorts). The
+  additional cases exercise malformed metadata before opening, blocked/error
+  late-open cleanup, readonly cancellation and default kernel scheduler use.
+  Native corruption/missing/future-source recovery and64-tick replay pass with
+  the sequential reader. The first large pass reached its180-second admission
+  deadline; preserve that failure. Kernel yields now use the shared scheduler
+  helper, matching snapshot transport, with its existing timer fallback and
+  unchanged work/memory/time limits. Final native qualification is running.
+- Full CI at published316 is green:6781 Node/136 browser, all14 capabilities and
+  static/benchmark/protocol/policy/dependency gates; coverage90.28/83.71/88.37.
+  Its capture is Partial at35840 finite frames after a128-frame clock gap, kept
+  separate from315's Ready103296-frame capture. Do not upgrade that result.
+- Sequential native verification passes its corruption/missing/version and short
+  replay journeys. Shared scheduler yields remove raw nested-timer overhead
+  without changing the180-second job or600-second harness deadlines. The next
+  long pass reached physical tick4447, then correctly refused a query window
+  requiring103073015 accounted bytes with96253463 available. Preserve this
+  failure; it is memory pressure rather than a physics-parity mismatch.
+- Query windows now shrink after a pure admission refusal, before loading input.
+  If even one more decode cannot coexist with the retained page, return that
+  page with the first unconsumed source cursor and resume after release. Keep
+  all hard limits, source order and stored data. All85 affected cases pass,
+  including new controlled-pressure regressions for both paths with no lost
+  records, no reads for refused windows and complete reservation release.
+  Final native qualification is running with this fix.
+
+- Split the causal worker kernel from optional producers and share one bounded
+  JSON/UTF8 inspector. The worker entry imports7 static modules/33497 bytes and
+  its causal path13/62536 before the stored-reader dependency; all280 owned
+  worker files remain in provenance. These are static inventories, not heap or
+  latency measurements. The combined300 affected Node cases pass.
+- The thin worker completes10000 replay ticks with matching final physics in
+  431064.4ms and repeats the final comparison with zero ticks in37863.1ms. Its
+  complete seek/branch journey still exceeds600000ms. Preserve that timeout.
+- Checkpoint proof reuse now binds take revision and finalization evidence,
+  verifies the restored physical hash, and accounts encoded bytes/nodes instead
+  of multiplying every text character by64. A fresh branch can reuse a proved
+  fork checkpoint; unqualified checkpoints still replay from the beginning.
+  The57 affected cases pass, including revision/evidence changes and independent
+  branch advancement. One initial new assertion expected the wrong receipt
+  shape; the corrected assertion checks the actual boundary qualification.
+- Add a private owned canonical header proof cache (4096 entries/4MiB). Native
+  inspections always reread and rehash current stored bytes, reuse only earlier
+  validated headers, and release metadata after active inspection work settles.
+  Unknown retirement remains charged. The final109 affected cases pass; source
+  corruption/missing bytes still fail after cache warmup and repair succeeds.
+  Final native64/10000-tick, fault-recovery and MIDI workflows are running with
+  unchanged512MiB/180s worker and600s test limits.
+
+- The final-cache native pass reaches10000 replay ticks, then refuses the final
+  component checkpoint:150026775 accounted bytes requested,127477629 available.
+  Source faults,64 ticks and MIDI export pass. End query pages at component
+  boundaries and retire them before admitting checkpoint decoding. All39 other
+  affected replay/branch/storage cases pass; the new boundary fixture passes
+  after correcting its duplicate initial-checkpoint count. The next actual
+  native pass keeps every original memory/time cap and is in progress.
+
+### Continuation 318 — pinned original authored scene recipe links
+
+- Implement version2 recipe links with exact scene/content revision, scene hash,
+  source build and physical score hash. Camera is presentation only. Refuse
+  missing/duplicate identities, generator overrides and incompatible source or
+  assets; preserve prior recovery and output ownership on failure/cancellation.
+- Reuse original-score materialization and the staged scene world/sound/mapping
+  owners. Exclude current edits, actors and takes explicitly. Authored startup
+  stays paused; the first native pass found and repaired a bindRuntime auto-play
+  leak. Later revisions and misleading supplied project/settings are fenced.
+- All61 distinct affected Node cases pass across the broad60 and final7 cohorts.
+  All9 distinct desktop journeys pass:8 existing sharing/startup journeys plus
+  the corrected authored-scene navigation on clean/populated profiles, exact
+  identity/source refusal and paused silent tick0. Source hashes, failure and
+  receipts are retained in the canonical validation record. Full CI is pending
+  publication. Continuation317 replay work above is still local development.

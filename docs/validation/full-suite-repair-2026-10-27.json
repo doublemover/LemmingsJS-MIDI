@@ -23858,7 +23858,54 @@
         "whitespace"
       ],
       "fullLocalSuiteRepeated": false,
-      "remoteCi": "Exact-head316 CI pending publication.315 and313 full CI are now confirmed green in their own entries.",
+      "remoteCi": {
+        "head": "aaf74f1bcf2fcc68540af92445b4701e6b603efe",
+        "status": "success",
+        "run": 40784646338,
+        "job": 123154677545,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40784646338/job/123154677545",
+        "nodePassed": 6781,
+        "nodePending": 10,
+        "coverage": {
+          "lines": 90.28,
+          "statements": 90.28,
+          "branches": 83.71,
+          "functions": 88.37
+        },
+        "benchmark": {
+          "measurementValid": true,
+          "historyRatio": 0.5853333333333334
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 35840,
+          "captured": 35840,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 70016,
+            "expectedFrame": 70144,
+            "frames": 128
+          },
+          "peak": 0.02335798740386963,
+          "nonfinite": 0
+        },
+        "policy": "success",
+        "dependencyReview": "success",
+        "browserPassed": 136,
+        "desktopPassed": 22,
+        "workstationSmokePassed": 114,
+        "workstationCapabilities": 14,
+        "report": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci316-green-report.json",
+          "bytes": 948,
+          "sha256": "3cb3aab1ed7aaa20c3e4c182727130f72d04c2abba5857a2d4a5696e05fafa90"
+        },
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci316-green.log",
+          "bytes": 1161819,
+          "sha256": "4b34925de51c245e37cd006005b5832812e5e4649a5dc2ef7752609ae30f5e75"
+        }
+      },
       "scopeLimits": [
         "Compatibility replay is qualified against the currently installed implementation. Exact archived execution identity remains unbound; exactQualified remainsfalse.",
         "The10000-tick journey is pending at publication; full terrain intervention/transfer/tempo/external-input and corrupted/missing/version-mismatch acceptance remains open.",
@@ -24109,6 +24156,195 @@
       "1162": {
         "state": "open-implemented-partial",
         "progress": "Owned finite checkpoint metadata, dense writer overhead and immutable query coverage lifetime; broader resource acceptance remains."
+      }
+    }
+  },
+  "continuation318": {
+    "date": "2026-10-28",
+    "agent": "rook",
+    "title": "Pin original authored scene recipe links to exact installed source and assets",
+    "sourceBase": "aaf74f1bcf2fcc68540af92445b4701e6b603efe",
+    "issues": [
+      1230,
+      1240,
+      1097
+    ],
+    "development": [
+      "Add bounded version2 scene recipe identity: scene ID/content revision, scene SHA256, source build SHA256 and physical score SHA256. Keep optional camera outside physical identity and strip unrelated query/fragment state; refuse duplicates, missing hashes, generator overrides and unsupported versions without truncation.",
+      "Resolve installed scene/version/hash, verify its canonical origin and complete required dependency preflight before constructing the startup document. Report different builds and unavailable revisions/assets explicitly; preserve previous recovery on refusal/cancellation and never fall back to a seed approximation.",
+      "Materialize original authored projects through the same score owner for normal scene candidates and startup. Derive every physical/musical setting from the origin, retain later scene revisions and keep local output/device/recording/thru state outside portable authority.",
+      "Publish only through the existing staged scene loader/world adapter with fixed source, sound material, mapping and resource checks. Fix bindRuntime auto-play so authored scenes remain stopped. Sharing states the original-scene scope and continues its existing checkpoint/selected-take handoff and real clipboard/manual fallback."
+    ],
+    "validation": {
+      "node": {
+        "distinctPassed": 61,
+        "failed": 0,
+        "cohorts": [
+          {
+            "passed": 60,
+            "scope": "Sharing/startup, scene source/candidate, native/owned rehearsal and material ownership."
+          },
+          {
+            "passed": 7,
+            "scope": "Final source/revision fence cases; six overlap the earlier cohort."
+          }
+        ]
+      },
+      "browser": {
+        "distinctPassed": 9,
+        "finalScenePassed": 1,
+        "unchangedOtherJourneysPassed": 8,
+        "failedRemaining": 0,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "scope": "Actual immutable-build scene navigation with clean and unrelated saved preferences, exact source/content/revision refusals, original-scene sheet, paused tick0, unchanged output permissions and zero AudioContext/MIDI requests; existing clipboard acknowledgment/denial, every-field recipe reopening, checkpoint/causal archive handoff, malformed startup and document/recovery navigation."
+      },
+      "earlierResult": {
+        "passed": 8,
+        "failed": 1,
+        "failure": "Initial authored scene navigation exposed bindRuntime auto-play after staged publication. Prevent scene-origin auto-play; the complete new scene journey then passes."
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "Pending publication. Last published full316 CI is green; no exact-head318 full CI claim.",
+      "sourceScope": "Native scene qualification ran against the local immutable build including concurrent317 replay work. Its behavior and identity preflight are scoped to scene sharing; this commit publishes only the listed sharing files. Exact archived take execution and external/hardware/acoustic equivalence are not claimed."
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-format-paused-scene.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-native-scene-fixed.log",
+        "bytes": 459,
+        "sha256": "0ac6c0416552ed526873e79999fb35c571ed62162875c51cbc4f6b27d4a4d94c"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-native.log",
+        "bytes": 5720,
+        "sha256": "7862c458c7895daed075720d314bf577994d37bd2651b29ed70a7f494b23f873"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-node-source-fence.log",
+        "bytes": 841,
+        "sha256": "5e9eaa024807471b956edfa6e0840a93d64ed03ef673d658e5c9b4ac9d20c318"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-node.log",
+        "bytes": 6498,
+        "sha256": "f373c9daaf9349115ec523213a2a1e00524ecbde399515aef54d1f34081e540a"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-sharing-startup-results.json",
+        "bytes": 19679,
+        "sha256": "a40fbf97da2300f5b0bb3344b1926ac5354194da5c8622c921ea8707f8566e40"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog318-sharing-scene-fixed-results.json",
+        "bytes": 4299,
+        "sha256": "dc03dd073f93e258d94e589e80d7f6a76fd3c0eea05ac333daa597ddb168feb0"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-318-coverage\\coverage-summary.json",
+        "bytes": 215087,
+        "sha256": "be9c90d02a1e00952206dc007479be1a3bd8c94b992434626eeb0eef7d8981eb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-318-coverage-source-fence\\coverage-summary.json",
+        "bytes": 106912,
+        "sha256": "5f9b7af904905da900949dfea49152ff7abe484d1758c82f793803f9cbe11009"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/ProcgenUrlConfig.js",
+        "bytes": 6502,
+        "sha256": "51b5f08cd194eb0409517f53d8bba842aca8cfd5a3cf2c90a4bcb674ce08b1fe"
+      },
+      {
+        "path": "js/app/procgen/ProcgenShareView.js",
+        "bytes": 7792,
+        "sha256": "a4c89d050abfefc5eb05f716c0ec8ddc257db833bf455228381ac8dfb1806370"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenStartupIntent.js",
+        "bytes": 17725,
+        "sha256": "6c60a6ee865ed4a76911d7a6d6701706a5f81bfbc7e8a7829b3f4bf9c765915e"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneProject.js",
+        "bytes": 1928,
+        "sha256": "84cd5731dacf88045e10032b9a616577385aed4f8be166f386a1744507685c7d"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenSceneRecipeShare.js",
+        "bytes": 3565,
+        "sha256": "6b63d61d6bf8a3f3876b80ec01b5e79e515fe462c750632a80e0adcff7601477"
+      },
+      {
+        "path": "js/app/procgen/workstation/PerformanceSceneWorldAdapter.js",
+        "bytes": 15123,
+        "sha256": "819b368fa3a8694015af54d8215c88f36d64048c8ab8c0b40bf0d00c8dc50189"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 200899,
+        "sha256": "48c0cc08a8c9d9954de742b4ae8405b4bb6c898f101d690175f7242907348449"
+      },
+      {
+        "path": "js/app/procgenBoot.js",
+        "bytes": 42512,
+        "sha256": "a5387eb19713d0339b177b57bce78dcadd59ba54a4d13edccdd5b7732d4e1469"
+      },
+      {
+        "path": "e2e/procgen-sharing.spec.js",
+        "bytes": 15529,
+        "sha256": "2a7d116a49e7419c43d530e938e4f7e24b57baaaffc5fe5d53359851e261048c"
+      },
+      {
+        "path": "test/procgen-scene-recipe-share.test.js",
+        "bytes": 9272,
+        "sha256": "49e0b74e1d8e3efa95a9514ba6378d3c5b944e009e50db0a7449ecf428bc708a"
+      }
+    ],
+    "issueStatus": {
+      "1230": {
+        "state": "implemented-qualified",
+        "remaining": "Refresh published PR/issue evidence and inspect exact-head full CI."
+      },
+      "1240": {
+        "state": "already-closed",
+        "scope": "Consume its canonical startup owner; no separate defaults/precedence resolver."
+      },
+      "1097": {
+        "state": "open",
+        "scope": "This recipe navigation does not close the wider scene and asset corpus."
       }
     }
   }

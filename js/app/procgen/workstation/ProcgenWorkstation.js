@@ -118,7 +118,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
   if (saved?.version !== 1 || !saved.project || typeof saved.project !== 'object') saved = null;
   const initialSeed = legacy.settings.seed ?? freshProcgenSeed(window.crypto);
   const startupPlan = resolveProcgenStartupIntent({ search: window.location?.search || '', ...(startupIntent ? { intent: startupIntent } : {}), seed: initialSeed,
-    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity });
+    legacyProject: legacy.getProject(), legacySettings: legacy.settings, saved, session: startupSource?.session, documentIdentity: startupSource?.documentIdentity, sceneRecipe: startupSource?.sceneRecipe });
   startupSource = null;
   Object.assign(legacy.settings, startupPlan.worldOptions);
   let project = sealMidiProjectSnapshot(markCanonicalMidiProject(startupPlan.project));
@@ -1053,7 +1053,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
       parent: document.querySelector?.('.studio-inspector'), getLaneInfo: lane => project.procgen.lanes[lane] || null,
       onRevealLane: lane => view?.revealLane?.(project.procgen.lanes[lane]?.id) });
     if (legacy.local.getState().status === 'suspended') Promise.resolve(legacy.local.resumeGame?.()).catch(error => status(error?.message || 'Reconnect the audio output.'));
-    if (!session && !pendingResume) play();
+    if (!session && !pendingResume && !project.procgen.sceneOrigin) play();
     if (!startupCommitted && startupPlan.mode === 'document') {
       documentId = startupPlan.sourceIdentity.id; documentRevision = startupPlan.sourceIdentity.revision;
       savedRevision = editRevision; lastSavedAt = session?.savedAt || null;

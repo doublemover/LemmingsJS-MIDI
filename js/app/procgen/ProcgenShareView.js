@@ -24,7 +24,8 @@ export function createProcgenShareView({ document, window, getDescriptor, getExp
     const buttons = () => { copy.disabled = !recipe || copyPending || exportPending; camera.disabled = copyPending || exportPending; prepare.disabled = !exportSource?.available || exportPending || copyPending; };
     const showRecipe = descriptor => {
       recipe = descriptor; url.value = descriptor.url; url.hidden = false;
-      scope.textContent = `Starts a new generated world with ${descriptor.worldOptions.laneCount} lanes. Source compatibility is unverified on the recipient's build; this link does not certify exact replay.`;
+      scope.textContent = descriptor.scene ? `Starts the original authored scene “${descriptor.scene.title}”, revision ${descriptor.scene.version}, with ${descriptor.worldOptions.laneCount} lanes. The recipient needs its exact build, scene and assets; these are checked before loading. Later edits and the current performance are excluded.` :
+        `Starts a new generated world with ${descriptor.worldOptions.laneCount} lanes. Source compatibility is unverified on the recipient's build; this link does not certify exact replay.`;
       omitted.textContent = `Not included: ${descriptor.omitted.join('; ')}.`;
       buttons();
     };

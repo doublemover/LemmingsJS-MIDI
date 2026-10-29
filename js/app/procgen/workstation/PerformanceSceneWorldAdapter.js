@@ -1,7 +1,6 @@
 import { verifySceneMorphMechanism, sceneMorphMechanismCost } from './SceneMorphMechanism.js';
 import { sameActorBirthAbilities } from '../ActorBirthAbilities.js';
-import { createMidiProject } from '../../../midi/project/MidiProject.js';
-import { createProcgenWorkstationProject } from './ProcgenWorkstationProject.js';
+import { materializePerformanceSceneProject } from './PerformanceSceneProject.js';
 import { verifyPerformanceSceneOrigin } from './PerformanceSceneRecipe.js';
 import { resolveSoundContentReference } from '../../../midi/content/SoundContentReference.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
@@ -56,12 +55,8 @@ export function createPerformanceSceneWorldAdapter({ getCatalog, getOrigin, prep
       }
       if ([...pools.values()].reduce((sum, count) => sum + count, 0) > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The complete source set exceeds the declared scene voice bound.');
       for (const [engine, voices] of pools) if (voices > catalog.descriptors.find(value => value.engineId === engine).maximumVoices || voices > scene.cost.maximumVoices) throw failure('scene-source-capacity', 'The scene exceeds its shared source-pool or declared voice capacity.');
-      const mix = new Map(scene.mix.map(value => [value.laneId, value]));
       if (source.initialEffectRack && scene.cost.sharedBodies !== 0) throw failure('scene-effects-composition-unavailable', 'An authored static rack and shared morph body need an explicit composed graph profile.');
-      const project = createProcgenWorkstationProject(createMidiProject(), { seed: scene.seed, ...(source.initialReleaseGesture ? { releaseGesture: source.initialReleaseGesture } : {}), ...(source.initialJunctions ? { junctions: source.initialJunctions } : {}), ...(source.initialEffectRack ? { effectRack: source.initialEffectRack } : {}), physicalGraph: scene.causalMappings, sceneOrigin: origin,
-        lanes: scene.patchRefs.map((patch, index) => ({ id: patch.laneId, name: 'Corridor ' + (index + 1), mode: 'physical', family: source.terrainFamilies[index], worldThemeId: source.terrainFamilies[index], instrumentPatchId: patch.reference.patchId, instrumentRef: patch.reference, linkedThemePresetId: null,
-          gain: mix.get(patch.laneId).gain, pan: mix.get(patch.laneId).pan, mute: mix.get(patch.laneId).mute, solo: mix.get(patch.laneId).solo })) });
-      const recipe = freezeData({ project, settings: { ...source.settings, seed: scene.seed }, transport: scene.initialTransport, name: scene.title, origin, ...(source.actorBirthAbilities ? { actorBirthAbilities: source.actorBirthAbilities } : {}), ...(source.assistPolicy ? { assistPolicy: source.assistPolicy } : {}), ...(source.initialReleaseGesture ? { initialReleaseGesture: source.initialReleaseGesture } : {}), ...(source.initialTerrainLayout ? { initialTerrainLayout: source.initialTerrainLayout } : {}) });
+      const recipe = materializePerformanceSceneProject(origin);
       onPhase('world-assets'); world = await prepareWorld({ sceneRecipe: recipe, lease: { id: 'performance-scene:' + preflight.sceneHash, signal } }); check();
       if (!world || !world.isCurrent() || world.world.tickIndex !== 0 || world.world.seed !== scene.seed || world.world.laneCount !== scene.cost.lanes) throw failure('scene-world-unbound', 'The prepared score must be an unadvanced world with the exact seed and lane count.');
       if (source.assistPolicy && world.world.assists !== (source.assistPolicy === 'standard')) throw failure('scene-assist-policy-unbound', 'The initial world must own its declared manual or assisted physical policy.');

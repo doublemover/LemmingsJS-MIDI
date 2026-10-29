@@ -185,7 +185,7 @@ const installProcgenBootListeners = () => {
     try {
       const params = new URLSearchParams(window.location.search);
       const startupIntent = parseProcgenStartupIntent(params);
-      if (params.get('workstation') === '0' && ['document', 'recovery'].includes(startupIntent.mode)) throw new Error('Document and recovery startup require the workstation surface.');
+      if (params.get('workstation') === '0' && (startupIntent.sceneRecipe || ['document', 'recovery'].includes(startupIntent.mode))) throw new Error('Document, recovery and authored scene startup require the workstation surface.');
       document.body?.classList?.toggle('procgen-workstation', params.get('workstation') !== '0');
       resizeCanvas();
       if (!procgenUi && document.getElementById('procgenDrawer')) {
@@ -204,7 +204,26 @@ const installProcgenBootListeners = () => {
               prepareInspectionWorld: request => import('./procgen/workstation/ProcgenInspectionWorld.js').then(module => module.prepareProcgenInspectionWorld({ ...request, rootPath: activeProcgenRuntime?.assetRootPath, resourceBudget: procgenResourceBudget })), resourceBudget: procgenResourceBudget, startupIntent, startupSource, storage: startupStorage });
             storageTransferred = true;
             procgenStudio.prepareSettings();
-            if (startupSource.session) await procgenStudio.loadSession(startupSource.session, null, { signal: startupSource.signal || controller.signal });
+            if (startupSource.sceneSelection) {
+              const selection = startupSource.sceneSelection;
+              const [loading, adapter, audio] = await Promise.all([import('./procgen/workstation/PerformanceSceneLoader.js'), import('./procgen/workstation/PerformanceSceneWorldAdapter.js'), import('./midi-ui/NativeInstrumentSchema.js')]);
+              controller.signal.throwIfAborted();
+              const baseIdentity = 'scene-startup:' + selection.identity.hash;
+              const loader = loading.createPerformanceSceneLoader({ getBaseIdentity() { controller.signal.throwIfAborted(); startupSource.signal.throwIfAborted(); return baseIdentity; },
+                resolveDependency: selection.catalog.resolveDependency,
+                prepareCandidate: adapter.createPerformanceSceneWorldAdapter({ getCatalog: audio.getNativeInstrumentCatalog, getOrigin: (scene, variants) => selection.catalog.origin(scene, variants),
+                  prepareWorld: options => initWorkstation({ ...options, prepareOnly: true }), resourceBudget: procgenResourceBudget,
+                  getMaterialProvider: procgenUi.local.audio?.getSoundMaterialProvider ? () => procgenUi.local.audio.getSoundMaterialProvider() : null }) });
+              const cancel = () => { loader.cancel().catch(() => {}); };
+              controller.signal.addEventListener('abort', cancel, { once: true }); startupSource.signal.addEventListener('abort', cancel, { once: true });
+              try {
+                loader.select(selection.origin.manifest);
+                const prepared = await loader.prepare(); controller.signal.throwIfAborted(); startupSource.signal.throwIfAborted();
+                if (prepared.status !== 'ready') throw new Error('The starting scene assets cannot be prepared; the previous recovery remains available.');
+                const applied = await loader.apply();
+                if (applied.status !== 'committed') throw new Error('Starting scene replacement was canceled.');
+              } finally { controller.signal.removeEventListener('abort', cancel); startupSource.signal.removeEventListener('abort', cancel); await loader.dispose(); }
+            } else if (startupSource.session) await procgenStudio.loadSession(startupSource.session, null, { signal: startupSource.signal || controller.signal });
             else await init({ startupOwner: controller.signal, lease: { signal: controller.signal } });
             controller.signal.throwIfAborted(); startupSource.signal?.throwIfAborted();
           } catch (error) {
