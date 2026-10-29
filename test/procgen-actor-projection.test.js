@@ -1,5 +1,6 @@
 import { createResourceBudget } from '../js/app/resources/ResourceBudget.js';
 import { expect } from 'chai';
+import { Worker } from 'node:worker_threads';
 import { ProcgenActorVisibility, registerProcgenActorVisibility } from '../js/app/procgen/ProcgenActorVisibility.js';
 import { ProcgenActorProjection } from '../js/app/procgen/ProcgenActorProjection.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
@@ -129,5 +130,28 @@ describe('leased completed actor projections', () => {
       expect(worlds.map(world => world.soundEvents.deliveryErrors)).to.deep.equal([0, 0]);
       expect(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(worlds[1]))).to.equal(await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(worlds[0])));
     } finally { index.dispose(); engines.forEach(engine => engine.dispose()); worlds.forEach(world => world.dispose()); }
+  });
+  it('keeps a leased source revision immutable during an actual worker round trip', async () => {
+    const world = fixture(), index = new ProcgenActorVisibility(world); index.publish(); const lease = index.acquireSnapshot();
+    const worker = new Worker('const {parentPort} = require(\'node:worker_threads\'); parentPort.on(\'message\', frame => { frame.actors[0].x = 999; frame.drawRows[0].push({id: 999}); parentPort.postMessage(frame); });', { eval: true });
+    try {
+      const reply = new Promise((resolve, reject) => { worker.once('message', resolve); worker.once('error', reject); });
+      worker.postMessage(lease.frame); world.actors[0].x = 80; world.tickIndex++; index.publish();
+      const result = await reply; expect(result.actors[0].x).to.equal(999); expect(result.batchId).to.equal(lease.frame.batchId);
+      expect(lease.frame.actors[0].x).to.equal(20); expect(lease.frame.drawRows[0]).to.have.length(1); expect(index.actorById(1).x).to.equal(80);
+    } finally { await worker.terminate(); lease.release(); index.dispose(); }
+  });
+  it('accounts failed bounds publication and failed retirement without releasing retained resources early', () => {
+    const reservations = new Map(); let refuseRelease = false;
+    const projection = new ProcgenActorProjection({ budgetAdapter: { reserve: ({ token, bytes }) => reservations.set(token, bytes), release: ({ token }) => { if (refuseRelease) return false; reservations.delete(token); } } });
+    const world = fixture(); projection.publish(world); const current = projection.current.frame;
+    world.actors[0].action = { spriteProvider: { getActorDrawBounds() { throw new Error('bounds unavailable'); } } };
+    expect(projection.publish(world)).to.equal(null); expect(projection.current.frame).to.equal(current); expect(reservations.size).to.equal(1);
+    expect(projection.lastError).to.equal('bounds unavailable'); refuseRelease = true; projection.dispose();
+    expect(projection.stats().retirementFailures).to.equal(1); expect(reservations.size).to.equal(1); expect(projection.stats().estimatedBytes).to.be.greaterThan(0);
+    refuseRelease = false; for (const entry of projection.versions) projection.retire(entry);
+    expect(reservations.size).to.equal(0); expect(projection.stats().estimatedBytes).to.equal(0);
+    const refused = new ProcgenActorProjection({ budgetAdapter: { reserve() { throw new Error('shared budget exhausted'); } } });
+    expect(refused.publish(fixture())).to.equal(null); expect(refused.stats()).to.include({ dropped: 1, allocations: 0, estimatedBytes: 0 }); refused.dispose();
   });
 });

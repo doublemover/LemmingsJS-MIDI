@@ -28259,5 +28259,219 @@
         "remaining": "Non-materializing terrain contact sampling and broader allocation evidence."
       }
     }
+  },
+  "continuation330": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "4e4af603102bf7ba00f460b68dd17c2b53087d50",
+    "scope": "Non-materializing physical-row contacts through resident/cold edits and source/score masks; explicit partial coverage; same-tick projection revision/cache refusal; actual worker-copy and budget-retirement faults.",
+    "validation": {
+      "node": {
+        "initialBatchPassed": 53,
+        "finalBatchPassed": 76,
+        "cacheFollowupPassed": 29,
+        "distinctAffectedPassed": 77,
+        "failed": 0,
+        "coverage": {
+          "ProcgenActorProjection": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 94.89
+          },
+          "ProcgenTerrainRetention": {
+            "lines": 87.39,
+            "functions": 55.55,
+            "branches": 84.21
+          },
+          "ProcgenLaneObservation": {
+            "lines": 100,
+            "functions": 100,
+            "branches": 93.51
+          }
+        },
+        "scope": "The final76-case terrain/observation/projection/growth/source/transport batch and29-case cache followup overlap; distinct count adds only the newly authored stale-observation case. Real worker transfer and real world batch/intent/checkpoint parity are included.",
+        "coverageFollowup": "Partial-contact and failure branches remain below100%; explicit assertions cover missing source/plan, stale cache, budget refusal and unacknowledged retirement."
+      },
+      "browser": {
+        "initial": {
+          "passed": 1,
+          "failed": 1,
+          "cause": "No born actor existed at measurement, so contactQueries was correctly zero; fixture now performs bounded explicit physical steps before trapping generation."
+        },
+        "final": {
+          "passed": 2,
+          "failed": 0,
+          "durationMs": 5088.726000000001,
+          "scope": "Native1920x1080+ real render/camera/CCTV iterator trap and actual production lane observers with generation/materialization APIs trapped; physical/source/edit ownership and output unchanged."
+        }
+      },
+      "checks": [
+        "format",
+        "critical types",
+        "undefined calls",
+        "runtime provenance:10components/349files",
+        "browser category selection",
+        "whitespace"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "remoteCi": "329 running separately; last verified green remains326. No330full-CI success claimed.",
+      "scopeLimits": [
+        "A missing retained source descriptor/mask is partial contact evidence, not empty ground; it cannot establish a gap.",
+        "Publication counters and conservative byte admission are not V8 heap allocation samples or browser frame-rate guarantees.",
+        "Worker data is structured-cloned immutable source facts; authoritative live simulation worker integration remains separate under#1050."
+      ]
+    },
+    "logs": [
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-cache.log",
+        "bytes": 2886,
+        "sha256": "8726fa022715ff8cf96afda1464651827c2cddbb8bbee15b7b4d4def8d05e2eb"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-categories.log",
+        "bytes": 3005,
+        "sha256": "6781504ab8e94087910e7ae10c3290bace040b129d272ec47b039b27b2566da3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-format-cache.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-format-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-format.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-native-final.log",
+        "bytes": 664,
+        "sha256": "b7de1f0f128b371c8405af2a7fa0bf09f74461b3753bef2ccb464128c08abac5"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-native.log",
+        "bytes": 4058,
+        "sha256": "3feade631e936bd07754c33cd6dd3aa3994eeef23ce5bc0d71e0b377fc3c5a62"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-node-final.log",
+        "bytes": 7722,
+        "sha256": "5aef5056f258b32ffb2150ef017f31666552f0a653fbe476e9255a4881e0cd38"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-node.log",
+        "bytes": 5709,
+        "sha256": "5ab9452925872cb3a6ddabac8d5aa63af5a36c80fa1676592b8ff6f7bfcdaeab"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-provenance-final.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-provenance.log",
+        "bytes": 142,
+        "sha256": "ee309906e221463e83672476da2cbcd32b1a09700e5daad09f120388d26fd0e3"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-types.log",
+        "bytes": 96,
+        "sha256": "2001999b920786ad8149ca235974554c42d5dbde0268d1000adbf4dcb3af4592"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-backlog330-undefined.log",
+        "bytes": 111,
+        "sha256": "67d22a84a1284c367b0b788852aca4f47c0b79a0c8f7f6feec89367029511fd7"
+      }
+    ],
+    "artifacts": [
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog330-readonly-contact-results.json",
+        "bytes": 18937,
+        "sha256": "7f51518049d00c78925480b264c8ea61c022ab0ccb30408a1db79719b5111bbf"
+      },
+      {
+        "path": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\.tmp\\backlog330-readonly-contact-final-results.json",
+        "bytes": 27871,
+        "sha256": "4341df5b4c15baafcf09bcc3bdca9bd1978915c8cbeade7a68bc61118d40af32"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-330-coverage-final\\coverage-summary.json",
+        "bytes": 173587,
+        "sha256": "60d59043a780c872d5111de62e9ab3878713865e83330cb06aa5a3bdf39a743b"
+      },
+      {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-330-coverage-cache\\coverage-summary.json",
+        "bytes": 166168,
+        "sha256": "7e866bc5698cab9e05675839b1b40953e072180c98ccbf7165eae8960149be1e"
+      }
+    ],
+    "sourceHashes": [
+      {
+        "path": "js/app/procgen/ProcgenLaneWorld.js",
+        "bytes": 92499,
+        "sha256": "f13f3adb5091426d250f0bc0a9e31601d3c464e7fc0a2253bdb6a13fad610984"
+      },
+      {
+        "path": "js/app/procgen/ProcgenPackTerrain.js",
+        "bytes": 13893,
+        "sha256": "8b1bd96ba7ae454c3f84af1cf463a75fd76c489c2d851e1273720f72bba065ed"
+      },
+      {
+        "path": "js/app/procgen/ProcgenRecipeTerrain.js",
+        "bytes": 48750,
+        "sha256": "d5adfd947a6a51a7451ee9af5999e3ae0728c113a6f6dd1efcf3f3f954de2107"
+      },
+      {
+        "path": "js/app/procgen/ProcgenScoredTerrain.js",
+        "bytes": 14645,
+        "sha256": "84bddb298ee09cdb096ffda5880f5204bd9b44ce1e302d3263b8ada4437b8894"
+      },
+      {
+        "path": "js/app/procgen/ProcgenTerrainRetention.js",
+        "bytes": 7344,
+        "sha256": "62c64265bc24eef54a921da8c9be6c50d05b800b065f2a3f9d4d234f8683a311"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenLaneObservation.js",
+        "bytes": 5740,
+        "sha256": "00638804bb6d09fb88f94c65d275a1e707c192136159f067d54e18555dca60b7"
+      },
+      {
+        "path": "test/procgen-readonly-contact.test.js",
+        "bytes": 7047,
+        "sha256": "422838cc0659294f939209bec1bc161f77c9b36e1cd9d515b657ad2987197308"
+      },
+      {
+        "path": "test/procgen-lane-observation.test.js",
+        "bytes": 9131,
+        "sha256": "eab62fc2e4e86a79e4b58b777a727614cf1822aff104072e59ab3213811fdb5f"
+      },
+      {
+        "path": "test/procgen-scored-terrain.test.js",
+        "bytes": 11624,
+        "sha256": "f95ba8b5c395eec849707c6250de3b0cecfe53a989aa1705b07a7839c7d6d6a4"
+      },
+      {
+        "path": "test/procgen-actor-projection.test.js",
+        "bytes": 14136,
+        "sha256": "c17e1efa33d0daae5ca41790e0fceb5053d8e09188b312e422d98a3fff117283"
+      },
+      {
+        "path": "e2e/procgen-workstation-actor-projection.spec.js",
+        "bytes": 6254,
+        "sha256": "66d65a6071d9c70366a29029856e3fa6bff3ab134221326a7da0c58e6330a9f8"
+      }
+    ],
+    "issueStatus": {
+      "1053": {
+        "state": "completed",
+        "scope": "Shared completed physical/semantic/action/draw indexes, leased bounded snapshots and worker copies, measured visible-query scaling, current ownership, non-materializing contacts and native/physical/music reference qualification."
+      }
+    }
   }
 }

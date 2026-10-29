@@ -11,6 +11,19 @@ class ProcgenTerrainEdits extends Map {
   }
   get size() { return super.size + this.cold.size; }
   has(key) { return super.has(key) || this.cold.has(key); }
+  peekValue(key, index) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.chunkLength) return undefined;
+    const resident = super.get(key); if (resident) return resident[index];
+    const record = this.cold.get(key); if (!record) return 0; if (record.raw) return record.raw[index];
+    let low = 0, high = record.values.length;
+    while (low < high) {
+      const middle = low + high >>> 1, start = record.runs[middle * 2];
+      if (index < start) high = middle;
+      else if (index >= start + record.runs[middle * 2 + 1]) low = middle + 1;
+      else return record.values[middle];
+    }
+    return 0;
+  }
   get(key) {
     if (key === this._lastKey) return this._lastChunk;
     let chunk = super.get(key);

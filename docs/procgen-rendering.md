@@ -122,10 +122,19 @@ reference traversal over deterministic transfers, removals and equal-X ties at
 Draw rows and wide-sprite membership now share the completed immutable frame;
 there is no second live-actor scan when drawing. Native pixel/effect/recovery
 fixtures and real physical-batch/music/checkpoint parity pass. This does not
-provide pooled transferable raster buffers for workers. Contact queries still use the
-world's authoritative terrain reads, which can recompose an evicted collision
-cache entry; an explicit read-only residency/unknown API is a separate remaining
-part of the shared projection work.
+provide pooled transferable raster buffers for workers.
+
+Contact observations use `peekGroundAt`/`peekSteelAt`. Edits are read directly from
+resident arrays, raw cold arrays or a binary search of sorted cold runs. Sourced
+collision reads use an already resident bitset, retained descriptor or active
+growth plan; they do not invoke descriptor generation, chunk composition, edit
+restoration or retention-order updates. Authored score terrain reads its prepared
+mask. Missing source data returns `null`, while a known empty cell returns `false`.
+An observation with unavailable requested contacts has `terrainCoverage: 'partial'`;
+unavailable samples cannot establish a gap. Readiness follows the actor's physical
+row even when musical lane ownership differs. Completed projection revision also
+invalidates same-tick observation caches; stale ownership under lease pressure
+cannot return a cached observation as current.
 
 ## Presented world inspection (#1029)
 

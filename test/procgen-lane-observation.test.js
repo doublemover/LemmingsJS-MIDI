@@ -7,7 +7,7 @@ describe('ProcGen current lane conditions', () => {
   const fixture = () => {
     const actions = { [State.WALKING]: {}, [State.BUILDING]: {}, [State.MINING]: {} };
     let queries = 0;
-    const world = { tickIndex: 1, generation: 0, terrainRevision: 0, laneCount: 2, width: 65535, leftEdgeX: 0,
+    const world = { tickIndex: 1, generation: 0, terrainRevision: 0, laneCount: 2, laneHeight: 144, width: 65535, leftEdgeX: 0,
       generatedThrough: [100, 100], terrain: { chunkWidth: 256 }, actions,
       actors: [{ x: 40, y: 100, lookRight: true, laneIndex: 0, action: actions[State.WALKING] }, { x: 30, y: 100, laneIndex: 0, action: actions[State.BUILDING] }],
       hasGroundAt(x, y) { queries++; return y >= 100 && x < 44 || y === 95 && x === 42; }, hasSteelAt: () => false,
@@ -34,7 +34,7 @@ describe('ProcGen current lane conditions', () => {
     f.world.actors[0].id = 9; f.world.actors[1].id = 2; f.world.actors[1].x = 40;
     registerProcgenActorVisibility(f.world, index); publishProcgenActorVisibility(f.world);
     expect(index.getStats()).to.include({ publications: 1, rebuilds: 0, actorScans: 2, retainedActors: 2 });
-    expect(index.physicalLeader(1, 2).id).to.equal(f.world.actors[1].id);
+    expect(index.physicalLeader(0, 1).id).to.equal(f.world.actors[1].id);
     expect(f.observe(0).action).to.equal('walk build');
     expect(f.observe(0).action).to.equal('walk build');
     expect(index.getStats().actorScans).to.equal(2);
@@ -92,5 +92,31 @@ describe('ProcGen current lane conditions', () => {
     const observe = createProcgenLaneObserver({ laneCount: 8 });
     expect(observe(0)).to.deep.equal({ action: '', terrain: '' }); expect(observe(7)).to.deep.equal({ action: '', terrain: '' });
     expect(observe.getStats()).to.include({ actorVisits: 0, fallbackBuilds: 1, indexAllocations: 1 });
+  });
+  it('keeps unavailable contacts partial and never infers a gap from missing source data', () => {
+    const f = fixture(); f.world.peekGroundAt = f.world.peekSteelAt = () => null;
+    f.world.hasGroundAt = f.world.hasSteelAt = () => { throw new Error('Observation used a materializing read'); };
+    const observed = f.observe(0); expect(observed).to.include({ terrainCoverage: 'partial', terrain: 'hazard' });
+    expect(f.observe.getStats().unknownContactQueries).to.be.greaterThan(0);
+  });
+  it('checks contact readiness in the physical row after a musical lane transfer', () => {
+    const f = fixture(); f.world.laneHeight = 96; f.world.generatedThrough = [100, 42];
+    f.world.peekGroundAt = f.world.peekSteelAt = () => false;
+    const observed = f.observe(0); expect(observed.terrain).not.to.include('gap'); expect(observed.terrainCoverage).to.equal('partial');
+    f.world.generatedThrough[1] = 100; f.world.terrainRevision++;
+    expect(f.observe(0).terrain).to.include('gap'); expect(f.observe(0)).not.to.have.property('terrainCoverage');
+  });
+  it('invalidates cached observations when a same-tick completed publication is explicitly replaced', () => {
+    const f = fixture(), index = new ProcgenActorVisibility(f.world); registerProcgenActorVisibility(f.world, index);
+    try { const first = f.observe(0); f.world.actors[0].x = 50; index.publish(true); expect(f.observe(0).x).to.equal(50); expect(first.x).to.equal(40); }
+    finally { index.dispose(); }
+  });
+  it('refuses a cached lane observation when leased publication pressure retires its current ownership', () => {
+    const f = fixture(), index = new ProcgenActorVisibility(f.world, { maxVersions: 2 }); registerProcgenActorVisibility(f.world, index);
+    const initial = f.observe(0), first = index.acquireSnapshot(); f.world.tickIndex++; f.observe(0); const second = index.acquireSnapshot();
+    try {
+      f.world.sprites = { activePreference: 'new-appearance' }; expect(f.observe(0)).to.deep.equal({ action: '', terrain: '' });
+      first.release(); expect(f.observe(0)).to.include({ x: 40, action: initial.action }); expect(initial.x).to.equal(40);
+    } finally { first.release(); second.release(); index.dispose(); }
   });
 });

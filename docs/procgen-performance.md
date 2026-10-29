@@ -93,8 +93,18 @@ lease pressure, restore, camera/CCTV and real batch/intent/checkpoint equivalenc
 Six native desktop cases pass unchanged recovery/effect pixel behavior and a
 live actor iterator trap during rendering and CCTV queries. Native dimensions
 are at least 1920x1080. The source-bound continuation329 receipt records commands,
-results and limits; acoustic behavior and terrain-residency-only contact reads
-remain separate qualification.
+results and limits; acoustic behavior remains separate qualification.
+
+Continuation330 adds non-materializing contact reads through resident/cold edits,
+retained source descriptors, partial growth and authored score masks. Source
+generation/restoration traps pass in actual Node worlds and the native instrument.
+The follow-up also exercises a real worker round trip of a held projection and
+resource-adapter failures; copied worker data cannot mutate the held source, and
+failed retirement remains charged. Projection, edit retention and lane observation
+reach100% scoped lines/functions. The77 distinct affected Node cases pass across
+the final grouped run and one added cache-pressure regression; two native desktop
+cases pass. V8 allocation profiling and browser frame-time gates remain future
+performance investigations, separate from the reported publication counters.
 
 ### Authored edit propagation
 

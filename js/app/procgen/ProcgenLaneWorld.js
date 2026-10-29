@@ -512,6 +512,21 @@ class ProcgenLaneWorld {
     return color === 3 ? 0xff86cbea : color ? this.basePixelAt(x, y) : 0;
   }
   hasGroundAt(x, y) { this.stats.groundQueries++; return this.groundColorAt(x, y) > 0; }
+  peekGroundAt(x, y) { return this._peekContactAt(x, y, false); }
+  peekSteelAt(x, y) { return this._peekContactAt(x, y, true); }
+  _peekContactAt(x, y, steel) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+    const lane = Math.floor(y / this.laneHeight), localY = y % this.laneHeight;
+    if (!steel) {
+      const edit = this.editChunks.peekValue(this._editKey(x, y), localY * EDIT_CHUNK_WIDTH + x % EDIT_CHUNK_WIDTH);
+      if (edit) return edit > 1;
+    }
+    if (x < this.leftEdgeX) return false;
+    if (!this.terrain) return steel ? false : this.baseGroundAt(x, y) > 0;
+    if (this.terrainGrowth && x >= this.generatedThrough[lane]) return null;
+    const state = this.terrainGrowth?.stateFor(lane, Math.floor(x / this.terrain.chunkWidth));
+    return this.terrain.peekCollisionAt?.(this.laneSeeds[lane], x, localY, steel, state) ?? null;
+  }
   getColumnStepHeight(x, yTop, height) {
     const cached = this._assistedColumn;
     if (cached.valid) {

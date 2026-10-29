@@ -23,6 +23,8 @@ describe('owned initial scene terrain provider (runtime/renderer qualification d
     try {
       await f.owned.prepare(); f.owned.configure(1, 8, { laneHeight: 96, workstation: true, hazardSpacing: 1024 }); f.owned.registerLanes(new Uint32Array([123]), 1, 1);
       expect(f.owned.collisionAt(123, 80, 88)).to.equal(true); expect(f.owned.collisionAt(123, 100, 90)).to.equal(false); expect(f.owned.surface(123, 100)).to.equal(-1); expect(f.owned.surface(123, 140)).to.equal(88);
+      expect(f.owned.peekCollisionAt(123, 80, 88)).to.equal(true); expect(f.owned.peekCollisionAt(123, 100, 90)).to.equal(false); expect(f.owned.peekCollisionAt(123, 80, 88, true)).to.equal(false);
+      expect(f.owned.peekCollisionAt(123, 1024, 88)).to.equal(null);
       expect(f.owned.getChunk(123, 0).pixels[88 * 128 + 80]).to.equal(f.owned.rasterSample(123, 0, 80, 88)); expect(f.owned.objectsAt(123, 0)).to.have.length(0); expect(f.owned.sourceReceipt()).to.include({ status: 'prepared', method: 'dedicated-worker', activeExecution: 'bound', fineGrowth: false }); expect(f.budget.diagnostics().accountedBytes).to.be.greaterThan(0);
       expect(() => f.owned.getChunk(999, 0)).to.throw('registered physical lane'); expect(() => f.owned.configure(2, 8, { laneHeight: 96 })).to.throw('exact physical dimensions');
       const saved = f.owned.exportAssignments(); f.owned.reset(); expect(() => f.owned.getChunk(123, 0)).to.throw('registered'); f.owned.restoreAssignments(saved); expect(f.owned.collisionAt(123, 80, 88)).to.equal(true);

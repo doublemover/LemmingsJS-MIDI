@@ -84,6 +84,7 @@ export class ProcgenScoredTerrain {
   rasterSample(seed, chunk, x, y, descriptor, state) { const source = this.authored(seed, chunk); return source ? !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x >= 128 || y < 0 || y >= this.height ? 0 : source.pixels[Math.floor(y) * 128 + Math.floor(x)] : this.base.rasterSample(seed, chunk, x, y, descriptor, state); }
   readMask(mask, x, y) { if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x >= 128 || y < 0 || y >= this.height) return false; const index = Math.floor(y) * 128 + Math.floor(x); return !!(mask[index >>> 5] >>> (index & 31) & 1); }
   collisionAt(seed, x, y, steel = false) { const chunk = Math.floor(x / 128), source = this.authored(seed, chunk); return source ? this.readMask(steel ? source.steel : source.solid, x - source.origin, y) : this.base.collisionAt(seed, x, y, steel); }
+  peekCollisionAt(seed, x, y, steel = false, state = null) { const source = this.authored(seed, Math.floor(x / 128)); return source ? this.readMask(steel ? source.steel : source.solid, x - source.origin, y) : this.base.peekCollisionAt?.(seed, x, y, steel, state) ?? null; }
   surface(seed, x) { const source = this.authored(seed, Math.floor(x / 128)); return source ? source.topProfile[Math.floor(x) - source.origin] : this.base.surface(seed, x); }
   isFlat(seed, x) { const y = this.surface(seed, x); return y >= 0 && this.surface(seed, x + 8) === y; }
   sample(seed, x, y) { return this.rasterSample(seed, Math.floor(x / 128), x % 128, y); }

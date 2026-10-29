@@ -79,6 +79,7 @@ class ProcgenPackTerrain {
   isFlat(seed, x) { return this.forSeed(seed).isFlat(seed, x); }
   sample(seed, x, y) { return this.forSeed(seed).sample(seed, x, y); }
   collisionAt(seed, x, y, steel = false) { return this.forSeed(seed).collisionAt(seed, x, y, steel); }
+  peekCollisionAt(seed, x, y, steel = false, state = null) { return this.forSeed(seed).peekCollisionAt?.(seed, x, y, steel, state) ?? null; }
   get memoryMB() { return this.themes.reduce((total, theme) => total + theme.terrain.memoryMB, 0); }
   getDebugState() {
     const sources = this.themes.map(theme => ({ styleName: theme.styleName, ...theme.terrain.getDebugState() }));

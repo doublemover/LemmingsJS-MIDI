@@ -8635,3 +8635,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   Node discovery because the worker fixture executed on the main thread. Guard
   that entry and explicitly import it in the regression cohort. Preserve both
   failed checkpoints; full326 remains the latest verified green production run.
+
+### Continuation 330 — non-materializing lane contacts
+
+- Read resident/cold edits without restoration or LRU updates; use cached source
+  masks, retained descriptors, active growth plans and prepared authored masks
+  without generating or composing terrain. Missing data is explicit partial
+  coverage and cannot create a gap condition. Readiness uses the physical row.
+- Invalidate same-tick observation caches by completed projection revision and
+  refuse stale ownership under leased publication pressure. Real worker copies
+  cannot mutate a held source frame; failed publication/retirement conservatively
+  retains budget ownership until acknowledged release.
+- All77 distinct affected Node cases pass across the final grouped run and added
+  cache regression; two native1920x1080+ cases pass with source generation and
+  edit restoration trapped. The first native contact fixture had no born actor;
+  explicit physical steps establish one before measurement. Its failure is retained.
+  Projection, edit retention and observation reach100% scoped lines/functions.
+- #1053 can close on shared completed indexes, measured visible-query scaling,
+  bounded version admission, immutable worker copies, real physical/music parity
+  and native pixel/camera/CCTV/source-read evidence. Query timing and conservative
+  byte estimates do not establish V8 heap, browser FPS or hardware/audio behavior.

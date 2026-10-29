@@ -557,6 +557,18 @@ class ProcgenRecipeTerrain {
     const index = y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH;
     return !!((steel ? p.steel : p.solid)[index >>> 5] & (1 << (index & 31)));
   }
+  peekCollisionAt(seed, x, y, steel = false, state = null) {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || y >= this.height) return false;
+    const chunk = Math.floor(x / TERRAIN_CHUNK_WIDTH), key = keyFor(seed, chunk);
+    if (!state || state.complete) {
+      const cached = this.collision.get(key);
+      if (cached) { const at = y * TERRAIN_CHUNK_WIDTH + x % TERRAIN_CHUNK_WIDTH; return !!((steel ? cached.steel : cached.solid)[at >>> 5] & (1 << (at & 31))); }
+    }
+    const descriptor = state && !state.complete ? state.plan?.descriptor : this.descriptions.get(key);
+    if (!descriptor) return null;
+    const sample = this._sampleTerrain(seed, chunk, x % TERRAIN_CHUNK_WIDTH, y, descriptor, state);
+    return steel ? sample.steel : sample.solid;
+  }
   surface(seed, x) { return this.getChunk(seed, Math.floor(x / TERRAIN_CHUNK_WIDTH)).topProfile[x % TERRAIN_CHUNK_WIDTH]; }
   isFlat(seed, x) { const y = this.surface(seed, x); return y >= 0 && this.surface(seed, x + 8) === y; }
   sample(seed, x, y) {
