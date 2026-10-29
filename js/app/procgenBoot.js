@@ -5,7 +5,6 @@ import { verifyPerformanceSceneOrigin } from './procgen/workstation/PerformanceS
 import { prepareProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryCapture.js';
 import { replayProcgenRecoveryJournal } from './procgen/workstation/ProcgenRecoveryJournal.js';
 import { getDecorationPack } from '../decorations/ProcgenDecorationPacks.js';
-import './bootstrap.js';
 import { ProcgenBitmapHud } from './procgen/ProcgenBitmapHud.js';
 import { createProcgenUiController } from './procgen/ProcgenUiController.js';
 import { loadProcgenPackTerrain, loadProcgenMixedTerrain } from './procgen/ProcgenPackTerrain.js';
@@ -20,15 +19,13 @@ import { loadTerrainRecipeBook } from './procgen/ProcgenTerrainRecipes.js';
 import { createProcgenLaneRuntime } from './procgen/ProcgenLaneRuntime.js';
 import { createProcgenRetirementScope, afterProcgenRetirement, retireProcgenWorldResources } from './procgen/ProcgenRetirement.js';
 import { createResourceBudget } from './resources/ResourceBudget.js';
-import { GameView } from '../game/GameView.js';
+import { createProcgenResourceFactory } from './procgen/ProcgenResourceFactory.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
-import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { getStyle, getStyleNames } from '../editor/StyleRegistry.js';
 import { ProcgenController } from './procgenController.js';
 import { ProcgenAssetManager } from './procgenAssetManager.js';
 import { ProcgenTerrainStamper } from './procgenTerrainStamper.js';
-import { installE2EHarness } from './e2eHarness.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
@@ -401,11 +398,11 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
   const serial = ++workstationInitSerial, canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const settings = sceneRecipe ? { ...sceneRecipe.settings } : session ? { ...session.settings, laneCount: session.world.laneCount, laneHeight: session.world.laneHeight, seed: session.world.seed } : { ...procgenStudio.prepareSettings() };
-  const view = new GameView(); let candidate = null, lanes = null, terrain = null, assets = null, committed = false, staged = false, preparationError = null;
+  let candidate = null, lanes = null, terrain = null, assets = null, committed = false, staged = false, preparationError = null;
   let stagedOwner = null, fileProvider = null, resourceLease = null, resources = null, resourcePromise = null, candidateBudgetToken = null, candidateBudgetOwner = 'candidate-world';
   const canCommit = () => serial === workstationInitSerial && !lease?.signal?.aborted;
   try {
-    const factory = view.gameFactory;
+    const factory = createProcgenResourceFactory();
     fileProvider = factory.fileProvider;
     fileProvider?.setBudgetAdapter?.(procgenResourceBudget);
     resourceLease = fileProvider?.acquireLease?.() || null;
@@ -497,8 +494,7 @@ const initWorkstation = async ({ session, lease, prepareOnly = false, sceneRecip
       { name: 'preparation-provider-lease', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => resourceLease?.release()) },
       { name: 'preparation-resources', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => resources?.dispose?.()) },
       { name: 'late-preparation-resources', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (!resources) return resourcePromise?.then(prepared => prepared.dispose?.(), () => {}); }) },
-      { name: 'preparation-provider', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (fileProvider?.acquireLease) return fileProvider.dispose(); }) },
-      { name: 'preparation-view', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => view.dispose()) }
+      { name: 'preparation-provider', run: () => afterProcgenRetirement([candidateRetirement.getReceipt()], () => { if (fileProvider?.acquireLease) return fileProvider.dispose(); }) }
     ]);
     await retirement.completion;
     if (retirement.outcome !== 'complete') {
@@ -554,6 +550,9 @@ const init = async (options = {}) => {
       // ignore storage failures
     }
     const aiDebugOverlay = params.has('aiDebug');
+    await import('./bootstrap.js');
+    const [{ GameView }, { loadEditorLevel }] = await Promise.all([import('../game/GameView.js'), import('../editor/EditorLevelLoader.js')]);
+    if (activeProcgenRuntime !== runtime) return;
     const view = new GameView();
     runtime.view = view;
     runtime.fileProvider = view.gameFactory.fileProvider;
@@ -689,7 +688,11 @@ const init = async (options = {}) => {
     stageAdapter.updateStageSize();
 
     procgenUi?.sync();
-    installE2EHarness({ view, procgenController: controller });
+    if (new URLSearchParams(window.location.search).has('e2e')) {
+      const { installE2EHarness } = await import('./e2eHarness.js');
+      if (activeProcgenRuntime !== runtime) return;
+      installE2EHarness({ view, procgenController: controller });
+    }
     registerServiceWorker({ profile: 'perf' });
   } catch (err) {
     runtime.lanes?.stop();

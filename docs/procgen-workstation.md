@@ -300,6 +300,11 @@ runs receive fresh seeds. Play resumes the existing world.
 Automatic run resets derive a different seed from the saved run state, so a
 loaded checkpoint continues through the same subsequent worlds.
 
+Workstation preparation uses the configured resource factory directly. Classic
+view/editor execution and the E2E harness load only for their explicit legacy
+path and diagnostic opt-in; failure of those optional modules does not block
+the ordinary instrument. Shared asset/style data remains part of preparation.
+
 Startup resolves one immutable plan before asset preparation. Shared recipes
 use versioned defaults for omitted fields, including decoration, population and
 worker policy; unrelated previous setup preferences cannot fill those gaps.

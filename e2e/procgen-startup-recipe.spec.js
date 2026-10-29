@@ -1,5 +1,22 @@
 import { expect, test } from '@playwright/test';
 
+test('the desktop instrument starts when optional classic editor and E2E modules are unavailable', { tag: '@boundary' }, async ({ page }) => {
+  test.setTimeout(90000); const optionalRequests = [];
+  await page.route(/\/js\/(?:app\/(?:bootstrap|e2eHarness)\.js|game\/(?:GameView\.js|game-view\/[^/]+\.js)|editor\/(?:EditorSession|EditorLevelLoader)\.js)/, route => {
+    optionalRequests.push(route.request().url()); return route.abort('failed');
+  });
+  await page.goto('/procgen.html?e2e=1&recipe=1&seed=999&lanes=3&speed=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  const result = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world; studio.transport.pause();
+    const tick = world.tickIndex; window.__PROCGEN_LANES__.step(3);
+    return { tickDelta: world.tickIndex - tick, seed: world.seed, lanes: world.laneCount, plan: studio.getStartupPlan().mode,
+      output: studio.getPlaybackState().enabled, recording: studio.state.recording, thru: studio.state.thru };
+  });
+  expect(result).toEqual({ tickDelta: 3, seed: 999, lanes: 3, plan: 'recipe', output: false, recording: false, thru: false });
+  expect(optionalRequests).toEqual([]);
+});
+
 test('a shared recipe opens its declared world with an unrelated saved two-lane setup present', async ({ page }) => {
   test.setTimeout(90000);
   await page.goto('/README.md');

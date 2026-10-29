@@ -8443,3 +8443,20 @@ export-budget acknowledgments still prevent a false complete receipt.
   explicit intervention/terrain/transfer/tempo/external-input negative corpus.
   #1092/#1162/#1234/#1161 stay open for their stated remaining scopes. Native
   source hashes and every earlier failure are retained in the canonical receipt.
+
+### Continuation 320 — instrument resource entry without classic view
+
+- Construct the configured resource factory directly during workstation world
+  preparation. Preserve provider/resource leases and existing transactional
+  retirement without a temporary classic view or its application-context state.
+- Defer bootstrap/classic view/editor loading to explicit legacy initialization
+  and E2E loading to its query opt-in. Fence obsolete imports before allocation
+  or publication. Literal deferred entries remain visible to the packager.
+- The static local entry graph drops835 modules/8059998 source bytes to774/
+  7660239. E2E modules drop10 to0; the remaining3 editor-path imports are shared
+  asset/style/model data. This is inventory, not measured startup/heap/latency.
+- All18 current Node cases and22 actual desktop browser journeys pass, including
+  blocked optional classic/editor/E2E modules, pinned original scene startup,
+  recovery/recipes/sharing, and complete legacy compatibility at1920px minimum.
+  Keep #1161 open for optional hardware/creative graph and measured startup/
+  first-sound/offline/package scope. Exact-head full CI remains pending.
