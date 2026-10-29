@@ -36,7 +36,7 @@ export function createWorkstationDock({ document, window, shell, inspector, resi
   on(resize, 'keydown', event => { if (!visible() || !['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); event.stopPropagation(); height(event.key === 'Home' ? 180 : event.key === 'End' ? 480 : state.dockHeight + (event.key === 'ArrowUp' ? 16 : -16), true); });
   on(resize, 'pointerdown', event => {
     if (disposed || !visible() || event.button !== 0) return; const startHeight = state.dockHeight, startY = event.clientY;
-    const lease = arbiter.acquire({ pointerId: event.pointerId, targetKey: 'instrument-dock-resize', identity: getIdentity(), getIdentity, onCancel: () => { gesture = null; height(startHeight); } });
+    const lease = arbiter.acquire({ pointerId: event.pointerId, targetKey: 'instrument-dock-resize', identity: getIdentity(), getIdentity, captureTarget: resize, onCancel: () => { gesture = null; height(startHeight); } });
     if (!lease) return; gesture = { lease, startHeight, startY }; try { resize.setPointerCapture(event.pointerId); } catch { lease.cancel('capture-unavailable'); return; } event.preventDefault(); event.stopPropagation();
   });
   on(resize, 'pointermove', event => { if (gesture?.lease.owns(event)) height(gesture.startHeight + gesture.startY - event.clientY); });

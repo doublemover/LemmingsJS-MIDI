@@ -76,7 +76,7 @@ export function createAutomationCurveEditor({ document, window, curve, getIdenti
   on(svg, 'pointerdown', event => {
     const index = Number(event.target.dataset.point); if (!canEditPoints() || event.button !== 0 || !Number.isInteger(index) || !draft[index]) return;
     const rect = svg.getBoundingClientRect(); if (!(rect.width > 0 && rect.height > 0)) return; const start = draftText;
-    const lease = arbiter.acquire({ pointerId: event.pointerId, targetKey: 'automation-curve:' + accepted.id, identity, getIdentity, onCancel: () => { gesture = null; draftText = start; dirty = draftText !== acceptedText; paint(); } });
+    const lease = arbiter.acquire({ pointerId: event.pointerId, targetKey: 'automation-curve:' + accepted.id, identity, getIdentity, captureTarget: svg, onCancel: () => { gesture = null; draftText = start; dirty = draftText !== acceptedText; paint(); } });
     if (!lease) return; selected = index; gesture = { lease, rect }; try { svg.setPointerCapture(event.pointerId); } catch { lease.cancel('capture-unavailable'); return; } event.preventDefault(); event.stopPropagation(); paint();
   });
   on(svg, 'pointermove', event => { if (!gesture?.lease.owns(event)) return; const rect = gesture.rect; replaceDraft(moveAutomationCurvePoint(draft, selected, { beat: ((event.clientX - rect.left) * 400 / rect.width - 24) / 352 * accepted.length, value: (152 - (event.clientY - rect.top) * 180 / rect.height) / 128 * 127 }, accepted.length, Number(snap.value))); });

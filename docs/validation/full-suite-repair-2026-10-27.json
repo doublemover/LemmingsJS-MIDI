@@ -818,55 +818,56 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "89fa0f1c1145a250219fd041f809b8300913e301",
+    "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
     "status": "success",
-    "run": 40874063435,
-    "job": 123448224788,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224788",
-    "engineJob": 123448224568,
-    "engineUrl": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224568",
-    "requiredJobs": 2,
-    "nodePassed": 7013,
+    "run": 40891278513,
+    "job": 123508431766,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40891278513",
+    "engineJob": 123508431268,
+    "requiredJobs": {
+      "test": "success",
+      "lifecycle-engines": "success",
+      "native-midi-codec (windows-latest)": "success",
+      "native-midi-codec (ubuntu-latest)": "success"
+    },
+    "nodePassed": 7030,
     "nodePending": 10,
-    "browserPassed": 191,
+    "browserPassed": 198,
     "desktopPassed": 24,
     "workstationSmokePassed": 156,
-    "enginePassed": 11,
+    "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.77,
-      "statements": 90.77,
-      "branches": 83.82,
-      "functions": 88.52
+      "lines": 90.78,
+      "statements": 90.78,
+      "branches": 83.81,
+      "functions": 88.54
     },
     "masterCapture": {
-      "state": "Partial",
-      "frames": 71424,
-      "captured": 71424,
-      "stopReason": "noncontiguous-render-clock",
-      "clockDiscontinuity": {
-        "actualFrame": 106624,
-        "expectedFrame": 106752,
-        "frames": 128
-      },
-      "peak": 0.023482203483581543,
-      "nonfinite": 0
+      "state": "Ready",
+      "frames": 59649,
+      "captured": 59649,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null,
+      "peak": 0.023256301879882812,
+      "nonfinite": 0,
+      "scope": "Actual native browser worklet digital capture; no acoustic or power-loss/disk durability claim."
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 31165,
+      "totalDurationMs": 33042,
       "measurementValid": true,
       "failures": [],
       "metrics": {
-        "perfP95Frame": 50,
-        "perfP50Tps": 96.79968391940835,
-        "historyRatio": 0.5853333333333334,
-        "antsAvgMs": 13.46,
-        "tileCompositionAvgMs": 3.83,
-        "overlayPlaneAvgMs": 15.8,
-        "scaledBlitAvgMs": 26.1
+        "perfP95Frame": 83.40000000000055,
+        "perfP50Tps": 98.9315393747709,
+        "historyRatio": 0.585,
+        "antsAvgMs": 18.01,
+        "tileCompositionAvgMs": 3.6,
+        "overlayPlaneAvgMs": 13.17,
+        "scaledBlitAvgMs": 23.71
       }
     },
     "mcp": "success",
@@ -874,21 +875,118 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1246,
+      "files": 1247,
       "configuredAudioBackend": "pulseaudio-null-sink",
+      "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
       "facts": 1078,
       "ticks": 64,
-      "nativeAudio": "Firefox155 and Linux WebKit26.6 supported activation/navigation/reactivation paths passed; no acoustics."
+      "closureDigest": "9d9dcf963bb8b93d9cad919f3e699815fb906dfd0aac9c4776b38110d48044e8",
+      "nativeAudio": [
+        {
+          "project": "chromium-semantic",
+          "browser": "153.0.8010.12",
+          "audioContextAvailable": true
+        },
+        {
+          "project": "firefox-lifecycle",
+          "browser": "155.0",
+          "audioContextAvailable": true
+        },
+        {
+          "project": "webkit-lifecycle",
+          "browser": "26.6",
+          "audioContextAvailable": true
+        }
+      ]
     },
-    "scope": "Both required347jobs completed successfully. Includes all published fixes through347; does not cover348WIP. Partial capture is retained finite digital evidence, not a complete or acoustic recording.",
-    "log": {
-      "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci347-green.log",
-      "bytes": 1201734,
-      "sha256": "4ff6a321e4e307d46d6bbb0ab7e83a1c65a555d5541b960194f2933ce6c54f38",
-      "normalization": "Retained complete decoded mainjob text with LF line endings."
-    }
+    "nativeCodec": {
+      "status": "both passed",
+      "linuxJob": 123508431864,
+      "windowsJob": 123508431691,
+      "commandsPerPlatform": 8829,
+      "boundedProtocolFailuresPerPlatform": 4,
+      "sourceIdentical": true,
+      "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+      "outputIdentical": true
+    },
+    "sourceQualification": {
+      "testedPrMergeHead": "05b33ddbc1fcb00712f565ce0c15fdd76ae9b098",
+      "rawDirtyFlag": true,
+      "inventoryFiles": 1128,
+      "inventorySha256": "f74a3b6e0d7526c5ffcb5420bd30d57e6c5049d7b5223c2449710a2696bc8b75",
+      "changedRuntimeHashAgreement": [
+        {
+          "path": "js/app/procgen/workstation/ProcgenPatternEngine.js",
+          "sha256": "c4f52bb5a9092744f3297aecaef1e773dd360431ba7a2be3470fd52bd465d2c5",
+          "matches": true
+        },
+        {
+          "path": "js/app/procgen/workstation/SinkAdmissionRegistry.js",
+          "sha256": "c79f611f43901de685711209ded33fa1ddb46157a59699b0e8fb5d2a2fccb0bc",
+          "matches": true
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+          "sha256": "d807417be76f5f3d8ddd5537596bbc4447f9300bfb082b00b4583ec9532d1ce9",
+          "matches": true
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "sha256": "3cbadd9482ef8c63eac5db51ae67c6807e15369d5d6eb26a8835be35c04bcc2c",
+          "matches": true
+        },
+        {
+          "path": "js/midi/scheduler/MidiSchedulerChannelMethods.js",
+          "sha256": "e90c81576b6088cf2ae625e850beda915f5e05eb1eb1d75d65157e7e7d88d4e6",
+          "matches": true
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".tmp/ci350-main.zip",
+        "bytes": 547231,
+        "sha256": "5497d2260bbfa5f44f76fd0b01fb934796c3fffe1e9e2090bc5a1805453531f4"
+      },
+      {
+        "path": ".tmp/ci350-engine.zip",
+        "bytes": 152418,
+        "sha256": "2d5ecbdbec3d08369ff8bb87927dba6d6549154346c33f6a26845f603a789b71"
+      },
+      {
+        "path": ".tmp/ci350-linux.zip",
+        "bytes": 2247,
+        "sha256": "a83a079eec2aae0cca621cd67e0721c957762ac898e9f8526cd7cfb98bdb6d53"
+      },
+      {
+        "path": ".tmp/ci350-windows.zip",
+        "bytes": 2147,
+        "sha256": "6741c6c4b3b8413db146c1be1c285d9f97c7bd872ec400785345cb6bcb65b937"
+      },
+      {
+        "path": ".tmp/ci350-main-workstation-result-qualification.json",
+        "bytes": 182114,
+        "sha256": "d9baca85fc71cbb3cf060c71ffb3465293d51223c65fbcc55056cd4e6328973e"
+      },
+      {
+        "path": ".tmp/ci350-engine-lifecycle-engine-qualification.json",
+        "bytes": 242419,
+        "sha256": "330c5eae8bbeba040198a478c958f0767630981031103f6fda899f1079adcd40"
+      },
+      {
+        "path": ".tmp/ci350-linux-native-midi-codec-qualification.json",
+        "bytes": 7876,
+        "sha256": "6257c2a41b84327fca36a5fd0c4eae39e8a9fe3adbe181a2b8a1941beeaf90d4"
+      },
+      {
+        "path": ".tmp/ci350-windows-native-midi-codec-qualification.json",
+        "bytes": 7748,
+        "sha256": "347616f3e903255d111f65212dd71602cfb607cf3e8dc149a6f324247efcf06f"
+      }
+    ],
+    "scope": "All four required jobs at the named branch/PR-merge checkpoint; later source and issue-specific device/acceptance work is independent."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -46209,6 +46307,529 @@
         "path": "e2e/procgen-workstation-view.spec.js",
         "bytes": 41301,
         "sha256": "9a2dafb2ebaec6505491e965dabe04028504ea0bb62a21feeced994eac121329"
+      }
+    ]
+  },
+  "continuation352": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "112b10f5651729a380811d4fbe3c140e47648b60",
+    "scope": "Stable widget capture, reentrant source-safe MIDI range edits, changed-draft native mouse/pen matrix; solo, no worktrees.",
+    "implementation": [
+      "Register range, knob, curve, dock and terrain capture targets with the shared owner. Restore prior brush selection if setPointerCapture throws.",
+      "Allow own source publication during a sound edit while still checking source changes during reentrant renders; A-B-A cannot extend the old history group. Retired input redraws the stored source value.",
+      "Qualify source-bound MIDI dial history with actual native mouse/UA capture events plus controlled stale input, and native concurrent mouse/pen contacts with distinct trusted IDs.",
+      "Strengthen canceled-draft fixtures to begin on disabled cells and to witness gotpointercapture before actual loss; manually measured targets are scrolled into view."
+    ],
+    "validation": {
+      "node": {
+        "passed": 46,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook352-node-final.log",
+          "bytes": 4895,
+          "sha256": "f0331a6f7c2f664753a1d574cfe8649b234a409330404dda090e8eb1e9868fb1"
+        }
+      },
+      "browser": {
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "desktop": {
+          "startTime": "2026-10-29T15:29:49.243Z",
+          "duration": 5336.737,
+          "expected": 2,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "workstation": {
+          "startTime": "2026-10-29T15:29:55.186Z",
+          "duration": 6848.4039999999995,
+          "expected": 10,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "receipts": [],
+        "logs": [
+          {
+            "path": ".tmp/rook352-reviewed-desktop.log",
+            "bytes": 570,
+            "sha256": "68d25b1061b0382b669133fc3929394802d45efe50b5b0b28ddeff499d7a241a"
+          },
+          {
+            "path": ".tmp/rook352-reviewed-workstation.log",
+            "bytes": 2180,
+            "sha256": "8e83fd2b0a21fa5a1f12a69bb56c90f61864fe4179105d83ccabfba990d5535b"
+          }
+        ],
+        "scope": "Native mouse/pen/capture/key/modal events on desktop. Stale dial input and blur controlled; no mobile or physical-tablet/acoustic claim.",
+        "receiptReports": [
+          {
+            "path": ".tmp/rook352-reviewed-desktop.json",
+            "bytes": 10524,
+            "sha256": "36d9aef765d6e52c75d0a1cefe2912d3ff3973268e50f1bb2c5a5f12c7cf4c42"
+          },
+          {
+            "path": ".tmp/rook352-reviewed-workstation.json",
+            "bytes": 15983,
+            "sha256": "505a2a9977f367e81075fdfbc0aaad4206c09913b51540aa51826ce9c0d126e3"
+          }
+        ]
+      },
+      "coverage": {
+        "focusedCases": 46,
+        "overlap": true,
+        "summary": {
+          "total": {
+            "lines": {
+              "total": 565,
+              "covered": 485,
+              "skipped": 0,
+              "pct": 85.84
+            },
+            "statements": {
+              "total": 565,
+              "covered": 485,
+              "skipped": 0,
+              "pct": 85.84
+            },
+            "functions": {
+              "total": 82,
+              "covered": 66,
+              "skipped": 0,
+              "pct": 80.48
+            },
+            "branches": {
+              "total": 498,
+              "covered": 327,
+              "skipped": 0,
+              "pct": 65.66
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\AutomationCurveEditor.js": {
+            "lines": {
+              "total": 94,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "functions": {
+              "total": 21,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 76.19
+            },
+            "statements": {
+              "total": 94,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 87.23
+            },
+            "branches": {
+              "total": 104,
+              "covered": 78,
+              "skipped": 0,
+              "pct": 75
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\controls\\ParameterKnob.js": {
+            "lines": {
+              "total": 165,
+              "covered": 143,
+              "skipped": 0,
+              "pct": 86.66
+            },
+            "functions": {
+              "total": 28,
+              "covered": 21,
+              "skipped": 0,
+              "pct": 75
+            },
+            "statements": {
+              "total": 165,
+              "covered": 143,
+              "skipped": 0,
+              "pct": 86.66
+            },
+            "branches": {
+              "total": 164,
+              "covered": 109,
+              "skipped": 0,
+              "pct": 66.46
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\midi-ui\\midiInstrumentWorkbench.js": {
+            "lines": {
+              "total": 306,
+              "covered": 260,
+              "skipped": 0,
+              "pct": 84.96
+            },
+            "functions": {
+              "total": 33,
+              "covered": 29,
+              "skipped": 0,
+              "pct": 87.87
+            },
+            "statements": {
+              "total": 306,
+              "covered": 260,
+              "skipped": 0,
+              "pct": 84.96
+            },
+            "branches": {
+              "total": 230,
+              "covered": 140,
+              "skipped": 0,
+              "pct": 60.86
+            }
+          }
+        },
+        "notLoadedByFocusedNodeSubset": [
+          "PhysicalAuthoringView.js",
+          "WorkstationDock.js"
+        ],
+        "remaining": "Complete native physical brush/dock/curve capture, rejection and removal paths. Whole-project thresholds remain unchanged."
+      },
+      "checks": [
+        "npm run format; final changed harness ESLint --fix",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check: 10 components / 350 files",
+        "npm run check:browser-categories: 194 full / 164 smoke, all14 gates",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "initialFailures": [
+        "Native range host hasPointerCapture assertion was invalid: Chromium UA thumb holds native capture. Replaced with actual trusted got/lost events and logical owner checks; retained diagnostic trace.",
+        "Concurrent-contact fixture painted an already-enabled cell, so zero edits were correct. Corrected to a disabled cell and strengthened canceled strokes likewise.",
+        "Release before native gotpointercapture clears only a pending request and emits no actual loss; final fixture witnesses acquisition first.",
+        "351 CI main passed its desktop boundary step then failed six old manual-target capture preconditions. Final fixtures scroll manual targets into view before measurement and require actual capture acquisition; independent new CI remains necessary."
+      ]
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "status": "success",
+      "run": 40891278513,
+      "job": 123508431766,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40891278513",
+      "engineJob": 123508431268,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7030,
+      "nodePending": 10,
+      "browserPassed": 198,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 156,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.81,
+        "functions": 88.54
+      },
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 59649,
+        "captured": 59649,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.023256301879882812,
+        "nonfinite": 0,
+        "scope": "Actual native browser worklet digital capture; no acoustic or power-loss/disk durability claim."
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 33042,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.40000000000055,
+          "perfP50Tps": 98.9315393747709,
+          "historyRatio": 0.585,
+          "antsAvgMs": 18.01,
+          "tileCompositionAvgMs": 3.6,
+          "overlayPlaneAvgMs": 13.17,
+          "scaledBlitAvgMs": 23.71
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1247,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "closureDigest": "9d9dcf963bb8b93d9cad919f3e699815fb906dfd0aac9c4776b38110d48044e8",
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123508431864,
+        "windowsJob": 123508431691,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "05b33ddbc1fcb00712f565ce0c15fdd76ae9b098",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1128,
+        "inventorySha256": "f74a3b6e0d7526c5ffcb5420bd30d57e6c5049d7b5223c2449710a2696bc8b75",
+        "changedRuntimeHashAgreement": [
+          {
+            "path": "js/app/procgen/workstation/ProcgenPatternEngine.js",
+            "sha256": "c4f52bb5a9092744f3297aecaef1e773dd360431ba7a2be3470fd52bd465d2c5",
+            "matches": true
+          },
+          {
+            "path": "js/app/procgen/workstation/SinkAdmissionRegistry.js",
+            "sha256": "c79f611f43901de685711209ded33fa1ddb46157a59699b0e8fb5d2a2fccb0bc",
+            "matches": true
+          },
+          {
+            "path": "js/app/procgen/workstation/ProcgenMidiPorts.js",
+            "sha256": "d807417be76f5f3d8ddd5537596bbc4447f9300bfb082b00b4583ec9532d1ce9",
+            "matches": true
+          },
+          {
+            "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+            "sha256": "3cbadd9482ef8c63eac5db51ae67c6807e15369d5d6eb26a8835be35c04bcc2c",
+            "matches": true
+          },
+          {
+            "path": "js/midi/scheduler/MidiSchedulerChannelMethods.js",
+            "sha256": "e90c81576b6088cf2ae625e850beda915f5e05eb1eb1d75d65157e7e7d88d4e6",
+            "matches": true
+          }
+        ]
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci350-main.zip",
+          "bytes": 547231,
+          "sha256": "5497d2260bbfa5f44f76fd0b01fb934796c3fffe1e9e2090bc5a1805453531f4"
+        },
+        {
+          "path": ".tmp/ci350-engine.zip",
+          "bytes": 152418,
+          "sha256": "2d5ecbdbec3d08369ff8bb87927dba6d6549154346c33f6a26845f603a789b71"
+        },
+        {
+          "path": ".tmp/ci350-linux.zip",
+          "bytes": 2247,
+          "sha256": "a83a079eec2aae0cca621cd67e0721c957762ac898e9f8526cd7cfb98bdb6d53"
+        },
+        {
+          "path": ".tmp/ci350-windows.zip",
+          "bytes": 2147,
+          "sha256": "6741c6c4b3b8413db146c1be1c285d9f97c7bd872ec400785345cb6bcb65b937"
+        },
+        {
+          "path": ".tmp/ci350-main-workstation-result-qualification.json",
+          "bytes": 182114,
+          "sha256": "d9baca85fc71cbb3cf060c71ffb3465293d51223c65fbcc55056cd4e6328973e"
+        },
+        {
+          "path": ".tmp/ci350-engine-lifecycle-engine-qualification.json",
+          "bytes": 242419,
+          "sha256": "330c5eae8bbeba040198a478c958f0767630981031103f6fda899f1079adcd40"
+        },
+        {
+          "path": ".tmp/ci350-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "6257c2a41b84327fca36a5fd0c4eae39e8a9fe3adbe181a2b8a1941beeaf90d4"
+        },
+        {
+          "path": ".tmp/ci350-windows-native-midi-codec-qualification.json",
+          "bytes": 7748,
+          "sha256": "347616f3e903255d111f65212dd71602cfb607cf3e8dc149a6f324247efcf06f"
+        }
+      ],
+      "scope": "All four required jobs at the named branch/PR-merge checkpoint; later source and issue-specific device/acceptance work is independent."
+    },
+    "previousVerifiedCiCheckpoint": {
+      "head": "89fa0f1c1145a250219fd041f809b8300913e301",
+      "status": "success",
+      "run": 40874063435,
+      "job": 123448224788,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224788",
+      "engineJob": 123448224568,
+      "engineUrl": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40874063435/job/123448224568",
+      "requiredJobs": 2,
+      "nodePassed": 7013,
+      "nodePending": 10,
+      "browserPassed": 191,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 156,
+      "enginePassed": 11,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.82,
+        "functions": 88.52
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 71424,
+        "captured": 71424,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 106624,
+          "expectedFrame": 106752,
+          "frames": 128
+        },
+        "peak": 0.023482203483581543,
+        "nonfinite": 0
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 31165,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 50,
+          "perfP50Tps": 96.79968391940835,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 13.46,
+          "tileCompositionAvgMs": 3.83,
+          "overlayPlaneAvgMs": 15.8,
+          "scaledBlitAvgMs": 26.1
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1246,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": "Firefox155 and Linux WebKit26.6 supported activation/navigation/reactivation paths passed; no acoustics."
+      },
+      "scope": "Both required347jobs completed successfully. Includes all published fixes through347; does not cover348WIP. Partial capture is retained finite digital evidence, not a complete or acoustic recording.",
+      "log": {
+        "path": "C:/Users/sneak/AppData/Local/Temp/lemmings-rook-ci347-green.log",
+        "bytes": 1201734,
+        "sha256": "4ff6a321e4e307d46d6bbb0ab7e83a1c65a555d5541b960194f2933ce6c54f38",
+        "normalization": "Retained complete decoded mainjob text with LF line endings."
+      }
+    },
+    "latestCi351": {
+      "head": "112b10f5651729a380811d4fbe3c140e47648b60",
+      "run": 40895082765,
+      "status": "failed whole workflow",
+      "mainJob": 123521870128,
+      "mainFailures": 6,
+      "engineJob": 123521869674,
+      "engineStatus": "success",
+      "nativeLinuxJob": 123521870018,
+      "nativeWindowsJob": 123521870255,
+      "nativeStatus": "both success",
+      "reason": "Six old fixture capture preconditions false; screenshot retained. No full green351 claim.",
+      "artifact": {
+        "path": ".tmp/ci351-failure.zip",
+        "bytes": 18504758,
+        "sha256": "9299b5bd800e66194f9fec6f131603aae274614d3f76425470bcd559d4a35e0f"
+      }
+    },
+    "issueStatus": {
+      "1000": "open: native physical brush/dock/curve capture, rejection, removal and transaction matrix remains; source-safe MIDI A-B/A-B-A and native concurrent desktop contacts now qualified"
+    },
+    "limits": [
+      "MIDI range native capture belongs to the UA thumb; a false public host capture flag is not a failed logical owner.",
+      "Native injected mouse/pen evidence does not certify physical tablet pressure/calibration.",
+      "Physical/dock target registration and brush capture-error rollback still need their named native UI matrix; do not substitute other widget tests."
+    ],
+    "sourceFiles": [
+      {
+        "path": "js/app/midi-ui/midiInstrumentWorkbench.js",
+        "bytes": 22335,
+        "sha256": "64f8e896812eaa4298359880935418e201bfe042e39d153fc26d636c7b7402fe"
+      },
+      {
+        "path": "js/app/controls/ParameterKnob.js",
+        "bytes": 16865,
+        "sha256": "dbebae2f0807c300425da5161d43649ce4e66a721bb9574795d17c0d47fadad5"
+      },
+      {
+        "path": "js/app/controls/AutomationCurveEditor.js",
+        "bytes": 15064,
+        "sha256": "b5bd02b6de38780c98e1fb4e2f52836e0568d9efc0eb6fd58a07fb0891cb0f88"
+      },
+      {
+        "path": "js/app/procgen/workstation/WorkstationDock.js",
+        "bytes": 9237,
+        "sha256": "600463527f78ec436cc9244268c2d505b2edd1994b8328f63f7977e3f4b4aed0"
+      },
+      {
+        "path": "js/app/procgen/workstation/PhysicalAuthoringView.js",
+        "bytes": 16209,
+        "sha256": "ae1268a31cce7f1bd3556184e7ff4852abd0cba85573e06ed38afd0c560cca05"
+      },
+      {
+        "path": "test/midi/midi-instrument-workbench.test.js",
+        "bytes": 16449,
+        "sha256": "067c1b4709182432404b0e44a50442213017852b01f004f589014fef9cd4dc76"
+      },
+      {
+        "path": "e2e/instrument-workbench.spec.js",
+        "bytes": 23388,
+        "sha256": "942029a748e5b3ef664292b3e5363b84ea7c5d99a07016eacbdc84a7d73802e9"
+      },
+      {
+        "path": "e2e/procgen-workstation-view.spec.js",
+        "bytes": 45078,
+        "sha256": "0952dc583027729274f2f561a3a804505c9db5c5d988fd525fff943a3d9eb3d4"
       }
     ]
   }

@@ -45,7 +45,7 @@ export function createParameterKnob({ document, window = document.defaultView, d
   const begin = event => {
     if (disposed || readOnly || pending || entryConflict || authored == null) return false;
     if (gesture) return gesture.lease.owns(event);
-    const identity = getIdentity(), lease = arbiter.acquire({ pointerId: event?.pointerId ?? null, targetKey: descriptor.id, identity, getIdentity, onCancel: cancel });
+    const identity = getIdentity(), lease = arbiter.acquire({ pointerId: event?.pointerId ?? null, targetKey: descriptor.id, identity, getIdentity, captureTarget: cap, onCancel: cancel });
     if (!lease) return false;
     gesture = { lease, pointerId: event?.pointerId ?? null, startY: event?.clientY ?? 0, position: parameterUnitPosition(descriptor, authored), beginValue: authored, detent: null }; return true;
   };

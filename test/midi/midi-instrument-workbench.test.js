@@ -67,24 +67,36 @@ describe('live instrument workbench', function() {
   it('pins sound dial gestures to the selected source and does not group a later source into Undo', () => {
     const document = new TestDocument(); document.body = document.createElement('body'); const window = createTestWindow();
     const range = registerElement(document, 'input', 'midiSoundLevel'); range.type = 'range';
-    let project = makeProject(), selected = 'source-a', workbench;
+    let project = makeProject(), selected = 'source-a', workbench, switchDuringApply = false;
     const original = project.sources[0]; project = { ...project, sources: [
       { ...original, id: 'source-a', mapping: { ...original.mapping, velocity: 40 } },
       { ...original, id: 'source-b', mapping: { ...original.mapping, velocity: 50 } }] };
     const history = createMidiEditHistory(), getSource = () => project.sources.find(source => source.id === selected);
-    const commit = next => { history.record(project, next); project = next; workbench?.render(); };
+    const commit = next => { history.record(project, next); project = next;
+      if (switchDuringApply) { selected = 'source-b'; workbench.render(); selected = 'source-a'; }
+      workbench?.render(); };
     workbench = createMidiInstrumentWorkbench({ document, window, getLemmings: () => null, getProject: () => project, getSource,
       updateMapping: patch => commit({ ...project, sources: project.sources.map(source => source.id === selected ? { ...source, mapping: { ...source.mapping, ...patch } } : source) }),
       updateSource() {}, commitProject: commit, chooseView() {}, bind: (id, type, fn) => document.getElementById(id)?.addEventListener(type, fn), panic() {}, history, setStatus() {} });
+    const captured = new Set(); range.setPointerCapture = id => captured.add(id); range.hasPointerCapture = id => captured.has(id); range.releasePointerCapture = id => captured.delete(id);
     workbench.initialize(); const fire = (type, extra = {}) => range.dispatchEvent({ type, target: range, ...extra });
     fire('pointerdown', { pointerId: 1, button: 0 }); range.value = '80'; fire('input');
     selected = 'source-b'; workbench.render(); range.value = '90'; fire('input'); fire('change');
+    expect(captured.size).to.equal(0);
     expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([80, 50]);
     expect(history.undo(project, commit)).to.equal(true); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 50]);
     fire('pointerdown', { pointerId: 2, button: 0 }); range.value = '70'; fire('input'); fire('pointerup', { pointerId: 99 });
     range.value = '75'; fire('input'); fire('change');
     expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 75]);
-    expect(history.undo(project, commit)).to.equal(true); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 50]); workbench.dispose();
+    expect(history.undo(project, commit)).to.equal(true); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 50]);
+    selected = 'source-a'; workbench.render(); fire('pointerdown', { pointerId: 3, button: 0 }); range.value = '65'; fire('input');
+    selected = 'source-b'; workbench.render(); selected = 'source-a'; workbench.render(); range.value = '99'; fire('input'); fire('change');
+    expect(captured.size).to.equal(0); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([65, 50]);
+    expect(history.undo(project, commit)).to.equal(true); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 50]);
+    switchDuringApply = true; fire('pointerdown', { pointerId: 4, button: 0 }); range.value = '85'; fire('input');
+    range.value = '99'; fire('input'); fire('change');
+    expect(captured.size).to.equal(0); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([85, 50]);
+    switchDuringApply = false; expect(history.undo(project, commit)).to.equal(true); expect(project.sources.map(source => source.mapping.velocity)).to.deep.equal([40, 50]); workbench.dispose();
   });
 
   it('keeps source selection and the same canvas through every layout and event pulse', function() {

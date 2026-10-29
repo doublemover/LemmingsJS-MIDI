@@ -41,6 +41,10 @@ Its output distinguishes expected upstream limitations from application failures
 
 The receipt includes source hashes, dependency pins, compiler identity, executable
 size/hash, corpus input/output hashes, width comparisons and converter probes.
+The full CI checkpoint at `7c20efd7` passes the same 8,829-command corpus on
+Windows and Linux with identical source and output hashes, alongside all other
+required jobs. Its native codec output digest is
+`cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d`.
 Peer-process wall time includes process startup and protocol handling; it is not
 a device latency or scheduling benchmark. A successful receipt qualifies this
 codec and controlled callback boundary only. OS/device I/O, native ingress

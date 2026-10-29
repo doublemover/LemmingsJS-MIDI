@@ -29,7 +29,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
   const activity = new Map(), references = new Map(), pointerArbiter = getPointerGestureArbiter(document);
   let parameterGesture = null, applyingParameter = false;
   const cancelParameter = reason => parameterGesture?.lease.cancel(reason);
-  const checkParameter = () => { if (parameterGesture && !applyingParameter) parameterGesture.lease.owns(null); };
+  const checkParameter = () => { if (parameterGesture) parameterGesture.lease.owns(null); };
   const getRows = getEventRows || (() => Array.from(byId('midiGameEventList')?.children || []));
   const skillDock = createMidiSkillEventDock({ document, window, getLemmings, getRows });
   const playback = createMidiEventPlayback({ document, window, getRows, getCellTarget: event => {
@@ -204,9 +204,12 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
     const begin = event => {
       if (parameterGesture) return parameterGesture.range === range && parameterGesture.lease.owns(event);
       const source = getSource(); if (!source || disposed) return false;
-      const identity = {}, lease = pointerArbiter.acquire({ pointerId: event?.pointerId ?? null, targetKey: source.id + ':' + range,
-        identity, getIdentity: () => parameterGesture?.identity === identity && getSource() === parameterGesture.expectedSource ? identity :
-          parameterGesture == null && getSource() === source ? identity : null,
+      const identity = {}, lease = pointerArbiter.acquire({ pointerId: event?.pointerId ?? null, targetKey: source.id + ':' + range, captureTarget: byId(range),
+        identity, getIdentity: () => {
+          const current = getSource();
+          if (parameterGesture?.identity === identity) return current === parameterGesture.expectedSource || applyingParameter && current?.id === source.id ? identity : null;
+          return parameterGesture == null && current === source ? identity : null;
+        },
         onCancel: () => { blocked = true; parameterGesture = null; history.endGesture(); } });
       if (!lease) return false;
       blocked = false; parameterGesture = { range, identity, lease, expectedSource: source }; history.beginGesture();
@@ -214,7 +217,7 @@ const createMidiInstrumentWorkbench = ({ document, window, getLemmings, getProje
       return true;
     };
     const applyOwned = event => {
-      if (blocked || (!parameterGesture && !begin(null)) || parameterGesture?.range !== range || !parameterGesture.lease.owns(null)) return;
+      if (blocked || (!parameterGesture && !begin(null)) || parameterGesture?.range !== range || !parameterGesture.lease.owns(null)) { render(); return; }
       const n = finiteInput(event, min, max); if (n == null) return;
       applyingParameter = true;
       try { apply(n); if (parameterGesture) parameterGesture.expectedSource = getSource(); }

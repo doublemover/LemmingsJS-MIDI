@@ -9118,3 +9118,44 @@ export-budget acknowledgments still prevent a false complete receipt.
   engine job failed17/18 after a Firefox boot crash, so349 remains a failed whole
   workflow. 350's engine and both codec jobs pass; its main job is independent.
   Keep347 as the latest full checkpoint until all four new required jobs pass.
+
+### Continuation 352 - source-safe sound dials and registered control capture
+
+- Register stable capture targets for sound ranges, typed knobs, automation SVG,
+  dock resize and the terrain brush. A failed brush capture restores its prior
+  selection instead of stranding a painted draft. Keep owned sound updates live
+  while validating a reentrant source change; observing B ends A's history group
+  even when A returns before the update call finishes. Retired input redraws the
+  current authored value and cannot edit or group the newly selected sound.
+- 46 scoped Node cases and12 desktop browser cases pass. Actual MIDI dial A/B and
+  A/B/A journeys retain separate source values, reject stale input, preserve
+  Undo/Redo, and admit a fresh gesture without requesting MIDI. Two simultaneous
+  browser-injected trusted mouse/pen contacts have distinct IDs: pen-up leaves
+  mouse ownership and zero edits; mouse-up commits the single changed stroke.
+  All final fixtures remain1920x1080 desktop, without mobile emulation.
+- Strengthen cancellation fixtures to paint an off cell and witness native
+  gotpointercapture before inducing loss. Releasing a pending capture request
+  before that event does not constitute observed capture loss. Native range
+  capture belongs to Chromium's thumb, so qualify its native events and logical
+  lease rather than falsely requiring the public input capture flag to be true.
+  Scroll manual pointer targets into view before measuring coordinates; retain
+  351's six Linux fixture refusals at the old capture precondition as failures.
+- Focused46-case coverage reports workbench84.96% lines/statements,60.86% branches,
+  87.87% functions; curve editor87.23%/75%/76.19%; knob86.66%/66.46%/75%.
+  PhysicalAuthoringView and WorkstationDock are not loaded by that Node subset.
+  Complete their native gesture/fault/removal matrix next, alongside the remaining
+  curve paths, before closing #1000. Whole-project thresholds remain unchanged.
+- Advance the verified full checkpoint to350 (`7c20efd7`): all four jobs pass,
+  7,030 Node tests/10 pre-existing pending and198 browser cases (24desktop,
+  156workstation,18engine), all14 capability gates, static/provenance/policy/
+  dependency/MCP/benchmark gates. Coverage90.78% lines/statements,83.81% branches,
+  88.54% functions. All engines agree on64 ticks/1,078 facts and the exact physics,
+  causal and asset identities; Linux Firefox/WebKit use actual AudioContexts with
+  the named PulseAudio null sink. Codec hashes agree across Windows and Linux.
+- The same checkpoint has actual Ready59,649 finite master frames, user stop,
+  no observed clock discontinuity and peak0.023256301879882812. This is digital
+  capture evidence, with no acoustic/disk-durability claim. Preserve347's earlier
+  Partial71,424-frame result and349's failed whole workflow separately. CI executes
+  a PR merge checkout; its raw dirty flag is retained, and all five changed runtime
+  hashes match350's published receipt. 351's engine/codec jobs pass but its main
+  job fails six old fixture capture preconditions, so it is not fully green.

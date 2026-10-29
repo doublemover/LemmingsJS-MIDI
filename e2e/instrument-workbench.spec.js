@@ -5,6 +5,51 @@ import { waitForHarnessReady } from './helpers/harness.js';
 
 test.use({ permissions: [] });
 
+for (const returnToA of [false, true]) test(`sound dial captured source ${returnToA ? 'A-B-A' : 'A-B'} never retargets a stale edit or Undo @boundary`, async ({ page }, testInfo) => {
+  await page.goto('/?e2e=1&midi=1'); await waitForHarnessReady(page); await page.evaluate(() => window.__E2E__.pause());
+  const sources = await page.evaluate(() => {
+    const api = window.__E2E__, sources = api.midiGetProject().sources.filter(source => source.kind === 'sfx').slice(0, 2);
+    if (sources.length !== 2) throw Error('Two actual sound sources are required.');
+    sources.forEach((source, index) => {
+      api.midiDispatchProjectIntent({ type: 'source.mode.set', sourceId: source.id, mode: 'direct' });
+      api.midiDispatchProjectIntent({ type: 'source.mapping.update', sourceId: source.id, patch: { note: index ? 65 : 60, degree: null, chord: null, notes: null, arp: null, phrase: null } });
+    });
+    api.midiDispatchProjectIntent({ type: 'source.select', sourceId: sources[0].id }); return sources.map(source => source.id);
+  });
+  await page.locator('#midiViewSounds').click(); const dial = page.locator('#midiSoundPitchDial'); await expect(dial).toBeEnabled();
+  await dial.scrollIntoViewIfNeeded();
+  await page.evaluate(async () => {
+    const element = document.getElementById('midiSoundPitchDial'), arbiter = (await import('/js/app/controls/PointerGestureArbiter.js')).getPointerGestureArbiter(document);
+    window.__dialEvents = [];
+    for (const type of ['pointerdown', 'gotpointercapture', 'lostpointercapture', 'pointerup', 'input', 'change', 'blur']) element.addEventListener(type, event => { if (window.__dialEvents.length < 100) window.__dialEvents.push({ type, id: event.pointerId, trusted: event.isTrusted, value: element.value, owner: arbiter.inspect() }); }, true);
+    window.__dialOwner = () => arbiter.inspect();
+    element.addEventListener('pointerdown', event => { window.__soundDialPointer = event.pointerId; }, { once: true });
+  });
+  const box = await dial.boundingBox(); await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2);
+  await dial.evaluate(element => { element.value = '80'; element.dispatchEvent(new Event('input', { bubbles: true })); });
+  expect(await page.evaluate(() => window.__dialOwner()?.pointerId)).toBe(await page.evaluate(() => window.__soundDialPointer));
+  expect(await page.evaluate(() => window.__dialEvents.some(event => event.type === 'gotpointercapture' && event.trusted && event.id === window.__soundDialPointer))).toBe(true);
+  await page.evaluate(({ sources, returnToA }) => {
+    const api = window.__E2E__; api.midiDispatchProjectIntent({ type: 'source.select', sourceId: sources[1] });
+    if (returnToA) api.midiDispatchProjectIntent({ type: 'source.select', sourceId: sources[0] });
+  }, { sources, returnToA });
+  expect(await page.evaluate(() => window.__dialOwner())).toBe(null);
+  await dial.evaluate(element => { element.value = '99'; element.dispatchEvent(new Event('input', { bubbles: true })); element.dispatchEvent(new Event('change', { bubbles: true })); });
+  await page.mouse.up(); await expect(dial).toHaveValue(returnToA ? '80' : '65');
+  expect(await page.evaluate(() => window.__dialEvents.some(event => event.type === 'lostpointercapture' && event.trusted && event.id === window.__soundDialPointer))).toBe(true);
+  const pitches = () => page.evaluate(ids => window.__E2E__.midiGetProject().sources.filter(source => ids.includes(source.id)).map(source => source.mapping.note), sources);
+  expect(await pitches()).toEqual([80, 65]);
+  await page.locator('#midiUndo').click(); expect(await pitches()).toEqual([60, 65]);
+  await page.locator('#midiRedo').click(); expect(await pitches()).toEqual([80, 65]);
+  await dial.scrollIntoViewIfNeeded(); const fresh = await dial.boundingBox(); await page.mouse.move(fresh.x + fresh.width / 2, fresh.y + fresh.height / 2); await page.mouse.down();
+  await dial.evaluate(element => { element.value = '70'; element.dispatchEvent(new Event('input', { bubbles: true })); }); await page.mouse.up();
+  expect(await pitches()).toEqual(returnToA ? [70, 65] : [80, 70]);
+  await page.locator('#midiUndo').click(); expect(await pitches()).toEqual([80, 65]);
+  expect(await page.evaluate(() => window.__midiPermissionCalls)).toBe(0);
+  await testInfo.attach('native-sound-dial-ownership.json', { contentType: 'application/json', body: JSON.stringify({ mode: returnToA ? 'A-B-A' : 'A-B', viewport: page.viewportSize(), events: await page.evaluate(() => window.__dialEvents), sourceIds: sources, finalPitches: await pitches(), evidence: 'Native mouse and UA range capture events; stale input events controlled; no hardware or acoustic claim.' }) });
+});
+
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
   await page.addInitScript(() => {
