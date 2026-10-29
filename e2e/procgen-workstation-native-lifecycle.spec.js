@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useWorkstationControl } from './helpers/workstationChrome.js';
 
 test.use({ channel: 'chromium', launchOptions: { executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined,
   ignoreDefaultArgs: ['--disable-back-forward-cache'], args: ['--allow-insecure-localhost', '--ignore-certificate-errors'] } });
@@ -14,6 +15,81 @@ const installHistoryReceipt = page => page.addInitScript(() => {
   window.nativeHistoryReceipt = { marker: crypto.randomUUID(), pagehides: [], pageshows: [] };
   window.addEventListener('pagehide', event => window.nativeHistoryReceipt.pagehides.push(event.persisted));
   window.addEventListener('pageshow', event => window.nativeHistoryReceipt.pageshows.push(event.persisted));
+});
+const saveNamed = async (page, name) => {
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Save', exact: true }), { button: 'Save' }, 'click');
+  const dialog = page.getByRole('dialog', { name: 'Project name', exact: true });
+  await dialog.getByRole('textbox').fill(name); await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('.studio-status')).toContainText('Saved ' + name);
+};
+const loadNamed = async (page, name) => {
+  await useWorkstationControl(page, page.locator('#procgenStudioFooter').getByRole('button', { name: 'Load', exact: true }), { button: 'Load' }, 'click');
+  await page.getByRole('dialog', { name: 'Saved projects' }).getByRole('button', { name: new RegExp(name) }).click();
+  await expect(page.locator('.studio-status')).toContainText('Project loaded paused');
+};
+
+test('closing after a real named-document commit but before its callback preserves exactly the committed revision', { tag: '@boundary' }, async ({ page, context }, testInfo) => {
+  test.setTimeout(120000);
+  await page.addInitScript(() => {
+    const completed = Object.getOwnPropertyDescriptor(window.IDBTransaction.prototype, 'oncomplete');
+    Object.defineProperty(window.IDBTransaction.prototype, 'oncomplete', { configurable: true, get: completed.get,
+      set(listener) {
+        const transaction = this;
+        completed.set.call(this, typeof listener !== 'function' ? listener : function(event) {
+          if (window.holdNamedSaveCallback && transaction.mode === 'readwrite' && transaction.objectStoreNames.contains('projectMetadata') && transaction.objectStoreNames.contains('sessions')) {
+            window.holdNamedSaveCallback = false; window.nativeNamedSaveCommitted = { stores: Array.from(transaction.objectStoreNames), time: performance.now() };
+            window.releaseNamedSaveCallback = () => listener.call(transaction, event); return;
+          }
+          return listener.call(transaction, event);
+        });
+      } });
+  });
+  await boot(page); await saveNamed(page, 'History committed document');
+  const before = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__, document = studio.getDocumentState();
+    studio.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Committed before callback' } });
+    window.holdNamedSaveCallback = true; window.pendingNativeNamedSave = studio.handlers.save(); return document;
+  });
+  await page.waitForFunction(() => window.nativeNamedSaveCommitted);
+  const committed = await page.evaluate(() => ({ native: window.nativeNamedSaveCommitted, awaitingCallback: window.__PROCGEN_STUDIO__.getDocumentState() }));
+  expect(committed.awaitingCallback.revision).toBe(before.revision); await page.close();
+  const reopened = await context.newPage(); await boot(reopened); await loadNamed(reopened, 'History committed document');
+  const after = await reopened.evaluate(() => ({ document: window.__PROCGEN_STUDIO__.getDocumentState(), name: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name,
+    output: window.__PROCGEN_STUDIO__.getPlaybackState(), transport: window.__PROCGEN_STUDIO__.transport.getState() }));
+  expect(after.document.id).toBe(before.id); expect(after.document.revision).toBe(before.revision + 1); expect(after.name).toBe('Committed before callback');
+  expect(after.output.enabled).toBe(false); expect(after.transport.playing).toBe(false);
+  await testInfo.attach('owner-closed-after-native-document-commit.json', { body: JSON.stringify({ before, committed, after, boundary: 'Actual IndexedDB complete event; callback deliberately held. Filesystem flush and power-loss durability not claimed.' }, null, 2), contentType: 'application/json' });
+});
+
+test('closing an in-flight world rebuild preserves the last named source and only complete verified recovery', { tag: '@boundary' }, async ({ page, context }, testInfo) => {
+  test.setTimeout(120000); await boot(page);
+  await page.evaluate(() => window.__PROCGEN_STUDIO__.dispatch({ type: 'procgen/lane', laneId: 'lane-1', patch: { name: 'Saved before rebuild' } }));
+  await saveNamed(page, 'History rebuild baseline'); await page.evaluate(() => window.__PROCGEN_STUDIO__.recover());
+  await page.waitForFunction(() => { const studio = window.__PROCGEN_STUDIO__; return studio.getRecoveryState().durableRevision === studio.getDocumentState().editRevision; });
+  const before = await page.evaluate(() => ({ document: window.__PROCGEN_STUDIO__.getDocumentState(), recovery: window.__PROCGEN_STUDIO__.getRecoveryState(),
+    seed: window.__PROCGEN_LANES__.world.seed }));
+  const starting = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__; window.pendingHistoryRebuild = studio.handlers.reroll();
+    return { simulation: studio.getOperationalSnapshot().simulation, document: studio.getDocumentState() };
+  });
+  expect(starting.simulation.state).toBe('preparing'); await page.close();
+  const reopened = await context.newPage(); await boot(reopened); await loadNamed(reopened, 'History rebuild baseline');
+  const after = await reopened.evaluate(async () => {
+    const { createProcgenSessionStorage } = await import('/js/app/procgen/workstation/ProcgenSessionStorage.js'), storage = createProcgenSessionStorage(indexedDB);
+    let source;
+    try {
+      source = await storage.loadRecoveryOwned(); const session = source.session;
+      return { document: window.__PROCGEN_STUDIO__.getDocumentState(), name: window.__PROCGEN_STUDIO__.getProject().procgen.lanes[0].name,
+        seed: window.__PROCGEN_LANES__.world.seed, output: window.__PROCGEN_STUDIO__.getPlaybackState(), transport: window.__PROCGEN_STUDIO__.transport.getState(),
+        recovery: { verification: source.verification, generation: source.generation, worldSeed: session.world.seed, projectSeed: session.project.procgen.seed,
+          worldLanes: session.world.laneCount, projectLanes: session.project.procgen.lanes.length, savedAt: session.savedAt } };
+    } finally { source?.release(); storage.close(); }
+  });
+  expect(after.document.id).toBe(before.document.id); expect(after.document.revision).toBe(before.document.revision); expect(after.name).toBe('Saved before rebuild'); expect(after.seed).toBe(before.seed);
+  expect(after.recovery.verification).toBe('checksum-verified-recovery'); expect(after.recovery.generation).toBeGreaterThanOrEqual(before.recovery.durableGeneration);
+  expect(after.recovery.worldSeed).toBe(after.recovery.projectSeed); expect(after.recovery.worldLanes).toBe(after.recovery.projectLanes);
+  expect(after.output.enabled).toBe(false); expect(after.transport.playing).toBe(false);
+  await testInfo.attach('owner-closed-during-world-rebuild.json', { body: JSON.stringify({ before, starting, after }, null, 2), contentType: 'application/json' });
 });
 
 test('canceling a real beforeunload dialog preserves the edited world and its live performance owner', { tag: '@boundary' }, async ({ page }, testInfo) => {

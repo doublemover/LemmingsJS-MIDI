@@ -34635,5 +34635,79 @@
         "sha256": "d974c3fa615d70fb2cd23c7cca0634e8e8a476403da9b9bf528eeac7fa7dbeac"
       }
     ]
+  },
+  "continuation345": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "d96df503007c14314d7fb31628b2a5ea48a34e09",
+    "scope": "Actual desktop closure during an acknowledged native document transaction and an in-flight world rebuild.",
+    "implementation": [
+      "Gate only the JavaScript oncomplete callback for a real IndexedDB readwrite transaction containing sessions/projectMetadata. The native transaction actually commits; the source page closes before its application acknowledgement publishes. A fresh page loads exactly revision2 of the same named document through the production project picker.",
+      "Save and checkpoint the named baseline, begin the actual reroll/rebuild while the production operational state is preparing, then close the owner. A fresh page loads the unchanged named source and independently verifies the complete recovery through loadRecoveryOwned and its real page/checksum validation. No application runtime change was required."
+    ],
+    "validation": {
+      "native": {
+        "passing": 12,
+        "failing": 0,
+        "skipped": 0,
+        "report": ".tmp/rook345-native-initial.json",
+        "minimumViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "browser": "Full Chromium new-headless",
+        "lostAcknowledgement": {
+          "nativeCommit": "Actual IndexedDB complete event before application callback; controlled callback delivery gate.",
+          "sourceDocumentRevision": 1,
+          "reopenedDocumentRevision": 2,
+          "sameDocumentId": true,
+          "reopenedLaneName": "Committed before callback",
+          "reopenedOutputEnabled": false,
+          "reopenedPlaying": false
+        },
+        "closeDuringRebuild": {
+          "observedState": "preparing",
+          "namedDocumentIdRetained": true,
+          "namedRevisionRetained": true,
+          "namedLane": "Saved before rebuild",
+          "namedSeed": 42,
+          "recovery": {
+            "verification": "checksum-verified-recovery",
+            "beforeGeneration": 1,
+            "afterGeneration": 1,
+            "worldSeed": 42,
+            "projectSeed": 42,
+            "worldLanes": 8,
+            "projectLanes": 8
+          },
+          "reopenedOutputEnabled": false,
+          "reopenedPlaying": false
+        }
+      },
+      "static": [
+        "npm run format",
+        "guarded staged whitespace",
+        "source/index hash equality",
+        "npm run provenance:check"
+      ],
+      "node": "No runtime change; retain343Node qualification rather than rerun it for native fixture-only work."
+    },
+    "issueStatus": {
+      "985": "Closed with the original changed-data matrix and full342green CI.",
+      "1009": "Chromium closure/save/rebuild and exact baseline recovery cases now qualified. Keep open for remaining wider-engine/background lifecycle acceptance; next qualify actual Firefox/WebKit rather than infer support.",
+      "1193": "Closed with the earlier ownership acceptance."
+    },
+    "limits": [
+      "IndexedDB commit/callback behavior is API evidence, not a filesystem flush or power-loss guarantee.",
+      "Recovery remains the verified last complete generation; no partially prepared world is treated as durable.",
+      "Full342CI remains the latest verified green checkpoint;343/344runs are independent and were still in progress when this entry was recorded."
+    ],
+    "sourceFiles": [
+      {
+        "path": "e2e/procgen-workstation-native-lifecycle.spec.js",
+        "bytes": 29514,
+        "sha256": "e0e9dbd129cbac8e8ec3aec86e834fa16603e0fc2ce18af616783dde41c5ddb8"
+      }
+    ]
   }
 }

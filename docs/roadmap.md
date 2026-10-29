@@ -8918,3 +8918,17 @@ export-budget acknowledgments still prevent a false complete receipt.
   workload and this clean full run. Preserve the disclosed lateness/cold-save/heap
   and task-observer limits. #1193 remains closed. Continue solo; next cover actual
   close-during-save/rebuild and exact recovery durability while343/344CI runs.
+
+### Continuation 345 - actual closure during save and rebuild
+
+- All12 actual Chromium lifecycle cases pass. Hold only the JavaScript completion
+  callback after a real named-document IndexedDB commit, close the source realm,
+  then load exactly revision2 of the same document through the real project picker.
+- Close an actual preparing world rebuild after saving/checkpointing its baseline.
+  A new page loads the unchanged named source and verifies the complete recovery
+  generation1 with matching seed42 and8-lane world/project. Output remains off
+  and transport paused. No application runtime change was required.
+- Keep IndexedDB/API acknowledgement distinct from filesystem/power-loss durability.
+  #1009 remains open for the wider-engine/background lifecycle matrix. Matching
+  Firefox/WebKit runtimes are installed for the next separate qualification.
+  Continue solo with implementation frontloaded; no repeated full local suite.
