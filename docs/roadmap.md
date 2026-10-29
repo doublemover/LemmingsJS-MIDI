@@ -9227,3 +9227,18 @@ export-budget acknowledgments still prevent a false complete receipt.
   wait (25 desktop passes) before workstation execution; its other three jobs
   passed. Current fixture fixes still need independent Linux CI.350 remains the
   last verified full green checkpoint; address the desktop startup wait next.
+
+### Continuation 356 - installed startup observation
+
+- The exact installed-generation online/offline case passes unchanged locally and
+  again after explicit page foregrounding and timer-based readiness observation.
+  Preserve its30-second predicate limit; add exact lifecycle/script, visibility/
+  focus, worker, resource and failure diagnostics without retries or skipped work.
+- 354's retained trace has no failed HTTP responses and completes resource loading
+  in about3.5 seconds, but the installed page remains at Loading at the30-second
+  deadline. No deterministic application import failure was reproduced. The new
+  observations still need independent Linux CI; do not call the main job green.
+- One native desktop case passes with bound build identity online/offline, two
+  lanes and paused transport. Formatting, critical types and undefined calls pass;
+  no full local or Node suite is repeated. Continue remaining transfer/backlog
+  work while the independent CI matrix runs.

@@ -55756,5 +55756,99 @@
         "sha256": "a154643210901a6a5c5eb30ff07d9f5d495ab6bd8cc95c3220cca602702f7000"
       }
     ]
+  },
+  "continuation356": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "008e19048673192543496cdb71895643c8529934",
+    "scope": "Harden installed-generation startup observation and preserve evidence for CI354 online startup timeout.",
+    "implementation": [
+      "Explicitly foreground the installed page before boot and after offline reload. Observe readiness with a50ms timer poll rather than an animation-frame callback; retain the same30000ms predicate limit and90000ms total test limit.",
+      "Record native lifecycle/script load events, page errors and failed requests. On a future failure attach exact ready/visibility/focus, startup status/error, application globals, service-worker registrations and latest resource timings before rethrowing the original error. No retry or skipped acceptance."
+    ],
+    "validation": {
+      "browser": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T16:45:31.718Z",
+          "duration": 20585.490999999998,
+          "expected": 1,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook356-startup-reviewed.json",
+          "bytes": 4283,
+          "sha256": "51537c882526913bf50838e1caf4d055bd029a4f1bb06a46292c7a950b41a6bc"
+        },
+        "log": {
+          "path": ".tmp/rook356-startup-reviewed.log",
+          "bytes": 442,
+          "sha256": "9db66d7692579f25ef95e6464c1ee527572120d021267018d4dcb2ec59d69a1f"
+        },
+        "scope": "Actual installed immutable generation online and offline reload, matching bound build identity, two lanes and paused transport on1920x1080desktop. Local Windows Chromium; independent Linux CI remains required."
+      },
+      "baseline": {
+        "passed": 1,
+        "stats": {
+          "startTime": "2026-10-29T16:43:44.399Z",
+          "duration": 20463.776,
+          "expected": 1,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook356-startup-baseline.json",
+          "bytes": 4274,
+          "sha256": "70f55d2d6d2a4587b292673aa4c608bf98d998999be9b56686ece9404fd0d35f"
+        },
+        "reason": "The unchanged exact CI case passed locally; no deterministic application import failure was reproduced."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false,
+      "nodeRepeated": false
+    },
+    "ciFailure354": {
+      "runId": 40911361407,
+      "jobId": 123579884893,
+      "artifact": {
+        "path": ".tmp/ci354-failure.zip",
+        "bytes": 13992113,
+        "sha256": "487d9536a58a27709403117f9368fc9dfc35b6928c91ee50561e78728b5a46d1"
+      },
+      "trace": {
+        "path": ".tmp/ci354-startup-trace.zip",
+        "bytes": 14026934,
+        "sha256": "d8fdc7eb0ddd9fb4317b4e6674ac86e81f972265ffbd174829944207a2858db1"
+      },
+      "observations": [
+        "1766 recorded requests; no failed HTTP response. Asset/module requests finish about3.5s after entry navigation.",
+        "At the30000ms predicate deadline the installed document still shows Loading and no ready globals. The only captured console error is an about:blank sandbox script warning; no actual application page error was captured.",
+        "Trace does not establish a missing module or a deterministic runtime failure. Foreground/readiness-poll changes and stronger diagnostics need independent CI; the timeout was not increased."
+      ]
+    },
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "runId": 40891278513,
+      "conclusion": "success"
+    },
+    "remaining": "Continue CI follow-through while advancing remaining physical-transfer/backlog work. Full main-job clean status is not yet established.",
+    "sourceFiles": [
+      {
+        "path": "e2e/browser-generation-startup.spec.js",
+        "bytes": 3973,
+        "sha256": "ee6dce92d440cd24bc3a30baad3e8471e4be820ea0db91abcb08ddedbe8c9cd3"
+      }
+    ]
   }
 }
