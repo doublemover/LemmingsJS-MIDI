@@ -60101,5 +60101,235 @@
       }
     ],
     "remaining": "Independent current-head full CI, typed physical-source export and named remaining platform/backlog acceptance. #1009 remains open."
+  },
+  "continuation363": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "subject": "Lower explicitly typed captured physical time into MIDI with measured quantization loss",
+    "issues": [
+      986,
+      1093
+    ],
+    "implementation": [
+      "Public exportPhysicalProcgenMidi returns bytes/report; existing exportProcgenMidi accepts an explicit sourceTime option. Restore the captured PhysicalScoreClock and select one epoch plus exact origin/end; never replace captured tempo with the current UI BPM.",
+      "Reject unsupported/missing domains, malformed/uncovered clocks, foreign world/epoch, outside crop, stale score beats, backward causal/time order and unsupported MIDI representations. Equal causal sequence preserves deliberate independent same-cause voices.",
+      "Write captured tempo changes, retain leading/trailing selected silence and explicit crop end. Four-byte SMF delta overflow fails without timing compression. Embed immutable timing report with beat error, encoded elapsed timing error including accumulated rounded microseconds/quarter, collapsed physical event times and tempo changes. Preserve stable canonical order at quantized ties.",
+      "Recorded-output worker columns explicitly reject physical-source options; submitted performance and source-score time remain distinct. This API consumes projected protocol messages and does not invent physical-to-note state or missing on/off events."
+    ],
+    "validation": {
+      "node": {
+        "passed": 72,
+        "failed": 0,
+        "log": {
+          "path": ".tmp/rook363-node-qualified.log",
+          "bytes": 407,
+          "sha256": "cc46fe81f17e8b6cf3eb43e51f77b65d24740155dfd140c603a1b9edbc478bec"
+        },
+        "coverageReport": {
+          "path": ".tmp/rook363-coverage-qualified/coverage-summary.json",
+          "bytes": 1376,
+          "sha256": "546dbdde9330726af5939df6a60169b8fcd1235f5f245dd75f4a6320b37acf6a"
+        },
+        "coverage": {
+          "total": {
+            "lines": {
+              "total": 229,
+              "covered": 229,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 229,
+              "covered": 229,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 20,
+              "covered": 18,
+              "skipped": 0,
+              "pct": 90
+            },
+            "branches": {
+              "total": 218,
+              "covered": 200,
+              "skipped": 0,
+              "pct": 91.74
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalMidiTiming.js": {
+            "lines": {
+              "total": 79,
+              "covered": 79,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 9,
+              "covered": 9,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 79,
+              "covered": 79,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 69,
+              "covered": 67,
+              "skipped": 0,
+              "pct": 97.1
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenMidiExport.js": {
+            "lines": {
+              "total": 77,
+              "covered": 77,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 5,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 77,
+              "covered": 77,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 52,
+              "covered": 47,
+              "skipped": 0,
+              "pct": 90.38
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\RecordedMidiEncoding.js": {
+            "lines": {
+              "total": 73,
+              "covered": 73,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 6,
+              "covered": 4,
+              "skipped": 0,
+              "pct": 66.66
+            },
+            "statements": {
+              "total": 73,
+              "covered": 73,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 97,
+              "covered": 86,
+              "skipped": 0,
+              "pct": 88.65
+            }
+          }
+        },
+        "scope": "Typed source/epoch/crop/tempo/generation/chord/tie/long-silence/error cases, actual CausalMusicEngine catch-up groups1/4/10, existing recorded MIDI worker/direct parity and captured audio render timing. No physical receiver or paused/suspended product export claim."
+      },
+      "browser": {
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "stats": {
+          "startTime": "2026-10-29T18:55:23.587Z",
+          "duration": 20378.278000000002,
+          "expected": 1,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "report": {
+          "path": ".tmp/rook363-browser.json",
+          "bytes": 9886,
+          "sha256": "8a689f3b7c0d384989c92ff63a73441e5c84154cae5efd0cb7d6aec0e1fd8bf4"
+        },
+        "log": {
+          "path": ".tmp/rook363-browser.log",
+          "bytes": 472,
+          "sha256": "c21b5a9ef4e8d3ffa57a508b5c54872927b066a2d77386fbf6d3bb4c151e0e74"
+        },
+        "scope": "Existing actual desktop bounded99990-event paged worker, cancel/Panic, retained artifact and downloaded-byte identity. Physical-source API is domain-qualified, not integrated into this UI journey."
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check (10components/350files)",
+        "git diff --check"
+      ],
+      "fullLocalSuiteRepeated": false
+    },
+    "designRefinement": "After the initial71-case pass, source review identified legitimate multiple voices sharing one physical cause. Accept nondecreasing causal sequence, preserve their canonical array order and add a same-cause chord regression. The final72-case group passes.",
+    "worker": {
+      "id": "lemmings-background-job-worker",
+      "fileCount": 281,
+      "sha256": "758262fccee6864cfb6f2b236d6eb426dd389a4ae483ec724ab56bfb650693b2"
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/PhysicalMidiTiming.js",
+        "bytes": 6529,
+        "sha256": "4f5ca92a805daad1448d39f393cec0165cd382cab51698ec01253d0681382c48"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenMidiExport.js",
+        "bytes": 4405,
+        "sha256": "31078e756e9ce625f497b39fa6d6a58fb388f076614daa26d494ca6e27fa960b"
+      },
+      {
+        "path": "js/app/procgen/workstation/RecordedMidiEncoding.js",
+        "bytes": 6737,
+        "sha256": "81c87d796b1c6bd610a9616d849d52e5cfc268618ee1a62b543abf7d0eaaa895"
+      },
+      {
+        "path": "test/physical-midi-timing.test.js",
+        "bytes": 10897,
+        "sha256": "21a9fc5b28f5fe2bd3bb8e1b314e60b5e84cfe7244a6a3781f02396eb214753c"
+      },
+      {
+        "path": "test/support/smf.js",
+        "bytes": 780,
+        "sha256": "b79583ee726bd1948212485ca93102da6ac8704be0db55ba5118589d3dbef951"
+      },
+      {
+        "path": "test/procgen-workstation-midi.test.js",
+        "bytes": 30722,
+        "sha256": "b155a97d4429347a66e080cd1aa21b69f3c369ece428ac294ab29aa369c3a14f"
+      },
+      {
+        "path": "test/recorded-midi-export.test.js",
+        "bytes": 10470,
+        "sha256": "1bd351acd17923c55e39891bb33da892c74b110cbe43d19aa651b7b0dd16f75f"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 21412,
+        "sha256": "2a238aeb50f0c7a6754c20eafd947b659926800fccdb4201632c2588492ed542"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "7c20efd7381d9fe686c6fa55ad4cc5a37417ea40",
+      "conclusion": "success"
+    },
+    "remaining": "#986 workstation physical-take-to-protocol projection and full pause/external-clock/suspension export matrix; #1093 explicit route/source ExportPlan and standards/independent lossless UMP Clip qualification. Independent current-head full CI remains."
   }
 }

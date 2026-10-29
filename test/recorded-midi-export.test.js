@@ -24,6 +24,11 @@ const reference = (records, window, options) => {
 };
 describe('owned recorded MIDI worker export', function() {
   this.timeout(20000);
+  it('rejects physical-source options on submitted-output columns rather than silently ignoring their clock', async () => {
+    const valid = await snapshot([{ direction: 'output', evidence: 'intent-render', data: [0xb0, 1, 80], beat: 0 }]);
+    await rejected(encodeRecordedMidi({ snapshot: valid, window: windowState, options: { sourceTime: { domain: 'simulation-tick' } } },
+      { estimatedPeakBytes: recordingExportPeakBytes(1), ...fast }), 'typed physical');
+  });
   it('rejects unmapped snapshot beats and negative worker times while preserving explicit zero', async () => {
     for (const beat of [undefined, null, '', '2', NaN, Infinity, -1]) await rejected(snapshot([{ direction: 'output', evidence: 'intent-render', data: [0xb0, 1, 80], beat }]), 'unmapped');
     const valid = await snapshot([{ direction: 'output', evidence: 'intent-render', data: [0xb0, 1, 80], beat: 0 }]);

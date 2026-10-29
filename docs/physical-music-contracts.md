@@ -189,3 +189,34 @@ batches, canonical intents and actual sink receipts; none of those receipts is
 acoustic evidence. Reinterpretation preflight names missing source descriptors
 and state explicitly. Support/phase capture cannot certify mechanics it did not
 observe, and a seek plan still requires qualified re-performance by its caller.
+
+## Explicit physical MIDI timing
+
+`exportPhysicalProcgenMidi(events, sourceTime, options)` returns SMF bytes and a
+timing report. The existing `exportProcgenMidi` also accepts `options.sourceTime`
+and returns the same bytes. Declare source version1/domain `simulation-tick`,
+a captured `ProcgenPhysicalScoreClock` checkpoint, and explicit `origin`/`end`
+positions with the same epoch. Every projected MIDI event retains its world,
+nondecreasing canonical causalSequence and scoreTime. The caller owns the physical
+intent-to-protocol projection and note lifecycle. This timing boundary never
+invents a missing onset or release.
+
+The exporter maps through the recorded piecewise speed/tempo history, subtracts
+the artifact origin and writes captured tempo changes. A current transport BPM
+cannot retime it. Missing or uncovered clocks, foreign epochs/worlds, reversed
+causality, stale beats and out-of-range events fail explicitly. Select each epoch
+separately; reset score origins are never implicitly concatenated. Crop callers
+must select a valid complete message range rather than rely on silent omission.
+
+The embedded `physicalTiming` manifest reports nearest-tick beat error, maximum
+encoded timing error at messages/tempo boundaries/crop end, distinct physical
+event times collapsed at one tick, and collapsed tempo changes. Timing error
+includes accumulated rounded SMF microseconds per quarter. Canonical event order
+survives quantized ties, and End of Track retains trailing selected silence.
+Unrepresentable four-byte deltas fail without compressing silence. This is source
+score export; live delivery repair and API-accepted output reproduction remain
+separate. Submitted-output worker columns reject physical-source options.
+
+The integrated workstation take-to-MIDI projection and the full external-clock/
+suspension export matrix remain open under #986/#1093. This API does not qualify
+those product paths, receiver timing, listening or archived exact execution.

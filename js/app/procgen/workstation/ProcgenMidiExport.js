@@ -1,5 +1,6 @@
 import { encodeProcgenMidi } from './ProcgenMidiPorts.js';
 import { smfVariable as variable, smfTempo as tempo, smfHeader, smfBeatTick } from './ProcgenSmfBytes.js';
+import { preparePhysicalMidiTiming } from './PhysicalMidiTiming.js';
 
 // A retained window may end before a real release arrives. Omit only the
 // unpaired message; an invented Note Off would claim an event we did not see.
@@ -31,8 +32,22 @@ export function selectBalancedProcgenRecording(events = []) {
 
 // Beat positions make performance export independent of physical game speed.
 // Channel numbers are 1..16; programs and controllers retain MIDI's 0..127 values.
-export function exportProcgenMidi(events = [], { bpm = 120, ppq = 480, beatsPerBar = 4, beatUnit = 4, manifest = null } = {}) {
-  ppq = Math.max(24, Math.min(32767, Math.round(Number(ppq) || 480)));
+const normalizePpq = ppq => Math.max(24, Math.min(32767, Math.round(Number(ppq) || 480)));
+
+export function exportPhysicalProcgenMidi(events, sourceTime, options = {}) {
+  const ppq = normalizePpq(options.ppq), prepared = preparePhysicalMidiTiming(events, sourceTime, ppq);
+  for (const event of prepared.events) if (event.type !== 'tempo' && !encodeProcgenMidi(event).length) throw new RangeError('Physical MIDI event has no supported protocol representation.');
+  const bytes = encodeMappedMidi(prepared.events, { ...options, ppq, bpm: prepared.bpm,
+    manifest: { ...options.manifest, physicalTiming: prepared.report } }, prepared.endBeat);
+  return { bytes, report: prepared.report };
+}
+
+export function exportProcgenMidi(events = [], options = {}) {
+  return options.sourceTime === undefined ? encodeMappedMidi(events, options) : exportPhysicalProcgenMidi(events, options.sourceTime, options).bytes;
+}
+
+function encodeMappedMidi(events, { bpm = 120, ppq = 480, beatsPerBar = 4, beatUnit = 4, manifest = null } = {}, endBeat = null) {
+  ppq = normalizePpq(ppq);
   const denominator = [1, 2, 4, 8, 16, 32].includes(beatUnit) ? beatUnit : 4;
   const timeline = [{ tick: 0, data: tempo(bpm) },
     { tick: 0, data: [0xff, 0x58, 4, Math.min(255, Math.max(1, Math.round(beatsPerBar) || 4)), Math.log2(denominator), 24, 8] }];
@@ -54,7 +69,7 @@ export function exportProcgenMidi(events = [], { bpm = 120, ppq = 480, beatsPerB
   timeline.sort((a, b) => a.tick - b.tick);
   const track = []; let previous = 0;
   for (const event of timeline) { track.push(...variable(event.tick - previous), ...event.data); previous = event.tick; }
-  track.push(0, 0xff, 0x2f, 0);
+  track.push(...variable(endBeat == null ? 0 : smfBeatTick(endBeat, ppq) - previous), 0xff, 0x2f, 0);
   const result = new Uint8Array(22 + track.length);
   result.set(smfHeader(ppq, track.length));
   result.set(track, 22);

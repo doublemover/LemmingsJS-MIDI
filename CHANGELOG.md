@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Export explicitly mapped physical MIDI time from captured speed and tempo segments, retaining crop silence, causal ties and timing quantization diagnostics.
+
 - Retire shared pointer guards with their active gesture and report measured transport wake gaps while preserving canceled-navigation worlds and output ownership.
 
 - Step paused physics at its recorded nominal rate, restore the stopped clock afterward, and halt before physical pumping when an active take refuses a clock input.

@@ -9364,3 +9364,23 @@ export-budget acknowledgments still prevent a false complete receipt.
   These are fixed here; independent CI follow-through remains.350 is still the
   latest verified full green checkpoint. #1009 retains the named supported-engine
   BFCache/background gaps; typed source-time export is the next development span.
+
+### Continuation 363 - typed physical MIDI time lowering
+
+- Add explicit source-score SMF lowering through a captured PhysicalScoreClock,
+  one selected epoch and declared origin/end. Derive tempo from recorded segments,
+  preserve selected leading/trailing silence and reject uncovered/backward time,
+  foreign worlds, stale beats, causal inversion and cross-epoch flattening.
+- Preserve independent same-cause voices and canonical order at quantized ties.
+  Embed a bounded timing report with beat rounding, accumulated encoded tempo
+  error, collapsed physical times/tempo changes and exact crop/end placement.
+  Submitted-output worker columns reject physical-source timing options.
+- All72 grouped timing/MIDI/worker/render-clock Node cases pass. The new timing
+  module and direct writer have100% scoped lines/functions; timing branches97.1%.
+  The actual99990-event worker/cancel/Panic/download browser journey passes.
+  Formatting, types, undefined calls, provenance and changed-line checks pass.
+  Refresh only the first-party worker digest; no full local suite is repeated.
+- Keep #986/#1093 open: workstation take-to-protocol projection, external-clock/
+  suspension export integration, route-aware ExportPlan and lossless UMP Clip
+  files are not supplied by this timing API. Current full CI remains independent;
+ 350 is still the latest verified full green head. Continue solo through backlog.

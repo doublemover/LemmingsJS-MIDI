@@ -3,6 +3,7 @@ import { smfVariable, smfTempo, smfHeader, smfBeatTick } from './ProcgenSmfBytes
 
 export async function encodeRecordedMidi({ snapshot, window, options = {} } = {}, { signal, current = () => true, estimatedPeakBytes,
   onProgress = () => {}, yieldControl = () => new Promise(resolve => setTimeout(resolve, 0)) } = {}) {
+  if (options.sourceTime !== undefined) throw new TypeError('Recorded output columns cannot substitute for a typed physical MIDI source.');
   const count = snapshot?.count;
   if (!Number.isSafeInteger(estimatedPeakBytes) || estimatedPeakBytes < recordingExportPeakBytes(count) || snapshot.schema !== RECORDING_EXPORT_SCHEMA ||
       !(snapshot.timing instanceof Float64Array) || snapshot.timing.length !== count * 2 || !(snapshot.messages instanceof Uint8Array) || snapshot.messages.length !== count * 5 ||
