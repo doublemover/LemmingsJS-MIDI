@@ -3,6 +3,10 @@ import { JSDOM } from 'jsdom';
 import { createLaneNavigationMetadata } from '../js/app/procgen/workstation/LaneNavigationMetadata.js';
 import { createLaneNavigatorGroupsView } from '../js/app/procgen/workstation/LaneNavigatorGroupsView.js';
 import { createProcgenLaneProjection } from '../js/app/procgen/workstation/ProcgenLaneProjection.js';
+import { createMidiProject, markCanonicalMidiProject, reduceMidiProject } from '../js/midi/project/MidiProject.js';
+import { createProcgenWorkstationProject } from '../js/app/procgen/workstation/ProcgenWorkstationProject.js';
+import { sealMidiProjectSnapshot } from '../js/midi/project/MidiProjectSnapshot.js';
+import { createLaneNavigator } from '../js/app/procgen/workstation/LaneNavigator.js';
 
 const source = count => Array.from({ length: count }, (_, index) => ({ id: 'lane-' + (index + 1), name: 'Lane ' + (index + 1), role: 'melody', solo: index === 63 }));
 const fixture = (count = 64, saved = {}) => {
@@ -10,6 +14,31 @@ const fixture = (count = 64, saved = {}) => {
 };
 
 describe('separate bounded lane organization metadata', () => {
+  for (const count of [8, 128, 1024]) it('retains a current private navigation projection while only visiting changed data across ' + count + ' lanes', () => {
+    let project = sealMidiProjectSnapshot(markCanonicalMidiProject(createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: count }, () => ({})) })));
+    const before = project, model = createLaneNavigationMetadata(), navigator = createLaneNavigator(); model.sync(project.procgen.lanes, 1);
+    const projection = model.visible(), revision = model.revision, all = model.allLanes(); navigator.sync(projection.lanes, 1, { allLanes: all });
+    for (let edit = 0; edit < 64; edit++) {
+      project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { gain: edit / 64 } }); model.sync(project.procgen.lanes, 1);
+      expect(model.visible()).to.equal(projection); expect(model.allLanes()).to.equal(all); expect(projection.lanes[0]).to.equal(project.procgen.lanes[0]);
+      navigator.sync(projection.lanes, 1, { allLanes: all }); expect(navigator.search().total).to.equal(count);
+    }
+    expect(model.revision).to.equal(revision); expect(model.diagnostics()).to.deep.equal({ fullBuilds: 1, incrementalUpdates: 64, rowVisits: count + 64, labelUpdates: 0 });
+    expect(before.procgen.lanes[0].gain).to.equal(1); expect(project.procgen.lanes[1]).to.equal(before.procgen.lanes[1]); expect(all).not.to.equal(project.procgen.lanes);
+    project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-' + count, patch: { solo: true } }); model.sync(project.procgen.lanes, 1);
+    navigator.sync(model.visible().lanes, 1, { allLanes: model.allLanes() }); expect(navigator.summary('lane-1').soloCount).to.equal(count > 8 ? 1 : 0);
+    project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-' + count, patch: { name: 'Search renamed score' } }); model.sync(project.procgen.lanes, 1);
+    navigator.sync(model.visible().lanes, 1, { allLanes: model.allLanes() }); expect(navigator.search('renamed score').items.map(lane => lane.id)).to.deep.equal(['lane-' + count]);
+    expect(model.visible('renamed score').laneIndices).to.deep.equal([count - 1]); expect(model.diagnostics().fullBuilds).to.equal(1); model.dispose(); navigator.dispose();
+  });
+  it('rebuilds navigation for unknown/skipped ancestry, structural edits and a new document identity', () => {
+    let project = markCanonicalMidiProject(createProcgenWorkstationProject(createMidiProject(), { lanes: Array.from({ length: 8 }, () => ({})) }));
+    const model = createLaneNavigationMetadata(); model.sync(project.procgen.lanes, 1);
+    for (const name of ['intermediate', 'latest']) project = reduceMidiProject(project, { type: 'procgen/lane', laneId: 'lane-1', patch: { name } });
+    model.sync(project.procgen.lanes, 1); expect(model.diagnostics().fullBuilds).to.equal(2); expect(model.visible('latest').laneIndices).to.deep.equal([0]);
+    project = reduceMidiProject(project, { type: 'procgen/addLane' }); model.sync(project.procgen.lanes, 1); expect(model.allLanes()).to.have.length(9);
+    model.createGroup('Previous'); model.sync([...project.procgen.lanes], 2); expect(model.diagnostics().fullBuilds).to.equal(4); expect(model.getState().groups).to.deep.equal([]); model.dispose();
+  });
   for (const count of [1, 8, 64, 1024]) it(`organizes ${count} canonical lanes without editing any music fields`, () => {
     const f = fixture(count), before = JSON.stringify(f.lanes), group = f.model.createGroup('Ensemble'); f.model.assign(f.lanes.at(-1).id, group); f.model.toggleCollapsed(group);
     expect(f.model.visible().lanes).to.have.length(count - 1); expect(f.model.visible('lane-' + count).lanes.some(lane => lane.id === f.lanes.at(-1).id)).to.equal(true);

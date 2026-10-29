@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 
 const base = process.env.LEMMINGS_E2E_BASE_URL || 'http://127.0.0.1:8189';
 const browser = await chromium.launch({ headless: true, executablePath: process.env.LEMMINGS_E2E_EXECUTABLE || undefined });
-const sourceFiles = ['scripts/profile-procgen-editing.mjs', 'js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/ProcgenWorkstationView.js', 'js/app/procgen/workstation/LaneMixState.js', 'js/app/procgen/workstation/ProcgenStartupIntent.js', 'js/app/procgen/workstation/ProcgenPreferenceWriter.js', 'js/app/procgen/workstation/ProcgenPreferencePages.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/resources/BackgroundJobKernels.js', 'js/app/resources/BackgroundSnapshotPages.js', 'js/app/resources/BackgroundJobService.js'];
+const sourceFiles = ['scripts/profile-procgen-editing.mjs', 'js/app/procgen/workstation/ProcgenWorkstation.js', 'js/app/procgen/workstation/ProcgenWorkstationView.js', 'js/app/procgen/workstation/ProcgenWorkstationProject.js', 'js/app/procgen/workstation/LaneNavigationMetadata.js', 'js/app/procgen/workstation/LaneNavigator.js', 'js/app/procgen/workstation/LaneMixState.js', 'js/app/procgen/workstation/ProcgenStartupIntent.js', 'js/app/procgen/workstation/ProcgenPreferenceWriter.js', 'js/app/procgen/workstation/ProcgenPreferencePages.js', 'js/app/procgen/workstation/ProcgenSessionStorage.js', 'js/app/resources/BackgroundJobKernels.js', 'js/app/resources/BackgroundSnapshotPages.js', 'js/app/resources/BackgroundJobService.js'];
 const report = { schema: 'procgen-edit-cost/v2', sourceRevision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   sourceHashes: Object.fromEntries(sourceFiles.map(file => [file, createHash('sha256').update(readFileSync(file)).digest('hex')])),
   environment: { cpu: cpus()[0]?.model || null, node: process.version, browser: browser.version(), date: new Date().toISOString(), isolation: 'Shared local development host; not a dedicated reference-machine release gate.' }, cases: [], errors: [] };
@@ -32,7 +32,7 @@ try {
       const heapBefore = performance.memory?.usedJSHeapSize ?? null, indexesBefore = procgenIndexDiagnostics();
       const physical = () => JSON.stringify({ tick: runtime.world.tickIndex, generation: runtime.world.generation, terrain: runtime.world.terrainRevision,
         actors: runtime.world.actors.map(actor => [actor.id, actor.x, actor.y, actor.laneIndex]) });
-      const physicalBefore = physical(), mixBefore = studio.getPhysicalOutputDiagnostics()?.laneMix;
+      const physicalBefore = physical(), mixBefore = studio.getPhysicalOutputDiagnostics()?.laneMix, navigationBefore = studio.getNavigationDiagnostics();
       if (studio.handlers.record(true) !== true) throw new Error('The production recording owner did not arm.');
       const recordedBefore = studio.ports.getState().recordedEvents; let acceptedPackets = 0;
       const start = performance.now();
@@ -63,7 +63,7 @@ try {
         persistenceWaitMs: performance.now() - persistenceStarted, persistenceDeadlineMs: 120000, samples: Object.fromEntries(Object.entries(samples).map(([key, values]) => [key, { count: values.length, ...summary(values) }])),
         longTasks, heapBefore, heapAfter: performance.memory?.usedJSHeapSize ?? null, indexesBefore, indexesAfter: procgenIndexDiagnostics(), preferences, preferenceCurrent,
         workload: { acceptedPackets, recordedDelta: recordedAfter - recordedBefore, physicalUnchanged: true, outputEnabled: false },
-        mixBefore, mixAfter: studio.getPhysicalOutputDiagnostics()?.laneMix,
+        mixBefore, mixAfter: studio.getPhysicalOutputDiagnostics()?.laneMix, navigationBefore, navigationAfter: studio.getNavigationDiagnostics(),
         taskBudgetMs: 16, tasksOverBudget: Object.fromEntries(Object.entries(samples).filter(([key]) => key !== 'schedulingLateness').map(([key, values]) => [key, values.filter(value => value > 16).length])),
         qualification: 'Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.',
         userAgent: navigator.userAgent, hardwareConcurrency: navigator.hardwareConcurrency };

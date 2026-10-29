@@ -8753,3 +8753,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   committed LF bytes and recalculate the worker digest; runtime semantics and
   the completed335validation are unchanged. Verify filtered Git source bytes
   before publishing the corrected manifest. Full336CI remains independent.
+
+### Continuation 337 — current navigation deltas and retained launch cells
+
+- Keep a private current navigation projection and apply trusted changed-lane
+  deltas. Gain/step edits retain its labels/indexes and organization history;
+  rename/role, structural, skipped-ancestry and new-document cases remain current.
+  Advance this projection after acknowledgments and unselected step edits too.
+- Retain same-length launch cell DOM and focus. Resolve callbacks through their
+  live row so keyed reconciliation cannot use an old detached slot; rebuild rows
+  for changed lengths. Skip acknowledgment Undo serialization and use ID lookup
+  for input targets.183 Node and22 distinct desktop journeys pass, including the
+  final offselected-step/launch/later-edit ancestry sequence.
+- The final actual8/128/1024-lane profile saves/reloads every score and admits all
+  960 MIDI packets per size. Individual edits/launches have no samples over16ms;
+  launch p99 is3.5/4.7/8.8ms, and achieved iteration rate is about120Hz throughout.
+  Scheduling lateness p99 still reaches153.3ms at1024; initial/coalesced saving
+  finishes65.74s after edits and reload takes19.138s. #985 remains open for this
+  jitter and cold-work latency, with search/summary caching and finer persistence
+  reuse next. Complete authored/native memory qualification remains separate.
+- Full336CI has passed provenance, static gates and desktop boundaries and is
+  running workstation smoke;337 requires its own run. Full334 remains the latest
+  completely verified CI checkpoint.

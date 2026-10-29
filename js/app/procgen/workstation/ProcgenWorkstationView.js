@@ -309,7 +309,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (navigationInitialized && navigationIdentity !== identity) { state.laneQuery = ''; laneQueryAnchor = null; }
     navigationIdentity = identity; navigationInitialized = true; navigationMetadata.sync(source, identity);
     const next = navigationMetadata.visible(state.laneQuery), changed = !navigationProjection || navigationProjection.laneIndices.join(',') !== next.laneIndices.join(',');
-    navigationProjection = next; navigator.sync(next.lanes, identity, { allLanes: source }); return changed;
+    navigationProjection = next; navigator.sync(next.lanes, identity, { allLanes: navigationMetadata.allLanes() }); return changed;
   }
   function changeLaneQuery(value) {
     if (disposed) return true;
@@ -917,14 +917,15 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       for (let index = 0; index < pattern.length; index++) {
         const step = pattern.steps[index], cell = button(step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·', event => {
           if (state.tool !== 'select' && event?.detail > 0) return;
-          state.laneId = lane.id; state.step = index; state.slot = displaySlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[displaySlot]?.steps[index]?.chord ? 'Chord' : 'Step';
-          if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: state.slot, index, patch: { enabled: state.tool === 'draw' } }); else render();
+          const currentRow = event.currentTarget?.closest('.studio-sequence'); if (!currentRow) return;
+          const currentSlot = Number(currentRow.dataset.slot); state.laneId = lane.id; state.step = index; state.slot = currentSlot; state.tab = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[currentSlot]?.steps[index]?.chord ? 'Chord' : 'Step';
+          if (state.tool !== 'select') dispatch({ type: 'procgen/step', laneId: lane.id, slot: currentSlot, index, patch: { enabled: state.tool === 'draw' } }); else render();
         }, `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`);
         cell.className = 'studio-cell'; cell.dataset.index = index; cell.dataset.controlKey = 'step:' + index; cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.toggle('selected', state.laneId === lane.id && state.step === index); cell.setAttribute('aria-pressed', String(step.enabled));
-        cell.addEventListener('dblclick', () => {
-          if (disposed || !cell.isConnected || state.tool !== 'select') return;
-          const current = getProject().procgen.lanes.find(item => item.id === lane.id)?.patterns[displaySlot]?.steps[index];
-          if (current) dispatch({ type: 'procgen/step', laneId: lane.id, slot: displaySlot, index, patch: { enabled: !current.enabled } });
+        cell.addEventListener('dblclick', event => {
+          if (disposed || !event.currentTarget.isConnected || state.tool !== 'select') return;
+          const currentSlot = Number(event.currentTarget.closest('.studio-sequence').dataset.slot), current = procgenLane(getProject().procgen.lanes, lane.id)?.patterns[currentSlot]?.steps[index];
+          if (current) dispatch({ type: 'procgen/step', laneId: lane.id, slot: currentSlot, index, patch: { enabled: !current.enabled } });
         });
         sequence.append(cell);
       }
@@ -942,6 +943,29 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     if (disposed || superseded) return;
     if (beat === queuedBeat) return; queuedBeat = beat;
     playheadSurface.publish(Object.freeze({ beat })); laneMixSurface.invalidate();
+  }
+  function launched(change) {
+    if (disposed) return;
+    syncLaneNavigation();
+    if (!change || change.structural) { renderRows(); return; }
+    const affected = new Set(change.laneIds), rebuild = [], project = getProject();
+    for (const header of lanes.children) {
+      const id = header.dataset.laneId; if (!affected.has(id)) continue; const lane = procgenLane(project.procgen.lanes, id); if (!lane) continue;
+      for (const [slot, control] of [...header.querySelector('.studio-slots').children].entries()) {
+        control.setAttribute('aria-pressed', String(slot === lane.activeSlot)); control.classList.toggle('queued', slot === lane.queuedSlot);
+      }
+      const row = [...grid.children].find(item => item.dataset.laneId === id), slot = state.laneId === id ? state.slot : lane.activeSlot;
+      if (!row || Number(row.dataset.slot) === slot) continue; const pattern = lane.mode === 'pattern' ? lane.patterns[slot] : null;
+      if (!pattern || row.classList.contains('studio-physical-row') || row.children.length !== pattern.length) { rebuild.push(id); continue; }
+      row.dataset.slot = slot; row.dataset.controlKey = 'row:' + id + ':' + slot; delete row.dataset.playing;
+      for (let index = 0; index < pattern.length; index++) {
+        const step = pattern.steps[index], cell = row.children[index];
+        cell.textContent = step.tie ? '―' : step.enabled ? step.chord ? '◆' : '●' : '·';
+        cell.title = `${lane.role}, step ${index + 1}, ${step.enabled ? 'on' : 'off'}, probability ${Math.round(step.probability * 100)}%`;
+        cell.classList.toggle('enabled', step.enabled); cell.classList.toggle('conditional', !!step.condition || step.probability < 1); cell.classList.remove('playing'); cell.setAttribute('aria-pressed', String(step.enabled));
+      }
+    }
+    if (rebuild.length) renderRows({ laneIds: rebuild }); queuedBeat = null; playheadSurface.invalidate();
   }
   function paintPlayheads(_measured, packet) {
     if (disposed || superseded) return;
@@ -974,6 +998,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
 
   function patchStep(action) {
     if (disposed) return;
+    syncLaneNavigation();
     const lane = procgenLane(getProject().procgen.lanes, action.laneId);
     const slot = action.slot ?? lane?.activeSlot;
     const row = [...grid.children].find(item => item.dataset.laneId === action.laneId && Number(item.dataset.slot) === slot);
@@ -1202,7 +1227,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     } });
   const api = { render, patchStep, patchProject, layout, dock, revealLane, laneNavigator: () => navigator.summary(state.laneId, getArmedLaneIds()), refreshLaneNavigation: () => { if (!disposed) laneNavigator.update(getDocumentIdentity()); }, openInspector: () => { if (dock.visible()) render(); else dock.open(); }, revealGlobalControl: element => chrome.reveal(element), viewSession: viewLease, stageMode: setStageMode, sceneCue, renderInspector: render, requestProjectName: nameDialog.request, showProjects, showProjectPage, macroState: () => macroSurface.invalidate(), displayScheduler, status: text => { status.textContent = text; },
     navigationDiagnostics() { const organization = navigationMetadata.getState(); return { ...navigator.summary(state.laneId, getArmedLaneIds()), mountedHeads: laneMixControls.size, mountedPans: lanePanControls.size, mountedDisplays: laneDisplays.size,
-      retainedDrafts: retainedLaneDrafts.size, organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped } }; },
+      retainedDrafts: retainedLaneDrafts.size, organization: { groups: organization.groups.length, pinned: organization.pinned.length, undo: organization.undoCount, redo: organization.redoCount, retainedBytes: organization.retainedBytes, dropped: organization.dropped, projection: navigationMetadata.diagnostics() } }; },
     offerLegacyConversion(report, convert) {
       legacyNotice.replaceChildren(node('span', `Previous setup uses legacy phrases. Physical conversion will discard ${report.discardedEnabledSteps} enabled steps across ${report.laneCount} lanes.`),
         button('Convert previous setup', () => convert?.(), 'Replace the previous setup with a physical instrument graph'));
@@ -1245,7 +1270,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       recoveryStatus.title = recovery?.error?.message || (recovery?.durableRevision >= 0
         ? `Last durable edit revision ${recovery.durableRevision}, world tick ${recovery.durableTick ?? 'unknown'}` : 'No recovery checkpoint yet');
     },
-    launched: () => renderRows(),
+    launched,
     refreshOperational: () => { operationalSurface.invalidate(); laneMixSurface.invalidate(); },
     refreshLaneDisplays: () => laneMixSurface.invalidate(),
     transport(position) {

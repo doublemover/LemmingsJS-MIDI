@@ -212,7 +212,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         pendingRevision: editRevision, error: recoveryError, retirement: recoveryRetirement } });
   };
   const inputTarget = lease => {
-    const lane = project.procgen.lanes.find(item => item.id === lease.laneId);
+    const lane = procgenLane(project.procgen.lanes, lease.laneId);
     const pattern = lane?.patterns?.[lease.slot];
     return pattern && lease.index < pattern.length && pattern.steps?.[lease.index] ? { lane, pattern } : null;
   };
@@ -434,13 +434,14 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     }
     const reduced = reduceMidiProject(project, action);
     if (reduced === project || !FAST_PROCGEN_ACTIONS.has(action.type) && equal(reduced, project)) return project;
-    const historyCost = isCanonicalMidiProject(project) && FAST_PROCGEN_ACTIONS.has(action.type) ?
-      historyPatchBytes(project, reduced, action) : null;
     const launchAcknowledgment = action.type === 'procgen/launched' || action.type === 'procgen/launchedBatch';
+    const launchChange = launchAcknowledgment ? procgenProjectChange(project, reduced) : null;
+    const historyCost = !launchAcknowledgment && isCanonicalMidiProject(project) && FAST_PROCGEN_ACTIONS.has(action.type) ?
+      historyPatchBytes(project, reduced, action) : null;
     const next = syncProject(reduced, { history: !launchAcknowledgment, historyGroup, historyCost,
       render: !launchAcknowledgment, renderAction: action });
     if (action.type === 'procgen/lane' && action.patch?.outputId !== undefined) syncPorts({ rearm: true });
-    if (launchAcknowledgment) view?.launched?.();
+    if (launchAcknowledgment) view?.launched?.(launchChange);
     return next;
   };
   const transport = createProcgenTransport({ now, ...startupPlan.transport, ...transportOptions,

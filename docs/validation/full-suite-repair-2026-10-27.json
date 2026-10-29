@@ -31209,5 +31209,1332 @@
       "The335scoped237Node,12distinctdesktop and full three-size production save/reload results remain applicable; the independent full336CI is pending."
     ],
     "workerSha256": "eaf837b01d3c0c1713b569a19231f2ce3acf8ad8e041f5897a3a5fa88d081051"
+  },
+  "continuation337": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "daf4f2ae231001c48d8e4db55733f81af666a1ca",
+    "scope": "Incremental current navigation projections and retained launch cells, including current slot callback ownership and exact edit ancestry after offselected steps/launch acknowledgments.",
+    "implementation": [
+      "Use exact trusted lane-collection ancestry to update only changed rows in a privately owned navigation array. Update cached visible/ordered rows in place; rename/role changes rebuild search membership, while unknown/skipped ancestry, structure and new document identity retain complete validation.",
+      "The navigator consumes the current private all-lane projection rather than rebuilding its index/name maps whenever the authored array identity changes. Keep organization history separate. Diagnostics expose actual full builds, incremental rows and label updates.",
+      "Launch acknowledgments retain same-length cell DOM, update the displayed slot and repaint cells/header state. Changed lengths retain row rebuilds. Click/double-click handlers resolve the live row through the event target so keyed reconciliation cannot retain a detached candidate slot.",
+      "Keep navigation current on acknowledgments and unselected step edits, preventing the next edit from losing its exact delta ancestry. Skip unused Undo patch serialization for acknowledgments and use the canonical ID index for input edit targets."
+    ],
+    "validation": {
+      "node": {
+        "passed": 183,
+        "failed": 0,
+        "command": "npx c8 --check-coverage=false --reporter=json-summary --reports-dir=<TEMP>/lemmings-rook-backlog337-coverage mocha test/procgen-lane-organization.test.js test/procgen-lane-navigator.test.js test/procgen-workstation-controller.test.js test/midi/procgen-workstation-music.test.js --reporter dot",
+        "scope": "8/128/1024 actual canonical edit chains visit64 changed rows for64 gain edits, retain one complete build, current cached rows/solos/search, immutable source isolation, structural/skipped/new-document fallbacks, organization history and existing controller/recording/launch semantics.",
+        "coverage": {
+          "LaneNavigationMetadata.js": {
+            "lines": {
+              "total": 93,
+              "covered": 93,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 29,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 96.55
+            },
+            "statements": {
+              "total": 93,
+              "covered": 93,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 144,
+              "covered": 124,
+              "skipped": 0,
+              "pct": 86.11
+            }
+          }
+        },
+        "coverageFollowup": "Remaining destructor/defensive branches and additional interleavings can be covered through targeted owner tests; row counters are not total V8 allocations."
+      },
+      "browser": {
+        "passedDistinct": 22,
+        "failedFinal": 0,
+        "initialGroupedPassed": 22,
+        "finalFocusedPassed": 1,
+        "viewportMinimum": {
+          "width": 1920,
+          "height": 1080
+        },
+        "reports": [
+          ".tmp/backlog337-browser.json",
+          ".tmp/backlog337-final-browser.json"
+        ],
+        "scope": "Actual128-lane canonical edits, same-node/focus retention, current slot double-click semantics, changed-length row rebuilding and unchanged physics/output. Existing21 browser journeys cover full renders, keyed fields/IME/drafts, picker/clock/meter/paint/disposal and1024row virtualization.",
+        "followupFailure": "Adding a later edit after offselected step plus two acknowledgments exposed2full navigation builds rather than1; patchStep now advances the read projection even when the edited lane is not selected. The finalfocused sequence passes."
+      },
+      "productionProfile": {
+        "schema": "procgen-edit-cost/v2",
+        "sourceRevision": "daf4f2ae231001c48d8e4db55733f81af666a1ca",
+        "sourceHashes": {
+          "scripts/profile-procgen-editing.mjs": "f50c9e6d732eb0f177a8e4216a90ac842302f5d2bc66f3674ab4636334cac241",
+          "js/app/procgen/workstation/ProcgenWorkstation.js": "ade11a90ddafbef48b4363c1cd6eee929009f874d24cf43442cf2f3899989645",
+          "js/app/procgen/workstation/ProcgenWorkstationView.js": "b5680decd35ea2472ca9270a44f2444c22ad203c8c8edf7449e92c1d8c9a3262",
+          "js/app/procgen/workstation/ProcgenWorkstationProject.js": "48b2cfb9c1f15967408fd8c9434f79d8c64ebefea7d8dffe795a62e006cf18ba",
+          "js/app/procgen/workstation/LaneNavigationMetadata.js": "414485a486338694312cffb66cef43720503016e0240fc43c30ea4add3c200af",
+          "js/app/procgen/workstation/LaneNavigator.js": "a7eef17978b26867a59d7606dffe7b389eb2c92b6c34ecc28f25d0fcaa9e3c3b",
+          "js/app/procgen/workstation/LaneMixState.js": "2ee30939e098f9773615b6425699e4904020bef123c8956020e4cdc55970c564",
+          "js/app/procgen/workstation/ProcgenStartupIntent.js": "0880202be5dfbf26e0750ab8d2bf0974391431b7aa5da0d9d0507ccf42ed3399",
+          "js/app/procgen/workstation/ProcgenPreferenceWriter.js": "bb5c4d9f21c65276f643611126c7f702b697a64b035571f22120a36c2a18112f",
+          "js/app/procgen/workstation/ProcgenPreferencePages.js": "1dc7efcf8eec715ceb7c586f433bd5aa55a5982024900d985df44cccc5a8af47",
+          "js/app/procgen/workstation/ProcgenSessionStorage.js": "751f42889398cffde7ff9da7a5dba6d2d0776687ba76f622c0c3c372f7ac238c",
+          "js/app/resources/BackgroundJobKernels.js": "1a172d6294586b416dbf4ef9d69f0b2170679954c371d3570a4dcc6d5b2a9a2a",
+          "js/app/resources/BackgroundSnapshotPages.js": "bee6fcbc91a704aea9695a6e9ff6b64fdd0120c0b7e8ef0fc4f8a3a6e2353fcb",
+          "js/app/resources/BackgroundJobService.js": "b898a7d3bde0d6b7a292f08efbca84452aec6b51977f0b638613d1120fe5af29"
+        },
+        "environment": {
+          "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+          "node": "v26.12.1",
+          "browser": "153.0.8010.12",
+          "date": "2026-10-29T06:54:42.942Z",
+          "isolation": "Shared local development host; not a dedicated reference-machine release gate."
+        },
+        "cases": [
+          {
+            "laneCount": 8,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 120.13815888298396,
+            "trafficElapsedMs": 3995.3999999910593,
+            "persistenceWaitMs": 21.200000002980232,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 0.9000000059604645,
+                "p99": 1
+              },
+              "gain": {
+                "count": 480,
+                "p50": 0.800000011920929,
+                "p95": 1.0999999940395355,
+                "p99": 1.300000011920929
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 0.9000000059604645,
+                "p99": 1.300000011920929
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 1.9000000059604645,
+                "p95": 2.5,
+                "p99": 3.5
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0.29999999701976776,
+                "p95": 1.5999999940395355,
+                "p99": 3.933333327373475
+              }
+            },
+            "longTasks": [
+              151
+            ],
+            "heapBefore": 148000000,
+            "heapAfter": 148000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 508
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 14836
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1509,
+              "durableRevision": 1509,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 36,
+                "reusedPages": 180,
+                "workerJobs": 22,
+                "committed": 12,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830216,
+                "stagedBytes": 2731540,
+                "stagedBatches": 22,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 0.29999999701976776,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 8,
+              "stateVisits": 8,
+              "stateAllocations": 8,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1029,
+              "stateVisits": 488,
+              "stateAllocations": 488,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 8,
+              "total": 8,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 8,
+                  "rowVisits": 16,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 8,
+              "total": 8,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1509,
+                  "rowVisits": 1958,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 2712,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          },
+          {
+            "laneCount": 128,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 120.15319532430705,
+            "trafficElapsedMs": 3994.8999999910593,
+            "persistenceWaitMs": 6882.79999999702,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.800000011920929,
+                "p95": 1,
+                "p99": 1.2000000029802322
+              },
+              "gain": {
+                "count": 480,
+                "p50": 1,
+                "p95": 1.2000000029802322,
+                "p99": 1.4000000059604645
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 1,
+                "p99": 1.2999999970197678
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 2.300000011920929,
+                "p95": 3,
+                "p99": 4.700000002980232
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0,
+                "p95": 4.533333336313717,
+                "p99": 21.599999994039536
+              }
+            },
+            "longTasks": [
+              270,
+              191
+            ],
+            "heapBefore": 148000000,
+            "heapAfter": 148000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 3988
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 33688
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1629,
+              "durableRevision": 1629,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 266,
+                "reusedPages": 10,
+                "workerJobs": 42,
+                "committed": 2,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830354,
+                "stagedBytes": 26612620,
+                "stagedBatches": 42,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 0.4000000059604645,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 128,
+              "stateVisits": 128,
+              "stateAllocations": 128,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1149,
+              "stateVisits": 608,
+              "stateAllocations": 608,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 128,
+              "total": 128,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 128,
+                  "rowVisits": 256,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 128,
+              "total": 128,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1629,
+                  "rowVisits": 9758,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 3899,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          },
+          {
+            "laneCount": 1024,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 120.15620306407281,
+            "trafficElapsedMs": 3994.7999999970198,
+            "persistenceWaitMs": 65741.79999999702,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 1.1000000089406967,
+                "p95": 1.3999999910593033,
+                "p99": 1.7999999970197678
+              },
+              "gain": {
+                "count": 480,
+                "p50": 1.2999999970197678,
+                "p95": 1.5999999940395355,
+                "p99": 1.7999999970197678
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 1.199999988079071,
+                "p95": 1.4000000059604645,
+                "p99": 1.6000000089406967
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 5.9000000059604645,
+                "p95": 8.099999994039536,
+                "p99": 8.799999997019768
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 73.7333333392935,
+                "p95": 149.6333333303528,
+                "p99": 153.29999999701977
+              }
+            },
+            "longTasks": [
+              2334,
+              416
+            ],
+            "heapBefore": 148000000,
+            "heapAfter": 148000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 29972
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 174620
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 2525,
+              "durableRevision": 2525,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 2058,
+                "reusedPages": 10,
+                "workerJobs": 266,
+                "committed": 2,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830384,
+                "stagedBytes": 212609344,
+                "stagedBatches": 266,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 3.4000000059604645,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 1024,
+              "stateVisits": 1024,
+              "stateAllocations": 1024,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 2045,
+              "stateVisits": 1504,
+              "stateAllocations": 1504,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 1024,
+              "total": 1024,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1024,
+                  "rowVisits": 2048,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 1024,
+              "total": 1024,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 2525,
+                  "rowVisits": 67998,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 19138,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          }
+        ],
+        "errors": []
+      },
+      "earlierProfileBeforeAckAndOffselectedFences": {
+        "schema": "procgen-edit-cost/v2",
+        "sourceRevision": "daf4f2ae231001c48d8e4db55733f81af666a1ca",
+        "sourceHashes": {
+          "scripts/profile-procgen-editing.mjs": "a81daefbddd0abbade24a92f5851f015374f0f4765b7579ad8bab29ad9ed0234",
+          "js/app/procgen/workstation/ProcgenWorkstation.js": "ade11a90ddafbef48b4363c1cd6eee929009f874d24cf43442cf2f3899989645",
+          "js/app/procgen/workstation/ProcgenWorkstationView.js": "d5a33c81bee0426d4d3574c09186574eb7a142c020bd1febb7fbb197c24f71ea",
+          "js/app/procgen/workstation/LaneMixState.js": "2ee30939e098f9773615b6425699e4904020bef123c8956020e4cdc55970c564",
+          "js/app/procgen/workstation/ProcgenStartupIntent.js": "0880202be5dfbf26e0750ab8d2bf0974391431b7aa5da0d9d0507ccf42ed3399",
+          "js/app/procgen/workstation/ProcgenPreferenceWriter.js": "bb5c4d9f21c65276f643611126c7f702b697a64b035571f22120a36c2a18112f",
+          "js/app/procgen/workstation/ProcgenPreferencePages.js": "1dc7efcf8eec715ceb7c586f433bd5aa55a5982024900d985df44cccc5a8af47",
+          "js/app/procgen/workstation/ProcgenSessionStorage.js": "751f42889398cffde7ff9da7a5dba6d2d0776687ba76f622c0c3c372f7ac238c",
+          "js/app/resources/BackgroundJobKernels.js": "1a172d6294586b416dbf4ef9d69f0b2170679954c371d3570a4dcc6d5b2a9a2a",
+          "js/app/resources/BackgroundSnapshotPages.js": "bee6fcbc91a704aea9695a6e9ff6b64fdd0120c0b7e8ef0fc4f8a3a6e2353fcb",
+          "js/app/resources/BackgroundJobService.js": "b898a7d3bde0d6b7a292f08efbca84452aec6b51977f0b638613d1120fe5af29"
+        },
+        "environment": {
+          "cpu": "AMD Ryzen 7 5800X3D 8-Core Processor           ",
+          "node": "v26.12.1",
+          "browser": "153.0.8010.12",
+          "date": "2026-10-29T06:47:13.181Z",
+          "isolation": "Shared local development host; not a dedicated reference-machine release gate."
+        },
+        "cases": [
+          {
+            "laneCount": 8,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 120.19832724021502,
+            "trafficElapsedMs": 3993.3999999910593,
+            "persistenceWaitMs": 0.29999999701976776,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 0.9000000059604645,
+                "p99": 1.1000000089406967
+              },
+              "gain": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 1,
+                "p99": 1.4000000059604645
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.7000000029802322,
+                "p95": 0.9000000059604645,
+                "p99": 1.2999999970197678
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 1.7000000029802322,
+                "p95": 2.4000000059604645,
+                "p99": 2.9000000059604645
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0,
+                "p95": 1.5999999940395355,
+                "p99": 4.5999999940395355
+              }
+            },
+            "longTasks": [
+              142
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 508
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 14800
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1509,
+              "durableRevision": 1509,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 37,
+                "reusedPages": 197,
+                "workerJobs": 23,
+                "committed": 13,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830216,
+                "stagedBytes": 2834384,
+                "stagedBatches": 23,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 0.30000001192092896,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 8,
+              "stateVisits": 8,
+              "stateAllocations": 8,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1029,
+              "stateVisits": 488,
+              "stateAllocations": 488,
+              "lanes": 8,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 8,
+              "total": 8,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 8,
+                  "rowVisits": 16,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 8,
+              "total": 8,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1446,
+                  "rowVisits": 1454,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 2472,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          },
+          {
+            "laneCount": 128,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 120.18929814448802,
+            "trafficElapsedMs": 3993.7000000029802,
+            "persistenceWaitMs": 6894.0999999940395,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 0.9000000059604645,
+                "p99": 1.199999988079071
+              },
+              "gain": {
+                "count": 480,
+                "p50": 0.8999999910593033,
+                "p95": 1.1000000089406967,
+                "p99": 1.2000000029802322
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 0.7999999970197678,
+                "p95": 0.9000000059604645,
+                "p99": 1.0999999940395355
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 2,
+                "p95": 2.6000000089406967,
+                "p99": 3.5
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 0,
+                "p95": 14,
+                "p99": 31.533333336313717
+              }
+            },
+            "longTasks": [
+              239,
+              166
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 3988
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 33688
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 1629,
+              "durableRevision": 1629,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 266,
+                "reusedPages": 10,
+                "workerJobs": 42,
+                "committed": 2,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830354,
+                "stagedBytes": 26612620,
+                "stagedBatches": 42,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 0.4000000059604645,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 128,
+              "stateVisits": 128,
+              "stateAllocations": 128,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 1149,
+              "stateVisits": 608,
+              "stateAllocations": 608,
+              "lanes": 128,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 128,
+              "total": 128,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 128,
+                  "rowVisits": 256,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 128,
+              "total": 128,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1566,
+                  "rowVisits": 1694,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 3873,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          },
+          {
+            "laneCount": 1024,
+            "patternLength": 64,
+            "controllerTargetHz": 120,
+            "achievedIterationHz": 118.55950205026593,
+            "trafficElapsedMs": 4048.5999999940395,
+            "persistenceWaitMs": 61543.10000000894,
+            "persistenceDeadlineMs": 120000,
+            "samples": {
+              "step": {
+                "count": 480,
+                "p50": 1.0999999940395355,
+                "p95": 1.3999999910593033,
+                "p99": 1.7999999970197678
+              },
+              "gain": {
+                "count": 480,
+                "p50": 1.2999999970197678,
+                "p95": 1.5999999940395355,
+                "p99": 1.9000000059604645
+              },
+              "midiCapture": {
+                "count": 480,
+                "p50": 1.1000000089406967,
+                "p95": 1.3999999910593033,
+                "p99": 1.6000000089406967
+              },
+              "launchAcknowledgment": {
+                "count": 64,
+                "p50": 3.9000000059604645,
+                "p95": 6.5,
+                "p99": 7.600000008940697
+              },
+              "schedulingLateness": {
+                "count": 480,
+                "p50": 111.7666666607056,
+                "p95": 165.6333333303528,
+                "p99": 173.93333332737257
+              }
+            },
+            "longTasks": [
+              2316,
+              319
+            ],
+            "heapBefore": 139000000,
+            "heapAfter": 139000000,
+            "indexesBefore": {
+              "builds": 1,
+              "lookups": 29972
+            },
+            "indexesAfter": {
+              "builds": 1,
+              "lookups": 174512
+            },
+            "preferences": {
+              "pendingRevision": null,
+              "requestedRevision": 2525,
+              "durableRevision": 2525,
+              "lastError": null,
+              "retirement": null,
+              "active": false,
+              "storage": {
+                "encodedPages": 2058,
+                "reusedPages": 10,
+                "workerJobs": 266,
+                "committed": 2,
+                "readPages": 0,
+                "pendingBytes": 0,
+                "peakPendingBytes": 830384,
+                "stagedBytes": 212609344,
+                "stagedBatches": 266,
+                "discardedStages": 0,
+                "transactionMaximumSliceMs": 3.5,
+                "readMaximumSliceMs": 0,
+                "retirementFailures": 0,
+                "writing": false,
+                "retired": false
+              }
+            },
+            "preferenceCurrent": true,
+            "workload": {
+              "acceptedPackets": 960,
+              "recordedDelta": 960,
+              "physicalUnchanged": true,
+              "outputEnabled": false
+            },
+            "mixBefore": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 0,
+              "skippedCollections": 1024,
+              "stateVisits": 1024,
+              "stateAllocations": 1024,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 1
+            },
+            "mixAfter": {
+              "fullBuilds": 1,
+              "incrementalBuilds": 480,
+              "skippedCollections": 2045,
+              "stateVisits": 1504,
+              "stateAllocations": 1504,
+              "lanes": 1024,
+              "activeSolos": 0,
+              "revision": 481
+            },
+            "navigationBefore": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 1024,
+              "total": 1024,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 1024,
+                  "rowVisits": 2048,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "navigationAfter": {
+              "selected": null,
+              "soloCount": 0,
+              "armedCount": 0,
+              "target": null,
+              "firstVisibleId": "lane-1",
+              "firstLane": 0,
+              "visibleCount": 6,
+              "visibleTotal": 1024,
+              "total": 1024,
+              "mountedHeads": 6,
+              "mountedPans": 6,
+              "mountedDisplays": 6,
+              "retainedDrafts": 0,
+              "organization": {
+                "groups": 0,
+                "pinned": 0,
+                "undo": 0,
+                "redo": 0,
+                "retainedBytes": 0,
+                "dropped": 0,
+                "projection": {
+                  "fullBuilds": 1,
+                  "incrementalUpdates": 2462,
+                  "rowVisits": 3486,
+                  "labelUpdates": 0
+                }
+              }
+            },
+            "taskBudgetMs": 16,
+            "tasksOverBudget": {
+              "step": 0,
+              "gain": 0,
+              "midiCapture": 0,
+              "launchAcknowledgment": 0
+            },
+            "qualification": "Actual controller/view/recording and atomic paged IndexedDB preferences, valid MIDI packets targeting120Hz with measured achieved iteration rate; no connected hardware, physical output or acoustic evidence. IndexedDB transaction completion is not an OS durability claim.",
+            "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36",
+            "hardwareConcurrency": 16,
+            "reload": {
+              "elapsedMs": 11628,
+              "authoredFieldsEqual": true,
+              "outputEnabled": false,
+              "recording": false,
+              "thru": false
+            }
+          }
+        ],
+        "errors": []
+      },
+      "static": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check (10components,350files)",
+        "git diff --check",
+        "browser category collection:166full/136smoke across46files",
+        "Every worker manifest input matches Git filtered line-ending bytes."
+      ],
+      "latestFullCi": {
+        "head": "55b0b425b3f7c8f7b5526fa926b99305b1f132a4",
+        "status": "success",
+        "run": 40825384660,
+        "job": 123287116682,
+        "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40825384660/job/123287116682",
+        "nodePassed": 6886,
+        "nodePending": 10,
+        "browserPassed": 155,
+        "desktopPassed": 24,
+        "workstationSmokePassed": 131,
+        "workstationCapabilities": 14,
+        "coverage": {
+          "lines": 90.74,
+          "statements": 90.74,
+          "branches": 83.79,
+          "functions": 88.48
+        },
+        "masterCapture": {
+          "state": "Partial",
+          "frames": 80640,
+          "captured": 80640,
+          "stopReason": "noncontiguous-render-clock",
+          "clockDiscontinuity": {
+            "actualFrame": 110080,
+            "expectedFrame": 110208,
+            "frames": 128
+          },
+          "peak": 0.007517695426940918,
+          "nonfinite": 0
+        },
+        "benchmark": "success",
+        "mcp": "success",
+        "policy": "success",
+        "dependencyReview": "success",
+        "scope": "Includes334 and all prior published fixes; excludes335 staged authored preferences. Capture remains separate from code/CI success.",
+        "log": {
+          "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci334-green.log",
+          "bytes": 1180505,
+          "sha256": "7d8209bd75c46e54d62d8e00cb77f0fa788d6d8ba29f50dfe26dc4ae7a535ba2"
+        }
+      },
+      "pendingFullCi": {
+        "head": "daf4f2ae231001c48d8e4db55733f81af666a1ca",
+        "run": 40830339964,
+        "job": 123302843214,
+        "state": "in_progress",
+        "passedObserved": [
+          "provenance/SBOM",
+          "audit",
+          "whitespace",
+          "undefined",
+          "lint",
+          "criticaltypes",
+          "readiness",
+          "dependency",
+          "MCPcompatibility",
+          "desktopboundaries"
+        ],
+        "currentStep": "workstation smoke",
+        "scope": "Includes335 preferences plus336digest repair; excludes337."
+      }
+    },
+    "limits": [
+      "All supplied workloads finish at~120Hz in the final shared-host run, but scheduling lateness p99 is3.93/21.60/153.30ms. This is not a hardware delivery or jitter-free timing guarantee.",
+      "No measured individual edit or launch sample exceeds16ms in the final profile. Long tasks include upfront setup and the intentionally unyielded64-launch burst; no claim attributes all those tasks to ordinary individual edits.",
+      "1024initial/coalesced preference completion takes65.74s after editing and reload19.138s in the final run. Serializer/worker startup and avoidable all-lane cold work remain open.",
+      "Only navigation projections/mix-state row visits and coarse exposed heap observations are measured; complete V8/native memory ownership remains separate."
+    ],
+    "issueStatus": {
+      "985": {
+        "state": "open",
+        "remaining": "Further scheduling jitter/search/summary work, initial/all-lane persistence latency and complete end-to-end task/heap qualification."
+      }
+    },
+    "sourceFiles": [
+      {
+        "path": "js/app/procgen/workstation/LaneNavigationMetadata.js",
+        "bytes": 9167,
+        "sha256": "414485a486338694312cffb66cef43720503016e0240fc43c30ea4add3c200af"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 208051,
+        "sha256": "ade11a90ddafbef48b4363c1cd6eee929009f874d24cf43442cf2f3899989645"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 137272,
+        "sha256": "b5680decd35ea2472ca9270a44f2444c22ad203c8c8edf7449e92c1d8c9a3262"
+      },
+      {
+        "path": "scripts/profile-procgen-editing.mjs",
+        "bytes": 10114,
+        "sha256": "f50c9e6d732eb0f177a8e4216a90ac842302f5d2bc66f3674ab4636334cac241"
+      },
+      {
+        "path": "test/procgen-lane-organization.test.js",
+        "bytes": 12506,
+        "sha256": "a1b26c24ca4393604cba63c39e9a6ecd8ba81e9d22caf96bf281b9577ad03c87"
+      },
+      {
+        "path": "e2e/procgen-workstation-edit-projection.spec.js",
+        "bytes": 3721,
+        "sha256": "e5f4d8b49a32beaa677374648364d612398730dfc3791248a42238a7db0a6d94"
+      }
+    ]
   }
 }
