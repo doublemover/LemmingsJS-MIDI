@@ -818,45 +818,42 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "55b0b425b3f7c8f7b5526fa926b99305b1f132a4",
+    "head": "f5236b7481295d79ff879edd4ab3109f4d21b6ee",
     "status": "success",
-    "run": 40825384660,
-    "job": 123287116682,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40825384660/job/123287116682",
-    "nodePassed": 6886,
+    "run": 40859216351,
+    "job": 123397852640,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40859216351/job/123397852640",
+    "nodePassed": 6999,
     "nodePending": 10,
-    "browserPassed": 155,
+    "browserPassed": 168,
     "desktopPassed": 24,
-    "workstationSmokePassed": 131,
+    "workstationSmokePassed": 144,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.74,
-      "statements": 90.74,
-      "branches": 83.79,
-      "functions": 88.48
+      "lines": 90.77,
+      "statements": 90.77,
+      "branches": 83.81,
+      "functions": 88.49
     },
     "masterCapture": {
-      "state": "Partial",
-      "frames": 80640,
-      "captured": 80640,
-      "stopReason": "noncontiguous-render-clock",
-      "clockDiscontinuity": {
-        "actualFrame": 110080,
-        "expectedFrame": 110208,
-        "frames": 128
-      },
-      "peak": 0.007517695426940918,
+      "state": "Ready",
+      "frames": 105216,
+      "captured": 105216,
+      "stopReason": "user-stop",
+      "clockDiscontinuity": null,
+      "peak": 0.02346622943878174,
       "nonfinite": 0
     },
     "benchmark": "success",
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
-    "scope": "Includes334 and all prior published fixes; excludes335 staged authored preferences. Capture remains separate from code/CI success.",
+    "scope": "Includes342 and all prior published fixes.343and344are separately scoped qualifications/current CI, not covered by this green head. Actual capture is finite browser-master evidence; no acoustics or filesystem durability claim.",
     "log": {
-      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci334-green.log",
-      "bytes": 1180505,
-      "sha256": "7d8209bd75c46e54d62d8e00cb77f0fa788d6d8ba29f50dfe26dc4ae7a535ba2"
+      "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-ci342-green.log",
+      "bytes": 1196666,
+      "sha256": "a42bf4e024bbcc2e70f053f494a3cec6c5d3d849c923fd78097387f351f56182",
+      "normalization": "Retained decoded job text with LF line endings."
     }
   },
   "continuation264": {
@@ -34472,6 +34469,170 @@
         "path": "e2e/procgen-workstation-native-lifecycle.spec.js",
         "bytes": 14209,
         "sha256": "20a0aa172a7e67cf71e4800a3e2f60c860a6b802df2764ccd3de154f7252679d"
+      }
+    ]
+  },
+  "continuation344": {
+    "agent": "rook",
+    "date": "2026-10-29",
+    "baseHead": "058329fd7ff17f174c90b87e032d59f702ad9f4d",
+    "scope": "Qualify active BFCache return, canceled beforeunload and pending/unavailable project storage; record full green342 CI and close the changed-data performance issue.",
+    "implementation": [
+      "Share the actual native history receipt fixture and verify the exact world object survives BFCache. Start musical playback before navigation and prove return is paused without output ownership.",
+      "Dismiss a real beforeunload dialog after a real activation and authored edit. No pagehide occurs; the same edited world, revision, running native context, musical transport and exclusive output owner survive cancellation.",
+      "Hold an actual native preference Worker input-start, navigate through real BFCache, then release its input. The same realm/world and current revision survive; the current revision commits with no retained pending bytes or unknown retirement.",
+      "Reject IndexedDB open through an explicitly controlled native API fixture. Real BFCache preserves dirty source in the same realm while recovery remains visibly unavailable and no durable-save claim is made. No application runtime change was needed for these journeys."
+    ],
+    "validation": {
+      "native": {
+        "passing": 10,
+        "skipped": 0,
+        "failing": 0,
+        "report": ".tmp/rook344-native-initial.json",
+        "minimumViewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "browser": "Full Chromium new-headless; actual history, dialog and lifecycle transitions.",
+        "canceledBeforeUnload": {
+          "pagehideCount": 0,
+          "worldIdentity": true,
+          "revisionRetained": true,
+          "playing": true,
+          "outputEnabled": true,
+          "contextState": "running",
+          "exclusive": true
+        },
+        "pendingPreferences": {
+          "authoredRevision": 1,
+          "durableRevision": 1,
+          "pendingEncodedBytes": 0,
+          "retirementUnknown": false,
+          "actualNativeWorkerInputHeld": true,
+          "sameRealm": true,
+          "sameWorld": true
+        },
+        "unavailableStorage": {
+          "authoredRevision": 1,
+          "durableRevision": -1,
+          "sourceRetainedInRealm": true,
+          "outputEnabled": false,
+          "storageState": "unavailable",
+          "durabilityClaim": false
+        },
+        "activeHistory": {
+          "beforePlaying": true,
+          "afterPlaying": false,
+          "sameWorld": true,
+          "sameRealm": true,
+          "returnedExclusive": false,
+          "freshActivationPasses": true
+        }
+      },
+      "static": [
+        "npm run format",
+        "guarded staged whitespace check",
+        "source/index byte equality",
+        "npm run provenance:check"
+      ],
+      "runtime": "No application runtime changes; retain343affected Node qualification rather than repeat it for test-only work."
+    },
+    "fullCi342": {
+      "head": "f5236b7481295d79ff879edd4ab3109f4d21b6ee",
+      "status": "success",
+      "run": 40859216351,
+      "job": 123397852640,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40859216351/job/123397852640",
+      "nodePassed": 6999,
+      "nodePending": 10,
+      "browserPassed": 168,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 144,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.81,
+        "functions": 88.49
+      },
+      "masterCapture": {
+        "state": "Ready",
+        "frames": 105216,
+        "captured": 105216,
+        "stopReason": "user-stop",
+        "clockDiscontinuity": null,
+        "peak": 0.02346622943878174,
+        "nonfinite": 0
+      },
+      "benchmark": "success",
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "scope": "Includes342 and all prior published fixes.343and344are separately scoped qualifications/current CI, not covered by this green head. Actual capture is finite browser-master evidence; no acoustics or filesystem durability claim.",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp/lemmings-rook-ci342-green.log",
+        "bytes": 1196666,
+        "sha256": "a42bf4e024bbcc2e70f053f494a3cec6c5d3d849c923fd78097387f351f56182",
+        "normalization": "Retained decoded job text with LF line endings."
+      }
+    },
+    "previousVerifiedCiCheckpoint": {
+      "head": "55b0b425b3f7c8f7b5526fa926b99305b1f132a4",
+      "status": "success",
+      "run": 40825384660,
+      "job": 123287116682,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40825384660/job/123287116682",
+      "nodePassed": 6886,
+      "nodePending": 10,
+      "browserPassed": 155,
+      "desktopPassed": 24,
+      "workstationSmokePassed": 131,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.74,
+        "statements": 90.74,
+        "branches": 83.79,
+        "functions": 88.48
+      },
+      "masterCapture": {
+        "state": "Partial",
+        "frames": 80640,
+        "captured": 80640,
+        "stopReason": "noncontiguous-render-clock",
+        "clockDiscontinuity": {
+          "actualFrame": 110080,
+          "expectedFrame": 110208,
+          "frames": 128
+        },
+        "peak": 0.007517695426940918,
+        "nonfinite": 0
+      },
+      "benchmark": "success",
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "scope": "Includes334 and all prior published fixes; excludes335 staged authored preferences. Capture remains separate from code/CI success.",
+      "log": {
+        "path": "C:\\Users\\sneak\\AppData\\Local\\Temp\\lemmings-rook-ci334-green.log",
+        "bytes": 1180505,
+        "sha256": "7d8209bd75c46e54d62d8e00cb77f0fa788d6d8ba29f50dfe26dc4ae7a535ba2"
+      }
+    },
+    "issueDisposition": {
+      "985": "Closed against original changed-data behavior, measured8/128/1024-lane workload and full342green CI. Preserve scheduling lateness/cold-save/task-observer/heap limits; do not infer universal16ms or acoustics.",
+      "1009": "Open: additional close-during-save/rebuild, exact recovery durability and wider supported-engine lifecycle acceptance remain.",
+      "1193": "Remains closed with343ownership/native lifecycle acceptance."
+    },
+    "limits": [
+      "Pending preference-page durability is distinct from durable tick-recovery and complete shared-memory qualification.",
+      "Unavailable-storage edits survive only in the cached page realm; closing/evicting that realm can lose unsaved source.",
+      "342CIcoversf5236b74andpriorpublishedruntime;343and344haveindependent scopedqualification/fullCI."
+    ],
+    "sourceFiles": [
+      {
+        "path": "e2e/procgen-workstation-native-lifecycle.spec.js",
+        "bytes": 22601,
+        "sha256": "d974c3fa615d70fb2cd23c7cca0634e8e8a476403da9b9bf528eeac7fa7dbeac"
       }
     ]
   }

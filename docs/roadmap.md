@@ -8899,3 +8899,22 @@ export-budget acknowledgments still prevent a false complete receipt.
   remaining recovery/storage/canceled-navigation and wider supported-engine cases.
   Full342 CI is still running;334 remains the latest complete green checkpoint.
   Continue solo through the remaining backlog while full CI completes.
+
+### Continuation 344 - native navigation, storage and full green CI
+
+- All10 actual Chromium lifecycle cases pass. A real canceled beforeunload retains
+  the same edited world, native output owner and playing transport without pagehide.
+  BFCache now also proves active playback returns paused in the exact same world.
+- A held actual preference Worker survives BFCache and commits current authored
+  revision1 with no pending encoded bytes. Controlled unavailable IndexedDB retains
+  dirty revision1 only in the same cached realm and honestly reports durable -1.
+  No application runtime change was required; broader #1009 acceptance stays open.
+- Full342 CI is green at f5236b74:6,999 Node passes,10 pre-existing pending,168
+  browser passes (24desktop/144workstation), all14 capability/static/provenance/
+  policy/dependency/MCP/benchmark gates. Coverage90.77% lines/statements,83.81%
+  branches,88.49% functions. Actual browser master is Ready:105,216 finite frames,
+  no clock discontinuity, peak0.02346622943878174. Preserve acoustic/durability limits.
+- Close #985 against its original changed-data acceptance, measured8/128/1024-lane
+  workload and this clean full run. Preserve the disclosed lateness/cold-save/heap
+  and task-observer limits. #1193 remains closed. Continue solo; next cover actual
+  close-during-save/rebuild and exact recovery durability while343/344CI runs.
