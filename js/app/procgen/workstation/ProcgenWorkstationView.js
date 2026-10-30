@@ -3,6 +3,7 @@ import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnap
 import { createLaneDisplayView } from './LaneDisplayView.js';
 import { createCausalVisualView } from './CausalVisualView.js';
 import { describeCausalReperformance } from './CausalRuntimeIdentity.js';
+import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 import { createModalOutputSafety } from '../../controls/ModalOutputSafety.js';
 import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
 import { createAutomationCurveEditor } from '../../controls/AutomationCurveEditor.js';
@@ -559,11 +560,16 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       labeled('Patch change policy', select([['new-notes-only', 'New notes only'], ...(lane.soundChangePolicy === 'crossfade-held' ? [['crossfade-held', 'Held crossfade — unsupported by this adapter']] : [])], lane.soundChangePolicy, soundChangePolicy => changeLane({ soundChangePolicy }), 'Patch change policy'), nextFields);
       nextFields.append(button('Select Soft triangle fallback', () => { Promise.resolve().then(() => handlers.selectNativeSound(lane.id, 'foundation.soft-triangle')).catch(error => handlers.status?.(error.message)); }, 'Explicit native oscillator fallback; keeps the world, performance recipe and hardware mapping unchanged'));
       const matchingWorld = button('Apply matching world', () => handlers.applyMatchingWorld?.(lane.id), 'Explicitly stage a physical world rebuild; not a sound edit'); matchingWorld.disabled = !lane.linkedThemePresetId || lane.linkedThemePresetId === lane.worldThemeId; nextFields.append(matchingWorld);
-      if (lane.instrumentRef) nextFields.append(node('p', `${lane.instrumentRef.definition.name || lane.instrumentRef.patchId} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
-      if (lane.instrumentRef?.definition?.macros?.length) nextFields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
-      const visibleMacroKeys = new Set((lane.instrumentRef?.definition?.macros || []).map(macro => JSON.stringify([lane.id, macro.id])));
+      const savedDefinition = lane.instrumentRef?.definition, controlDefinition = getSupportedInstrumentDefinition(lane.instrumentRef);
+      if (lane.instrumentRef) {
+        const name = typeof savedDefinition.name === 'string' ? savedDefinition.name : lane.instrumentRef.patchId;
+        nextFields.append(node('p', `${name} · saved revision ${lane.instrumentRef.revision}`, 'studio-hint'));
+        if (!controlDefinition) nextFields.append(node('p', `Unsupported patch schema ${savedDefinition.schemaVersion}. The saved definition is retained read-only for inspection and export. Select a supported sound explicitly to play.`, 'studio-sound-compatibility'));
+      }
+      if (controlDefinition?.macros?.length) nextFields.append(button('Commit performed macros', () => handlers.commitPerformedMacros?.()), button('Return macros to saved values', () => handlers.returnPerformedMacros?.()));
+      const visibleMacroKeys = new Set((controlDefinition?.macros || []).map(macro => JSON.stringify([lane.id, macro.id])));
       for (const key of macroModes.keys()) if (!visibleMacroKeys.has(key)) macroModes.delete(key);
-      for (const macro of lane.instrumentRef?.definition?.macros || []) {
+      for (const macro of controlDefinition?.macros || []) {
         const macroKey = JSON.stringify([lane.id, macro.id]), mode = macroModes.get(macroKey) || { momentary: !!macro.momentary, pressure: false }; let handle = null;
         const begin = () => handle ||= handlers.beginMacroGesture(lane.id, macro.id, { momentary: mode.momentary || mode.pressure, origin: mode.pressure ? 'pressure' : 'manual' });
         const cancel = () => { const previous = handle; handle = null; if (previous) { try { handlers.finishMacroGesture(previous, { cancel: true }); } catch (error) { handlers.status?.(error.message); } } };
@@ -582,7 +588,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
         labeled('Pen/touch pressure ' + macro.name, input(mode.pressure, pressure => { macroModes.set(macroKey, { ...mode, pressure }); renderInspector(); }, { type: 'checkbox' }), nextFields);
         nextFields.append(button('Learn ' + macro.name + ' controller', () => { try { handlers.learnMacro(lane.id, macro.id); } catch (error) { handlers.status?.(error.message); } }, 'Observed MIDI controller with scoped pickup; pressure is normalized model input, not newtons'));
       }
-      const variation = lane.instrumentRef?.definition?.variation;
+      const variation = controlDefinition?.variation;
       if (variation) {
         labeled('Identity amount · next onset', input(lane.instrumentControls?.variationAmount01 ?? variation.amount01,
           variationAmount01 => changeLane({ instrumentControls: { ...lane.instrumentControls, variationAmount01 } }), { type: 'range', min: 0, max: 1, step: 0.01 }), nextFields);
@@ -1291,7 +1297,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
       if (control.target.startsWith('physical-authoring:terrain-edit')) return handlers.openPhysicalAuthoring?.();
       if (control.target.startsWith('patch-macro:')) {
         if (stageActive) { status.textContent = 'Exit stage to open the lane macro editor.'; return; }
-        const macroId = control.target.split(';')[0].slice('patch-macro:'.length), lane = getProject().procgen.lanes.find(lane => scene.patchRefs.some(patch => patch.laneId === lane.id) && lane.instrumentRef?.definition.macros?.some(macro => macro.id === macroId));
+        const macroId = control.target.split(';')[0].slice('patch-macro:'.length), lane = getProject().procgen.lanes.find(lane => scene.patchRefs.some(patch => patch.laneId === lane.id) && getSupportedInstrumentDefinition(lane.instrumentRef)?.macros?.some(macro => macro.id === macroId));
         if (!lane) throw new Error('This score macro is unavailable in the current lane instruments.'); state.laneId = lane.id; state.tab = 'Lane'; dock.open(); render(); return;
       }
       return handlers.openPhysicalScene?.();

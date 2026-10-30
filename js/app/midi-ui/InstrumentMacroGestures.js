@@ -1,4 +1,5 @@
 import { validateInstrumentControls } from '../../midi/content/InstrumentPerformance.js';
+import { getSupportedInstrumentDefinition } from '../../midi/content/SoundContentReference.js';
 import { createOwnedResourceReservation } from '../resources/OwnedResourceReservation.js';
 import { createProcgenRetirementScope } from '../procgen/ProcgenRetirement.js';
 const fail = message => { throw new Error('Macro gesture: ' + message); };
@@ -11,7 +12,7 @@ export function createInstrumentMacroGestures({ getLane, getDocumentEpoch, commi
   const reservation = createOwnedResourceReservation({ budget: resourceBudget, owner: 'macro-gestures-' + (++nextOwner), kind: 'macro-gesture-inputs', category: 'audio', bytes: 65536 });
   let disposed = false, sequence = 0, revision = 0, publishing = false;
   const changed = () => { if (!Number.isSafeInteger(revision + 1)) fail('Gesture observation revision exhausted.'); revision++; try { onState(); } catch { /* Views cannot change controls. */ } };
-  const source = (laneId, macroId) => { const lane = getLane(laneId), macro = lane?.instrumentRef?.definition?.macros?.find(value => value.id === macroId);
+  const source = (laneId, macroId) => { const lane = getLane(laneId), macro = getSupportedInstrumentDefinition(lane?.instrumentRef)?.macros?.find(value => value.id === macroId);
     if (!lane || !macro || macro.mode !== 'onset-only') fail('Only admitted onset-sampled macros can use this performer adapter. Continuous or missing targets remain unsupported.');
     return { lane, macro, value: lane.instrumentControls?.macros?.[macroId] ?? macro.default01, identity: lane.instrumentRef.packHash + ':' + lane.instrumentRef.definitionHash }; };
   const valid = entry => {

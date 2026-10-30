@@ -219,7 +219,7 @@ const createInstrumentPatchRegistry = ({ maxDefinitions = 1024, maxUnsupported =
       if (Array.isArray(value)) { if (value.length > 256) throw new Error('Invalid archived patch array.'); return Object.freeze(value.map(item => copy(item, depth + 1))); }
       if (!plain(value) || Object.keys(value).length > 128) throw new Error('Invalid archived patch object.');
       const entries = Object.entries(value);
-      if (entries.some(([property]) => !id(property))) throw new Error('Invalid archived patch key.');
+      if (entries.some(([property]) => property.length > 128 || ['__proto__', 'constructor', 'prototype'].includes(property))) throw new Error('Invalid archived patch key.');
       return Object.freeze(Object.fromEntries(entries.map(([property, item]) => [property, copy(item, depth + 1)])));
     };
     return copy(parsed, 0);

@@ -54,6 +54,18 @@ describe('versioned causal instrument patches', () => {
     expect(() => registry.retainUnsupportedJson('{"id":"future","revision":1,"source":{"value":3}}')).to.throw('conflicting immutable bytes');
     expect(registry.inspect('future', 1)).to.equal(original);
   });
+  it('rejects archive-to-playable conflicts without publishing another staged definition', () => {
+    const registry = createInstrumentPatchRegistry(), archived = registry.retainUnsupportedJson(JSON.stringify({ ...patch(), schemaVersion: 99 }));
+    const before = registry.diagnostics();
+    expect(() => registry.registerBatch([{ patch: { ...patch(), id: 'new-identity' }, descriptor: engine() }, { patch: patch(), descriptor: engine() }])).to.throw('archive');
+    expect(registry.inspect('new-identity', 7)).to.equal(null); expect(registry.inspect('crystal-lead', 7)).to.equal(archived);
+    expect(registry.diagnostics()).to.deep.equal(before); expect(registry.resolve('crystal-lead', 7).status).to.equal('unknown-patch-revision');
+  });
+  it('preserves a playable identity when an archive tries to claim its revision', () => {
+    const registry = createInstrumentPatchRegistry(), playable = registry.register(patch(), engine()), before = registry.diagnostics();
+    expect(() => registry.retainUnsupportedJson(JSON.stringify({ ...patch(), schemaVersion: 99 }))).to.throw('playable patch revision');
+    expect(registry.inspect('crystal-lead', 7)).to.equal(playable); expect(registry.diagnostics()).to.deep.equal(before);
+  });
   it('resolves an immutable local patch and keeps its MIDI fallback separate', () => {
     const registry = createInstrumentPatchRegistry(), descriptor = engine();
     const definition = registry.register(patch(), descriptor);
@@ -110,6 +122,8 @@ describe('versioned causal instrument patches', () => {
     expect(registry.inspect('future-body', 99)).to.equal(archived);
     expect(registry.resolve('future-body', 99)).to.include({ status: 'unknown-patch-revision', archivedDefinition: archived });
     expect(() => registry.retainUnsupportedJson('{"id":"bad","revision":1,"__proto__":{"polluted":true}}')).to.throw('Invalid archived patch key');
+    const dictionary = registry.retainUnsupportedJson(JSON.stringify({ id: 'future-map', revision: 1, notes: { 36: { value: 38 }, '': 'default', 'future name': [1, 2] } }));
+    expect(dictionary.notes['36'].value).to.equal(38); expect(dictionary.notes['']).to.equal('default'); expect(Object.isFrozen(dictionary.notes['future name'])).to.equal(true);
   });
 
   it('performs an explicit parameter rename with a reviewable report and no source mutation', () => {

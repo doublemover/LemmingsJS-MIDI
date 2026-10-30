@@ -1,5 +1,6 @@
 import { canonicalDataText, freezeData } from '../../../core/CanonicalData.js';
 import { validateInstrumentControls } from '../../../midi/content/InstrumentPerformance.js';
+import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 import { procgenLane, inheritProcgenLaneIndex } from './ProcgenProjectIndex.js';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
@@ -12,8 +13,8 @@ export function readSceneMacroControl(project, controlId) {
   if (!hash(origin?.sceneHash) || !binding?.startsWith('patch-macro:') || control.unit !== 'normalized' || control.minimum !== 0 || control.maximum !== 1) fail('Choose a normalized macro control declared by the current exact scene.');
   const macroId = binding.slice('patch-macro:'.length), targets = [];
   for (const patch of scene.patchRefs) {
-    const authored = patch.reference.definition.macros?.find(macro => macro.id === macroId); if (!authored) continue;
-    const lane = procgenLane(project.procgen.lanes, patch.laneId), reference = lane?.instrumentRef, macro = reference?.definition.macros?.find(item => item.id === macroId);
+    const authored = getSupportedInstrumentDefinition(patch.reference)?.macros?.find(macro => macro.id === macroId); if (!authored) continue;
+    const lane = procgenLane(project.procgen.lanes, patch.laneId), reference = lane?.instrumentRef, macro = getSupportedInstrumentDefinition(reference)?.macros?.find(item => item.id === macroId);
     if (!lane || !reference || reference.packHash !== patch.reference.packHash || reference.definitionHash !== patch.reference.definitionHash || !macro || macro.mode !== 'onset-only') fail('An authored macro lane was replaced or no longer supports this control. Use its individual lane editor.');
     const baseline01 = lane.instrumentControls?.macros?.[macroId] ?? macro.default01;
     if (!Number.isFinite(baseline01) || baseline01 < 0 || baseline01 > 1) fail('A lane macro baseline is invalid.');

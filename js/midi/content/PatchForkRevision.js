@@ -9,6 +9,7 @@ export async function revisePatchCandidate({ candidate, descriptor, name = candi
   if (candidate?.state !== 'compiled' || !candidate.compiled?.prepared || typeof name !== 'string' || !name.trim() || name.length > 160)
     fail('invalid-fork-input', 'Choose a compiled exact candidate and a bounded nonempty name.');
   const reference = candidate.reference; let defaults;
+  if (reference?.definition?.schemaVersion !== 2) fail('unsupported-parent-schema', 'A future patch schema is read-only; choose a supported parent explicitly.');
   try { defaults = cloneData(macroDefaults, { maxBytes: 4096, maxNodes: 128 }); } catch { fail('invalid-fork-input', 'Use bounded finite macro data.'); }
   if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults) || Object.keys(defaults).some(id => !reference.definition.macros.some(macro => macro.id === id)) ||
       Object.values(defaults).some(value => !Number.isFinite(value) || value < 0 || value > 1)) fail('invalid-fork-input', 'Use existing macro IDs and values between zero and one.');

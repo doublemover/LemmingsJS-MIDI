@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve opaque future instrument controls through read-only inspection and save/reopen; retain valid dictionary keys in unsupported patch archives and refuse future-schema authoring.
+
 - Refuse malformed hash-valid causal controls and stale mapping revisions, retaining the exact source chunk, sequence, tick and record kind for recovery.
 
 - Capture causal take application build provenance separately from protocol compatibility and explain matching, changed and legacy builds in replay and branch receipts and the take panel.

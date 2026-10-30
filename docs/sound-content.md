@@ -1227,3 +1227,14 @@ preparation retain their owner lifetime after the preparation operation ends.
 Stale verification still refuses publication; retained leases continue to charge
 their material until acknowledged retirement. Default reader callers retain
 the original coupled source fence unless they declare a separate stage lifetime.
+
+
+### Unsupported saved patch schemas
+
+Future patch definitions remain opaque, bounded data. The inspector reports
+them as read-only and preserves their canonical definition/hash through Save,
+new browser realms and session export. Current macro, variation and continuous
+physical-binding consumers do not interpret future fields. Choose a supported
+sound explicitly before playing or deriving an editable candidate. Registry
+archives preserve bounded ordinary JSON dictionary keys, including MIDI note
+numbers, while rejecting prototype keys and conflicting immutable revisions.

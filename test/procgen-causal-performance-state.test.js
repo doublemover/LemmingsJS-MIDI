@@ -3,7 +3,7 @@ import { captureCausalPerformanceState, createCausalPerformanceState, diffCausal
 import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMusicEngine.js';
 
 describe('captured causal lane performance inputs', () => {
-  const lanes = () => [{ id: 'first', instrumentControls: { macros: { breath: 0.2 } }, instrumentRef: { definition: { causalBindings: [{ mode: 'continuous', sourceKind: 'MotionCommitted' }] } } },
+  const lanes = () => [{ id: 'first', instrumentControls: { macros: { breath: 0.2 } }, instrumentRef: { definition: { schemaVersion: 2, causalBindings: [{ mode: 'continuous', sourceKind: 'MotionCommitted' }] } } },
     { id: 'second', instrumentControls: { macros: {}, variationSeed: 42 } }];
   it('addresses numeric physical lanes and stable IDs, copies author values and retains only changed lanes', () => {
     const source = lanes(), before = captureCausalPerformanceState(source), provider = createCausalPerformanceState(before);
@@ -13,6 +13,12 @@ describe('captured causal lane performance inputs', () => {
     const after = captureCausalPerformanceState(source), change = diffCausalPerformanceState(before, after); expect(change.upserts).to.have.length(1); expect(change.removed).to.have.length(0);
     provider.apply(change); expect(provider.snapshot()).to.deep.equal(after); expect(diffCausalPerformanceState(after, provider.snapshot())).to.equal(null);
     const reordered = captureCausalPerformanceState([source[1], source[0]]); provider.apply(diffCausalPerformanceState(after, reordered)); expect(provider.getControls(1).macros.breath).to.equal(0.8);
+  });
+  it('retains future patch data without interpreting its opaque causal binding structure', () => {
+    const source = lanes(); source[0].instrumentRef.definition = { schemaVersion: 99, causalBindings: { opaque: true } };
+    const before = JSON.stringify(source), captured = captureCausalPerformanceState(source);
+    expect(captured.lanes[0].physicalSourceKinds).to.deep.equal([]); expect(captured.lanes[0].controls.macros.breath).to.equal(0.2);
+    expect(JSON.stringify(source)).to.equal(before);
   });
   it('rejects malformed topology atomically and refuses checkpoint restoration under different performer inputs', () => {
     const initial = captureCausalPerformanceState(lanes()), provider = createCausalPerformanceState(initial);

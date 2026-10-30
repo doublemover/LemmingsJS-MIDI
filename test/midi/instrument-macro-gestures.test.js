@@ -3,12 +3,16 @@ import { createInstrumentMacroGestures } from '../../js/app/midi-ui/InstrumentMa
 import { captureCausalPerformanceState, diffCausalPerformanceState, createCausalPerformanceState } from '../../js/app/procgen/workstation/CausalPerformanceState.js';
 const fixture = () => {
   const macros = ['a', 'b', 'c', 'd'].map(id => ({ id, mode: 'onset-only', default01: 0.5, bipolar: id === 'a' }));
-  let lane = { id: 'lane:one', gain: 1, instrumentRef: { packHash: 'pack', definitionHash: 'definition', definition: { macros } }, instrumentControls: { macros: {} } }, epoch = 1;
+  let lane = { id: 'lane:one', gain: 1, instrumentRef: { packHash: 'pack', definitionHash: 'definition', definition: { schemaVersion: 2, macros } }, instrumentControls: { macros: {} } }, epoch = 1;
   const commits = [], owner = createInstrumentMacroGestures({ getLane: id => id === lane.id ? lane : null, getDocumentEpoch: () => epoch,
     commit(id, controls, gestureId) { commits.push({ id, controls, gestureId }); lane = { ...lane, instrumentControls: controls }; } });
   return { owner, commits, lane: () => lane, change: value => { lane = { ...lane, ...value }; }, replaceDocument: () => epoch++ };
 };
 describe('bounded physical-onset macro gesture owner', () => {
+  it('refuses gestures against opaque future patch metadata before interpreting it', () => {
+    const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { schemaVersion: 99, macros: { futureOnly: true } } } });
+    expect(() => f.owner.begin(f.lane().id, 'a')).to.throw('Only admitted onset-sampled macros'); expect(f.commits).to.have.length(0); f.owner.dispose();
+  });
   it('coalesces rapid reversals to one canonical gesture without a preset or physical mutation during preview', () => {
     const f = fixture(), initial = f.lane(), handle = f.owner.begin(initial.id, 'a');
     for (const value of [0, 1, 0.1, 0.9, 0.375]) expect(f.owner.set(handle, value).physicalMutation).to.equal(false);
@@ -67,7 +71,7 @@ describe('bounded physical-onset macro gesture owner', () => {
     f.owner.finish(h); record([f.lane()]); expect(replay.snapshot()).to.deep.equal(captureCausalPerformanceState([f.lane()])); f.owner.dispose();
   });
   it('exposes unsupported continuous macro modes rather than decorative movement', () => {
-    const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { macros: [{ id: 'live', default01: 0.5, mode: 'continuous' }] } } });
+    const f = fixture(); f.change({ instrumentRef: { ...f.lane().instrumentRef, definition: { schemaVersion: 2, macros: [{ id: 'live', default01: 0.5, mode: 'continuous' }] } } });
     expect(() => f.owner.begin(f.lane().id, 'live')).to.throw('unsupported'); f.owner.dispose();
   });
 });

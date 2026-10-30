@@ -7,6 +7,8 @@ const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const id = value => typeof value === 'string' && /^[A-Za-z][A-Za-z0-9._:-]{0,127}$/.test(value) && !['__proto__', 'constructor', 'prototype'].includes(value);
 const failure = (code, message) => Object.assign(new Error(message), { name: 'SoundContentError', code });
 
+export const getSupportedInstrumentDefinition = reference => reference?.definition?.schemaVersion === 2 ? reference.definition : null;
+
 export function validateSoundContentReference(raw) {
   if (raw == null) return null; if (references.has(raw)) return raw;
   const reference = cloneData(raw, limits), requirement = reference.engineRequirement, patch = reference.definition;

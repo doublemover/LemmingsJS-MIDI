@@ -1,4 +1,5 @@
 import { createSceneMorphMechanism } from './SceneMorphMechanism.js';
+import { getSupportedInstrumentDefinition } from '../../../midi/content/SoundContentReference.js';
 import { createResonatorMorphGraph } from '../../../midi/content/ResonatorMorphGraph.js';
 import { SPECTRAL_CAPTURE_POLICY } from '../../../midi/content/SpectralCaptureReceipt.js';
 import { createPreparedSurfaceBodyOwner } from './PreparedSurfaceBodyOwner.js';
@@ -175,7 +176,7 @@ export function createProcgenPhysicalPlayback({ audio, getGraph, scoreTimeline, 
     getLaneState: laneId => { const id = typeof laneId === 'number' ? getLanes()[laneId]?.id : laneId, mix = laneMix.mix(id); return { available: !!mix && !mix.muted && !mix.soloSuppressed }; },
     getPerformanceState: () => captureCausalPerformanceState(getLanes()),
     getOnsetControls: laneId => (typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentControls,
-    getPhysicalControlKinds: laneId => [...new Set(((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef?.definition?.causalBindings || [])
+    getPhysicalControlKinds: laneId => [...new Set((getSupportedInstrumentDefinition((typeof laneId === 'number' ? getLanes()[laneId] : getLanes().find(lane => lane.id === laneId))?.instrumentRef)?.causalBindings || [])
       .filter(binding => binding.mode === 'continuous').map(binding => binding.sourceKind))],
     deliver: (intents, batch, bodyCommands = []) => { const receipts = dispatcher.dispatch(intents, batch), admissions = new Map(), audioAdmissions = new Map();
       for (const receipt of receipts) {

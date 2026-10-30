@@ -19,6 +19,7 @@ export async function generatePatchNeighborhood({ prepared, reference: rawRefere
     Number.isFinite(amount01) && amount01 >= 0 && amount01 <= 1, 'invalid-input', 'Use an int32 seed, one to eight candidates and an amount between zero and one.');
   const reference = validateSoundContentReference(rawReference), descriptor = validateEngineDescriptor(rawDescriptor);
   requireValue(reference, 'invalid-parent', 'Choose a complete immutable parent reference.');
+  requireValue(reference.definition.schemaVersion === 2, 'unsupported-parent-schema', 'A future patch schema is read-only; choose a supported parent explicitly.');
   const neighborhood = findPatchNeighborhood(descriptor.engineId, neighborhoodId);
   requireValue(neighborhood && neighborhood.engineVersion === descriptor.engineVersion, 'unsupported-neighborhood', 'This exact engine has no authored neighborhood.');
   requireValue(!reference.drumKit, 'compound-parent', 'Choose an individual Circuit voice; a complete drum kit cannot be silently replaced by one patch.');
