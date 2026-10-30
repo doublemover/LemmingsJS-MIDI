@@ -36,6 +36,56 @@ test('desktop survey canonical numeric vectors match Node and ignore spoofed typ
   expect(result.edits).toEqual({ equivalent: true, changed: true });
 });
 
+test('authored scene source evidence preserves prepared ownership through physical byte refusal and recovery @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(150000); await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
+  await page.evaluate(async () => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); await window.__PROCGEN_STUDIO__.handlers.scenes(); });
+  const dialog = page.getByRole('dialog', { name: 'Playable physical scores', exact: true });
+  await dialog.getByRole('searchbox', { name: 'Search physical scores' }).fill('Builder-Miner Workshop');
+  await dialog.getByRole('listbox', { name: 'Scene versions' }).getByRole('option').first().click({ timeout: 10000 });
+  await dialog.getByRole('button', { name: 'Prepare fresh', exact: true }).click();
+  const load = dialog.getByRole('button', { name: 'Load fresh · stopped replacement', exact: true }); await expect(load).toBeEnabled({ timeout: 90000 });
+  page.once('dialog', prompt => prompt.accept()); await load.click();
+  await expect.poll(() => page.evaluate(() => !!window.__PROCGEN_LANES__.world.terrain.views), { timeout: 60000 }).toBe(true);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, terrain = world.terrain, tick = world.tickIndex, project = JSON.stringify(studio.getProject()), root = new URL('./', location.href);
+    const { captureGeneratedTerrainEvidence } = await import(new URL('js/app/procgen/ProcgenTerrainCacheEvidence.js', root)), { hashSurveyValue } = await import(new URL('js/app/procgen/survey/ProcgenSurveyCanonical.js', root));
+    const hash = () => hashSurveyValue(captureGeneratedTerrainEvidence(terrain)), before = hash(), seed = world.laneSeeds[0], chunk = terrain.getChunk(seed, 0), failures = [];
+    terrain.base.getChunk(seed, 40, true); if (hash() !== before) throw new Error('Fallback cache warmth changed the authored score identity.');
+    for (const field of ['solid', 'steel', 'pixels', 'topProfile']) {
+      chunk[field][0] ^= 1;
+      try { hash(); throw new Error('Altered authored ' + field + ' was accepted'); }
+      catch (error) { if (error.code !== 'changed-generated-terrain-cache') throw error; failures.push({ field, code: error.code, kind: error.cacheKind }); }
+      finally { chunk[field][0] ^= 1; }
+      if (hash() !== before) throw new Error('Authored source repair did not recover.');
+    }
+    return { before, recovered: hash(), failures, source: terrain.sourceReceipt(), sameWorld: world === window.__PROCGEN_LANES__.world,
+      sameTick: tick === world.tickIndex, sameProject: project === JSON.stringify(studio.getProject()), output: studio.getPlaybackState().enabled,
+      scope: 'Actual catalog Prepare/Load, admitted worker compiled authored source, immutable seed bindings and read-only local integrity checks. No archived exact-execution or acoustic claim.' };
+  });
+  expect(result.failures).toHaveLength(4); expect(result.recovered).toBe(result.before); expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
+  expect(result.source.activeExecution).toBe('bound'); expect(result.source.method).toBe('dedicated-worker');
+  await testInfo.attach('authored-scene-source-evidence', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+
+test('browser physical projection preserves real continuation differences and rejects nested accessor evidence @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(90000); await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
+  const result = await page.evaluate(async () => {
+    window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); const root = new URL('./', location.href);
+    const { surveyProjectionContinuations } = await import('/test/helpers/surveyProjectionContinuations.js');
+    const { createSurveyTrial } = await import(new URL('js/app/procgen/survey/ProcgenSurveyCore.js', root));
+    const { BinaryReader } = await import(new URL('js/data/BinaryReader.js', root)), { FileContainer } = await import(new URL('js/data/FileContainer.js', root)), { MaskProvider } = await import(new URL('js/render/MaskProvider.js', root));
+    const response = await fetch(new URL('lemmings_ohNo/MAIN.DAT', root)); if (!response.ok) throw new Error('Source masks unavailable');
+    const reader = new BinaryReader(new Uint8Array(await response.arrayBuffer())), container = new FileContainer(reader), part = container.getPart(1); let masks;
+    try { masks = new MaskProvider(part); } finally { part.release(); container.dispose(); reader.release(); }
+    return surveyProjectionContinuations(scenario => createSurveyTrial({ scenario, masks }));
+  });
+  expect(result.map(row => row.kind)).toEqual(['speed', 'intervention', 'contact', 'intrinsic-and-accessor']);
+  await testInfo.attach('browser-projection-continuations', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+
 test('production generated pack evidence ignores query warmth and refuses altered physical caches @boundary', async ({ page }, testInfo) => {
   test.setTimeout(90000); await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
@@ -64,7 +114,7 @@ test('production generated pack evidence ignores query warmth and refuses altere
       sameWorld: api.world === world, sameTick: world.tickIndex === tick, sameProject: JSON.stringify(studio.getProject()) === project,
       output: studio.getPlaybackState().enabled, scope: 'Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract.' };
   });
-  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(6); expect(result.refusals).toHaveLength(6);
+  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(7); expect(result.refusals).toHaveLength(6);
   expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
   await testInfo.attach('generated-pack-cache-evidence', { body: JSON.stringify(result), contentType: 'application/json' });
 });

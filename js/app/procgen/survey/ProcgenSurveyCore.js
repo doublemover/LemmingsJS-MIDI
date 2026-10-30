@@ -38,28 +38,34 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
   }
   const actions = new Map(Object.entries(world.actions).map(([id, action]) => [action, Number(id)])), actors = new Map(records.filter(record => record.actor).map(record => [record.actor, record.id]));
   const seen = new Map();
+  const data = (value, key, path) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (descriptor && !Object.hasOwn(descriptor, 'value')) throw Object.assign(new Error('Survey state data cannot be an accessor: ' + path.slice(0, 192)), { name: 'SurveyStateProjectionError', code: 'accessor-state-data' });
+    return descriptor?.value;
+  };
   const encode = (value, path) => {
     if (value == null || typeof value !== 'object') return typeof value === 'function' ? undefined : value;
     if (actions.has(value)) return { action: actions.get(value) };
     if (actors.has(value) && !path.startsWith('actors.')) return { actor: actors.get(value) };
     if (seen.has(value)) return { reference: seen.get(value) };
     seen.set(value, path);
-    if (ArrayBuffer.isView(value)) return { typed: value.constructor.name, length: value.length ?? value.byteLength,
-      byteOffset: value.byteOffset, byteLength: value.byteLength, hash: hashSurveyValue(value) };
+    if (ArrayBuffer.isView(value)) return { intrinsicViewHash: hashSurveyValue(value) };
     if (value instanceof Map) return { map: Array.from(Map.prototype.entries.call(value), ([key, entry], index) => [encode(key, `${path}.key${index}`), encode(entry, `${path}.value${index}`)]),
-      properties: Object.fromEntries(Object.keys(value).filter(key => !ignoredKeys.has(key) && !key.startsWith('_last')).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
-    if (value instanceof Set) return { set: Array.from(value, (entry, index) => encode(entry, `${path}.${index}`)) };
-    if (Array.isArray(value)) return { array: value.map((entry, index) => encode(entry, `${path}.${index}`)),
-      properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(Object.getOwnPropertyDescriptor(value, key)?.value, `${path}.${key}`)])) };
+      properties: Object.fromEntries(Object.keys(value).filter(key => !ignoredKeys.has(key) && !key.startsWith('_last')).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
+    if (value instanceof Set) return { set: Array.from(Set.prototype.values.call(value), (entry, index) => encode(entry, `${path}.${index}`)) };
+    if (Array.isArray(value)) {
+      const entries = new Array(value.length);
+      for (let index = 0; index < value.length; index++) if (Object.hasOwn(value, index)) entries[index] = encode(data(value, index, `${path}.${index}`), `${path}.${index}`);
+      return { array: entries, properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
+    }
     const out = {};
     for (const key of Object.keys(value).sort()) {
       if (path === 'stats' && key === 'groundQueries') continue;
       if (scenarioOnly && (path === 'lanePolicy' && key === 'config' || path.startsWith('lanePolicy.lanes.') && key === 'initialBias')) continue;
       if (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key)) continue;
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value === 'function') continue;
-      if (key === 'piece' || key === 'image' || key === 'composite') { out[key] = { assetId: descriptor.value?.id ?? null, width: descriptor.value?.width ?? null, height: descriptor.value?.height ?? null }; continue; }
-      out[key] = encode(descriptor.value, `${path}.${key}`);
+      const entry = data(value, key, `${path}.${key}`); if (typeof entry === 'function') continue;
+      if (key === 'piece' || key === 'image' || key === 'composite') { out[key] = { assetId: entry?.id ?? null, width: entry?.width ?? null, height: entry?.height ?? null }; continue; }
+      out[key] = encode(entry, `${path}.${key}`);
     }
     if (value instanceof Trigger) out.disabledUntilTick = value.disabledUntilTick;
     return out;
@@ -75,9 +81,9 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
   out.revisions = { epochs: encode(world.terrainTileRevisions.epochs, 'revisions.epochs'), ...(physicalOnly ? {} : { interests: encode(world.terrainTileRevisions.interests, 'revisions.interests') }) };
   out.clock = { speedFactor: world.timer.speedFactor, simulationTimeMs: world.simulationTimeMs };
   const terrain = world.terrain;
-  out.terrain = encode(terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : captureGeneratedTerrainEvidence(terrain) || { descriptions: terrain?.descriptions, collision: terrain?.collision, growthPlans: terrain?.growthPlans,
-    ...(physicalOnly ? {} : { descriptorResidency: terrain?.descriptorResidency, zoneCache: terrain?.zonePlanner?.cache, wideZoneCache: terrain?.wideZonePlanner?.cache }),
-    selectedTerrainIds: terrain?.selectedTerrainIds, selectedObjectIds: terrain?.selectedObjectIds }, 'terrain');
+  const terrainEvidence = terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : captureGeneratedTerrainEvidence(terrain);
+  if (!terrainEvidence) throw Object.assign(new Error('Survey physical evidence requires an owned supported terrain source.'), { name: 'SurveyStateProjectionError', code: 'unsupported-terrain-evidence-source' });
+  out.terrain = encode(terrainEvidence, 'terrain');
   if (!physicalOnly) out.eventHash = eventHash;
   return out;
 };

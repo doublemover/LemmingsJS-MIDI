@@ -4,6 +4,7 @@ import { createSurveyTrial } from '../js/app/procgen/survey/ProcgenSurveyCore.js
 import { hashSurveyValue, SURVEY_STATE_SCHEMA } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 import { ProcgenPackTerrain } from '../js/app/procgen/ProcgenPackTerrain.js';
 import { captureGeneratedTerrainEvidence } from '../js/app/procgen/ProcgenTerrainCacheEvidence.js';
+import { surveyProjectionContinuations } from './helpers/surveyProjectionContinuations.js';
 
 describe('generated terrain cache evidence ownership', function() {
   this.timeout(30000); let terrain, masks;
@@ -67,7 +68,11 @@ describe('generated terrain cache evidence ownership', function() {
       for (const chunk of [40, 4, 17]) { terrain.getChunk(seed, chunk, true); terrain.growthPlan(seed, chunk); }
       expect(trial.snapshot().physicalStateHash).to.equal(before); const chunk = terrain.getChunk(seed, 4); chunk.solid[0] ^= 1;
       rejection('changed-generated-terrain-cache', () => trial.snapshot()); chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
-      expect(SURVEY_STATE_SCHEMA).to.equal(6);
+      expect(SURVEY_STATE_SCHEMA).to.equal(7);
     } finally { trial.dispose(); }
+  });
+  it('distinguishes actual speed, command and contact futures while refusing nested accessors without evaluating them', async () => {
+    const results = await surveyProjectionContinuations(scenario => createSurveyTrial({ masks, scenario }));
+    expect(results.map(result => result.kind)).to.deep.equal(['speed', 'intervention', 'contact', 'intrinsic-and-accessor']);
   });
 });

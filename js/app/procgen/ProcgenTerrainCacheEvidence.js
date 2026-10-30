@@ -67,9 +67,22 @@ const tokenFor = owner => { let token = owners.get(owner); if (!token) { token =
 
 export function initializeTerrainCacheEvidence(owner) { tokenFor(owner); }
 
+const contentHash = (kind, value) => {
+  if (kind === 'authored-source') {
+    if (!Object.isFrozen(value) || !Object.isFrozen(own(value, 'chunks')) || !Object.isFrozen(own(value, 'layout'))) fail('unverified-generated-terrain-cache', kind, 'prepared');
+    return cacheHash(own(value, 'storage'));
+  }
+  // Frozen bindings borrow the already-checked source storage; hash its bytes once.
+  if (kind === 'authored-records') {
+    if (!Object.isFrozen(value) || !Array.prototype.every.call(value, Object.isFrozen)) fail('unverified-generated-terrain-cache', kind, 'bindings');
+    return null;
+  }
+  return cacheHash(value);
+};
+
 // Proofs follow cache objects weakly; no retained cache entry keeps its world alive.
 export function registerTerrainCacheEvidence(owner, kind, key, value, source = context(owner)) {
-  proofs.set(value, { owner: tokenFor(owner), kind, key, source: hashSurveyValue(source), hash: cacheHash(value) });
+  proofs.set(value, { owner: tokenFor(owner), kind, key, source: hashSurveyValue(source), hash: contentHash(kind, value) });
   return value;
 }
 
@@ -78,15 +91,31 @@ export function verifyTerrainCacheEvidence(owner, kind, entries, source = contex
   for (const [key, value] of entries) {
     const proof = value && proofs.get(value);
     if (!proof || proof.owner !== token || proof.kind !== kind || proof.key !== key) fail('unverified-generated-terrain-cache', kind, key);
-    if (proof.source !== sourceHash || proof.hash !== cacheHash(value)) fail('changed-generated-terrain-cache', kind, key);
+    if (proof.source !== sourceHash || proof.hash !== contentHash(kind, value)) fail('changed-generated-terrain-cache', kind, key);
   }
 }
 
 export function captureGeneratedTerrainEvidence(terrain) {
+  if (!owners.has(terrain)) return null;
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    const views = own(terrain, 'views'), layoutHash = own(terrain, 'sceneTerrainLayoutHash');
+    if (!views || own(terrain, 'disposed')) fail('unverified-generated-terrain-cache', 'authored-source', 'unavailable');
+    verifyTerrainCacheEvidence(terrain, 'authored-source', [['prepared', views]], layoutHash);
+    const records = own(terrain, 'records'), seeds = own(terrain, 'seedToLane');
+    if (!Array.isArray(records) || (seeds.size ? records.length !== own(views, 'chunks').length : records.length !== 0)) fail('unverified-generated-terrain-cache', 'authored-records', 'bindings');
+    if (seeds.size) verifyTerrainCacheEvidence(terrain, 'authored-records', [['bindings', records]], { layoutHash, seeds: Array.from(Map.prototype.entries.call(seeds)) });
+    const source = captureGeneratedTerrainEvidence(base); if (!source) fail('unsupported-terrain-evidence-source', 'base', 'provider');
+    return { kind: 'authored-scene-v1', layoutHash, storageHash: own(views, 'storageHash'), layout: own(terrain, 'sceneTerrainLayout'),
+      seedToLane: projection(own(terrain, 'seedToLane')), base: source };
+  }
   const themes = own(terrain, 'themes');
   if (Array.isArray(themes)) return { kind: 'generated-pack-v1', height: own(terrain, 'height'), chunkWidth: own(terrain, 'chunkWidth'),
     assignments: projection(own(terrain, 'assignments')), laneAssignments: own(terrain, 'laneAssignments'), laneThemes: own(terrain, 'laneThemes'),
-    themes: themes.map(theme => ({ familyId: own(theme, 'familyId'), styleName: own(theme, 'styleName'), terrain: captureGeneratedTerrainEvidence(own(theme, 'terrain')) })) };
+    themes: themes.map(theme => {
+      const source = captureGeneratedTerrainEvidence(own(theme, 'terrain')); if (!source) fail('unsupported-terrain-evidence-source', 'theme', own(theme, 'familyId'));
+      return { familyId: own(theme, 'familyId'), styleName: own(theme, 'styleName'), terrain: source };
+    }) };
   const descriptions = own(terrain, 'descriptions'), collision = own(terrain, 'collision'), growthPlans = own(terrain, 'growthPlans');
   if (!owners.has(terrain) || !(descriptions instanceof Map) || !(collision instanceof Map) || !(growthPlans instanceof Map)) return null;
   for (const [kind, cache] of [['description', descriptions], ['collision', collision], ['growth-plan', growthPlans]]) verifyTerrainCacheEvidence(terrain, kind, Map.prototype.entries.call(cache));

@@ -9721,3 +9721,29 @@ export-budget acknowledgments still prevent a false complete receipt.
 - #1223 remains open for authored/prepared terrain wrappers, the complete source
   projection audit and speed/intervention/contact continuation/negative corpus.
   Latest fully verified CI remains372/eda85f9e; later374 CI is running. Continue solo.
+
+### Continuation 376 - authored source ownership and actual physical continuations
+
+- State7 captures owned authored geometry, validated prepared storage and frozen
+  seed/record bindings. Refuse unknown providers, missing/cloned bindings and
+  unbound seed remaps. Stream source bytes once without copying or rehashing
+  immutable aliases. Pack and authored sources carry explicit private ownership.
+- Project typed state through intrinsic numeric encoding, use native Set
+  traversal and refuse nested own data accessors before evaluation. Shared
+  Node/browser cases retain true speed, accepted builder-command and contact
+  continuity differences and verify their distinct subsequent clocks/facts/state.
+- Final101related Node cases and all five Playwright journeys pass together
+  after preserving array holes separately from explicit undefined. The earlier
+  source-scoped groups remain recorded. Actual catalog Prepare/Load owns838656compiled source
+  bytes; mask/steel/pixel/profile changes refuse and recover without changing
+  the paused world/project/output. Controlled/generated replay stays compatible.
+- Preserve the initial fixed-simulation-time fixture assertion and hidden
+  native-option locator timeout; final fixtures use observed batch duration and
+  the named scene list. All five final browser cases use the same final source.
+  Evidence owner94.57%Node lines/100%functions/85.21%branches; extend remaining
+  metadata object/accessor vectors. Static/critical/provenance checks pass;
+  collection259full/228smoke across54files. Fetched master has no incoming work.
+- Keep #1223 open for proof/audit of world fast collision/edit aliases and
+  assisted/challenge/wall caches, remaining negative metadata and exact archived
+  execution binding. Provider cache integrity alone does not establish those
+  world cache contracts. Latest verified full CI remains372/eda85f9e. Continue solo.

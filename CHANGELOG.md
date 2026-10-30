@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Bind authored scene evidence to verified source storage and immutable seed mappings, and preserve intrinsic numeric and physical continuation state without executing nested accessors.
+
 - Normalize verified generated-terrain cache residency in survey identity, refuse altered or unproved physical caches, and exclude temporary validation artifacts from terrain source mining.
 
 - Select a captured physical clock epoch per MIDI file, verify preserved clock history and refuse note lifetimes crossing its boundaries.

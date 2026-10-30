@@ -3,6 +3,7 @@ import { validateSceneTerrainLayout, verifyCompiledSceneTerrain, SCENE_TERRAIN_R
 import { canonicalDataText, freezeData, hashData } from '../../core/CanonicalData.js';
 import { backgroundJobService } from '../resources/BackgroundJobService.js';
 import { createProcgenRetirementScope, afterProcgenRetirement } from './ProcgenRetirement.js';
+import { initializeTerrainCacheEvidence, registerTerrainCacheEvidence } from './ProcgenTerrainCacheEvidence.js';
 
 const empty = Object.freeze([]), integer = (value, low, high) => Number.isSafeInteger(value) && value >= low && value <= high;
 export class ProcgenScoredTerrain {
@@ -14,6 +15,7 @@ export class ProcgenScoredTerrain {
     this.controller = new AbortController(); this.retirement = createProcgenRetirementScope(); this.sceneTerrainLayoutHash = null; this.sourceDescriptor = null;
     this.recipe = Object.freeze({ ...base.recipe, id: 'scene:' + this.sceneTerrainLayout.id, revision: this.sceneTerrainLayout.revision, algorithmRevision: SCENE_TERRAIN_REVISION, sourceKind: 'original-scene-score' });
     const owner = this; this.collision = { *values() { yield* owner.base.collision.values(); if (owner.views) yield* owner.views.chunks; } };
+    initializeTerrainCacheEvidence(this);
   }
   prepare({ signal } = {}) {
     if (this.disposed || this.failure) return Promise.reject(this.failure || new Error('The authored source is retired.'));
@@ -28,6 +30,7 @@ export class ProcgenScoredTerrain {
       const views = await verifyCompiledSceneTerrain(this.job.value, { signal: this.controller.signal, current: () => !this.disposed && this.isCurrent() }); check();
       if (views.layoutHash !== expectedHash) throw new Error('The compiled source differs from the selected initial geometry.');
       this.views = views; this.sceneTerrainLayout = views.layout; this.sceneTerrainLayoutHash = views.layoutHash;
+      registerTerrainCacheEvidence(this, 'authored-source', 'prepared', views, views.layoutHash);
       this.sourceDescriptor = freezeData({ kind: 'original-scene-terrain', sourceRevision: views.layoutHash, algorithmRevision: SCENE_TERRAIN_REVISION, storageHash: views.storageHash, geometry: 'explicit-initial-source;not-a-player-intervention' }); return this;
     })().catch(error => { this.failure = error; throw error; }).finally(() => signal?.removeEventListener('abort', abort));
     return this.pending;
@@ -51,7 +54,8 @@ export class ProcgenScoredTerrain {
   }
   bindRecords() {
     const seeds = new Array(this.sceneTerrainLayout.lanes.length); for (const [seed, lane] of this.seedToLane) seeds[lane] = seed;
-    this.records = this.views.chunks.map(chunk => Object.freeze({ ...chunk, placements: empty, objects: empty, sourceRevision: this.sceneTerrainLayoutHash, themeId: this.base.forSeed(seeds[chunk.laneId]).recipe.id }));
+    this.records = Object.freeze(this.views.chunks.map(chunk => Object.freeze({ ...chunk, placements: empty, objects: empty, sourceRevision: this.sceneTerrainLayoutHash, themeId: this.base.forSeed(seeds[chunk.laneId]).recipe.id })));
+    registerTerrainCacheEvidence(this, 'authored-records', 'bindings', this.records, { layoutHash: this.sceneTerrainLayoutHash, seeds: Array.from(Map.prototype.entries.call(this.seedToLane)) });
   }
   setLaneAssignments(values) { this.base.setLaneAssignments(values); }
   exportAssignments() { return { ...this.base.exportAssignments(), sceneTerrain: { schema: 'lemmings-scored-terrain-assignment/v1', id: this.sceneTerrainLayout.id, revision: this.sceneTerrainLayout.revision, layoutHash: this.sceneTerrainLayoutHash, layout: this.sceneTerrainLayout, seedLanes: [...this.seedToLane] } }; }

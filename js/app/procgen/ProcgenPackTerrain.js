@@ -7,6 +7,7 @@ import { selectThemeRecipe } from './ProcgenTerrainRecipes.js';
 import { prepareAssetCollections } from '../../data/file-provider/AssetPreparationScope.js';
 import { ResourceLoadError } from '../../data/file-provider/ResourceLoadError.js';
 import { createProcgenRetirementScope } from './ProcgenRetirement.js';
+import { initializeTerrainCacheEvidence } from './ProcgenTerrainCacheEvidence.js';
 
 const mix = value => { let n = Math.imul(value ^ (value >>> 16), 0x45d9f3b); n = Math.imul(n ^ (n >>> 16), 0x45d9f3b); return (n ^ (n >>> 16)) >>> 0; };
 const procgenThemeOrder = (count, seed) => {
@@ -34,6 +35,7 @@ class ProcgenPackTerrain {
     this.retirement = createProcgenRetirementScope();
     const owner = this;
     this.collision = { *values() { for (const theme of owner.themes) yield* theme.terrain.collision.values(); } };
+    initializeTerrainCacheEvidence(this);
   }
   registerLanes(seeds, runSeed, generation = 1) {
     this.assignments.clear(); this.laneThemes.length = seeds.length;
