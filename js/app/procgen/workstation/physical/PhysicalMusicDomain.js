@@ -36,7 +36,7 @@ export function createPhysicalMusicDomain() {
     const facts = [...selected.map(value => fact(value, 'PickupCrossing')), ...laps.map(value => fact(value, 'RouteLap'))];
     last = freeze({ facts, completeness: result.completeness, ensembles: views, batchId: batch.batchId }); return last;
   };
-  return { configure, observe, ensembleView: id => ensembles.view(id), membership: (...args) => ensembles.membership(...args), routeCoordinate: (...args) => routes.coordinate(...args), routeNeighbors: (...args) => routes.neighbors(...args),
+  return { configure, observe, ensembleView: id => ensembles.view(id), membership: (...args) => ensembles.membership(...args), routeCoordinate: (...args) => routes.coordinate(...args), routeNeighbors: (...args) => routes.neighbors(...args), routePeriods: () => routes.periods(),
     reset() { pickups.reset(); routes.reset(); ensembles.resetDynamic(); last = null; },
     snapshot: () => freeze({ version: 1, pickups: pickups.snapshot(), ensembles: ensembles.snapshot(), routes: routes.snapshot() }),
     restore(value) { if (value?.version !== 1) throw new Error('Unsupported physical domain checkpoint.'); const p = createPickupGateObserver(), e = createEnsembleResolver(), r = createRouteCoordinateAtlas(); p.configure(configured.pickups || []); e.configure(configured.ensembles || []); r.configure(configured.routes || []); p.restore(value.pickups); e.restore(value.ensembles); r.restore(value.routes); pickups = p; ensembles = e; routes = r; changed.clear(); retired = []; },

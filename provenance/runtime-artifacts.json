@@ -296,6 +296,7 @@
         "js/app/procgen/workstation/physical/PreparedSurfaceMapping.js",
         "js/app/procgen/workstation/physical/RhythmicResponses.js",
         "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+        "js/app/procgen/workstation/physical/RoutePeriodEvidence.js",
         "js/app/procgen/workstation/physical/SwarmReducer.js",
         "js/app/procgen/workstation/physical/TonalInterpretation.js",
         "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
@@ -439,8 +440,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 293,
-      "sha256": "23939b9af3c0693df3bc48cc2fad96b25b5098ccf30d8b71f7b0417de5f5787d"
+      "fileCount": 294,
+      "sha256": "82ff3afac4bb7132257cb40f85a98b08e061d35861263bd6253703fb932f034b"
     },
     {
       "id": "lemmings-timing-worker-source",

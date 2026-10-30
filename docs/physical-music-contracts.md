@@ -289,3 +289,32 @@ restore, fresh actor identities and 100 coincident physical turns. Semantic
 begin admission may thin dual-role attacks, but every actual contact and held
 resonance end retains its own boundary. The browser fixture paints the production
 desktop canvas; it does not qualify acoustic rendering or receiver behavior.
+
+## Route time, history and period comparisons
+
+Route entry/return time uses the same source position as pickups:
+`batch.tick - 1 + crossing.fraction`. Ordered markers establish traversal and
+lap identity. Arc distance excludes zero-displacement wall-turn ticks; elapsed
+lap time includes them. Re-entry after unknown/discontinuous coverage starts
+fresh observation history rather than retaining the old pose or return clock.
+
+Checkpoint restore checks the authored route revision and branch, world epoch,
+segment/lap identity, coordinate arithmetic, marker/source history, completed
+lap ancestry and observation times before changing live route state. Unknown
+coverage remains unknown; an invalidated segment cannot resume as qualified.
+An endpoint pose without the required observed history is insufficient.
+
+`CausalMusicEngine.routePeriods()` returns an on-demand bounded view of completed
+laps with their source observation IDs. It separates period ratios from inverse
+frequency ratios, reports current requested periods and signed errors, and
+labels the integer period LCM as a coincidence window rather than a phase reset.
+Fractional measurements remain fractional, and unsafe integer coincidence
+values remain unavailable. An over-cap view reports `capped` without choosing
+an undisclosed subset. This query does not advance actors or musical phase.
+
+Optional `requestedPeriodTicks` is annotation on a route definition. Updating
+that request preserves observed traversal and changes only its comparison with
+completed evidence. A request does not retime physics. In the two-wall reference
+fixture, a one-pixel walker has period `2*(rightWall-leftWall-1)`, including both
+turn ticks. Odd periods are unsupported under those particular constraints;
+this is not a claim about every skill or route geometry.

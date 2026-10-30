@@ -103321,4 +103321,1357 @@
     ],
     "issueOutcome": "Close992 after commit/push; actual receiver/acoustic and broader crowd interval/routing instruments remain separate."
   }
+,
+  "continuation392": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      991,
+      1182,
+      990
+    ],
+    "sourceParent": "6091d4eb788620a90d3a7ec1b97cf94a6fda78a0",
+    "scope": "Actual route circuits, correct source time, strict observed-history restoration, bounded measured/requested period views and one CI integration deadline repair.",
+    "changes": [
+      "Route entry/return timestamps use batch.tick-1+fraction, matching physical pickup interpolation. Re-entry creates fresh timing/pose/marker evidence after unknown coverage.",
+      "Restore transactionally checks route revision/branch/world/generation, segment/lap/status/direction, marker/source history, completed lap ancestry, observation time and qualified arc arithmetic; conflicting invalidated terrain cannot resume qualified.",
+      "Use cross-product path distance plus a bounded arithmetic-roundoff allowance. A literal31/59 collinear projection no longer loses exact-route qualification; a whole pixel off-route still refuses.",
+      "Expose an on-demand bounded routePeriods view with actual source roots, period/frequency/request ratios, signed period errors and safe integer coincidence windows. Requested-period annotations preserve actual traversal phase.",
+      "Actual compiled two-wall worlds qualify3:4 and5:7 periods, paused source-preserving continuation, queued wall drift with selective segment invalidation/requalification, incomplete shortcut and stopped actor.",
+      "Keep the complete byte-for-byte terrain-book regeneration assertion, allowing only that corpus-integration case60s after CI388 exceeded its prior15s deadline."
+    ],
+    "validation": {
+      "node": {
+        "passing": 79,
+        "failures": 0,
+        "durationSeconds": 54,
+        "terrainBookRegenerationMs": 12056,
+        "scope": "Actual circuits/period evidence, spatial/tonal/encounter/source-route owners, causal engine/branch/checkpoint and full terrain recipe integration."
+      },
+      "browser": {
+        "passing": 2,
+        "failures": 0,
+        "qualification": "Composite final passing authored128-tape case and final corrected circuit-projection case; application runtime/native corpus unchanged between those executions.",
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "actual route circuits preserve period evidence terrain edits pause replay and rejected saved histories",
+            "file": "procgen-workstation-route-circuits.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-route-circuit-desktop",
+                "value": {
+                  "scenarios": {
+                    "reference": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          361,
+                          481,
+                          601,
+                          721,
+                          841,
+                          961
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481,
+                          641,
+                          801,
+                          961
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3875:pickup:entry0:9",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3875"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3876:pickup:entry1:7",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3876"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "f6103b7a4d12aaf0b76458b1b4b41a4b3bd3711f34125028453af5a838f8f00e",
+                      "intentHash": "724e38f81a5563f1fe6d17f6fa16d1c3c5046608d158b763c2ba5475660b0ef9",
+                      "lapseCount": 14,
+                      "invalidated": null,
+                      "paints": 288,
+                      "restored": {
+                        "fromTick": 480,
+                        "throughTick": 961,
+                        "facts": 1938,
+                        "intents": 18,
+                        "equal": true
+                      }
+                    },
+                    "fiveSeven": {
+                      "crossings": [
+                        [
+                          1,
+                          101,
+                          201,
+                          301,
+                          401,
+                          501,
+                          601,
+                          701
+                        ],
+                        [
+                          1,
+                          141,
+                          281,
+                          421,
+                          561,
+                          701
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 100,
+                            "requestedPeriodTicks": 100,
+                            "lastCompletedLapTick": 701,
+                            "sourceObservationId": "procgen:42:1:701:0:2831:pickup:entry0:8",
+                            "sourceEventIds": [
+                              "procgen:42:1:701:0:2831"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 140,
+                            "requestedPeriodTicks": 140,
+                            "lastCompletedLapTick": 701,
+                            "sourceObservationId": "procgen:42:1:701:0:2832:pickup:entry1:6",
+                            "sourceEventIds": [
+                              "procgen:42:1:701:0:2832"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.7142857142857143,
+                              "reduced": [
+                                5,
+                                7
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.4,
+                              "reduced": [
+                                7,
+                                5
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 700,
+                            "requestedPeriodRatio": {
+                              "value": 0.7142857142857143,
+                              "reduced": [
+                                5,
+                                7
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "241e161ecb2c293f4d264bd768828d052ef95baa26ea81309b706bfd6eab1508",
+                      "intentHash": "5ea0ea9d0343550ca04fd86fb01d38ed2102fe5e8c30c7e507aaf9fc601d9f06",
+                      "lapseCount": 12,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "changed": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          363,
+                          485,
+                          607,
+                          729,
+                          851
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481,
+                          641,
+                          801,
+                          961
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 2,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 122,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 851,
+                            "sourceObservationId": "procgen:42:1:851:0:3432:pickup:entry0:6",
+                            "sourceEventIds": [
+                              "procgen:42:1:851:0:3432"
+                            ],
+                            "periodErrorTicks": 2
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 2,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3877:pickup:entry1:5",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3877"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.7625,
+                              "reduced": [
+                                61,
+                                80
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3114754098360655,
+                              "reduced": [
+                                80,
+                                61
+                              ]
+                            },
+                            "periodDifferenceTicks": 38,
+                            "periodLcmTicks": 9760,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "406a75bbe22cf86f22bd4509fc8e12b317952309a989f1737a63a7725ed62c09",
+                      "intentHash": "a818646624197fb1b84bab61465a6586803c0758b0da9b4952096916565eb9f3",
+                      "lapseCount": 11,
+                      "invalidated": [
+                        {
+                          "worldId": "procgen:42",
+                          "generation": 1,
+                          "previousSPixels": 196,
+                          "previousObservationTick": 200,
+                          "entryObservationId": "procgen:42:1:1:0:4:pickup:entry0:1",
+                          "routeId": "circuit0",
+                          "routeRevision": 1,
+                          "branchId": "lane0",
+                          "actorId": 0,
+                          "segmentIndex": 1,
+                          "segmentId": "segment0-1",
+                          "lapId": 1,
+                          "sPixels": 196,
+                          "segmentS": 38,
+                          "direction": 1,
+                          "observationTick": 200,
+                          "status": "terrain-invalidated",
+                          "entryTick": 1,
+                          "lastReturnTick": 121,
+                          "periodTicks": 120,
+                          "lastLapObservationId": "procgen:42:1:121:0:490:pickup:entry0:2",
+                          "lastLapSourceEventIds": [
+                            "procgen:42:1:121:0:490"
+                          ],
+                          "markerHistory": [
+                            "procgen:42:1:1:0:4:pickup:entry0:1",
+                            "procgen:42:1:41:0:167:pickup:right0:1",
+                            "procgen:42:1:101:0:409:pickup:left0:1",
+                            "procgen:42:1:121:0:490:pickup:entry0:2",
+                            "procgen:42:1:161:0:651:pickup:right0:2"
+                          ],
+                          "sourceEventIds": [
+                            "procgen:42:1:161:0:651"
+                          ],
+                          "motionSourceEventId": "procgen:42:1:200:0:808",
+                          "motionSourceSequence": 808,
+                          "motionSourceTick": 200,
+                          "coordinatePrecision": "completed-route-endpoint-projection",
+                          "geometrySource": "authored",
+                          "lastPosition": {
+                            "x": 42,
+                            "y": 80
+                          },
+                          "metric": "qualified-route-arc-pixels"
+                        },
+                        {
+                          "worldId": "procgen:42",
+                          "generation": 1,
+                          "previousSPixels": 197,
+                          "previousObservationTick": 200,
+                          "entryObservationId": "procgen:42:1:1:0:8:pickup:entry1:1",
+                          "routeId": "circuit1",
+                          "routeRevision": 1,
+                          "branchId": "lane1",
+                          "actorId": 1,
+                          "segmentIndex": 0,
+                          "segmentId": "segment1-0",
+                          "lapId": 1,
+                          "sPixels": 198,
+                          "segmentS": 40,
+                          "direction": 1,
+                          "observationTick": 201,
+                          "status": "qualified",
+                          "entryTick": 1,
+                          "lastReturnTick": 161,
+                          "periodTicks": 160,
+                          "lastLapObservationId": "procgen:42:1:161:0:652:pickup:entry1:2",
+                          "lastLapSourceEventIds": [
+                            "procgen:42:1:161:0:652"
+                          ],
+                          "markerHistory": [
+                            "procgen:42:1:1:0:8:pickup:entry1:1",
+                            "procgen:42:1:61:0:249:pickup:right1:1",
+                            "procgen:42:1:141:0:571:pickup:left1:1",
+                            "procgen:42:1:161:0:652:pickup:entry1:2"
+                          ],
+                          "sourceEventIds": [
+                            "procgen:42:1:161:0:652"
+                          ],
+                          "motionSourceEventId": "procgen:42:1:201:0:814",
+                          "motionSourceSequence": 814,
+                          "motionSourceTick": 201,
+                          "coordinatePrecision": "completed-route-endpoint-projection",
+                          "geometrySource": "authored",
+                          "lastPosition": {
+                            "x": 80,
+                            "y": 176
+                          },
+                          "metric": "qualified-route-arc-pixels"
+                        }
+                      ],
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "shortcut": {
+                      "crossings": [
+                        [
+                          1,
+                          81,
+                          161,
+                          241,
+                          321,
+                          401,
+                          481
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1946:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1946"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "29dfd4c439372daebaeab8a3e4e0758ed8efd83e7205aa69b1651c4ee9ebf1c8",
+                      "intentHash": "cc211b7f9788cd3f97ea4a124708b854f095b5e7c709f87177a43ded4a11cf82",
+                      "lapseCount": 3,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "stalled": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 241,
+                            "sourceObservationId": "procgen:42:1:241:0:974:pickup:entry0:3",
+                            "sourceEventIds": [
+                              "procgen:42:1:241:0:974"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1762:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1762"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "84c2f961a22ad10437c1e6d3fb03b13f916726702f7e30f8a6108e98e437c33f",
+                      "intentHash": "89d8d579a785b29892eb95029e69e983810215cd6739965f5ea3d5ab18ceb4ab",
+                      "lapseCount": 5,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "odd": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          361,
+                          481
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 121,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1941:pickup:entry0:5",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1941"
+                            ],
+                            "periodErrorTicks": -1
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1942:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1942"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75625,
+                              "reduced": [
+                                121,
+                                160
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "ce3551684cf01de5f015d6c9e30cdb05d9ccab4a108533444e8019c6c12fa6c3",
+                      "intentHash": "ee5ba3f7a7665f492a11d1a09c74ead58b369f59158bf9040fdfa1d31ff9f5b8",
+                      "lapseCount": 7,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    }
+                  },
+                  "refusals": {
+                    "rejected": 41,
+                    "outcomes": [
+                      {
+                        "name": "route-revision",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "branch",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "segment-id",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "segment-index",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-lap",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "fractional-lap",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "forged-lap",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "arc-offset",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-segment-s",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "oversized-segment-s",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "direction",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "world",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "generation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "status",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "last-position",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "nonfinite-position",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-coordinate-proof",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "source-geometry",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-entry",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-entry",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-return",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-period",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-lap-proof",
+                        "reason": "Invalid completed route lap provenance.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-lap-sources",
+                        "reason": "Invalid completed route lap provenance.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "empty-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "invalid-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "unbounded-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "empty-source-events",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "invalid-source-events",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "entry-observation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-observation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "motion-sequence",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-motion-tick",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-previous-observation",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-previous-arc",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "foreign-boundary",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-current-tick",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "duplicate-tracker",
+                        "reason": "Duplicate observed route identity.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "duplicate-invalid-route",
+                        "reason": "Invalid route dependency state.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "unknown-invalid-segment",
+                        "reason": "Invalid route dependency state.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "qualified-invalidated-segment",
+                        "reason": "Qualified route segment has invalidated terrain.",
+                        "unchanged": true
+                      }
+                    ],
+                    "sourceUnchanged": true,
+                    "unqualifiedRemainsUnknown": true,
+                    "requestedMetadataRetainsPhase": true
+                  },
+                  "travel": [
+                    118,
+                    158
+                  ],
+                  "oddRequest": {
+                    "status": "unsupported-under-fixture-constraints",
+                    "requested": 121,
+                    "realized": 120,
+                    "errorTicks": -1,
+                    "constraints": "Unmodified one-pixel walker and two stationary vertical walls; period 2*(rightWall-leftWall-1), including both zero-displacement turns."
+                  },
+                  "display": {
+                    "state": "ready",
+                    "width": 1920,
+                    "height": 1080,
+                    "renderedActors": 2,
+                    "projectedLanes": [
+                      1
+                    ],
+                    "hiddenLane": true,
+                    "nativePaints": 296
+                  },
+                  "pause": {
+                    "before": 480,
+                    "after": 480,
+                    "displayFrames": 8,
+                    "wallMs": 91.80000001192093
+                  },
+                  "pixelHash": "10e8f8729108349e58e983cbe3fa02bc052cb30eadaee9ce74ee91780ead77a9",
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Actual physical circuits, source-time periods, ordered markers, terrain invalidation/requalification and source-preserving continuation; no sequencer rate, teleport or acoustic/device claim."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 196,
+            "covered": 191,
+            "skipped": 0,
+            "pct": 97.44
+          },
+          "statements": {
+            "total": 196,
+            "covered": 191,
+            "skipped": 0,
+            "pct": 97.44
+          },
+          "functions": {
+            "total": 21,
+            "covered": 20,
+            "skipped": 0,
+            "pct": 95.23
+          },
+          "branches": {
+            "total": 326,
+            "covered": 285,
+            "skipped": 0,
+            "pct": 87.42
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RouteCoordinateAtlas.js": {
+          "lines": {
+            "total": 164,
+            "covered": 159,
+            "skipped": 0,
+            "pct": 96.95
+          },
+          "functions": {
+            "total": 18,
+            "covered": 17,
+            "skipped": 0,
+            "pct": 94.44
+          },
+          "statements": {
+            "total": 164,
+            "covered": 159,
+            "skipped": 0,
+            "pct": 96.95
+          },
+          "branches": {
+            "total": 270,
+            "covered": 231,
+            "skipped": 0,
+            "pct": 85.55
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RoutePeriodEvidence.js": {
+          "lines": {
+            "total": 32,
+            "covered": 32,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 3,
+            "covered": 3,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 32,
+            "covered": 32,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 56,
+            "covered": 54,
+            "skipped": 0,
+            "pct": 96.42
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "initialSources": [
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 82500,
+          "sha256": "439f8a710660f70887ba74c40e2a8707c58d79cbbec5ea721820982f5dc1aa05"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/PhysicalMusicDomain.js",
+          "bytes": 4578,
+          "sha256": "cb0e11851006740fcfa16166e483f2d389f8898ef1f0ae75ce74a4f437e5f900"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+          "bytes": 21258,
+          "sha256": "77a7e862d4f44ef704710583f2235a46c2076d1ee1686d4d4b4d8d04713bfb57"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RoutePeriodEvidence.js",
+          "bytes": 3832,
+          "sha256": "beda8f4d7b9c11f1c8acd70e90c4b83f8f0fe256ebf721a5010f61c2442bed7d"
+        },
+        {
+          "path": "test/helpers/actualRouteCircuits.js",
+          "bytes": 12280,
+          "sha256": "a0e8e70c2554083f86579d31e9641930fe29fff6595e60cbf1ae62a9f25640cf"
+        },
+        {
+          "path": "test/helpers/routeStateCorpus.js",
+          "bytes": 5223,
+          "sha256": "144c07a241dbe5f063bd105d44a82296db9075cea71032d03ad60d94e6252d32"
+        },
+        {
+          "path": "test/procgen-actual-route-circuits.test.js",
+          "bytes": 1245,
+          "sha256": "5113ac075c7169fc092dbf470780fc1341875be5c25a1c05b50e8d9faa2bc00f"
+        },
+        {
+          "path": "test/procgen-route-period-evidence.test.js",
+          "bytes": 4044,
+          "sha256": "ec71b186767b47a83ea706614167e4314abbbb0e738185f722bba498ed1a9e53"
+        },
+        {
+          "path": "e2e/procgen-workstation-route-circuits.spec.js",
+          "bytes": 6283,
+          "sha256": "82426dcf57183e368074c230c7f99f6b96635801e91b5ba7c7722b083005f925"
+        }
+      ],
+      "qualifiedNativeSources": [
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 82500,
+          "sha256": "439f8a710660f70887ba74c40e2a8707c58d79cbbec5ea721820982f5dc1aa05"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/PhysicalMusicDomain.js",
+          "bytes": 4578,
+          "sha256": "cb0e11851006740fcfa16166e483f2d389f8898ef1f0ae75ce74a4f437e5f900"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+          "bytes": 21510,
+          "sha256": "08ed129fab77c5d72fd6ef68c7d36029a8e53b373bf69745424b7cb6a2b0dfdc"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RoutePeriodEvidence.js",
+          "bytes": 3832,
+          "sha256": "beda8f4d7b9c11f1c8acd70e90c4b83f8f0fe256ebf721a5010f61c2442bed7d"
+        },
+        {
+          "path": "test/helpers/actualRouteCircuits.js",
+          "bytes": 12396,
+          "sha256": "6cc9de7034858fe6cfb72dd4f88c72d390384598dddf31ce1618753c2695c409"
+        },
+        {
+          "path": "test/helpers/routeStateCorpus.js",
+          "bytes": 5223,
+          "sha256": "144c07a241dbe5f063bd105d44a82296db9075cea71032d03ad60d94e6252d32"
+        },
+        {
+          "path": "test/procgen-actual-route-circuits.test.js",
+          "bytes": 1245,
+          "sha256": "5113ac075c7169fc092dbf470780fc1341875be5c25a1c05b50e8d9faa2bc00f"
+        },
+        {
+          "path": "test/procgen-route-period-evidence.test.js",
+          "bytes": 5387,
+          "sha256": "eb2c40e57ea5abb474ac18277169d9a675860a21de625c65a6fe30da75d9314e"
+        },
+        {
+          "path": "e2e/procgen-workstation-route-circuits.spec.js",
+          "bytes": 6283,
+          "sha256": "82426dcf57183e368074c230c7f99f6b96635801e91b5ba7c7722b083005f925"
+        },
+        {
+          "path": "test/procgen-terrain-recipes.test.js",
+          "bytes": 7765,
+          "sha256": "19e63a4229d90b4a3f3b44c900de5b945c4df4d41900d4b73254d16c1749192f"
+        }
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 82500,
+          "sha256": "439f8a710660f70887ba74c40e2a8707c58d79cbbec5ea721820982f5dc1aa05"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/PhysicalMusicDomain.js",
+          "bytes": 4578,
+          "sha256": "cb0e11851006740fcfa16166e483f2d389f8898ef1f0ae75ce74a4f437e5f900"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+          "bytes": 21510,
+          "sha256": "08ed129fab77c5d72fd6ef68c7d36029a8e53b373bf69745424b7cb6a2b0dfdc"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RoutePeriodEvidence.js",
+          "bytes": 3832,
+          "sha256": "beda8f4d7b9c11f1c8acd70e90c4b83f8f0fe256ebf721a5010f61c2442bed7d"
+        },
+        {
+          "path": "test/helpers/actualRouteCircuits.js",
+          "bytes": 12396,
+          "sha256": "6cc9de7034858fe6cfb72dd4f88c72d390384598dddf31ce1618753c2695c409"
+        },
+        {
+          "path": "test/helpers/routeStateCorpus.js",
+          "bytes": 5223,
+          "sha256": "144c07a241dbe5f063bd105d44a82296db9075cea71032d03ad60d94e6252d32"
+        },
+        {
+          "path": "test/procgen-actual-route-circuits.test.js",
+          "bytes": 1245,
+          "sha256": "5113ac075c7169fc092dbf470780fc1341875be5c25a1c05b50e8d9faa2bc00f"
+        },
+        {
+          "path": "test/procgen-route-period-evidence.test.js",
+          "bytes": 5387,
+          "sha256": "eb2c40e57ea5abb474ac18277169d9a675860a21de625c65a6fe30da75d9314e"
+        },
+        {
+          "path": "e2e/procgen-workstation-route-circuits.spec.js",
+          "bytes": 6559,
+          "sha256": "006c85d93734b90926fc798ab0d4c8d10402f8b90ffcd509bc664cc8d3b1c5ee"
+        },
+        {
+          "path": "test/procgen-terrain-recipes.test.js",
+          "bytes": 7765,
+          "sha256": "19e63a4229d90b4a3f3b44c900de5b945c4df4d41900d4b73254d16c1749192f"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "sha256": "82ff3afac4bb7132257cb40f85a98b08e061d35861263bd6253703fb932f034b",
+          "files": 294
+        }
+      ]
+    },
+    "priorAttempts": [
+      {
+        "node": "70 passed/1 failed",
+        "browser": "1 passed/1 failed",
+        "reason": "Real circuit lost zero-tolerance qualification at a collinear31/59 projection because subtracting the rounded projection left a tiny residual; route re-entry then reset observed laps. Corrected with cross-product distance and arithmetic error bound."
+      },
+      {
+        "node": "79 passed",
+        "browser": "1 passed/1 failed",
+        "reason": "Every real circuit/history assertion completed, then fixture equated overscan actor draw calls with projected visible actors. Final fixture checks actual projectedLanes=[1] and counts296 successful native paints; runtime/helper source bytes unchanged after Node qualification."
+      }
+    ],
+    "evidence": [
+      {
+        "path": ".tmp/rook392-node-final.log",
+        "bytes": 8341,
+        "sha256": "bd1bbd7c9cdf7aa0bab75b5c50475c61ac57129822f4e56e7c56e207e58cfe44"
+      },
+      {
+        "path": ".tmp/rook392-playwright-review.json",
+        "bytes": 25067,
+        "sha256": "28edc03e662e863b75904be38e983e37ca1d3f0a376bf41c3f62744c2f0a2727"
+      },
+      {
+        "path": ".tmp/rook392-playwright-final.json",
+        "bytes": 42088,
+        "sha256": "564cc089528ec698872027132bc77faf71876079dbd098adadadf8c9889c1705"
+      },
+      {
+        "path": ".tmp/rook392-format-browser-final.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": ".tmp/rook392-static-final.log",
+        "bytes": 238,
+        "sha256": "31193be10e301839ef6bc29dc4d5054e525d60de756a26b964b3484ab2b3fb88"
+      },
+      {
+        "path": ".tmp/rook392-coverage-final/coverage-summary.json",
+        "bytes": 1068,
+        "sha256": "b48666ac003f5c3a08dde79929acac240c1dbb0d3fc48f312690f410c08ed9bd"
+      },
+      {
+        "path": ".tmp/rook392-node-first.log",
+        "bytes": 8318,
+        "sha256": "6d2d223b73fe0895f1b20a202a8b2defb44935ec82068e9f61b3de8fa1c95cb1"
+      },
+      {
+        "path": ".tmp/rook392-playwright-first.json",
+        "bytes": 40519,
+        "sha256": "491909717e8eace0e7396d8985fde4b1eebe3add019615b514e5198d88995649"
+      },
+      {
+        "path": ".tmp/rook392-playwright-first-trace.zip",
+        "bytes": 14388999,
+        "sha256": "6f733e37e9bdf6ae1b3fc79c9e48a8f6723a9324afceeb34cba2457cfd7d69a1"
+      },
+      {
+        "path": ".tmp/rook392-playwright-second.json",
+        "bytes": 42088,
+        "sha256": "564cc089528ec698872027132bc77faf71876079dbd098adadadf8c9889c1705"
+      },
+      {
+        "path": ".tmp/rook392-playwright-second-trace.zip",
+        "bytes": 14474799,
+        "sha256": "66ae86934ca936ff602efe8a1b30057ccc897db5fa3a69560b25d5937dc6d735"
+      },
+      {
+        "path": ".tmp/rook392-route-diagnostic.log",
+        "bytes": 2719,
+        "sha256": "c1e7f4e8dcdee10b80aa55f6ae5e0d827d265759cdfcbb4f7e25f9b0aebd0069"
+      },
+      {
+        "path": ".tmp/rook392-route-refinement.log",
+        "bytes": 213,
+        "sha256": "853da516609e02fe44c48014e94f393d0f19774771b4bfeb8cf9e7947c536cdf"
+      },
+      {
+        "path": ".tmp/ci388-main-failure-excerpt.txt",
+        "bytes": 690,
+        "sha256": "d1e11df620f4ee6509ae75859b2285ae4cb9ab2431f4761c6dd037732e117539"
+      }
+    ],
+    "ci388": {
+      "head": "c33516d9ae24bba29af8d86d0190832293476983",
+      "run": 40997846748,
+      "job": 123875059664,
+      "status": "failed-one-functional-test-deadline",
+      "node": {
+        "passing": 7252,
+        "pending": 10,
+        "failing": 1
+      },
+      "failure": "Full all-source terrain-book regeneration exceeded15000ms; original deep equality remains intact, focused complete regeneration now passes under a bounded60000ms integration allowance.",
+      "browser": {
+        "desktop": 26,
+        "workstation": 234,
+        "engines": 18,
+        "total": 278
+      },
+      "coverage": {
+        "lines": 90.78,
+        "branches": 84.03,
+        "functions": 88.66
+      },
+      "sourceInventories": {
+        "main": {
+          "files": 1153,
+          "mismatches": []
+        },
+        "engine": {
+          "files": 1261,
+          "mismatches": []
+        },
+        "linux": {
+          "files": 8,
+          "mismatches": []
+        },
+        "windows": {
+          "files": 8,
+          "mismatches": []
+        }
+      },
+      "notPromotedAsGreen": true
+    },
+    "limits": [
+      "Latest fully source-verified full green remains383/77e057fa. CI388 has one known deadline failure, fixed here; current-head full CI remains pending after publication. No full local suite rerun.",
+      "Period ratio3:4 and frequency ratio4:3 remain distinct;120/160 periods include two zero-displacement turns and source coincidences at1/481/961. Route travel is118/158pixels, not time.",
+      "Actual queued wall edit shifts crossings to1/121/241/363/485/607/... and measured122ticks (+2requested error). Odd121tick requests remain explicitly unsupported only for the stated one-pixel/two-wall geometry; no general impossibility claim.",
+      "At tick480, eight paused RAF/native paints preserve state; restored481..961matches1938facts/18intents. Final source projection shows only lane1 while both lanes retain canonical physics;296native paint calls at1920x1080, zero AudioContext/MIDI opens and live project unchanged.",
+      "RouteCoordinateAtlas96.95%lines/94.44%functions/85.55%branches; RoutePeriodEvidence100%lines/functions96.42%branches. Neighbor indexing, additional ambiguity/reversal/capacity and some restore branches remain explicit.",
+      "1182 remains open for physical marker-edit binding, actual U/crossing branch and native midpoint/reinterpretation-history qualification.990 remains open for complete actual spacing corpus and optional response modes."
+    ],
+    "issueOutcome": "Close991 after commit/push on its actual physical-route/canon contract. Update1182/990 with completed foundations and exact remaining work."
+  }
 }

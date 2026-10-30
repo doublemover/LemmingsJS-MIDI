@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Align route timestamps with pickup source time, reject inconsistent saved route histories before restore, and expose bounded measured/requested period comparisons without resetting physical phase.
+
 - Bind blocker response counters to each action instance, retain both participants' causal ownership, and keep alternating motif tags consistent with the selected interval.
 
 - Retain causal flight provenance on safe landing facts and allow separately named landing, fatal-fall and out-of-world strike articulations.

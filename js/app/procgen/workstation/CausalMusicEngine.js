@@ -611,7 +611,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     }
     return Object.freeze(result);
   };
-  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
+  return { processBatch, snapshot, bodyPreparations: () => latestBodyPreparations, activeVoiceView, restore, diagnostics, dispose, prepareGraph, physicalAnalysis: () => latestPhysicalAnalysis, routePeriods: () => physical.routePeriods(), probabilityAnalysis: () => probabilityAnalysis, rearm({ discardUnknownHeldState = false } = {}) {
     resourceOwner.check(); snapshotCache = null;
     if (!discardUnknownHeldState || active.size || suppressed.size) throw new Error('Rearming requires explicit discard of unknown held state at an empty boundary.');
     bodyPreparations.reset({ worldId: cursor.worldId, generation: cursor.generation, tick: cursor.tick, sequence: cursor.lastSequence }); latestBodyPreparations = null; recoveryRequired = false; return Object.freeze({ status: 'rearmed', resumesHeldVoices: false, sourceBoundary: Object.freeze({ ...cursor }) });
