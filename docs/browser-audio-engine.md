@@ -1997,3 +1997,24 @@ route observations do not split PCM or imply sample-accurate graph boundaries.
 Metadata exhaustion stops capture as `provenance-unavailable`, preserves partial
 PCM and marks provenance incomplete. Context or rate replacement finalizes only
 the known original-clock prefix; it never appends a different rate to the WAV.
+
+
+### Regional topology invalidation
+
+Topology tracks committed collision changes against each declared ROI and read
+halo. Direct work and committed authoring spans invalidate intersecting regions;
+source reveal also invalidates affected coverage. Appearance and annotation-only
+changes preserve geometry. Pending jobs for invalidated regions retire immediately.
+Lost revision history and legacy state conservatively require full bounded analysis.
+
+A clean region carries its qualified immutable cell runs into a new source revision
+with unchanged component lineage and explicit zero new analysis cells/neighbor
+visits plus `reusedFromRevision`. A dirty region uses the reference flood fill;
+this optimization works at region granularity, without claiming local component
+repair. The 262144-cell phase budget and four-result local history still apply.
+
+Qualified complete geometry survives eviction of a source mask buffer because
+its original source/definition remains bound. Partial coverage must be invalidated
+when a source mask materializes, including at the same numeric terrain revision.
+Checkpoint validation preserves the revision and dirty flags; malformed ownership
+refuses before publication. Geometry completion alone never creates an attack.

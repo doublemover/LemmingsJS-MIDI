@@ -1,4 +1,5 @@
 import { commitTerrainScore, terrainScoreAt } from './TerrainScoreLayer.js';
+import { invalidateTerrainTopology } from './TerrainTopologyInvalidation.js';
 const MAX_CELLS = 8192, MAX_CHUNKS = 128;
 const identity = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const inside = (x, y, b, halo = 0) => b && x >= b.x1 - halo && x < b.x2 + halo && y >= b.y1 - halo && y < b.y2 + halo;
@@ -169,6 +170,10 @@ const prepareTerrainPublication = (plan, world) => {
     Map.prototype.clear.call(world.editChunks); for (const [key, patch] of publication.resident) Map.prototype.set.call(world.editChunks, key, patch);
     world.editChunks._lastKey = undefined; world.editChunks._lastChunk = undefined;
     world.terrainRevision = nextRevision; world.terrainScoreState = stagedScore;
+    if (world.terrainTopology?.profiles.length) {
+      invalidateTerrainTopology(world, null, revisionBefore, { collisionChanged: false });
+      for (const span of edit.spans) invalidateTerrainTopology(world, { x1: span.x1, x2: span.x2, y1: span.y, y2: span.y + 1 }, nextRevision, { collisionChanged: !!span.before !== !!span.after });
+    }
     if (plan.command.operation !== 'annotate') {
       for (const [key, revision] of changedTiles) Map.prototype.set.call(world.terrainTileRevisions, key, revision);
       for (const lane of laneChanges) world.terrainActivityTicks[lane] = world.tickIndex;

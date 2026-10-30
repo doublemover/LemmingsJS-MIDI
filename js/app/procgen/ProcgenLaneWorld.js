@@ -6,7 +6,7 @@ import { releaseLanePhases, validateReleaseGesture } from './ReleaseGesture.js';
 import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
 import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
 import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
-import { disposeTerrainTopology, resetTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
+import { disposeTerrainTopology, resetTerrainTopology, invalidateTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
 import { createTerrainScoreState, rememberTerrainCell, commitTerrainScore, terrainContactProvenance } from './TerrainScoreLayer.js';
 import { planTerrainCommand } from './TerrainAuthoringAdapter.js';
 import { observePhysicalFlightStep } from '../../actions/PhysicalFlightFacts.js';
@@ -139,7 +139,9 @@ class ProcgenLaneWorld {
     this.terrainGrowth?.reset(this.generatedThrough, this.frontiers);
     this._prepareGrowthChunk = (lane, chunk, options) => this.terrain.growthPlan?.(this.laneSeeds[lane], chunk, options);
     this._revealGrowth = (lane, previous, next, chunk, job) => {
+      const revisionBefore = this.terrainRevision;
       this.terrainRevision++; this.frontierRevision++;
+      const width = this.terrain.chunkWidth; if (this.terrainTopology.profiles.length) invalidateTerrainTopology(this, { x1: chunk * width, x2: (chunk + 1) * width, y1: lane * this.laneHeight, y2: (lane + 1) * this.laneHeight }, revisionBefore);
       if (job?.kind === 'foundation' || job?.kind === 'terrain') this.terrainActivityTicks[lane] = this.tickIndex;
       this.terrainTileRevisions.set(lane * 0x800000 + chunk, this.terrainRevision);
       if (chunk === 0) this._edgeWallRevisions[lane]++;
@@ -439,6 +441,7 @@ class ProcgenLaneWorld {
       if (this._collisionIndices[slot] !== index) {
         this._collisionIndices[slot] = index;
         this._collisionSlots[slot] = this.terrain.getChunk(this.laneSeeds[lane], index);
+        if (this.terrainTopology.profiles.length) invalidateTerrainTopology(this, { x1: index * width, x2: (index + 1) * width, y1: lane * this.laneHeight, y2: (lane + 1) * this.laneHeight }, this.terrainRevision, { coverageOnly: true });
       }
       this._laneChunkIndex[lane] = index;
       this._laneChunk[lane] = this._collisionSlots[slot];
@@ -579,6 +582,7 @@ class ProcgenLaneWorld {
     if (chunk[index] !== color + 1) {
       rememberTerrainCell(this, x, y, before, color, this.terrainRevision);
       chunk[index] = color + 1; this.terrainRevision++;
+      if (this.terrainTopology.profiles.length) invalidateTerrainTopology(this, { x1: x, x2: x + 1, y1: y, y2: y + 1 }, this.terrainRevision - 1, { collisionChanged: !!before !== !!color });
       if (this.soundEvents._tick && this.soundEvents.onBatch.handlers.size) { const b = this._physicalWorkBounds; this._physicalWorkBounds = b ? { x1: Math.min(b.x1, x), y1: Math.min(b.y1, y), x2: Math.max(b.x2, x + 1), y2: Math.max(b.y2, y + 1) } : { x1: x, y1: y, x2: x + 1, y2: y + 1 }; }
       if (x >= this.leftEdgeX && x <= this.leftEdgeX + 12) this._edgeWallRevisions[Math.floor(y / this.laneHeight)]++;
       this.terrainActivityTicks[Math.floor(y / this.laneHeight)] = this.tickIndex;
@@ -1067,7 +1071,8 @@ class ProcgenLaneWorld {
           this.frontiers[actor.laneIndex] = actor.x;
           const width = this.terrain?.chunkWidth || CHUNK_WIDTH;
           const through = this.terrainGrowth ? this.generatedThrough[actor.laneIndex] : Math.ceil((actor.x + 64) / width) * width;
-          if (through > this.generatedThrough[actor.laneIndex]) { this.generatedThrough[actor.laneIndex] = through; this.terrainRevision++; this.frontierRevision++; }
+          if (through > this.generatedThrough[actor.laneIndex]) { const previous = this.generatedThrough[actor.laneIndex], revisionBefore = this.terrainRevision; this.generatedThrough[actor.laneIndex] = through; this.terrainRevision++; this.frontierRevision++;
+            if (this.terrainTopology.profiles.length) invalidateTerrainTopology(this, { x1: previous, x2: through, y1: actor.laneIndex * this.laneHeight, y2: (actor.laneIndex + 1) * this.laneHeight }, revisionBefore); }
         }
         if (actor.x > actor.furthestX) { actor.furthestX = actor.x; actor.lastProgressTick = this.tickIndex; }
       }

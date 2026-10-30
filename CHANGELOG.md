@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Invalidate chamber analysis by affected region and read halo, reuse qualified unchanged geometry across unrelated edits, and preserve honest analysis costs and restored ownership.
+
 - Scale replay restore staging to validated input, reuse normalized immutable checkpoints, and retain independent ownership of nested voice data.
 
 - Bind chamber descriptors and saved voices to their complete topology definitions, retire stale analysis across restore/reset, and refuse incompatible cavity reinterpretation.

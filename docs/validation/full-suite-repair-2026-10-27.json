@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "cef914eb99af2048c1c2332477d15e2957b83f5a",
+    "head": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
     "status": "success",
-    "run": 41016188339,
-    "job": 123951914395,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41016188339",
-    "engineJob": 123951881099,
+    "run": 41026410394,
+    "job": 123965466386,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41026410394",
+    "engineJob": 123965465931,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7276,
+    "nodePassed": 7281,
     "nodePending": 10,
-    "browserPassed": 286,
+    "browserPassed": 289,
     "desktopPassed": 26,
-    "workstationSmokePassed": 242,
+    "workstationSmokePassed": 245,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.8,
-      "statements": 90.8,
-      "branches": 84.17,
-      "functions": 88.7
+      "lines": 90.81,
+      "statements": 90.81,
+      "branches": 84.22,
+      "functions": 88.71
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 38363,
+      "totalDurationMs": 29816,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 11111,
-        "benchHistoryStress": 18316,
-        "benchHotpaths": 8931
+        "benchPerformance": 9787,
+        "benchHistoryStress": 15816,
+        "benchHotpaths": 4211
       },
       "metrics": {
-        "perfP95Frame": 100,
-        "perfP50Tps": 82.80377431152873,
-        "historyRatio": 0.5851666666666666,
-        "antsAvgMs": 32.36,
-        "tileCompositionAvgMs": 4.11,
-        "overlayPlaneAvgMs": 21.68,
-        "scaledBlitAvgMs": 30.98
+        "perfP95Frame": 83.40000000000055,
+        "perfP50Tps": 110.68254234449206,
+        "historyRatio": 0.5853333333333334,
+        "antsAvgMs": 11.92,
+        "tileCompositionAvgMs": 2.87,
+        "overlayPlaneAvgMs": 8.73,
+        "scaledBlitAvgMs": 16.34
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.5851666666666666
+          "ratio": 0.5853333333333334
         },
         {
           "speed": 60,
-          "ratio": 0.9321666666666667
+          "ratio": 1.0385
         }
       ]
     },
@@ -892,7 +892,7 @@
       "status": "passed",
       "files": 1271,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "adad8cfaaa04c605bcb6d332698829489c31d66c71faed496a41d5555fddbe07",
+      "closureDigest": "f282e5be1af2885a1ef7361e1485faa03831a874154e051acf7ec320f03994c8",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123951883296,
-      "windowsJob": 123951882979,
+      "linuxJob": 123965466447,
+      "windowsJob": 123965466344,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,10 +930,10 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "7132ee7424a276efc0f8fbaaebf0f45ddc706fa5",
+      "testedPrMergeHead": "ad314b1533731c7f8c9e01baa8f8fbc1ee282091",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1162,
-      "inventorySha256": "2be2b7d5227e63f0154f27aac1b71b577d7ec4f7a713648612efc25e3fcbb3bf",
+      "inventoryFiles": 1164,
+      "inventorySha256": "0ac7c52bb567888607ee93f2ed883049c1d6aa5e3cdda95977fbd01f8002b904",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
       "engineInventoryFiles": 1271,
@@ -945,44 +945,35 @@
     },
     "artifacts": [
       {
-        "path": ".tmp/ci396-main.zip",
-        "bytes": 902073,
-        "sha256": "e46a600a97ea3aaacaab0ca8f316c079652c1ef6bc42afa8f9361e98514189fc",
-        "githubArtifactId": 12961342253,
+        "path": ".tmp/ci398-0.zip",
+        "bytes": 923610,
+        "sha256": "db3429bd8676923f02d2d03cf343e1bd9bb05d711f8a2971649663aa32337ba1",
+        "githubArtifactId": 12964349469,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci396-engine.zip",
-        "bytes": 160933,
-        "sha256": "d715247a8be23f52e5c460ce36a1089132de7ccab134ea443b266bf654f972a4",
-        "githubArtifactId": 12961953437,
+        "path": ".tmp/ci398-1.zip",
+        "bytes": 162944,
+        "sha256": "3f0eee5a603d2cdbafa43effe797eaf7ad40b21dae295765ba0c111d8489012b",
+        "githubArtifactId": 12963693578,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci396-linux.zip",
-        "bytes": 2247,
-        "sha256": "98f7c571f3eb402b018f8d5e0213cff86a0dfa794f3ceacc6dfe1db9a23d2f36",
-        "githubArtifactId": 12959886285,
+        "path": ".tmp/ci398-2.zip",
+        "bytes": 2148,
+        "sha256": "ec63dd002003edc395af8b22c240848004c794e200bb3873af36e7871b3fc563",
+        "githubArtifactId": 12963657959,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci396-windows.zip",
-        "bytes": 2147,
-        "sha256": "3e89807e0dcb91d2a7ec2fe55deb2ce67ce3bb8fe83fad0e51ffb3c5e566da42",
-        "githubArtifactId": 12959752305,
+        "path": ".tmp/ci398-3.zip",
+        "bytes": 2246,
+        "sha256": "239886a2f50c0568e19b15194b698a9351f37161a7ef9325eb50a7b837b32130",
+        "githubArtifactId": 12963249270,
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent.",
-    "priorFailure": {
-      "job": 123932946341,
-      "enginePassing": 17,
-      "engineFailures": 1,
-      "boundary": "Native Linux Firefox content-process signal11 before audio-navigation assertions.",
-      "rerunRequestedForJob": 123932946341,
-      "sourceChanged": false,
-      "scope": "Subsequent engine qualification passes. The native crash is preserved; no JavaScript crash repair claimed."
-    }
+    "scope": "All four required jobs plus policy and dependency review on the named source. Historical397 admission refusal and394/396 native Firefox crashes remain in prior continuations. Later source, hardware, acoustic and issue-specific acceptance remain independent."
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -137875,5 +137866,507 @@
       "No physical MIDI, acoustic, subjective listening or archived-exact-runtime qualification."
     ],
     "issueOutcome": "Keep1104/1087/1234 open for their remaining acceptance requirements; continue incremental topology work under1183."
+  }
+,
+  "continuation400": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1183
+    ],
+    "sourceParent": "4ad585227b537f21ad0a35d85ff4dad5f234bb01",
+    "scope": "Incremental invalidation at declared ROI granularity, checked against independently full-scanned actual collision masks.",
+    "changes": [
+      "Track committed source revision and dirty regions including the declared read halo. Direct solid writes, atomic authoring spans, source reveal and partial-source materialization invalidate affected regions and retire their pending jobs. Appearance/annotation-only changes do not invalidate collision geometry.",
+      "Clean regions reuse immutable runs and normalized unchanged component lineage at the new global source revision; work records zero new cells/neighbor visits and its reusedFromRevision. Dirty or untracked/legacy history falls back to bounded full reference analysis. Existing per-phase262144cell limit, four-revision history and no-catch-up policy remain.",
+      "Previously qualified complete geometry survives source-buffer residency changes; partial geometry is invalidated when actual masks materialize even if the global source revision is unchanged. Checkpoints validate and retain invalidation ownership. Avoid per-cell bounds allocation when no profiles are configured."
+    ],
+    "validation": {
+      "node": {
+        "passing": 73,
+        "failures": 0,
+        "durationSeconds": 58,
+        "scope": "Final combined topology/reference/actual, atomic terrain/authoring/history, four checkpoint corpora, actual activity/Rescue and actual formation; includes scoped coverage."
+      },
+      "browser": {
+        "passing": 9,
+        "failures": 0,
+        "skipped": 0,
+        "flaky": 0,
+        "durationSeconds": 63.82195299999999,
+        "cases": [
+          {
+            "title": "actual formation harmony follows physical spread and removal while desktop paints preserve voice ownership",
+            "status": "expected",
+            "durationMs": 6504
+          },
+          {
+            "title": "actual desktop cavities and workers preserve topology binding across sculpting stale results and native take reopening",
+            "status": "expected",
+            "durationMs": 5528
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under game-unlinked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2934
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under bpm-linked-clamped @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2724
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under game-linked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2671
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under bpm-unlinked @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2950
+          },
+          {
+            "title": "native speed key keeps the recorded physical clock under paused @boundary @physical-clock-input",
+            "status": "expected",
+            "durationMs": 2678
+          },
+          {
+            "title": "sustained synth gate and queued phrase survive a paused checkpoint without duplicate resumed voices",
+            "status": "expected",
+            "durationMs": 3915
+          },
+          {
+            "title": "external clock input locks transport, follows SPP, stops on loss and stays stopped after reconnect",
+            "status": "expected",
+            "durationMs": 3733
+          }
+        ],
+        "receiptsArtifact": {
+          "path": "docs/validation/incremental-topology-desktop-2026-10-30.json",
+          "bytes": 453316,
+          "sha256": "a49bd61d88b9bbf14f1f6d5a8a464f6f2fec4fc678f60df198b696b52c68d343"
+        }
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 276,
+            "covered": 273,
+            "skipped": 0,
+            "pct": 98.91
+          },
+          "statements": {
+            "total": 276,
+            "covered": 273,
+            "skipped": 0,
+            "pct": 98.91
+          },
+          "functions": {
+            "total": 32,
+            "covered": 32,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 493,
+            "covered": 438,
+            "skipped": 0,
+            "pct": 88.84
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenTerrainTopology.js": {
+          "lines": {
+            "total": 97,
+            "covered": 97,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 97,
+            "covered": 97,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 152,
+            "covered": 126,
+            "skipped": 0,
+            "pct": 82.89
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\TerrainTopologyInvalidation.js": {
+          "lines": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 1,
+            "covered": 1,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 18,
+            "covered": 17,
+            "skipped": 0,
+            "pct": 94.44
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TopologyInstrumentRegion.js": {
+          "lines": {
+            "total": 164,
+            "covered": 161,
+            "skipped": 0,
+            "pct": 98.17
+          },
+          "functions": {
+            "total": 16,
+            "covered": 16,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 164,
+            "covered": 161,
+            "skipped": 0,
+            "pct": 98.17
+          },
+          "branches": {
+            "total": 323,
+            "covered": 295,
+            "skipped": 0,
+            "pct": 91.33
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run provenance:check",
+        "npm run typecheck:critical",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e/procgen-workstation-terrain-topology.spec.js",
+          "bytes": 6307,
+          "sha256": "b0c3435fcd5dfceb35fbda2298b3ca71a0ca97c9388b84a52df9417ce99adc2d"
+        },
+        {
+          "path": "js/app/procgen/ProcgenLaneWorld.js",
+          "bytes": 93617,
+          "sha256": "eafe05432e437352e9f6758437d275c0ca2e326a71dbd8ba8bed89e7c5173513"
+        },
+        {
+          "path": "js/app/procgen/ProcgenTerrainTopology.js",
+          "bytes": 12810,
+          "sha256": "b567fd6534596a1ce829fee9ad351c720f3257acc275ffde7499b8d988b06ff0"
+        },
+        {
+          "path": "js/app/procgen/TerrainAuthoringAdapter.js",
+          "bytes": 21520,
+          "sha256": "bfa7515c64e37283fd976893fb232d3a421a039d3959c25472d4ecbd093f90e7"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+          "bytes": 22881,
+          "sha256": "0bb572ea4103579720cc72368f73df74d0c909203750024d34d00475bece9a26"
+        },
+        {
+          "path": "test/helpers/actualTerrainTopology.js",
+          "bytes": 31693,
+          "sha256": "2ea4aebcc96d42d85ae5157657679c0792b9e6a298614f81e73fddaa9beaa946"
+        },
+        {
+          "path": "test/procgen-actual-terrain-topology.test.js",
+          "bytes": 2115,
+          "sha256": "b09b1e9c585b46000338593433da229b048b2b696aa21af6a9ed98151be8e46c"
+        },
+        {
+          "path": "test/procgen-terrain-topology.test.js",
+          "bytes": 13154,
+          "sha256": "4aa7a2bd99d34a9f52e504556f4384325ad988091ea9fe572b94709dfa4d2def"
+        },
+        {
+          "path": "js/app/procgen/TerrainTopologyInvalidation.js",
+          "bytes": 1089,
+          "sha256": "761953d7fd37c91d092753f7f75d1398811a1201f13b24f6648c39c5dc59feb5"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 295,
+          "sha256": "ba0e308530016329a367e8deb4f100317d3f0017a4b6cce6a1eeb4ab018e0b21"
+        }
+      ]
+    },
+    "evidence": {
+      "incremental": {
+        "fullReferenceComparisons": 152,
+        "reusedRegionRevisions": 96,
+        "analyzedCells": 11540,
+        "fullReferenceCells": 32680,
+        "materialization": {
+          "before": "partial",
+          "after": "complete",
+          "sourceRevisionUnchanged": true,
+          "cells": 190
+        },
+        "stress": {
+          "edits": 64,
+          "physicalEditsPlusBothAnalysesMs": 54.29999998211861,
+          "includesDSP": false
+        },
+        "restoredCompleteCheckpointEqual": true,
+        "pendingResultRefused": true,
+        "scope": "Actual scored collision masks and committed authoring input; full independent reference comparisons exclude computation-cost metadata only. Direct sculpting is not a native pointer gesture."
+      },
+      "topology": {
+        "display": {
+          "paints": 12,
+          "state": "ready",
+          "width": 1920,
+          "height": 1080
+        },
+        "pause": {
+          "before": 3,
+          "after": 3,
+          "wallMs": 87.90000000596046,
+          "frames": 8
+        },
+        "liveProjectUnchanged": true,
+        "audioContexts": 0,
+        "midiRequests": 0
+      },
+      "sourceAudit": {
+        "head": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
+        "results": {
+          "workstation-browser-receipts": {
+            "inputs": 1164,
+            "matched": 1164,
+            "mismatches": []
+          },
+          "lifecycle-engine-receipts": {
+            "inputs": 1271,
+            "matched": 1271,
+            "mismatches": []
+          },
+          "native-midi-codec-windows-latest": {
+            "inputs": 8,
+            "matched": 8,
+            "mismatches": []
+          },
+          "native-midi-codec-ubuntu-latest": {
+            "inputs": 8,
+            "matched": 8,
+            "mismatches": []
+          }
+        }
+      }
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 68,
+        "nodeFailures": 1,
+        "boundary": "Independent reference tried to read cold omitted collision buffers after restore; later stable-key comparison alone did not fix the actual coverage difference."
+      },
+      {
+        "nodePassing": 71,
+        "nodeFailures": 1,
+        "browserPassing": 7,
+        "browserFailures": 2,
+        "boundary": "Full reference remained cold after restore; browser beforeAll refused the new module inventory because fileCount remained294. Production tests did not run in those two beforeAll failures."
+      },
+      {
+        "focusedFailures": 1,
+        "boundary": "Warming only the restored reference added one recorded groundQueries count; symmetrical actual collision queries preserve the complete checkpoint and the final focused case passes."
+      }
+    ],
+    "ci398": {
+      "head": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
+      "status": "success",
+      "run": 41026410394,
+      "job": 123965466386,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41026410394",
+      "engineJob": 123965465931,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7281,
+      "nodePending": 10,
+      "browserPassed": 289,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 245,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.81,
+        "statements": 90.81,
+        "branches": 84.22,
+        "functions": 88.71
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 29816,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9787,
+          "benchHistoryStress": 15816,
+          "benchHotpaths": 4211
+        },
+        "metrics": {
+          "perfP95Frame": 83.40000000000055,
+          "perfP50Tps": 110.68254234449206,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 11.92,
+          "tileCompositionAvgMs": 2.87,
+          "overlayPlaneAvgMs": 8.73,
+          "scaledBlitAvgMs": 16.34
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5853333333333334
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0385
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1271,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "f282e5be1af2885a1ef7361e1485faa03831a874154e051acf7ec320f03994c8",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123965466447,
+        "windowsJob": 123965466344,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "ad314b1533731c7f8c9e01baa8f8fbc1ee282091",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1164,
+        "inventorySha256": "0ac7c52bb567888607ee93f2ed883049c1d6aa5e3cdda95977fbd01f8002b904",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1271,
+        "engineRuntimeFiles": 1262,
+        "engineHarnessFiles": 9,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci398-0.zip",
+          "bytes": 923610,
+          "sha256": "db3429bd8676923f02d2d03cf343e1bd9bb05d711f8a2971649663aa32337ba1",
+          "githubArtifactId": 12964349469,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci398-1.zip",
+          "bytes": 162944,
+          "sha256": "3f0eee5a603d2cdbafa43effe797eaf7ad40b21dae295765ba0c111d8489012b",
+          "githubArtifactId": 12963693578,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci398-2.zip",
+          "bytes": 2148,
+          "sha256": "ec63dd002003edc395af8b22c240848004c794e200bb3873af36e7871b3fc563",
+          "githubArtifactId": 12963657959,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci398-3.zip",
+          "bytes": 2246,
+          "sha256": "239886a2f50c0568e19b15194b698a9351f37161a7ef9325eb50a7b837b32130",
+          "githubArtifactId": 12963249270,
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review on the named source. Historical397 admission refusal and394/396 native Firefox crashes remain in prior continuations. Later source, hardware, acoustic and issue-specific acceptance remain independent."
+    },
+    "limits": [
+      "Incremental invalidation is per declared bounded ROI, not local component repair inside a dirty ROI. Dirty regions still use the qualified reference flood fill.",
+      "The stress timing includes actual physical edits, incremental analysis and the full oracle; it does not measure DSP or isolated optimization speedup.",
+      "No full local suite repeated. New-head CI follows publication.",
+      "No authored Digging Ocarina sound/content, acoustic/listening, hardware or archived-exact-runtime qualification."
+    ],
+    "issueOutcome": "Close1183 after publishing the qualified incremental source; keep1194 and remaining replay/performance acceptance open."
   }
 }

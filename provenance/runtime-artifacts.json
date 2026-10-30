@@ -243,6 +243,7 @@
         "js/app/procgen/SceneTerrainLayout.js",
         "js/app/procgen/TerrainAuthoringAdapter.js",
         "js/app/procgen/TerrainScoreLayer.js",
+        "js/app/procgen/TerrainTopologyInvalidation.js",
         "js/app/procgen/survey/ProcgenSurveyCanonical.js",
         "js/app/procgen/workstation/CausalArchiveEntry.js",
         "js/app/procgen/workstation/CausalJournalCanonical.js",
@@ -440,8 +441,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 294,
-      "sha256": "30e018aa587c85f6c5c004c8f543d551965a9e2c8d0bc5bdf8874d5ca7d48ba1"
+      "fileCount": 295,
+      "sha256": "ba0e308530016329a367e8deb4f100317d3f0017a4b6cce6a1eeb4ab018e0b21"
     },
     {
       "id": "lemmings-timing-worker-source",

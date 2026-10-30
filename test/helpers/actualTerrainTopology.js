@@ -1,6 +1,57 @@
 export const topologySolidLayout = (material = 'solid') => ({ schema: 'lemmings-scene-terrain/v1', id: 'actual-topology-' + material, revision: 1, width: 512, laneHeight: 96, lanes: [{ laneId: 0, regions: [{ kind: material, x1: 8, x2: 512, y1: 0, y2: 96, color: 0xff6c8294 }] }] });
 export const topologyCavityLayout = () => { const layout = topologySolidLayout(); layout.id = 'actual-two-chambers'; layout.lanes[0].regions.push(...[40, 49].map(x => ({ kind: 'air', x1: x, x2: x + 8, y1: 72, y2: 80, color: 0 }))); return layout; };
 
+export async function qualifyIncrementalTerrainTopology({ createWorld, sourceRoot = new URL('../../js/app/procgen/', import.meta.url) }) {
+  const [topology, descriptors, { readTerrainCell }, checkpoint] = await Promise.all([import(new URL('ProcgenTerrainTopology.js', sourceRoot)), import(new URL('workstation/physical/TopologyInstrumentRegion.js', sourceRoot)), import(new URL('TerrainAuthoringAdapter.js', sourceRoot)), import(new URL('workstation/ProcgenCheckpoint.js', sourceRoot))]);
+  const check = (value, message) => { if (!value) throw new Error('Incremental topology: ' + message); }, clone = value => JSON.parse(JSON.stringify(value));
+  const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, stable(value[key])])) : value;
+  const difference = (a, b, path = '') => { if (a === b) return null; if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return { path, actual: a, expected: b }; for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) { const found = difference(a[key], b[key], path + '/' + key); if (found) return found; } return null; };
+  const owner = await createWorld(topologyCavityLayout(), { empty: true }), world = owner.world, reference = new Map(), observations = [];
+  const profiles = [{ id: 'chambers', bounds: { x1: 39, x2: 58, y1: 71, y2: 81 } }, { id: 'remote', bounds: { x1: 100, x2: 120, y1: 70, y2: 82 } }].map(value => descriptors.validateTopologyRegion({ ...value, revision: 1, mapping: { revision: 1, bodyId: 'original-chamber', basePitchCents: 5700, referenceAreaPixels2: 64 } }));
+  const comparable = result => { const { work, ...rest } = result; return rest; };
+  const observe = (label, reused = []) => {
+    world.captureTerrainTopology('endOfTick');
+    const row = { label, revision: world.terrainRevision, regions: [] };
+    for (const region of profiles) {
+      const actual = world.terrainTopology.regions.get(region.id).current, prior = reference.get(region.id), b = region.bounds, h = region.halo, mask = [];
+      for (let y = b.y1 - h; y < b.y2 + h; y++) for (let x = b.x1 - h; x < b.x2 + h; x++) { const cell = readTerrainCell(world, x, y); mask.push(cell.status === 'complete' ? Number(!!cell.color) : -1); }
+      const expected = descriptors.analyzeTopology({ region, mask, worldId: world.worldId, generation: world.generation, tick: world.tickIndex, sourceRevision: world.terrainRevision, nextSerial: prior?.nextSerial || 0 }, prior);
+      check(JSON.stringify(stable(comparable(actual))) === JSON.stringify(stable(comparable(expected))), label + ' differs from independent full mask analysis for ' + region.id);
+      check((actual.work.cells === 0) === reused.includes(region.id), label + ' wrong regional invalidation for ' + region.id);
+      descriptors.validateTopologyResult(clone(actual)); reference.set(region.id, expected); row.regions.push({ id: region.id, work: actual.work, maskDigest: actual.maskDigest, components: actual.components.map(c => ({ id: c.id, area: c.areaPixels2, lineage: c.lineage.kind })) });
+    }
+    observations.push(row); return row;
+  };
+  try {
+    world.hasGroundAt(44, 80); world.configureTopologyRegions(profiles); observe('initial-reference');
+    world.clearGroundAt(200, 76); observe('unrelated-same-source-tile', ['chambers', 'remote']);
+    world._setPixel(40, 71, 2); observe('solid-color-only', ['chambers', 'remote']);
+    world.clearGroundAt(38, 76); observe('read-halo-edit', ['remote']);
+    world.clearGroundAt(48, 76); observe('throat-merge', ['remote']);
+    world.setGroundAt(48, 76); observe('throat-split', ['remote']);
+    world.clearGroundAt(110, 76); observe('remote-only', ['chambers']);
+    const beforeQueue = JSON.stringify([...world.terrainTopology.regions]), terrain = { operation: 'removeSolid', generation: world.generation, transactionId: 'incremental:queued-throat', spans: [{ x1: 48, x2: 49, y: 76 }] };
+    check(world.enqueueIntervention({ id: terrain.transactionId, kind: 'terrain-edit', origin: 'manual', transactionId: terrain.transactionId, target: { generation: world.generation }, parameters: { terrain } }).status === 'queued', 'authoring input refused');
+    check(JSON.stringify([...world.terrainTopology.regions]) === beforeQueue, 'queued preparation invalidated committed geometry'); world.step(); observe('committed-authoring-throat', ['remote']);
+    const annotation = { ...terrain, operation: 'annotate', transactionId: 'incremental:annotation', tag: 'original-clay', spans: [{ x1: 40, x2: 41, y: 71 }] }; world.enqueueIntervention({ id: annotation.transactionId, kind: 'terrain-edit', origin: 'manual', transactionId: annotation.transactionId, target: { generation: world.generation }, parameters: { terrain: annotation } }); world.step(); observe('committed-annotation', ['chambers', 'remote']);
+    const saved = checkpoint.captureProcgenCheckpoint(world); world.hasGroundAt(44, 80); world.clearGroundAt(205, 76); world.step(); observe('branch-unrelated', ['chambers', 'remote']); const future = checkpoint.captureProcgenCheckpoint(world);
+    checkpoint.restoreProcgenCheckpoint(world, clone(saved)); const restoredKnown = world.terrainTopology.regions.get('chambers').current; world.hasGroundAt(44, 80); check(world.terrainTopology.regions.get('chambers').current === restoredKnown && world.terrainTopology.regions.get('chambers').dirty === false, 'source residency discarded qualified complete geometry');
+    for (const region of profiles) reference.set(region.id, world.terrainTopology.regions.get(region.id).current);
+    world.clearGroundAt(205, 76); world.step(); observe('restored-unrelated', ['chambers', 'remote']); const changed = difference(checkpoint.captureProcgenCheckpoint(world), future); check(!changed, 'full checkpoint continuation differs after restore: ' + JSON.stringify(changed));
+    const pending = topology.prepareTopologyAnalysis(world, profiles[0]), pendingResult = descriptors.analyzeTopology(pending); world.clearGroundAt(39, 76); check(!topology.publishTopologyAnalysis(world, pending, pendingResult), 'invalidated pending result published'); observe('pending-region-invalidated', ['remote']);
+    const started = globalThis.performance.now();
+    for (let index = 0; index < 64; index++) { const target = index % 4, x = [48, 110, 38, 210][target], before = world.groundColorAt(x, 76); world._setPixel(x, 76, before ? 0 : 1); observe('bounded-edit-' + index, target === 1 ? ['chambers'] : target === 3 ? ['chambers', 'remote'] : ['remote']); }
+    const stressMs = globalThis.performance.now() - started;
+    const reused = observations.flatMap(row => row.regions).filter(row => row.work.cells === 0), analyzedCells = observations.flatMap(row => row.regions).reduce((sum, row) => sum + row.work.cells, 0);
+    const coldOwner = await createWorld(topologyCavityLayout(), { empty: true }); let materialization;
+    try { const cold = coldOwner.world; cold.configureTopologyRegions([profiles[0]]); cold.captureTerrainTopology('endOfTick'); const before = cold.terrainTopology.regions.get('chambers').current;
+      check(before.coverage === 'partial', 'cold source falsely complete'); cold.hasGroundAt(44, 80); cold.captureTerrainTopology('endOfTick'); const after = cold.terrainTopology.regions.get('chambers').current;
+      check(after.coverage === 'complete' && after.components.length === 2 && after.work.cells === 190 && after.sourceRevision === before.sourceRevision, 'materialized source did not invalidate partial result at unchanged revision'); materialization = { before: before.coverage, after: after.coverage, sourceRevisionUnchanged: true, cells: after.work.cells };
+    } finally { await coldOwner.dispose(); }
+    return { observations, fullReferenceComparisons: observations.length * profiles.length, reusedRegionRevisions: reused.length, analyzedCells, fullReferenceCells: observations.length * 430, materialization, stress: { edits: 64, physicalEditsPlusBothAnalysesMs: stressMs, includesDSP: false }, restoredCompleteCheckpointEqual: true, pendingResultRefused: true, scope: 'Actual scored collision masks and committed authoring input; full independent reference comparisons exclude computation-cost metadata only. Direct sculpting is not a native pointer gesture.' };
+  } finally { await owner.dispose(); }
+}
+
 export async function qualifyActualTerrainTopology({ createWorld, createDisplay = null, onPause = async () => {}, journal = null, reopenJournal = async () => journal, sourceRoot = new URL('../../js/app/procgen/', import.meta.url) }) {
   const [{ createCausalMusicEngine, validateCausalInstrumentGraph }, { LemmingStateType: State }, checkpoint, topology, { validateTopologyRegion, analyzeTopology, bindTopologyFact }, takes, identity] = await Promise.all([
     import(new URL('workstation/CausalMusicEngine.js', sourceRoot)), import(new URL('../../lemmings/LemmingStateType.js', sourceRoot)), import(new URL('workstation/ProcgenCheckpoint.js', sourceRoot)), import(new URL('ProcgenTerrainTopology.js', sourceRoot)), import(new URL('workstation/physical/TopologyInstrumentRegion.js', sourceRoot)), import(new URL('workstation/CausalTake.js', sourceRoot)), import(new URL('workstation/CausalRuntimeIdentity.js', sourceRoot))]);

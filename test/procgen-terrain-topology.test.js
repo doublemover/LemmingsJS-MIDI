@@ -1,6 +1,6 @@
 import { planCausalReinterpretation, PHYSICAL_CAPTURE_PROFILE } from '../js/app/procgen/workstation/CausalTake.js';
 import { expect } from 'chai';
-import { analyzeTopology, validateTopologyRegion, validateTopologyResult, bindTopologyFact } from '../js/app/procgen/workstation/physical/TopologyInstrumentRegion.js';
+import { analyzeTopology, reuseTopologyResult, validateTopologyRegion, validateTopologyResult, bindTopologyFact } from '../js/app/procgen/workstation/physical/TopologyInstrumentRegion.js';
 import { createCausalMusicEngine } from '../js/app/procgen/workstation/CausalMusicEngine.js';
 import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
 import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
@@ -29,6 +29,13 @@ describe('bounded collision topology and causal excitation binding', () => {
     expect(result.components[0].centroid).to.deep.equal({ x: 5, y: 5 }); expect(result.units.acoustics).to.equal('authored-interpretation-not-measurement');
     expect(validateTopologyResult(JSON.parse(JSON.stringify(result)))).to.deep.equal(result);
     const corrupt = JSON.parse(JSON.stringify(result)); corrupt.runs[1] = Number.MAX_SAFE_INTEGER; expect(() => validateTopologyResult(corrupt)).to.throw();
+  });
+  it('records zero new analysis work for a proven unchanged region and rejects forged reuse metadata', () => {
+    const first = analyzeTopology(input(region(), cavity)), reused = reuseTopologyResult(first, { tick: 2, sourceRevision: 2 });
+    expect(reused.work).to.deep.equal({ cells: 0, neighborVisits: 0, reusedFromRevision: 1 }); expect(reused.runs).to.equal(first.runs); expect(reused.components[0].id).to.equal(first.components[0].id);
+    expect(reused.components[0].lineage).to.deep.equal({ kind: 'unchanged', parentIds: [first.components[0].id] }); expect(validateTopologyResult(JSON.parse(JSON.stringify(reused)))).to.deep.equal(reused);
+    for (const mutate of [value => { value.work.cells = 1; }, value => { value.work.neighborVisits = 1; }, value => { value.work.reusedFromRevision = 2; }, value => { value.components[0].geometryChanged = true; }, value => { value.components[0].lineage.parentIds = []; }]) { const copy = JSON.parse(JSON.stringify(reused)); mutate(copy); expect(() => validateTopologyResult(copy)).to.throw(); }
+    expect(() => reuseTopologyResult(first, { tick: 0, sourceRevision: 2 })).to.throw(); expect(() => reuseTopologyResult(first, { tick: 2, sourceRevision: 1 })).to.throw();
   });
   it('distinguishes open ROI seams and unknown coverage from enclosed rooms', () => {
     const r = region({ allowOpen: true }), open = analyzeTopology(input(r, (x, y) => y === 5 && x >= 8 ? 0 : cavity(x, y)));
@@ -89,5 +96,14 @@ describe('bounded collision topology and causal excitation binding', () => {
     captureTerrainTopology(world); const saved = captureProcgenCheckpoint(world); world.configureTopologyRegions([{ ...r, revision: 2 }]);
     expect(publishTopologyAnalysis(world, job, result)).to.equal(false); restoreProcgenCheckpoint(world, saved);
     expect(world.terrainTopology.profiles[0].revision).to.equal(1); expect(world.terrainTopology.regions.get('room').history.length).to.be.at.most(4); world.dispose();
+  });
+  it('falls back to full analysis after missing invalidation history and refuses malformed saved invalidation state', async () => {
+    const masks = await loadProcgenMasks(), world = new ProcgenLaneWorld({ masks, assists: false }), r = region({ bounds: { x1: 62, x2: 70, y1: 10, y2: 18 } });
+    try { world.configureTopologyRegions([r]); world.captureTerrainTopology('endOfTick'); const first = world.terrainTopology.regions.get('room').current;
+      world.terrainTopology.invalidationRevision = -1; world.setGroundAt(120, 10); world.captureTerrainTopology('endOfTick'); const current = world.terrainTopology.regions.get('room').current;
+      expect(current).not.to.equal(first); expect(current.work.cells).to.equal(64); expect(current.sourceRevision).to.equal(world.terrainRevision);
+      const before = captureProcgenCheckpoint(world);
+      for (const field of ['dirty', 'invalidationRevision']) { const copy = JSON.parse(JSON.stringify(before)), node = copy.graph.nodes.find(node => Object.hasOwn(node.props || {}, field)); node.props[field] = field === 'dirty' ? 'unknown' : world.terrainRevision + 1; expect(() => restoreProcgenCheckpoint(world, copy)).to.throw('topology invalidation'); expect(captureProcgenCheckpoint(world)).to.deep.equal(before); }
+    } finally { world.dispose(); }
   });
 });
