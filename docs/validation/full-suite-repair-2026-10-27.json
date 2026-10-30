@@ -818,56 +818,81 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "97eeed53b68c910b197cf9bdefc914b0804d5138",
+    "head": "17af00560fc1fad58a3deba2cac860e3b4cb8a7b",
     "status": "success",
-    "run": 40973024023,
-    "job": 123794163765,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40973024023",
-    "engineJob": 123794163345,
+    "run": 40982798991,
+    "job": 123826647005,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40982798991",
+    "engineJob": 123826647127,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7216,
+    "nodePassed": 7232,
     "nodePending": 10,
-    "browserPassed": 269,
+    "browserPassed": 272,
     "desktopPassed": 26,
-    "workstationSmokePassed": 225,
+    "workstationSmokePassed": 228,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.77,
-      "statements": 90.77,
+      "lines": 90.78,
+      "statements": 90.78,
       "branches": 83.97,
-      "functions": 88.61
+      "functions": 88.64
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 38465,
-      "measurementValid": true,
-      "failures": [],
+      "totalDurationMs": 31104,
+      "thresholds": {
+        "perfP95FrameMsMax": 250,
+        "perfP50TpsMin": 15,
+        "historySpanRatioMin": 0.5,
+        "antsAvgMsMax": 250,
+        "tileCompositionAvgMsMax": 250,
+        "overlayPlaneAvgMsMax": 250,
+        "scaledBlitAvgMsMax": 250
+      },
+      "durationsMs": {
+        "benchPerformance": 9898,
+        "benchHistoryStress": 16127,
+        "benchHotpaths": 5077
+      },
       "metrics": {
-        "perfP95Frame": 83.29999999999927,
-        "perfP50Tps": 82.88357748653708,
-        "historyRatio": 0.5853333333333334,
-        "antsAvgMs": 31.98,
-        "tileCompositionAvgMs": 4.21,
-        "overlayPlaneAvgMs": 22.35,
-        "scaledBlitAvgMs": 30.45
-      }
+        "perfP95Frame": 83.39999999999964,
+        "perfP50Tps": 105.07569011576135,
+        "historyRatio": 0.586,
+        "antsAvgMs": 12.02,
+        "tileCompositionAvgMs": 3.46,
+        "overlayPlaneAvgMs": 14.95,
+        "scaledBlitAvgMs": 27.47
+      },
+      "failures": [],
+      "diagnostics": [],
+      "measurementValid": true,
+      "scenarios": [
+        {
+          "speed": 30,
+          "ratio": 0.586
+        },
+        {
+          "speed": 60,
+          "ratio": 1.032
+        }
+      ]
     },
     "mcp": "success",
     "policy": "success",
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1257,
+      "files": 1259,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
+      "closureDigest": "67d963a8490c59bb32a656fff7bade50c2c066c00d63b0eba11f21765ba7a930",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
@@ -893,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123794164372,
-      "windowsJob": 123794163852,
+      "linuxJob": 123826646723,
+      "windowsJob": 123826647076,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -905,55 +930,55 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "f8d20cd6dc3839b6990c551b562b68b866148f9b",
+      "testedPrMergeHead": "f4cc73876ed28c85d7c4e6d6e88ca011a237cc21",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1146,
-      "inventorySha256": "18fa5b9ad949e209ffa86b1c44e572a72d4fd3a2a69523ca4ce1a63b0e6852be",
+      "inventoryFiles": 1148,
+      "inventorySha256": "b5be6ecf039481035dcb45555b028d46422eb94d4fe2a28a51fca2d234f8ce82",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1257,
+      "engineInventoryFiles": 1259,
       "allEngineSourceFilesMatchPublishedHead": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci374-main.zip",
-        "bytes": 764467,
-        "sha256": "de886280d4959ef6e339bb18319546feb02f44836ac2f727a92c6b98cc621a04"
+        "path": ".tmp/ci378-main.zip",
+        "bytes": 762281,
+        "sha256": "4032aa3441cd41dcd1f30fcf6a69897ae7163fae5b2a33996e04c8ea33cb801f"
       },
       {
-        "path": ".tmp/ci374-engine.zip",
-        "bytes": 155275,
-        "sha256": "658a93c9fb413d707104e97fda7bf87243ef2d4aef86f4b96ae56bcac413e0dc"
+        "path": ".tmp/ci378-engine.zip",
+        "bytes": 157810,
+        "sha256": "da24464c783ba4f1d8b11670728c3368ac9739899d04ad6b8220673d252b364d"
       },
       {
-        "path": ".tmp/ci374-linux.zip",
-        "bytes": 2247,
-        "sha256": "d8b91bb0c41606e93a66f01036c4f03c311c47b5f96329d5c4bf9556cf95e21a"
+        "path": ".tmp/ci378-linux.zip",
+        "bytes": 2246,
+        "sha256": "a761a596cf1b2a0a6ebd809b4d9f16d1f1e562aa9847e18d1014ded28b490c2a"
       },
       {
-        "path": ".tmp/ci374-windows.zip",
-        "bytes": 2146,
-        "sha256": "be01a8d98e54a87cb1239e33b507885c9eb273ae8044316a43a903c97e47655f"
+        "path": ".tmp/ci378-windows.zip",
+        "bytes": 2147,
+        "sha256": "5180633f7fbe6d7a9e262c568cdd972b3fcf183decf7326e3a79fd4e6059d7eb"
       },
       {
-        "path": ".tmp/ci374-main-workstation-result-qualification.json",
-        "bytes": 185109,
-        "sha256": "b51ca05aacf2ef435862a00e99569a6548391ede3ad20f48cec23e257b84ff2f"
+        "path": ".tmp/ci378-main-workstation-result-qualification.json",
+        "bytes": 185434,
+        "sha256": "3dfdf91c93b29f1d3f9e7c0b82f81b1db8de10ee581dbb48f42b612de06b0cad"
       },
       {
-        "path": ".tmp/ci374-engine-lifecycle-engine-qualification.json",
-        "bytes": 244359,
-        "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
+        "path": ".tmp/ci378-engine-lifecycle-engine-qualification.json",
+        "bytes": 244738,
+        "sha256": "731bfab7317d67e18732756e0605dbcf4683d02154c3c25ddb89905915050722"
       },
       {
-        "path": ".tmp/ci374-linux-native-midi-codec-qualification.json",
+        "path": ".tmp/ci378-linux-native-midi-codec-qualification.json",
         "bytes": 7876,
-        "sha256": "fea1b8d421995a3b68f10f268106f2caef8b2588743fb03fcd899f20d55b0c0e"
+        "sha256": "2ce17f1e0e848c2ac52aa05ff2b0b1c47ff927a93dd8ff12b8e27ed9b724b76a"
       },
       {
-        "path": ".tmp/ci374-windows-native-midi-codec-qualification.json",
+        "path": ".tmp/ci378-windows-native-midi-codec-qualification.json",
         "bytes": 7747,
-        "sha256": "ad773d901d38b5a381d34816b79fdbc9783e869071e7bc2626e06965e08f44cf"
+        "sha256": "a5c87bc69a6a606548a82afb8662fcd0d298a9e173a8e00cc78714d0f1c0d1e1"
       }
     ],
     "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
@@ -92342,5 +92367,197 @@
       "reason": "Versioned lossless numeric/state evidence, completeness/source/coverage refusal and the completed owned world/source projection audit pass the final177Node/18Playwright batch. Checkpoint-compatible projection and archived runtime identity remain separate issues."
     },
     "remaining": "Current-head full CI pending. Continue #988/checkpoint projection and the rest of the backlog solo; retain raw377 aborted-module failure without claiming a proven transport repair."
+  },
+  "continuation382": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "a34b25b0ff00031af3251879fe7883b340511e70",
+    "scope": "Promote fully completed378 CI after exact artifact-source verification; no runtime or fixture change.",
+    "checkpoint": {
+      "head": "17af00560fc1fad58a3deba2cac860e3b4cb8a7b",
+      "status": "success",
+      "run": 40982798991,
+      "job": 123826647005,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40982798991",
+      "engineJob": 123826647127,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7232,
+      "nodePending": 10,
+      "browserPassed": 272,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 228,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.97,
+        "functions": 88.64
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 31104,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9898,
+          "benchHistoryStress": 16127,
+          "benchHotpaths": 5077
+        },
+        "metrics": {
+          "perfP95Frame": 83.39999999999964,
+          "perfP50Tps": 105.07569011576135,
+          "historyRatio": 0.586,
+          "antsAvgMs": 12.02,
+          "tileCompositionAvgMs": 3.46,
+          "overlayPlaneAvgMs": 14.95,
+          "scaledBlitAvgMs": 27.47
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.586
+          },
+          {
+            "speed": 60,
+            "ratio": 1.032
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1259,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "67d963a8490c59bb32a656fff7bade50c2c066c00d63b0eba11f21765ba7a930",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123826646723,
+        "windowsJob": 123826647076,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "f4cc73876ed28c85d7c4e6d6e88ca011a237cc21",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1148,
+        "inventorySha256": "b5be6ecf039481035dcb45555b028d46422eb94d4fe2a28a51fca2d234f8ce82",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1259,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci378-main.zip",
+          "bytes": 762281,
+          "sha256": "4032aa3441cd41dcd1f30fcf6a69897ae7163fae5b2a33996e04c8ea33cb801f"
+        },
+        {
+          "path": ".tmp/ci378-engine.zip",
+          "bytes": 157810,
+          "sha256": "da24464c783ba4f1d8b11670728c3368ac9739899d04ad6b8220673d252b364d"
+        },
+        {
+          "path": ".tmp/ci378-linux.zip",
+          "bytes": 2246,
+          "sha256": "a761a596cf1b2a0a6ebd809b4d9f16d1f1e562aa9847e18d1014ded28b490c2a"
+        },
+        {
+          "path": ".tmp/ci378-windows.zip",
+          "bytes": 2147,
+          "sha256": "5180633f7fbe6d7a9e262c568cdd972b3fcf183decf7326e3a79fd4e6059d7eb"
+        },
+        {
+          "path": ".tmp/ci378-main-workstation-result-qualification.json",
+          "bytes": 185434,
+          "sha256": "3dfdf91c93b29f1d3f9e7c0b82f81b1db8de10ee581dbb48f42b612de06b0cad"
+        },
+        {
+          "path": ".tmp/ci378-engine-lifecycle-engine-qualification.json",
+          "bytes": 244738,
+          "sha256": "731bfab7317d67e18732756e0605dbcf4683d02154c3c25ddb89905915050722"
+        },
+        {
+          "path": ".tmp/ci378-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "2ce17f1e0e848c2ac52aa05ff2b0b1c47ff927a93dd8ff12b8e27ed9b724b76a"
+        },
+        {
+          "path": ".tmp/ci378-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "a5c87bc69a6a606548a82afb8662fcd0d298a9e173a8e00cc78714d0f1c0d1e1"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "inventoryVerification": {
+      "main": {
+        "files": 1148,
+        "mismatches": []
+      },
+      "engine": {
+        "files": 1259,
+        "mismatches": []
+      },
+      "linux": {
+        "files": 8,
+        "mismatches": []
+      },
+      "windows": {
+        "files": 8,
+        "mismatches": []
+      }
+    },
+    "priorFailureRetained": "377 CI still records227workstation passes and the original export startup timeout/aborted RawByteLease request; later378 passed the previous fixture.381 adds document-bound setup/diagnostics but is not claimed as a proven application transport repair.",
+    "currentHead": "381 full CI remains separate;380 application source has177Node/18survey Playwright and381 fixture six export Playwright passes. Continue backlog solo."
   }
 }

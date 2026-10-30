@@ -9858,3 +9858,18 @@ export-budget acknowledgments still prevent a false complete receipt.
   numeric, source/coverage, continuation and hazard/growth refusal corpus.
   Coverage follow-ups do not imply a100%branch claim. #988 checkpoint projection,
   #1213 prefix reuse and #1242 archived execution remain separate. Continue solo.
+
+
+### Continuation 382 - source-verified full378 checkpoint
+
+- Promote17af0056 CI40982798991:7232Node/10pre-existing pending,26desktop,
+  228workstation and18engine cases,14capabilities, both native codec jobs and
+  static/benchmark/MCP/policy/dependency gates pass. Coverage90.78%lines,83.97%
+  branches and88.64%functions. Benchmark measurement is valid at31104ms.
+- All1148main/1259engine/both8native source entries match the published Git tree;
+  native8829-command/four-fault corpora and output hashes agree across platforms.
+  Preserve raw mergehead/dirty flags and downloaded artifact hashes.
+- This confirms375-378 application/fixture work in the complete suite. Later
+  state10/11 and immutable-export fixture work retain their scoped passes and
+  separate full CI. Preserve377 original startup failure; no inferred source
+  transport repair or all-backlog completion claim. Continue solo.
