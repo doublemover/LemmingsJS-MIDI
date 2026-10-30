@@ -3,6 +3,12 @@ const componentIdentity = value => typeof value === 'string' && value.length <= 
 const keys = (value, allowed) => plain(value) && Object.keys(value).every(key => allowed.includes(key));
 const seal = value => { if (value && typeof value === 'object') { for (const child of Object.values(value)) seal(child); Object.freeze(value); } return value; };
 const MAX_AREA = 65536, MAX_COMPONENTS = 256, admittedResults = new WeakSet();
+const definitionSignatures = new WeakMap();
+export function topologyDefinitionSignature(region) {
+  let signature = definitionSignatures.get(region);
+  if (!signature) { signature = JSON.stringify(validateTopologyRegion(region)); if (Object.isFrozen(region) && Object.isFrozen(region.mapping) && Object.isFrozen(region.bounds) && Object.isFrozen(region.anchors) && region.anchors.every(Object.isFrozen)) definitionSignatures.set(region, signature); }
+  return signature;
+}
 export function validateTopologyRegion(value) {
   const b = value?.bounds, m = value?.mapping;
   if (!plain(value) || !identity(value.id) || value.id.length > 128 || !integer(value.revision) || !keys(b, ['x1', 'x2', 'y1', 'y2']) || ![b.x1, b.y1, b.x2, b.y2].every(value => Number.isSafeInteger(value) && Math.abs(value) <= 1e9) || b.x1 < 0 || b.y1 < 0 || b.x2 <= b.x1 || b.y2 <= b.y1 || (b.x2 - b.x1) * (b.y2 - b.y1) > MAX_AREA || ![4, 8].includes(value.connectivity ?? 4) || !['free', 'solid'].includes(value.space ?? 'free')) throw new Error('Invalid bounded topology region.');
@@ -64,7 +70,8 @@ export function analyzeTopology(input, previous = null) {
     components.push(component);
   }
   if (previous?.status === 'complete') validateTopologyResult(previous);
-  const compatible = previous?.status === 'complete' && previous.sourceRevision <= input.sourceRevision && previous.tick <= input.tick && previous.worldId === input.worldId && previous.generation === input.generation && previous.regionRevision === region.revision && previous.connectivity === region.connectivity && previous.space === region.space && JSON.stringify(previous.bounds) === JSON.stringify(b);
+  const signature = topologyDefinitionSignature(region);
+  const compatible = previous?.status === 'complete' && previous.definitionSignature === signature && previous.sourceRevision <= input.sourceRevision && previous.tick <= input.tick && previous.worldId === input.worldId && previous.generation === input.generation && previous.regionRevision === region.revision && previous.connectivity === region.connectivity && previous.space === region.space && JSON.stringify(previous.bounds) === JSON.stringify(b);
   const oldLabels = compatible ? topologyLabels(previous) : null, overlaps = components.map(() => new Map()), children = new Map();
   if (oldLabels) for (let cell = 0; cell < area; cell++) if (labels[cell] >= 0 && oldLabels[cell] >= 0) {
     const next = labels[cell], prior = oldLabels[cell], counts = overlaps[next]; counts.set(prior, (counts.get(prior) || 0) + 1);
@@ -94,7 +101,7 @@ export function analyzeTopology(input, previous = null) {
   for (const pair of adjacent) { const [a, c] = pair.split(':').map(Number); components[a].adjacency.push(components[c].id); components[c].adjacency.push(components[a].id); }
   const runs = []; for (let start = 0; start < labels.length;) { const value = labels[start]; if (value < 0) { start++; continue; } let end = start + 1; while (end < labels.length && labels[end] === value) end++; runs.push(start, end - start, value); start = end; }
   const result = freeze({ version: 1, status: 'complete', worldId: input.worldId, generation: input.generation, tick: input.tick, sourceRevision: input.sourceRevision,
-    regionId: region.id, regionRevision: region.revision, maskDigest: topologyMaskDigest(input.mask), mappingRevision: region.mapping.revision, bounds: { ...b }, connectivity: region.connectivity, space: region.space,
+    regionId: region.id, regionRevision: region.revision, definitionSignature: signature, maskDigest: topologyMaskDigest(input.mask), mappingRevision: region.mapping.revision, bounds: { ...b }, connectivity: region.connectivity, space: region.space,
     coverage: input.mask.some(value => value < 0) ? 'partial' : 'complete', nextSerial: serial, components, runs,
     removedComponentIds: compatible ? previous.components.filter(c => !components.some(next => next.id === c.id)).map(c => c.id) : [],
     work: { cells: area, neighborVisits: work }, units: { area: 'square-world-pixel', boundary: 'world-pixel', adjacency: 'separated-by-one-cell', acoustics: 'authored-interpretation-not-measurement' } });
@@ -103,9 +110,9 @@ export function analyzeTopology(input, previous = null) {
 export function validateTopologyResult(value) {
   if (admittedResults.has(value)) return value;
   const b = value?.bounds, components = value?.components;
-  if (!keys(value, ['version', 'status', 'worldId', 'generation', 'tick', 'sourceRevision', 'regionId', 'regionRevision', 'mappingRevision', 'maskDigest', 'bounds', 'connectivity', 'space', 'coverage', 'nextSerial', 'components', 'runs', 'removedComponentIds', 'work', 'units']) || value.version !== 1 || value.status !== 'complete' || !identity(value.worldId) || !identity(value.regionId) || !integer(value.regionRevision) || !integer(value.mappingRevision) || typeof value.maskDigest !== 'string' || !/^[0-9a-f]{8}$/.test(value.maskDigest) || !integer(value.generation) || !integer(value.sourceRevision) || !integer(value.tick) || !integer(value.nextSerial) || ![4, 8].includes(value.connectivity) || !['free', 'solid'].includes(value.space) || !keys(b, ['x1', 'x2', 'y1', 'y2']) || ![b.x1, b.x2, b.y1, b.y2].every(value => Number.isSafeInteger(value) && Math.abs(value) <= 1e9) || b.x2 <= b.x1 || b.y2 <= b.y1 || !Array.isArray(components) || components.length > MAX_COMPONENTS || !Array.isArray(value.runs) || value.runs.length % 3) throw new Error('Invalid topology descriptor.');
+  if (!keys(value, ['version', 'status', 'worldId', 'generation', 'tick', 'sourceRevision', 'regionId', 'regionRevision', 'definitionSignature', 'mappingRevision', 'maskDigest', 'bounds', 'connectivity', 'space', 'coverage', 'nextSerial', 'components', 'runs', 'removedComponentIds', 'work', 'units']) || value.version !== 1 || value.status !== 'complete' || !identity(value.worldId) || !identity(value.regionId) || !integer(value.regionRevision) || !integer(value.mappingRevision) || value.definitionSignature != null && (typeof value.definitionSignature !== 'string' || value.definitionSignature.length > 16384) || typeof value.maskDigest !== 'string' || !/^[0-9a-f]{8}$/.test(value.maskDigest) || !integer(value.generation) || !integer(value.sourceRevision) || !integer(value.tick) || !integer(value.nextSerial) || ![4, 8].includes(value.connectivity) || !['free', 'solid'].includes(value.space) || !keys(b, ['x1', 'x2', 'y1', 'y2']) || ![b.x1, b.x2, b.y1, b.y2].every(value => Number.isSafeInteger(value) && Math.abs(value) <= 1e9) || b.x2 <= b.x1 || b.y2 <= b.y1 || !Array.isArray(components) || components.length > MAX_COMPONENTS || !Array.isArray(value.runs) || value.runs.length % 3) throw new Error('Invalid topology descriptor.');
   const area = (b.x2 - b.x1) * (b.y2 - b.y1), counts = new Uint32Array(components.length);
-  if (area > MAX_AREA || value.runs.length > area * 3 || new Set(components.map(c => c.id)).size !== components.length) throw new Error('Topology descriptor capacity exceeded.');
+  if (area > MAX_AREA || value.runs.length > area * 3 || new Set(components.map(c => c.id)).size !== components.length || !['complete', 'partial'].includes(value.coverage)) throw new Error('Topology descriptor capacity or coverage is invalid.');
   let end = 0;
   for (let i = 0; i < value.runs.length; i += 3) { const [start, length, index] = value.runs.slice(i, i + 3); if (!integer(start, area - 1) || !integer(length, area) || !length || !integer(index, components.length - 1) || start < end || start + length > area) throw new Error('Invalid topology cell ownership.'); end = start + length; counts[index] += length; }
   for (let index = 0; index < components.length; index++) { const c = components[index], m = c.musical;
@@ -113,6 +120,11 @@ export function validateTopologyResult(value) {
   }
   if (!Array.isArray(value.removedComponentIds) || value.removedComponentIds.length > MAX_COMPONENTS || value.removedComponentIds.some(id => !componentIdentity(id)) || !keys(value.work, ['cells', 'neighborVisits']) || value.work.cells !== area || !integer(value.work.neighborVisits, area * 8) || !keys(value.units, ['area', 'boundary', 'adjacency', 'acoustics']) || Object.values(value.units).some(unit => typeof unit !== 'string' || unit.length > 64)) throw new Error('Invalid topology descriptor metadata.');
   seal(value); admittedResults.add(value); return value;
+}
+export function topologyResultMatchesRegion(result, region) {
+  if (result?.status !== 'complete' || !region || result.definitionSignature !== topologyDefinitionSignature(region)) return false;
+  validateTopologyResult(result);
+  return result.regionId === region.id && result.regionRevision === region.revision && result.mappingRevision === region.mapping.revision && result.connectivity === region.connectivity && result.space === region.space && ['x1', 'x2', 'y1', 'y2'].every(key => result.bounds[key] === region.bounds[key]);
 }
 export function topologyComponentAt(result, point, neighbor = true) {
   if (result?.status !== 'complete' || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
@@ -130,7 +142,7 @@ export function bindTopologyFact(region, batch, fact) {
   const entry = batch.snapshot?.topology?.regions?.find(value => value.regionId === region.id && value.regionRevision === region.revision);
   const sourceRevision = fact.physicalPayload?.sourceEditRevisionAfter ?? fact.surfaceRevision ?? fact.physicalPayload?.surfaceRevision ?? null;
   const result = region.bindingPolicy === 'endOfTick' ? entry?.current : entry?.history?.findLast(value => value.sourceRevision === sourceRevision);
-  if (!result || result.status !== 'complete' || result.worldId !== batch.worldId || result.generation !== batch.generation || result.mappingRevision !== region.mapping.revision || region.bindingPolicy === 'endOfTick' && result.sourceRevision !== batch.snapshot?.terrainRevision) return { status: 'unsupported', reason: 'qualified-topology-unavailable' };
+  if (!topologyResultMatchesRegion(result, region) || result.worldId !== batch.worldId || result.generation !== batch.generation || result.tick > batch.tick || region.bindingPolicy === 'endOfTick' && result.sourceRevision !== batch.snapshot?.terrainRevision) return { status: 'unsupported', reason: 'qualified-topology-unavailable' };
   const payload = fact.physicalPayload, point = fact.anchor ?? (Number.isFinite(payload?.targetX) && Number.isFinite(payload?.targetY) ? { x: payload.targetX, y: payload.targetY } : fact.positionAfter ?? fact.positionBefore);
   let component = topologyComponentAt(result, point);
   if (!component && Array.isArray(payload?.terrainEdit?.spans) && payload.terrainEdit.spans.length <= 64) {

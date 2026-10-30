@@ -431,3 +431,38 @@ participant and all opening/connection/arrival roots. A completion identity owns
 one bounded chord across polls, restore and semantic continuation. Blocked and
 dead crews receive no success cadence. Native take reopen preserves the original
 manifest when an edited activity interpretation fails.
+
+## Chamber definition and analysis ownership
+
+Topology descriptors bind the normalized region definition, including ROI,
+connectivity, halo, space, anchors, mapping and held policy. End-of-tick bindings
+retain the work event's local source-edit revision separately from the selected
+completed topology revision. Post-transaction bindings use only the matching
+retained local revision. Four retained histories cannot supply six distinct local
+work operations: omitted early strikes stay omitted, without deferred catch-up.
+
+Unbound legacy geometry can remain inspectable but cannot qualify excitation,
+held ownership or a topology checkpoint. World restore validates descriptor
+identity, definition, history order, revision, source time and component frontier
+before replacing any owners. Engine checkpoints independently bind their chamber
+definitions. Restore, authoring replacement and generation reset retire prior
+in-flight analysis requests; a late result cannot enter a restored boundary even
+when its numeric epoch and edit revision happen to match. Rejected or failed
+analysis becomes explicit unknown state and releases its pending marker.
+
+The physical-basic-v21 capture profile records topology definition signatures.
+Reinterpretation refuses a changed ROI/mapping or missing bound history. Capturing
+a pending analysis records unavailable geometry rather than certifying a future
+chamber or saving an unresumable job as a physical checkpoint. A sealed component
+can have known local geometry inside a partially observed ROI; that does not
+certify complete regional coverage for inactivity or later capture. Partial
+regions retain a geometry gap and cannot establish a global rest. Original take
+records remain unchanged after refusal.
+
+Actual source fixtures cover two sealed 64-pixel² cavities, a one-pixel throat
+merge/split, ROI opening, 4/8 diagonal connectivity, unavailable source boundaries,
+two diggers' six ordered local edits, steel and appearance-only work, paused
+production paints, undo/branch restore and native durable reopening. Explicit
+direct collision edits shape the small cavity fixture; they do not bypass or
+claim the separate occupied-footprint authoring UI policy. These are geometry
+and semantic measurements, with DSP and acoustics qualified separately.

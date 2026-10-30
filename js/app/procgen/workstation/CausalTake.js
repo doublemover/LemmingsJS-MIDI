@@ -8,6 +8,7 @@ import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
 import { retireCausalRead } from './CausalReadLeases.js';
 import { validateCausalPerformanceChange, validateCausalPerformanceState } from './CausalPerformanceState.js';
 import { routeDefinitionSignature } from './physical/RouteCoordinateAtlas.js';
+import { topologyDefinitionSignature } from './physical/TopologyInstrumentRegion.js';
 
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const boundedKinds = value => Array.isArray(value) && value.length <= 128 && value.every(name) && new Set(value).size === value.length;
@@ -16,7 +17,7 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v20',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v21',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
   descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'route-coordinate-history-v2', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
@@ -95,8 +96,8 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     if (batch.completeness?.status !== 'complete') addGap({ kind: 'physical-facts', firstTick: batch.tick, lastTick: batch.tick,
       generation: batch.generation, reason: 'incomplete-source-batch', dropped: batch.completeness?.dropped ?? null });
     const topology = batch.snapshot?.topology;
-    if (!topology?.regions?.length || topology.regions.some(region => region.status !== 'complete' || !region.current || region.current.sourceRevision !== batch.snapshot.terrainRevision)) addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'qualified-topology-not-captured' });
-    else for (const region of topology.regions) { const result = region.current, key = `${region.regionId}:${region.regionRevision}`; if (topologyRegions.size < 4096 || topologyRegions.has(key)) topologyRegions.set(key, { id: region.regionId, revision: region.regionRevision, bounds: result.bounds, connectivity: result.connectivity, space: result.space }); else addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'topology-inventory-capacity' }); }
+    if (!topology?.regions?.length || topology.regions.some(region => region.status !== 'complete' || !region.current || region.current.coverage !== 'complete' || region.current.sourceRevision !== batch.snapshot.terrainRevision)) addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'qualified-topology-not-captured' });
+    else for (const region of topology.regions) { const result = region.current, key = `${region.regionId}:${region.regionRevision}`; if (topologyRegions.size < 4096 || topologyRegions.has(key)) topologyRegions.set(key, { id: region.regionId, revision: region.regionRevision, bounds: result.bounds, connectivity: result.connectivity, space: result.space, definitionSignature: result.definitionSignature ?? null }); else addGap({ kind: 'topology-geometry-v1', firstTick: batch.tick, lastTick: batch.tick, generation: batch.generation, reason: 'topology-inventory-capacity' }); }
     let missingMovementPath = false, missingWorkPhase = false;
     for (const fact of batch.facts) {
       if (fact.kind) observedFactKinds.add(fact.kind);
@@ -213,7 +214,7 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     const missing = [...queried.missingRanges, ...queried.unknownRanges];
     const outside = missing.some(gap => gap.reason === 'outside-captured-range');
     const captured = available[keys]?.includes(requirement.kind) === true;
-    if (requirement.kind === 'topology-geometry-v1') { const wanted = validateCausalInstrumentGraph(graph).topologyRegions || []; if (wanted.some(region => !coverage.topologyRegions?.some(captured => captured.id === region.id && captured.revision === region.revision && captured.connectivity === region.connectivity && captured.space === region.space && canonicalJournalText(captured.bounds).text === canonicalJournalText(region.bounds).text))) return { ...requirement, status: 'unavailable', reason: 'topology-region-not-captured' }; }
+    if (requirement.kind === 'topology-geometry-v1') { const wanted = validateCausalInstrumentGraph(graph).topologyRegions || []; if (wanted.some(region => !coverage.topologyRegions?.some(captured => captured.id === region.id && captured.revision === region.revision && captured.definitionSignature === topologyDefinitionSignature(region) && captured.connectivity === region.connectivity && captured.space === region.space && canonicalJournalText(captured.bounds).text === canonicalJournalText(region.bounds).text))) return { ...requirement, status: 'unavailable', reason: 'topology-region-not-captured' }; }
     if (requirement.kind === 'route-coordinate-history-v2' && validateCausalInstrumentGraph(graph).routes.some(route => !coverage.routeDefinitions?.some(value => value.id === route.id && value.revision === route.revision && value.signature === routeDefinitionSignature(route)))) return { ...requirement, status: 'unavailable', reason: 'route-definition-history-not-captured' };
     if (captured && queried.status === 'known-covered') return { ...requirement, status: 'supported-directly' };
     if (reconstruction?.coverage?.[keys]?.includes(requirement.kind) && reconstruction.firstTick <= requested.firstTick && reconstruction.lastTick >= requested.lastTick) {

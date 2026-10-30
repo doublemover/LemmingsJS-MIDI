@@ -3,7 +3,7 @@ import { validateCausalProbabilityPolicy } from './CausalProbabilityPolicy.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 import { validatePopulationReleaseState } from '../ReleaseGesture.js';
 import { validatePhysicalCrewEvidence } from '../PhysicalCrewEvidence.js';
-import { assertTopologyEvidenceBoundary } from '../ProcgenTerrainTopology.js';
+import { assertTopologyEvidenceBoundary, retireTerrainTopologyAnalysis, validateTerrainTopologyState } from '../ProcgenTerrainTopology.js';
 import { Lemming } from '../../../lemmings/Lemming.js';
 import { Trigger } from '../../../level/Trigger.js';
 import { Animation } from '../../../render/Animation.js';
@@ -366,6 +366,7 @@ function restoreProcgenCheckpoint(world, saved) {
     })), entries: entry.entries?.map(([k, v]) => [decode(k), decode(v)]) };
   });
   const preparedWorld = prepared.find(item => item.entry.name === 'world'); preparedWorld.props.physicalCrewEvidence = validatePhysicalCrewEvidence(preparedWorld.props.physicalCrewEvidence, preparedWorld.props.generation);
+  if (world.terrainTopology || preparedWorld.props.terrainTopology) validateTerrainTopologyState(preparedWorld.props);
   if (!sameActorBirthAbilities(preparedWorld.props.actorBirthAbilities, saved.actorBirthAbilities, world.laneCount)) throw new Error('Checkpoint actor birth source differs from its graph state.');
   preparedWorld.props.actorBirthAbilities = validateActorBirthAbilities(saved.actorBirthAbilities, world.laneCount);
   for (const command of preparedWorld.props.interventionState?.pending || []) if (command.probability && JSON.stringify(validateCausalProbabilityPolicy(command.probability)) !== JSON.stringify(command.probability)) throw new Error('Invalid checkpoint physical probability policy.');
@@ -391,6 +392,7 @@ function restoreProcgenCheckpoint(world, saved) {
     if (entries) { Map.prototype.clear.call(target); for (const [key, value] of entries) Map.prototype.set.call(target, key, value); }
   }
   world._authoritativeActors = new WeakSet(world.actors);
+  retireTerrainTopologyAnalysis(world);
   world.triggerManager.rebuildIndex();
   world.soundEvents.restoreIdentity(saved.physicalIdentity ?? null);
   world._completedPhysicalSnapshot = null;

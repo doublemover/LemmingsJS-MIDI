@@ -6,7 +6,7 @@ import { releaseLanePhases, validateReleaseGesture } from './ReleaseGesture.js';
 import { createPhysicalCrewEvidence } from './PhysicalCrewEvidence.js';
 import { createPhysicalAuthoringState, preparePhysicalAuthoringConfiguration } from './PhysicalAuthoring.js';
 import { createPhysicalJunctionState, queryPhysicalJunction } from './PhysicalJunctions.js';
-import { disposeTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
+import { disposeTerrainTopology, resetTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, captureTerrainTopology, terrainTopologySnapshot } from './ProcgenTerrainTopology.js';
 import { createTerrainScoreState, rememberTerrainCell, commitTerrainScore, terrainContactProvenance } from './TerrainScoreLayer.js';
 import { planTerrainCommand } from './TerrainAuthoringAdapter.js';
 import { observePhysicalFlightStep } from '../../actions/PhysicalFlightFacts.js';
@@ -284,7 +284,7 @@ class ProcgenLaneWorld {
     for (const actor of this.actors) { this._clearConstructionCrew(actor); actor._laneRouteAttempt = null; actor._basinSceneId = null; }
     this.actors.length = 0; this.birthCohortRecords = []; this.birthCohortRevision = (this.birthCohortRevision || 0) + 1; this.activeCount = 0; this.admissionPaused = false; this._manualNukeLanes.fill(0); this.editChunks.clear(); this.terrainScoreState = createTerrainScoreState(); this.terrainScorePending = { cells: [], overflow: false, revisionBefore: this.terrainRevision }; this.terrainTileRevisions.clear(); this.challengeCache.clear(); this.terrain?.reset?.();
     this._laneChunk.fill(null); this._laneChunkIndex.fill(-1); this._collisionSlots.fill(null); this._collisionIndices.fill(-1); this._laneEdits.fill(null); this._laneEditIndex.fill(-1); this._editCache.fill(null); this._editIndices.fill(-1); this.frontiers.fill(36);
-    this.generatedThrough.fill(this.terrain?.sceneTerrainLayout?.width || this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; this.physicalCrewEvidence = createPhysicalCrewEvidence(); this.physicalJunctions.actual.clear(); this.generationStartTick = this.tickIndex;
+    this.generatedThrough.fill(this.terrain?.sceneTerrainLayout?.width || this.terrain?.chunkWidth || CHUNK_WIDTH); this.terrainRevision++; this.frontierRevision++; this.generation++; resetTerrainTopology(this); this.physicalCrewEvidence = createPhysicalCrewEvidence(); this.physicalJunctions.actual.clear(); this.generationStartTick = this.tickIndex;
     const terrainGeneration = this.workstationEnabled ? 1 : this.generation;
     for (let lane = 0; lane < this.laneCount; lane++) this.laneSeeds[lane] = mix(this.seed ^ Math.imul(lane + 1, 0x9e3779b1) ^ Math.imul(terrainGeneration - 1, 0x85ebca6b));
     this.terrain?.registerLanes?.(this.laneSeeds, this.seed, terrainGeneration);

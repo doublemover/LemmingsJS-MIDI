@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "c88094646d02ccb4ead20ed5a967da568a85538f",
+    "head": "cef914eb99af2048c1c2332477d15e2957b83f5a",
     "status": "success",
-    "run": 41012032130,
-    "job": 123919835022,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41012032130",
-    "engineJob": 123919835389,
+    "run": 41016188339,
+    "job": 123951914395,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41016188339",
+    "engineJob": 123951881099,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7275,
+    "nodePassed": 7276,
     "nodePending": 10,
-    "browserPassed": 285,
+    "browserPassed": 286,
     "desktopPassed": 26,
-    "workstationSmokePassed": 241,
+    "workstationSmokePassed": 242,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
       "lines": 90.8,
       "statements": 90.8,
-      "branches": 84.15,
+      "branches": 84.17,
       "functions": 88.7
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 36338,
+      "totalDurationMs": 38363,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 10540,
-        "benchHistoryStress": 18427,
-        "benchHotpaths": 7366
+        "benchPerformance": 11111,
+        "benchHistoryStress": 18316,
+        "benchHotpaths": 8931
       },
       "metrics": {
-        "perfP95Frame": 50,
-        "perfP50Tps": 84.99850879807946,
-        "historyRatio": 0.5858333333333333,
-        "antsAvgMs": 15.59,
-        "tileCompositionAvgMs": 4.39,
-        "overlayPlaneAvgMs": 19.62,
-        "scaledBlitAvgMs": 27.62
+        "perfP95Frame": 100,
+        "perfP50Tps": 82.80377431152873,
+        "historyRatio": 0.5851666666666666,
+        "antsAvgMs": 32.36,
+        "tileCompositionAvgMs": 4.11,
+        "overlayPlaneAvgMs": 21.68,
+        "scaledBlitAvgMs": 30.98
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.5858333333333333
+          "ratio": 0.5851666666666666
         },
         {
           "speed": 60,
-          "ratio": 0.9521666666666667
+          "ratio": 0.9321666666666667
         }
       ]
     },
@@ -892,7 +892,7 @@
       "status": "passed",
       "files": 1271,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "f5816167a44104c25453694e71d69fb6661cd4194ea6c41bbb3f51b84d60b3ee",
+      "closureDigest": "adad8cfaaa04c605bcb6d332698829489c31d66c71faed496a41d5555fddbe07",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123919835375,
-      "windowsJob": 123919835243,
+      "linuxJob": 123951883296,
+      "windowsJob": 123951882979,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,10 +930,10 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "cda8f3094af573060e7e5f265cbfb58835bb6129",
+      "testedPrMergeHead": "7132ee7424a276efc0f8fbaaebf0f45ddc706fa5",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1161,
-      "inventorySha256": "15db702f2afbeb191c516f5a4a59e70a79de92497f81e5671b21e838a1d6efbd",
+      "inventoryFiles": 1162,
+      "inventorySha256": "2be2b7d5227e63f0154f27aac1b71b577d7ec4f7a713648612efc25e3fcbb3bf",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
       "engineInventoryFiles": 1271,
@@ -945,35 +945,44 @@
     },
     "artifacts": [
       {
-        "path": ".tmp/ci395-main.zip",
-        "bytes": 856378,
-        "sha256": "bc69b5bc4eee572e4ab27469728c77dc2a88495088cb712c5a54ffa98768974a",
-        "githubArtifactId": 12959945314,
+        "path": ".tmp/ci396-main.zip",
+        "bytes": 902073,
+        "sha256": "e46a600a97ea3aaacaab0ca8f316c079652c1ef6bc42afa8f9361e98514189fc",
+        "githubArtifactId": 12961342253,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci395-engine.zip",
-        "bytes": 161219,
-        "sha256": "c99ed20c3ac003c17ac3dac007eb61dcc6a32188ef4e334084a30d5381beffa1",
-        "githubArtifactId": 12958232340,
+        "path": ".tmp/ci396-engine.zip",
+        "bytes": 160933,
+        "sha256": "d715247a8be23f52e5c460ce36a1089132de7ccab134ea443b266bf654f972a4",
+        "githubArtifactId": 12961953437,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci395-linux.zip",
-        "bytes": 2246,
-        "sha256": "0808be34f88565b36fca3c845bb4c4047387bf9ab3887bea0df7161ef73904a0",
-        "githubArtifactId": 12957394518,
+        "path": ".tmp/ci396-linux.zip",
+        "bytes": 2247,
+        "sha256": "98f7c571f3eb402b018f8d5e0213cff86a0dfa794f3ceacc6dfe1db9a23d2f36",
+        "githubArtifactId": 12959886285,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci395-windows.zip",
-        "bytes": 2148,
-        "sha256": "baecc0933a2f61957ede99729190015c58e99aa1866e360b64ede53348fdbe1c",
-        "githubArtifactId": 12957384773,
+        "path": ".tmp/ci396-windows.zip",
+        "bytes": 2147,
+        "sha256": "3e89807e0dcb91d2a7ec2fe55deb2ce67ce3bb8fe83fad0e51ffb3c5e566da42",
+        "githubArtifactId": 12959752305,
         "githubDigestMatched": true
       }
     ],
-    "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent.",
+    "priorFailure": {
+      "job": 123932946341,
+      "enginePassing": 17,
+      "engineFailures": 1,
+      "boundary": "Native Linux Firefox content-process signal11 before audio-navigation assertions.",
+      "rerunRequestedForJob": 123932946341,
+      "sourceChanged": false,
+      "scope": "Subsequent engine qualification passes. The native crash is preserved; no JavaScript crash repair claimed."
+    }
   },
   "continuation264": {
     "date": "2026-10-27",
@@ -136674,5 +136683,847 @@
       "Latest independently verified full green is395/c8809464. Current396 native Firefox failure remains unresolved and397 has only this completed affected batch; no full local suite repeated."
     ],
     "issueOutcome": "Close1060 after publication with actual source-time rest/held/unknown/completion evidence and transactional saved history."
+  },
+  "continuation398": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1183,
+      1194,
+      1104
+    ],
+    "sourceParent": "525ff93d089ed60738cb954f76459a5394d91f9c",
+    "scope": "Definition-bound topology, saved semantic/physical history, stale analysis retirement and actual desktop collision/worker/capture evidence.",
+    "changes": [
+      "Bind topology descriptors to normalized ROI/connectivity/halo/anchors/space/mapping/held policies; use the binding for excitation, held voices and activity. Inspectable legacy geometry cannot silently qualify source history.",
+      "Validate topology checkpoint world/generation/revision/time/region/history/frontier before publishing any owner. Independently bind engine snapshots to topology definitions. Retire in-flight requests on restore, reconfiguration and generation reset; reject failed/stale results as explicit unknown and release pending markers.",
+      "Capture profile physical-basic-v21 retains topology definition signatures. Reinterpretation refuses edited or missing definitions. Pending/partial geometry records unavailable coverage rather than future exactness. Partial ROI never establishes region-wide inactivity or complete geometry capture, even when a local sealed pocket is known.",
+      "Actual scored geometry and workers qualify sealed cavities, throat merge/split/opening, held handover without attack invention, diagonal conventions, two-worker source/local revision binding, steel/appearance no-op, pending/partial durable reopening, source-edge unknown, paused rendering and stale edit/restore/generation results."
+    ],
+    "validation": {
+      "node": {
+        "passing": 86,
+        "failures": 0,
+        "durationSeconds": 52,
+        "scope": "Final complete affected batch: topology actual/reference, activity actual/reference, formation, take, engine and four checkpoint corpora."
+      },
+      "browser": {
+        "passing": 5,
+        "failures": 0,
+        "durationSeconds": 151.43103600000003,
+        "cases": [
+          {
+            "title": "actual activity gaps do not age during sixty wall seconds of desktop paints and native take reopening refuses edited history",
+            "status": "expected",
+            "durationMs": 67244,
+            "receipts": [
+              {
+                "name": "actual-activity-windows-desktop",
+                "bytes": 134972,
+                "sha256": "182e46ee45434131fb7c21ec9e399e827c18a2caeda4c4214310bfe7e7ca9d94"
+              }
+            ]
+          },
+          {
+            "title": "actual desktop Rescue crews make one rooted cadence for success and none for blocked or dead crews",
+            "status": "expected",
+            "durationMs": 20575,
+            "receipts": [
+              {
+                "name": "actual-crew-cadences-desktop",
+                "bytes": 8896,
+                "sha256": "26030a7da71de80e445c59383543f88d1d1f0107c5fb65b391e0f25e4af6f117"
+              }
+            ]
+          },
+          {
+            "title": "actual formation harmony follows physical spread and removal while desktop paints preserve voice ownership",
+            "status": "expected",
+            "durationMs": 6215,
+            "receipts": [
+              {
+                "name": "actual-formation-harmony-desktop",
+                "bytes": 308227,
+                "sha256": "7b6b5d6653c6b6e8e6c5956ee62756a91e004717a93173cdb65e0f2d992d0621"
+              }
+            ]
+          },
+          {
+            "title": "actual desktop cavities and workers preserve topology binding across sculpting stale results and native take reopening",
+            "status": "expected",
+            "durationMs": 4372,
+            "receipts": [
+              {
+                "name": "actual-terrain-topology-desktop",
+                "bytes": 70476,
+                "sha256": "5bac1479a0f6a2c3d389c2e23e8f9aeb20f3d2eb98af2fa11b435a2557472851"
+              }
+            ]
+          },
+          {
+            "title": "actual work-cycle intents survive 0 15 and 120 source-relative desktop paint cadences",
+            "status": "expected",
+            "durationMs": 6171,
+            "receipts": [
+              {
+                "name": "actual-work-cycle-render-cadence",
+                "bytes": 213818,
+                "sha256": "45b27b55161191a0141ecc1ca3c8b1520258046ef77932965a8a1a0a967791e2"
+              }
+            ]
+          }
+        ],
+        "receiptsArtifact": {
+          "path": "docs/validation/terrain-topology-desktop-2026-10-30.json",
+          "bytes": 737965,
+          "sha256": "cfb3714784cc2b749ba503b5f92bd4c551d4bfba2576e1f294148e5afe4a2117"
+        }
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 245,
+            "covered": 242,
+            "skipped": 0,
+            "pct": 98.77
+          },
+          "statements": {
+            "total": 245,
+            "covered": 242,
+            "skipped": 0,
+            "pct": 98.77
+          },
+          "functions": {
+            "total": 30,
+            "covered": 30,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 436,
+            "covered": 385,
+            "skipped": 0,
+            "pct": 88.3
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\ProcgenTerrainTopology.js": {
+          "lines": {
+            "total": 89,
+            "covered": 89,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 89,
+            "covered": 89,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 133,
+            "covered": 108,
+            "skipped": 0,
+            "pct": 81.2
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TopologyInstrumentRegion.js": {
+          "lines": {
+            "total": 156,
+            "covered": 153,
+            "skipped": 0,
+            "pct": 98.07
+          },
+          "functions": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 156,
+            "covered": 153,
+            "skipped": 0,
+            "pct": 98.07
+          },
+          "branches": {
+            "total": 303,
+            "covered": 277,
+            "skipped": 0,
+            "pct": 91.41
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/ProcgenLaneWorld.js",
+          "bytes": 92549,
+          "sha256": "f5d2052ab5dfb397af565f6d02cbf7a59eed40ecbe05a99dbf7f50ace20f09ef"
+        },
+        {
+          "path": "js/app/procgen/ProcgenTerrainTopology.js",
+          "bytes": 11705,
+          "sha256": "c57e894fdff02d41ee71584ce29e80aadc8cce3d9858db04be667e0b8df8adde"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 83403,
+          "sha256": "b5653a570d3f2b1909996188764bbe49f5162ca0c78f77f7304fbcd7763b1896"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalTake.js",
+          "bytes": 37268,
+          "sha256": "a347b71457b71336d57b8a4cffb4d85302e03e7f8273622afcc643e91a41d82f"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenCheckpoint.js",
+          "bytes": 34003,
+          "sha256": "4c41dd2073af1bbc2bf85e0fddf07ad521177aa852bafc0c132d723226a6df37"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/ActivityWindows.js",
+          "bytes": 19143,
+          "sha256": "a6848f02047c51228d76dc0c71c385d104e6b8f1c339d0102ce0992541e713ae"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+          "bytes": 21670,
+          "sha256": "43635c8c615dfcc5df2737f0a5a9318afdd0eb6950c491ddfc2a774767a13f0c"
+        },
+        {
+          "path": "test/procgen-terrain-topology.test.js",
+          "bytes": 10604,
+          "sha256": "fc25f5c922a04b68a302f877d376b4d9347f809f8e751052aa41bb7794a912d5"
+        },
+        {
+          "path": "test/helpers/actualTerrainTopology.js",
+          "bytes": 23341,
+          "sha256": "0a0e91aa33363f30b80ede13a12410eb3aa82c349b540e9f249cea0a120b1557"
+        },
+        {
+          "path": "test/procgen-actual-terrain-topology.test.js",
+          "bytes": 1384,
+          "sha256": "468c6c63c7c70afc9bb6ba98f923a4b9fc176bc8d4b0d234546b0cc485f99727"
+        },
+        {
+          "path": "e2e/procgen-workstation-terrain-topology.spec.js",
+          "bytes": 6056,
+          "sha256": "459e92e5b6fbe2c094b65626dd7deac9c4d39cd9b59956952b41a82612f2fd10"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 294,
+          "sha256": "143674c0591cfa491df4269f0ad9258346f375d0fab4f6e6f3716ae8f00c6c44"
+        }
+      ]
+    },
+    "evidence": {
+      "chamberAreas": [
+        [
+          {
+            "id": "body:1:1:component:1",
+            "area": 64,
+            "lineage": "new",
+            "enclosure": "closed"
+          },
+          {
+            "id": "body:1:1:component:2",
+            "area": 64,
+            "lineage": "new",
+            "enclosure": "closed"
+          }
+        ],
+        [
+          {
+            "id": "body:1:1:component:1",
+            "area": 129,
+            "lineage": "merged",
+            "enclosure": "closed"
+          }
+        ],
+        [
+          {
+            "id": "body:1:1:component:1",
+            "area": 64,
+            "lineage": "split",
+            "enclosure": "closed"
+          },
+          {
+            "id": "body:1:1:component:3",
+            "area": 64,
+            "lineage": "split",
+            "enclosure": "closed"
+          }
+        ],
+        [
+          {
+            "id": "body:1:1:component:1",
+            "area": 65,
+            "lineage": "unchanged",
+            "enclosure": "open"
+          },
+          {
+            "id": "body:1:1:component:3",
+            "area": 64,
+            "lineage": "unchanged",
+            "enclosure": "closed"
+          }
+        ]
+      ],
+      "chamberPhysicalHash": "a840767f6464d3be839742262f97e4f62177982c0860cef715ee0936a18129f4",
+      "heldIntents": [
+        {
+          "tick": 1,
+          "kind": "begin",
+          "reason": null
+        },
+        {
+          "tick": 1,
+          "kind": "begin",
+          "reason": null
+        },
+        {
+          "tick": 2,
+          "kind": "end",
+          "reason": "topology-component-changed"
+        },
+        {
+          "tick": 2,
+          "kind": "end",
+          "reason": "topology-component-changed"
+        }
+      ],
+      "nativeTake": {
+        "takeId": "take:actual-topology",
+        "reopened": true,
+        "changedROIRefused": true,
+        "changedMappingRefused": true,
+        "missingDefinitionRefused": true,
+        "originalUnchanged": true,
+        "pending": {
+          "takeId": "take:actual-topology-pending",
+          "reopened": true,
+          "status": "unsupported",
+          "projection": "Actual in-flight owner captured explicitly over actual source facts; no synthetic completed descriptor.",
+          "gaps": [
+            {
+              "firstTick": 3,
+              "generation": 1,
+              "kind": "topology-geometry-v1",
+              "lastTick": 3,
+              "reason": "qualified-topology-not-captured"
+            }
+          ]
+        }
+      },
+      "workerRevisions": [
+        {
+          "kind": "dig",
+          "rows": [
+            {
+              "eventId": "procgen:42:1:1:0:4",
+              "actorId": 0,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 9,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:6",
+              "actorId": 0,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 18,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:8",
+              "actorId": 0,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 27,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:14",
+              "actorId": 1,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 36,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:16",
+              "actorId": 1,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 45,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:18",
+              "actorId": 1,
+              "changedSolidCells": 9,
+              "changedAppearanceCells": 9,
+              "sourceEditRevision": 54,
+              "outcome": "changed"
+            }
+          ],
+          "intents": [
+            {
+              "mapping": "final",
+              "sourceEditRevision": 9,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "final",
+              "sourceEditRevision": 18,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "final",
+              "sourceEditRevision": 27,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "local",
+              "sourceEditRevision": 27,
+              "boundTopologyRevision": 27
+            },
+            {
+              "mapping": "final",
+              "sourceEditRevision": 36,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "local",
+              "sourceEditRevision": 36,
+              "boundTopologyRevision": 36
+            },
+            {
+              "mapping": "final",
+              "sourceEditRevision": 45,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "local",
+              "sourceEditRevision": 45,
+              "boundTopologyRevision": 45
+            },
+            {
+              "mapping": "final",
+              "sourceEditRevision": 54,
+              "boundTopologyRevision": 54
+            },
+            {
+              "mapping": "local",
+              "sourceEditRevision": 54,
+              "boundTopologyRevision": 54
+            }
+          ],
+          "staleWorkerResultRefused": true,
+          "analysisWork": {
+            "postCells": 7200,
+            "finalCells": 1200,
+            "maximumCellsPerPhase": 262144,
+            "physicalStepAndObserversMs": 15.700000017881393,
+            "includesDSP": false
+          }
+        },
+        {
+          "kind": "steel",
+          "rows": [
+            {
+              "eventId": "procgen:42:1:2:0:9",
+              "actorId": 0,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 0,
+              "sourceEditRevision": 0,
+              "outcome": "no-change"
+            },
+            {
+              "eventId": "procgen:42:1:2:0:10",
+              "actorId": 1,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 0,
+              "sourceEditRevision": 0,
+              "outcome": "no-change"
+            },
+            {
+              "eventId": "procgen:42:1:3:0:13",
+              "actorId": 0,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 0,
+              "sourceEditRevision": 0,
+              "outcome": "protected"
+            },
+            {
+              "eventId": "procgen:42:1:3:0:18",
+              "actorId": 1,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 0,
+              "sourceEditRevision": 0,
+              "outcome": "protected"
+            }
+          ],
+          "intents": [],
+          "staleWorkerResultRefused": false,
+          "analysisWork": {
+            "postCells": 0,
+            "finalCells": 0,
+            "maximumCellsPerPhase": 262144,
+            "physicalStepAndObserversMs": 5.5999999940395355,
+            "includesDSP": false
+          }
+        },
+        {
+          "kind": "recolor",
+          "rows": [
+            {
+              "eventId": "procgen:42:1:1:0:4",
+              "actorId": 0,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 6,
+              "sourceEditRevision": 6,
+              "outcome": "changed"
+            },
+            {
+              "eventId": "procgen:42:1:1:0:9",
+              "actorId": 1,
+              "changedSolidCells": 0,
+              "changedAppearanceCells": 6,
+              "sourceEditRevision": 12,
+              "outcome": "changed"
+            }
+          ],
+          "intents": [],
+          "staleWorkerResultRefused": false,
+          "analysisWork": {
+            "postCells": 2400,
+            "finalCells": 1200,
+            "maximumCellsPerPhase": 262144,
+            "physicalStepAndObserversMs": 2.699999988079071,
+            "includesDSP": false
+          }
+        }
+      ],
+      "diagonal": [
+        {
+          "connectivity": 4,
+          "components": [
+            1,
+            1
+          ],
+          "serializedConnectivity": 4
+        },
+        {
+          "connectivity": 8,
+          "components": [
+            2
+          ],
+          "serializedConnectivity": 8
+        }
+      ],
+      "unknownROI": {
+        "coverage": "partial",
+        "unknownCells": 162,
+        "components": [
+          {
+            "area": 1,
+            "enclosure": "closed",
+            "musical": "complete"
+          },
+          {
+            "area": 1,
+            "enclosure": "closed",
+            "musical": "complete"
+          }
+        ],
+        "activityStatus": "unknown-coverage",
+        "nativeCapture": {
+          "takeId": "take:actual-topology-partial-roi",
+          "reopened": true,
+          "supported": false,
+          "gaps": [
+            {
+              "firstTick": 2,
+              "generation": 1,
+              "kind": "topology-geometry-v1",
+              "lastTick": 2,
+              "reason": "qualified-topology-not-captured"
+            }
+          ]
+        }
+      },
+      "generation": {
+        "before": 1,
+        "after": 2,
+        "staleRefused": true,
+        "pendingOwnerRetired": true
+      },
+      "pause": {
+        "before": 3,
+        "after": 3,
+        "wallMs": 87.40000000596046,
+        "frames": 8
+      },
+      "display": {
+        "paints": 12,
+        "state": "ready",
+        "width": 1920,
+        "height": 1080
+      },
+      "refusals": [
+        "world",
+        "generation",
+        "ROI",
+        "connectivity",
+        "mapping",
+        "unbound",
+        "future"
+      ],
+      "liveProjectUnchanged": true,
+      "audioContexts": 0,
+      "midiRequests": 0
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 78,
+        "nodeFailures": 4,
+        "reason": "New fixture omitted required air color; generic checkpoint admission fixtures own no topology state and should not be forced to synthesize it. Correct setup and validate the owner only when present in the live or restored world."
+      },
+      {
+        "stage": "Short fixture diagnostics",
+        "reason": "Use supported physical contact spans, actual support-cell y=80 beside the cavity, and a real materializing step before readonly diagonal analysis; do not fabricate action-source support or treat unavailable masks as known geometry."
+      },
+      {
+        "nodePassing": 86,
+        "browserPassing": 5,
+        "reason": "Earlier complete batch passed, then actual worker race and explicit pending reopen coverage were strengthened with two one-case Node/Playwright runs while runtime bytes were unchanged."
+      },
+      {
+        "reason": "Receipt inspection revealed partial regional coverage must not certify global activity or capture. Add explicit guards and a native partial-ROI reopening case, then requalify the entire86Node/5browser batch."
+      }
+    ],
+    "ci396": {
+      "head": "cef914eb99af2048c1c2332477d15e2957b83f5a",
+      "status": "success",
+      "run": 41016188339,
+      "job": 123951914395,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41016188339",
+      "engineJob": 123951881099,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7276,
+      "nodePending": 10,
+      "browserPassed": 286,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 242,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.8,
+        "statements": 90.8,
+        "branches": 84.17,
+        "functions": 88.7
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 38363,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 11111,
+          "benchHistoryStress": 18316,
+          "benchHotpaths": 8931
+        },
+        "metrics": {
+          "perfP95Frame": 100,
+          "perfP50Tps": 82.80377431152873,
+          "historyRatio": 0.5851666666666666,
+          "antsAvgMs": 32.36,
+          "tileCompositionAvgMs": 4.11,
+          "overlayPlaneAvgMs": 21.68,
+          "scaledBlitAvgMs": 30.98
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5851666666666666
+          },
+          {
+            "speed": 60,
+            "ratio": 0.9321666666666667
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1271,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "adad8cfaaa04c605bcb6d332698829489c31d66c71faed496a41d5555fddbe07",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123951883296,
+        "windowsJob": 123951882979,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "7132ee7424a276efc0f8fbaaebf0f45ddc706fa5",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1162,
+        "inventorySha256": "2be2b7d5227e63f0154f27aac1b71b577d7ec4f7a713648612efc25e3fcbb3bf",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1271,
+        "engineRuntimeFiles": 1262,
+        "engineHarnessFiles": 9,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci396-main.zip",
+          "bytes": 902073,
+          "sha256": "e46a600a97ea3aaacaab0ca8f316c079652c1ef6bc42afa8f9361e98514189fc",
+          "githubArtifactId": 12961342253,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci396-engine.zip",
+          "bytes": 160933,
+          "sha256": "d715247a8be23f52e5c460ce36a1089132de7ccab134ea443b266bf654f972a4",
+          "githubArtifactId": 12961953437,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci396-linux.zip",
+          "bytes": 2247,
+          "sha256": "98f7c571f3eb402b018f8d5e0213cff86a0dfa794f3ceacc6dfe1db9a23d2f36",
+          "githubArtifactId": 12959886285,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci396-windows.zip",
+          "bytes": 2147,
+          "sha256": "3e89807e0dcb91d2a7ec2fe55deb2ce67ce3bb8fe83fad0e51ffb3c5e566da42",
+          "githubArtifactId": 12959752305,
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent.",
+      "priorFailure": {
+        "job": 123932946341,
+        "enginePassing": 17,
+        "engineFailures": 1,
+        "boundary": "Native Linux Firefox content-process signal11 before audio-navigation assertions.",
+        "rerunRequestedForJob": 123932946341,
+        "sourceChanged": false,
+        "scope": "Subsequent engine qualification passes. The native crash is preserved; no JavaScript crash repair claimed."
+      }
+    },
+    "ci397": {
+      "head": "525ff93d089ed60738cb954f76459a5394d91f9c",
+      "run": 41019738187,
+      "job": 123944087495,
+      "status": "failed",
+      "workstationPassed": 243,
+      "workstationFailed": 1,
+      "desktopPassed": 26,
+      "enginePassed": 18,
+      "nodeCoverage": "skipped after browser failure",
+      "nativeCodecs": "both passed",
+      "failure": {
+        "case": "native speed key keeps the recorded physical clock under paused",
+        "boundary": "physical-reperformance candidate memory admission",
+        "requestedBytes": 57671680,
+        "availableBytes": 14764987,
+        "sequence": 4,
+        "tick": 1,
+        "error": "ResourceBudgetError"
+      },
+      "scope": "Separate current-head replay admission defect; keep failed and frontload its repair next. Do not claim current head fully green."
+    },
+    "limits": [
+      "Bounded reference flood fill is qualified; incremental dirty-region reuse remains unimplemented under1183.",
+      "Local sealed geometry may be known inside a partial ROI; global activity/capture predicates still require complete regional coverage.",
+      "Pending take uses an explicitly labeled projection of the actual in-flight owner over actual source facts; no fabricated completed analysis.",
+      "Cavity throat sculpting calls explicit production collision-edit APIs, not the separate occupied-footprint authoring UI.",
+      "The actual two-worker cost includes physical stepping and semantic observers, excludes DSP, and is not a worst-device or maximum-capacity benchmark.",
+      "Topology descriptor coverage98.07%lines/100%functions/91.41%branches; topology-owner100%lines/functions/81.2%branches. Remaining malformed/capacity branches stay under broader typing/performance work.",
+      "No acoustic, installed asset matrix, hardware endpoint or archived-exact-mode claim.",
+      "Full green396 is independently verified after the recorded engine rerun;397 has a separate replay candidate admission failure. No full local suite repeated."
+    ],
+    "issueOutcome": "Keep1183 open for the first checklist incremental invalidation work;1194 remains for authored Digging Ocarina content/sound realization;1104 remains for broader capture/re-performance work. Commit this complete reference/binding span and repair CI397 next."
   }
 }

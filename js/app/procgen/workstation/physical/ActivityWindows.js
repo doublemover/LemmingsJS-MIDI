@@ -1,5 +1,6 @@
 import { plain, identity, integer, finite, bounds, freeze, copy } from './PhysicalSchema.js';
 import { MOTIF_PHYSICAL_KINDS } from './PhysicalMotifs.js';
+import { topologyResultMatchesRegion } from './TopologyInstrumentRegion.js';
 const roots = fact => fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []);
 const inside = (point, region) => !region || point && point.x >= region.x1 && point.x < region.x2 && point.y >= region.y1 && point.y < region.y2;
 export function validateActivityWindows(value, graph) {
@@ -19,12 +20,12 @@ export function validateActivityWindows(value, graph) {
 }
 export function createActivityWindowObserver({ maximumWork = 262144, maximumCompletions = 4096 } = {}) {
   if (!integer(maximumWork, 262144) || !maximumWork || !integer(maximumCompletions, 4096) || !maximumCompletions) throw new Error('Invalid activity observer capacity.');
-  let definitions = [], signatures = new Map(), states = new Map(), completions = new Map(), boundary = null, lastTick = -1, last = null;
+  let definitions = [], signatures = new Map(), topologyDefinitions = new Map(), states = new Map(), completions = new Map(), boundary = null, lastTick = -1, last = null;
   const configure = (values, graph = {}) => {
     const next = new Map(values.map(value => [value.id, JSON.stringify([value, graph.ensembles?.find(item => item.id === value.scope.ensembleId), graph.routes?.find(item => item.id === value.scope.routeId), graph.routes?.find(item => item.id === value.scope.routeId)?.markers?.map(marker => { const pickup = graph.pickups?.find(item => item.id === marker.gateId); return pickup && { id: pickup.id, geometry: pickup.geometry, laneScope: pickup.laneScope, ensembleId: pickup.ensembleId, trigger: pickup.trigger, directionPolicy: pickup.directionPolicy, hysteresis: pickup.hysteresis, bypass: pickup.bypass }; }), graph.topologyRegions?.find(item => item.id === value.scope.topologyRegionId)])]));
     for (const id of states.keys()) if (next.get(id) !== signatures.get(id)) states.delete(id);
     for (const [key, value] of completions) if (!next.has(value.windowId)) completions.delete(key);
-    definitions = values; signatures = next;
+    definitions = values; signatures = next; topologyDefinitions = new Map((graph.topologyRegions || []).map(region => [region.id, region]));
   };
   const observe = (batch, facts, domain, { heldVoices = [], relationships = 'complete', getLaneState = () => ({ available: true }), output = { status: 'unobserved' } } = {}) => {
     const current = `${batch.worldId}/${batch.generation}`; if (current !== boundary) { states.clear(); completions.clear(); boundary = current; lastTick = -1; }
@@ -56,7 +57,7 @@ export function createActivityWindowObserver({ maximumWork = 262144, maximumComp
         members.set(actor.actorId, actor); if (getLaneState(actor.laneId)?.available === false) muted++;
         if (definition.heldActions.includes(actor.action)) held++;
       }
-      if (scope.topologyRegionId) { const topology = batch.snapshot.topology?.regions?.find(value => value.regionId === scope.topologyRegionId)?.current; if (topology?.status !== 'complete' || topology.sourceRevision !== batch.snapshot.terrainRevision) markUnknown('incomplete-topology'); }
+      if (scope.topologyRegionId) { const topology = batch.snapshot.topology?.regions?.find(value => value.regionId === scope.topologyRegionId)?.current; if (!topologyResultMatchesRegion(topology, topologyDefinitions.get(scope.topologyRegionId)) || topology.coverage !== 'complete' || topology.worldId !== batch.worldId || topology.generation !== batch.generation || topology.tick > batch.tick || topology.sourceRevision !== batch.snapshot.terrainRevision) markUnknown('incomplete-topology'); }
       if (definition.physicalKinds.some(kind => ['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) && relationships !== 'complete') markUnknown('incomplete-relationships');
       if (definition.heldVoicesCount) for (const voice of heldVoices) if (members.has(voice.actorId) && !endedActors.has(voice.actorId) && !endedActions.has(`${voice.actorId}/${voice.actionInstanceId}`)) held++;
       const qualifying = [];

@@ -48,10 +48,11 @@ describe('bounded collision topology and causal excitation binding', () => {
   });
   it('binds two local work revisions honestly and never substitutes newest for missing post-transaction evidence', () => {
     const r = region(), first = analyzeTopology(input(r, chambers)), joined = analyzeTopology(input(r, (x, y) => x === 4 && y === 2 ? 0 : chambers(x, y), 2), first);
-    const source = batch(r, joined, [first, joined]), fact = work(1, 2, 2), end = bindTopologyFact(r, source, fact), post = bindTopologyFact({ ...r, bindingPolicy: 'postTransaction' }, source, fact);
+    const postRegion = region({ bindingPolicy: 'postTransaction' }), firstPost = analyzeTopology(input(postRegion, chambers)), joinedPost = analyzeTopology(input(postRegion, (x, y) => x === 4 && y === 2 ? 0 : chambers(x, y), 2), firstPost);
+    const source = batch(r, joined, [first, joined]), local = batch(postRegion, joinedPost, [firstPost, joinedPost]), fact = work(1, 2, 2), end = bindTopologyFact(r, source, fact), post = bindTopologyFact(postRegion, local, fact);
     expect(end).to.include({ sourceEditRevision: 1, boundTopologyRevision: 2, interpretation: 'completed-tick-musical-interpretation' });
     expect(post).to.include({ sourceEditRevision: 1, boundTopologyRevision: 1, interpretation: 'exact-local-revision' });
-    source.snapshot.topology.regions[0].history = [joined]; expect(bindTopologyFact({ ...r, bindingPolicy: 'postTransaction' }, source, fact).status).to.equal('unsupported');
+    local.snapshot.topology.regions[0].history = [joinedPost]; expect(bindTopologyFact(postRegion, local, fact).status).to.equal('unsupported');
   });
   it('derives authored pitches only from actual successful work and releases vanished held components without replacement attacks', () => {
     const r = region(), first = analyzeTopology(input(r, chambers)), graph = { version: 1, revision: 1, topologyRegions: [r], instruments: [
@@ -74,6 +75,11 @@ describe('bounded collision topology and causal excitation binding', () => {
       coverage: { status: 'complete', sourceRange: { firstTick: 1, lastTick: 2, worldId: 'scene' }, available: PHYSICAL_CAPTURE_PROFILE, gaps: [], topologyRegions: [] } };
     const plan = planCausalReinterpretation({ manifest, graph }); expect(plan.supported).to.equal(false);
     expect(plan.requirements.find(value => value.kind === 'topology-geometry-v1').reason).to.equal('topology-region-not-captured');
+  });
+  it('refuses changed or unbound region definitions before contact excitation', () => {
+    const r = region(), result = analyzeTopology(input(r, cavity)), source = batch(r, result, [result]), fact = work(1, 2, 2);
+    for (const changed of [{ bounds: { x1: 0, x2: 11, y1: 0, y2: 10 } }, { connectivity: 8 }, { halo: 2 }, { allowOpen: true }, { mapping: { ...r.mapping, bodyId: 'different' } }, { heldPolicy: 'retain-onset' }]) expect(bindTopologyFact(region(changed), source, fact).status).to.equal('unsupported');
+    const legacy = JSON.parse(JSON.stringify(source)); delete legacy.snapshot.topology.regions[0].current.definitionSignature; expect(bindTopologyFact(r, legacy, fact).status).to.equal('unsupported');
   });
   it('rejects late analysis after an edit or authoring revision and restores bounded histories', async () => {
     const masks = await loadProcgenMasks(), world = new ProcgenLaneWorld({ masks, assists: false });

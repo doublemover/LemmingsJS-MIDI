@@ -11,7 +11,7 @@ import { validateActivityWindows, createActivityWindowObserver } from './physica
 import { validatePhysicalMotifs, createPhysicalMotifObserver } from './physical/PhysicalMotifs.js';
 import { freeze as freezePhysical } from './physical/PhysicalSchema.js';
 import { validateEncounterDomain, createEncounterObserver } from './physical/Encounters.js';
-import { validateTopologyRegions, bindTopologyFact, validateTopologyResult } from './physical/TopologyInstrumentRegion.js';
+import { validateTopologyRegions, bindTopologyFact, validateTopologyResult, topologyResultMatchesRegion, topologyDefinitionSignature } from './physical/TopologyInstrumentRegion.js';
 import { validateTonalDomain, createTonalInterpretation } from './physical/TonalInterpretation.js';
 import { validateActionVoicePolicy, validateVoiceTransferPolicy, createActionVoiceAdmission, actionExpression, actionVoiceName } from './physical/ActionVoicePolicy.js';
 import { createRhythmicResponses, validateRhythmicResponse, RHYTHMIC_SOURCE_KINDS } from './physical/RhythmicResponses.js';
@@ -289,7 +289,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     for (const record of [...active.values()]) if (record.topologyBinding) {
       const region = current.topologyRegions?.find(r => r.id === record.instrument.topologyRegionId), result = batch.snapshot?.topology?.regions?.find(r => r.regionId === region?.id)?.current;
       if (result?.status === 'complete') { try { validateTopologyResult(result); } catch { endVoice(batch, record, null, 'invalid-topology-descriptor', output); continue; } }
-      const component = result?.status === 'complete' && result.worldId === batch.worldId && result.generation === batch.generation && result.sourceRevision === batch.snapshot?.terrainRevision && result.regionRevision === region.revision ? result.components.find(c => c.id === record.topologyBinding.componentId) : null;
+      const component = topologyResultMatchesRegion(result, region) && result.worldId === batch.worldId && result.generation === batch.generation && result.sourceRevision === batch.snapshot?.terrainRevision && result.tick <= batch.tick ? result.components.find(c => c.id === record.topologyBinding.componentId) : null;
       if (!component || component.musical.status !== 'complete' || result.sourceRevision !== record.topologyBinding.boundTopologyRevision && (component.lineage.kind !== 'unchanged' || region.heldPolicy === 'release-on-change' && component.geometryChanged)) { endVoice(batch, record, null, 'topology-component-changed', output); continue; }
       if (region.heldPolicy === 'retune-stable' && component.musical.pitchCents !== record.topologyPitchCents) {
         const offset = component.musical.pitchCents - record.topologyBinding.pitchCents;
@@ -529,6 +529,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     ...(record.lifetimeScope ? { lifetimeScope: record.lifetimeScope, scopeInstanceId: record.scopeInstanceId } : {}) })));
   const snapshot = () => { getCurrentGraph(); const performance = getPerformanceState(); if (snapshotCache && snapshotCache.performanceKey === JSON.stringify(performance)) return snapshotCache.value;
     const value = resourceOwner.stage('causal-observer-snapshot-copy', () => Object.freeze({ version: 1, ...(graph.preparedSurfaces?.length || bodyPreparations.diagnostics().heldPreparations ? { preparedSurfaces: bodyPreparations.snapshot() } : {}), swarm: swarm.snapshot(), generation, graphRevision: graph.revision, recoveryRequired, ...(graph.cargoStations?.length ? { cargo: cargo.snapshot() } : {}), ...(graph.activityWindows?.length ? { activity: activity.snapshot() } : {}), ...(graph.motifs?.length ? { motifs: motifs.snapshot() } : {}), ...(graph.encounters?.length ? { encounters: encounters.snapshot() } : {}), ...(tones.enabled() ? { tonalInterpretation: tones.snapshot() } : {}), instrumentEpochs: Object.freeze(Object.fromEntries(instrumentEpochs)), travel: travel.snapshot(), ...(graph.instruments.some(instrument => instrument.actionVoicePolicy) ? { actionAdmission: actionAdmission.snapshot() } : {}), ...(graph.instruments.some(instrument => instrument.response) ? { rhythmicResponses: rhythmic.snapshot() } : {}), ...(graph.pickups?.length || graph.ensembles?.length || graph.routes?.length ? { physicalDomain: physical.snapshot() } : {}), physicalCursor: Object.freeze({ ...cursor }),
+      ...(graph.topologyRegions?.length ? { topologyDefinitions: freezePhysical(graph.topologyRegions.map(region => [region.id, topologyDefinitionSignature(region)])) } : {}),
       ...(performance ? { performanceInputs: validateCausalPerformanceState(performance) } : {}),
       active: serializeVoices(active), ...(suppressed.size ? { suppressed: serializeVoices(suppressed) } : {}) }));
     snapshotCache = { value, performanceKey: JSON.stringify(performance) }; return value; };
@@ -539,6 +540,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       if (value?.performanceInputs && JSON.stringify(validateCausalPerformanceState(value.performanceInputs)) !== JSON.stringify(validateCausalPerformanceState(getPerformanceState())))
         throw new Error('Causal performance inputs differ from the checkpoint.');
       if (value?.version !== 1 || value.graphRevision !== current.revision || !Array.isArray(value.active) || !Array.isArray(value.suppressed ?? []) || value.active.length + (value.suppressed?.length || 0) > Math.max(4096, maxVoices)) throw new Error('Incompatible causal engine checkpoint.');
+      if (current.topologyRegions?.length && JSON.stringify(value.topologyDefinitions) !== JSON.stringify(current.topologyRegions.map(region => [region.id, topologyDefinitionSignature(region)]))) throw new Error('Unbound causal topology definition history.');
       const nextCursor = value.physicalCursor ?? { worldId: null, generation: value.generation, tick: -1, lastSequence: -1, batchId: null };
       if (!plain(nextCursor) || (nextCursor.worldId != null && !nonempty(nextCursor.worldId)) ||
         !Number.isSafeInteger(nextCursor.tick) || nextCursor.tick < -1 || !Number.isSafeInteger(nextCursor.lastSequence) || nextCursor.lastSequence < -1 ||

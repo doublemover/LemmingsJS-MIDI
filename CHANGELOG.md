@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Bind chamber descriptors and saved voices to their complete topology definitions, retire stale analysis across restore/reset, and refuse incompatible cavity reinterpretation.
+
 - Bind activity rest/cadence history to its source definitions and expose distinct missing route, topology, membership and source-window reasons.
 
 - Preserve formation identity on unknown views, compute actual 2D dispersion and selected-neighbor distances, and bind saved harmonic assignments to their definitions and tuning.
