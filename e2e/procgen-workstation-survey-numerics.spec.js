@@ -76,15 +76,18 @@ test('browser physical projection preserves real continuation differences and re
     window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); const root = new URL('./', location.href);
     const { surveyProjectionContinuations } = await import('/test/helpers/surveyProjectionContinuations.js');
     const { surveyCacheBindingCorpus } = await import('/test/helpers/surveyCacheBindingCorpus.js');
+    const { surveyBehaviorOwnerCorpus } = await import('/test/helpers/surveyBehaviorOwnerCorpus.js');
     const { createSurveyTrial } = await import(new URL('js/app/procgen/survey/ProcgenSurveyCore.js', root));
     const { BinaryReader } = await import(new URL('js/data/BinaryReader.js', root)), { FileContainer } = await import(new URL('js/data/FileContainer.js', root)), { MaskProvider } = await import(new URL('js/render/MaskProvider.js', root));
     const response = await fetch(new URL('lemmings_ohNo/MAIN.DAT', root)); if (!response.ok) throw new Error('Source masks unavailable');
     const reader = new BinaryReader(new Uint8Array(await response.arrayBuffer())), container = new FileContainer(reader), part = container.getPart(1); let masks;
     try { masks = new MaskProvider(part); } finally { part.release(); container.dispose(); reader.release(); }
     const create = scenario => createSurveyTrial({ scenario, masks });
-    return { continuations: await surveyProjectionContinuations(create), cacheBindings: await surveyCacheBindingCorpus(create) };
+    return { continuations: await surveyProjectionContinuations(create), cacheBindings: await surveyCacheBindingCorpus(create),
+      behaviorOwners: await surveyBehaviorOwnerCorpus(create, new URL('js/app/procgen/', root)) };
   });
   expect(result.continuations.map(row => row.kind)).toEqual(['speed', 'intervention', 'contact', 'intrinsic-and-accessor']); expect(result.cacheBindings.failures).toHaveLength(9);
+  expect(result.behaviorOwners.map(row => row.kind)).toEqual(['authoring-revision', 'crew-prerequisite', 'topology-lineage', 'pending-and-metadata']); expect(result.behaviorOwners.at(-1).failures).toHaveLength(13);
   await testInfo.attach('browser-projection-continuations', { body: JSON.stringify(result), contentType: 'application/json' });
 });
 
@@ -116,7 +119,7 @@ test('production generated pack evidence ignores query warmth and refuses altere
       sameWorld: api.world === world, sameTick: world.tickIndex === tick, sameProject: JSON.stringify(studio.getProject()) === project,
       output: studio.getPlaybackState().enabled, scope: 'Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract.' };
   });
-  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(8); expect(result.refusals).toHaveLength(6);
+  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(9); expect(result.refusals).toHaveLength(6);
   expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
   await testInfo.attach('generated-pack-cache-evidence', { body: JSON.stringify(result), contentType: 'application/json' });
 });

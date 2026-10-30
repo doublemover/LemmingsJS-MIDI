@@ -1,6 +1,11 @@
 import { readTerrainCell } from './TerrainAuthoringAdapter.js';
 import { validateTopologyRegions, validateTopologyRegion, analyzeTopology, validateTopologyResult, topologyMaskDigest } from './workstation/physical/TopologyInstrumentRegion.js';
 const pendingJobs = new WeakMap();
+const mapSize = Function.prototype.call.bind(Object.getOwnPropertyDescriptor(Map.prototype, 'size').get);
+const assertTopologyEvidenceBoundary = world => {
+  const pending = pendingJobs.get(world);
+  if (pending && mapSize(pending)) throw Object.assign(new Error('Survey evidence requires settled topology analysis.'), { name: 'SurveyStateProjectionError', code: 'pending-topology-evidence' });
+};
 const createTerrainTopologyState = () => ({ version: 1, epoch: 0, profiles: [], regions: new Map(), budgetTick: -1, postCells: 0, finalCells: 0, staleResults: 0 });
 const prepareTerrainTopologyConfiguration = (world, profiles) => {
   const next = validateTopologyRegions(profiles), state = world.terrainTopology;
@@ -61,4 +66,4 @@ const terrainTopologySnapshot = world => {
     return Object.freeze({ regionId: region.id, regionRevision: region.revision, requiredRevision: world.terrainRevision, status: value?.status ?? 'pending', reason: value?.reason ?? null,
       current: value?.current ?? null, history: Object.freeze([...(value?.history || [])]) }); })) });
 };
-export { disposeTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, prepareTopologyAnalysis, publishTopologyAnalysis, captureTerrainTopology, terrainTopologySnapshot };
+export { assertTopologyEvidenceBoundary, disposeTerrainTopology, createTerrainTopologyState, prepareTerrainTopologyConfiguration, configureTerrainTopology, prepareTopologyAnalysis, publishTopologyAnalysis, captureTerrainTopology, terrainTopologySnapshot };

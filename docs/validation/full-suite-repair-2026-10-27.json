@@ -83450,5 +83450,1659 @@
       "Keep wall and active-assistance continuation authoritative unless a separate normalization proof establishes equivalence. Do not erase behavior merely to obtain a cache match.",
       "Complete remaining negative metadata/shape corpus. Exact archived execution remains a separate qualification boundary."
     ]
+  },
+  "continuation378": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "730b666c0eb2101e03329c91e7c7757fdc378546",
+    "scope": "Survey state9: authoring command revisions, crew prerequisites and topology lineage/settlement, with intrinsic strict command/source metadata. Work solo; desktop minimum1920x1080.",
+    "counterexamples": {
+      "path": ".tmp/rook378-owner-counterexamples.json",
+      "scope": "Prior head omitted all three owner roots. Authoring revision/epoch omissions are retained; the probed crew censored counter remains deliberately diagnostic. The shared corpus separately proves real crew prerequisite completeness changes future completion coverage."
+    },
+    "changes": [
+      "Include physicalAuthoring, physicalCrewEvidence and terrainTopology in state9; legacy state8 evidence cannot newly qualify.",
+      "Use own data descriptors for complete strict metadata, including non-enumerable fields; refuse hidden accessors, functions, symbols and unsupported objects instead of silently skipping common asset property names.",
+      "Reject evidence while a privately registered topology publication remains pending; rejected duplicate-result counters and crew censored counters do not alter physical identity.",
+      "Paired production-function continuations differ in actual prepared/stale authoring acceptance, complete/incomplete crew completion and generated topology component identities."
+    ],
+    "validation": {
+      "node": {
+        "passed": 175,
+        "failed": 0,
+        "log": ".tmp/rook378-node-final.log",
+        "scope": "All survey Node files plus generated/authored/world-cache/edit-identity, topology and atomic authoring cases."
+      },
+      "playwright": {
+        "passed": 17,
+        "failed": 0,
+        "report": ".tmp/rook378-playwright-final.json",
+        "cases": [
+          {
+            "title": "offline replay pause follows active playback and resets after completion",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "saved reports compare current muted controlled and generated trials with explicit source uncertainty and reject changed assets",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "saved-report-source-replay.json",
+                "value": {
+                  "sourceDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                  "receipts": [
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-30c4dd0b857fc98f",
+                      "replayTrialId": "trial-30c4dd0b857fc98f",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 64,
+                        "originalMilestones": 2,
+                        "replayMilestones": 2
+                      },
+                      "originalFinalStateHash": "b4144106290ab96a",
+                      "replayFinalStateHash": "b4144106290ab96a",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 64,
+                          "originalMilestones": 2,
+                          "replayMilestones": 2
+                        }
+                      }
+                    },
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-d5a5d0383dd9508c",
+                      "replayTrialId": "trial-d5a5d0383dd9508c",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 64,
+                        "originalMilestones": 2,
+                        "replayMilestones": 2
+                      },
+                      "originalFinalStateHash": "e53a7de000da6bec",
+                      "replayFinalStateHash": "e53a7de000da6bec",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 64,
+                          "originalMilestones": 2,
+                          "replayMilestones": 2
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "midi": 0,
+                    "audio": 0
+                  },
+                  "errors": [],
+                  "activeCodeUnverified": true,
+                  "changedAssetRejected": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "a missing early baseline checkpoint never substitutes future final telemetry",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "scenario and policy-seed review preserves candidate identity and exposes distinct outcome evidence",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "survey-native-parity.json",
+                "value": {
+                  "sourceDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                  "replays": [
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-0e096d0d5c970b19",
+                      "replayTrialId": "trial-0e096d0d5c970b19",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 192,
+                        "originalMilestones": 4,
+                        "replayMilestones": 4
+                      },
+                      "originalFinalStateHash": "0ea91e4a4246671e",
+                      "replayFinalStateHash": "0ea91e4a4246671e",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 192,
+                          "originalMilestones": 4,
+                          "replayMilestones": 4
+                        }
+                      }
+                    },
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-428cc5e861aa2e3c",
+                      "replayTrialId": "trial-428cc5e861aa2e3c",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192,
+                          256,
+                          320,
+                          384,
+                          448,
+                          512,
+                          576,
+                          600
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 192,
+                            "throughTick": 256,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 256,
+                            "throughTick": 320,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 320,
+                            "throughTick": 384,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 384,
+                            "throughTick": 448,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 448,
+                            "throughTick": 512,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 512,
+                            "throughTick": 576,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 576,
+                            "throughTick": 600,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 600,
+                        "originalMilestones": 11,
+                        "replayMilestones": 11
+                      },
+                      "originalFinalStateHash": "522fce5cbcd7cfa0",
+                      "replayFinalStateHash": "522fce5cbcd7cfa0",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "91fa02d38794e47208630e3d4c0a31576fa6604b34eb9f8f4fb095d4b069db8c",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192,
+                            256,
+                            320,
+                            384,
+                            448,
+                            512,
+                            576,
+                            600
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 192,
+                              "throughTick": 256,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 256,
+                              "throughTick": 320,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 320,
+                              "throughTick": 384,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 384,
+                              "throughTick": 448,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 448,
+                              "throughTick": 512,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 512,
+                              "throughTick": 576,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 576,
+                              "throughTick": 600,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 600,
+                          "originalMilestones": 11,
+                          "replayMilestones": 11
+                        }
+                      }
+                    }
+                  ],
+                  "outputRequests": {
+                    "midi": 0,
+                    "audio": 0
+                  },
+                  "errors": [],
+                  "layout64Only": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "routes visible pause/step/cancel controls to bounded resident worlds without changing their clock @boundary",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "survey-native-controls.json",
+                "value": {
+                  "states": [
+                    "resume",
+                    "pause",
+                    "step",
+                    "cancel"
+                  ],
+                  "lastState": {
+                    "runGeneration": "848427e1-5e29-47be-bfe1-dc10c3c61450",
+                    "controlId": 3,
+                    "paused": true,
+                    "cancelled": true,
+                    "stepPending": false,
+                    "executionWorkers": 1,
+                    "stepReceipt": {
+                      "schemaVersion": 1,
+                      "runGeneration": "848427e1-5e29-47be-bfe1-dc10c3c61450",
+                      "controlId": 3,
+                      "status": "reached",
+                      "phase": "complete",
+                      "targetTick": 64,
+                      "requestedMs": 1762.196,
+                      "prepareLatencyMs": 0.9926000000004933,
+                      "barrierLatencyMs": 329.4351000000006,
+                      "reachedCheckpoint": 64,
+                      "terminationReason": null,
+                      "selected": [
+                        {
+                          "trialId": "trial-a0706984bc7f1e30",
+                          "attemptId": "native-control-baseline-593bc02eb30261f2",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-08fa91e6c73b0b8a",
+                          "attemptId": "native-control-no-learning-1895d9c73414dd2b",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-58d985e500e00331",
+                          "attemptId": "native-control-sample-9c6af5431e94e87f",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-239ede419bdb313d",
+                          "attemptId": "native-control-sample-c95aae1694d6e2ca",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-92ad85031a043d17",
+                          "attemptId": "native-control-sample-8204defb1ae2354f",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-26f47787fd2613fb",
+                          "attemptId": "native-control-sample-7e86d1e946b095d5",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-09f04f96d7b46432",
+                          "attemptId": "native-control-sample-e8ec2394c86f5988",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-fee653dd1f670a01",
+                          "attemptId": "native-control-sample-1594a62912d523fd",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-f94d7d4f900a95e3",
+                          "attemptId": "native-control-sample-745798c9064ae4a5",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-d9553255387e13b9",
+                          "attemptId": "native-control-sample-e7ad1efe7ec73062",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-8a25423f487ab0db",
+                          "attemptId": "native-control-sample-02aeb744271c7998",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-21b425982e43efdc",
+                          "attemptId": "native-control-sample-b6a6461e10a7d29a",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-b1dc7a2a9e11628e",
+                          "attemptId": "native-control-sample-72572b5c69092b60",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        },
+                        {
+                          "trialId": "trial-feb011e85f4f4674",
+                          "attemptId": "native-control-sample-fa71db019238547d",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3"
+                        }
+                      ],
+                      "selectedCount": 14,
+                      "selectionComplete": true,
+                      "workers": [
+                        {
+                          "worker": 0,
+                          "workerGeneration": "216ac1b4-ece3-4d8d-9423-d5538ab148c3",
+                          "status": "reached",
+                          "selectionKnown": true,
+                          "acknowledged": true,
+                          "selected": [
+                            {
+                              "trialId": "trial-a0706984bc7f1e30",
+                              "attemptId": "native-control-baseline-593bc02eb30261f2",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-08fa91e6c73b0b8a",
+                              "attemptId": "native-control-no-learning-1895d9c73414dd2b",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-58d985e500e00331",
+                              "attemptId": "native-control-sample-9c6af5431e94e87f",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-239ede419bdb313d",
+                              "attemptId": "native-control-sample-c95aae1694d6e2ca",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-92ad85031a043d17",
+                              "attemptId": "native-control-sample-8204defb1ae2354f",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-26f47787fd2613fb",
+                              "attemptId": "native-control-sample-7e86d1e946b095d5",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-09f04f96d7b46432",
+                              "attemptId": "native-control-sample-e8ec2394c86f5988",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-fee653dd1f670a01",
+                              "attemptId": "native-control-sample-1594a62912d523fd",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-f94d7d4f900a95e3",
+                              "attemptId": "native-control-sample-745798c9064ae4a5",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-d9553255387e13b9",
+                              "attemptId": "native-control-sample-e7ad1efe7ec73062",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-8a25423f487ab0db",
+                              "attemptId": "native-control-sample-02aeb744271c7998",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-21b425982e43efdc",
+                              "attemptId": "native-control-sample-b6a6461e10a7d29a",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-b1dc7a2a9e11628e",
+                              "attemptId": "native-control-sample-72572b5c69092b60",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-feb011e85f4f4674",
+                              "attemptId": "native-control-sample-fa71db019238547d",
+                              "tick": 64,
+                              "status": "resident"
+                            }
+                          ]
+                        }
+                      ],
+                      "expectedWorkers": 1,
+                      "acknowledgedWorkers": 1,
+                      "unacknowledgedWorkerCount": 0,
+                      "unacknowledgedWorkers": []
+                    },
+                    "readyWorkers": 1,
+                    "preparingWorkers": 0,
+                    "computation": {
+                      "computedResults": 16,
+                      "receivedResults": 16,
+                      "preparingTrials": 0,
+                      "admittedTrials": 0
+                    },
+                    "storage": {
+                      "pendingResultCount": 0,
+                      "pendingResultBytes": 0,
+                      "peakPendingResultCount": 1,
+                      "peakPendingResultBytes": 11570
+                    }
+                  },
+                  "statuses": [
+                    {
+                      "trialId": "trial-a0706984bc7f1e30",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-08fa91e6c73b0b8a",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-58d985e500e00331",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-239ede419bdb313d",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-92ad85031a043d17",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-26f47787fd2613fb",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-09f04f96d7b46432",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-fee653dd1f670a01",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-f94d7d4f900a95e3",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-d9553255387e13b9",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-8a25423f487ab0db",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-21b425982e43efdc",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-b1dc7a2a9e11628e",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-feb011e85f4f4674",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-dd018aa3ad2f76cf",
+                      "status": "cancelled",
+                      "lastTick": 0
+                    },
+                    {
+                      "trialId": "trial-9ef0e22d8727ac79",
+                      "status": "cancelled",
+                      "lastTick": 0
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "keeps selection, keyboard order and empty comparisons consistent",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "explains an absent baseline and fits the supported desktop review viewport",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "keeps the pause label truthful when the server rejects a control",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "newer files win over delayed files and URL reports; malformed replacement is atomic",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "a changed manifest with the same experiment ID replaces scene and trial identity",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "a saved file detaches live controls and ignores a pending live report",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "obsolete replay setup cannot paint, publish a receipt or dispose a newer replay",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "desktop survey canonical numeric vectors match Node and ignore spoofed typed view properties",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "authored scene source evidence preserves prepared ownership through physical byte refusal and recovery @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-scene-source-evidence",
+                "value": {
+                  "before": "2e7088c9745b214d",
+                  "recovered": "2e7088c9745b214d",
+                  "failures": [
+                    {
+                      "field": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "pixels",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    }
+                  ],
+                  "source": {
+                    "status": "prepared",
+                    "profile": "original-ordered-rectangle-terrain-v1",
+                    "method": "dedicated-worker",
+                    "activeExecution": "bound",
+                    "layoutHash": "baf64186ee94a5ef72c7f6363ebf78d0582f892be17fb2a3e419f1161dc12a5a",
+                    "storageHash": "8212269bbb275f26840bbf59c00eeec36f6246c8a5bec1cd0c06d1f5d8fe713a",
+                    "typedBytes": 838656,
+                    "fineGrowth": false,
+                    "objectPolicy": "no-procedural-objects-inside-initial-score",
+                    "qualification": "original-authored-source;runtime-and-playability-validation-pending"
+                  },
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Actual catalog Prepare/Load, admitted worker compiled authored source, immutable seed bindings and read-only local integrity checks. No archived exact-execution or acoustic claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "browser physical projection preserves real continuation differences and rejects nested accessor evidence @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "browser-projection-continuations",
+                "value": {
+                  "continuations": [
+                    {
+                      "kind": "speed",
+                      "tick": 48,
+                      "before": [
+                        "1ba35e32c7b0df2e",
+                        "6a565f9f3433fdc3"
+                      ],
+                      "after": [
+                        {
+                          "physical": "41237b5d70a4b029",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "e6287428e4b79afc",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        30
+                      ]
+                    },
+                    {
+                      "kind": "intervention",
+                      "tick": 48,
+                      "before": [
+                        "1ba35e32c7b0df2e",
+                        "13e01026101b1eb2"
+                      ],
+                      "after": [
+                        {
+                          "physical": "41237b5d70a4b029",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "9278603fa6c299bb",
+                          "events": "0edd37c330fa0c6f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        26
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "contact",
+                      "tick": 48,
+                      "before": [
+                        "1ba35e32c7b0df2e",
+                        "ced94da052071104"
+                      ],
+                      "after": [
+                        {
+                          "physical": "41237b5d70a4b029",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "6ebc6f9ffa1daf73",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "intrinsic-and-accessor",
+                      "getters": 0,
+                      "refusal": "accessor-state-data",
+                      "holesDistinct": true
+                    }
+                  ],
+                  "cacheBindings": {
+                    "failures": [
+                      {
+                        "kind": "wrong-lane-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-collision-slot",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-lane-index",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "foreign-source-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "altered-evicted-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "divergent-held-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "detached-lane-edit",
+                        "field": "lane-edit",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-slot",
+                        "field": "edit-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-owner",
+                        "field": "edit-owner-last",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      }
+                    ],
+                    "collisionGround": true,
+                    "editGround": true,
+                    "getters": 0,
+                    "compactionStable": true,
+                    "heldPristineStable": true,
+                    "wallContinuationDistinct": true,
+                    "activeAssistDistinct": true,
+                    "scope": "Owned collision/edit binding refusal and actual source repair; wall and active-assist continuations remain authoritative, without claiming warm/cold wall-cache normalization."
+                  },
+                  "behaviorOwners": [
+                    {
+                      "kind": "authoring-revision",
+                      "before": [
+                        "844d51058831e701",
+                        "844d51058831e701"
+                      ],
+                      "after": [
+                        "844d51058831e701",
+                        "795f6b8afd8956be"
+                      ],
+                      "outcomes": [
+                        "prepared",
+                        "stale"
+                      ]
+                    },
+                    {
+                      "kind": "crew-prerequisite",
+                      "before": [
+                        "2d3fd3d13ef3e865",
+                        "2d3fd3d13ef3e865"
+                      ],
+                      "after": [
+                        "2d3fd3d13ef3e865",
+                        "108be0cccc8b92b0"
+                      ],
+                      "outcomes": [
+                        "complete",
+                        "incomplete"
+                      ]
+                    },
+                    {
+                      "kind": "topology-lineage",
+                      "before": [
+                        "6d4af2e2de08913e",
+                        "6d4af2e2de08913e"
+                      ],
+                      "after": [
+                        "6d4af2e2de08913e",
+                        "41c3dd425b6b8196"
+                      ],
+                      "outcomes": [
+                        "owner.room:1:1:component:1",
+                        "owner.room:1:1:component:41"
+                      ]
+                    },
+                    {
+                      "kind": "pending-and-metadata",
+                      "before": "e4c667505cd915f4",
+                      "settled": "e4c667505cd915f4",
+                      "pending": "pending-topology-evidence",
+                      "getters": 0,
+                      "failures": [
+                        {
+                          "field": "objects",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "descriptor",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "groups",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "world",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "runtime",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "image",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "piece",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "composite",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "production generated pack evidence ignores query warmth and refuses altered physical caches @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "generated-pack-cache-evidence",
+                "value": {
+                  "stateSchema": 9,
+                  "before": "fb0cd951eb3986ed",
+                  "warm": "fb0cd951eb3986ed",
+                  "recovered": "fb0cd951eb3986ed",
+                  "initialCounts": [
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    },
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    }
+                  ],
+                  "warmCounts": [
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    },
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    }
+                  ],
+                  "refusals": [
+                    {
+                      "kind": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "descriptor",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "description",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "growth-plan",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "growth-plan",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "unproved-collision",
+                      "code": "unverified-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    }
+                  ],
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract."
+                }
+              }
+            ]
+          }
+        ],
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Both complete selected survey files, including actual report/control/replay/source and catalog Prepare/Load journeys, numeric/alias corpus and four behavior-owner groups with13metadata negatives."
+      },
+      "coverage": {
+        "total": {
+          "lines": 98.91,
+          "functions": 97.67,
+          "branches": 89.56
+        },
+        "js/app/procgen/ProcgenTerrainTopology.js": {
+          "lines": 92.75,
+          "functions": 90.9,
+          "branches": 83.72
+        },
+        "js/app/procgen/survey/ProcgenSurveyCore.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 90.98
+        }
+      },
+      "coverageFollowup": "Survey core100%lines/functions,90.98%branches. Extend topology stale/configuration/budget refusal branches and retained-source metadata variants; no complete branch-coverage claim.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 361,
+        "workerFiles": 292,
+        "workerSha256": "f155707fac124e36c8e37a43485419c2563fc7232817c23695056ad641621003"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook378-owner-counterexamples.json",
+          "bytes": 548,
+          "sha256": "9c5792df5a4b1ad4d0c009f663f241a09078e60bb9e36f74da3323ac7026b60d"
+        },
+        {
+          "path": ".tmp/rook378-node-final.log",
+          "bytes": 18683,
+          "sha256": "da4c4d1e453df66db4d8edcbcfbe6c477f1b3d24d5aba10933c3beaced932b9b"
+        },
+        {
+          "path": ".tmp/rook378-playwright-final.json",
+          "bytes": 55160,
+          "sha256": "ec9e098544a1e8cbe7f47d66c5a2cd9d42db45cb230f63ab80f86e90083c75ea"
+        },
+        {
+          "path": ".tmp/rook378-format.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook378-checks.log",
+          "bytes": 4209,
+          "sha256": "44adba5e1ecbd9444f5a29553eea81d078c65d5eed836f0d540f39c464839abe"
+        },
+        {
+          "path": ".tmp/rook378-coverage/coverage-summary.json",
+          "bytes": 1025,
+          "sha256": "552633941f816bb8416f4f6e1d2574f79ae9ff59140874eec0324538f0ff93a4"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainCacheEvidence.js",
+        "bytes": 12032,
+        "sha256": "5dbad56ed687e0a89bd5030b96ac60a024b8d6073c941ed943e06c8992aea210"
+      },
+      {
+        "path": "js/app/procgen/ProcgenWorldCacheEvidence.js",
+        "bytes": 5112,
+        "sha256": "b671320464a3877aa8ad4b68c6747aa2890bd4f6090af6bf4ea0db1ed088debb"
+      },
+      {
+        "path": "js/app/procgen/ProcgenScoredTerrain.js",
+        "bytes": 15289,
+        "sha256": "20e2060cee8624e1166f9b92a753b28c2cbdb602395962253d6d4e11f411ee04"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 36557,
+        "sha256": "7f4942778bf2cd4c718873c9fa490526c31de6b15369228a99b19429cee67cd7"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyTerrain.js",
+        "bytes": 4052,
+        "sha256": "bb697143ae378f430de12f231e7ff3832c8490067d0e1883a1698c8dd6a4140e"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4791,
+        "sha256": "f5377c2589876f36a61970f5a3ea92d59762d860d82032b08f542fdd2f513177"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 13299,
+        "sha256": "112006c24a31ca0208bb29b0ae4434e999478d8f2f4d2151d6221140afc54b10"
+      },
+      {
+        "path": "test/procgen-world-cache-evidence.test.js",
+        "bytes": 1820,
+        "sha256": "e0c73ebd53270f6c2ed202a3981fb1dc3b2c014f9259a28b0b6c915417477544"
+      },
+      {
+        "path": "test/helpers/surveyCacheBindingCorpus.js",
+        "bytes": 5748,
+        "sha256": "7b8f77f282b6516979fb9b45096b7ee264f9cfccacf7b5e03b7b57800ae57cb0"
+      },
+      {
+        "path": "test/procgen-authored-terrain-evidence.test.js",
+        "bytes": 5983,
+        "sha256": "cb1a4f0bc3bed971ff47dae5728c1cb74e64982719556b33cf6706f0b91b94c1"
+      },
+      {
+        "path": "test/procgen-generated-terrain-evidence.test.js",
+        "bytes": 7834,
+        "sha256": "83ef146c067c376ba61f2c3f282b24b7440942da1abfb3bd0442bcfc2374c254"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22309,
+        "sha256": "66e2e4ac7f60f382035765bca6b61d94e3eb34ffc2402f7799cae36b4b622353"
+      },
+      {
+        "path": "js/app/procgen/ProcgenTerrainTopology.js",
+        "bytes": 8313,
+        "sha256": "9992d45ffcd86d1b43b2a1a0c0a1c670588743af184cb7ccf9b775b12866fadd"
+      },
+      {
+        "path": "test/procgen-survey-core.test.js",
+        "bytes": 33226,
+        "sha256": "a35eef5ce17e355d16a173fa4028ee97923ea56dab2c460060ed834c7f07f751"
+      },
+      {
+        "path": "test/helpers/surveyBehaviorOwnerCorpus.js",
+        "bytes": 7989,
+        "sha256": "e5ed214acdd53b236e11590f13527aa6002f49f1805d9ce3e8d178351f615df7"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "97eeed53b68c910b197cf9bdefc914b0804d5138",
+      "status": "success",
+      "run": 40973024023,
+      "job": 123794163765,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40973024023",
+      "engineJob": 123794163345,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7216,
+      "nodePending": 10,
+      "browserPassed": 269,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 225,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.97,
+        "functions": 88.61
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 38465,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.29999999999927,
+          "perfP50Tps": 82.88357748653708,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 31.98,
+          "tileCompositionAvgMs": 4.21,
+          "overlayPlaneAvgMs": 22.35,
+          "scaledBlitAvgMs": 30.45
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1257,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123794164372,
+        "windowsJob": 123794163852,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "f8d20cd6dc3839b6990c551b562b68b866148f9b",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1146,
+        "inventorySha256": "18fa5b9ad949e209ffa86b1c44e572a72d4fd3a2a69523ca4ce1a63b0e6852be",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1257,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci374-main.zip",
+          "bytes": 764467,
+          "sha256": "de886280d4959ef6e339bb18319546feb02f44836ac2f727a92c6b98cc621a04"
+        },
+        {
+          "path": ".tmp/ci374-engine.zip",
+          "bytes": 155275,
+          "sha256": "658a93c9fb413d707104e97fda7bf87243ef2d4aef86f4b96ae56bcac413e0dc"
+        },
+        {
+          "path": ".tmp/ci374-linux.zip",
+          "bytes": 2247,
+          "sha256": "d8b91bb0c41606e93a66f01036c4f03c311c47b5f96329d5c4bf9556cf95e21a"
+        },
+        {
+          "path": ".tmp/ci374-windows.zip",
+          "bytes": 2146,
+          "sha256": "be01a8d98e54a87cb1239e33b507885c9eb273ae8044316a43a903c97e47655f"
+        },
+        {
+          "path": ".tmp/ci374-main-workstation-result-qualification.json",
+          "bytes": 185109,
+          "sha256": "b51ca05aacf2ef435862a00e99569a6548391ede3ad20f48cec23e257b84ff2f"
+        },
+        {
+          "path": ".tmp/ci374-engine-lifecycle-engine-qualification.json",
+          "bytes": 244359,
+          "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
+        },
+        {
+          "path": ".tmp/ci374-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "fea1b8d421995a3b68f10f268106f2caef8b2588743fb03fcd899f20d55b0c0e"
+        },
+        {
+          "path": ".tmp/ci374-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "ad773d901d38b5a381d34816b79fdbc9783e869071e7bc2626e06965e08f44cf"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining1223": "Audit actual actor processing order, active actor registry and physical fact identity/capacity continuation. Survey state must not claim authoritative equality while these owners remain omitted. Checkpoint-compatible physical projection and exact archived execution are separate contracts."
   }
 }

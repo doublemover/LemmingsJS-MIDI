@@ -5,6 +5,7 @@ import { hashSurveyValue, SURVEY_STATE_SCHEMA } from '../js/app/procgen/survey/P
 import { ProcgenPackTerrain } from '../js/app/procgen/ProcgenPackTerrain.js';
 import { captureGeneratedTerrainEvidence } from '../js/app/procgen/ProcgenTerrainCacheEvidence.js';
 import { surveyProjectionContinuations } from './helpers/surveyProjectionContinuations.js';
+import { surveyBehaviorOwnerCorpus } from './helpers/surveyBehaviorOwnerCorpus.js';
 
 describe('generated terrain cache evidence ownership', function() {
   this.timeout(30000); let terrain, masks;
@@ -68,11 +69,16 @@ describe('generated terrain cache evidence ownership', function() {
       for (const chunk of [40, 4, 17]) { terrain.getChunk(seed, chunk, true); terrain.growthPlan(seed, chunk); }
       expect(trial.snapshot().physicalStateHash).to.equal(before); const chunk = terrain.getChunk(seed, 4); chunk.solid[0] ^= 1;
       rejection('changed-generated-terrain-cache', () => trial.snapshot()); chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
-      expect(SURVEY_STATE_SCHEMA).to.equal(8);
+      expect(SURVEY_STATE_SCHEMA).to.equal(9);
     } finally { trial.dispose(); }
   });
   it('distinguishes actual speed, command and contact futures while refusing nested accessors without evaluating them', async () => {
     const results = await surveyProjectionContinuations(scenario => createSurveyTrial({ masks, scenario }));
     expect(results.map(result => result.kind)).to.deep.equal(['speed', 'intervention', 'contact', 'intrinsic-and-accessor']);
+  });
+  it('binds authoring acceptance, crew prerequisites and topology lineage, refusing outstanding publications and hidden metadata', async () => {
+    const results = await surveyBehaviorOwnerCorpus(scenario => createSurveyTrial({ masks, scenario }));
+    expect(results.map(result => result.kind)).to.deep.equal(['authoring-revision', 'crew-prerequisite', 'topology-lineage', 'pending-and-metadata']);
+    expect(results.at(-1).failures).to.have.length(13);
   });
 });

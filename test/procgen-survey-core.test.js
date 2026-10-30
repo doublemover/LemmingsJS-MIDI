@@ -230,6 +230,8 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compareSurveyReplay(olderState, olderState).matched).to.equal(false);
     const priorProjection = { ...complete, provenance: { ...complete.provenance, stateSchema: 4 } };
     expect(compareSurveyReplay(priorProjection, priorProjection).matched).to.equal(false);
+    const beforeBehaviorOwners = { ...complete, provenance: { ...complete.provenance, stateSchema: 8 } };
+    expect(compareSurveyReplay(beforeBehaviorOwners, beforeBehaviorOwners).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
     const unbound = { ...complete, provenance: { ...complete.provenance, scenarioHash: '0'.repeat(16) } };

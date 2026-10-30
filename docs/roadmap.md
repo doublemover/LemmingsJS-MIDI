@@ -9776,3 +9776,25 @@ export-budget acknowledgments still prevent a false complete receipt.
   authoring, crew/topology/projection and other known world behavior owners
   outside the current stateOwners list. Retain remaining negative metadata
   corpus and archived execution binding separately. Continue solo.
+
+
+### Continuation 378 - physical authoring, crew and topology evidence
+
+- State9 retains authoring acceptance revisions, full crew prerequisites and
+  topology lineage/configuration/budgets; outstanding private publications
+  refuse qualification. Rejected topology diagnostics and crew censor counts
+  remain outside physical identity. Prior state8 receipts stay unqualified.
+- Strict command/source metadata includes hidden own data and refuses accessors,
+  functions, symbols and unsupported objects. Common asset property names cannot
+  silently hide fields on these bounded behavioral owners. No getter executes.
+- All175related Node cases and17Playwright cases pass as one source-bound batch
+  at1920x1080, including all selected survey/report/replay controls, actual
+  authored Prepare/Load and shared continuation corpora. Paired production
+  authoring acceptance, crew completion coverage and topology identities differ.
+  Survey core100%lines/functions and90.98%branches; topology92.75%lines,90.9%
+  functions and83.72%branches. Static/critical/provenance/category gates pass.
+- Continue #1223 with actual actor processing order, active registry and causal
+  fact identity/capacity continuation. Current checkpoint-compatible physics
+  projection and exact archived execution are separate contracts. Full377 has
+  passed engine/native/static/desktop jobs and is still running the main job;
+  latest fully source-verified checkpoint remains374/97eeed53. Continue solo.

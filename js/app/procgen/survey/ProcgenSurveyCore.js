@@ -3,6 +3,7 @@ import { ProcgenSurveyTerrain, captureControlledSurveyTerrain } from './ProcgenS
 import { captureTerrainEditIdentity } from '../ProcgenTerrainEditIdentity.js';
 import { captureGeneratedTerrainEvidence } from '../ProcgenTerrainCacheEvidence.js';
 import { verifyProcgenWorldCacheBindings } from '../ProcgenWorldCacheEvidence.js';
+import { assertTopologyEvidenceBoundary } from '../ProcgenTerrainTopology.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -19,19 +20,20 @@ const ignoredKeys = new Set(['world', 'runtime', 'sprites', 'spriteProvider', 'c
   'sourceDescriptor', 'assemblyCatalog', 'wordPlanner', 'descriptor', 'groups', 'groupsByRole', 'pairs', 'rasters']);
 const stateOwners = ['tickIndex', 'generation', 'generationStartTick', 'seed', 'laneSeeds', 'laneCount', 'laneHeight', 'eventTimeMs', 'simulationTimeMs', 'interventionState', 'nextActorId',
   'worldId', 'width', 'height', 'leftEdgeX', 'workstationEnabled', 'assists', 'workerLimits', 'actorBirthAbilities', 'cohorts', 'spawnSpreadTicks', 'maxActors',
-  'physicalJunctions', 'physicalFeedback', 'terrainScoreState', 'terrainScorePending', 'birthCohortRecords', 'birthCohortRevision',
+  'physicalJunctions', 'physicalFeedback', 'physicalAuthoring', 'physicalCrewEvidence', 'terrainTopology', 'terrainScoreState', 'terrainScorePending', 'birthCohortRecords', 'birthCohortRevision',
   'spawnedTotal', 'activeCount', 'admissionPaused', 'frontiers', 'generatedThrough', 'terrainRevision', 'frontierRevision', 'terrainActivityTicks',
   'pendingTerrainWork', '_effectiveTerrainWork', '_manualNukeLanes', '_spawnPhases', '_spawnPhaseRanks', '_laneAdmissionCohorts', '_spawnPhaseCohortTick',
   'accessTasks', 'edgeBlockers', 'failureReasons', 'stats', 'population', 'stall', 'terrainGrowth', 'lanePolicy', 'hazardPlanner', 'tunnelRoutes', 'basinRoutes',
   'hazards', 'triggerManager', 'terrainTileRevisions', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'];
 const knownWorldOwners = new Set([...stateOwners, 'actors', 'actions', 'terrain', 'editChunks', 'timer', 'soundEvents', 'runtime', 'sprites', 'characterParticles',
-  'physicalAuthoring', 'physicalCrewEvidence', 'terrainTopology', 'scenery', 'challengeCacheLimit', '_assistedColumn', '_chunkSlots', '_collisionSlots', '_collisionIndices',
+  'scenery', 'challengeCacheLimit', '_assistedColumn', '_chunkSlots', '_collisionSlots', '_collisionIndices',
   '_laneChunk', '_laneChunkIndex', '_laneEdits', '_laneEditIndex', '_editSlots', '_editCache', '_editIndices', '_stallWork', '_physicalWorkBounds',
   '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_completedPhysicalBatchId', '_completedPhysicalSnapshot', '_snapshotRetainers', '_authoritativeActors',
   '_processingActorId', '_processingLane', '_stepping', '_failedTick', '_disposed', '_disposalError']);
 
 // Read own data only. No snapshot, terrain query, revision read, or cache get.
 const captureState = (world, records, eventHash, { physicalOnly = false, scenarioOnly = false } = {}) => {
+  assertTopologyEvidenceBoundary(world);
   for (const key of Object.getOwnPropertyNames(world)) {
     const descriptor = Object.getOwnPropertyDescriptor(world, key);
     if (!descriptor || !Object.hasOwn(descriptor, 'value')) throw Object.assign(new Error('Survey state owner cannot be an accessor: ' + key.slice(0, 128)), { name: 'SurveyStateProjectionError', code: 'accessor-state-owner' });
@@ -45,6 +47,8 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     return descriptor?.value;
   };
   const encode = (value, path) => {
+    const strict = /^(physicalAuthoring|physicalCrewEvidence|terrainTopology|interventionState|physicalFeedback|physicalJunctions|terrainScoreState|terrainScorePending)(\.|$)/.test(path);
+    if (strict && (typeof value === 'function' || typeof value === 'symbol')) throw Object.assign(new Error('Unsupported survey state data: ' + path.slice(0, 192)), { name: 'SurveyStateProjectionError', code: 'unsupported-state-data' });
     if (value == null || typeof value !== 'object') return typeof value === 'function' ? undefined : value;
     if (actions.has(value)) return { action: actions.get(value) };
     if (actors.has(value) && !path.startsWith('actors.')) return { actor: actors.get(value) };
@@ -52,20 +56,23 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     seen.set(value, path);
     if (ArrayBuffer.isView(value)) return { intrinsicViewHash: hashSurveyValue(value) };
     if (value instanceof Map) return { map: Array.from(Map.prototype.entries.call(value), ([key, entry], index) => [encode(key, `${path}.key${index}`), encode(entry, `${path}.value${index}`)]),
-      properties: Object.fromEntries(Object.keys(value).filter(key => !ignoredKeys.has(key) && !key.startsWith('_last')).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
-    if (value instanceof Set) return { set: Array.from(Set.prototype.values.call(value), (entry, index) => encode(entry, `${path}.${index}`)) };
+      properties: Object.fromEntries((strict ? Object.getOwnPropertyNames(value) : Object.keys(value)).filter(key => strict || !ignoredKeys.has(key) && !key.startsWith('_last')).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
+    if (value instanceof Set) return { set: Array.from(Set.prototype.values.call(value), (entry, index) => encode(entry, `${path}.${index}`)),
+      ...(strict ? { properties: Object.fromEntries(Object.getOwnPropertyNames(value).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) } : {}) };
     if (Array.isArray(value)) {
       const entries = new Array(value.length);
       for (let index = 0; index < value.length; index++) if (Object.hasOwn(value, index)) entries[index] = encode(data(value, index, `${path}.${index}`), `${path}.${index}`);
-      return { array: entries, properties: Object.fromEntries(Object.keys(value).filter(key => !/^\d+$/.test(key)).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
+      return { array: entries, properties: Object.fromEntries((strict ? Object.getOwnPropertyNames(value) : Object.keys(value)).filter(key => key !== 'length' && !/^\d+$/.test(key)).sort().map(key => [key, encode(data(value, key, `${path}.${key}`), `${path}.${key}`)])) };
     }
+    if (strict && ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw Object.assign(new Error('Unsupported survey state object: ' + path.slice(0, 192)), { name: 'SurveyStateProjectionError', code: 'unsupported-state-data' });
     const out = {};
-    for (const key of Object.keys(value).sort()) {
+    for (const key of (strict ? Object.getOwnPropertyNames(value) : Object.keys(value)).sort()) {
       if (path === 'stats' && key === 'groundQueries') continue;
+      if (path === 'terrainTopology' && key === 'staleResults' || physicalOnly && path === 'physicalCrewEvidence' && key === 'censored') continue;
       if (scenarioOnly && (path === 'lanePolicy' && key === 'config' || path.startsWith('lanePolicy.lanes.') && key === 'initialBias')) continue;
-      if (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key)) continue;
-      const entry = data(value, key, `${path}.${key}`); if (typeof entry === 'function') continue;
-      if (key === 'piece' || key === 'image' || key === 'composite') { out[key] = { assetId: entry?.id ?? null, width: entry?.width ?? null, height: entry?.height ?? null }; continue; }
+      if (!strict && (ignoredKeys.has(key) || physicalOnly && ['stats', 'groundQueries', 'interests', '_lastIndex', '_lastChunk', '_lastRevision'].includes(key))) continue;
+      const entry = data(value, key, `${path}.${key}`); if (!strict && typeof entry === 'function') continue;
+      if (!strict && (key === 'piece' || key === 'image' || key === 'composite')) { out[key] = { assetId: entry?.id ?? null, width: entry?.width ?? null, height: entry?.height ?? null }; continue; }
       out[key] = encode(entry, `${path}.${key}`);
     }
     if (value instanceof Trigger) out.disabledUntilTick = value.disabledUntilTick;
