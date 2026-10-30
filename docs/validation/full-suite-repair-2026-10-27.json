@@ -95407,5 +95407,1896 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "remaining1092": "Broader explicitly authored full durable transfer/terrain/tempo/external-input browser corpus remains; existing10000tick browser work at317 is retained, not newly rerun here. This input-only invalid-data corpus does not claim physical command-composition or acoustic/hardware equivalence."
+  },
+  "continuation386": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "127b96b98d2a3055a8a8895702faebbf54495b21",
+    "scope": "Close1092 explicitly authored durable browser composition acceptance with actual production world/actions and current-runtime replay.",
+    "changes": [
+      "Add one shared actual-mask world/semantic-engine/journal corpus for Node and Playwright, without another simulator or persistence format.",
+      "Guarantee and assert actual ActorBorn, ActorLaneTransferred, TerrainWorkCommitted and CommandApplied facts; record accepted builder/release policy/cancel commands, tempo/speed/mapping/performance edits, a physically paused silent step/resume and an explicit external observation.",
+      "Finalize a complete10000tick native IndexedDB tape; compare full continuation, reuse validated final/midpoint checkpoints, store an independent32tick branch, preserve the source and live project, reopen identical source metadata."
+    ],
+    "validation": {
+      "node": {
+        "passed": 1,
+        "failed": 0,
+        "log": ".tmp/rook386-node-final.log",
+        "scope": "Shared authored128tick cohort with all required actual fact kinds/controls, fresh replay, zero-tick reuse/seek and immutable branch. No changed production JS and no repeated92case/full-suite rerun."
+      },
+      "playwright": {
+        "passed": 2,
+        "failed": 0,
+        "report": ".tmp/rook386-playwright-final.json",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "longTapeEnabled": true,
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-durable-tape-128",
+                "value": {
+                  "ticks": 128,
+                  "takeId": "take:authored:128",
+                  "parentCanonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                  "parentDurableSequence": 270,
+                  "counts": {
+                    "ActionEntered": 2,
+                    "CommandApplied": 2,
+                    "ActorBorn": 2,
+                    "FlightArcStarted": 1,
+                    "undefined": 10,
+                    "FlightArcUpdated": 25,
+                    "ActorLaneTransferred": 1,
+                    "MotionCommitted": 48,
+                    "ContactSpanBegan": 1,
+                    "ContactSpanUpdated": 127,
+                    "TerrainWorkCommitted": 8,
+                    "ActionCycleCompleted": 8,
+                    "FlightArcEnded": 1,
+                    "ActionExited": 1,
+                    "ActorTerminated": 1
+                  },
+                  "controls": [
+                    {
+                      "tick": 10,
+                      "generation": 1,
+                      "input": {
+                        "kind": "tempo",
+                        "bpm": 90
+                      }
+                    },
+                    {
+                      "tick": 12,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "world-speed",
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 14,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "external-observation",
+                        "sourceId": "captured:external-port",
+                        "effect": "observation-only",
+                        "timestamp": 1234.567,
+                        "bytes": [
+                          144,
+                          60,
+                          1
+                        ]
+                      }
+                    },
+                    {
+                      "tick": 16,
+                      "generation": 1,
+                      "input": {
+                        "kind": "mapping",
+                        "revision": 2
+                      }
+                    },
+                    {
+                      "tick": 20,
+                      "generation": 1,
+                      "input": {
+                        "kind": "instrument-performance"
+                      }
+                    },
+                    {
+                      "tick": 30,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "intervention-cancel",
+                        "commandId": "authored:cancelled-policy"
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 64,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": true,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 128,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    }
+                  ],
+                  "midpoint": 141,
+                  "midpointHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                  "expectedHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                  "recordingMs": 125.09999999403954,
+                  "replayMs": 111.69999998807907,
+                  "full": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                      "finalizationHash": "08535f0bcf6a9d8cd75b9296604ae5111530528aab93c11c57ce3413066bbfd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [
+                      {
+                        "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",141]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 141,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 64,
+                        "timelineMatch": true
+                      },
+                      {
+                        "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",270]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 270,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 128,
+                        "timelineMatch": true
+                      }
+                    ],
+                    "comparedBatches": 128,
+                    "comparedIntents": 18,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:full",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 0,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 128,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "repeated": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                      "finalizationHash": "08535f0bcf6a9d8cd75b9296604ae5111530528aab93c11c57ce3413066bbfd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:repeated",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 270,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "seek": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "artifactIntegrity": {
+                      "canonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                      "finalizationHash": "08535f0bcf6a9d8cd75b9296604ae5111530528aab93c11c57ce3413066bbfd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 64,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:seek",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 141,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 141,
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "branch": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "fromCheckpointSequence": 141,
+                    "generation": 1,
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-physical-branch-boundary",
+                    "sourceCanonicalHash": "8876c981ba495e2a7a4bb85a179a8a5ca8677dfc33bad74dab634336c96e22e7",
+                    "sourceFinalizationHash": "08535f0bcf6a9d8cd75b9296604ae5111530528aab93c11c57ce3413066bbfd6",
+                    "sourceTakeId": "take:authored:128",
+                    "sourceTakeRevision": 15,
+                    "status": "validated-by-current-runtime-reperformance",
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "version": 2
+                  },
+                  "childTakeId": "take:authored:128:child",
+                  "cache": {
+                    "entries": 2,
+                    "maximumEntries": 16,
+                    "estimatedBytes": 17832,
+                    "maximumBytes": 4194304,
+                    "refusals": 0,
+                    "failure": null,
+                    "reservation": {
+                      "enabled": false,
+                      "owner": "causal-reperformance-checkpoint-cache",
+                      "kind": "qualified-replay-checkpoints",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4198400,
+                      "maxBytes": 536870912,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "sourceUnchanged": true,
+                  "sourceVersions": {
+                    "generator": "procgen-workstation-2",
+                    "causalRandom": "fnv1a32-avalanche-v1",
+                    "causalProbabilityPolicy": 1,
+                    "terrainChallenge": 3,
+                    "populationRandom": 1,
+                    "worldCheckpoint": 2,
+                    "stallCascade": 2,
+                    "physicalBatch": 1,
+                    "physicalMusic": 13,
+                    "swarmReducer": 1,
+                    "phraseCargo": 1,
+                    "releaseGesture": 1,
+                    "physicalFeedback": 1,
+                    "physicalPlaybackAdmission": 1,
+                    "instrumentPerformance": 4,
+                    "project": 2,
+                    "numericCanonicalization": "finite-f64-minus-zero-v1",
+                    "mappingRevision": 1,
+                    "applicationExecution": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "harnessVersion": "browser-survey-v1",
+                      "stateSchema": 11,
+                      "realmId": "032af4a9-5149-4be9-a9c2-09e023ad5f76",
+                      "capabilityProfile": "browser-survey-core",
+                      "binding": "immutable-application-generation",
+                      "identityRecipe": "normalized-data-slot-v2-instruments"
+                    }
+                  },
+                  "scope": "Actual authored physical/semantic tape and silent current-runtime continuation; source and external observations are retained data, not a device/archived/acoustic qualification.",
+                  "realIndexedDbReopen": true,
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          },
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 10000 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-durable-tape-10000",
+                "value": {
+                  "ticks": 10000,
+                  "takeId": "take:authored:10000",
+                  "parentCanonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                  "parentDurableSequence": 20014,
+                  "counts": {
+                    "ActionEntered": 9,
+                    "CommandApplied": 2,
+                    "ActorBorn": 2,
+                    "FlightArcStarted": 3,
+                    "undefined": 19,
+                    "FlightArcUpdated": 36,
+                    "ActorLaneTransferred": 1,
+                    "MotionCommitted": 301,
+                    "ContactSpanBegan": 4,
+                    "ContactSpanUpdated": 416,
+                    "TerrainWorkCommitted": 12,
+                    "ActionCycleCompleted": 12,
+                    "FlightArcEnded": 3,
+                    "ActionExited": 9,
+                    "ActorTerminated": 2,
+                    "ContactSpanEnded": 4,
+                    "ContactResolved": 1,
+                    "DirectionChanged": 1
+                  },
+                  "controls": [
+                    {
+                      "tick": 10,
+                      "generation": 1,
+                      "input": {
+                        "kind": "tempo",
+                        "bpm": 90
+                      }
+                    },
+                    {
+                      "tick": 12,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "world-speed",
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 14,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "external-observation",
+                        "sourceId": "captured:external-port",
+                        "effect": "observation-only",
+                        "timestamp": 1234.567,
+                        "bytes": [
+                          144,
+                          60,
+                          1
+                        ]
+                      }
+                    },
+                    {
+                      "tick": 16,
+                      "generation": 1,
+                      "input": {
+                        "kind": "mapping",
+                        "revision": 2
+                      }
+                    },
+                    {
+                      "tick": 20,
+                      "generation": 1,
+                      "input": {
+                        "kind": "instrument-performance"
+                      }
+                    },
+                    {
+                      "tick": 30,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "intervention-cancel",
+                        "commandId": "authored:cancelled-policy"
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 64,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": true,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 10000,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    }
+                  ],
+                  "midpoint": 10013,
+                  "midpointHash": "83ecf02559e89196f7cc5a127497098824d64e044123a92228f7101c606d5aa5",
+                  "expectedHash": "328fe9fea7f8644a7e2911860d2b18c4eb1b2bd7779472e249907b3ae53fa4a8",
+                  "recordingMs": 2654.5,
+                  "replayMs": 2097.7000000178814,
+                  "full": {
+                    "actualContinuationHash": "328fe9fea7f8644a7e2911860d2b18c4eb1b2bd7779472e249907b3ae53fa4a8",
+                    "actualPhysicsHash": "aa5e97c7c14ae03e5d9d39ff6937204792f3e19242228d38a652de872885aac8",
+                    "artifactIntegrity": {
+                      "canonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                      "finalizationHash": "b2a9f203da1f535bcfd168b4a9431ce1675b4b178ead3c8bca973e4a69ee6fd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 10000,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [
+                      {
+                        "actualContinuationHash": "83ecf02559e89196f7cc5a127497098824d64e044123a92228f7101c606d5aa5",
+                        "checkpointId": "[\"take:authored:10000\",\"checkpoint\",10013]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "83ecf02559e89196f7cc5a127497098824d64e044123a92228f7101c606d5aa5",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 10013,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 5000,
+                        "timelineMatch": true
+                      },
+                      {
+                        "actualContinuationHash": "328fe9fea7f8644a7e2911860d2b18c4eb1b2bd7779472e249907b3ae53fa4a8",
+                        "checkpointId": "[\"take:authored:10000\",\"checkpoint\",20014]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "328fe9fea7f8644a7e2911860d2b18c4eb1b2bd7779472e249907b3ae53fa4a8",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 20014,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 10000,
+                        "timelineMatch": true
+                      }
+                    ],
+                    "comparedBatches": 10000,
+                    "comparedIntents": 28,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:full",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 0,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:10000",
+                    "takeRevision": 634,
+                    "targetSequence": 20014,
+                    "throughSequence": 20014,
+                    "tick": 10000,
+                    "ticksExecuted": 10000,
+                    "verifiedDurableSequence": 20014,
+                    "version": 2
+                  },
+                  "repeated": {
+                    "actualContinuationHash": "328fe9fea7f8644a7e2911860d2b18c4eb1b2bd7779472e249907b3ae53fa4a8",
+                    "actualPhysicsHash": "aa5e97c7c14ae03e5d9d39ff6937204792f3e19242228d38a652de872885aac8",
+                    "artifactIntegrity": {
+                      "canonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                      "finalizationHash": "b2a9f203da1f535bcfd168b4a9431ce1675b4b178ead3c8bca973e4a69ee6fd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 10000,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:repeated",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 20014,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:10000",
+                    "takeRevision": 634,
+                    "targetSequence": 20014,
+                    "throughSequence": 20014,
+                    "tick": 10000,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 20014,
+                    "version": 2
+                  },
+                  "seek": {
+                    "actualContinuationHash": "83ecf02559e89196f7cc5a127497098824d64e044123a92228f7101c606d5aa5",
+                    "actualPhysicsHash": "3d6418191f78a0da73b1d398d0309dafeda52d248c5dcdbca824d938625beaa9",
+                    "artifactIntegrity": {
+                      "canonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                      "finalizationHash": "b2a9f203da1f535bcfd168b4a9431ce1675b4b178ead3c8bca973e4a69ee6fd6",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 5000,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:seek",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 10013,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:10000",
+                    "takeRevision": 634,
+                    "targetSequence": 10013,
+                    "throughSequence": 10013,
+                    "tick": 5000,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 20014,
+                    "version": 2
+                  },
+                  "branch": {
+                    "actualContinuationHash": "83ecf02559e89196f7cc5a127497098824d64e044123a92228f7101c606d5aa5",
+                    "actualPhysicsHash": "3d6418191f78a0da73b1d398d0309dafeda52d248c5dcdbca824d938625beaa9",
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                        "binding": "immutable-application-generation",
+                        "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                        "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "binding": "immutable-application-generation",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "fromCheckpointSequence": 10013,
+                    "generation": 1,
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-physical-branch-boundary",
+                    "sourceCanonicalHash": "c618504b9aabf33ceace329899ab07bd54037784cd942ddde3d1221b315fb799",
+                    "sourceFinalizationHash": "b2a9f203da1f535bcfd168b4a9431ce1675b4b178ead3c8bca973e4a69ee6fd6",
+                    "sourceTakeId": "take:authored:10000",
+                    "sourceTakeRevision": 634,
+                    "status": "validated-by-current-runtime-reperformance",
+                    "throughSequence": 10013,
+                    "tick": 5000,
+                    "ticksExecuted": 0,
+                    "version": 2
+                  },
+                  "childTakeId": "take:authored:10000:child",
+                  "cache": {
+                    "entries": 2,
+                    "maximumEntries": 16,
+                    "estimatedBytes": 18492,
+                    "maximumBytes": 4194304,
+                    "refusals": 0,
+                    "failure": null,
+                    "reservation": {
+                      "enabled": false,
+                      "owner": "causal-reperformance-checkpoint-cache",
+                      "kind": "qualified-replay-checkpoints",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4198400,
+                      "maxBytes": 536870912,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "sourceUnchanged": true,
+                  "sourceVersions": {
+                    "generator": "procgen-workstation-2",
+                    "causalRandom": "fnv1a32-avalanche-v1",
+                    "causalProbabilityPolicy": 1,
+                    "terrainChallenge": 3,
+                    "populationRandom": 1,
+                    "worldCheckpoint": 2,
+                    "stallCascade": 2,
+                    "physicalBatch": 1,
+                    "physicalMusic": 13,
+                    "swarmReducer": 1,
+                    "phraseCargo": 1,
+                    "releaseGesture": 1,
+                    "physicalFeedback": 1,
+                    "physicalPlaybackAdmission": 1,
+                    "instrumentPerformance": 4,
+                    "project": 2,
+                    "numericCanonicalization": "finite-f64-minus-zero-v1",
+                    "mappingRevision": 1,
+                    "applicationExecution": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                      "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                      "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                      "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                      "harnessVersion": "browser-survey-v1",
+                      "stateSchema": 11,
+                      "realmId": "a107b840-4a05-48ab-bf28-0496d1bd26ef",
+                      "capabilityProfile": "browser-survey-core",
+                      "binding": "immutable-application-generation",
+                      "identityRecipe": "normalized-data-slot-v2-instruments"
+                    }
+                  },
+                  "scope": "Actual authored physical/semantic tape and silent current-runtime continuation; source and external observations are retained data, not a device/archived/acoustic qualification.",
+                  "realIndexedDbReopen": true,
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          }
+        ],
+        "scope": "Actual immutable executing application modules and decoded MAIN.DAT masks, production ProcgenLaneWorld/action systems, semantic engine and IndexedDB store. Isolated authored-world corpus; the currently displayed generated project is preserved.128and10000tick windows pass; the latter is intentionally sparse after the early interactions, not a dense-performance budget or replacement for the previously executed generated10000tick journey at317."
+      },
+      "longWindow": {
+        "ticks": 10000,
+        "counts": {
+          "ActionEntered": 9,
+          "CommandApplied": 2,
+          "ActorBorn": 2,
+          "FlightArcStarted": 3,
+          "undefined": 19,
+          "FlightArcUpdated": 36,
+          "ActorLaneTransferred": 1,
+          "MotionCommitted": 301,
+          "ContactSpanBegan": 4,
+          "ContactSpanUpdated": 416,
+          "TerrainWorkCommitted": 12,
+          "ActionCycleCompleted": 12,
+          "FlightArcEnded": 3,
+          "ActionExited": 9,
+          "ActorTerminated": 2,
+          "ContactSpanEnded": 4,
+          "ContactResolved": 1,
+          "DirectionChanged": 1
+        },
+        "controlKinds": [
+          "tempo",
+          "world-speed",
+          "external-observation",
+          "mapping",
+          "instrument-performance",
+          "intervention-cancel",
+          "transport-state"
+        ],
+        "recordingMs": 2654.5,
+        "replayMs": 2097.7000000178814,
+        "nativeReopen": true,
+        "contexts": 0,
+        "midiRequests": 0,
+        "worldScope": "Production two-lane world with decoded real masks and built-in terrain; this is not the full generated style/growth performance workload.",
+        "retainedLegacyFactsWithoutKind": 19
+      },
+      "checks": [
+        "npm run format",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "coverage": "No production source changed. The new shared fixture is exercised in Node and two actual browser windows; prior385 parser/replay coverage is retained separately.",
+      "evidence": [
+        {
+          "path": ".tmp/rook386-node-final.log",
+          "bytes": 189,
+          "sha256": "dbe1638c527b9d4dac0ef6fa7962ed1f71bc48290dc2035f93e61c1085fb574e"
+        },
+        {
+          "path": ".tmp/rook386-playwright-final.json",
+          "bytes": 73944,
+          "sha256": "67867b4a09d19afd8e969e147d725cc862775efaee2b7e008f0fb8427efb198b"
+        },
+        {
+          "path": ".tmp/rook386-format.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook386-checks.log",
+          "bytes": 3988,
+          "sha256": "aa488a482a13a6de3653f8364e86fee045c340d3f1047f6971cd16597a0b48d4"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "e2e/procgen-workstation-authored-tape.spec.js",
+        "bytes": 4872,
+        "sha256": "27900aa210cea454a25e2c3062bc9d9f9b5524b0b714d065f83d854cba9e9839"
+      },
+      {
+        "path": "test/helpers/authoredCausalTape.js",
+        "bytes": 11497,
+        "sha256": "a507362452bd733cb918d44d3f4664950841532247ecec45532956d56e63ddc0"
+      },
+      {
+        "path": "test/procgen-authored-causal-tape.test.js",
+        "bytes": 1499,
+        "sha256": "dffadf79351dfb8ad94e47458d52abcce9ad70840165aabad8fbeaf313d1c3ab"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "cbb9b8a4b13aacf3803bc89805ee1d49487e1bb6",
+      "status": "success",
+      "run": 40985282669,
+      "job": 123834750849,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40985282669",
+      "engineJob": 123834750567,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7234,
+      "nodePending": 10,
+      "browserPassed": 273,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 229,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.97,
+        "functions": 88.65
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30561,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9885,
+          "benchHistoryStress": 16212,
+          "benchHotpaths": 4461
+        },
+        "metrics": {
+          "perfP95Frame": 100,
+          "perfP50Tps": 106.01320820300639,
+          "historyRatio": 0.5848333333333333,
+          "antsAvgMs": 12.5,
+          "tileCompositionAvgMs": 3.16,
+          "overlayPlaneAvgMs": 8.47,
+          "scaledBlitAvgMs": 15.08
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5848333333333333
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0908333333333333
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1260,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "83cd30274dfacf25d7891bb0f0178f101b0b44bbb92e2fa3af9d6dfe470990f0",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123834750784,
+        "windowsJob": 123834750864,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "c4def53f9fd2586c0c5239f55d0ee8cb2da5407f",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1149,
+        "inventorySha256": "683fd7e941552edeef3ccd3cd6678dab06d367df161404de8b6e5803c962b43b",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1260,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci380-main.zip",
+          "bytes": 763509,
+          "sha256": "b42b26b50c0e63933a877f51604ed3ff5664c413e11cb77e87cc2126d70bea22"
+        },
+        {
+          "path": ".tmp/ci380-engine.zip",
+          "bytes": 156740,
+          "sha256": "2657cab21a1bfa9e345f8195a0b66949ebcf75a55312b721c5a7c57bbef4d873"
+        },
+        {
+          "path": ".tmp/ci380-linux.zip",
+          "bytes": 2247,
+          "sha256": "98ad44e6b024f5aa924d99651e55b2a448833c4aaed37b2964567a3ce26e5327"
+        },
+        {
+          "path": ".tmp/ci380-windows.zip",
+          "bytes": 2146,
+          "sha256": "b557e51f519d59a55a9985c3076b87db7ec8e825a69a407a27a94831a01c3e88"
+        },
+        {
+          "path": ".tmp/ci380-main-workstation-result-qualification.json",
+          "bytes": 185606,
+          "sha256": "ba59657f647bd9c6e6aa1a6b43d01409bb8fa2dc67c6c312384fefb6fa259424"
+        },
+        {
+          "path": ".tmp/ci380-engine-lifecycle-engine-qualification.json",
+          "bytes": 244934,
+          "sha256": "b1536ee881b52d10ecaaa3cfe5f444b3abb8279b6a13bacc708d5f9872909e20"
+        },
+        {
+          "path": ".tmp/ci380-linux-native-midi-codec-qualification.json",
+          "bytes": 7877,
+          "sha256": "2d13aad2a3b43c656318683cc0ff93fc424be1bce4df70d9df58f5a6cf9bd8cc"
+        },
+        {
+          "path": ".tmp/ci380-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "24bf1c37cb44d5cf09440dcd09c047829589171982fbd7eb0ec3c95114bf950a"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "issue1092": "Ready to close: prior315MIDI document boundaries,317real generated10000tick storage/replay/seek/branch/offline,383strong continuation,384actual build diagnostics,385hash-valid malformed data and386guaranteed authored positive controls together cover the owned durable-tape contract. Exact archived causal execution remains explicitly refused under988; acoustic/hardware equivalence is separate."
   }
 }

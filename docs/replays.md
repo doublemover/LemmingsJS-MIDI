@@ -94,3 +94,10 @@ external data never queries a device. Semantic input failures retain the exact
 chunk ID, sequence, source tick and record kind, plus the last accepted prefix.
 A valid storage hash proves retained bytes; it does not qualify their meaning.
 Inspection preserves the original take and remains silent on refusal.
+
+The authored durable-tape corpus exercises accepted skill/release/cancel inputs,
+tempo/speed/mapping/performance changes, paused physical stepping and recorded
+external observations in the actual world and semantic engine. Playwright uses
+real IndexedDB at128and10,000ticks, then replays, seeks, branches and reopens the
+unchanged parent. This controlled world is sparse after early interactions;
+its elapsed time is not a dense generated-world or audio-performance budget.
