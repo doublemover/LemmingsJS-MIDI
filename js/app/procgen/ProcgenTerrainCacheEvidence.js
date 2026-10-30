@@ -77,6 +77,7 @@ const contentHash = (kind, value) => {
     if (!Object.isFrozen(value) || !Array.prototype.every.call(value, Object.isFrozen)) fail('unverified-generated-terrain-cache', kind, 'bindings');
     return null;
   }
+  if (kind === 'authored-row') { if (!Object.isFrozen(value)) fail('unverified-generated-terrain-cache', kind, 'binding'); return null; }
   return cacheHash(value);
 };
 
@@ -93,6 +94,34 @@ export function verifyTerrainCacheEvidence(owner, kind, entries, source = contex
     if (!proof || proof.owner !== token || proof.kind !== kind || proof.key !== key) fail('unverified-generated-terrain-cache', kind, key);
     if (proof.source !== sourceHash || proof.hash !== contentHash(kind, value)) fail('changed-generated-terrain-cache', kind, key);
   }
+}
+
+// Source content is projected first; only evicted but still-held entries need another byte check.
+export function verifyGeneratedTerrainChunkBinding(terrain, seed, chunk, value) {
+  if (!owners.has(terrain)) fail('unsupported-terrain-evidence-source', 'alias', 'provider');
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    const views = own(terrain, 'views'), lane = Map.prototype.get.call(own(terrain, 'seedToLane'), seed), shape = own(views, 'shape');
+    if (chunk < own(shape, 'chunksPerLane')) {
+      const expected = own(own(terrain, 'records'), lane * own(shape, 'chunksPerLane') + chunk);
+      if (!Number.isInteger(lane) || !expected) fail('unverified-generated-terrain-cache', 'authored-alias', seed + ':' + chunk);
+      if (expected !== value) {
+        verifyTerrainCacheEvidence(terrain, 'authored-row', [[seed + ':' + chunk, value]], own(terrain, 'sceneTerrainLayoutHash'));
+        for (const key of Object.keys(expected)) if (own(expected, key) !== own(value, key)) fail('unverified-generated-terrain-cache', 'authored-alias', seed + ':' + chunk);
+      }
+      return;
+    }
+    return verifyGeneratedTerrainChunkBinding(base, seed, chunk, value);
+  }
+  const themes = own(terrain, 'themes');
+  if (Array.isArray(themes)) {
+    const index = Map.prototype.get.call(own(terrain, 'assignments'), seed), theme = own(themes, index);
+    if (!theme) fail('unverified-generated-terrain-cache', 'pack-alias', seed);
+    return verifyGeneratedTerrainChunkBinding(own(theme, 'terrain'), seed, chunk, value);
+  }
+  const key = seed + ':' + chunk, proof = value && proofs.get(value);
+  if (!proof || proof.owner !== owners.get(terrain) || proof.kind !== 'collision' || proof.key !== key || proof.source !== hashSurveyValue(context(terrain))) fail('unverified-generated-terrain-cache', 'collision-alias', key);
+  if (Map.prototype.get.call(own(terrain, 'collision'), key) !== value && proof.hash !== cacheHash(value)) fail('changed-generated-terrain-cache', 'collision-alias', key);
 }
 
 export function captureGeneratedTerrainEvidence(terrain) {

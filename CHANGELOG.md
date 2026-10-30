@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Verify physical collision and edit cache bindings, retain wall and active-assistance continuations, and refuse ground-query states that previously produced identical survey hashes.
+
 - Bind authored scene evidence to verified source storage and immutable seed mappings, and preserve intrinsic numeric and physical continuation state without executing nested accessors.
 
 - Normalize verified generated-terrain cache residency in survey identity, refuse altered or unproved physical caches, and exclude temporary validation artifacts from terrain source mining.

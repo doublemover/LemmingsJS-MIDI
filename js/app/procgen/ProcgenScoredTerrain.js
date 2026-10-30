@@ -54,7 +54,10 @@ export class ProcgenScoredTerrain {
   }
   bindRecords() {
     const seeds = new Array(this.sceneTerrainLayout.lanes.length); for (const [seed, lane] of this.seedToLane) seeds[lane] = seed;
-    this.records = Object.freeze(this.views.chunks.map(chunk => Object.freeze({ ...chunk, placements: empty, objects: empty, sourceRevision: this.sceneTerrainLayoutHash, themeId: this.base.forSeed(seeds[chunk.laneId]).recipe.id })));
+    this.records = Object.freeze(this.views.chunks.map(chunk => {
+      const record = Object.freeze({ ...chunk, placements: empty, objects: empty, sourceRevision: this.sceneTerrainLayoutHash, themeId: this.base.forSeed(seeds[chunk.laneId]).recipe.id });
+      registerTerrainCacheEvidence(this, 'authored-row', seeds[chunk.laneId] + ':' + chunk.chunk, record, this.sceneTerrainLayoutHash); return record;
+    }));
     registerTerrainCacheEvidence(this, 'authored-records', 'bindings', this.records, { layoutHash: this.sceneTerrainLayoutHash, seeds: Array.from(Map.prototype.entries.call(this.seedToLane)) });
   }
   setLaneAssignments(values) { this.base.setLaneAssignments(values); }

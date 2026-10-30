@@ -2,6 +2,7 @@ import { ProcgenLaneWorld } from '../ProcgenLaneWorld.js';
 import { ProcgenSurveyTerrain, captureControlledSurveyTerrain } from './ProcgenSurveyTerrain.js';
 import { captureTerrainEditIdentity } from '../ProcgenTerrainEditIdentity.js';
 import { captureGeneratedTerrainEvidence } from '../ProcgenTerrainCacheEvidence.js';
+import { verifyProcgenWorldCacheBindings } from '../ProcgenWorldCacheEvidence.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -74,7 +75,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     current: record.actor ? encode(record.actor, `actors.${record.id}`) : record.terminal,
     arrivalTick: record.arrivalTick, deathTick: record.deathTick, retired: record.retired })) };
   for (const key of stateOwners) {
-    if (physicalOnly && ['eventTimeMs', 'stats', 'challengeCache', '_edgeWallCache', '_edgeWallRevisions', '_edgeWallHazards'].includes(key)) continue;
+    if (physicalOnly && ['eventTimeMs', 'stats', 'challengeCache', '_edgeWallHazards'].includes(key)) continue;
     out[key] = encode(Object.getOwnPropertyDescriptor(world, key)?.value, key);
   }
   out.edits = encode(captureTerrainEditIdentity(world.editChunks), 'edits');
@@ -84,6 +85,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
   const terrainEvidence = terrain instanceof ProcgenSurveyTerrain ? captureControlledSurveyTerrain(terrain) : captureGeneratedTerrainEvidence(terrain);
   if (!terrainEvidence) throw Object.assign(new Error('Survey physical evidence requires an owned supported terrain source.'), { name: 'SurveyStateProjectionError', code: 'unsupported-terrain-evidence-source' });
   out.terrain = encode(terrainEvidence, 'terrain');
+  out.cacheContinuations = encode(verifyProcgenWorldCacheBindings(world), 'cacheContinuations');
   if (!physicalOnly) out.eventHash = eventHash;
   return out;
 };

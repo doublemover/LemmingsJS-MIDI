@@ -50,6 +50,10 @@ describe('authored terrain source and binding evidence', function() {
     try {
       await f.terrain.prepare(); trial = createSurveyTrial({ masks, terrain: f.terrain, scenario: { id: 'authored-source-evidence', mode: 'generated', physicalLaneCount: 1, laneHeight: 96, horizonTicks: 32 } });
       const before = trial.snapshot().physicalStateHash; trial.world.terrain.getChunk(trial.world.laneSeeds[0], 4, true); expect(trial.snapshot().physicalStateHash).to.equal(before);
+      f.terrain.restoreAssignments(f.terrain.exportAssignments()); expect(trial.snapshot().physicalStateHash).to.equal(before);
+      trial.world.hasGroundAt(36, 88); expect(trial.snapshot().physicalStateHash).to.equal(before);
+      const held = trial.world._laneChunk[0]; trial.world._laneChunk[0] = Object.freeze({ ...held });
+      reject(() => trial.snapshot(), 'unverified-world-cache-binding'); trial.world._laneChunk[0] = held;
       f.terrain.views.chunks[0].solid[0] ^= 1; reject(() => trial.snapshot(), 'changed-generated-terrain-cache'); f.terrain.views.chunks[0].solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
       const original = trial.world.terrain; trial.world.terrain = { collision: new Map(), descriptions: new Map(), growthPlans: new Map() };
       reject(() => trial.snapshot(), 'unsupported-terrain-evidence-source'); trial.world.terrain = original;

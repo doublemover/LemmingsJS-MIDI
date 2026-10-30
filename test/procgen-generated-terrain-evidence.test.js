@@ -68,7 +68,7 @@ describe('generated terrain cache evidence ownership', function() {
       for (const chunk of [40, 4, 17]) { terrain.getChunk(seed, chunk, true); terrain.growthPlan(seed, chunk); }
       expect(trial.snapshot().physicalStateHash).to.equal(before); const chunk = terrain.getChunk(seed, 4); chunk.solid[0] ^= 1;
       rejection('changed-generated-terrain-cache', () => trial.snapshot()); chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
-      expect(SURVEY_STATE_SCHEMA).to.equal(7);
+      expect(SURVEY_STATE_SCHEMA).to.equal(8);
     } finally { trial.dispose(); }
   });
   it('distinguishes actual speed, command and contact futures while refusing nested accessors without evaluating them', async () => {

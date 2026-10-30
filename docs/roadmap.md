@@ -9747,3 +9747,32 @@ export-budget acknowledgments still prevent a false complete receipt.
   assisted/challenge/wall caches, remaining negative metadata and exact archived
   execution binding. Provider cache integrity alone does not establish those
   world cache contracts. Latest verified full CI remains372/eda85f9e. Continue solo.
+
+### Continuation 377 - physical fast-cache binding and continuation truth
+
+- Reproduce two schema7 false matches at5ab8c9cc: wrong last-chunk or detached
+  edit pointers change actual ground true→false while the physical hash stays
+  identical. State8 now validates bounded slot/index/lane/source ownership,
+  including the edit owner last-value cache, without queries or LRU mutation.
+- Bind controlled chunks to private source owners and generated chunks to
+  actual seed/key/configuration. Preserve pristine held/rebuilt chunks and
+  authored rows retained through legitimate rebinding; refuse divergent old
+  data, foreign owners, cloned rows and detached edit aliases.
+- Include wall/revision and valid assisted-column continuation in physical
+  identity because they can affect future answers. Keep invalid assistance
+  scratch diagnostic. Do not claim unproved warm/cold wall equivalence.
+- Final103related Node and all five1920×1080 Playwright cases pass together.
+  The shared nine-refusal corpus recovers every source and preserves real
+  compaction/rehydration, held pristine sources and passive missing lookups;
+  metadata getters remain uninvoked. New world-binding owner100%lines/functions,
+  76.92%branches; extend malformed shape/index/accessor and retained-generated
+  negatives. Preserve the initial inactive-pointer fixture failure.
+- Promote374/97eeed53 to full green:7216Node/10preexisting pending,26desktop,
+  225workstation,18engine,14capabilities, both native codec jobs and all static/
+  benchmark/MCP/policy/dependency gates. Verify1146workstation/1257engine/both8
+  native source inventories against that Git tree and identical native corpora
+  and output hashes. Coverage90.77%lines/83.97%branches/88.61%functions.
+- Continue #1223 with explicit classification/qualification of physical
+  authoring, crew/topology/projection and other known world behavior owners
+  outside the current stateOwners list. Retain remaining negative metadata
+  corpus and archived execution binding separately. Continue solo.

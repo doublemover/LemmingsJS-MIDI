@@ -818,46 +818,46 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "eda85f9e37699fca34edb951bc172778a6cb7731",
+    "head": "97eeed53b68c910b197cf9bdefc914b0804d5138",
     "status": "success",
-    "run": 40968043509,
-    "job": 123777450101,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40968043509",
-    "engineJob": 123777450413,
+    "run": 40973024023,
+    "job": 123794163765,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40973024023",
+    "engineJob": 123794163345,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7208,
+    "nodePassed": 7216,
     "nodePending": 10,
-    "browserPassed": 263,
+    "browserPassed": 269,
     "desktopPassed": 26,
-    "workstationSmokePassed": 219,
+    "workstationSmokePassed": 225,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.76,
-      "statements": 90.76,
-      "branches": 83.95,
+      "lines": 90.77,
+      "statements": 90.77,
+      "branches": 83.97,
       "functions": 88.61
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 30851,
+      "totalDurationMs": 38465,
       "measurementValid": true,
       "failures": [],
       "metrics": {
-        "perfP95Frame": 83.39999999999964,
-        "perfP50Tps": 104.28931875525652,
-        "historyRatio": 0.5858333333333333,
-        "antsAvgMs": 12.05,
-        "tileCompositionAvgMs": 2.37,
-        "overlayPlaneAvgMs": 8.54,
-        "scaledBlitAvgMs": 17.23
+        "perfP95Frame": 83.29999999999927,
+        "perfP50Tps": 82.88357748653708,
+        "historyRatio": 0.5853333333333334,
+        "antsAvgMs": 31.98,
+        "tileCompositionAvgMs": 4.21,
+        "overlayPlaneAvgMs": 22.35,
+        "scaledBlitAvgMs": 30.45
       }
     },
     "mcp": "success",
@@ -893,8 +893,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123777450318,
-      "windowsJob": 123777450228,
+      "linuxJob": 123794164372,
+      "windowsJob": 123794163852,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -905,10 +905,10 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "2f621754c15374bc24293bd2d91740a6565c9390",
+      "testedPrMergeHead": "f8d20cd6dc3839b6990c551b562b68b866148f9b",
       "rawDirtyFlag": true,
       "inventoryFiles": 1146,
-      "inventorySha256": "b7d0cb5a7ce34487a879821049ec54297e487e1613dc4fbc28b77ed76262a571",
+      "inventorySha256": "18fa5b9ad949e209ffa86b1c44e572a72d4fd3a2a69523ca4ce1a63b0e6852be",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
       "engineInventoryFiles": 1257,
@@ -916,44 +916,44 @@
     },
     "artifacts": [
       {
-        "path": ".tmp/ci372-main.zip",
-        "bytes": 679371,
-        "sha256": "06d57939685ac2cc9f3458dfa86d9ac5e6c086a58ae5edca0206632ae9478631"
+        "path": ".tmp/ci374-main.zip",
+        "bytes": 764467,
+        "sha256": "de886280d4959ef6e339bb18319546feb02f44836ac2f727a92c6b98cc621a04"
       },
       {
-        "path": ".tmp/ci372-engine.zip",
-        "bytes": 156900,
-        "sha256": "578b91cd4dfd4fa1d9d80fcbd50827009e23477f2ee0a3e702f96922cd427719"
+        "path": ".tmp/ci374-engine.zip",
+        "bytes": 155275,
+        "sha256": "658a93c9fb413d707104e97fda7bf87243ef2d4aef86f4b96ae56bcac413e0dc"
       },
       {
-        "path": ".tmp/ci372-linux.zip",
+        "path": ".tmp/ci374-linux.zip",
         "bytes": 2247,
-        "sha256": "8dde3afd1d9fccb5a3e5220994ccd682a9d9b8ad35c920b19ecd9478be9fc792"
+        "sha256": "d8b91bb0c41606e93a66f01036c4f03c311c47b5f96329d5c4bf9556cf95e21a"
       },
       {
-        "path": ".tmp/ci372-windows.zip",
-        "bytes": 2148,
-        "sha256": "b50aa2b65035ab099ff3971120f7b8437c19cfc62bc34942b9dcc792eb93d3f1"
+        "path": ".tmp/ci374-windows.zip",
+        "bytes": 2146,
+        "sha256": "be01a8d98e54a87cb1239e33b507885c9eb273ae8044316a43a903c97e47655f"
       },
       {
-        "path": ".tmp/ci372-main-workstation-result-qualification.json",
-        "bytes": 185102,
-        "sha256": "4820073e0a7a3efbe89d2a195b128bfc64740f87aa2189601d51f37277a3afbd"
+        "path": ".tmp/ci374-main-workstation-result-qualification.json",
+        "bytes": 185109,
+        "sha256": "b51ca05aacf2ef435862a00e99569a6548391ede3ad20f48cec23e257b84ff2f"
       },
       {
-        "path": ".tmp/ci372-engine-lifecycle-engine-qualification.json",
+        "path": ".tmp/ci374-engine-lifecycle-engine-qualification.json",
         "bytes": 244359,
         "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
       },
       {
-        "path": ".tmp/ci372-linux-native-midi-codec-qualification.json",
-        "bytes": 7877,
-        "sha256": "9f7f912bc4eefe26be24bd302e3881320c453ae47fe043740c574005f0a4a946"
+        "path": ".tmp/ci374-linux-native-midi-codec-qualification.json",
+        "bytes": 7876,
+        "sha256": "fea1b8d421995a3b68f10f268106f2caef8b2588743fb03fcd899f20d55b0c0e"
       },
       {
-        "path": ".tmp/ci372-windows-native-midi-codec-qualification.json",
+        "path": ".tmp/ci374-windows-native-midi-codec-qualification.json",
         "bytes": 7747,
-        "sha256": "f849c05e86e8640e4dea5b387d42d688d14373e3895b580ee18c475fde3f7ec4"
+        "sha256": "ad773d901d38b5a381d34816b79fdbc9783e869071e7bc2626e06965e08f44cf"
       }
     ],
     "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
@@ -82455,5 +82455,1000 @@
       "Complete remaining source/negative metadata corpus and archived execution binding; local private checksums and compatible replay are distinct."
     ],
     "latestVerifiedCiHead": "eda85f9e37699fca34edb951bc172778a6cb7731"
+  },
+  "continuation377": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "5ab8c9ccd85783dac7873d8bdd20734a4b6c5d4c",
+    "scope": "Repair reproduced physical-state false matches through world collision/edit fast aliases; preserve behavior-changing wall and assistance continuation.",
+    "counterexamples": {
+      "schema": 7,
+      "head": "5ab8c9ccd85783dac7873d8bdd20734a4b6c5d4c",
+      "collision": {
+        "before": {
+          "hash": "1dca0c6feb1d5deb",
+          "ground": true
+        },
+        "after": {
+          "hash": "1dca0c6feb1d5deb",
+          "ground": false
+        }
+      },
+      "edit": {
+        "before": {
+          "hash": "7497a1002ee8162c",
+          "ground": true
+        },
+        "after": {
+          "hash": "7497a1002ee8162c",
+          "ground": false
+        }
+      }
+    },
+    "changes": [
+      "State schema8 validates bounded world collision slots/indices, last-lane pointers, edit slots/indices, last-lane edits and the edit owner last-value cache through native read-only access. Bind the actual lane/seed/chunk/source without warming, rehydrating or changing LRU order.",
+      "Private controlled-source owner tokens reject foreign chunks. Pristine held chunks remain valid after eviction/rebuild; modified or divergent held data refuses. Generated aliases require their actual owner/key/configuration.",
+      "Frozen authored rows retain explicit source/key receipts across legitimate assignment rebinding. Recreated rows are not accepted solely from matching values; retained owned rows must still match current immutable bindings.",
+      "Native edit pointers must match current resident ownership; legitimate compaction invalidation and cold rehydration preserve logical evidence. Unreachable observer lookups remain diagnostic and cannot invalidate a supported physical state.",
+      "Wall cache and revision state participate in physical identity. Include an assisted-column continuation only while valid, retaining fields that can change the next physical answer. No warm/cold equivalence is claimed for unproved wall continuations."
+    ],
+    "validation": {
+      "node": {
+        "passed": 103,
+        "failed": 0,
+        "log": ".tmp/rook377-node-publish-final.log"
+      },
+      "playwright": {
+        "passed": 5,
+        "failed": 0,
+        "report": ".tmp/rook377-playwright-publish-final.json",
+        "cases": [
+          {
+            "title": "matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "survey-native-parity.json",
+                "value": {
+                  "sourceDigest": "9098f72a96386cd5aa4d4e623a505bf66d239a0ed0a3518a25966f213534d22a",
+                  "replays": [
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-dcaff613ade00ca7",
+                      "replayTrialId": "trial-dcaff613ade00ca7",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 192,
+                        "originalMilestones": 4,
+                        "replayMilestones": 4
+                      },
+                      "originalFinalStateHash": "cd74e297ecde8eab",
+                      "replayFinalStateHash": "cd74e297ecde8eab",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "9098f72a96386cd5aa4d4e623a505bf66d239a0ed0a3518a25966f213534d22a",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 192,
+                          "originalMilestones": 4,
+                          "replayMilestones": 4
+                        }
+                      }
+                    },
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-93904de6b67a00a2",
+                      "replayTrialId": "trial-93904de6b67a00a2",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192,
+                          256,
+                          320,
+                          384,
+                          448,
+                          512,
+                          576,
+                          600
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 192,
+                            "throughTick": 256,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 256,
+                            "throughTick": 320,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 320,
+                            "throughTick": 384,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 384,
+                            "throughTick": 448,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 448,
+                            "throughTick": 512,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 512,
+                            "throughTick": 576,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 576,
+                            "throughTick": 600,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 600,
+                        "originalMilestones": 11,
+                        "replayMilestones": 11
+                      },
+                      "originalFinalStateHash": "2ff689fa97ea40ae",
+                      "replayFinalStateHash": "2ff689fa97ea40ae",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "9098f72a96386cd5aa4d4e623a505bf66d239a0ed0a3518a25966f213534d22a",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192,
+                            256,
+                            320,
+                            384,
+                            448,
+                            512,
+                            576,
+                            600
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 192,
+                              "throughTick": 256,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 256,
+                              "throughTick": 320,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 320,
+                              "throughTick": 384,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 384,
+                              "throughTick": 448,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 448,
+                              "throughTick": 512,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 512,
+                              "throughTick": 576,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 576,
+                              "throughTick": 600,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 600,
+                          "originalMilestones": 11,
+                          "replayMilestones": 11
+                        }
+                      }
+                    }
+                  ],
+                  "outputRequests": {
+                    "midi": 0,
+                    "audio": 0
+                  },
+                  "errors": [],
+                  "layout64Only": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "desktop survey canonical numeric vectors match Node and ignore spoofed typed view properties",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "authored scene source evidence preserves prepared ownership through physical byte refusal and recovery @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-scene-source-evidence",
+                "value": {
+                  "before": "2e7088c9745b214d",
+                  "recovered": "2e7088c9745b214d",
+                  "failures": [
+                    {
+                      "field": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "pixels",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    }
+                  ],
+                  "source": {
+                    "status": "prepared",
+                    "profile": "original-ordered-rectangle-terrain-v1",
+                    "method": "dedicated-worker",
+                    "activeExecution": "bound",
+                    "layoutHash": "baf64186ee94a5ef72c7f6363ebf78d0582f892be17fb2a3e419f1161dc12a5a",
+                    "storageHash": "8212269bbb275f26840bbf59c00eeec36f6246c8a5bec1cd0c06d1f5d8fe713a",
+                    "typedBytes": 838656,
+                    "fineGrowth": false,
+                    "objectPolicy": "no-procedural-objects-inside-initial-score",
+                    "qualification": "original-authored-source;runtime-and-playability-validation-pending"
+                  },
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Actual catalog Prepare/Load, admitted worker compiled authored source, immutable seed bindings and read-only local integrity checks. No archived exact-execution or acoustic claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "browser physical projection preserves real continuation differences and rejects nested accessor evidence @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "browser-projection-continuations",
+                "value": {
+                  "continuations": [
+                    {
+                      "kind": "speed",
+                      "tick": 48,
+                      "before": [
+                        "5a61c17b5b2a1a47",
+                        "7ede9282ecf0a286"
+                      ],
+                      "after": [
+                        {
+                          "physical": "fcc61b544223a6b0",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "01de02ad564378a1",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        30
+                      ]
+                    },
+                    {
+                      "kind": "intervention",
+                      "tick": 48,
+                      "before": [
+                        "5a61c17b5b2a1a47",
+                        "90e38a8f63faf5bb"
+                      ],
+                      "after": [
+                        {
+                          "physical": "fcc61b544223a6b0",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "b28b56863dade532",
+                          "events": "0edd37c330fa0c6f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        26
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "contact",
+                      "tick": 48,
+                      "before": [
+                        "5a61c17b5b2a1a47",
+                        "fcfef489da01763d"
+                      ],
+                      "after": [
+                        {
+                          "physical": "fcc61b544223a6b0",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "4e6d9c9e15640352",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "intrinsic-and-accessor",
+                      "getters": 0,
+                      "refusal": "accessor-state-data",
+                      "holesDistinct": true
+                    }
+                  ],
+                  "cacheBindings": {
+                    "failures": [
+                      {
+                        "kind": "wrong-lane-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-collision-slot",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-lane-index",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "foreign-source-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "altered-evicted-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "divergent-held-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "detached-lane-edit",
+                        "field": "lane-edit",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-slot",
+                        "field": "edit-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-owner",
+                        "field": "edit-owner-last",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      }
+                    ],
+                    "collisionGround": true,
+                    "editGround": true,
+                    "getters": 0,
+                    "compactionStable": true,
+                    "heldPristineStable": true,
+                    "wallContinuationDistinct": true,
+                    "activeAssistDistinct": true,
+                    "scope": "Owned collision/edit binding refusal and actual source repair; wall and active-assist continuations remain authoritative, without claiming warm/cold wall-cache normalization."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "production generated pack evidence ignores query warmth and refuses altered physical caches @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "generated-pack-cache-evidence",
+                "value": {
+                  "stateSchema": 8,
+                  "before": "fb0cd951eb3986ed",
+                  "warm": "fb0cd951eb3986ed",
+                  "recovered": "fb0cd951eb3986ed",
+                  "initialCounts": [
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    },
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    }
+                  ],
+                  "warmCounts": [
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    },
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    }
+                  ],
+                  "refusals": [
+                    {
+                      "kind": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "descriptor",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "description",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "growth-plan",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "growth-plan",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "unproved-collision",
+                      "code": "unverified-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    }
+                  ],
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract."
+                }
+              }
+            ]
+          }
+        ],
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "All five final numeric, real controlled/generated replay, actual catalog authored source, generated pack and shared continuation/cache-negative journeys pass together. Nine exact alias refusals recover; compaction/rehydration/held sources/passive missing lookups stay valid with zero metadata getters invoked."
+      },
+      "priorAttempts": [
+        {
+          "log": ".tmp/rook377-node-first.log",
+          "passed": 102,
+          "failed": 1,
+          "reason": "The new authored-clone fixture changed an inactive pointer whose index was still-1. Warm the actual source through a real ground query before corrupting its active alias."
+        },
+        {
+          "log": ".tmp/rook377-node-final.log",
+          "passed": 103,
+          "failed": 0,
+          "scope": "Before broadening passive unreachable lookup qualification."
+        },
+        {
+          "report": ".tmp/rook377-playwright-final.json",
+          "passed": 5,
+          "failed": 0,
+          "scope": "Before broadening passive unreachable lookup qualification."
+        }
+      ],
+      "coverage": {
+        "total": {
+          "lines": 94.79,
+          "functions": 94.59,
+          "branches": 83.4
+        },
+        "js/app/procgen/ProcgenTerrainCacheEvidence.js": {
+          "lines": 91.13,
+          "functions": 100,
+          "branches": 82.01
+        },
+        "js/app/procgen/ProcgenWorldCacheEvidence.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 76.92
+        },
+        "js/app/procgen/survey/ProcgenSurveyTerrain.js": {
+          "lines": 100,
+          "functions": 81.81,
+          "branches": 94
+        }
+      },
+      "coverageFollowup": "Extend malformed index/shape/accessor refusal branches, retained generated alias cases and nonempty route/source metadata object vectors. All new world-cache owner lines/functions are covered; this is not a100%branch claim.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 361,
+        "workerFiles": 292,
+        "workerSha256": "3fc5173f3f04d50e80185fc49215d70c8f1302c1cef80473073f122313631320"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook377-alias-counterexamples.json",
+          "bytes": 421,
+          "sha256": "b94fe01fac6d2b0fc6bdba81539a5e364db34fedb711c10f4248807c7a44dc9e"
+        },
+        {
+          "path": ".tmp/rook377-node-first.log",
+          "bytes": 11625,
+          "sha256": "ae240c5c1bbe197bfaacf33c415f4ffa9caec658b10a48f2df72deb25ddeb5d1"
+        },
+        {
+          "path": ".tmp/rook377-node-final.log",
+          "bytes": 12156,
+          "sha256": "644fb09cec78171e86665b3df6718db9bda4f513139a8817a137581ad7709c1a"
+        },
+        {
+          "path": ".tmp/rook377-node-publish-final.log",
+          "bytes": 12147,
+          "sha256": "d34e995316573c42e4c7f51b0cad99463aa21f844e89dcb4280d01fc6822e5a6"
+        },
+        {
+          "path": ".tmp/rook377-playwright-final.json",
+          "bytes": 24874,
+          "sha256": "3ae9b1c0e8a4edac811bfd75792881d85aff082a2365cf5870be849d705f983c"
+        },
+        {
+          "path": ".tmp/rook377-playwright-publish-final.json",
+          "bytes": 24874,
+          "sha256": "042831c83426d0b6d23de7310033dcc42338390c82a0bdabb2cab89688f28d64"
+        },
+        {
+          "path": ".tmp/rook377-coverage-publish/coverage-summary.json",
+          "bytes": 1373,
+          "sha256": "66704d5cc581bf0087c63a02946cfcd3b3988e148c36570a309a8109c43e3eca"
+        },
+        {
+          "path": ".tmp/rook377-checks.log",
+          "bytes": 4264,
+          "sha256": "f30a6e099e3ebc270453bcdc08c6e32eb5807ba80e2b52c04368e3bb21716a7d"
+        },
+        {
+          "path": ".tmp/rook377-final-checks.log",
+          "bytes": 293,
+          "sha256": "7f4e3241008e1638cd7fa449282934af763dd5e6d0ba55c4b887a5178ba653b4"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainCacheEvidence.js",
+        "bytes": 12032,
+        "sha256": "5dbad56ed687e0a89bd5030b96ac60a024b8d6073c941ed943e06c8992aea210"
+      },
+      {
+        "path": "js/app/procgen/ProcgenWorldCacheEvidence.js",
+        "bytes": 5112,
+        "sha256": "b671320464a3877aa8ad4b68c6747aa2890bd4f6090af6bf4ea0db1ed088debb"
+      },
+      {
+        "path": "js/app/procgen/ProcgenScoredTerrain.js",
+        "bytes": 15289,
+        "sha256": "20e2060cee8624e1166f9b92a753b28c2cbdb602395962253d6d4e11f411ee04"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 35227,
+        "sha256": "2a4074a917157afa5661d6a44e5fef8c9a8a2275f182ab5680b7ff4b3463c892"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyTerrain.js",
+        "bytes": 4052,
+        "sha256": "bb697143ae378f430de12f231e7ff3832c8490067d0e1883a1698c8dd6a4140e"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4791,
+        "sha256": "e8aa01730359a2c3d8137db50acb230b54ece3272713b3641a4ca93984ab85d6"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 12885,
+        "sha256": "9553c70c4e8e025fa11834d205bbcc2838baf2b0384b02f59aa129581edd7d89"
+      },
+      {
+        "path": "test/procgen-world-cache-evidence.test.js",
+        "bytes": 1820,
+        "sha256": "e0c73ebd53270f6c2ed202a3981fb1dc3b2c014f9259a28b0b6c915417477544"
+      },
+      {
+        "path": "test/helpers/surveyCacheBindingCorpus.js",
+        "bytes": 5748,
+        "sha256": "7b8f77f282b6516979fb9b45096b7ee264f9cfccacf7b5e03b7b57800ae57cb0"
+      },
+      {
+        "path": "test/procgen-authored-terrain-evidence.test.js",
+        "bytes": 5983,
+        "sha256": "cb1a4f0bc3bed971ff47dae5728c1cb74e64982719556b33cf6706f0b91b94c1"
+      },
+      {
+        "path": "test/procgen-generated-terrain-evidence.test.js",
+        "bytes": 7287,
+        "sha256": "585048024d69f316e62c85b1bb0dc23675a01772284af70e5c99783949ff82b6"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22309,
+        "sha256": "27f6a608f6bf29994af9d15c42a9c20248a6e1ce7483c420d9f907f97ce2e1db"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "97eeed53b68c910b197cf9bdefc914b0804d5138",
+      "status": "success",
+      "run": 40973024023,
+      "job": 123794163765,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40973024023",
+      "engineJob": 123794163345,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7216,
+      "nodePending": 10,
+      "browserPassed": 269,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 225,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.97,
+        "functions": 88.61
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 38465,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.29999999999927,
+          "perfP50Tps": 82.88357748653708,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 31.98,
+          "tileCompositionAvgMs": 4.21,
+          "overlayPlaneAvgMs": 22.35,
+          "scaledBlitAvgMs": 30.45
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1257,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123794164372,
+        "windowsJob": 123794163852,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "f8d20cd6dc3839b6990c551b562b68b866148f9b",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1146,
+        "inventorySha256": "18fa5b9ad949e209ffa86b1c44e572a72d4fd3a2a69523ca4ce1a63b0e6852be",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1257,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci374-main.zip",
+          "bytes": 764467,
+          "sha256": "de886280d4959ef6e339bb18319546feb02f44836ac2f727a92c6b98cc621a04"
+        },
+        {
+          "path": ".tmp/ci374-engine.zip",
+          "bytes": 155275,
+          "sha256": "658a93c9fb413d707104e97fda7bf87243ef2d4aef86f4b96ae56bcac413e0dc"
+        },
+        {
+          "path": ".tmp/ci374-linux.zip",
+          "bytes": 2247,
+          "sha256": "d8b91bb0c41606e93a66f01036c4f03c311c47b5f96329d5c4bf9556cf95e21a"
+        },
+        {
+          "path": ".tmp/ci374-windows.zip",
+          "bytes": 2146,
+          "sha256": "be01a8d98e54a87cb1239e33b507885c9eb273ae8044316a43a903c97e47655f"
+        },
+        {
+          "path": ".tmp/ci374-main-workstation-result-qualification.json",
+          "bytes": 185109,
+          "sha256": "b51ca05aacf2ef435862a00e99569a6548391ede3ad20f48cec23e257b84ff2f"
+        },
+        {
+          "path": ".tmp/ci374-engine-lifecycle-engine-qualification.json",
+          "bytes": 244359,
+          "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
+        },
+        {
+          "path": ".tmp/ci374-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "fea1b8d421995a3b68f10f268106f2caef8b2588743fb03fcd899f20d55b0c0e"
+        },
+        {
+          "path": ".tmp/ci374-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "ad773d901d38b5a381d34816b79fdbc9783e869071e7bc2626e06965e08f44cf"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining1223": [
+      "Finish explicit behavior-versus-diagnostic classification for physical authoring, crew/topology/projection and other known world owners not currently in stateOwners; verify accepted-command/source revisions and future consequences.",
+      "Keep wall and active-assistance continuation authoritative unless a separate normalization proof establishes equivalence. Do not erase behavior merely to obtain a cache match.",
+      "Complete remaining negative metadata/shape corpus. Exact archived execution remains a separate qualification boundary."
+    ]
   }
 }
