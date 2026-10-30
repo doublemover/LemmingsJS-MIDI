@@ -1,4 +1,4 @@
-import { verifyGeneratedTerrainChunkBinding } from './ProcgenTerrainCacheEvidence.js';
+import { verifyGeneratedTerrainChunkBinding, verifyGeneratedTerrainGrowthBinding } from './ProcgenTerrainCacheEvidence.js';
 import { ProcgenSurveyTerrain, verifyControlledSurveyChunkBinding } from './survey/ProcgenSurveyTerrain.js';
 
 const typedPrototype = Object.getPrototypeOf(Uint8Array.prototype), typeOf = Object.getOwnPropertyDescriptor(typedPrototype, Symbol.toStringTag).get,
@@ -57,5 +57,20 @@ export function verifyProcgenWorldCacheBindings(world) {
     editBinding(own(lastEdits, lane), lane, lastEditIndices[lane], 'lane-edit');
   }
   const assisted = own(world, '_assistedColumn'); if (!assisted || typeof own(assisted, 'valid') !== 'boolean') fail('assisted-column');
-  return { activeAssistedColumn: own(assisted, 'valid') ? assisted : null };
+  const growth = own(world, 'terrainGrowth'), growthSources = [];
+  if (growth) {
+    const states = own(growth, 'states'), queues = array(own(growth, 'queues'), lanes, 'growth-queues');
+    if (!(states instanceof Map)) fail('growth-states');
+    for (const [key, state] of Map.prototype.entries.call(states)) {
+      const lane = own(state, 'lane'), chunk = own(state, 'chunk'), plan = own(state, 'plan');
+      if (!Number.isInteger(lane) || lane < 0 || lane >= lanes || !Number.isInteger(chunk) || chunk < 0 || key !== lane * 0x800000 + chunk) fail('growth-state-key', lane, chunk);
+      try { growthSources.push({ key, planHash: verifyGeneratedTerrainGrowthBinding(terrain, seeds[lane], chunk, plan) }); }
+      catch (error) { fail('growth-plan', lane, chunk, error.code); }
+    }
+    for (let lane = 0; lane < lanes; lane++) {
+      const queue = own(queues, lane); if (!Array.isArray(queue)) fail('growth-queue', lane);
+      for (let index = 0; index < queue.length; index++) { const state = own(queue, index); if (own(state, 'lane') !== lane || Map.prototype.get.call(states, lane * 0x800000 + own(state, 'chunk')) !== state) fail('growth-queue-binding', lane, index); }
+    }
+  }
+  return { activeAssistedColumn: own(assisted, 'valid') ? assisted : null, growthSources };
 }

@@ -5,6 +5,7 @@ import { captureGeneratedTerrainEvidence } from '../ProcgenTerrainCacheEvidence.
 import { verifyProcgenWorldCacheBindings } from '../ProcgenWorldCacheEvidence.js';
 import { assertTopologyEvidenceBoundary } from '../ProcgenTerrainTopology.js';
 import { captureSurveyContinuations } from './ProcgenSurveyContinuations.js';
+import { verifyProcgenHazardSources } from '../ProcgenHazards.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -48,7 +49,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     return descriptor?.value;
   };
   const encode = (value, path) => {
-    const strict = /^(physicalAuthoring|physicalCrewEvidence|terrainTopology|interventionState|physicalFeedback|physicalJunctions|terrainScoreState|terrainScorePending)(\.|$)/.test(path);
+    const strict = /^(physicalAuthoring|physicalCrewEvidence|terrainTopology|interventionState|physicalFeedback|physicalJunctions|terrainScoreState|terrainScorePending|terrain|hazardSources)(\.|$)/.test(path);
     if (strict && (typeof value === 'function' || typeof value === 'symbol')) throw Object.assign(new Error('Unsupported survey state data: ' + path.slice(0, 192)), { name: 'SurveyStateProjectionError', code: 'unsupported-state-data' });
     if (value == null || typeof value !== 'object') return typeof value === 'function' ? undefined : value;
     if (actions.has(value)) return { action: actions.get(value) };
@@ -94,6 +95,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
   if (!terrainEvidence) throw Object.assign(new Error('Survey physical evidence requires an owned supported terrain source.'), { name: 'SurveyStateProjectionError', code: 'unsupported-terrain-evidence-source' });
   out.terrain = encode(terrainEvidence, 'terrain');
   out.cacheContinuations = encode(verifyProcgenWorldCacheBindings(world), 'cacheContinuations');
+  out.hazardSources = encode(verifyProcgenHazardSources(world), 'hazardSources');
   if (!physicalOnly) out.eventHash = eventHash;
   return out;
 };

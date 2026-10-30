@@ -5,6 +5,36 @@ import { Trigger } from '../../level/Trigger.js';
 import { TriggerTypes as Types } from '../../level/TriggerTypes.js';
 import { assemblyPlacementReady } from './ProcgenAssemblyPlacement.js';
 import { procgenObjectImage } from './ProcgenObjectPresentation.js';
+import { verifyGeneratedTerrainDescriptorBinding } from './ProcgenTerrainCacheEvidence.js';
+
+const hazardOwners = new WeakMap(), hazardSources = new WeakMap();
+const sourceFailure = field => { throw Object.assign(new Error('Unverified physical hazard source: ' + field), { name: 'SurveyStateProjectionError', code: 'unverified-hazard-source', field }); };
+const sourceData = (value, key) => {
+  const descriptor = value && Object.getOwnPropertyDescriptor(value, key);
+  if (descriptor && !Object.hasOwn(descriptor, 'value')) sourceFailure('accessor:' + String(key));
+  return descriptor?.value;
+};
+const verifyProcgenHazardSources = world => {
+  const hazards = sourceData(world, 'hazards'), owner = hazardOwners.get(hazards), terrain = sourceData(world, 'terrain'), result = [];
+  if (!owner || owner.world !== world || sourceData(hazards, 'world') !== world) sourceFailure('owner');
+  for (const [key, record] of Map.prototype.entries.call(sourceData(hazards, 'chunks'))) {
+    const proof = hazardSources.get(record), lane = sourceData(record, 'lane'), chunk = sourceData(record, 'chunk'), descriptor = sourceData(record, 'descriptor');
+    if (!proof || proof.owner !== owner || proof.terrain !== terrain || proof.seed !== sourceData(world, 'laneSeeds')[lane] || proof.lane !== lane || proof.chunk !== chunk || key !== lane * 0x800000 + chunk || proof.descriptor !== descriptor) sourceFailure('descriptor-binding');
+    verifyGeneratedTerrainDescriptorBinding(terrain, proof.seed, chunk, descriptor);
+    const entries = sourceData(record, 'entries'), objects = sourceData(descriptor, 'objects');
+    if (!Array.isArray(entries) || !Array.isArray(objects) || entries.length !== objects.length || entries.length !== proof.objects.length) sourceFailure('object-shape');
+    const metadata = [];
+    for (let index = 0; index < entries.length; index++) {
+      const entry = sourceData(entries, index), object = entry ? sourceData(entry, 'object') : null;
+      if (object !== proof.objects[index] || entry && object !== sourceData(objects, index)) sourceFailure('object-binding');
+      if (!entry) continue;
+      const piece = sourceData(object, 'piece'), image = sourceData(piece, 'image');
+      metadata.push({ index, pieceId: sourceData(piece, 'id'), image: Object.fromEntries(['width', 'height', 'trigger_effect_id', 'trigger_left', 'trigger_top', 'trigger_width', 'trigger_height', 'frameCount', 'trap_sound_effect_id'].map(field => [field, sourceData(image, field)])) });
+    }
+    result.push({ key, metadata });
+  }
+  return result;
+};
 
 const hazardType = object => {
   const image = object.piece.image, type = image.trigger_effect_id;
@@ -19,6 +49,7 @@ const hazardType = object => {
 class ProcgenHazards {
   constructor(world) {
     this.world = world;
+    hazardOwners.set(this, { world });
     this.chunks = new Map(); this.revision = 0; this.ownerCount = 0;
     this.maxChunks = Math.max(16, 3 * (world.maxActors + world.laneCount * world.stall.settings.maxSpawnAllowance));
     this.stats = { contacts: 0, traps: 0, drowning: 0, fire: 0, killed: 0, created: 0, evicted: 0, peakChunks: 0 };
@@ -78,6 +109,7 @@ class ProcgenHazards {
       if (this.chunks.size >= this.maxChunks) return null;
       const descriptor = terrain.describe(world.laneSeeds[lane], chunk);
       record = { lane, chunk, descriptor, entries: descriptor.objects.map(object => hazardType(object) ? { object, enabled: false, activated: false, owner: null, trigger: null } : null), revision: -1, through: -1, complete: false, lastTouch: tick };
+      hazardSources.set(record, { owner: hazardOwners.get(this), terrain, seed: world.laneSeeds[lane], lane, chunk, descriptor, objects: record.entries.map(entry => entry?.object ?? null) });
       this.chunks.set(key, record); this.stats.peakChunks = Math.max(this.stats.peakChunks, this.chunks.size);
     }
     record.lastTouch = tick; this._refresh(record, true); return record;
@@ -139,4 +171,4 @@ class ProcgenHazards {
   reset() { this.chunks.clear(); this.ownerCount = 0; this.revision++; for (const key of Object.keys(this.stats)) this.stats[key] = 0; }
   dispose() { this.reset(); this.world = null; }
 }
-export { ProcgenHazards, hazardType };
+export { ProcgenHazards, hazardType, verifyProcgenHazardSources };

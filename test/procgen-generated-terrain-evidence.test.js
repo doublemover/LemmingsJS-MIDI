@@ -7,6 +7,7 @@ import { captureGeneratedTerrainEvidence } from '../js/app/procgen/ProcgenTerrai
 import { surveyProjectionContinuations } from './helpers/surveyProjectionContinuations.js';
 import { surveyBehaviorOwnerCorpus } from './helpers/surveyBehaviorOwnerCorpus.js';
 import { surveyCausalContinuationCorpus } from './helpers/surveyCausalContinuationCorpus.js';
+import { surveyHazardSourceCorpus } from './helpers/surveyHazardSourceCorpus.js';
 
 describe('generated terrain cache evidence ownership', function() {
   this.timeout(30000); let terrain, masks;
@@ -70,7 +71,7 @@ describe('generated terrain cache evidence ownership', function() {
       for (const chunk of [40, 4, 17]) { terrain.getChunk(seed, chunk, true); terrain.growthPlan(seed, chunk); }
       expect(trial.snapshot().physicalStateHash).to.equal(before); const chunk = terrain.getChunk(seed, 4); chunk.solid[0] ^= 1;
       rejection('changed-generated-terrain-cache', () => trial.snapshot()); chunk.solid[0] ^= 1; expect(trial.snapshot().physicalStateHash).to.equal(before);
-      expect(SURVEY_STATE_SCHEMA).to.equal(10);
+      expect(SURVEY_STATE_SCHEMA).to.equal(11);
     } finally { trial.dispose(); }
   });
   it('distinguishes actual speed, command and contact futures while refusing nested accessors without evaluating them', async () => {
@@ -86,5 +87,10 @@ describe('generated terrain cache evidence ownership', function() {
     const results = await surveyCausalContinuationCorpus(scenario => createSurveyTrial({ masks, scenario }));
     expect(results.map(result => result.kind)).to.deep.equal(['actor-order', 'causal-sequence', 'fact-capacity', 'frame-interval', 'binding-refusals']);
     expect(results.at(-1).failures).to.have.length(12);
+  });
+  it('binds real generated hazard descriptors and object slots through eviction, mutation refusal and metadata recovery', async () => {
+    const source = await loadProcgenTerrain(), trial = createSurveyTrial({ masks, terrain: source, scenario: { id: 'generated-hazard-source', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, laneHeight: 144, horizonTicks: 64 } });
+    try { const result = await surveyHazardSourceCorpus(trial); expect(result.failures).to.have.length(6); expect(result.growth.failures).to.have.length(3); expect(result.getters).to.equal(0); expect(result.metadataDistinct).to.equal(true); }
+    finally { trial.dispose(); }
   });
 });

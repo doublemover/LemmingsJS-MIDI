@@ -9819,3 +9819,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   pointer binding, because generic ignored asset field names must not conceal
   future physical decisions. Checkpoint-compatible projection and archived
   exact execution remain separate. Continue solo; minimum1920x1080 desktop.
+
+
+### Continuation 380 - retained hazard and growth source authority
+
+- State11 binds actual generated hazard descriptors/object slots to their owned
+  lane/seed/chunk/source. Verify held descriptors after eviction and retain real
+  trigger metadata. Strict evidence DTOs preserve all fields; the first new
+  Node/browser regression caught the generic image encoder dropping them.
+- Verify retained growth plans/descriptors after both caches evict them, retain
+  their owned hash and prove each queued state belongs to the current map.
+  Pristine eviction stays equivalent; changed/unproved/detached owners refuse.
+- Final177related Node and18Playwright cases pass together at1920x1080. The
+  independent browser source verifies four saved assets/3183139bytes, six hazard
+  and three growth refusals, source repair and zero getters without live world,
+  tick, project or output changes. Comparison remains explicitly execution-unbound.
+  Core/world binding owners100%lines/functions; broader hazard/source branches
+  remain coverage follow-ups. Static/critical/provenance/category gates pass.
+- Full377 main CI failed one export fixture during startup before its picker
+  action:227workstation cases passed; engine/native jobs pass. Inspect preserved
+  trace before diagnosing or changing waits. Coverage did not run after that
+  failure. Latest fully verified checkpoint remains374/97eeed53. Continue solo.

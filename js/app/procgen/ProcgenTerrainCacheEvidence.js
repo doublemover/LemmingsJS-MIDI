@@ -124,6 +124,33 @@ export function verifyGeneratedTerrainChunkBinding(terrain, seed, chunk, value) 
   if (Map.prototype.get.call(own(terrain, 'collision'), key) !== value && proof.hash !== cacheHash(value)) fail('changed-generated-terrain-cache', 'collision-alias', key);
 }
 
+function verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, kind) {
+  if (!owners.has(terrain)) fail('unsupported-terrain-evidence-source', 'descriptor-alias', 'provider');
+  const base = own(terrain, 'base');
+  if (base && own(own(terrain, 'recipe'), 'sourceKind') === 'original-scene-score') {
+    if (chunk < own(own(own(terrain, 'views'), 'shape'), 'chunksPerLane')) {
+      if (kind !== 'description') fail('unverified-generated-terrain-cache', kind, 'authored-growth');
+      return verifyGeneratedTerrainChunkBinding(terrain, seed, chunk, value);
+    }
+    return verifyGeneratedTerrainRecordBinding(base, seed, chunk, value, kind);
+  }
+  const themes = own(terrain, 'themes');
+  if (Array.isArray(themes)) {
+    const theme = own(themes, Map.prototype.get.call(own(terrain, 'assignments'), seed));
+    if (!theme) fail('unverified-generated-terrain-cache', 'descriptor-pack-alias', seed);
+    return verifyGeneratedTerrainRecordBinding(own(theme, 'terrain'), seed, chunk, value, kind);
+  }
+  verifyTerrainCacheEvidence(terrain, kind, [[seed + ':' + chunk, value]]);
+  if (kind === 'growth-plan') {
+    verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, own(value, 'descriptor'), 'description');
+    return proofs.get(value).hash;
+  }
+  const current = Map.prototype.get.call(own(terrain, 'descriptions'), seed + ':' + chunk);
+  if (current && current !== value && cacheHash(current) !== cacheHash(value)) fail('changed-generated-terrain-cache', 'retained-description', seed + ':' + chunk);
+}
+export const verifyGeneratedTerrainDescriptorBinding = (terrain, seed, chunk, value) => verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, 'description');
+export const verifyGeneratedTerrainGrowthBinding = (terrain, seed, chunk, value) => verifyGeneratedTerrainRecordBinding(terrain, seed, chunk, value, 'growth-plan');
+
 export function captureGeneratedTerrainEvidence(terrain) {
   if (!owners.has(terrain)) return null;
   const base = own(terrain, 'base');

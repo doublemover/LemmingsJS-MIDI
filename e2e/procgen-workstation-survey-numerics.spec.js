@@ -3,6 +3,7 @@ import { surveyCanonicalVectors } from '../test/helpers/surveyCanonicalVectors.j
 import { canonicalSurveyJson, hashSurveyValue } from '../js/app/procgen/survey/ProcgenSurveyCanonical.js';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { createSurveySourceManifest } from '../scripts/procgen-survey/SurveyNodeWorld.js';
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
@@ -121,7 +122,31 @@ test('production generated pack evidence ignores query warmth and refuses altere
       sameWorld: api.world === world, sameTick: world.tickIndex === tick, sameProject: JSON.stringify(studio.getProject()) === project,
       output: studio.getPlaybackState().enabled, scope: 'Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract.' };
   });
-  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(10); expect(result.refusals).toHaveLength(6);
+  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(11); expect(result.refusals).toHaveLength(6);
   expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
   await testInfo.attach('generated-pack-cache-evidence', { body: JSON.stringify(result), contentType: 'application/json' });
+});
+
+test('independent browser survey binds retained hazard descriptors and object slots through source eviction and repair @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(90000);
+  const sourceScenario = { id: 'browser-hazard-source', mode: 'generated', pack: 'lemmings_ohNo', groundSet: 0, laneHeight: 144, horizonTicks: 64, maxActors: 32, actorRecordLimit: 128 };
+  const sourceManifest = await createSurveySourceManifest([sourceScenario]);
+  await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 60000 });
+  const result = await page.evaluate(async ({ sourceScenario, sourceManifest }) => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
+    const world = api.world, tick = world.tickIndex, project = JSON.stringify(studio.getProject()), root = new URL('./', location.href);
+    const { createBrowserSurveyTrial } = await import(new URL('js/app/procgen/survey/ProcgenSurveyBrowserAssets.js', root));
+    const { surveyHazardSourceCorpus } = await import('/test/helpers/surveyHazardSourceCorpus.js');
+    const trial = await createBrowserSurveyTrial({ scenario: { ...sourceScenario, engineCommit: sourceManifest.engineCommit, assetHashes: sourceManifest.assetHashes }, sourceManifest, artifactPolicy: 'saved-assets-only' });
+    try {
+      const receipt = await surveyHazardSourceCorpus(trial);
+      return { receipt, verification: trial.sourceVerification, sameWorld: api.world === world, sameTick: world.tickIndex === tick,
+        sameProject: JSON.stringify(studio.getProject()) === project, output: studio.getPlaybackState().enabled };
+    } finally { trial.dispose(); }
+  }, { sourceScenario, sourceManifest });
+  expect(result.receipt.failures).toHaveLength(6); expect(result.receipt.recovered).toBe(result.receipt.before); expect(result.receipt.getters).toBe(0); expect(result.receipt.metadataDistinct).toBe(true);
+  expect(result.receipt.growth.failures).toHaveLength(3); expect(result.receipt.growth.recovered).toBe(result.receipt.growth.before);
+  expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
+  await testInfo.attach('browser-hazard-source-bindings', { body: JSON.stringify(result), contentType: 'application/json' });
 });

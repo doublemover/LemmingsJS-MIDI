@@ -234,6 +234,8 @@ describe('isolated deterministic real procgen survey core', function() {
     expect(compareSurveyReplay(beforeBehaviorOwners, beforeBehaviorOwners).matched).to.equal(false);
     const beforeCausalContinuations = { ...complete, provenance: { ...complete.provenance, stateSchema: 9 } };
     expect(compareSurveyReplay(beforeCausalContinuations, beforeCausalContinuations).matched).to.equal(false);
+    const beforeHazardSources = { ...complete, provenance: { ...complete.provenance, stateSchema: 10 } };
+    expect(compareSurveyReplay(beforeHazardSources, beforeHazardSources).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, evidence: { ...complete.evidence, truncated: true } }).matched).to.equal(false);
     expect(compareSurveyReplay(complete, { ...complete, milestones: [] }).matched).to.equal(false);
     const unbound = { ...complete, provenance: { ...complete.provenance, scenarioHash: '0'.repeat(16) } };
