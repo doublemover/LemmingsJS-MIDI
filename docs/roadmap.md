@@ -9898,3 +9898,12 @@ export-budget acknowledgments still prevent a false complete receipt.
   #1092 retains its wider durable input/invalid source corpus; #1213 still needs
   exact sibling-prefix acceleration. This is current-runtime compatibility, not
   archived execution. Full383 CI remains separate from verified378. Continue solo.
+
+
+### 2026-10-29 — Rook continuation384: causal application identity and desktop compatibility
+
+- New causal captures pin bounded executing-build/code/closure/asset/harness/schema/realm scalars. Preflight, replay and branch receipts distinguish actual active build, recorded requirements and protocol/current-runtime parity. Optional build provenance never makes legacy takes unreadable or attests caller-supplied code. Exact causal replay still refuses before world allocation with its precise unqualified-realm reason.
+- Persistent Physical take UI explains protocol/assets and matching, changed or legacy builds. The already completed1242 survey worker,1119 dependency manifest and1096 deployment ownership are separate existing implementations; do not duplicate or mark them open.
+- Final74affected Node cases and all3Playwright journeys pass at1920x1080:15preflight variants allocate zero worlds; actual32tick legacy/changed-code/matching captures compare with visible explanations;64tick durable replay/seek/branch/reopen preserves the parent/live world with audio/MIDI off. Keep the first2pass/1fail fixture-page-refresh attempt. No repeated full local suite.
+- Source-verified full380 CI is green:7234Node/10pending,273browser (26desktop/229workstation/18engine),14capabilities; coverage90.78lines/83.97branches/88.65functions; benchmark30561ms,valid. All1149main/1260engine/both8native entries match cbb9b8a4. Later384 CI remains separate.
+-988 still needs the complete cross-version/tampered-byte matrix;1092 wider authored durable-input/semantic-invalid qualification;1213 exact sibling-prefix acceleration. Canonical continuation384 binds source bytes, results and coverage followups.

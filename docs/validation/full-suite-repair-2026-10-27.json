@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "17af00560fc1fad58a3deba2cac860e3b4cb8a7b",
+    "head": "cbb9b8a4b13aacf3803bc89805ee1d49487e1bb6",
     "status": "success",
-    "run": 40982798991,
-    "job": 123826647005,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40982798991",
-    "engineJob": 123826647127,
+    "run": 40985282669,
+    "job": 123834750849,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40985282669",
+    "engineJob": 123834750567,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7232,
+    "nodePassed": 7234,
     "nodePending": 10,
-    "browserPassed": 272,
+    "browserPassed": 273,
     "desktopPassed": 26,
-    "workstationSmokePassed": 228,
+    "workstationSmokePassed": 229,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
       "lines": 90.78,
       "statements": 90.78,
       "branches": 83.97,
-      "functions": 88.64
+      "functions": 88.65
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 31104,
+      "totalDurationMs": 30561,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 9898,
-        "benchHistoryStress": 16127,
-        "benchHotpaths": 5077
+        "benchPerformance": 9885,
+        "benchHistoryStress": 16212,
+        "benchHotpaths": 4461
       },
       "metrics": {
-        "perfP95Frame": 83.39999999999964,
-        "perfP50Tps": 105.07569011576135,
-        "historyRatio": 0.586,
-        "antsAvgMs": 12.02,
-        "tileCompositionAvgMs": 3.46,
-        "overlayPlaneAvgMs": 14.95,
-        "scaledBlitAvgMs": 27.47
+        "perfP95Frame": 100,
+        "perfP50Tps": 106.01320820300639,
+        "historyRatio": 0.5848333333333333,
+        "antsAvgMs": 12.5,
+        "tileCompositionAvgMs": 3.16,
+        "overlayPlaneAvgMs": 8.47,
+        "scaledBlitAvgMs": 15.08
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.586
+          "ratio": 0.5848333333333333
         },
         {
           "speed": 60,
-          "ratio": 1.032
+          "ratio": 1.0908333333333333
         }
       ]
     },
@@ -890,9 +890,9 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1259,
+      "files": 1260,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "67d963a8490c59bb32a656fff7bade50c2c066c00d63b0eba11f21765ba7a930",
+      "closureDigest": "83cd30274dfacf25d7891bb0f0178f101b0b44bbb92e2fa3af9d6dfe470990f0",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123826646723,
-      "windowsJob": 123826647076,
+      "linuxJob": 123834750784,
+      "windowsJob": 123834750864,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,55 +930,55 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "f4cc73876ed28c85d7c4e6d6e88ca011a237cc21",
+      "testedPrMergeHead": "c4def53f9fd2586c0c5239f55d0ee8cb2da5407f",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1148,
-      "inventorySha256": "b5be6ecf039481035dcb45555b028d46422eb94d4fe2a28a51fca2d234f8ce82",
+      "inventoryFiles": 1149,
+      "inventorySha256": "683fd7e941552edeef3ccd3cd6678dab06d367df161404de8b6e5803c962b43b",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1259,
+      "engineInventoryFiles": 1260,
       "allEngineSourceFilesMatchPublishedHead": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci378-main.zip",
-        "bytes": 762281,
-        "sha256": "4032aa3441cd41dcd1f30fcf6a69897ae7163fae5b2a33996e04c8ea33cb801f"
+        "path": ".tmp/ci380-main.zip",
+        "bytes": 763509,
+        "sha256": "b42b26b50c0e63933a877f51604ed3ff5664c413e11cb77e87cc2126d70bea22"
       },
       {
-        "path": ".tmp/ci378-engine.zip",
-        "bytes": 157810,
-        "sha256": "da24464c783ba4f1d8b11670728c3368ac9739899d04ad6b8220673d252b364d"
+        "path": ".tmp/ci380-engine.zip",
+        "bytes": 156740,
+        "sha256": "2657cab21a1bfa9e345f8195a0b66949ebcf75a55312b721c5a7c57bbef4d873"
       },
       {
-        "path": ".tmp/ci378-linux.zip",
-        "bytes": 2246,
-        "sha256": "a761a596cf1b2a0a6ebd809b4d9f16d1f1e562aa9847e18d1014ded28b490c2a"
+        "path": ".tmp/ci380-linux.zip",
+        "bytes": 2247,
+        "sha256": "98ad44e6b024f5aa924d99651e55b2a448833c4aaed37b2964567a3ce26e5327"
       },
       {
-        "path": ".tmp/ci378-windows.zip",
-        "bytes": 2147,
-        "sha256": "5180633f7fbe6d7a9e262c568cdd972b3fcf183decf7326e3a79fd4e6059d7eb"
+        "path": ".tmp/ci380-windows.zip",
+        "bytes": 2146,
+        "sha256": "b557e51f519d59a55a9985c3076b87db7ec8e825a69a407a27a94831a01c3e88"
       },
       {
-        "path": ".tmp/ci378-main-workstation-result-qualification.json",
-        "bytes": 185434,
-        "sha256": "3dfdf91c93b29f1d3f9e7c0b82f81b1db8de10ee581dbb48f42b612de06b0cad"
+        "path": ".tmp/ci380-main-workstation-result-qualification.json",
+        "bytes": 185606,
+        "sha256": "ba59657f647bd9c6e6aa1a6b43d01409bb8fa2dc67c6c312384fefb6fa259424"
       },
       {
-        "path": ".tmp/ci378-engine-lifecycle-engine-qualification.json",
-        "bytes": 244738,
-        "sha256": "731bfab7317d67e18732756e0605dbcf4683d02154c3c25ddb89905915050722"
+        "path": ".tmp/ci380-engine-lifecycle-engine-qualification.json",
+        "bytes": 244934,
+        "sha256": "b1536ee881b52d10ecaaa3cfe5f444b3abb8279b6a13bacc708d5f9872909e20"
       },
       {
-        "path": ".tmp/ci378-linux-native-midi-codec-qualification.json",
-        "bytes": 7876,
-        "sha256": "2ce17f1e0e848c2ac52aa05ff2b0b1c47ff927a93dd8ff12b8e27ed9b724b76a"
+        "path": ".tmp/ci380-linux-native-midi-codec-qualification.json",
+        "bytes": 7877,
+        "sha256": "2d13aad2a3b43c656318683cc0ff93fc424be1bce4df70d9df58f5a6cf9bd8cc"
       },
       {
-        "path": ".tmp/ci378-windows-native-midi-codec-qualification.json",
+        "path": ".tmp/ci380-windows-native-midi-codec-qualification.json",
         "bytes": 7747,
-        "sha256": "a5c87bc69a6a606548a82afb8662fcd0d298a9e173a8e00cc78714d0f1c0d1e1"
+        "sha256": "24bf1c37cb44d5cf09440dcd09c047829589171982fbd7eb0ec3c95114bf950a"
       }
     ],
     "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
@@ -93935,5 +93935,588 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "remaining988": "Exact archived executing-build identity and its complete incompatible source/assets/runtime matrix remain separate under1242/1119/1096. This change qualifies current-runtime component continuation; do not promote it to archived exact execution. Continue broader durable intervention/terrain/transfer/tempo/external-input and invalid imported-payload corpus under1092, and exact sibling-prefix acceleration under1213."
+  },
+  "continuation384": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "77e057faed133c8de6e5fe63b8801428dcad2be9",
+    "scope": "Separate captured causal application build, active executing identity and current-runtime continuation; desktop Playwright compatibility/refusal matrix for988/1092.",
+    "changes": [
+      "Capture bounded immutable execution scalars including code/build/closure/asset hashes, harness/schema/capability/realm in new causal source versions; no caller field attests the active imported module.",
+      "Protocol compatibility excludes only optional applicationExecution provenance so legacy and different-build recordings remain explicitly current-runtime comparisons.",
+      "Preflight/replay/branch receipts expose version1 executionBinding with precise field mismatches, actual active identity and causal-exact-realm-unqualified before world allocation. A trusted active generation is separate from qualified isolated exact causal replay.",
+      "Persist human-readable protocol/asset/build compatibility diagnostics in the Physical take panel and status. Preserve original take metadata and shared branch prefixes.",
+      "Correct earlier issue audit:1242,1119 and1096 are already closed. The owned immutable survey worker exists; exact causal tape execution has a distinct unqualified realm contract."
+    ],
+    "validation": {
+      "node": {
+        "passed": 74,
+        "failed": 0,
+        "log": ".tmp/rook384-node-final.log",
+        "files": [
+          "test/causal-runtime-identity.test.js",
+          "test/procgen-causal-reperformance.test.js",
+          "test/procgen-causal-physical-branch.test.js",
+          "test/procgen-causal-journal.test.js",
+          "test/procgen-causal-take.test.js"
+        ],
+        "scope": "Complete affected files together, including actual10000tick Node replay/transfer/work/tempo/speed/external observations, bounded reuse/branch/journal/semantic take cases and15preflight variants without world allocation."
+      },
+      "playwright": {
+        "passed": 3,
+        "failed": 0,
+        "report": ".tmp/rook384-playwright-publish-final.json",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "cases": [
+          {
+            "title": "stored-take comparison and explicit branch stepping use real detached worlds without enabling output",
+            "file": "procgen-take-workbench.spec.js",
+            "status": "passed"
+          },
+          {
+            "title": "stored take corruption, missing chunks and future sources preserve the live desktop performance",
+            "file": "procgen-workstation-causal-source-faults.spec.js",
+            "status": "passed"
+          },
+          {
+            "title": "durable physical tape replays, seeks and branches 64 committed ticks without changing its source",
+            "file": "procgen-workstation-durable-tape.spec.js",
+            "status": "passed"
+          }
+        ],
+        "matrix": [
+          {
+            "kind": "matching-recording",
+            "compatibility": "compatible-current-runtime",
+            "binding": "matched",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "legacy-recording",
+            "compatibility": "compatible-current-runtime",
+            "binding": "unbound",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "legacy-recording-execution-unbound",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "different-realm",
+            "compatibility": "compatible-current-runtime",
+            "binding": "matched",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-buildId",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "buildId"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-buildId-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-closureDigest",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "closureDigest"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-closureDigest-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-codeDigest",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "codeDigest"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-codeDigest-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-assetDigest",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "assetDigest"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-assetDigest-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-harnessVersion",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "harnessVersion"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-harnessVersion-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-stateSchema",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "stateSchema"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-stateSchema-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-identityRecipe",
+            "compatibility": "compatible-current-runtime",
+            "binding": "mismatched",
+            "mismatches": [
+              "identityRecipe"
+            ],
+            "reasons": [],
+            "exactReasons": [
+              "application-identityRecipe-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "missing-code-hash",
+            "compatibility": "compatible-current-runtime",
+            "binding": "invalid",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "recorded-execution-identity-invalid",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "future-execution-version",
+            "compatibility": "compatible-current-runtime",
+            "binding": "invalid",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "recorded-execution-version-unsupported",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "unbuilt-recording",
+            "compatibility": "compatible-current-runtime",
+            "binding": "unbound",
+            "mismatches": [],
+            "reasons": [],
+            "exactReasons": [
+              "recorded-execution-unbound",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "future-protocol",
+            "compatibility": "unsupported",
+            "binding": "matched",
+            "mismatches": [],
+            "reasons": [
+              "source-version-mismatch"
+            ],
+            "exactReasons": [
+              "source-version-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          },
+          {
+            "kind": "changed-asset-collection",
+            "compatibility": "unsupported",
+            "binding": "matched",
+            "mismatches": [],
+            "reasons": [
+              "asset-identity-mismatch"
+            ],
+            "exactReasons": [
+              "asset-identity-mismatch",
+              "causal-exact-realm-unqualified"
+            ]
+          }
+        ],
+        "matrixAllocations": 0,
+        "buildId": "5fdc58b7737e9804cdeb6ade65d3fcd2ab00a0a2b00e8c6c7ceeb4a67b2489e9",
+        "buildComparisons": [
+          {
+            "kind": "legacy-recording",
+            "ticksExecuted": 32,
+            "status": "matched-current-runtime",
+            "binding": "unbound",
+            "exactQualified": false,
+            "explanation": "Stored take matches this current runtime. The recorded application build is unqualified. Exact archived replay and listening remain unqualified."
+          },
+          {
+            "kind": "changed-codeDigest",
+            "ticksExecuted": 32,
+            "status": "matched-current-runtime",
+            "binding": "mismatched",
+            "exactQualified": false,
+            "explanation": "Stored take matches this current runtime. The recorded application build differs (codeDigest); this result uses the current build. Exact archived replay and listening remain unqualified."
+          },
+          {
+            "kind": "matching-recording",
+            "ticksExecuted": 32,
+            "status": "matched-current-runtime",
+            "binding": "matched",
+            "exactQualified": false,
+            "explanation": "Stored take matches this current runtime. The recorded application build matches. Exact archived replay and listening remain unqualified."
+          }
+        ],
+        "durableTape": {
+          "ticks": 64,
+          "sourceUnchanged": true,
+          "offlineReopen": true,
+          "fromCheckpointSequence": 196,
+          "repeatedTicks": 0,
+          "seekTicks": 0,
+          "activeBuild": "5fdc58b7737e9804cdeb6ade65d3fcd2ab00a0a2b00e8c6c7ceeb4a67b2489e9",
+          "binding": "matched"
+        },
+        "audioContexts": 0,
+        "midiRequests": 0,
+        "scope": "Actual immutable browser module and IndexedDB parent;15compatibility/exact refusal vectors;32tick legacy/changed-code/matching UI comparisons;durable64tick capture/replay/seek/branch/offline reopen;real visible controls. No mobile, acoustic, hardware or new10000tick browser claim."
+      },
+      "priorAttempts": [
+        {
+          "nodePassed": 74,
+          "nodeFailed": 0,
+          "browserPassed": 2,
+          "browserFailed": 1,
+          "report": ".tmp/rook384-playwright-final.json",
+          "trace": ".tmp/rook384-playwright-first-failure-trace.zip",
+          "reason": "Matrix preflights passed; new fixture forgot to refresh saved-take page after creating variants, leaving future take selected. Refresh page before selecting new rows. Runtime/helper/Node-qualified bytes unchanged; rerun all3browser journeys together."
+        }
+      ],
+      "coverage": {
+        "total": {
+          "lines": 95,
+          "functions": 84.33,
+          "branches": 77
+        },
+        "js/app/procgen/workstation/CausalPhysicalBranch.js": {
+          "lines": 88.2,
+          "functions": 72.41,
+          "branches": 69.65
+        },
+        "js/app/procgen/workstation/CausalReperformance.js": {
+          "lines": 98.52,
+          "functions": 89.58,
+          "branches": 77.29
+        },
+        "js/app/procgen/workstation/CausalRuntimeIdentity.js": {
+          "lines": 93.22,
+          "functions": 100,
+          "branches": 93.22
+        }
+      },
+      "coverageFollowup": "CausalRuntimeIdentity93.22%lines/100%functions/93.22%branches in Node; its bound-build branch is exercised by the real browser15case matrix, without claiming combined instrumented coverage. Extend invalid scalar/profile and UI-negative branches. Replay98.52%lines/77.29%branches; branch88.2%lines/69.65%branches retains failure/retirement followups.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 362,
+        "workerFiles": 293,
+        "workerSha256": "bce7e955f23c6dc5313aa67098c30cd3dcd47d9ede193c219603b665fbb9ad21",
+        "note": "Changed application/replay modules are outside this worker component; no fabricated hash refresh."
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook384-node-final.log",
+          "bytes": 8870,
+          "sha256": "90e00b177ae75ef295af3a4a9b71aba7c0eeeb161cc398f0b3c7e0682ccd703b"
+        },
+        {
+          "path": ".tmp/rook384-playwright-final.json",
+          "bytes": 54078,
+          "sha256": "aed11bc5f776aa48b40700fb5c7834416822ffd2c83d801de26fb4116ac53edb"
+        },
+        {
+          "path": ".tmp/rook384-playwright-publish-final.json",
+          "bytes": 96128,
+          "sha256": "0a3d0284ff5e436aa2af69cda14a0c08d67b2c982516b62d94a7514830a435d1"
+        },
+        {
+          "path": ".tmp/rook384-playwright-first-failure-trace.zip",
+          "bytes": 15161108,
+          "sha256": "7946f6bdd9d24d088e6d58950626203b4e4608794a25d246bc7cdc7638149222"
+        },
+        {
+          "path": ".tmp/rook384-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook384-checks.log",
+          "bytes": 4209,
+          "sha256": "1a00a8e91ddb8c15a2baac113b6fb999b624be68f3cd31cd0f7d29656d15f475"
+        },
+        {
+          "path": ".tmp/rook384-coverage/coverage-summary.json",
+          "bytes": 1408,
+          "sha256": "425f8f92d20e35822b662ccbd1279ebfb4cd41d58e49dee5ca951a63a41c5fa6"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "e2e/procgen-workstation-causal-source-faults.spec.js",
+        "bytes": 9203,
+        "sha256": "7bd247b68bac07c59da2b0e01376b30174e7301a7e93cb1a2b2eec23907679a3"
+      },
+      {
+        "path": "e2e/procgen-workstation-durable-tape.spec.js",
+        "bytes": 11285,
+        "sha256": "cbfbd566e38e6ed2b8df017482d9aa883a3136cbd205a245d2e35b1c7b8e40bf"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "bytes": 16895,
+        "sha256": "68db33ba004427d8891c2b4e79c31f03f8b56b4109eac50b3b68fae179c1deb9"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalReperformance.js",
+        "bytes": 39141,
+        "sha256": "61b7e81176d44b065811bba1b6533b49a01d5f07b1c68064e9f9e319c17e9e48"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalRuntimeIdentity.js",
+        "bytes": 5368,
+        "sha256": "873831b8504b19cd1f7d8f2be269a3d7db97004c0a3228d4f7eb63b9123fe7c2"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 225228,
+        "sha256": "2047d61db999ca3ebec077c9729e421ab96337f08757d6621eca621418b9b8fc"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+        "bytes": 149577,
+        "sha256": "fa6efb4381c1499513881f34d90775c64ef4aaa0bc0a3917cd86e614ee8cf433"
+      },
+      {
+        "path": "test/procgen-causal-reperformance.test.js",
+        "bytes": 35563,
+        "sha256": "0f663d46b86e1cf49f3cfdb695b8aa0467c4fcca35042146ba501b8f38e75014"
+      },
+      {
+        "path": "test/causal-runtime-identity.test.js",
+        "bytes": 3727,
+        "sha256": "768768d26de40fc7db902e0025067b0a9f343c1047f35537a95052497f1b3ea1"
+      },
+      {
+        "path": "test/helpers/causalRuntimeBindingCorpus.js",
+        "bytes": 6743,
+        "sha256": "d1e5240997453efd153bad1cde455c95a525b755a07c961f6e4c4f291361c9d9"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "cbb9b8a4b13aacf3803bc89805ee1d49487e1bb6",
+      "status": "success",
+      "run": 40985282669,
+      "job": 123834750849,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40985282669",
+      "engineJob": 123834750567,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7234,
+      "nodePending": 10,
+      "browserPassed": 273,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 229,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.97,
+        "functions": 88.65
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30561,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9885,
+          "benchHistoryStress": 16212,
+          "benchHotpaths": 4461
+        },
+        "metrics": {
+          "perfP95Frame": 100,
+          "perfP50Tps": 106.01320820300639,
+          "historyRatio": 0.5848333333333333,
+          "antsAvgMs": 12.5,
+          "tileCompositionAvgMs": 3.16,
+          "overlayPlaneAvgMs": 8.47,
+          "scaledBlitAvgMs": 15.08
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5848333333333333
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0908333333333333
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1260,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "83cd30274dfacf25d7891bb0f0178f101b0b44bbb92e2fa3af9d6dfe470990f0",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123834750784,
+        "windowsJob": 123834750864,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "c4def53f9fd2586c0c5239f55d0ee8cb2da5407f",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1149,
+        "inventorySha256": "683fd7e941552edeef3ccd3cd6678dab06d367df161404de8b6e5803c962b43b",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1260,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci380-main.zip",
+          "bytes": 763509,
+          "sha256": "b42b26b50c0e63933a877f51604ed3ff5664c413e11cb77e87cc2126d70bea22"
+        },
+        {
+          "path": ".tmp/ci380-engine.zip",
+          "bytes": 156740,
+          "sha256": "2657cab21a1bfa9e345f8195a0b66949ebcf75a55312b721c5a7c57bbef4d873"
+        },
+        {
+          "path": ".tmp/ci380-linux.zip",
+          "bytes": 2247,
+          "sha256": "98ad44e6b024f5aa924d99651e55b2a448833c4aaed37b2964567a3ce26e5327"
+        },
+        {
+          "path": ".tmp/ci380-windows.zip",
+          "bytes": 2146,
+          "sha256": "b557e51f519d59a55a9985c3076b87db7ec8e825a69a407a27a94831a01c3e88"
+        },
+        {
+          "path": ".tmp/ci380-main-workstation-result-qualification.json",
+          "bytes": 185606,
+          "sha256": "ba59657f647bd9c6e6aa1a6b43d01409bb8fa2dc67c6c312384fefb6fa259424"
+        },
+        {
+          "path": ".tmp/ci380-engine-lifecycle-engine-qualification.json",
+          "bytes": 244934,
+          "sha256": "b1536ee881b52d10ecaaa3cfe5f444b3abb8279b6a13bacc708d5f9872909e20"
+        },
+        {
+          "path": ".tmp/ci380-linux-native-midi-codec-qualification.json",
+          "bytes": 7877,
+          "sha256": "2d13aad2a3b43c656318683cc0ff93fc424be1bce4df70d9df58f5a6cf9bd8cc"
+        },
+        {
+          "path": ".tmp/ci380-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "24bf1c37cb44d5cf09440dcd09c047829589171982fbd7eb0ec3c95114bf950a"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining988": "Broader immutable cross-version/unsupported-codec and actual source/asset-byte tamper matrix remains; exact causal replay is explicitly refused rather than borrowing the separate survey worker claim.1092 keeps wider authored durable inputs/semantic invalid data;1213 keeps sibling-prefix acceleration."
   }
 }

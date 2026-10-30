@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
+import { inspectLane } from './helpers/workstationDock.js';
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 test('stored take corruption, missing chunks and future sources preserve the live desktop performance', { tag: '@boundary' }, async ({ page }, testInfo) => {
@@ -11,7 +12,10 @@ test('stored take corruption, missing chunks and future sources preserve the liv
     Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: async () => { window.__faultMidiRequests++; throw new Error('Unexpected hardware request'); } });
   });
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForURL(/\/dist\/browser\/[a-f0-9]{64}\/procgen\.html\?/, { timeout: 90000 });
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.transport.pause(); window.__PROCGEN_LANES__.pause(); });
+  await inspectLane(page, 'Physical');
   const result = await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__, world = api.world, root = new URL('./', location.href);
     const { createProcgenSessionStorage } = await import(new URL('js/app/procgen/workstation/ProcgenSessionStorage.js', root));
@@ -19,6 +23,7 @@ test('stored take corruption, missing chunks and future sources preserve the liv
     const { captureProcgenCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpoint.js', root));
     const { hashProcgenPhysicsCheckpoint } = await import(new URL('js/app/procgen/workstation/ProcgenCheckpointProvenance.js', root));
     const { RECOVERY_DATABASE_NAME, RECOVERY_DATABASE_VERSION } = await import(new URL('js/runtime/BrowserGenerationPins.js', root));
+    const { causalRuntimeBindingCorpus } = await import('/test/helpers/causalRuntimeBindingCorpus.js');
     studio.transport.pause(); api.pause(); api.step(64); studio.play(); api.pause();
     if (!await studio.handlers.startCausalTake({ takeName: 'Source fault recovery' })) throw new Error('Take admission failed.'); api.pause();
     api.step(32); studio.transport.pause(); api.pause(); const stopped = await studio.handlers.stopCausalTake();
@@ -56,11 +61,28 @@ test('stored take corruption, missing chunks and future sources preserve the liv
       const unsupported = await studio.handlers.compareCausalTake();
       if (unsupported?.receipt?.status !== 'unsupported' || !unsupported.receipt.reasons.includes('source-version-mismatch') || unsupported.receipt.exactQualified !== false)
         throw new Error('Future source was not explicitly refused.');
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      if (!document.querySelector('.studio-causal-compatibility')?.textContent.includes('musical protocol differs')) throw new Error('Future protocol refusal was not explained in the take UI.');
       outcomes.push({ kind: 'future-source', reasons: unsupported.receipt.reasons }); await preserved();
+      const bindings = await causalRuntimeBindingCorpus(journal, parent.takeId, new URL('js/app/procgen/', root)), buildComparisons = [];
+      if (bindings.active.activeExecution !== 'bound') throw new Error('Build corpus did not execute inside the actual immutable application.');
+      await studio.handlers.browseCausalTakes();
+      for (const [kind, explanation] of [['legacy-recording', 'build is unqualified'], ['changed-codeDigest', 'differs (codeDigest)'], ['matching-recording', 'recorded application build matches']]) {
+        await studio.handlers.selectCausalTake('take:binding:' + kind);
+        const compared = await studio.handlers.compareCausalTake();
+        if (!compared?.receipt?.compatibilityMatch || compared.receipt.ticksExecuted !== 32 || compared.receipt.exactQualified !== false || compared.receipt.executionIdentity.status !== 'bound')
+          throw new Error('Current-runtime build comparison failed: ' + kind + ' ' + JSON.stringify(compared));
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        const text = document.querySelector('.studio-causal-compatibility')?.textContent;
+        if (!text?.includes(explanation)) throw new Error('Missing persistent build compatibility explanation: ' + kind + ' ' + text);
+        buildComparisons.push({ kind, receipt: compared.receipt, explanation: text }); await preserved();
+      }
       await studio.handlers.selectCausalTake(parent.takeId); if (!(await studio.handlers.compareCausalTake())?.receipt?.compatibilityMatch) throw new Error('Original source did not recover after version refusal.');
-      await preserved(); return { outcomes, parentTakeId: parent.takeId, physicalHash, unchanged: true, audioContexts: window.__faultAudioOpens, midiRequests: window.__faultMidiRequests };
+      await preserved(); return { outcomes, bindings, buildComparisons, parentTakeId: parent.takeId, physicalHash, unchanged: true, audioContexts: window.__faultAudioOpens, midiRequests: window.__faultMidiRequests };
     } finally { await write(original); database.close(); store.close(); }
   });
   expect(result.unchanged).toBe(true); expect(result.outcomes).toHaveLength(3); expect(result.audioContexts).toBe(0); expect(result.midiRequests).toBe(0);
+  expect(result.bindings.rows).toHaveLength(15); expect(result.bindings.allocations).toBe(0); expect(result.buildComparisons).toHaveLength(3);
+  await expect(page.locator('.studio-causal-compatibility')).toContainText('recorded application build matches');
   await testInfo.attach('causal-source-faults', { body: JSON.stringify(result), contentType: 'application/json' });
 });

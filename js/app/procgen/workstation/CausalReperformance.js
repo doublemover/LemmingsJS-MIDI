@@ -10,11 +10,11 @@ import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
 import { borrowCausalCheckpoint, borrowCausalPage, retireCausalRead } from './CausalReadLeases.js';
 import { createCausalPerformanceState, validateCausalPerformanceState } from './CausalPerformanceState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
+import { inspectCausalRuntimeExecution, sameCausalRuntimeProtocols } from './CausalRuntimeIdentity.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const equal = (left, right) => canonicalJournalText(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text ===
   canonicalJournalText(right, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text;
-const EXECUTION_IDENTITY = Object.freeze({ status: 'unbound', reason: 'active-module-graph-not-proven' });
 const worldTick = checkpoint => checkpoint?.graph?.owners?.find(owner => owner.name === 'world')?.props?.tickIndex;
 
 const createCausalReperformance = ({ journal, createWorld, sourceVersions, assetRefs = [], liveWorld = null,
@@ -66,7 +66,9 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     if (!id(takeId) || !['compatibility', 'exact'].includes(mode)) throw new Error('Invalid re-performance request.');
     check(signal);
     const manifest = await journal.openTake(takeId), reasons = [];
-    if (!equal(manifest.sourceVersions, runtimeVersions)) reasons.push('source-version-mismatch');
+    if (!sameCausalRuntimeProtocols(manifest.sourceVersions, runtimeVersions)) reasons.push('source-version-mismatch');
+    const executionBinding = inspectCausalRuntimeExecution(manifest.sourceVersions);
+    const executionIdentity = { ...executionBinding.active, status: executionBinding.active.activeExecution };
     if (!equal(manifest.assetRefs, runtimeAssets)) reasons.push('asset-identity-mismatch');
     const source = await borrowCausalCheckpoint(journal, manifest.initialCheckpoint, { signal });
     try {
@@ -92,11 +94,11 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       if (initial.engine?.performanceInputs) { try { validateCausalPerformanceState(initial.engine.performanceInputs); } catch { reasons.push('invalid-lane-performance-inputs'); } }
       if (![1, 2].includes(initial.replay?.version) || initial.replay.version === 2 && typeof initial.replay.playing !== 'boolean' || typeof initial.replay.scoreTimeline !== 'boolean' ||
         !Number.isFinite(initial.replay.bpm) || initial.replay.bpm <= 0 || initial.replay.bpm > 1000000) reasons.push('missing-replay-clock-settings');
-      if (mode === 'exact') reasons.push('active-execution-unbound');
+      if (mode === 'exact') reasons.push(...executionBinding.reasons, executionBinding.exactUnavailableReason);
       check(signal);
       return cloneJournalData({ schema: 'lemmings-reperformance-preflight', version: 1, takeId, takeRevision: manifest.revision,
         status: reasons.length ? 'unsupported' : 'compatible-current-runtime', reasons, mode, exactQualified: false,
-        executionIdentity: EXECUTION_IDENTITY, sourceCanonicalHash: manifest.canonicalHash, checkpoint, targetSequence: target, throughTick,
+        executionIdentity, executionBinding, sourceCanonicalHash: manifest.canonicalHash, checkpoint, targetSequence: target, throughTick,
         artifactIntegrity: 'checkpoint-hash-verified; chunk-chain-verification-required',
         sourceVersions: manifest.sourceVersions, assetRefs: manifest.assetRefs });
     } finally { retireCausalRead(source); }
@@ -334,7 +336,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       const boundaryComplete = !generated.length && !expectedIntents.size;
       if (retainWorld && !boundaryComplete) throw journalError('incomplete-branch-boundary', 'A retained physical branch requires every batch and intent companion at its boundary.');
       const receipt = cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 2, takeId, takeRevision: manifest.revision,
-        sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, executionIdentity: EXECUTION_IDENTITY,
+        sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, executionIdentity: qualification.executionIdentity, executionBinding: qualification.executionBinding,
         exactQualified: false, compatibilityMatch: !divergence, status: divergence ? 'mismatch' : 'matched-current-runtime',
         firstDivergence: divergence, verifiedDurableSequence: verified.verifiedThroughSequence, fromCheckpointSequence: ref.sequence,
         throughSequence: lastSequence, targetSequence: target, tick: lastComparedTick, ticksExecuted: ticks, comparedBatches, comparedIntents,
@@ -375,7 +377,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       if (error.code === 'cancelled') throw error;
       return { receipt: cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 2, takeId, takeRevision: manifest.revision,
         sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, exactQualified: false,
-        executionIdentity: EXECUTION_IDENTITY, status: 'unsupported-or-incomplete', compatibilityMatch: false,
+        executionIdentity: qualification.executionIdentity, executionBinding: qualification.executionBinding, status: 'unsupported-or-incomplete', compatibilityMatch: false,
         retirement: { state: cleanup.state, outcome: cleanup.outcome },
         failure: { code: error.code || error.name || 'reperformance', message: error.message, sequence: error.firstSequence ?? lastSequence,
           tick: error.tick ?? world?.tickIndex ?? null }, throughSequence: lastSequence, targetSequence: target,

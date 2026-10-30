@@ -62,3 +62,27 @@ domain. `actualPhysicsHash` remains the version2 simulation hash for its origina
 purpose. Physical branch boundary receipts carry both scopes. Matching remains
 current-runtime compatibility: neither hash attests archived executing code,
 cryptographic asset authenticity, receiver processing or sound.
+
+## Captured causal build compatibility
+
+New causal takes include bounded scalar `applicationExecution` provenance in
+`sourceVersions`, captured from the executing immutable application generation.
+It contains the build, dependency closure, code and asset digests, harness/schema,
+capability profile and recording realm. Recorded metadata cannot replace the
+active identity read from the executing module. Realm identifiers identify the
+owners; changing realms alone does not change build compatibility.
+
+Preflight and replay receipts expose a separate version1 `executionBinding` with
+the required and active identities, field-specific mismatches and explicit
+missing, legacy or invalid-recording reasons. Protocol compatibility excludes
+only this optional provenance field: old takes and a different recorded build
+can still be compared against the current runtime. Simulation, mapping, codec
+and asset incompatibilities continue to refuse replay. Original take bytes and
+branch prefix provenance remain unchanged.
+
+The take panel retains a readable compatibility explanation. A bound active
+build and matching continuation hashes qualify only the named current-runtime
+comparison. Exact causal replay still refuses before world allocation with
+`causal-exact-realm-unqualified`; this service has no qualified isolated causal
+replay realm. The independently owned immutable survey replay worker has its
+own execution contract. Neither service attests hardware or listening output.

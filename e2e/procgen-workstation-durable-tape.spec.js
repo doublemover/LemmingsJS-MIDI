@@ -15,6 +15,7 @@ for (const ticks of [64, 10000]) test('durable physical tape replays, seeks and 
   await page.exposeFunction('__tapeOffline', () => context.setOffline(true));
   await page.exposeFunction('__tapeProgress', progress => { if (ticks === 10000) console.log('Durable tape: ' + JSON.stringify(progress)); });
   await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForURL(/\/dist\/browser\/[a-f0-9]{64}\/procgen\.html\?/, { timeout: 90000 });
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
   try {
     const result = await page.evaluate(async ticks => {
@@ -68,6 +69,7 @@ for (const ticks of [64, 10000]) test('durable physical tape replays, seeks and 
       const store = createProcgenSessionStorage(), parent = await store.loadCausalTake(stopped.takeId), original = JSON.stringify(parent), project = JSON.stringify(studio.getProject());
       try {
         if (parent.state !== 'finalized' || parent.complete !== true || parent.durableSequence !== parent.admittedSequence) throw new Error('The recorded window did not acquire a complete durable prefix.');
+        if (parent.sourceVersions.applicationExecution?.activeExecution !== 'bound' || parent.sourceVersions.applicationExecution.buildId !== root.pathname.split('/').filter(Boolean).at(-1)) throw new Error('Take did not capture its actual immutable application build.');
         await window.__tapeProgress({ phase: 'full-replay', completed, ticks });
         const first = await compare(); if (!first?.receipt?.compatibilityMatch || first.receipt.ticksExecuted !== ticks) throw new Error('Full stored replay failed: ' + JSON.stringify(first) + ' ' + document.querySelector('.studio-status')?.textContent?.slice(0, 512));
         const sourceHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
@@ -81,6 +83,7 @@ for (const ticks of [64, 10000]) test('durable physical tape replays, seeks and 
         await window.__tapeProgress({ phase: 'branch', completed, ticks });
         const branch = await studio.handlers.prepareCausalBranch({ throughSequence: midpoint, takeName: 'Alternate durable prefix' });
         if (!branch?.active) throw new Error('Branch preparation failed: ' + JSON.stringify(branch));
+        for (const receipt of [first.receipt, repeated.receipt, seek.receipt, branch.receipt]) if (receipt.executionIdentity?.status !== 'bound' || receipt.executionBinding?.status !== 'matched' || receipt.exactQualified !== false) throw new Error('Replay or branch lost its separate trusted active-build identity.');
         const stepped = await studio.handlers.advanceCausalBranch({ ticks: 32 }); if (!stepped) throw new Error('Branch stepping failed.');
         const child = await studio.handlers.finishCausalBranch(); if (!child?.takeId || child.takeId === stopped.takeId) throw new Error('The branch did not acquire an independent take.');
         if (JSON.stringify(await store.loadCausalTake(stopped.takeId)) !== original || world.tickIndex !== initialTick + ticks || JSON.stringify(studio.getProject()) !== project || api.world !== world)

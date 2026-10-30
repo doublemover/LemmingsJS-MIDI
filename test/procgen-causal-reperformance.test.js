@@ -12,6 +12,7 @@ import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, migrateProcgenC
 import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { captureCausalPerformanceState, createCausalPerformanceState, diffCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
+import { causalRuntimeBindingCorpus } from './helpers/causalRuntimeBindingCorpus.js';
 
 const sourceVersions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
 const mapping = { version: 1, revision: 1, instruments: [
@@ -81,6 +82,20 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
       expect(result.receipt.firstDivergence.kind).to.equal('component-checkpoint');
       expect(result.receipt.firstDivergence.detail.continuationMatch).to.equal(false);
       expect(result.receipt.firstDivergence.detail.firstStateDifference.path).to.include('revision');
+    } finally { await service.dispose().completion; }
+  });
+
+  it('separates recorded build provenance, actual active identity and protocol compatibility before allocation', async () => {
+    const { journal, source, runtime } = await record({ ticks: 24 }), corpus = await causalRuntimeBindingCorpus(journal, source.takeId);
+    expect(corpus.rows).to.have.length(15); expect(corpus.allocations).to.equal(0); expect(corpus.sourceUnchanged).to.equal(true);
+    expect(corpus.rows.every(row => row.binding.active.activeExecution === 'unbound')).to.equal(true);
+    const service = runtime();
+    try {
+      for (const kind of ['matching-recording', 'legacy-recording', 'changed-codeDigest']) {
+        const result = await service.reperform({ takeId: 'take:binding:' + kind, executionEpoch: 'compatible:' + kind });
+        expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, ticksExecuted: 24, exactQualified: false, finalWorldParity: 'matched-at-captured-component-checkpoint' });
+        expect(result.receipt.executionIdentity.status).to.equal('unbound');
+      }
     } finally { await service.dispose().completion; }
   });
 

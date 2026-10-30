@@ -25,7 +25,7 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
       sourceTakeRevision: parent.revision, sourceCanonicalHash: parent.canonicalHash, throughSequence: target,
       sourceFinalizationHash: parent.finalizationHash || null, fromCheckpointSequence: replay.receipt.fromCheckpointSequence, ticksExecuted: replay.receipt.ticksExecuted,
       tick: world.tickIndex, generation: world.generation, actualPhysicsHash: replay.receipt.actualPhysicsHash,
-      physicsStateSchema: replay.receipt.physicsStateSchema, executionIdentity: replay.receipt.executionIdentity,
+      physicsStateSchema: replay.receipt.physicsStateSchema, executionIdentity: replay.receipt.executionIdentity, executionBinding: replay.receipt.executionBinding,
       continuationStateSchema: replay.receipt.continuationStateSchema, actualContinuationHash: replay.receipt.actualContinuationHash,
       status: 'validated-by-current-runtime-reperformance', exactQualified: false });
     writer = await journal.branch({ parentTakeId, parentRevision: parent.revision, throughSequence: target, takeId, takeName,

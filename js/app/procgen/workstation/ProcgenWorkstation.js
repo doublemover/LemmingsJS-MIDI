@@ -38,7 +38,7 @@ import { createProcgenMidiPorts } from './ProcgenMidiPorts.js';
 import { createProcgenWorkstationView } from './ProcgenWorkstationView.js';
 import { createLaneDisplayEvidence } from './LaneDisplayEvidence.js';
 import { captureProcgenCheckpoint, assetIdentity } from './ProcgenCheckpoint.js';
-import { causalRuntimeSourceVersions } from './CausalRuntimeIdentity.js';
+import { causalRuntimeSourceVersions, describeCausalReperformance } from './CausalRuntimeIdentity.js';
 import { borrowCausalPage, borrowCausalTake, retireCausalRead } from './CausalReadLeases.js';
 import { createProcgenLaneObserver } from './ProcgenLaneObservation.js';
 import { createProcgenSession, validateProcgenSession, createProcgenSessionStorage, createProcgenDocumentId, freshProcgenSeed } from './ProcgenSessionStorage.js';
@@ -735,8 +735,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     if (disposed || sourceSerial !== causalWorkbenchSourceSerial) throw new Error('The selected take changed before comparison began.');
     const result = await owner.open({ takeId, throughSequence, takeName, branchTakeId: branch ? createProcgenDocumentId(window.crypto).replace(/^doc:/, 'take:') : null });
     status(result.active ? 'Physical branch prepared paused. Step explicitly; the current project remains unchanged.' :
-      result.receipt?.compatibilityMatch ? 'Stored take matches this current runtime. Exact archived execution and listening are separate qualifications.' :
-        'Stored take comparison: ' + (result.receipt?.status || 'unavailable') + (result.receipt?.failure?.message ? ' · ' + result.receipt.failure.message : ''));
+      describeCausalReperformance(result.receipt));
     return result;
   };
   const finishCausalBranch = async ({ discard = false } = {}) => {

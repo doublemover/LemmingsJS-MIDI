@@ -2,6 +2,7 @@ import { createProcgenOperationalView } from './ProcgenOperationalView.js';
 import { createLaneDisplaySnapshot, LANE_DISPLAY_PAGES } from './LaneDisplaySnapshot.js';
 import { createLaneDisplayView } from './LaneDisplayView.js';
 import { createCausalVisualView } from './CausalVisualView.js';
+import { describeCausalReperformance } from './CausalRuntimeIdentity.js';
 import { createModalOutputSafety } from '../../controls/ModalOutputSafety.js';
 import { createKeyedControlTree } from '../../controls/KeyedControlTree.js';
 import { createAutomationCurveEditor } from '../../controls/AutomationCurveEditor.js';
@@ -679,6 +680,7 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
           branchControls.append(node('p', branch?.active ? `${branch.active.takeId} · ${branch.phase} · tick ${branch.active.tick} · ${branch.active.completedBatches} new physical batches · output off` :
             `${branch?.phase || 'idle'} · isolated current-runtime comparison · current project unchanged · output off`, 'studio-hint'));
           if (branch?.receipt?.firstDivergence) branchControls.append(node('p', 'First recorded divergence: ' + JSON.stringify(branch.receipt.firstDivergence).slice(0, 1024), 'studio-hint'));
+          if (branch?.receipt) branchControls.append(node('p', describeCausalReperformance(branch.receipt), 'studio-causal-compatibility'));
           controls.append(branchControls);
         }
         if (take.selectedTakeId || take.last) {
