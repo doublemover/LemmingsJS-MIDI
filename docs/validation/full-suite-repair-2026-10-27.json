@@ -92559,5 +92559,1381 @@
     },
     "priorFailureRetained": "377 CI still records227workstation passes and the original export startup timeout/aborted RawByteLease request; later378 passed the previous fixture.381 adds document-bound setup/diagnostics but is not claimed as a proven application transport repair.",
     "currentHead": "381 full CI remains separate;380 application source has177Node/18survey Playwright and381 fixture six export Playwright passes. Continue backlog solo."
+  },
+  "continuation383": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "ed78b3462e5d8aa63285ec8d484bb2df22dce2c9",
+    "scope": "Separate checkpoint simulation display identity from authoritative owned continuation; use continuation schema1 for replay/checkpoint reuse/physical branches while preserving legacy simulation schema2.",
+    "counterexamples": {
+      "path": ".tmp/rook383-checkpoint-owner-counterexamples.json",
+      "bytes": 838,
+      "sha256": "6ea832220608390095f71bf808a11c39095e5075b95a30971c9f720b479d0f52"
+    },
+    "changes": [
+      "Keep project/hash/compareProcgenPhysicsCheckpoint simulation schema2 stable for sound/display isolation. Add project/hash/compareProcgenContinuationCheckpoint schema1 with authoring, crew/topology and active assistance; omit known diagnostics and refuse missing owner components.",
+      "Re-performance receipt version2 carries both simulation and continuation identities. Component qualification and in-memory checkpoint reuse bind strict continuation hashes; physical branch boundary version2 retains both declared scopes. No archived execution qualification is inferred.",
+      "Pending private topology publications refuse synchronous/cooperative checkpoint capture before copying and at cooperative boundaries.",
+      "Stronger comparison exposed replay injecting an uncaptured fallback authoring graph when the stored graph was null. Preserve the actual null owner and use the existing interpreter fallback. Correct the branch recording fixture to apply its recorded mapping to its actual world.",
+      "Document comparison scopes and keep unchanged public sound-isolation semantics; add a hash-valid authoring-only forged component negative."
+    ],
+    "validation": {
+      "node": {
+        "passed": 96,
+        "failed": 0,
+        "log": ".tmp/rook383-node-publish-final.log",
+        "scope": "All checkpoint files plus causal replay/branch, topology, atomic authoring and generated terrain evidence cohorts. Includes10000-tick actual Node world replay with transfer/work/tempo/speed and external observation inputs."
+      },
+      "playwright": {
+        "passed": 3,
+        "failed": 0,
+        "report": ".tmp/rook383-playwright-publish-final.json",
+        "cases": [
+          {
+            "title": "six pinned native sounds preserve the actual 1000-tick world and causal event order without a legacy pattern path",
+            "file": "procgen-sound-world-isolation.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "sound-world-isolation.json",
+                "value": {
+                  "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+                  "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+                  "mismatchStates": null,
+                  "difference": null,
+                  "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+                  "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+                  "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "selections": [
+                    "foundation.soft-triangle",
+                    "forge.glass-rivet",
+                    "material.timber",
+                    "pluck.burrow-thumb",
+                    "choir.hollow-ooh",
+                    "spectrum.bubble-reed"
+                  ],
+                  "tickStart": 2,
+                  "tickEnd": 1002,
+                  "sameWorld": true,
+                  "hardwareUnchanged": true,
+                  "sourceOnlyFixture": false,
+                  "acousticQualification": false
+                }
+              }
+            ]
+          },
+          {
+            "title": "durable physical tape replays, seeks and branches 64 committed ticks without changing its source",
+            "file": "procgen-workstation-durable-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "durable-physical-tape-64",
+                "value": {
+                  "ticks": 64,
+                  "initialTick": 64,
+                  "durableSequence": 196,
+                  "admittedSequence": 196,
+                  "parentState": "finalized",
+                  "parentComplete": true,
+                  "parentTakeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                  "parentCanonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                  "comparisons": [
+                    {
+                      "durationMs": 1417.2000000178814,
+                      "workerConstructions": 18,
+                      "throughSequence": null,
+                      "ticksExecuted": 64
+                    },
+                    {
+                      "durationMs": 609.9000000059605,
+                      "workerConstructions": 5,
+                      "throughSequence": null,
+                      "ticksExecuted": 0
+                    },
+                    {
+                      "durationMs": 740.8000000119209,
+                      "workerConstructions": 5,
+                      "throughSequence": 97,
+                      "ticksExecuted": 0
+                    }
+                  ],
+                  "childTakeId": "take:8f6a288e-9a16-4e23-93b8-f883a1e107fa",
+                  "childPrefix": {
+                    "boundaryQualification": {
+                      "actualContinuationHash": "fe3efdb630a4c1e93daf12cce5b00e6f7bb6e58630c55aa9f3bcc25be1b3b10d",
+                      "actualPhysicsHash": "a2ac2c2bfc4b948cabb83e19c67bd1f23aaa47c1529c654e0337ed1fa1d6b516",
+                      "continuationStateSchema": 1,
+                      "exactQualified": false,
+                      "executionIdentity": {
+                        "reason": "active-module-graph-not-proven",
+                        "status": "unbound"
+                      },
+                      "fromCheckpointSequence": 97,
+                      "generation": 1,
+                      "physicsStateSchema": 2,
+                      "schema": "lemmings-physical-branch-boundary",
+                      "sourceCanonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                      "sourceFinalizationHash": "9fdb6ef5b6c648687a53e07ba28f9cf48b394a64e9ccb4f90f33f7a2cd26d3f0",
+                      "sourceTakeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                      "sourceTakeRevision": 14,
+                      "status": "validated-by-current-runtime-reperformance",
+                      "throughSequence": 97,
+                      "tick": 96,
+                      "ticksExecuted": 0,
+                      "version": 2
+                    },
+                    "indexHash": "bbbcd907d0a084f209ebb1605362a2544d314d74a6c814309d516fe1c6d458fa",
+                    "mode": "immutable-prefix",
+                    "parentChunkCount": 10,
+                    "parentHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                    "parentRootHash": "5daa5bf7305079961552233a38d201e0a412c0413810da14941242401e400446",
+                    "revision": 14,
+                    "takeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                    "throughSequence": 97,
+                    "version": 2
+                  },
+                  "sourceHash": "1fb6de4d7bc89d916b338617154e2b108c74b8ecb29cbd8f16298459acb814cf",
+                  "midpointHash": "a2ac2c2bfc4b948cabb83e19c67bd1f23aaa47c1529c654e0337ed1fa1d6b516",
+                  "first": {
+                    "actualContinuationHash": "7c88aacb618c18f13fdd3dc4071cf6f219a4501fd672eab786a378b34aaec52d",
+                    "actualPhysicsHash": "1fb6de4d7bc89d916b338617154e2b108c74b8ecb29cbd8f16298459acb814cf",
+                    "artifactIntegrity": {
+                      "canonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                      "finalizationHash": "9fdb6ef5b6c648687a53e07ba28f9cf48b394a64e9ccb4f90f33f7a2cd26d3f0",
+                      "initialCheckpointHash": "952be79ba95720ace90a28d4f089a831360de336e890816a4dd4e0d120bf9c98",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1
+                      ],
+                      "observedFactKinds": [
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 65,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [
+                      {
+                        "actualContinuationHash": "fe3efdb630a4c1e93daf12cce5b00e6f7bb6e58630c55aa9f3bcc25be1b3b10d",
+                        "checkpointId": "[\"take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450\",\"checkpoint\",97]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "fe3efdb630a4c1e93daf12cce5b00e6f7bb6e58630c55aa9f3bcc25be1b3b10d",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 97,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 96,
+                        "timelineMatch": true
+                      },
+                      {
+                        "actualContinuationHash": "7c88aacb618c18f13fdd3dc4071cf6f219a4501fd672eab786a378b34aaec52d",
+                        "checkpointId": "[\"take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450\",\"checkpoint\",196]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "7c88aacb618c18f13fdd3dc4071cf6f219a4501fd672eab786a378b34aaec52d",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 196,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 128,
+                        "timelineMatch": true
+                      }
+                    ],
+                    "comparedBatches": 64,
+                    "comparedIntents": 130,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionEpoch": "take-workbench:1",
+                    "executionIdentity": {
+                      "reason": "active-module-graph-not-proven",
+                      "status": "unbound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 0,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                    "sourceVersions": {
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                    "takeRevision": 14,
+                    "targetSequence": 196,
+                    "throughSequence": 196,
+                    "tick": 128,
+                    "ticksExecuted": 64,
+                    "verifiedDurableSequence": 196,
+                    "version": 2
+                  },
+                  "repeated": {
+                    "actualContinuationHash": "7c88aacb618c18f13fdd3dc4071cf6f219a4501fd672eab786a378b34aaec52d",
+                    "actualPhysicsHash": "1fb6de4d7bc89d916b338617154e2b108c74b8ecb29cbd8f16298459acb814cf",
+                    "artifactIntegrity": {
+                      "canonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                      "finalizationHash": "9fdb6ef5b6c648687a53e07ba28f9cf48b394a64e9ccb4f90f33f7a2cd26d3f0",
+                      "initialCheckpointHash": "952be79ba95720ace90a28d4f089a831360de336e890816a4dd4e0d120bf9c98",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1
+                      ],
+                      "observedFactKinds": [
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 65,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionEpoch": "take-workbench:2",
+                    "executionIdentity": {
+                      "reason": "active-module-graph-not-proven",
+                      "status": "unbound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 196,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                    "sourceVersions": {
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                    "takeRevision": 14,
+                    "targetSequence": 196,
+                    "throughSequence": 196,
+                    "tick": 128,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 196,
+                    "version": 2
+                  },
+                  "seek": {
+                    "actualContinuationHash": "fe3efdb630a4c1e93daf12cce5b00e6f7bb6e58630c55aa9f3bcc25be1b3b10d",
+                    "actualPhysicsHash": "a2ac2c2bfc4b948cabb83e19c67bd1f23aaa47c1529c654e0337ed1fa1d6b516",
+                    "artifactIntegrity": {
+                      "canonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                      "finalizationHash": "9fdb6ef5b6c648687a53e07ba28f9cf48b394a64e9ccb4f90f33f7a2cd26d3f0",
+                      "initialCheckpointHash": "952be79ba95720ace90a28d4f089a831360de336e890816a4dd4e0d120bf9c98",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": "crystal",
+                        "id": "lemmings-4",
+                        "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+                      },
+                      {
+                        "family": "bubble",
+                        "id": "lemmings_ohNo-3",
+                        "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1
+                      ],
+                      "observedFactKinds": [
+                        "ActionEntered",
+                        "ActionExited",
+                        "ContactResolved",
+                        "ContactSpanBegan",
+                        "ContactSpanEnded",
+                        "ContactSpanUpdated",
+                        "DirectionChanged",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 65,
+                        "lastTick": 96,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionEpoch": "take-workbench:3",
+                    "executionIdentity": {
+                      "reason": "active-module-graph-not-proven",
+                      "status": "unbound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 97,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "84b8ed2e16f972025e2bff64109238f760d98af9982580a548a719a1492ebb98",
+                    "sourceVersions": {
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:61e08b3e-a2f9-45d9-be93-54ee1f1bf450",
+                    "takeRevision": 14,
+                    "targetSequence": 97,
+                    "throughSequence": 97,
+                    "tick": 96,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 196,
+                    "version": 2
+                  },
+                  "cache": {
+                    "entries": 2,
+                    "maximumEntries": 16,
+                    "estimatedBytes": 20852,
+                    "maximumBytes": 4194304,
+                    "refusals": 0,
+                    "failure": null,
+                    "reservation": {
+                      "enabled": true,
+                      "owner": "causal-reperformance-checkpoint-cache",
+                      "kind": "qualified-replay-checkpoints",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4198400,
+                      "maxBytes": 536870912,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "sourceUnchanged": true,
+                  "offlineReopen": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "scope": "actual-IDB-physical-compatibility-replay-and-immutable-branch;exact-archived-execution-and-acoustic-output-remain-unqualified"
+                }
+              }
+            ]
+          },
+          {
+            "title": "browser physical projection preserves real continuation differences and rejects nested accessor evidence @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "browser-projection-continuations",
+                "value": {
+                  "continuations": [
+                    {
+                      "kind": "speed",
+                      "tick": 48,
+                      "before": [
+                        "b8b0cd15270c0cd1",
+                        "ab3f87526fffecfe"
+                      ],
+                      "after": [
+                        {
+                          "physical": "2d441d520e5ff88e",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "9ce7382f9a605213",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        30
+                      ]
+                    },
+                    {
+                      "kind": "intervention",
+                      "tick": 48,
+                      "before": [
+                        "b8b0cd15270c0cd1",
+                        "32af6fed5696e029"
+                      ],
+                      "after": [
+                        {
+                          "physical": "2d441d520e5ff88e",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "f8b48eda478b3bee",
+                          "events": "0edd37c330fa0c6f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        26
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "contact",
+                      "tick": 48,
+                      "before": [
+                        "b8b0cd15270c0cd1",
+                        "4416c2d7c76644cb"
+                      ],
+                      "after": [
+                        {
+                          "physical": "2d441d520e5ff88e",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "8aceac8cf90a5c60",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "intrinsic-and-accessor",
+                      "getters": 0,
+                      "refusal": "accessor-state-data",
+                      "holesDistinct": true
+                    }
+                  ],
+                  "cacheBindings": {
+                    "failures": [
+                      {
+                        "kind": "wrong-lane-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-collision-slot",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-lane-index",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "foreign-source-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "altered-evicted-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "divergent-held-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "detached-lane-edit",
+                        "field": "lane-edit",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-slot",
+                        "field": "edit-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-owner",
+                        "field": "edit-owner-last",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      }
+                    ],
+                    "collisionGround": true,
+                    "editGround": true,
+                    "getters": 0,
+                    "compactionStable": true,
+                    "heldPristineStable": true,
+                    "wallContinuationDistinct": true,
+                    "activeAssistDistinct": true,
+                    "scope": "Owned collision/edit binding refusal and actual source repair; wall and active-assist continuations remain authoritative, without claiming warm/cold wall-cache normalization."
+                  },
+                  "behaviorOwners": [
+                    {
+                      "kind": "authoring-revision",
+                      "before": [
+                        "d957f41010e1ac0c",
+                        "d957f41010e1ac0c"
+                      ],
+                      "after": [
+                        "d957f41010e1ac0c",
+                        "a5c96731ef45b61d"
+                      ],
+                      "outcomes": [
+                        "prepared",
+                        "stale"
+                      ]
+                    },
+                    {
+                      "kind": "crew-prerequisite",
+                      "before": [
+                        "62ab8646bf42f26a",
+                        "62ab8646bf42f26a"
+                      ],
+                      "after": [
+                        "62ab8646bf42f26a",
+                        "255296115ea9a55d"
+                      ],
+                      "outcomes": [
+                        "complete",
+                        "incomplete"
+                      ]
+                    },
+                    {
+                      "kind": "topology-lineage",
+                      "before": [
+                        "fc054ac3ff4cfc8f",
+                        "fc054ac3ff4cfc8f"
+                      ],
+                      "after": [
+                        "fc054ac3ff4cfc8f",
+                        "1ca40023d3694327"
+                      ],
+                      "outcomes": [
+                        "owner.room:1:1:component:1",
+                        "owner.room:1:1:component:41"
+                      ]
+                    },
+                    {
+                      "kind": "pending-and-metadata",
+                      "before": "fc91b9c733794063",
+                      "settled": "fc91b9c733794063",
+                      "pending": "pending-topology-evidence",
+                      "getters": 0,
+                      "failures": [
+                        {
+                          "field": "objects",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "descriptor",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "groups",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "world",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "runtime",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "image",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "piece",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "composite",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        }
+                      ]
+                    }
+                  ],
+                  "causalOwners": [
+                    {
+                      "kind": "actor-order",
+                      "before": [
+                        "7c70b2196006bd1d",
+                        "7c70b2196006bd1d"
+                      ],
+                      "after": [
+                        "7c70b2196006bd1d",
+                        "8d6ae311171bf4c5"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:79"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "causal-sequence",
+                      "before": [
+                        "7c70b2196006bd1d",
+                        "7c70b2196006bd1d"
+                      ],
+                      "after": [
+                        "7c70b2196006bd1d",
+                        "112e1bc05a2311bc"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:179"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          0,
+                          1
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "fact-capacity",
+                      "before": [
+                        "7c70b2196006bd1d",
+                        "7c70b2196006bd1d"
+                      ],
+                      "after": [
+                        "7c70b2196006bd1d",
+                        "31ec319a934b6046"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        null
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        []
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "incomplete",
+                          "dropped": 4
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "frame-interval",
+                      "before": [
+                        "7c70b2196006bd1d",
+                        "7c70b2196006bd1d"
+                      ],
+                      "after": [
+                        "7c70b2196006bd1d",
+                        "e5a1d4d8c36568a4"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:79"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          0,
+                          1
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        990
+                      ]
+                    },
+                    {
+                      "kind": "binding-refusals",
+                      "failures": [
+                        {
+                          "kind": "empty-registry",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "registry-hook",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "duplicate-actor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "foreign-actor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "actor-accessor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-order"
+                        },
+                        {
+                          "kind": "detached-work",
+                          "code": "invalid-physical-continuation",
+                          "field": "stall-work"
+                        },
+                        {
+                          "kind": "work-accessor",
+                          "code": "invalid-physical-continuation",
+                          "field": "stall-work"
+                        },
+                        {
+                          "kind": "invalid-sequence",
+                          "code": "invalid-physical-continuation",
+                          "field": "_causalSequence"
+                        },
+                        {
+                          "kind": "invalid-clock",
+                          "code": "invalid-physical-continuation",
+                          "field": "physical-clock"
+                        },
+                        {
+                          "kind": "pending-fact",
+                          "code": "invalid-physical-continuation",
+                          "field": "fact-boundary"
+                        },
+                        {
+                          "kind": "quarantined-owner",
+                          "code": "invalid-physical-continuation",
+                          "field": "survey-observer"
+                        },
+                        {
+                          "kind": "detached-owner",
+                          "code": "invalid-physical-continuation",
+                          "field": "survey-observer"
+                        }
+                      ],
+                      "getters": 0,
+                      "deliveryStable": true
+                    }
+                  ],
+                  "checkpointOwners": [
+                    {
+                      "kind": "physicalAuthoring",
+                      "before": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "2dbd1a99ebced3e92c9a224e83122cb7fbd5db350b5c4f876c60601c1e3512ea"
+                      },
+                      "after": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "498f84dab06fe96d5c91591d84dd583dd65c79350fbe9be9c25008a1991698da"
+                      }
+                    },
+                    {
+                      "kind": "terrainTopology",
+                      "before": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "2dbd1a99ebced3e92c9a224e83122cb7fbd5db350b5c4f876c60601c1e3512ea"
+                      },
+                      "after": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "7743560394c8a6d75943888a19a4e011e43b384ddfa5b7b4bdc32a94f82e97bb"
+                      }
+                    },
+                    {
+                      "kind": "crew-prerequisite",
+                      "before": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "f39fa4258fc2cda6366883c298c72b31630eabb2dc135bd6c3bd871e1ff45905"
+                      },
+                      "after": {
+                        "simulation": "1ba535a274af2ec90d27c97a68152eb1494a49bb2853f24c9c2874974b97db24",
+                        "continuation": "16d294db0e7a17916e698530af7aa77d985b321c491ddd7a832ad4976d981b9a"
+                      }
+                    },
+                    {
+                      "kind": "assistance-and-delivery",
+                      "inactiveStable": true,
+                      "activeDistinct": true,
+                      "deliveryStable": true
+                    },
+                    {
+                      "kind": "comparison-scope",
+                      "incomplete": "checkpoint-continuation-incomplete",
+                      "schema": "lemmings-continuation-comparison",
+                      "version": 1
+                    },
+                    {
+                      "kind": "pending-topology",
+                      "sync": "pending-topology-evidence",
+                      "cooperative": "pending-topology-evidence",
+                      "recovered": true
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "Actual six native sound choices preserve the same1000-tick simulation hash and complete fact trace; actual64-tick durable IndexedDB replay/seek/branch carries both scopes; shared browser owner and pending-publication corpus plus existing numerical/alias/continuation vectors pass. The prior10000-tick browser benchmark is not rerun or newly qualified."
+      },
+      "priorAttempts": [
+        {
+          "nodePassed": 79,
+          "nodeFailed": 17,
+          "log": ".tmp/rook383-node-final.log",
+          "browserPassed": 3,
+          "browserFailed": 0,
+          "report": ".tmp/rook383-playwright-final.json",
+          "reason": "All baseline replay mismatches identified the same uncaptured null→graph insertion in CausalReperformance. Remove that runtime mutation rather than omitting the owner from continuation evidence; final group passes all96/3 together."
+        }
+      ],
+      "coverage": {
+        "total": {
+          "lines": 96.17,
+          "functions": 85.56,
+          "branches": 77.76
+        },
+        "js/app/procgen/workstation/CausalPhysicalBranch.js": {
+          "lines": 88.2,
+          "functions": 72.41,
+          "branches": 69.65
+        },
+        "js/app/procgen/workstation/CausalReperformance.js": {
+          "lines": 98.51,
+          "functions": 89.58,
+          "branches": 76.83
+        },
+        "js/app/procgen/workstation/ProcgenCheckpointProvenance.js": {
+          "lines": 100,
+          "functions": 95,
+          "branches": 85.22
+        }
+      },
+      "coverageFollowup": "Checkpoint provenance100%lines/95%functions/85.22%branches, re-performance98.51%lines/89.58%functions/76.83%branches and branch88.2%lines/72.41%functions/69.65%branches. Extend continuation nullable/reference/budget refusals and branch failure/disposal paths; no complete branch-coverage claim.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 362,
+        "workerFiles": 293,
+        "workerSha256": "bce7e955f23c6dc5313aa67098c30cd3dcd47d9ede193c219603b665fbb9ad21",
+        "addedStaticWorkerDependency": "js/app/procgen/ProcgenTerrainTopology.js"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook383-node-final.log",
+          "bytes": 39450,
+          "sha256": "6a2403a2f2ce03da9eea4de0738a26661c810899c56e12345044f82ec91f5843"
+        },
+        {
+          "path": ".tmp/rook383-playwright-final.json",
+          "bytes": 35300,
+          "sha256": "1d414bb3b8df18d074d04cd118ced940d583c072fcf0f9a3e7011a1719440e2f"
+        },
+        {
+          "path": ".tmp/rook383-node-publish-final.log",
+          "bytes": 10348,
+          "sha256": "2a73ca72246f865671237c8b187330825f7b5ba860e007e8e5f272bb829cd35a"
+        },
+        {
+          "path": ".tmp/rook383-playwright-publish-final.json",
+          "bytes": 35336,
+          "sha256": "7545bcd49fd12dfcc8262a0b9c6f2e1f8d1d88d7f3ea803db7182aa2747e6268"
+        },
+        {
+          "path": ".tmp/rook383-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook383-checks-publish.log",
+          "bytes": 4209,
+          "sha256": "1a00a8e91ddb8c15a2baac113b6fb999b624be68f3cd31cd0f7d29656d15f475"
+        },
+        {
+          "path": ".tmp/rook383-coverage-publish/coverage-summary.json",
+          "bytes": 1426,
+          "sha256": "9468d52b92ef1a292e5db8f4f0bc4a9cf454aebb57dd41d49270142dd19ec862"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "e2e/procgen-workstation-durable-tape.spec.js",
+        "bytes": 10600,
+        "sha256": "1433a5e9cb8984c3f5ea8712f3991f1bcbc26067f729fc8fc1d0979d352190a1"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 16679,
+        "sha256": "5145257dce66dad9b7a05da4907a2ade3daf8dcfe89bad84756927821f1551dd"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalPhysicalBranch.js",
+        "bytes": 16844,
+        "sha256": "e5d332fcc061973d4c4f83cc902161f3682349c0243a812bf8a8e7fae675d897"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalReperformance.js",
+        "bytes": 38761,
+        "sha256": "7225a106050fe91d4283d28cb84d3ac4fb4f029f360487c4dc03804ec424230f"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenCheckpoint.js",
+        "bytes": 33783,
+        "sha256": "cc70713caa982c6daad907b5c0e5f9919df4d60bb25ccedbaea51cbe8afce648"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenCheckpointProvenance.js",
+        "bytes": 14220,
+        "sha256": "773f5c01a0fc5ac6042949f9656a70739aaa2b158d0ccd41617cc4afaebd225e"
+      },
+      {
+        "path": "test/procgen-causal-physical-branch.test.js",
+        "bytes": 19245,
+        "sha256": "a557fad77a46aacb724de85729e6ea8384114ea949107de7116d039d7df769a9"
+      },
+      {
+        "path": "test/procgen-causal-reperformance.test.js",
+        "bytes": 34368,
+        "sha256": "5ca49522748850e1e78572681b72dbbd8dff71c5b71631a408413003a2003e40"
+      },
+      {
+        "path": "test/procgen-checkpoint-zone-provenance.test.js",
+        "bytes": 5047,
+        "sha256": "3ae60b48b2afaac1fe4829bfd91ffe6805256cc5d23691ff65445b5e5fb2a653"
+      },
+      {
+        "path": "test/helpers/checkpointContinuationCorpus.js",
+        "bytes": 4984,
+        "sha256": "9e4de1e5464042999370f0794ea7057428e588ce7342efdf5eb6a5480f901275"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22361,
+        "sha256": "d7f5cdb3f3f126cf191334dde07b2cb624d3e9aac26b7dc2005ddfd1be38f0b0"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "17af00560fc1fad58a3deba2cac860e3b4cb8a7b",
+      "status": "success",
+      "run": 40982798991,
+      "job": 123826647005,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40982798991",
+      "engineJob": 123826647127,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7232,
+      "nodePending": 10,
+      "browserPassed": 272,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 228,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.97,
+        "functions": 88.64
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 31104,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9898,
+          "benchHistoryStress": 16127,
+          "benchHotpaths": 5077
+        },
+        "metrics": {
+          "perfP95Frame": 83.39999999999964,
+          "perfP50Tps": 105.07569011576135,
+          "historyRatio": 0.586,
+          "antsAvgMs": 12.02,
+          "tileCompositionAvgMs": 3.46,
+          "overlayPlaneAvgMs": 14.95,
+          "scaledBlitAvgMs": 27.47
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.586
+          },
+          {
+            "speed": 60,
+            "ratio": 1.032
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1259,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "67d963a8490c59bb32a656fff7bade50c2c066c00d63b0eba11f21765ba7a930",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123826646723,
+        "windowsJob": 123826647076,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "f4cc73876ed28c85d7c4e6d6e88ca011a237cc21",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1148,
+        "inventorySha256": "b5be6ecf039481035dcb45555b028d46422eb94d4fe2a28a51fca2d234f8ce82",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1259,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci378-main.zip",
+          "bytes": 762281,
+          "sha256": "4032aa3441cd41dcd1f30fcf6a69897ae7163fae5b2a33996e04c8ea33cb801f"
+        },
+        {
+          "path": ".tmp/ci378-engine.zip",
+          "bytes": 157810,
+          "sha256": "da24464c783ba4f1d8b11670728c3368ac9739899d04ad6b8220673d252b364d"
+        },
+        {
+          "path": ".tmp/ci378-linux.zip",
+          "bytes": 2246,
+          "sha256": "a761a596cf1b2a0a6ebd809b4d9f16d1f1e562aa9847e18d1014ded28b490c2a"
+        },
+        {
+          "path": ".tmp/ci378-windows.zip",
+          "bytes": 2147,
+          "sha256": "5180633f7fbe6d7a9e262c568cdd972b3fcf183decf7326e3a79fd4e6059d7eb"
+        },
+        {
+          "path": ".tmp/ci378-main-workstation-result-qualification.json",
+          "bytes": 185434,
+          "sha256": "3dfdf91c93b29f1d3f9e7c0b82f81b1db8de10ee581dbb48f42b612de06b0cad"
+        },
+        {
+          "path": ".tmp/ci378-engine-lifecycle-engine-qualification.json",
+          "bytes": 244738,
+          "sha256": "731bfab7317d67e18732756e0605dbcf4683d02154c3c25ddb89905915050722"
+        },
+        {
+          "path": ".tmp/ci378-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "2ce17f1e0e848c2ac52aa05ff2b0b1c47ff927a93dd8ff12b8e27ed9b724b76a"
+        },
+        {
+          "path": ".tmp/ci378-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "a5c87bc69a6a606548a82afb8662fcd0d298a9e173a8e00cc78714d0f1c0d1e1"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining988": "Exact archived executing-build identity and its complete incompatible source/assets/runtime matrix remain separate under1242/1119/1096. This change qualifies current-runtime component continuation; do not promote it to archived exact execution. Continue broader durable intervention/terrain/transfer/tempo/external-input and invalid imported-payload corpus under1092, and exact sibling-prefix acceleration under1213."
   }
 }

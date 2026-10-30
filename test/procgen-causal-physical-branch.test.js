@@ -43,7 +43,7 @@ describe('replay-qualified physical branch orchestration', function() {
       if (tick === 6) { fork = recorder.mark({ name: 'Fork here' }, { tick, generation: 1 }).lastSequence;
         if (checkpointAtFork) await recorder.checkpoint({ value: snapshot(), tick, generation: 1 });
       }
-      if (tick === 10) { currentGraph = graph(9); recorder.recordMapping(currentGraph, { tick, generation: 1 }); }
+      if (tick === 10) { currentGraph = graph(9); world.configurePhysicalAuthoring(currentGraph); recorder.recordMapping(currentGraph, { tick, generation: 1 }); }
     }
     if (futureGap) recorder.markGap({ kind: 'physical-facts', firstTick: 15, lastTick: 15, generation: 1, reason: 'future-only-gap' });
     await recorder.stop({ finalCheckpoint: snapshot(), boundaryState: { voices: engine.snapshot().active, timeline: clock.snapshot() } }); world.dispose();
@@ -74,6 +74,7 @@ describe('replay-qualified physical branch orchestration', function() {
     try {
       const first = await workbench.open({ takeId: parent.takeId }); expect(first.receipt.ticksExecuted).to.equal(20); expect(first.checkpointCache.entries).to.be.greaterThan(0);
       const again = await workbench.open({ takeId: parent.takeId }); expect(again.receipt.ticksExecuted).to.equal(0); expect(again.receipt.actualPhysicsHash).to.equal(first.receipt.actualPhysicsHash);
+      expect(again.receipt.continuationStateSchema).to.equal(1); expect(again.receipt.actualContinuationHash).to.equal(first.receipt.actualContinuationHash);
       liveWorld = {}; expect((await workbench.open({ takeId: parent.takeId })).receipt.ticksExecuted).to.equal(20);
       sourceVersions = { ...versions, physicalMusic: 99 }; expect((await workbench.open({ takeId: parent.takeId })).phase).to.equal('unsupported'); expect(workbench.state().checkpointCache.entries).to.equal(0);
       expect(JSON.stringify(await journal.openTake(parent.takeId))).to.equal(original);

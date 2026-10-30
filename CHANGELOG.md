@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Qualify checkpoint reuse and physical branches with a separate complete continuation hash, preserving authoring, crew and topology state while keeping display-only simulation comparisons stable.
+
 - Verify retained hazard descriptors, object slots and queued growth plans against their owned terrain source, preserving physical trigger metadata through cache eviction and recovery.
 
 - Preserve survey actor processing order, causal fact capacity/identity and physical clock intervals; reject detached actor/work/observer bindings while excluding passive delivery counters.

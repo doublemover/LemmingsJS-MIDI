@@ -24,7 +24,7 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
   let masks;
   before(async () => { masks = await loadProcgenMasks(); });
   const make = () => new ProcgenLaneWorld({ masks, laneCount: 2, seed: 42, assists: false });
-  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, final = true, playbackAdmission = false, performanceInputs = false, transportClock = false, invalidTransportClock = false } = {}) => {
+  const record = async ({ ticks = 40, unknownInput = false, forgedCheckpoint = false, forgedAuthoring = false, final = true, playbackAdmission = false, performanceInputs = false, transportClock = false, invalidTransportClock = false } = {}) => {
     playbackAdmission ||= transportClock;
     const store = createMemoryCausalStore(), journal = createProcgenCausalJournal({ storage: store.storage }), world = make();
     let bpm = 120, playing = !playbackAdmission; const versions = { ...sourceVersions, ...(playbackAdmission ? { physicalPlaybackAdmission: 1 } : {}) };
@@ -60,6 +60,7 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
       if (tick === 20 || tick % 2500 === 0) {
         const value = snapshot();
         if (forgedCheckpoint && tick === 20) value.world.graph.owners.find(owner => owner.name === 'world').props.frontierRevision += 1;
+        if (forgedAuthoring && tick === 20) { const authoring = value.world.graph.owners.find(owner => owner.name === 'world').props.physicalAuthoring; value.world.graph.nodes[authoring.ref].props.revision++; }
         await recorder.checkpoint({ value, ...boundary });
       }
       if (tick % 128 === 0) await recorder.flush();
@@ -71,6 +72,17 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
     world.dispose();
     return { ...store, journal, source, stopped, finalHash, runtime: options => createCausalReperformance({ journal, createWorld: make, sourceVersions: versions, assetRefs, ...options }) };
   };
+
+  it('rejects a hash-valid authoring-only component mismatch that the simulation display projection omits', async () => {
+    const { runtime, source } = await record({ forgedAuthoring: true }), service = runtime();
+    try {
+      const result = await service.reperform({ takeId: source.takeId, executionEpoch: 'forged-authoring' });
+      expect(result.receipt).to.include({ version: 2, compatibilityMatch: false, continuationStateSchema: 1 });
+      expect(result.receipt.firstDivergence.kind).to.equal('component-checkpoint');
+      expect(result.receipt.firstDivergence.detail.continuationMatch).to.equal(false);
+      expect(result.receipt.firstDivergence.detail.firstStateDifference.path).to.include('revision');
+    } finally { await service.dispose().completion; }
+  });
 
   it('retires each query page before admitting a component checkpoint at its exact boundary', async () => {
     const { journal, source, finalHash, runtime } = await record(); let pages = 0; const checkpoints = new Set();

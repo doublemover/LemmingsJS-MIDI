@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import { CHECKPOINT_COMPONENT_CODECS } from '../js/app/procgen/workstation/ProcgenCheckpoint.js';
 import { projectProcgenPhysicsCheckpoint, hashProcgenPhysicsCheckpoint } from '../js/app/procgen/workstation/ProcgenCheckpointProvenance.js';
+import { ProcgenLaneWorld } from '../js/app/procgen/ProcgenLaneWorld.js';
+import { loadProcgenMasks } from '../scripts/bench-procgen-lanes.js';
+import { checkpointContinuationCorpus } from './helpers/checkpointContinuationCorpus.js';
 
 const fixture = ({ split = false, change = null } = {}) => {
   const zone = { type: 'Object', props: { id: 'zone-model:42:0', index: 0, start: 0, end: 512, width: 512, maximumAuthoredWidth: 1600,
@@ -18,6 +21,10 @@ const fixture = ({ split = false, change = null } = {}) => {
 };
 
 describe('source-bound terrain zone value identity in physics projection', () => {
+  it('separates simulation display identity from complete checkpoint continuation and refuses pending analysis', async () => {
+    const masks = await loadProcgenMasks(), result = await checkpointContinuationCorpus(() => new ProcgenLaneWorld({ masks, assists: false }));
+    expect(result.map(row => row.kind)).to.deep.equal(['physicalAuthoring', 'terrainTopology', 'crew-prerequisite', 'assistance-and-delivery', 'comparison-scope', 'pending-topology']);
+  });
   it('normalizes equal source-zone copies without mutating the captured graph', async () => {
     const shared = fixture(), split = fixture({ split: true }), original = structuredClone(split);
     expect(projectProcgenPhysicsCheckpoint(split)).to.deep.equal(projectProcgenPhysicsCheckpoint(shared));

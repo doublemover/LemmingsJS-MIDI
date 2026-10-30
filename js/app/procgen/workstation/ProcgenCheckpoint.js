@@ -3,6 +3,7 @@ import { validateCausalProbabilityPolicy } from './CausalProbabilityPolicy.js';
 import { validatePhysicalFeedbackState } from './physical/PhysicalFeedback.js';
 import { validatePopulationReleaseState } from '../ReleaseGesture.js';
 import { validatePhysicalCrewEvidence } from '../PhysicalCrewEvidence.js';
+import { assertTopologyEvidenceBoundary } from '../ProcgenTerrainTopology.js';
 import { Lemming } from '../../../lemmings/Lemming.js';
 import { Trigger } from '../../../level/Trigger.js';
 import { Animation } from '../../../render/Animation.js';
@@ -151,6 +152,7 @@ function* graphSteps(world, { maxBytes = MAX_GRAPH_BYTES } = {}) {
 }
 const checkpointEnvelope = (world, graph) => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
+  assertTopologyEvidenceBoundary(world);
   return { schema: 'lemmings-procgen-checkpoint', version: VERSION, generator: 'procgen-workstation-2',
     componentCodecs: { ...CHECKPOINT_COMPONENT_CODECS, ...(world.terrain?.sceneTerrainLayout ? { terrainAssignments: 2 } : {}) }, numericEncoding: 'typed-f64-sentinels-v2', laneCount: world.laneCount, laneHeight: world.laneHeight,
     seed: world.seed, assets: assetIdentity(world), graph,
@@ -165,6 +167,7 @@ const checkpointEnvelope = (world, graph) => {
 
 const captureProcgenCheckpoint = world => {
   if (world._stepping || world._failedTick) throw new Error('Cannot checkpoint an incomplete physical boundary.');
+  assertTopologyEvidenceBoundary(world);
   return checkpointEnvelope(world, exhaust(graphSteps(world)));
 };
 async function captureProcgenCheckpointCooperative(world, { signal, isCurrent, now = () => performance.now(), yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)), sliceMs = 3, maxGraphBytes = MAX_GRAPH_BYTES, onSlice = () => {} } = {}) {
@@ -172,6 +175,7 @@ async function captureProcgenCheckpointCooperative(world, { signal, isCurrent, n
   const boundary = [world.tickIndex, world.generation, world.terrainRevision, world.interventionState?.sequence, world.timer.speedFactor];
   const check = () => {
     signal?.throwIfAborted();
+    assertTopologyEvidenceBoundary(world);
     if (!isCurrent() || world._stepping || world._failedTick || [world.tickIndex, world.generation, world.terrainRevision, world.interventionState?.sequence, world.timer.speedFactor].some((value, index) => value !== boundary[index])) throw new Error('Checkpoint source changed while its quiescent lease was held.');
   };
   check(); const iterator = graphSteps(world, { maxBytes: maxGraphBytes }); let result, started = now(), units = 0;

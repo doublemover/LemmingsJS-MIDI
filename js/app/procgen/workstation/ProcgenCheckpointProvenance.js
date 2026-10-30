@@ -2,6 +2,7 @@ import { CHECKPOINT_COMPONENT_CODECS, validateCheckpointCodecs } from './Procgen
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 
 const PRESENTATION_WORLD_KEYS = new Set(['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_physicalWorkBounds', 'scenery', 'eventTimeMs', '_musicActorPositions', '_musicCompletedSlot', '_musicCompletedTick', '_assistedColumn']);
+const CONTINUATION_WORLD_KEYS = new Set([...PRESENTATION_WORLD_KEYS].filter(key => !['physicalCrewEvidence', 'physicalAuthoring', 'terrainTopology', '_assistedColumn'].includes(key)));
 const ZONE_KEYS = new Set(['id', 'index', 'start', 'end', 'width', 'maximumAuthoredWidth', 'descriptorId', 'sourceRevision', 'pack', 'groundSet', 'themeId', 'anchorPair', 'groups']);
 const sourceAsset = value => value && Object.keys(value).length === 1 && typeof value.external === 'string' && /^asset\/\d+\/(sourceDescriptor|sourceGroups|wideSourceGroups)\//.test(value.external);
 const terrainZoneKey = (node, nodes) => {
@@ -35,11 +36,17 @@ const inspectProcgenCheckpoint = (saved, { assetRefs = null, generator = 'procge
     presentation: { scenery: 'separate-restore-component', eventClock: 'legacy-presentation-time' } });
 };
 
-const projectProcgenPhysicsCheckpoint = saved => {
+const projectProcgenCheckpoint = (saved, continuation) => {
   if (inspectProcgenCheckpoint(saved).continuation === 'unsupported') throw journalError('checkpoint-incompatible', 'Cannot project an unsupported checkpoint.');
   const sourceNodes = saved.graph.nodes, projected = [], seen = new Map(), zones = new Map();
   const world = saved.graph.owners.find(owner => owner.name === 'world');
   const statsNode = world.props.stats?.ref;
+  const topologyNode = world.props.terrainTopology?.ref, crewNode = world.props.physicalCrewEvidence?.ref;
+  const omitted = new Set(continuation ? CONTINUATION_WORLD_KEYS : PRESENTATION_WORLD_KEYS);
+  if (continuation) {
+    for (const key of ['physicalAuthoring', 'physicalCrewEvidence', 'terrainTopology']) if (!Number.isSafeInteger(world.props[key]?.ref) || sourceNodes[world.props[key].ref]?.type !== 'Object') throw journalError('checkpoint-continuation-incomplete', 'Checkpoint lacks the required continuation owner: ' + key);
+    if (sourceNodes[world.props._assistedColumn?.ref]?.props?.valid !== true) omitted.add('_assistedColumn');
+  }
   const terrainEdits = owner => {
     const array = (value, type) => {
       const node = sourceNodes[value?.ref];
@@ -83,7 +90,7 @@ const projectProcgenPhysicsCheckpoint = saved => {
     seen.set(oldIndex, nextIndex); projected.push(null);
     const entry = {};
     for (const key of Object.keys(source).sort()) {
-      if (key === 'props') entry.props = props(source.props, oldIndex === statsNode ? new Set(['groundQueries']) : null);
+      if (key === 'props') entry.props = props(source.props, oldIndex === statsNode ? new Set(['groundQueries']) : continuation && oldIndex === topologyNode ? new Set(['staleResults']) : continuation && oldIndex === crewNode ? new Set(['censored']) : null);
       else if (key === 'values') entry.values = source.values.map(slot);
       else if (key === 'entries') entry.entries = source.entries.map(pair => pair.map(slot));
       else if (key === 'image') entry.image = slot(source.image);
@@ -93,18 +100,21 @@ const projectProcgenPhysicsCheckpoint = saved => {
   };
   const props = (value, omit = null) => Object.fromEntries(Object.keys(value || {}).sort().filter(key => !omit?.has(key)).map(key => [key, slot(value[key])]));
   const owners = [...saved.graph.owners].sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0)
-    .map(owner => owner.name === 'editChunks' ? terrainEdits(owner) : ({ name: owner.name, props: props(owner.props, owner.name === 'world' ? PRESENTATION_WORLD_KEYS : null),
+    .map(owner => owner.name === 'editChunks' ? terrainEdits(owner) : ({ name: owner.name, props: props(owner.props, owner.name === 'world' ? omitted : null),
       ...(owner.entries ? { entries: owner.entries.map(pair => pair.map(slot)) } : {}) }));
-  return { schema: 'lemmings-procgen-physics-state', version: 2, numericEncoding: 'typed-f64-sentinels-v2',
+  return { schema: continuation ? 'lemmings-procgen-continuation-state' : 'lemmings-procgen-physics-state', version: continuation ? 1 : 2, numericEncoding: 'typed-f64-sentinels-v2',
     generator: saved.generator, seed: saved.seed, laneCount: saved.laneCount, laneHeight: saved.laneHeight, assets: saved.assets,
     physicsAlgorithms: saved.physicsAlgorithms ?? { stallCascade: 1 },
     graph: { nodes: projected, owners }, terrainAssignments: saved.terrainAssignments, terrainSettings: saved.terrainSettings,
     growth: saved.growth, physicalIdentity: saved.physicalIdentity ? { version: saved.physicalIdentity.version, causalSequence: saved.physicalIdentity.causalSequence, coverage: saved.physicalIdentity.coverage } : null,
     clock: { speedFactor: saved.clock.speedFactor, simulationTimeMs: saved.clock.simulationTimeMs } };
 };
+const projectProcgenPhysicsCheckpoint = saved => projectProcgenCheckpoint(saved, false);
+const projectProcgenContinuationCheckpoint = saved => projectProcgenCheckpoint(saved, true);
 const hashProcgenPhysicsCheckpoint = saved => hashJournalData(projectProcgenPhysicsCheckpoint(saved), { maxBytes: 32 * 1048576, maxNodes: 4000000 });
-const compareProcgenPhysicsCheckpoints = async (expected, actual) => {
-  const left = projectProcgenPhysicsCheckpoint(expected), right = projectProcgenPhysicsCheckpoint(actual);
+const hashProcgenContinuationCheckpoint = saved => hashJournalData(projectProcgenContinuationCheckpoint(saved), { maxBytes: 32 * 1048576, maxNodes: 4000000 });
+const compareCheckpointProjection = async (expected, actual, project, continuation) => {
+  const left = project(expected), right = project(actual);
   const expectedHash = await hashJournalData(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }),
     actualHash = await hashJournalData(right, { maxBytes: 32 * 1048576, maxNodes: 4000000 });
   const describe = value => value === undefined ? 'missing' : value === null ? null : typeof value === 'object'
@@ -123,8 +133,10 @@ const compareProcgenPhysicsCheckpoints = async (expected, actual) => {
   const firstDifference = expectedHash === actualHash ? null : difference(left, right, '');
   const ownerIndex = firstDifference?.path.match(/^\/graph\/owners\/(\d+)\//)?.[1];
   if (firstDifference && ownerIndex != null) firstDifference.component = left.graph.owners[ownerIndex]?.name || right.graph.owners[ownerIndex]?.name || null;
-  return cloneJournalData({ schema: 'lemmings-physics-comparison', version: 2, matched: expectedHash === actualHash, expectedHash, actualHash, firstDifference });
+  return cloneJournalData({ schema: continuation ? 'lemmings-continuation-comparison' : 'lemmings-physics-comparison', version: continuation ? 1 : 2, matched: expectedHash === actualHash, expectedHash, actualHash, firstDifference });
 };
+const compareProcgenPhysicsCheckpoints = (expected, actual) => compareCheckpointProjection(expected, actual, projectProcgenPhysicsCheckpoint, false);
+const compareProcgenContinuationCheckpoints = (expected, actual) => compareCheckpointProjection(expected, actual, projectProcgenContinuationCheckpoint, true);
 
 const migrateProcgenCheckpoint = saved => {
   if (![1, 2].includes(saved?.version) || saved.generator !== 'procgen-workstation-2') throw journalError('checkpoint-incompatible', 'Unsupported checkpoint migration.');
@@ -144,4 +156,5 @@ const migrateProcgenCheckpoint = saved => {
     fromVersion: saved.version, toVersion: 2, originalPreserved: true, guarantee: 'typed-state-preserved; active execution remains unbound', inspection }) };
 };
 
-export { inspectProcgenCheckpoint, projectProcgenPhysicsCheckpoint, hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints, migrateProcgenCheckpoint };
+export { inspectProcgenCheckpoint, projectProcgenPhysicsCheckpoint, hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints,
+  projectProcgenContinuationCheckpoint, hashProcgenContinuationCheckpoint, compareProcgenContinuationCheckpoints, migrateProcgenCheckpoint };

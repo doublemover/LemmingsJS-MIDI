@@ -72,10 +72,12 @@ for (const ticks of [64, 10000]) test('durable physical tape replays, seeks and 
         const first = await compare(); if (!first?.receipt?.compatibilityMatch || first.receipt.ticksExecuted !== ticks) throw new Error('Full stored replay failed: ' + JSON.stringify(first) + ' ' + document.querySelector('.studio-status')?.textContent?.slice(0, 512));
         const sourceHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
         if (first.receipt.actualPhysicsHash !== sourceHash || first.receipt.finalWorldParity !== 'matched-at-captured-component-checkpoint') throw new Error('Full replay physical state diverged.');
+        if (first.receipt.continuationStateSchema !== 1 || !/^[a-f0-9]{64}$/.test(first.receipt.actualContinuationHash)) throw new Error('Full replay omitted its authoritative continuation scope.');
         await window.__tapeOffline();
         const repeated = await compare(); if (!repeated?.receipt?.compatibilityMatch || repeated.receipt.ticksExecuted !== 0) throw new Error('Validated final checkpoint was not reused.');
         const seek = await compare({ throughSequence: midpoint });
         if (!seek?.receipt?.compatibilityMatch || seek.receipt.actualPhysicsHash !== midpointHash || seek.receipt.ticksExecuted !== 0) throw new Error('Stored midpoint seek diverged or failed to reuse its validated component: ' + JSON.stringify(seek));
+        if (seek.receipt.continuationStateSchema !== 1 || !/^[a-f0-9]{64}$/.test(seek.receipt.actualContinuationHash)) throw new Error('Seek omitted its authoritative continuation scope.');
         await window.__tapeProgress({ phase: 'branch', completed, ticks });
         const branch = await studio.handlers.prepareCausalBranch({ throughSequence: midpoint, takeName: 'Alternate durable prefix' });
         if (!branch?.active) throw new Error('Branch preparation failed: ' + JSON.stringify(branch));

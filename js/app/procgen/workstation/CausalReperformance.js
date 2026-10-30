@@ -2,7 +2,7 @@ import { applyRecordedPhysicalFeedback } from './physical/PhysicalFeedback.js';
 import { createCausalMusicEngine, validateCausalInstrumentGraph } from './CausalMusicEngine.js';
 import { createProcgenPhysicalScoreClock } from './ProcgenPhysicalScoreClock.js';
 import { captureProcgenCheckpoint, restoreProcgenCheckpoint } from './ProcgenCheckpoint.js';
-import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, compareProcgenPhysicsCheckpoints } from './ProcgenCheckpointProvenance.js';
+import { inspectProcgenCheckpoint, hashProcgenPhysicsCheckpoint, hashProcgenContinuationCheckpoint, compareProcgenContinuationCheckpoints } from './ProcgenCheckpointProvenance.js';
 import { canonicalJournalText, cloneJournalData, hashJournalData, journalError } from './CausalJournalCanonical.js';
 import { compareCausalRecords } from './CausalTake.js';
 import { queryCausalCoverage } from './CausalCoverage.js';
@@ -128,7 +128,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
     const processingQuiescence = new Promise(resolve => { acknowledgeProcessing = resolve; });
     const quiesce = () => { if (processing) { processing = false; acknowledgeProcessing(); } };
     let lastSequence = ref.sequence, ticks = 0, comparedBatches = 0, comparedIntents = 0, lastComparedTick = null,
-      physicalHash = qualified?.physicalHash || null, checkpointComparisons = [], divergence = null, lastYieldTicks = 0;
+      continuationHash = qualified?.continuationHash || null, checkpointComparisons = [], divergence = null, lastYieldTicks = 0;
     const generated = [], expectedIntents = new Map();
     const observedFacts = new Set(qualified?.inventory?.observedFactKinds || []), observedIntents = new Set(qualified?.inventory?.intentKinds || []),
       mappingRevisions = new Set(qualified?.inventory?.mappingRevisions || [current.graph.revision]);
@@ -176,21 +176,21 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       try {
         check(signal);
         const stored = source.value, actualWorld = captureProcgenCheckpoint(world);
-        const physical = await compareProcgenPhysicsCheckpoints(stored.world, actualWorld), actualHash = physical.actualHash, expectedHash = physical.expectedHash;
+        const continuation = await compareProcgenContinuationCheckpoints(stored.world, actualWorld), actualHash = continuation.actualHash, expectedHash = continuation.expectedHash;
         check(signal);
-        const physicalMatch = physical.matched, semanticMatch = equal(stored.engine, engine.snapshot());
+        const continuationMatch = continuation.matched, semanticMatch = equal(stored.engine, engine.snapshot());
         const timelineMatch = equal(stored.timeline, initial.replay.scoreTimeline ? clock.snapshot() : null);
         const replaySettingsMatch = stored.replay?.version === initial.replay.version && stored.replay.bpm === current.bpm && stored.replay.scoreTimeline === initial.replay.scoreTimeline &&
         (initial.replay.version !== 2 || stored.replay.playing === current.playing);
-        const matched = physicalMatch && semanticMatch && timelineMatch && replaySettingsMatch;
+        const matched = continuationMatch && semanticMatch && timelineMatch && replaySettingsMatch;
         const result = { sequence: checkpointRef.sequence, checkpointId: checkpointRef.id, tick: world.tickIndex,
-          status: matched ? 'validated-by-current-runtime-reperformance' : 'mismatch', physicalMatch, semanticMatch, timelineMatch, replaySettingsMatch,
-          expectedPhysicsHash: expectedHash, actualPhysicsHash: actualHash, firstStateDifference: physical.firstDifference, exactQualified: false };
+          status: matched ? 'validated-by-current-runtime-reperformance' : 'mismatch', continuationMatch, semanticMatch, timelineMatch, replaySettingsMatch,
+          continuationStateSchema: 1, expectedContinuationHash: expectedHash, actualContinuationHash: actualHash, firstStateDifference: continuation.firstDifference, exactQualified: false };
         checkpointComparisons.push(result);
         if (!matched) return { sequence: checkpointRef.sequence, tick: world.tickIndex, causeId: null, kind: 'component-checkpoint', detail: result };
         const key = scope + checkpointRef.id;
         if (generated.length || expectedIntents.size) return null;
-        rememberCheckpoint(key, { scope, ref: checkpointRef, graph: current.graph, physicalHash: actualHash, inventory: inventory() });
+        rememberCheckpoint(key, { scope, ref: checkpointRef, graph: current.graph, continuationHash: actualHash, inventory: inventory() });
         return null;
       } finally { retireCausalRead(source); }
     };
@@ -210,16 +210,15 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       }).finally(() => { worldProducerPending = false; });
       await worldProducer; check(signal);
       restoreProcgenCheckpoint(world, initial.world);
-      const restoredHash = await hashProcgenPhysicsCheckpoint(captureProcgenCheckpoint(world));
+      const restoredHash = await hashProcgenContinuationCheckpoint(captureProcgenCheckpoint(world));
       check(signal);
-      const initialHash = await hashProcgenPhysicsCheckpoint(initial.world);
+      const initialHash = await hashProcgenContinuationCheckpoint(initial.world);
       check(signal);
       if (restoredHash !== initialHash) throw journalError('restore-divergence', 'Restored authoritative checkpoint state differs before the first replay tick.', { tick: world.tickIndex });
-      if (qualified && restoredHash !== qualified.physicalHash) throw journalError('restore-divergence', 'Restored checkpoint differs from its previously replayed physical proof.', { tick: world.tickIndex });
-      physicalHash = restoredHash;
+      if (qualified && restoredHash !== qualified.continuationHash) throw journalError('restore-divergence', 'Restored checkpoint differs from its previously replayed continuation proof.', { tick: world.tickIndex });
+      continuationHash = restoredHash;
       lastComparedTick = world.tickIndex;
       if (world.physicalAuthoring?.graph) current.graph = validateCausalInstrumentGraph(world.physicalAuthoring.graph);
-      else world.configurePhysicalAuthoring?.(current.graph, []);
       clock = createProcgenPhysicalScoreClock();
       if (initial.timeline) clock.restore(initial.timeline);
       performance = initial.engine.performanceInputs ? createCausalPerformanceState(initial.engine.performanceInputs) : null;
@@ -328,17 +327,19 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       }
       check(signal);
       const finalCheckpoint = captureProcgenCheckpoint(world);
-      physicalHash = await hashProcgenPhysicsCheckpoint(finalCheckpoint);
+      continuationHash = await hashProcgenContinuationCheckpoint(finalCheckpoint);
+      const physicalHash = await hashProcgenPhysicsCheckpoint(finalCheckpoint);
       check(signal);
       const finalQualified = target === 0 || ref.sequence === target && !!qualified || checkpointComparisons.some(item => item.sequence === target && item.status === 'validated-by-current-runtime-reperformance');
       const boundaryComplete = !generated.length && !expectedIntents.size;
       if (retainWorld && !boundaryComplete) throw journalError('incomplete-branch-boundary', 'A retained physical branch requires every batch and intent companion at its boundary.');
-      const receipt = cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 1, takeId, takeRevision: manifest.revision,
+      const receipt = cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 2, takeId, takeRevision: manifest.revision,
         sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, executionIdentity: EXECUTION_IDENTITY,
         exactQualified: false, compatibilityMatch: !divergence, status: divergence ? 'mismatch' : 'matched-current-runtime',
         firstDivergence: divergence, verifiedDurableSequence: verified.verifiedThroughSequence, fromCheckpointSequence: ref.sequence,
         throughSequence: lastSequence, targetSequence: target, tick: lastComparedTick, ticksExecuted: ticks, comparedBatches, comparedIntents,
         physicsStateSchema: 2, actualPhysicsHash: physicalHash, finalWorldParity: finalQualified && !divergence ? 'matched-at-captured-component-checkpoint' : 'unknown-no-validated-final-component-checkpoint',
+        continuationStateSchema: 1, actualContinuationHash: continuationHash,
         checkpointComparisons, boundaryComplete, captureInventory: inventory(), sourceVersions: runtimeVersions, assetRefs: runtimeAssets,
         artifactIntegrity: { status: 'verified-durable-chain', initialCheckpointHash: manifest.initialCheckpoint.hash, canonicalHash: verified.canonicalHash, finalizationHash: manifest.finalizationHash || null },
         inspection: { paused: true, recording: false, hardware: false, thru: false, physicalLayers: false } });
@@ -372,7 +373,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
       const cleanup = release(); await cleanup.completion;
       if (cleanup.outcome !== 'complete') error.retirement = cleanup;
       if (error.code === 'cancelled') throw error;
-      return { receipt: cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 1, takeId, takeRevision: manifest.revision,
+      return { receipt: cloneJournalData({ schema: 'lemmings-causal-reperformance', version: 2, takeId, takeRevision: manifest.revision,
         sourceCanonicalHash: manifest.canonicalHash, mode: 'physical-reperformance', executionEpoch, exactQualified: false,
         executionIdentity: EXECUTION_IDENTITY, status: 'unsupported-or-incomplete', compatibilityMatch: false,
         retirement: { state: cleanup.state, outcome: cleanup.outcome },

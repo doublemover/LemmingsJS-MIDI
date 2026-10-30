@@ -21,11 +21,12 @@ const createCausalPhysicalBranch = async ({ journal, reperformance, parentTakeId
     check();
     if (parent.revision !== replay.receipt.takeRevision || parent.canonicalHash !== replay.receipt.sourceCanonicalHash) throw journalError('stale-revision', 'The parent changed after its branch boundary was compared.');
     const target = replay.receipt.targetSequence;
-    const qualification = cloneJournalData({ schema: 'lemmings-physical-branch-boundary', version: 1, sourceTakeId: parentTakeId,
+    const qualification = cloneJournalData({ schema: 'lemmings-physical-branch-boundary', version: 2, sourceTakeId: parentTakeId,
       sourceTakeRevision: parent.revision, sourceCanonicalHash: parent.canonicalHash, throughSequence: target,
       sourceFinalizationHash: parent.finalizationHash || null, fromCheckpointSequence: replay.receipt.fromCheckpointSequence, ticksExecuted: replay.receipt.ticksExecuted,
       tick: world.tickIndex, generation: world.generation, actualPhysicsHash: replay.receipt.actualPhysicsHash,
       physicsStateSchema: replay.receipt.physicsStateSchema, executionIdentity: replay.receipt.executionIdentity,
+      continuationStateSchema: replay.receipt.continuationStateSchema, actualContinuationHash: replay.receipt.actualContinuationHash,
       status: 'validated-by-current-runtime-reperformance', exactQualified: false });
     writer = await journal.branch({ parentTakeId, parentRevision: parent.revision, throughSequence: target, takeId, takeName,
       documentId: parent.documentId, boundaryQualification: qualification });

@@ -40,3 +40,25 @@ During `start` the level is loaded and the string is fed into
 `tick=type:values` pairs and rebuilds each command in `runCommands`.
 The manager then executes them at the appropriate ticks while the game
 runs, faithfully reproducing the original session.
+
+## ProcGen checkpoint comparison scopes
+
+The workstation's component checkpoints use a separate format from classic
+command replay. `projectProcgenPhysicsCheckpoint` keeps the existing version2
+simulation comparison for display and sound-isolation checks. Its hash omits
+authoring, crew prerequisite and topology owners and cannot qualify continuation
+or checkpoint reuse by itself.
+
+`projectProcgenContinuationCheckpoint` uses the version1 continuation domain. It
+also retains those behavior owners and valid assistance state, while excluding
+inactive assistance scratch, presentation, legacy delivery counters, topology
+rejection counters and crew diagnostic counts. Missing required owner components
+refuse qualification. Pending topology publications cannot enter synchronous or
+cooperative checkpoints.
+
+Version2 re-performance receipts expose `continuationStateSchema` and
+`actualContinuationHash`; component comparisons and checkpoint reuse use this
+domain. `actualPhysicsHash` remains the version2 simulation hash for its original
+purpose. Physical branch boundary receipts carry both scopes. Matching remains
+current-runtime compatibility: neither hash attests archived executing code,
+cryptographic asset authenticity, receiver processing or sound.

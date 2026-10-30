@@ -9873,3 +9873,28 @@ export-budget acknowledgments still prevent a false complete receipt.
   state10/11 and immutable-export fixture work retain their scoped passes and
   separate full CI. Preserve377 original startup failure; no inferred source
   transport repair or all-backlog completion claim. Continue solo.
+
+
+### Continuation 383 - checkpoint continuation domain and replay fidelity
+
+- Keep simulation projection2 stable for sound/display checks. Add continuation
+  projection1 with authoring/crew/topology and active assistance owners, known
+  diagnostic exclusions and missing-owner refusal. Replay/reuse qualification
+  uses continuation; version2 replay/branch receipts expose both named scopes.
+- Refuse pending topology in synchronous/cooperative captures. The first stronger
+  batch found replay inserting an uncaptured fallback authoring graph into null
+  checkpoint state. Preserve that owner and use the interpreter fallback; do
+  not conceal this discrepancy by weakening the projection. Preserve17failures.
+- Final96related Node and all three1920x1080 Playwright cases pass together.
+  Node includes10000tick replay/transfer/work/tempo/speed/external observations.
+  Real browser64tick durable replay/seek/branch carries both scopes; six native
+  sound choices preserve1000tick simulation/facts; shared owner/refusal vectors
+  pass. Prior10000tick browser work is not newly qualified by this shorter run.
+- Provenance100%lines/95%functions/85.22%branches; replay98.51%lines and branch
+  88.2%lines with remaining negative/retirement coverage listed in the receipt.
+  Static/critical/provenance/category gates pass; add the newly imported topology
+  module to the293file worker closure (10components/362files). No full local run.
+- #988 still retains executing-build/source/asset incompatibility acceptance;
+  #1092 retains its wider durable input/invalid source corpus; #1213 still needs
+  exact sibling-prefix acceleration. This is current-runtime compatibility, not
+  archived execution. Full383 CI remains separate from verified378. Continue solo.
