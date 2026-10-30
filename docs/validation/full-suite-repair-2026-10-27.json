@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "ef7b88b12429a40f3f3e26e98bed821606100ab2",
+    "head": "c88094646d02ccb4ead20ed5a967da568a85538f",
     "status": "success",
-    "run": 41008970248,
-    "job": 123910274868,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41008970248",
-    "engineJob": 123910274938,
+    "run": 41012032130,
+    "job": 123919835022,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41012032130",
+    "engineJob": 123919835389,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7268,
+    "nodePassed": 7275,
     "nodePending": 10,
-    "browserPassed": 283,
+    "browserPassed": 285,
     "desktopPassed": 26,
-    "workstationSmokePassed": 239,
+    "workstationSmokePassed": 241,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.79,
-      "statements": 90.79,
-      "branches": 84.11,
+      "lines": 90.8,
+      "statements": 90.8,
+      "branches": 84.15,
       "functions": 88.7
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 39316,
+      "totalDurationMs": 36338,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 11197,
-        "benchHistoryStress": 18938,
-        "benchHotpaths": 9177
+        "benchPerformance": 10540,
+        "benchHistoryStress": 18427,
+        "benchHotpaths": 7366
       },
       "metrics": {
-        "perfP95Frame": 83.30000000000109,
-        "perfP50Tps": 71.2871287128713,
-        "historyRatio": 0.5851666666666666,
-        "antsAvgMs": 32.21,
-        "tileCompositionAvgMs": 3.72,
-        "overlayPlaneAvgMs": 21.34,
-        "scaledBlitAvgMs": 31.66
+        "perfP95Frame": 50,
+        "perfP50Tps": 84.99850879807946,
+        "historyRatio": 0.5858333333333333,
+        "antsAvgMs": 15.59,
+        "tileCompositionAvgMs": 4.39,
+        "overlayPlaneAvgMs": 19.62,
+        "scaledBlitAvgMs": 27.62
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.5851666666666666
+          "ratio": 0.5858333333333333
         },
         {
           "speed": 60,
-          "ratio": 0.9388333333333333
+          "ratio": 0.9521666666666667
         }
       ]
     },
@@ -892,7 +892,7 @@
       "status": "passed",
       "files": 1271,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "62a2effa5918fb539041670cdea41c1e295cf7d977b2ed30d31edfc637be9a9b",
+      "closureDigest": "f5816167a44104c25453694e71d69fb6661cd4194ea6c41bbb3f51b84d60b3ee",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123910274750,
-      "windowsJob": 123910275012,
+      "linuxJob": 123919835375,
+      "windowsJob": 123919835243,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,43 +930,46 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "5626c4b2ab07754486c2f47a5fd1a639d73b60fd",
+      "testedPrMergeHead": "cda8f3094af573060e7e5f265cbfb58835bb6129",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1159,
-      "inventorySha256": "0f3078c260392e8fd1342adb4568b59367beebc36ff3162e0930937ebd3cb2c4",
+      "inventoryFiles": 1161,
+      "inventorySha256": "15db702f2afbeb191c516f5a4a59e70a79de92497f81e5671b21e838a1d6efbd",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
       "engineInventoryFiles": 1271,
+      "engineRuntimeFiles": 1262,
+      "engineHarnessFiles": 9,
       "allEngineSourceFilesMatchPublishedHead": true,
-      "githubArchiveDigestsMatched": true
+      "githubArchiveDigestsMatched": true,
+      "reportDigestMatched": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci393-main.zip",
-        "bytes": 840181,
-        "sha256": "38f39ed4ad72e4f030a5e3b1081f0bc5a9767a944bfe4788e9d8d7d8be670c88",
-        "githubArtifactId": 12958058527,
+        "path": ".tmp/ci395-main.zip",
+        "bytes": 856378,
+        "sha256": "bc69b5bc4eee572e4ab27469728c77dc2a88495088cb712c5a54ffa98768974a",
+        "githubArtifactId": 12959945314,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci393-engine.zip",
-        "bytes": 159859,
-        "sha256": "23e95340cb51ba40dddaf4f9ace10379b42e76fe1fb3e1c7c4e250706cce42ab",
-        "githubArtifactId": 12957116364,
+        "path": ".tmp/ci395-engine.zip",
+        "bytes": 161219,
+        "sha256": "c99ed20c3ac003c17ac3dac007eb61dcc6a32188ef4e334084a30d5381beffa1",
+        "githubArtifactId": 12958232340,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci393-windows.zip",
-        "bytes": 2149,
-        "sha256": "23497e124d1925c04c46c5a2990aae5ef4aeaec09ae240d32ee1786f836a77fd",
-        "githubArtifactId": 12956802419,
-        "githubDigestMatched": true
-      },
-      {
-        "path": ".tmp/ci393-linux.zip",
+        "path": ".tmp/ci395-linux.zip",
         "bytes": 2246,
-        "sha256": "008736eb433aa6c38f613e0c7f480670c23ce056d9ed47a585ba17d24f2d5aae",
-        "githubArtifactId": 12956402710,
+        "sha256": "0808be34f88565b36fca3c845bb4c4047387bf9ab3887bea0df7161ef73904a0",
+        "githubArtifactId": 12957394518,
+        "githubDigestMatched": true
+      },
+      {
+        "path": ".tmp/ci395-windows.zip",
+        "bytes": 2148,
+        "sha256": "baecc0933a2f61957ede99729190015c58e99aa1866e360b64ede53348fdbe1c",
+        "githubArtifactId": 12957384773,
         "githubDigestMatched": true
       }
     ],
@@ -136170,5 +136173,506 @@
       "Latest independently verified full green advances to CI393/ef7b88b1; later396 sources await their own full CI. No full local suite repeated."
     ],
     "issueOutcome": "Close1023 after publication using actual source worlds, explicit geometric/tuning contracts and transactional saved history."
+  },
+  "continuation397": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1060
+    ],
+    "sourceParent": "cef914eb99af2048c1c2332477d15e2957b83f5a",
+    "scope": "Actual source-time inactivity and one-shot crew completion, definition-bound checkpoints and independently source-verified CI395.",
+    "changes": [
+      "Activity checkpoint version2 binds window, ensemble, route marker and topology definitions. Observed unbound legacy history refuses; only initial empty legacy state upgrades. Validate source time, roots, state, lane and completion owner transactionally.",
+      "Expose named missing source-window, route-coordinate, ensemble-membership, topology, root, relationship and work-capacity coverage reasons without creating notes.",
+      "Share real scored-world factories across browser and Node. Qualify actual 1/7/19walker arrivals, held blocking voices, empty and unvoiced static worlds, software mute/rejection projections, missing topology and capped membership, real U/crossing ambiguity, native take reopening and actual three-person Rescue outcomes."
+    ],
+    "validation": {
+      "node": {
+        "passing": 33,
+        "failures": 0,
+        "durationSummary": "1m",
+        "scope": "Actual activity/crew integration plus activity, Rescue, take and tonal regressions."
+      },
+      "browser": {
+        "passing": 4,
+        "failures": 0,
+        "durationSeconds": 141.6872,
+        "cases": [
+          {
+            "title": "actual activity gaps do not age during sixty wall seconds of desktop paints and native take reopening refuses edited history",
+            "status": "expected",
+            "durationMs": 67947,
+            "receipts": [
+              {
+                "name": "actual-activity-windows-desktop",
+                "bytes": 134972,
+                "sha256": "ea82db07e1c119085bd0a6d05de0c99405e9d9bd4229e04081862e70b94303ad"
+              }
+            ]
+          },
+          {
+            "title": "actual desktop Rescue crews make one rooted cadence for success and none for blocked or dead crews",
+            "status": "expected",
+            "durationMs": 19886,
+            "receipts": [
+              {
+                "name": "actual-crew-cadences-desktop",
+                "bytes": 8896,
+                "sha256": "26030a7da71de80e445c59383543f88d1d1f0107c5fb65b391e0f25e4af6f117"
+              }
+            ]
+          },
+          {
+            "title": "actual crowd arrivals preserve physical gaps tempo and saved delayed ownership across desktop painting",
+            "status": "expected",
+            "durationMs": 6434,
+            "receipts": [
+              {
+                "name": "actual-crowd-interval-desktop",
+                "bytes": 158612,
+                "sha256": "a241c88d46932e7ec34e5f50d060025f265d8de0aa73535c468700b681498f80"
+              }
+            ]
+          },
+          {
+            "title": "actual formation harmony follows physical spread and removal while desktop paints preserve voice ownership",
+            "status": "expected",
+            "durationMs": 6474,
+            "receipts": [
+              {
+                "name": "actual-formation-harmony-desktop",
+                "bytes": 308214,
+                "sha256": "2b1607bc659ab53457b415009579be55a8a2b283019096fc1611ba053eb7a14f"
+              }
+            ]
+          }
+        ],
+        "receiptsArtifact": {
+          "path": "docs/validation/activity-windows-desktop-2026-10-30.json",
+          "bytes": 611985,
+          "sha256": "1953fa32619787123c9f8929a5f64e0623a844069bdd7961b57019ee3694debb"
+        }
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 106,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 106,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 13,
+            "covered": 12,
+            "skipped": 0,
+            "pct": 92.3
+          },
+          "branches": {
+            "total": 295,
+            "covered": 247,
+            "skipped": 0,
+            "pct": 83.72
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\ActivityWindows.js": {
+          "lines": {
+            "total": 106,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 13,
+            "covered": 12,
+            "skipped": 0,
+            "pct": 92.3
+          },
+          "statements": {
+            "total": 106,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 295,
+            "covered": 247,
+            "skipped": 0,
+            "pct": 83.72
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/workstation/physical/ActivityWindows.js",
+          "bytes": 18732,
+          "sha256": "3f541b17af02d326d2ad4f0060cad7d79c7adee74e2a9032ea1fd1d56314a0bf"
+        },
+        {
+          "path": "test/helpers/actualScoredWorld.js",
+          "bytes": 2157,
+          "sha256": "d80725945c648075c008d8f2185bf08e380585ec7690cd5362c155a2a05a2559"
+        },
+        {
+          "path": "test/helpers/actualActivityWindows.js",
+          "bytes": 20280,
+          "sha256": "eaf73ccd4077cc1329ec8ed8b25b22fd480d2320ae946300c62a7651e513958b"
+        },
+        {
+          "path": "test/procgen-activity-windows.test.js",
+          "bytes": 12411,
+          "sha256": "c5c521e82ca379b39a5ee75f316d56e04f9921aec7cca048aa2dac6e8510d143"
+        },
+        {
+          "path": "test/procgen-actual-activity-windows.test.js",
+          "bytes": 1842,
+          "sha256": "617b5be1a20a6d2440e1986d4416e4230f4c4d394474da80082c57d16d9a3238"
+        },
+        {
+          "path": "e2e/procgen-workstation-activity-windows.spec.js",
+          "bytes": 9635,
+          "sha256": "5581f879cf3f6686d0371c5efb65b81683d0e338f7384669675b4c666b764e84"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 294,
+          "sha256": "b709ea30236d8d2460e4106b3cfa73c4517fcbc2fe28c757255f17e1bddf3fb1"
+        }
+      ]
+    },
+    "evidence": {
+      "pause": {
+        "before": 8,
+        "after": 8,
+        "wallMs": 60098.70000001788,
+        "polls": 234,
+        "frames": 234
+      },
+      "display": {
+        "paints": 242,
+        "state": "ready",
+        "width": 1920,
+        "height": 1080
+      },
+      "restTransitions": [
+        {
+          "kind": "RestStarted",
+          "tick": 17,
+          "sourceEventIds": [
+            "procgen:42:1:7:0:47"
+          ]
+        },
+        {
+          "kind": "RestEnded",
+          "tick": 19,
+          "sourceEventIds": [
+            "procgen:42:1:19:0:120"
+          ]
+        },
+        {
+          "kind": "RestStarted",
+          "tick": 29,
+          "sourceEventIds": [
+            "procgen:42:1:19:0:120"
+          ]
+        }
+      ],
+      "referenceFuture": {
+        "fromTick": 8,
+        "throughTick": 32,
+        "facts": 144,
+        "intents": 0,
+        "equal": true
+      },
+      "nativeTake": {
+        "takeId": "take:actual-activity-rest",
+        "midpointSequence": 17,
+        "midpointTick": 8,
+        "finalTick": 32,
+        "changedWindowRefused": true,
+        "failedInterpretationUnchanged": true
+      },
+      "crews": [
+        {
+          "scenario": "rescue-orchestra.crossing-study.wooden-crew",
+          "actorBirths": 3,
+          "completed": 1,
+          "routeFailures": [],
+          "deaths": 0,
+          "polls": 700,
+          "restoredCompletion": {
+            "tick": 343,
+            "throughTick": 1800,
+            "replayedBatches": 1457,
+            "replayedIntents": 0,
+            "count": 1,
+            "equal": true
+          },
+          "physicalFacts": 12515,
+          "physicalHash": "e7e0cbca01d3f7033775498d47ee8c59cc33705b1d547bb3a56e88cd01a690a2",
+          "cadences": 1,
+          "notes": 3
+        },
+        {
+          "scenario": "rescue-orchestra.recoverable-delay.wooden-crew",
+          "actorBirths": 3,
+          "completed": 0,
+          "routeFailures": [],
+          "deaths": 0,
+          "polls": 600,
+          "restoredCompletion": null,
+          "physicalFacts": 12666,
+          "physicalHash": "f77ef81db2bf67a489d644ef50162ad67d34bb3a04dca54929f13182ff2107dd",
+          "cadences": 0,
+          "notes": 0
+        },
+        {
+          "scenario": "rescue-orchestra.true-loss.wooden-crew",
+          "actorBirths": 3,
+          "completed": 0,
+          "routeFailures": [
+            {
+              "reason": "crew-loss",
+              "eventId": "procgen:30337:1:92:0:660"
+            }
+          ],
+          "deaths": 3,
+          "polls": 600,
+          "restoredCompletion": null,
+          "physicalFacts": 2663,
+          "physicalHash": "527838b410e1b137b4bde9744496d9236ce6808addd2a22dfedf1b354bf151f2",
+          "cadences": 0,
+          "notes": 0
+        }
+      ],
+      "refusals": [
+        "unbound legacy history",
+        "wrong window signature",
+        "future cause",
+        "negative lane",
+        "premature rest",
+        "missing source boundary",
+        "duplicate state",
+        "empty cause roots",
+        "wrong completion owner"
+      ],
+      "liveProjectUnchanged": true,
+      "audioContexts": 0,
+      "midiRequests": 0
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 32,
+        "nodeFailures": 1,
+        "reason": "Overbroad newly authored assertion rejected a legitimate rest after U-route membership became qualified; restrict refusal to unknown-coverage intervals and preserve actual qualified rests. No runtime change for this assertion repair."
+      }
+    ],
+    "ci395": {
+      "head": "c88094646d02ccb4ead20ed5a967da568a85538f",
+      "status": "success",
+      "run": 41012032130,
+      "job": 123919835022,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41012032130",
+      "engineJob": 123919835389,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7275,
+      "nodePending": 10,
+      "browserPassed": 285,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 241,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.8,
+        "statements": 90.8,
+        "branches": 84.15,
+        "functions": 88.7
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 36338,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 10540,
+          "benchHistoryStress": 18427,
+          "benchHotpaths": 7366
+        },
+        "metrics": {
+          "perfP95Frame": 50,
+          "perfP50Tps": 84.99850879807946,
+          "historyRatio": 0.5858333333333333,
+          "antsAvgMs": 15.59,
+          "tileCompositionAvgMs": 4.39,
+          "overlayPlaneAvgMs": 19.62,
+          "scaledBlitAvgMs": 27.62
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5858333333333333
+          },
+          {
+            "speed": 60,
+            "ratio": 0.9521666666666667
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1271,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "f5816167a44104c25453694e71d69fb6661cd4194ea6c41bbb3f51b84d60b3ee",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123919835375,
+        "windowsJob": 123919835243,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "cda8f3094af573060e7e5f265cbfb58835bb6129",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1161,
+        "inventorySha256": "15db702f2afbeb191c516f5a4a59e70a79de92497f81e5671b21e838a1d6efbd",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1271,
+        "engineRuntimeFiles": 1262,
+        "engineHarnessFiles": 9,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci395-main.zip",
+          "bytes": 856378,
+          "sha256": "bc69b5bc4eee572e4ab27469728c77dc2a88495088cb712c5a54ffa98768974a",
+          "githubArtifactId": 12959945314,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci395-engine.zip",
+          "bytes": 161219,
+          "sha256": "c99ed20c3ac003c17ac3dac007eb61dcc6a32188ef4e334084a30d5381beffa1",
+          "githubArtifactId": 12958232340,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci395-linux.zip",
+          "bytes": 2246,
+          "sha256": "0808be34f88565b36fca3c845bb4c4047387bf9ab3887bea0df7161ef73904a0",
+          "githubArtifactId": 12957394518,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci395-windows.zip",
+          "bytes": 2148,
+          "sha256": "baecc0933a2f61957ede99729190015c58e99aa1866e360b64ede53348fdbe1c",
+          "githubArtifactId": 12957384773,
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "ci396": {
+      "head": "cef914eb99af2048c1c2332477d15e2957b83f5a",
+      "run": 41016188339,
+      "engineJob": 123932946341,
+      "enginePassing": 17,
+      "engineFailures": 1,
+      "result": "Native Linux Firefox content process signal11 during boot pause before audio-navigation assertions. Main job still running; both native codecs and policy/dependency review pass. Preserve original failure.",
+      "rerun": {
+        "requestedJob": 123932946341,
+        "accepted": false,
+        "reason": "GitHub refuses a single-job rerun while the containing workflow is still running."
+      }
+    },
+    "openIssueInventory": {
+      "count": 193,
+      "date": "2026-10-30",
+      "method": "Union of100oldest and100newest open issues by creation order;7overlap."
+    },
+    "limits": [
+      "Only complete source windows can establish absence. Output mute/rejection is an independent software projection, not proof of device delivery or physical inactivity.",
+      "Missing topology is tested by actual source batches without the newly requested observation; no synthetic pending geometry is labeled observed.",
+      "Crew continuation after checkpoint consumes the original actual committed batches as semantic replay; no fresh physical feedback re-performance is claimed.",
+      "The Rescue sound descriptor hashes are explicit fixture identities, not installed sound-asset or listening qualification.",
+      "Held drone behavior is semantic source ownership; no recorded PCM or acoustic claim.",
+      "Activity branch coverage remains83.72%; future fault/capacity stress remains under its broad owners.",
+      "Latest independently verified full green is395/c8809464. Current396 native Firefox failure remains unresolved and397 has only this completed affected batch; no full local suite repeated."
+    ],
+    "issueOutcome": "Close1060 after publication with actual source-time rest/held/unknown/completion evidence and transactional saved history."
   }
 }

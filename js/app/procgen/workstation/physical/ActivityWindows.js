@@ -21,7 +21,7 @@ export function createActivityWindowObserver({ maximumWork = 262144, maximumComp
   if (!integer(maximumWork, 262144) || !maximumWork || !integer(maximumCompletions, 4096) || !maximumCompletions) throw new Error('Invalid activity observer capacity.');
   let definitions = [], signatures = new Map(), states = new Map(), completions = new Map(), boundary = null, lastTick = -1, last = null;
   const configure = (values, graph = {}) => {
-    const next = new Map(values.map(value => [value.id, JSON.stringify([value, graph.ensembles?.find(item => item.id === value.scope.ensembleId), graph.routes?.find(item => item.id === value.scope.routeId), graph.topologyRegions?.find(item => item.id === value.scope.topologyRegionId)])]));
+    const next = new Map(values.map(value => [value.id, JSON.stringify([value, graph.ensembles?.find(item => item.id === value.scope.ensembleId), graph.routes?.find(item => item.id === value.scope.routeId), graph.routes?.find(item => item.id === value.scope.routeId)?.markers?.map(marker => { const pickup = graph.pickups?.find(item => item.id === marker.gateId); return pickup && { id: pickup.id, geometry: pickup.geometry, laneScope: pickup.laneScope, ensembleId: pickup.ensembleId, trigger: pickup.trigger, directionPolicy: pickup.directionPolicy, hysteresis: pickup.hysteresis, bypass: pickup.bypass }; }), graph.topologyRegions?.find(item => item.id === value.scope.topologyRegionId)])]));
     for (const id of states.keys()) if (next.get(id) !== signatures.get(id)) states.delete(id);
     for (const [key, value] of completions) if (!next.has(value.windowId)) completions.delete(key);
     definitions = values; signatures = next;
@@ -43,26 +43,31 @@ export function createActivityWindowObserver({ maximumWork = 262144, maximumComp
     };
     for (const definition of definitions) {
       let state = states.get(definition.id); if (!state) { state = { lastCauseTick: null, lastCauseIds: [], actorId: null, laneId: null, resting: false, status: 'never-active', coverageStartTick: batch.tick }; states.set(definition.id, state); }
-      const scope = definition.scope, members = new Map(); let unknown = !coverageComplete || !!scope.ensembleId && domain.ensembleView?.(scope.ensembleId)?.completeness.status !== 'complete', held = 0, muted = 0;
+      const scope = definition.scope, members = new Map(), coverageReasons = new Set();
+      const markUnknown = reason => { coverageReasons.add(reason); };
+      if (!coverageComplete) markUnknown('incomplete-source-window');
+      if (scope.ensembleId && domain.ensembleView?.(scope.ensembleId)?.completeness.status !== 'complete') markUnknown('incomplete-ensemble-membership');
+      let held = 0, muted = 0;
       for (const actor of actors.values()) {
-        if (++work > maximumWork) { unknown = true; break; }
+        if (++work > maximumWork) { markUnknown('observer-work-capacity'); break; }
         if (scope.laneIds.length && !scope.laneIds.includes(actor.laneId) || !inside(actor, scope.region)) continue;
-        const membership = domain.membership(scope.ensembleId, actor.actorId); if (membership.status !== 'complete') { unknown = true; continue; } if (!membership.includes) continue;
-        if (scope.routeId && domain.routeCoordinate(actor.actorId, scope.routeId)?.status !== 'qualified') { unknown = true; continue; }
+        const membership = domain.membership(scope.ensembleId, actor.actorId); if (membership.status !== 'complete') { markUnknown('incomplete-ensemble-membership'); continue; } if (!membership.includes) continue;
+        if (scope.routeId && domain.routeCoordinate(actor.actorId, scope.routeId)?.status !== 'qualified') { markUnknown('unqualified-route-coordinate'); continue; }
         members.set(actor.actorId, actor); if (getLaneState(actor.laneId)?.available === false) muted++;
         if (definition.heldActions.includes(actor.action)) held++;
       }
-      if (scope.topologyRegionId) { const topology = batch.snapshot.topology?.regions?.find(value => value.regionId === scope.topologyRegionId)?.current; if (topology?.status !== 'complete' || topology.sourceRevision !== batch.snapshot.terrainRevision) unknown = true; }
-      if (definition.physicalKinds.some(kind => ['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) && relationships !== 'complete') unknown = true;
+      if (scope.topologyRegionId) { const topology = batch.snapshot.topology?.regions?.find(value => value.regionId === scope.topologyRegionId)?.current; if (topology?.status !== 'complete' || topology.sourceRevision !== batch.snapshot.terrainRevision) markUnknown('incomplete-topology'); }
+      if (definition.physicalKinds.some(kind => ['EncounterBegan', 'EncounterEnded', 'RendezvousCompleted'].includes(kind)) && relationships !== 'complete') markUnknown('incomplete-relationships');
       if (definition.heldVoicesCount) for (const voice of heldVoices) if (members.has(voice.actorId) && !endedActors.has(voice.actorId) && !endedActions.has(`${voice.actorId}/${voice.actionInstanceId}`)) held++;
       const qualifying = [];
       for (const fact of facts) {
-        if (++work > maximumWork) { unknown = true; break; }
+        if (++work > maximumWork) { markUnknown('observer-work-capacity'); break; }
         if (!definition.physicalKinds.includes(fact.kind) || !roots(fact).length) continue;
-        if (fact.rootCoverage && fact.rootCoverage !== 'complete') { unknown = true; continue; }
+        if (fact.rootCoverage && fact.rootCoverage !== 'complete') { markUnknown('incomplete-cause-roots'); continue; }
         if (members.has(fact.actorId) || fact.kind === 'ActorTerminated' && (!scope.laneIds.length || scope.laneIds.includes(fact.laneId)) && !scope.ensembleId && !scope.routeId && inside(fact.positionAfter || fact.position, scope.region)) qualifying.push(fact);
       }
-      const sourceIds = [...new Set(qualifying.length ? roots(qualifying.at(-1)) : [])]; if (sourceIds.length > 128) unknown = true;
+      const sourceIds = [...new Set(qualifying.length ? roots(qualifying.at(-1)) : [])]; if (sourceIds.length > 128) markUnknown('cause-root-capacity');
+      const unknown = coverageReasons.size > 0;
       if (unknown) { censored = true; state.status = 'unknown-coverage'; state.resting = false; state.lastCauseTick = null; state.lastCauseIds = []; state.coverageStartTick = batch.tick; }
       else if (qualifying.length || held) {
         if (state.resting) emit(definition, 'RestEnded', state, qualifying.length ? [qualifying.at(-1)] : [{ actorId: state.actorId, sourceEventIds: state.lastCauseIds }], { reason: qualifying.length ? 'physical-cause' : 'held-physical-action', qualifyingCauseCount: qualifying.length });
@@ -84,16 +89,18 @@ export function createActivityWindowObserver({ maximumWork = 262144, maximumComp
         if (completion) for (const [index, offset] of definition.completionPolicy.intervals.entries()) responses.push(freeze({ ...completion, kind: 'CadenceResponse', observationId: `${completion.observationId}:voice:${index}`, pitchOffsetCents: offset, gateTicks: definition.completionPolicy.gateTicks, derivedResponse: true, responseDescriptor: { kind: 'physical-cadence', completionId: fact.completionId, sourceCount: fact.admittedCrew } }));
       }
       const failed = failuresInBatch.filter(fact => fact.kind === 'RouteFailed' && (!scope.laneIds.length || scope.laneIds.includes(fact.laneId)));
-      views.push({ id: definition.id, revision: definition.revision, status: state.status, lastCauseTick: state.lastCauseTick, elapsedTicks: state.lastCauseTick == null ? null : batch.tick - state.lastCauseTick, timeoutTicks: definition.timeoutTicks, memberCount: members.size, heldCount: held, mutedMembers: muted, output: copy(output), routeFailure: failed.at(-1)?.reason ?? null, releasesHeldVoices: definition.voiceRelease === 'on-rest-or-unknown' && unknown || definition.voiceRelease !== 'none' && state.resting });
+      views.push({ id: definition.id, revision: definition.revision, status: state.status, coverageReasons: [...coverageReasons], lastCauseTick: state.lastCauseTick, elapsedTicks: state.lastCauseTick == null ? null : batch.tick - state.lastCauseTick, timeoutTicks: definition.timeoutTicks, memberCount: members.size, heldCount: held, mutedMembers: muted, output: copy(output), routeFailure: failed.at(-1)?.reason ?? null, releasesHeldVoices: definition.voiceRelease === 'on-rest-or-unknown' && unknown || definition.voiceRelease !== 'none' && state.resting });
     }
     lastTick = batch.tick; last = freeze({ facts: result, responses, windows: views, completeness: { status: censored ? 'censored' : 'complete', work } }); return last;
   };
-  return { configure, observe, reset() { states.clear(); completions.clear(); boundary = null; lastTick = -1; last = null; }, snapshot: () => freeze(copy({ version: 1, boundary, lastTick, states: [...states], completions: [...completions] })),
+  return { configure, observe, reset() { states.clear(); completions.clear(); boundary = null; lastTick = -1; last = null; }, snapshot: () => freeze(copy({ version: 2, signatures: [...signatures], boundary, lastTick, states: [...states], completions: [...completions] })),
     restore(value) {
-      if (value?.version !== 1 || value.boundary != null && (typeof value.boundary !== 'string' || value.boundary.length > 256) || !Number.isSafeInteger(value.lastTick) || value.lastTick < -1 || !Array.isArray(value.states) || value.states.length > 64 || !Array.isArray(value.completions) || value.completions.length > maximumCompletions || JSON.stringify(value).length * 2 > 4 * 1048576) throw new Error('Invalid activity checkpoint.');
+      const emptyLegacy = value?.version === 1 && value.boundary === null && value.lastTick === -1 && Array.isArray(value.states) && value.states.length === 0 && Array.isArray(value.completions) && value.completions.length === 0;
+      if (!emptyLegacy && (value?.version !== 2 || JSON.stringify(value.signatures) !== JSON.stringify([...signatures])) || value.boundary != null && (typeof value.boundary !== 'string' || value.boundary.length > 256) || !Number.isSafeInteger(value.lastTick) || value.lastTick < -1 || !Array.isArray(value.states) || value.states.length > 64 || !Array.isArray(value.completions) || value.completions.length > maximumCompletions || JSON.stringify(value).length * 2 > 4 * 1048576) throw new Error('Invalid activity checkpoint.');
+      if (value.lastTick >= 0 && !value.boundary || value.lastTick === -1 && (value.states.length || value.completions.length)) throw new Error('Activity checkpoint source boundary is inconsistent.');
       const next = new Map(), done = new Map();
-      for (const [id, state] of value.states) { if (!definitions.some(value => value.id === id) || next.has(id) || !plain(state) || state.lastCauseTick != null && (!integer(state.lastCauseTick) || state.lastCauseTick > value.lastTick) || !Array.isArray(state.lastCauseIds) || state.lastCauseIds.length > 128 || state.lastCauseIds.some(id => !identity(id)) || typeof state.resting !== 'boolean' || !['never-active', 'unknown-coverage', 'held-physical-action', 'physical-activity', 'empty-scope', 'physical-rest', 'physical-gap'].includes(state.status) || !integer(state.coverageStartTick) || state.coverageStartTick > value.lastTick || state.actorId != null && !integer(state.actorId) || state.resting !== (state.status === 'physical-rest') || state.resting && (state.lastCauseTick == null || value.lastTick - state.lastCauseTick < definitions.find(value => value.id === id).timeoutTicks) || new Set(state.lastCauseIds).size !== state.lastCauseIds.length) throw new Error('Invalid activity boundary state.'); next.set(id, copy(state)); }
-      for (const [key, state] of value.completions) { if (typeof key !== 'string' || key.length > 512 || done.has(key) || !plain(state) || !definitions.some(value => value.id === state.windowId) || !integer(state.tick) || state.tick > value.lastTick) throw new Error('Invalid cadence ownership checkpoint.'); done.set(key, copy(state)); }
+      for (const [id, state] of value.states) { if (!definitions.some(value => value.id === id) || next.has(id) || !plain(state) || state.lastCauseTick != null && (!integer(state.lastCauseTick) || state.lastCauseTick > value.lastTick) || !Array.isArray(state.lastCauseIds) || state.lastCauseIds.length > 128 || state.lastCauseIds.some(id => !identity(id)) || typeof state.resting !== 'boolean' || !['never-active', 'unknown-coverage', 'held-physical-action', 'physical-activity', 'empty-scope', 'physical-rest', 'physical-gap'].includes(state.status) || !integer(state.coverageStartTick) || state.coverageStartTick > value.lastTick || state.actorId != null && !integer(state.actorId) || state.laneId != null && !integer(state.laneId, 1023) || state.lastCauseTick != null && state.lastCauseTick < state.coverageStartTick || ['unknown-coverage', 'empty-scope', 'never-active'].includes(state.status) && (state.lastCauseTick !== null || state.lastCauseIds.length || state.resting) || ['physical-rest', 'physical-gap', 'physical-activity'].includes(state.status) && (state.lastCauseTick == null || !state.lastCauseIds.length || !integer(state.actorId)) || state.resting !== (state.status === 'physical-rest') || state.resting && (state.lastCauseTick == null || value.lastTick - state.lastCauseTick < definitions.find(value => value.id === id).timeoutTicks) || new Set(state.lastCauseIds).size !== state.lastCauseIds.length) throw new Error('Invalid activity boundary state.'); next.set(id, copy(state)); }
+      for (const [key, state] of value.completions) { if (typeof key !== 'string' || key.length > 512 || done.has(key) || !plain(state) || !definitions.some(value => value.id === state.windowId) || !key.startsWith(state.windowId + '/') || !identity(key.slice(state.windowId.length + 1)) || !integer(state.tick) || state.tick > value.lastTick) throw new Error('Invalid cadence ownership checkpoint.'); done.set(key, copy(state)); }
       states = next; completions = done; boundary = value.boundary; lastTick = value.lastTick; last = null;
     }, diagnostics: () => freeze({ definitions: definitions.length, recognizedCompletions: completions.size, last }) };
 }

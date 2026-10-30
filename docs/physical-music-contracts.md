@@ -403,3 +403,31 @@ legacy state can resume without inventing history. Actual crowd fixtures cover
 spreading, removal and minimum-motion assignment, static silent/held behavior,
 same-leader/different-follower controls, stable ties, route ambiguity and exact
 checkpoint continuation.
+
+## Source-time activity and completion
+
+Activity windows count only their declared physical facts and held actions or
+semantic voices. A real arrival gap can cross a saved simulation-tick threshold
+once; the next qualifying cause ends the rest. Paused wall time, display paints
+and inspector polling cannot advance that threshold. Empty scopes and static
+unvoiced actors do not generate filler attacks. A held physical drone remains
+active even without new attacks.
+
+Window views expose independent physical status and output observations. Mute and
+sink rejection cannot manufacture a missing physical cause. Unknown route
+coordinates, ensemble membership, topology revisions, source windows, roots and
+observer limits carry named coverage reasons and cannot establish a rest or
+verified cadence. Known physical inactivity can still exist while output is
+muted; its cause remains the source interval.
+
+Activity checkpoint version 2 binds each window and its referenced ensemble,
+route markers and topology definition. Restore validates source time, cause
+roots, state, lane and completion ownership before publishing anything. Observed
+unbound legacy history refuses; only an empty initial legacy boundary can upgrade.
+Edited interpretations cannot reuse an old timeout or scope history.
+
+A crew cadence requires complete unchanged-revision passage, every admitted
+participant and all opening/connection/arrival roots. A completion identity owns
+one bounded chord across polls, restore and semantic continuation. Blocked and
+dead crews receive no success cadence. Native take reopen preserves the original
+manifest when an edited activity interpretation fails.

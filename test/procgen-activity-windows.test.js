@@ -12,6 +12,17 @@ const batch = (tick, facts = [], population = actors) => ({ version: 1, worldId:
 const setup = extra => { const observer = createActivityWindowObserver(); observer.configure(validateActivityWindows({ activityWindows: [definition(extra)] }, graph), graph); return observer; };
 const run = (observer, tick, facts = [], options = {}, domain = environment) => { const b = batch(tick, facts); return observer.observe(b, b.facts, domain, options); };
 describe('physical inactivity and rooted route cadence', () => {
+  it('binds observed history to window scopes and referenced route markers while upgrading only empty legacy state', () => {
+    const observer = setup(); run(observer, 1, [{ kind: 'ContactResolved' }]); const saved = observer.snapshot();
+    for (const extra of [{ timeoutTicks: 11 }, { physicalKinds: ['MotionCommitted'] }, { scope: { laneIds: [0] } }, { heldActions: ['blocking'] }, { completionPolicy: { kind: 'crew-route' } }]) {
+      const edited = setup(extra), before = edited.snapshot(); expect(() => edited.restore(saved)).to.throw('activity checkpoint'); expect(edited.snapshot()).to.deep.equal(before);
+    }
+    const legacy = JSON.parse(JSON.stringify(saved)); legacy.version = 1; delete legacy.signatures; expect(() => observer.restore(legacy)).to.throw('activity checkpoint'); expect(observer.snapshot()).to.deep.equal(saved);
+    const pristine = setup().snapshot(), emptyLegacy = { ...pristine, version: 1 }; delete emptyLegacy.signatures; const upgraded = setup(); upgraded.restore(emptyLegacy); expect(upgraded.snapshot()).to.deep.equal(pristine);
+    const routeGraph = { ...graph, pickups: [{ id: 'entry', geometry: { kind: 'segment', points: [{ x: 10, y: 0 }, { x: 10, y: 10 }] } }], routes: [{ id: 'route', markers: [{ gateId: 'entry' }] }] }, values = validateActivityWindows({ activityWindows: [definition({ scope: { routeId: 'route' } })] }, routeGraph), before = createActivityWindowObserver(); before.configure(values, routeGraph); run(before, 1, [{ kind: 'ContactResolved' }]);
+    const moved = JSON.parse(JSON.stringify(routeGraph)); moved.pickups[0].geometry.points[0].x++; const after = createActivityWindowObserver(); after.configure(values, moved); expect(() => after.restore(before.snapshot())).to.throw('activity checkpoint');
+    observer.configure(validateActivityWindows({ activityWindows: [definition({ timeoutTicks: 11 })] }, graph), graph); const b = setup({ timeoutTicks: 11 }); b.restore(observer.snapshot()); expect(run(b, 2).windows[0].status).to.equal('never-active');
+  });
   it('requires the declared complete crew and rejoin region without changing legacy cadence profiles', () => {
     const completionPolicy = { kind: 'crew-route', expectedCrew: 3, goalRegion: { x1: 132, x2: 208, y1: 64, y2: 112 }, intervals: [0, 400, 700] }, population = [1, 2, 3].map(actorId => ({ actorId, laneId: 0, x: 140 + actorId, y: 95, action: 'walking', actionInstanceId: 'walk:' + actorId }));
     const completion = { kind: 'RouteCompleted', completionId: 'world:crew:fixed-three', crewProjectId: 'fixed-three', positionAfter: { x: 140, y: 95 }, participants: [1, 2, 3], admittedCrew: 3, completionCoverage: 'complete', routeRevisionsUnchanged: true, prerequisiteSourceEventIds: ['opened', 'connected', 'arrived:1', 'arrived:2', 'arrived:3'] };
