@@ -267,3 +267,25 @@ articulations for the existing landing/terminal strike. For example,
 distinguishes those physical outcomes when `terminalStrike: true`. The response
 descriptor retains the actual termination reason and shared arc ID. These names
 do not add another attack or imply a measured force, gravity or acoustic model.
+
+## Blocker encounter ownership
+
+One authoritative blocker turn carries the walker `actionInstanceId` and the
+blocker `otherActionInstanceId` on its shared `ContactResolved` fact. The two
+legacy sound effects remain observations of that encounter. Ricochet responses
+select walker/blocker roles independently and retain the selected participant's
+action ownership, source event ID and shared contact ID.
+
+Alternating/call-answer select the first two authored intervals; modulo and
+mirrored modes use the complete interval list. `motifTag` names the interval
+actually selected. Musical counters belong to a particular blocker action:
+release/re-entry clears the old counter, while other blockers retain theirs.
+Actor termination invalidates its histories, and malformed restored action
+ownership is rejected before changing any live counter.
+
+The actual ricochet corpus exercises opposite-side encounters, a repeated
+two-blocker route, explicit queued release/replacement, complete world/engine
+restore, fresh actor identities and 100 coincident physical turns. Semantic
+begin admission may thin dual-role attacks, but every actual contact and held
+resonance end retains its own boundary. The browser fixture paints the production
+desktop canvas; it does not qualify acoustic rendering or receiver behavior.

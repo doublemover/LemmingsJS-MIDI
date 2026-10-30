@@ -65,6 +65,12 @@ describe('physical rhythmic response interpretation', () => {
     expect(notes.map(note => note.actorId)).to.deep.equal([8, 7]); expect(new Set(notes.map(note => note.voiceId)).size).to.equal(2); expect(notes.every(note => note.sourceEventIds[0] === 'fact:1:0')).to.equal(true);
     expect(notes.map(note => note.pitch.cents).sort()).to.deep.equal([5300, 6700]);
   });
+  it('rejects malformed restored blocker action ownership before changing its counters', () => {
+    const instrument = input('mirror', 'RicochetResponse', validateRhythmicResponse({ type: 'ricochet' }, 'RicochetResponse')), responses = createRhythmicResponses(); responses.configure([instrument]);
+    const facts = batch(2, [{ kind: 'ContactResolved', contactId: 'actual:contact2', causeKind: 'blocker', otherActorId: 8, otherActionInstanceId: '8:action:2', incomingDirection: 'right' }], [{ actorId: 7, x: 0 }, { actorId: 8, x: 0 }]); responses.expand(facts, facts.facts, environment);
+    const before = responses.snapshot(), changed = JSON.parse(JSON.stringify(before)); changed.states[0][1].actionInstanceId = {};
+    expect(() => responses.restore(changed)).to.throw('estimator state'); expect(responses.snapshot()).to.deep.equal(before);
+  });
   it('keeps fall-to-float expression under one arc and ends fatal falls without requiring LAND SFX', () => {
     const graph = { version: 1, revision: 1, instruments: [input('arc', 'FlightArc', { type: 'flightArc', landingStrike: true, terminalStrike: false })] }, engine = createCausalMusicEngine({ getGraph: () => graph });
     const start = { kind: 'FlightArcStarted', arcId: '7:flight:1', actionInstanceId: 'fall:7', startTick: 1, startPosition: { x: 0, y: 0 }, source: 'action-transition', peakY: 0, travelPixels: 0, verticalDisplacementPixels: 0 };

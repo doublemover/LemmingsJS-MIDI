@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Bind blocker response counters to each action instance, retain both participants' causal ownership, and keep alternating motif tags consistent with the selected interval.
+
 - Retain causal flight provenance on safe landing facts and allow separately named landing, fatal-fall and out-of-world strike articulations.
 
 - Let physical work-cycle mappings select occupancy or appearance changes explicitly, keeping already-solid brick attempts separate from successful material addition.

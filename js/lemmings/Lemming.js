@@ -69,6 +69,7 @@ class Lemming extends BaseLogger {
       const contactId = `${walker.id}:${this.id}:${_tick}:blocker`;
       walker._physicalPendingBlockerContact = { contactId, blockerId: this.id };
       facts.emit({ kind: 'ContactResolved', contactId, actorId: walker.id, otherActorId: this.id,
+        actionInstanceId: walker._physicalActionInstanceId, otherActionInstanceId: this._physicalActionInstanceId,
         laneId: walker.laneIndex ?? null, otherLaneId: this.laneIndex ?? null, incomingDirection: walker.lookRight ? 'right' : 'left', triggerId: trigger.id ?? null, causeKind: 'blocker', participantRoles: { actor: 'walker', otherActor: 'blocker' },
         positionBefore: { x: walker.x, y: walker.y }, positionAfter: { x: walker.x, y: walker.y } });
     }

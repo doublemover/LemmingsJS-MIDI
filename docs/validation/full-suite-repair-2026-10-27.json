@@ -102646,4 +102646,679 @@
     ],
     "issueOutcome": "Close1017 after commit/push; output renderer/acoustic/device ownership remains separate."
   }
+,
+  "continuation391": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issue": 992,
+    "sourceParent": "afcd7eed2780c897fcd6dd00beec479d80a6126b",
+    "scope": "Actual blocker networks, participant action ownership, fresh per-action state and truthful motif selection.",
+    "changes": [
+      "Canonical blocker contact includes walker actionInstanceId and blocker otherActionInstanceId. Each derived role owns the correct participant action.",
+      "Blocker-local counters bind to the observed blocker action, clear on release/termination and refuse malformed restored ownership transactionally. Other blocker counters retain phase.",
+      "Alternating/call-answer motif tags use the same interval index as their actual pitch transform; mirrored/modulo behavior remains explicit.",
+      "Shared actual source corpus exercises opposite-side dual/muted roles, four modes on a two-blocker route, queued release/re-entry, complete checkpoint continuation, actor removal/fresh IDs and 100 coincident turns."
+    ],
+    "validation": {
+      "node": {
+        "passing": 177,
+        "failures": 0,
+        "scope": "Affected work/flight/blocker/engine/checkpoint/Lemming/manager owners."
+      },
+      "browser": {
+        "passing": 4,
+        "failures": 0,
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real flight arcs retain timing and voice identity across paused paint restore and independent sprite changes",
+            "file": "procgen-workstation-flight-arcs.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "real blocker turns preserve paired roles release restore and deterministic 100-actor admission",
+            "file": "procgen-workstation-ricochets.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-blocker-ricochet-desktop",
+                "value": {
+                  "dual": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:1:0:8",
+                        "simTick": 1,
+                        "contactId": "1:0:1:blocker",
+                        "actorId": 1,
+                        "otherActorId": 0,
+                        "actionInstanceId": "1:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:2:0:21",
+                        "simTick": 2,
+                        "contactId": "2:0:2:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      }
+                    ],
+                    "physicalHash": "3510feec6e4bf810120624f9f891a0f70bfa7a16317c4f0ba7bdc8e78be37c30",
+                    "intentHash": "b47a1095c21917fa1642a3855a3c25439693c052e1dd81fc204ef751ba12f950",
+                    "intents": 8
+                  },
+                  "muted": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:1:0:8",
+                        "simTick": 1,
+                        "contactId": "1:0:1:blocker",
+                        "actorId": 1,
+                        "otherActorId": 0,
+                        "actionInstanceId": "1:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:2:0:21",
+                        "simTick": 2,
+                        "contactId": "2:0:2:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      }
+                    ],
+                    "physicalHash": "3510feec6e4bf810120624f9f891a0f70bfa7a16317c4f0ba7bdc8e78be37c30",
+                    "intentHash": "009175923c4cccf662d6c046f2cb060ad0b9b36c52ab7f73c59d51735fbdc0a4",
+                    "intents": 8
+                  },
+                  "bounce": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:24:0:103",
+                        "simTick": 24,
+                        "contactId": "2:1:24:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:72:0:299",
+                        "simTick": 72,
+                        "contactId": "2:0:72:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:120:0:495",
+                        "simTick": 120,
+                        "contactId": "2:1:120:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:168:0:700",
+                        "simTick": 168,
+                        "contactId": "2:0:168:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:217:0:900",
+                        "simTick": 217,
+                        "contactId": "2:1:217:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:4",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:266:0:1100",
+                        "simTick": 266,
+                        "contactId": "2:0:266:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:302:0:1265",
+                        "simTick": 302,
+                        "contactId": "4:3:302:blocker",
+                        "actorId": 4,
+                        "otherActorId": 3,
+                        "actionInstanceId": "4:action:2",
+                        "otherActionInstanceId": "3:action:2",
+                        "incomingDirection": "right"
+                      }
+                    ],
+                    "physicalHash": "30f890ad99334bf8c38afa6b69f5f50f9aaa16b6c6d93d5f296ee0fbada65972",
+                    "intentHash": "170d13be049040b98418b35cdcfd1832216f515420c2d594a12e15e88354e7c1",
+                    "intents": 119,
+                    "pause": {
+                      "tick": 100,
+                      "unchanged": true
+                    },
+                    "restored": {
+                      "fromTick": 100,
+                      "throughTick": 301,
+                      "facts": 834,
+                      "intents": 68,
+                      "equal": true
+                    },
+                    "replacementId": 3
+                  },
+                  "dense": {
+                    "contacts": 100,
+                    "physicalHash": "16cd1ee6b9a35881ac1c0e6a8b6be954b43abd730a698f65de4082b49f779c52",
+                    "intentHash": "7bb9e6ea634311946f95a3f5761cb385d1f8d133483ee4daacc3a1a859ba6b28",
+                    "intents": 64,
+                    "accepted": 31,
+                    "rejected": 169,
+                    "completePhysicalFacts": true,
+                    "activeVoicesAfterRelease": 0
+                  },
+                  "paints": 308,
+                  "display": {
+                    "state": "ready",
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "pixelHash": "90d0b150e29136bfc3050a314d954e34a04c23c1fc917e935a831a57da796555",
+                  "pause": {
+                    "before": 100,
+                    "after": 100,
+                    "displayFrames": 8,
+                    "wallMs": 93
+                  },
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Actual blocker trigger decisions, semantic paired roles, physical bounce, source-state continuity and bounded admission; no acoustic/device claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "actual work-cycle intents survive 0 15 and 120 source-relative desktop paint cadences",
+            "file": "procgen-workstation-work-cycles.spec.js",
+            "status": "passed",
+            "receipts": []
+          }
+        ]
+      },
+      "review": {
+        "purpose": "Strengthen ordinal assertion against an independent count of actual contacts per blocker/action, preventing a self-consistent but reset-all response from passing.",
+        "nodePassing": 1,
+        "browserPassing": 1,
+        "canonicalOutputsUnchanged": true,
+        "cases": [
+          {
+            "title": "real blocker turns preserve paired roles release restore and deterministic 100-actor admission",
+            "file": "procgen-workstation-ricochets.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-blocker-ricochet-desktop",
+                "value": {
+                  "dual": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:1:0:8",
+                        "simTick": 1,
+                        "contactId": "1:0:1:blocker",
+                        "actorId": 1,
+                        "otherActorId": 0,
+                        "actionInstanceId": "1:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:2:0:21",
+                        "simTick": 2,
+                        "contactId": "2:0:2:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      }
+                    ],
+                    "physicalHash": "3510feec6e4bf810120624f9f891a0f70bfa7a16317c4f0ba7bdc8e78be37c30",
+                    "intentHash": "b47a1095c21917fa1642a3855a3c25439693c052e1dd81fc204ef751ba12f950",
+                    "intents": 8
+                  },
+                  "muted": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:1:0:8",
+                        "simTick": 1,
+                        "contactId": "1:0:1:blocker",
+                        "actorId": 1,
+                        "otherActorId": 0,
+                        "actionInstanceId": "1:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:2:0:21",
+                        "simTick": 2,
+                        "contactId": "2:0:2:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      }
+                    ],
+                    "physicalHash": "3510feec6e4bf810120624f9f891a0f70bfa7a16317c4f0ba7bdc8e78be37c30",
+                    "intentHash": "009175923c4cccf662d6c046f2cb060ad0b9b36c52ab7f73c59d51735fbdc0a4",
+                    "intents": 8
+                  },
+                  "bounce": {
+                    "contacts": [
+                      {
+                        "eventId": "procgen:42:1:24:0:103",
+                        "simTick": 24,
+                        "contactId": "2:1:24:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:72:0:299",
+                        "simTick": 72,
+                        "contactId": "2:0:72:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:120:0:495",
+                        "simTick": 120,
+                        "contactId": "2:1:120:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:2",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:168:0:700",
+                        "simTick": 168,
+                        "contactId": "2:0:168:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:217:0:900",
+                        "simTick": 217,
+                        "contactId": "2:1:217:blocker",
+                        "actorId": 2,
+                        "otherActorId": 1,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "1:action:4",
+                        "incomingDirection": "right"
+                      },
+                      {
+                        "eventId": "procgen:42:1:266:0:1100",
+                        "simTick": 266,
+                        "contactId": "2:0:266:blocker",
+                        "actorId": 2,
+                        "otherActorId": 0,
+                        "actionInstanceId": "2:action:2",
+                        "otherActionInstanceId": "0:action:2",
+                        "incomingDirection": "left"
+                      },
+                      {
+                        "eventId": "procgen:42:1:302:0:1265",
+                        "simTick": 302,
+                        "contactId": "4:3:302:blocker",
+                        "actorId": 4,
+                        "otherActorId": 3,
+                        "actionInstanceId": "4:action:2",
+                        "otherActionInstanceId": "3:action:2",
+                        "incomingDirection": "right"
+                      }
+                    ],
+                    "physicalHash": "30f890ad99334bf8c38afa6b69f5f50f9aaa16b6c6d93d5f296ee0fbada65972",
+                    "intentHash": "170d13be049040b98418b35cdcfd1832216f515420c2d594a12e15e88354e7c1",
+                    "intents": 119,
+                    "pause": {
+                      "tick": 100,
+                      "unchanged": true
+                    },
+                    "restored": {
+                      "fromTick": 100,
+                      "throughTick": 301,
+                      "facts": 834,
+                      "intents": 68,
+                      "equal": true
+                    },
+                    "replacementId": 3
+                  },
+                  "dense": {
+                    "contacts": 100,
+                    "physicalHash": "16cd1ee6b9a35881ac1c0e6a8b6be954b43abd730a698f65de4082b49f779c52",
+                    "intentHash": "7bb9e6ea634311946f95a3f5761cb385d1f8d133483ee4daacc3a1a859ba6b28",
+                    "intents": 64,
+                    "accepted": 31,
+                    "rejected": 169,
+                    "completePhysicalFacts": true,
+                    "activeVoicesAfterRelease": 0
+                  },
+                  "paints": 308,
+                  "display": {
+                    "state": "ready",
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "pixelHash": "90d0b150e29136bfc3050a314d954e34a04c23c1fc917e935a831a57da796555",
+                  "pause": {
+                    "before": 100,
+                    "after": 100,
+                    "displayFrames": 8,
+                    "wallMs": 93.59999999403954
+                  },
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Actual blocker trigger decisions, semantic paired roles, physical bounce, source-state continuity and bounded admission; no acoustic/device claim."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 439,
+            "covered": 438,
+            "skipped": 0,
+            "pct": 99.77
+          },
+          "statements": {
+            "total": 439,
+            "covered": 438,
+            "skipped": 0,
+            "pct": 99.77
+          },
+          "functions": {
+            "total": 33,
+            "covered": 33,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 440,
+            "covered": 356,
+            "skipped": 0,
+            "pct": 80.9
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RhythmicResponses.js": {
+          "lines": {
+            "total": 180,
+            "covered": 179,
+            "skipped": 0,
+            "pct": 99.44
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 180,
+            "covered": 179,
+            "skipped": 0,
+            "pct": 99.44
+          },
+          "branches": {
+            "total": 305,
+            "covered": 247,
+            "skipped": 0,
+            "pct": 80.98
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\lemmings\\Lemming.js": {
+          "lines": {
+            "total": 259,
+            "covered": 259,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 20,
+            "covered": 20,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 259,
+            "covered": 259,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 135,
+            "covered": 109,
+            "skipped": 0,
+            "pct": 80.74
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "initialQualifiedSources": [
+        {
+          "path": "js/lemmings/Lemming.js",
+          "bytes": 11633,
+          "sha256": "a01eff0b294296ff762749ebcf4796969af858b2a62070037927a3521895ab03"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RhythmicResponses.js",
+          "bytes": 24765,
+          "sha256": "99c7f5a17ab76dd7ce3b79e5d9389cea0eb7734ae5b634ee99382f0492fecf02"
+        },
+        {
+          "path": "test/helpers/actualScoredWorld.js",
+          "bytes": 1504,
+          "sha256": "020598a9ec330719ce8010d5ef11f141d01d72df4142a821ebfbc18c291bedbd"
+        },
+        {
+          "path": "test/helpers/actualRicochets.js",
+          "bytes": 13587,
+          "sha256": "8e49a2932f84130c83b85d54af4a722c6b10b691f9f18f5c94ffdab96d119b99"
+        },
+        {
+          "path": "test/procgen-actual-ricochets.test.js",
+          "bytes": 942,
+          "sha256": "b4f8760143de53820bad7f4c0f727c7aecb97278949fec05e207c59459b9af6a"
+        },
+        {
+          "path": "test/procgen-rhythmic-responses.test.js",
+          "bytes": 12269,
+          "sha256": "a1a1d266412f4ca44091e190931a296d1e1a10c655cb2df886b558f6458dbdc1"
+        },
+        {
+          "path": "e2e/procgen-workstation-ricochets.spec.js",
+          "bytes": 6689,
+          "sha256": "2226bdb83b03541caf003fe2bc6d5220ab693b746b165b69869cfce954ef1358"
+        }
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/lemmings/Lemming.js",
+          "bytes": 11633,
+          "sha256": "a01eff0b294296ff762749ebcf4796969af858b2a62070037927a3521895ab03"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RhythmicResponses.js",
+          "bytes": 24765,
+          "sha256": "99c7f5a17ab76dd7ce3b79e5d9389cea0eb7734ae5b634ee99382f0492fecf02"
+        },
+        {
+          "path": "test/helpers/actualScoredWorld.js",
+          "bytes": 1504,
+          "sha256": "020598a9ec330719ce8010d5ef11f141d01d72df4142a821ebfbc18c291bedbd"
+        },
+        {
+          "path": "test/helpers/actualRicochets.js",
+          "bytes": 13898,
+          "sha256": "2324620d4004d26b489584efb03be82712b8170599568711450b7e986771ccbe"
+        },
+        {
+          "path": "test/procgen-actual-ricochets.test.js",
+          "bytes": 942,
+          "sha256": "b4f8760143de53820bad7f4c0f727c7aecb97278949fec05e207c59459b9af6a"
+        },
+        {
+          "path": "test/procgen-rhythmic-responses.test.js",
+          "bytes": 12269,
+          "sha256": "a1a1d266412f4ca44091e190931a296d1e1a10c655cb2df886b558f6458dbdc1"
+        },
+        {
+          "path": "e2e/procgen-workstation-ricochets.spec.js",
+          "bytes": 6689,
+          "sha256": "2226bdb83b03541caf003fe2bc6d5220ab693b746b165b69869cfce954ef1358"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "sha256": "23939b9af3c0693df3bc48cc2fad96b25b5098ccf30d8b71f7b0417de5f5787d",
+          "files": 293
+        }
+      ]
+    },
+    "evidence": [
+      {
+        "path": ".tmp/rook391-node.log",
+        "bytes": 20713,
+        "sha256": "391d401de1dec52c6fe24d98685fda733bd54927aaf4f21083177bcec1c89bdc"
+      },
+      {
+        "path": ".tmp/rook391-playwright.json",
+        "bytes": 344139,
+        "sha256": "7f1ac311d03c5a95460f0bf8594399fd9d5da588fe6b5a2afad918a811e9086d"
+      },
+      {
+        "path": ".tmp/rook391-node-review.log",
+        "bytes": 196,
+        "sha256": "70abed7f748713df5ca1254b6b2274d0d032a12bb3da4ddf5b2ef367550ce445"
+      },
+      {
+        "path": ".tmp/rook391-playwright-review.json",
+        "bytes": 9595,
+        "sha256": "bc85a56b6e27e785e2953bc24124b637338deff1fd56b73f7f9a516e63e5dcc1"
+      },
+      {
+        "path": ".tmp/rook391-format-review.log",
+        "bytes": 55,
+        "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+      },
+      {
+        "path": ".tmp/rook391-static.log",
+        "bytes": 4382,
+        "sha256": "a4a19ff721b2a1ef68e581b8dce3c0854faf1368581e6521e4ff4cf2c17c1c44"
+      },
+      {
+        "path": ".tmp/rook391-coverage/coverage-summary.json",
+        "bytes": 1023,
+        "sha256": "0193eb7a7e8d4b63fabf01059c6a03d863212fbdba695c47757f262c8553519c"
+      }
+    ],
+    "ci388InProgressAudit": {
+      "head": "c33516d9ae24bba29af8d86d0190832293476983",
+      "run": 40997846748,
+      "status": "Main job still running coverage; do not promote full green yet.",
+      "browserPassed": 234,
+      "enginePassed": 18,
+      "sourceInventories": {
+        "main": {
+          "files": 1153,
+          "mismatches": []
+        },
+        "engine": {
+          "files": 1261,
+          "mismatches": []
+        },
+        "linux": {
+          "files": 8,
+          "mismatches": []
+        },
+        "windows": {
+          "files": 8,
+          "mismatches": []
+        }
+      },
+      "artifactIds": {
+        "main": 12953232670,
+        "engine": 12952188242,
+        "linux": 12951694015,
+        "windows": 12952067938
+      }
+    },
+    "limits": [
+      "100 contacts preserve complete physical facts; 31/200 requested dual-role attacks are admitted and169 explicitly rejected under the authored begin cap. Held blocker resonance end survives thinning.",
+      "Actual two-blocker collisions occur at24/72/120/168/217/266, followed by a fresh actor contact at302. Queued release140/re-entry141 starts a new blocker action while the other local counter remains intact.",
+      "Pause covers eight actual RAF paints at tick100 (93ms observed); restored tick101..301 matches834facts/68intents. No OS/background/suspension or acoustic/device qualification inferred.",
+      "Lemming100%lines/functions80.74%branches; RhythmicResponses99.44%lines100%functions80.98%branches. Other generic estimator/restore/capacity branch gaps remain.",
+      "Latest fully source-verified full CI remains383. The388 receipt source comparison is complete with zero mismatches, but its main job is still in progress;389/390 are separate. No repeated full local suite."
+    ],
+    "issueOutcome": "Close992 after commit/push; actual receiver/acoustic and broader crowd interval/routing instruments remain separate."
+  }
 }
