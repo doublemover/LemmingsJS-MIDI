@@ -94518,5 +94518,894 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "remaining988": "Broader immutable cross-version/unsupported-codec and actual source/asset-byte tamper matrix remains; exact causal replay is explicitly refused rather than borrowing the separate survey worker claim.1092 keeps wider authored durable inputs/semantic invalid data;1213 keeps sibling-prefix acceleration."
+  },
+  "continuation385": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "be0c7bd8793ab299dfb89e73037a8cd6811259b7",
+    "scope": "1092/988 hash-valid imported causal input semantics and exact recoverable record diagnostics; desktop Playwright.",
+    "counterexamples": {
+      "path": ".tmp/rook385-semantic-input-counterexamples.json",
+      "bytes": 895,
+      "sha256": "0869baa1b8a4a65c3495a3ef35e28ad47bee6f89d2d2e71d4402e74c6e0dc736"
+    },
+    "changes": [
+      "Explicit supported schemas validate world speed, legacy/versioned transport, cancellation, performance/feedback envelopes, external observation bytes/timestamps and tempo before applying effects; unknown fields refuse rather than disappear.",
+      "Reject stale mapping revisions and inventory overflow before configuring the world. Retain nested performance/feedback owner validators.",
+      "Annotate record failures with exact retained chunk ID, sequence, tick and kind, while preserving the accepted prefix and isolated retirement. Read-only observations do not query a live source.",
+      "Add shared27case hash-valid corpus: one valid observation and26malformed payloads across bytes/timestamps/unknown fields/effects/versions/kinds, clock bounds/cancel owner/nested performance/feedback/tempo/mapping/intervention/source boundary."
+    ],
+    "validation": {
+      "node": {
+        "passed": 92,
+        "failed": 0,
+        "log": ".tmp/rook385-node-final.log",
+        "files": [
+          "test/causal-recorded-inputs.test.js",
+          "test/causal-runtime-identity.test.js",
+          "test/procgen-causal-reperformance.test.js",
+          "test/procgen-causal-physical-branch.test.js",
+          "test/procgen-causal-journal.test.js",
+          "test/procgen-causal-take.test.js",
+          "test/procgen-physical-feedback.test.js"
+        ],
+        "scope": "Complete affected files together; includes actual10000tick physical replay,15execution-binding variants,27semantic inputs, branch/reuse/journal/semantic capture and feedback lifecycles."
+      },
+      "playwright": {
+        "passed": 4,
+        "failed": 0,
+        "report": ".tmp/rook385-playwright-publish-final.json",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "cases": [
+          {
+            "title": "stored-take comparison and explicit branch stepping use real detached worlds without enabling output",
+            "file": "procgen-take-workbench.spec.js",
+            "status": "passed"
+          },
+          {
+            "title": "stored take corruption, missing chunks and future sources preserve the live desktop performance",
+            "file": "procgen-workstation-causal-source-faults.spec.js",
+            "status": "passed"
+          },
+          {
+            "title": "durable physical tape replays, seeks and branches 64 committed ticks without changing its source",
+            "file": "procgen-workstation-durable-tape.spec.js",
+            "status": "passed"
+          },
+          {
+            "title": "hash-valid malformed causal inputs retain exact desktop diagnostics without changing the recorded performance @boundary",
+            "file": "procgen-workstation-recorded-inputs.spec.js",
+            "status": "passed"
+          }
+        ],
+        "semantic": {
+          "outcomes": [
+            {
+              "name": "valid-observation",
+              "status": "matched-current-runtime",
+              "compatibilityMatch": true,
+              "failure": null
+            },
+            {
+              "name": "negative-byte",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:negative-byte\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "overflow-byte",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:overflow-byte\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "fractional-byte",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:fractional-byte\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "string-byte",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:string-byte\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "nonarray-bytes",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:nonarray-bytes\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "null-bytes",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:null-bytes\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "oversized-bytes",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:oversized-bytes\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "string-timestamp",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:string-timestamp\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "overflow-timestamp",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:overflow-timestamp\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-observation-effect",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "An external observation requires bounded source bytes and a finite source timestamp; its effect must be observation-only.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-observation-effect\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-observation-field",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-observation-field\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-input-version",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-input-version\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-input-kind",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-input-kind\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "zero-world-speed",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Recorded world speed is outside its finite positive range.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:zero-world-speed\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-world-speed-field",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-world-speed-field\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-transport-field",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-transport-field\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "negative-transport-clock",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "A transport observation requires its versioned physical clock state.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:negative-transport-clock\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "missing-cancel-owner",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "input-boundary-mismatch",
+                "message": "Recorded intervention cancellation has no pending command.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:missing-cancel-owner\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "invalid-performance-removal",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Invalid causal lane performance state.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:invalid-performance-removal\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-performance-field",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unknown input schema cannot be substituted during replay.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-performance-field\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "invalid-feedback-state",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Invalid bounded physical feedback state.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:invalid-feedback-state\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "unknown-tempo-field",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "A recorded tempo requires its supported schema and finite positive BPM.",
+                "recordKind": "timeline",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:unknown-tempo-field\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "zero-tempo",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "A recorded tempo requires its supported schema and finite positive BPM.",
+                "recordKind": "timeline",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:zero-tempo\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "stale-mapping-revision",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Recorded mapping revision is stale.",
+                "recordKind": "mapping",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:stale-mapping-revision\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "null-intervention",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "unsupported-recorded-input",
+                "message": "Unsupported recorded intervention envelope.",
+                "recordKind": "intervention",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:null-intervention\",\"chunk\",1]",
+                "tick": 64
+              }
+            },
+            {
+              "name": "wrong-input-boundary",
+              "status": "unsupported-or-incomplete",
+              "compatibilityMatch": false,
+              "failure": {
+                "code": "input-boundary-mismatch",
+                "message": "External input was not captured at a qualified boundary.",
+                "recordKind": "input-observation",
+                "sequence": 1,
+                "sourceId": "[\"take:recorded-input:wrong-input-boundary\",\"chunk\",1]",
+                "tick": 65
+              }
+            }
+          ],
+          "unchanged": true,
+          "parentTakeId": "take:f44633c7-c0ca-4bfe-b4a3-042a3df451b6",
+          "parentHash": "09a429706027bb0542d10b8e4f4543bba5db483a20fb49d2e63dd910d2579572",
+          "continuationHash": "64f8ccb0849709e755b055a560e2c86178a33b9c070277cb59cc18c584473234",
+          "recovered": {
+            "actualContinuationHash": "64f8ccb0849709e755b055a560e2c86178a33b9c070277cb59cc18c584473234",
+            "actualPhysicsHash": "9b2deb19cd867f5718ee04f7ec69e56358d3ef132c825c17989222fd919d59b0",
+            "artifactIntegrity": {
+              "canonicalHash": "09a429706027bb0542d10b8e4f4543bba5db483a20fb49d2e63dd910d2579572",
+              "finalizationHash": "daae7d63c4c6eb603c8a80b4c68335f6dfd5cb72f16ca0f66d1333f52f6c30bf",
+              "initialCheckpointHash": "89b8e8b3bab4ac8d3d5931a1f4e5ea53783ac88c8325a1759100735892a8ffbb",
+              "status": "verified-durable-chain"
+            },
+            "assetRefs": [
+              {
+                "family": "crystal",
+                "id": "lemmings-4",
+                "revision": "e84f1ac8a293341fc4d36c59a80339bf2c99c9f66010f8cdd1fe7e5222fb7571"
+              },
+              {
+                "family": "bubble",
+                "id": "lemmings_ohNo-3",
+                "revision": "4718bc4445e0dd095f5d2dbb7b6711af2abf725e400f00db40e5e8eb093f39d9"
+              }
+            ],
+            "boundaryComplete": true,
+            "captureInventory": {
+              "intentKinds": [
+                "begin",
+                "end"
+              ],
+              "mappingRevisions": [
+                1
+              ],
+              "observedFactKinds": [
+                "ActionEntered",
+                "ActionExited",
+                "ContactSpanBegan",
+                "ContactSpanUpdated",
+                "FlightArcEnded",
+                "FlightArcUpdated",
+                "MotionCommitted"
+              ],
+              "sourceRange": {
+                "firstTick": 65,
+                "lastTick": 80,
+                "worldId": "procgen:42"
+              }
+            },
+            "checkpointComparisons": [
+              {
+                "actualContinuationHash": "64f8ccb0849709e755b055a560e2c86178a33b9c070277cb59cc18c584473234",
+                "checkpointId": "[\"take:f44633c7-c0ca-4bfe-b4a3-042a3df451b6\",\"checkpoint\",36]",
+                "continuationMatch": true,
+                "continuationStateSchema": 1,
+                "exactQualified": false,
+                "expectedContinuationHash": "64f8ccb0849709e755b055a560e2c86178a33b9c070277cb59cc18c584473234",
+                "firstStateDifference": null,
+                "replaySettingsMatch": true,
+                "semanticMatch": true,
+                "sequence": 36,
+                "status": "validated-by-current-runtime-reperformance",
+                "tick": 80,
+                "timelineMatch": true
+              }
+            ],
+            "comparedBatches": 16,
+            "comparedIntents": 4,
+            "compatibilityMatch": true,
+            "continuationStateSchema": 1,
+            "exactQualified": false,
+            "executionBinding": {
+              "active": {
+                "activeExecution": "bound",
+                "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                "binding": "immutable-application-generation",
+                "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "e008800f-354d-442d-b19d-d04286ab73b5",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "exactQualified": false,
+              "exactUnavailableReason": "causal-exact-realm-unqualified",
+              "mismatches": [],
+              "reasons": [],
+              "required": {
+                "activeExecution": "bound",
+                "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                "binding": "immutable-application-generation",
+                "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "e008800f-354d-442d-b19d-d04286ab73b5",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "schema": "lemmings-causal-runtime-binding",
+              "scope": "immutable-application-generation",
+              "status": "matched",
+              "version": 1
+            },
+            "executionEpoch": "take-workbench:28",
+            "executionIdentity": {
+              "activeExecution": "bound",
+              "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+              "binding": "immutable-application-generation",
+              "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+              "capabilityProfile": "browser-survey-core",
+              "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+              "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+              "harnessVersion": "browser-survey-v1",
+              "identityRecipe": "normalized-data-slot-v2-instruments",
+              "realmId": "e008800f-354d-442d-b19d-d04286ab73b5",
+              "receiptVersion": 3,
+              "stateSchema": 11,
+              "status": "bound"
+            },
+            "finalWorldParity": "matched-at-captured-component-checkpoint",
+            "firstDivergence": null,
+            "fromCheckpointSequence": 0,
+            "inspection": {
+              "hardware": false,
+              "paused": true,
+              "physicalLayers": false,
+              "recording": false,
+              "thru": false
+            },
+            "mode": "physical-reperformance",
+            "physicsStateSchema": 2,
+            "schema": "lemmings-causal-reperformance",
+            "sourceCanonicalHash": "09a429706027bb0542d10b8e4f4543bba5db483a20fb49d2e63dd910d2579572",
+            "sourceVersions": {
+              "applicationExecution": {
+                "activeExecution": "bound",
+                "assetDigest": "1fbdb48125138fed617087076e446fe576c9b8614bd6209671a66e9e5e45d789",
+                "binding": "immutable-application-generation",
+                "buildId": "301dd8c68b63c9e4a68eac55badec615dc775bcd32bb294a9c50de8db6d23e47",
+                "capabilityProfile": "browser-survey-core",
+                "closureDigest": "8be2c4f946ba1957760d2e6115fb4a694d878633144118578fb560147f7e7ded",
+                "codeDigest": "49ac182477f4d8f9aaea1d1120b5ae6265396499441625d83859f79b41a6be07",
+                "harnessVersion": "browser-survey-v1",
+                "identityRecipe": "normalized-data-slot-v2-instruments",
+                "realmId": "e008800f-354d-442d-b19d-d04286ab73b5",
+                "receiptVersion": 3,
+                "stateSchema": 11
+              },
+              "causalProbabilityPolicy": 1,
+              "causalRandom": "fnv1a32-avalanche-v1",
+              "generator": "procgen-workstation-2",
+              "instrumentPerformance": 4,
+              "mappingRevision": 1,
+              "numericCanonicalization": "finite-f64-minus-zero-v1",
+              "phraseCargo": 1,
+              "physicalBatch": 1,
+              "physicalFeedback": 1,
+              "physicalMusic": 13,
+              "physicalPlaybackAdmission": 1,
+              "populationRandom": 1,
+              "project": 2,
+              "releaseGesture": 1,
+              "stallCascade": 2,
+              "swarmReducer": 1,
+              "terrainChallenge": 3,
+              "worldCheckpoint": 2
+            },
+            "status": "matched-current-runtime",
+            "takeId": "take:f44633c7-c0ca-4bfe-b4a3-042a3df451b6",
+            "takeRevision": 5,
+            "targetSequence": 36,
+            "throughSequence": 36,
+            "tick": 80,
+            "ticksExecuted": 16,
+            "verifiedDurableSequence": 36,
+            "version": 2
+          },
+          "audioContexts": 0,
+          "midiRequests": 0,
+          "scope": "Actual immutable browser module and IndexedDB input parsing/refusal; no device or acoustic qualification."
+        },
+        "scope": "Actual immutable app/IndexedDB and persistent take diagnostics; shared27semantic records all hash-verified, original16tick parent recovered and identical across reopen; existing15build preflight/32tick comparisons,64tick durable replay/seek/branch/offline and real controls all pass together. No mobile or newly repeated10000tick browser qualification."
+      },
+      "priorAttempts": [
+        {
+          "nodePassed": 92,
+          "nodeFailed": 0,
+          "browserPassed": 3,
+          "browserFailed": 1,
+          "report": ".tmp/rook385-playwright-final.json",
+          "trace": ".tmp/rook385-playwright-first-failure-trace.zip",
+          "reason": "All27input cases and source invariance reached final reopen. Fixture compared enriched journal.openTake with raw storage.loadCausalTake; use the same journal inspection API after reopen. All4browser cases pass together after this fixture correction; runtime and Node-qualified source bytes unchanged."
+        }
+      ],
+      "coverage": {
+        "total": {
+          "lines": 95.51,
+          "functions": 84.52,
+          "branches": 78.76
+        },
+        "js/app/procgen/workstation/CausalPhysicalBranch.js": {
+          "lines": 88.2,
+          "functions": 72.41,
+          "branches": 69.65
+        },
+        "js/app/procgen/workstation/CausalRecordedInputs.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 100
+        },
+        "js/app/procgen/workstation/CausalReperformance.js": {
+          "lines": 98.55,
+          "functions": 89.58,
+          "branches": 79
+        }
+      },
+      "coverageFollowup": "Recorded input validator100%lines/functions/branches. Re-performance98.55%lines/89.58%functions/79%branches; branch88.2%lines/72.41%functions/69.65%branches. Remaining unobserved re-performance mapping/intervention-admission divergence and branch retirement negatives remain explicit.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 362,
+        "workerFiles": 293,
+        "workerSha256": "bce7e955f23c6dc5313aa67098c30cd3dcd47d9ede193c219603b665fbb9ad21"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook385-semantic-input-counterexamples.json",
+          "bytes": 895,
+          "sha256": "0869baa1b8a4a65c3495a3ef35e28ad47bee6f89d2d2e71d4402e74c6e0dc736"
+        },
+        {
+          "path": ".tmp/rook385-node-final.log",
+          "bytes": 10786,
+          "sha256": "de335d399a94eecde61d19302dcff1da0b3a9206f70e0af65c781008cf782813"
+        },
+        {
+          "path": ".tmp/rook385-playwright-final.json",
+          "bytes": 100629,
+          "sha256": "676a2f543b2445f1573d1046f069f940faef97d0247aa3ae501c936bd67d0d5a"
+        },
+        {
+          "path": ".tmp/rook385-playwright-publish-final.json",
+          "bytes": 118523,
+          "sha256": "13e6ee1a01efd34c8bc5694577ccc28de777d33defb80a9fe503da432ca76119"
+        },
+        {
+          "path": ".tmp/rook385-playwright-first-failure-trace.zip",
+          "bytes": 16272754,
+          "sha256": "c1e175862b7161563f1ddcfc880269f1281bdc6bbf4e24362f284835878ad8cb"
+        },
+        {
+          "path": ".tmp/rook385-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook385-checks.log",
+          "bytes": 4274,
+          "sha256": "beba6792e5543fce41af752a6205b24ea07b433b0c0084bc35d25273bdb91d5d"
+        },
+        {
+          "path": ".tmp/rook385-coverage/coverage-summary.json",
+          "bytes": 1407,
+          "sha256": "0fcd5efc6836c9fa125947c6ef838c46401f2db12f72924553c76ca04ebf2987"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/workstation/CausalReperformance.js",
+        "bytes": 39490,
+        "sha256": "63e34351e7775c195c61993a2cb7b6737ad5a2491590da8b227198fe973cd96f"
+      },
+      {
+        "path": "test/procgen-causal-reperformance.test.js",
+        "bytes": 36969,
+        "sha256": "f36cdf1382fce0424fb67fbd99e1b4e2d41ad13f4087027fe191923b0674da4e"
+      },
+      {
+        "path": "e2e/procgen-workstation-recorded-inputs.spec.js",
+        "bytes": 6673,
+        "sha256": "d77d24915ffd8caf5581ef533c542c5b89080cc9f8c5e2e0b614a2a7bb6dd325"
+      },
+      {
+        "path": "js/app/procgen/workstation/CausalRecordedInputs.js",
+        "bytes": 2892,
+        "sha256": "8002d490fed2f0a135247118edc96d6ee5e628b52f6f55e639bce6c121cb463a"
+      },
+      {
+        "path": "test/causal-recorded-inputs.test.js",
+        "bytes": 3010,
+        "sha256": "474a0b38e9ed0bc174a9f39418af05b9fc8bee9d966ef5ccf6e6f40e420f5fbe"
+      },
+      {
+        "path": "test/helpers/causalRecordedInputCorpus.js",
+        "bytes": 4451,
+        "sha256": "2d9fd26cba8bd974e5f8678e6f3ef04ceb3f9a3ef655cfbbff9f0b04c8f848bd"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "cbb9b8a4b13aacf3803bc89805ee1d49487e1bb6",
+      "status": "success",
+      "run": 40985282669,
+      "job": 123834750849,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40985282669",
+      "engineJob": 123834750567,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7234,
+      "nodePending": 10,
+      "browserPassed": 273,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 229,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.97,
+        "functions": 88.65
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30561,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9885,
+          "benchHistoryStress": 16212,
+          "benchHotpaths": 4461
+        },
+        "metrics": {
+          "perfP95Frame": 100,
+          "perfP50Tps": 106.01320820300639,
+          "historyRatio": 0.5848333333333333,
+          "antsAvgMs": 12.5,
+          "tileCompositionAvgMs": 3.16,
+          "overlayPlaneAvgMs": 8.47,
+          "scaledBlitAvgMs": 15.08
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5848333333333333
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0908333333333333
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1260,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "83cd30274dfacf25d7891bb0f0178f101b0b44bbb92e2fa3af9d6dfe470990f0",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123834750784,
+        "windowsJob": 123834750864,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "c4def53f9fd2586c0c5239f55d0ee8cb2da5407f",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1149,
+        "inventorySha256": "683fd7e941552edeef3ccd3cd6678dab06d367df161404de8b6e5803c962b43b",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1260,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci380-main.zip",
+          "bytes": 763509,
+          "sha256": "b42b26b50c0e63933a877f51604ed3ff5664c413e11cb77e87cc2126d70bea22"
+        },
+        {
+          "path": ".tmp/ci380-engine.zip",
+          "bytes": 156740,
+          "sha256": "2657cab21a1bfa9e345f8195a0b66949ebcf75a55312b721c5a7c57bbef4d873"
+        },
+        {
+          "path": ".tmp/ci380-linux.zip",
+          "bytes": 2247,
+          "sha256": "98ad44e6b024f5aa924d99651e55b2a448833c4aaed37b2964567a3ce26e5327"
+        },
+        {
+          "path": ".tmp/ci380-windows.zip",
+          "bytes": 2146,
+          "sha256": "b557e51f519d59a55a9985c3076b87db7ec8e825a69a407a27a94831a01c3e88"
+        },
+        {
+          "path": ".tmp/ci380-main-workstation-result-qualification.json",
+          "bytes": 185606,
+          "sha256": "ba59657f647bd9c6e6aa1a6b43d01409bb8fa2dc67c6c312384fefb6fa259424"
+        },
+        {
+          "path": ".tmp/ci380-engine-lifecycle-engine-qualification.json",
+          "bytes": 244934,
+          "sha256": "b1536ee881b52d10ecaaa3cfe5f444b3abb8279b6a13bacc708d5f9872909e20"
+        },
+        {
+          "path": ".tmp/ci380-linux-native-midi-codec-qualification.json",
+          "bytes": 7877,
+          "sha256": "2d13aad2a3b43c656318683cc0ff93fc424be1bce4df70d9df58f5a6cf9bd8cc"
+        },
+        {
+          "path": ".tmp/ci380-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "24bf1c37cb44d5cf09440dcd09c047829589171982fbd7eb0ec3c95114bf950a"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining1092": "Broader explicitly authored full durable transfer/terrain/tempo/external-input browser corpus remains; existing10000tick browser work at317 is retained, not newly rerun here. This input-only invalid-data corpus does not claim physical command-composition or acoustic/hardware equivalence."
   }
 }

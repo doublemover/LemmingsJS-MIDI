@@ -86,3 +86,11 @@ comparison. Exact causal replay still refuses before world allocation with
 `causal-exact-realm-unqualified`; this service has no qualified isolated causal
 replay realm. The independently owned immutable survey replay worker has its
 own execution contract. Neither service attests hardware or listening output.
+
+Recorded controls use explicit supported payload schemas. Replay refuses unknown
+fields, invalid byte/timestamp observations, unsupported clock versions, stale
+mapping revisions and invalid nested performance/feedback data. Observation-only
+external data never queries a device. Semantic input failures retain the exact
+chunk ID, sequence, source tick and record kind, plus the last accepted prefix.
+A valid storage hash proves retained bytes; it does not qualify their meaning.
+Inspection preserves the original take and remains silent on refusal.

@@ -13,6 +13,7 @@ import { createMemoryCausalStore } from './helpers/causalJournalStore.js';
 import { createResourceBudget, ResourceBudgetError } from '../js/app/resources/ResourceBudget.js';
 import { captureCausalPerformanceState, createCausalPerformanceState, diffCausalPerformanceState } from '../js/app/procgen/workstation/CausalPerformanceState.js';
 import { causalRuntimeBindingCorpus } from './helpers/causalRuntimeBindingCorpus.js';
+import { prepareCausalRecordedInputCorpus } from './helpers/causalRecordedInputCorpus.js';
 
 const sourceVersions = { generator: 'procgen-workstation-2', worldCheckpoint: 2, physicalBatch: 1, physicalMusic: 1, numericCanonicalization: 'finite-f64-minus-zero-v1' };
 const mapping = { version: 1, revision: 1, instruments: [
@@ -96,6 +97,23 @@ describe('isolated causal re-performance and checkpoint provenance', function() 
         expect(result.receipt, JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, ticksExecuted: 24, exactQualified: false, finalWorldParity: 'matched-at-captured-component-checkpoint' });
         expect(result.receipt.executionIdentity.status).to.equal('unbound');
       }
+    } finally { await service.dispose().completion; }
+  });
+
+  it('refuses hash-valid semantic input corruption with the exact source record and preserves the parent', async () => {
+    const { journal, source, runtime } = await record({ ticks: 24 }), before = JSON.stringify(await journal.openTake(source.takeId));
+    const corpus = await prepareCausalRecordedInputCorpus(journal, source.takeId), service = runtime();
+    try {
+      for (const row of corpus.rows) {
+        await journal.verify(row.takeId);
+        const result = await service.reperform({ takeId: row.takeId, executionEpoch: 'input:' + row.name });
+        if (row.valid) expect(result.receipt, row.name + JSON.stringify(result.receipt)).to.include({ compatibilityMatch: true, finalWorldParity: 'matched-at-captured-component-checkpoint' });
+        else {
+          expect(result.receipt, row.name + JSON.stringify(result.receipt)).to.include({ status: 'unsupported-or-incomplete', compatibilityMatch: false, throughSequence: 0 });
+          expect(result.receipt.failure).to.include({ code: row.expectedCode, sourceId: row.sourceId, sequence: row.sequence, tick: row.tick, recordKind: row.kind });
+        }
+      }
+      expect(corpus.rows).to.have.length(27); expect(JSON.stringify(await journal.openTake(source.takeId))).to.equal(before);
     } finally { await service.dispose().completion; }
   });
 

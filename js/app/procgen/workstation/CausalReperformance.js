@@ -11,6 +11,7 @@ import { borrowCausalCheckpoint, borrowCausalPage, retireCausalRead } from './Ca
 import { createCausalPerformanceState, validateCausalPerformanceState } from './CausalPerformanceState.js';
 import { createOwnedResourceReservation } from '../../resources/OwnedResourceReservation.js';
 import { inspectCausalRuntimeExecution, sameCausalRuntimeProtocols } from './CausalRuntimeIdentity.js';
+import { validateRecordedCausalInput, validateRecordedCausalTimeline } from './CausalRecordedInputs.js';
 
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 512;
 const equal = (left, right) => canonicalJournalText(left, { maxBytes: 32 * 1048576, maxNodes: 4000000 }).text ===
@@ -254,68 +255,74 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
           for (const record of page.records) {
             check(signal);
             if (record.sequence !== lastSequence + 1) throw journalError('source-prefix-gap', 'Replay source order has a gap.', { firstSequence: lastSequence + 1 });
-            if (record.kind === 'physical-batch') {
-              if (!generated.length) {
-                if (record.tick !== world.tickIndex + 1) throw journalError('source-tick-gap', 'Recorded source cannot be reproduced by one physical tick.', { firstSequence: record.sequence, tick: record.tick });
-                if (ticks >= maxTicks) throw journalError('replay-capacity', 'Re-performance tick budget reached.', { firstSequence: record.sequence, tick: record.tick });
-                world.step(); ticks++;
+            try {
+              if (record.kind === 'physical-batch') {
+                if (!generated.length) {
+                  if (record.tick !== world.tickIndex + 1) throw journalError('source-tick-gap', 'Recorded source cannot be reproduced by one physical tick.', { firstSequence: record.sequence, tick: record.tick });
+                  if (ticks >= maxTicks) throw journalError('replay-capacity', 'Re-performance tick budget reached.', { firstSequence: record.sequence, tick: record.tick });
+                  world.step(); ticks++;
+                }
+                if (callbackError) throw callbackError;
+                const actual = generated.shift();
+                if (!actual) throw journalError('missing-replay-batch', 'Physical stepping produced no committed batch.', { firstSequence: record.sequence, tick: record.tick });
+                const comparison = compareCausalRecords([record], [{ ...record, payload: actual.batch }]);
+                if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
+                comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
+                for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
+                expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability, bodyCommands: actual.bodyCommands });
+                if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
+              } else if (record.kind === 'musical-intents') {
+                const companion = expectedIntents.get(record.payload.batchId), actual = companion?.intents;
+                if (!equal(record.payload.bodyCommands || [], companion?.bodyCommands || [])) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'prepared-body-commands' }; break; }
+                if (record.payload.probability && !equal(record.payload.probability, companion?.probability)) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'causal-probability-decisions' }; break; }
+                if (!actual || !equal(record.payload.intents, actual)) {
+                  const index = (record.payload.intents || []).findIndex((intent, ordinal) => !equal(intent, actual?.[ordinal] ?? null));
+                  const original = record.payload.intents?.[Math.max(0, index)], replayed = actual?.[Math.max(0, index)];
+                  divergence = { sequence: record.sequence, tick: record.tick, causeId: original?.sourceEventIds?.[0] || replayed?.sourceEventIds?.[0] || null,
+                    intentId: original?.intentId || replayed?.intentId || null, kind: 'musical-intents' }; break;
+                }
+                comparedIntents += actual.length; for (const intent of actual) observedIntents.add(intent.kind); expectedIntents.delete(record.payload.batchId);
+              } else if (record.kind === 'intervention') {
+                if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Intervention was not captured at the current replay boundary.', { firstSequence: record.sequence, tick: record.tick });
+                if (!record.payload || Object.keys(record.payload).some(key => !['command', 'outcome'].includes(key))) throw journalError('unsupported-recorded-input', 'Unsupported recorded intervention envelope.');
+                const outcome = world.enqueueIntervention(record.payload.command);
+                if (!equal(outcome, record.payload.outcome)) { divergence = { sequence: record.sequence, tick: record.tick,
+                  causeId: record.payload.command?.id || null, kind: 'intervention-admission' }; break; }
+              } else if (record.kind === 'mapping') {
+                if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Mapping changed outside its recorded source boundary.', { firstSequence: record.sequence });
+                const mapping = validateCausalInstrumentGraph(record.payload);
+                if (mapping.revision <= Math.max(...mappingRevisions)) throw journalError('unsupported-recorded-input', 'Recorded mapping revision is stale.');
+                if (mappingRevisions.size >= 4096) throw journalError('replay-capacity', 'Mapping revision inventory reached its bound.', { firstSequence: record.sequence });
+                world.configurePhysicalAuthoring?.(mapping, world.physicalAuthoring?.instances || []); current.graph = mapping; mappingRevisions.add(mapping.revision);
               }
-              if (callbackError) throw callbackError;
-              const actual = generated.shift();
-              if (!actual) throw journalError('missing-replay-batch', 'Physical stepping produced no committed batch.', { firstSequence: record.sequence, tick: record.tick });
-              const comparison = compareCausalRecords([record], [{ ...record, payload: actual.batch }]);
-              if (!comparison.equal) { divergence = { ...comparison.firstDivergence, kind: 'physical-batch' }; break; }
-              comparedBatches++; lastComparedTick = record.tick; firstSourceTick ??= record.tick; sourceWorldId = actual.batch.worldId;
-              for (const fact of actual.batch.facts) if (fact.kind) observedFacts.add(fact.kind);
-              expectedIntents.set(actual.batch.batchId, { intents: actual.intents, probability: actual.probability, bodyCommands: actual.bodyCommands });
-              if (expectedIntents.size > 8) throw journalError('replay-overflow', 'Musical intent companion records are missing.');
-            } else if (record.kind === 'musical-intents') {
-              const companion = expectedIntents.get(record.payload.batchId), actual = companion?.intents;
-              if (!equal(record.payload.bodyCommands || [], companion?.bodyCommands || [])) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'prepared-body-commands' }; break; }
-              if (record.payload.probability && !equal(record.payload.probability, companion?.probability)) { divergence = { sequence: record.sequence, tick: record.tick, kind: 'causal-probability-decisions' }; break; }
-              if (!actual || !equal(record.payload.intents, actual)) {
-                const index = (record.payload.intents || []).findIndex((intent, ordinal) => !equal(intent, actual?.[ordinal] ?? null));
-                const original = record.payload.intents?.[Math.max(0, index)], replayed = actual?.[Math.max(0, index)];
-                divergence = { sequence: record.sequence, tick: record.tick, causeId: original?.sourceEventIds?.[0] || replayed?.sourceEventIds?.[0] || null,
-                  intentId: original?.intentId || replayed?.intentId || null, kind: 'musical-intents' }; break;
-              }
-              comparedIntents += actual.length; for (const intent of actual) observedIntents.add(intent.kind); expectedIntents.delete(record.payload.batchId);
-            } else if (record.kind === 'intervention') {
-              if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Intervention was not captured at the current replay boundary.', { firstSequence: record.sequence, tick: record.tick });
-              const outcome = world.enqueueIntervention(record.payload.command);
-              if (!equal(outcome, record.payload.outcome)) { divergence = { sequence: record.sequence, tick: record.tick,
-                causeId: record.payload.command?.id || null, kind: 'intervention-admission' }; break; }
-            } else if (record.kind === 'mapping') {
-              if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Mapping changed outside its recorded source boundary.', { firstSequence: record.sequence });
-              current.graph = validateCausalInstrumentGraph(record.payload); world.configurePhysicalAuthoring?.(current.graph, world.physicalAuthoring?.instances || []);
-              mappingRevisions.add(current.graph.revision);
-              if (mappingRevisions.size > 4096) throw journalError('replay-capacity', 'Mapping revision inventory reached its bound.', { firstSequence: record.sequence });
-            }
-            else if (record.kind === 'timeline') {
-              if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Tempo changed outside its recorded source boundary.', { firstSequence: record.sequence });
-              if (record.payload?.version !== 1 || record.payload.kind !== 'tempo' || !Number.isFinite(record.payload.bpm) || record.payload.bpm <= 0 || record.payload.bpm > 1000000) throw journalError('unsupported-recorded-input', 'Unknown timeline input cannot be substituted during replay.', { firstSequence: record.sequence });
-              current.bpm = record.payload.bpm;
-            } else if (record.kind === 'input-observation') {
-              const input = record.payload;
-              if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
-              if (input?.version !== 1 && !(input?.version === 2 && input.kind === 'transport-state')) throw journalError('unsupported-recorded-input', 'Unknown input version cannot be substituted during replay.', { firstSequence: record.sequence });
-              if (input.version === 2) {
-                if (initial.replay.version !== 2 || typeof input.playing !== 'boolean' || !Number.isFinite(input.speedFactor) || input.speedFactor < 0 || input.speedFactor > 1000000 ||
-                    Object.keys(input).some(key => !['version', 'kind', 'playing', 'speedFactor'].includes(key))) throw journalError('unsupported-recorded-input', 'A transport observation requires its finite physical clock state.', { firstSequence: record.sequence });
-                current.playing = input.playing; world.timer.speedFactor = input.speedFactor;
-              }
-              else if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
-              else if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
-              else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
-              else if (input.kind === 'instrument-performance' && performance) {
-                const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;
-                if (mapping && (mapping.revision <= current.graph.revision || mappingRevisions.size >= 4096)) throw journalError('unsupported-recorded-input', 'Performance mapping revision is stale or exceeds capacity.');
-                performance.apply(input.change);
-                if (mapping) { current.graph = mapping; world.configurePhysicalAuthoring?.(mapping, world.physicalAuthoring?.instances || []); mappingRevisions.add(mapping.revision); }
-              }
-              else if (input.kind === 'transport-state' && typeof input.playing === 'boolean' && initial.replay.version === 2) current.playing = input.playing;
-              else if (!(input.kind === 'transport-state' && typeof input.playing === 'boolean' ||
+              else if (record.kind === 'timeline') {
+                if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'Tempo changed outside its recorded source boundary.', { firstSequence: record.sequence });
+                current.bpm = validateRecordedCausalTimeline(record.payload).bpm;
+              } else if (record.kind === 'input-observation') {
+                if (record.tick !== world.tickIndex || record.generation !== world.generation) throw journalError('input-boundary-mismatch', 'External input was not captured at a qualified boundary.', { firstSequence: record.sequence });
+                const input = validateRecordedCausalInput(record.payload, initial.replay.version);
+                if (input.version === 2) {
+                  current.playing = input.playing; world.timer.speedFactor = input.speedFactor;
+                }
+                else if (input.kind === 'physical-feedback-boundary') applyRecordedPhysicalFeedback(world, input);
+                else if (input.kind === 'world-speed' && Number.isFinite(input.speedFactor) && input.speedFactor > 0 && input.speedFactor <= 1000000) world.timer.speedFactor = input.speedFactor;
+                else if (input.kind === 'intervention-cancel' && id(input.commandId)) { if (!world.cancelIntervention(input.commandId)) throw journalError('input-boundary-mismatch', 'Recorded intervention cancellation has no pending command.'); }
+                else if (input.kind === 'instrument-performance' && performance) {
+                  const mapping = input.mapping ? validateCausalInstrumentGraph(input.mapping) : null;
+                  if (mapping && (mapping.revision <= current.graph.revision || mappingRevisions.size >= 4096)) throw journalError('unsupported-recorded-input', 'Performance mapping revision is stale or exceeds capacity.');
+                  performance.apply(input.change);
+                  if (mapping) { current.graph = mapping; world.configurePhysicalAuthoring?.(mapping, world.physicalAuthoring?.instances || []); mappingRevisions.add(mapping.revision); }
+                }
+                else if (input.kind === 'transport-state' && typeof input.playing === 'boolean' && initial.replay.version === 2) current.playing = input.playing;
+                else if (!(input.kind === 'transport-state' && typeof input.playing === 'boolean' ||
                 input.kind === 'external-observation' && input.effect === 'observation-only' && id(input.sourceId))) throw journalError('unsupported-recorded-input', 'Unknown external input effect cannot be guessed during replay.', { firstSequence: record.sequence });
+              }
+            } catch (cause) {
+              const error = cause instanceof Error ? cause : new Error(String(cause));
+              if (!error.code && ['intervention', 'mapping', 'timeline', 'input-observation'].includes(record.kind)) error.code = 'unsupported-recorded-input';
+              error.firstSequence ??= record.sequence; error.tick ??= record.tick; error.recordKind = record.kind;
+              error.sourceId ??= manifest.chunks.find(chunk => record.sequence >= chunk.firstSequence && record.sequence <= chunk.lastSequence)?.id || null;
+              throw error;
             }
             lastSequence = record.sequence;
             if (ticks - lastYieldTicks >= yieldEveryTicks) { lastYieldTicks = ticks; try { onProgress(Object.freeze({ phase: 'replaying', takeId, sequence: lastSequence, targetSequence: target, ticks, tick: world.tickIndex })); } catch { /* Inspection does not change replay. */ } await yieldControl(); }
@@ -380,6 +387,7 @@ const createCausalReperformance = ({ journal, createWorld, sourceVersions, asset
         executionIdentity: qualification.executionIdentity, executionBinding: qualification.executionBinding, status: 'unsupported-or-incomplete', compatibilityMatch: false,
         retirement: { state: cleanup.state, outcome: cleanup.outcome },
         failure: { code: error.code || error.name || 'reperformance', message: error.message, sequence: error.firstSequence ?? lastSequence,
+          sourceId: error.sourceId || null, recordKind: error.recordKind || null,
           tick: error.tick ?? world?.tickIndex ?? null }, throughSequence: lastSequence, targetSequence: target,
         inspection: { paused: true, hardware: false, recording: false, thru: false, physicalLayers: false } }), session: null };
     }
