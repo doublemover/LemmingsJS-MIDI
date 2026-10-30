@@ -818,36 +818,36 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "77e057faed133c8de6e5fe63b8801428dcad2be9",
+    "head": "ef7b88b12429a40f3f3e26e98bed821606100ab2",
     "status": "success",
-    "run": 40988065349,
-    "job": 123843636277,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40988065349",
-    "engineJob": 123843636584,
+    "run": 41008970248,
+    "job": 123910274868,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41008970248",
+    "engineJob": 123910274938,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7236,
+    "nodePassed": 7268,
     "nodePending": 10,
-    "browserPassed": 273,
+    "browserPassed": 283,
     "desktopPassed": 26,
-    "workstationSmokePassed": 229,
+    "workstationSmokePassed": 239,
     "enginePassed": 18,
     "workstationCapabilities": 14,
     "coverage": {
-      "lines": 90.78,
-      "statements": 90.78,
-      "branches": 83.98,
-      "functions": 88.65
+      "lines": 90.79,
+      "statements": 90.79,
+      "branches": 84.11,
+      "functions": 88.7
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 30673,
+      "totalDurationMs": 39316,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 9866,
-        "benchHistoryStress": 16305,
-        "benchHotpaths": 4498
+        "benchPerformance": 11197,
+        "benchHistoryStress": 18938,
+        "benchHotpaths": 9177
       },
       "metrics": {
-        "perfP95Frame": 83.30000000000018,
-        "perfP50Tps": 105.41890142408897,
-        "historyRatio": 0.5858333333333333,
-        "antsAvgMs": 12.38,
-        "tileCompositionAvgMs": 2.69,
-        "overlayPlaneAvgMs": 9.56,
-        "scaledBlitAvgMs": 16.64
+        "perfP95Frame": 83.30000000000109,
+        "perfP50Tps": 71.2871287128713,
+        "historyRatio": 0.5851666666666666,
+        "antsAvgMs": 32.21,
+        "tileCompositionAvgMs": 3.72,
+        "overlayPlaneAvgMs": 21.34,
+        "scaledBlitAvgMs": 31.66
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.5858333333333333
+          "ratio": 0.5851666666666666
         },
         {
           "speed": 60,
-          "ratio": 1.0851666666666666
+          "ratio": 0.9388333333333333
         }
       ]
     },
@@ -890,12 +890,12 @@
     "dependencyReview": "success",
     "engineQualification": {
       "status": "passed",
-      "files": 1260,
+      "files": 1271,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "556ebe80acdfb53ff4a40467d483509fd8bcaf4c26c2373f5973c9cd0b799538",
+      "closureDigest": "62a2effa5918fb539041670cdea41c1e295cf7d977b2ed30d31edfc637be9a9b",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
-      "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+      "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
       "facts": 1078,
       "ticks": 64,
       "nativeAudio": [
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123843636522,
-      "windowsJob": 123843636553,
+      "linuxJob": 123910274750,
+      "windowsJob": 123910275012,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,55 +930,44 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "3cfa3e5c8245cb83e733cec4e9b367322c1f7c1c",
+      "testedPrMergeHead": "5626c4b2ab07754486c2f47a5fd1a639d73b60fd",
       "rawDirtyFlag": true,
-      "inventoryFiles": 1149,
-      "inventorySha256": "68b0e50a3631a7a3d9fcdb58fb8587cea350af0068488ad47bd2baaf766a4d9b",
+      "inventoryFiles": 1159,
+      "inventorySha256": "0f3078c260392e8fd1342adb4568b59367beebc36ff3162e0930937ebd3cb2c4",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
-      "engineInventoryFiles": 1260,
-      "allEngineSourceFilesMatchPublishedHead": true
+      "engineInventoryFiles": 1271,
+      "allEngineSourceFilesMatchPublishedHead": true,
+      "githubArchiveDigestsMatched": true
     },
     "artifacts": [
       {
-        "path": ".tmp/ci383-main.zip",
-        "bytes": 764464,
-        "sha256": "20d1b450fc2e01aa9ef9e5900f060ff14c04843eb5b490c728ec7323f9fdb324"
+        "path": ".tmp/ci393-main.zip",
+        "bytes": 840181,
+        "sha256": "38f39ed4ad72e4f030a5e3b1081f0bc5a9767a944bfe4788e9d8d7d8be670c88",
+        "githubArtifactId": 12958058527,
+        "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci383-engine.zip",
-        "bytes": 159330,
-        "sha256": "05ffc9185e9e9cc5b1a245ca5565f1fe5a89bbd41ef2afe02ff384170db021e5"
+        "path": ".tmp/ci393-engine.zip",
+        "bytes": 159859,
+        "sha256": "23e95340cb51ba40dddaf4f9ace10379b42e76fe1fb3e1c7c4e250706cce42ab",
+        "githubArtifactId": 12957116364,
+        "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci383-linux.zip",
-        "bytes": 2247,
-        "sha256": "752ab3a30a3d55c1297de6eeba338cba32f6549d5a3f74e37a57666947c91416"
+        "path": ".tmp/ci393-windows.zip",
+        "bytes": 2149,
+        "sha256": "23497e124d1925c04c46c5a2990aae5ef4aeaec09ae240d32ee1786f836a77fd",
+        "githubArtifactId": 12956802419,
+        "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci383-windows.zip",
-        "bytes": 2147,
-        "sha256": "b33e83acfd1f5a0ce1e236f4c9e4b8248be08e5e6a32400f3fd24ecd26f31edf"
-      },
-      {
-        "path": ".tmp/ci383-main-workstation-result-qualification.json",
-        "bytes": 185607,
-        "sha256": "e80f5fc3e8a6983cc445d1147266fd11dff06f0ad7cd87532891c8ac724af923"
-      },
-      {
-        "path": ".tmp/ci383-engine-lifecycle-engine-qualification.json",
-        "bytes": 244934,
-        "sha256": "de7aba37cb1efc0a70cb8b64c3d933489fcf27c2656b8e22b11a4ad006be46fe"
-      },
-      {
-        "path": ".tmp/ci383-linux-native-midi-codec-qualification.json",
-        "bytes": 7876,
-        "sha256": "e51aeaec592dc4264a30dc8d66ff47cad3e2ee0ecf5dc3006dec63764ce27083"
-      },
-      {
-        "path": ".tmp/ci383-windows-native-midi-codec-qualification.json",
-        "bytes": 7748,
-        "sha256": "92cc02cde62d924ac33b280f9050dc265c6a0afd8ad5cedacb720ab91a48ddac"
+        "path": ".tmp/ci393-linux.zip",
+        "bytes": 2246,
+        "sha256": "008736eb433aa6c38f613e0c7f480670c23ce056d9ed47a585ba17d24f2d5aae",
+        "githubArtifactId": 12956402710,
+        "githubDigestMatched": true
       }
     ],
     "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
@@ -135452,5 +135441,734 @@
       "Full CI393/394 remains in progress at this checkpoint. Full-green383 remains unchanged; no full local suite repeated."
     ],
     "issueOutcome": "Close990 after publication: shared route geometry is exercised by actual crowd mappings, rather than substituting route-index queries for crowd onsets/descriptors."
+  },
+  "continuation396": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1023
+    ],
+    "sourceParent": "c88094646d02ccb4ead20ed5a967da568a85538f",
+    "scope": "Actual formation harmony, honest two-dimensional geometry, definition-bound saved voicing and independent CI393 qualification.",
+    "changes": [
+      "Unknown formation views retain identity, revision, metric, ensemble and membership revision.",
+      "2DNeighborhood reports centroid-radius coordinates explicitly, uses RMS radial dispersion, and computes actual Euclidean nearest-selected edges with stable actor-ID ties. Pairwise work is capped at32representatives and charged to the descriptor limit.",
+      "Formation checkpoint version2 binds exact definitions and anchor tuning; observed legacy unbound history refuses, while empty legacy state can upgrade without invented assignments.",
+      "Actual source-world corpus covers spread, independent minimum-motion removal, historical roster loss, freeze/follow, ordered/clustered, fractional ratio tuning, static held/pickup behavior, same-leader follower control, empty/single groups, bounded representatives, projection permutation, checkpoint future and route ambiguity."
+    ],
+    "validation": {
+      "node": {
+        "passing": 49,
+        "failures": 0,
+        "durationSeconds": 5,
+        "scope": "Actual formation plus tonal/spatial/engine/crowd/route/take regressions."
+      },
+      "browser": {
+        "passing": 3,
+        "failures": 0,
+        "durationSeconds": 57.3,
+        "cases": [
+          {
+            "title": "actual crowd arrivals preserve physical gaps tempo and saved delayed ownership across desktop painting",
+            "file": "procgen-workstation-crowd-intervals.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-crowd-interval-desktop",
+                "bytes": 158628,
+                "sha256": "59fd590a897bb4c3ebb7291d900de1d14a89de673e4473aa4b56160cc34217b7"
+              }
+            ]
+          },
+          {
+            "title": "actual formation harmony follows physical spread and removal while desktop paints preserve voice ownership",
+            "file": "procgen-workstation-formation-harmony.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-formation-harmony-desktop",
+                "bytes": 308228,
+                "sha256": "9e2786a5bb43aa44595f88198fa60f3edfe1512624ba33a98a23804e9914d1e1"
+              }
+            ]
+          },
+          {
+            "title": "actual U routes crossing branches marker edits and native mid-loop take reopening preserve route evidence",
+            "file": "procgen-workstation-route-atlas.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-route-atlas-desktop",
+                "bytes": 9472,
+                "sha256": "f377230500e10a122de8a39fb3ed612a893d5c1f3b8482ab2c2036044a7899bb"
+              }
+            ]
+          }
+        ],
+        "receiptsArtifact": {
+          "path": "docs/validation/formation-harmony-desktop-2026-10-30.json",
+          "bytes": 477221,
+          "sha256": "64426714e29d825f4b49f60ac277add4fbf8047f44f106f9f4a4d769d9467018"
+        }
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 285,
+            "covered": 274,
+            "skipped": 0,
+            "pct": 96.14
+          },
+          "statements": {
+            "total": 285,
+            "covered": 274,
+            "skipped": 0,
+            "pct": 96.14
+          },
+          "functions": {
+            "total": 38,
+            "covered": 35,
+            "skipped": 0,
+            "pct": 92.1
+          },
+          "branches": {
+            "total": 432,
+            "covered": 351,
+            "skipped": 0,
+            "pct": 81.25
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": "Unknown"
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\Ensembles.js": {
+          "lines": {
+            "total": 109,
+            "covered": 99,
+            "skipped": 0,
+            "pct": 90.82
+          },
+          "functions": {
+            "total": 13,
+            "covered": 13,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 109,
+            "covered": 99,
+            "skipped": 0,
+            "pct": 90.82
+          },
+          "branches": {
+            "total": 154,
+            "covered": 106,
+            "skipped": 0,
+            "pct": 68.83
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\FormationHarmony.js": {
+          "lines": {
+            "total": 132,
+            "covered": 131,
+            "skipped": 0,
+            "pct": 99.24
+          },
+          "functions": {
+            "total": 11,
+            "covered": 11,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 132,
+            "covered": 131,
+            "skipped": 0,
+            "pct": 99.24
+          },
+          "branches": {
+            "total": 192,
+            "covered": 164,
+            "skipped": 0,
+            "pct": 85.41
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TonalInterpretation.js": {
+          "lines": {
+            "total": 44,
+            "covered": 44,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 14,
+            "covered": 11,
+            "skipped": 0,
+            "pct": 78.57
+          },
+          "statements": {
+            "total": 44,
+            "covered": 44,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 86,
+            "covered": 81,
+            "skipped": 0,
+            "pct": 94.18
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/workstation/physical/FormationHarmony.js",
+          "bytes": 14719,
+          "sha256": "cd2cc414e502227f63e84e54bcdce5e326652df72309917385476fa83913af0c"
+        },
+        {
+          "path": "test/helpers/actualFormationHarmony.js",
+          "bytes": 17455,
+          "sha256": "f2f3dab809b70a55a6706c84451f92bf802ca941a2c1bec31c389517e49b4ff2"
+        },
+        {
+          "path": "test/procgen-actual-formation-harmony.test.js",
+          "bytes": 1093,
+          "sha256": "2b001b478f21d8b0758a03dc6d1b50805b3aec8e1bad15195f2af78a8b95288e"
+        },
+        {
+          "path": "e2e/procgen-workstation-formation-harmony.spec.js",
+          "bytes": 6004,
+          "sha256": "dd68306969abc9f61ff7c0504c0ac0b5812fa63925e7ad15d42304d7d7df6d98"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 294,
+          "sha256": "27f005860fa1aef959d47fd6c64fbd2bffb1f81b27fe55a79d458134097b08f1"
+        }
+      ]
+    },
+    "evidence": {
+      "spanCents": {
+        "initial": 2400,
+        "final": 7200
+      },
+      "sameLeaderPose": {
+        "x": 193,
+        "y": 80
+      },
+      "minimumMotion": [
+        {
+          "formationId": "follow",
+          "totalCents": 2400,
+          "independentMinimumCents": 2400
+        },
+        {
+          "formationId": "cluster",
+          "totalCents": 2898.044999134612,
+          "independentMinimumCents": 2898.044999134612
+        },
+        {
+          "formationId": "fixed",
+          "totalCents": 2400,
+          "independentMinimumCents": 2400
+        }
+      ],
+      "referenceFuture": {
+        "fromTick": 16,
+        "throughTick": 64,
+        "facts": 384,
+        "intents": 28,
+        "equal": true
+      },
+      "removedFuture": {
+        "fromTick": 16,
+        "throughTick": 64,
+        "facts": 317,
+        "intents": 21,
+        "equal": true
+      },
+      "refusals": [
+        {
+          "name": "unbound-legacy",
+          "reason": "Invalid or unbound formation checkpoint.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-definition",
+          "reason": "Invalid or unbound formation checkpoint.",
+          "unchanged": true
+        },
+        {
+          "name": "duplicate-formation",
+          "reason": "Invalid or unbound formation checkpoint.",
+          "unchanged": true
+        },
+        {
+          "name": "foreign-formation",
+          "reason": "Invalid formation assignment checkpoint.",
+          "unchanged": true
+        },
+        {
+          "name": "oversized-spread",
+          "reason": "Invalid formation assignment checkpoint.",
+          "unchanged": true
+        },
+        {
+          "name": "duplicate-actor",
+          "reason": "Invalid saved harmonic voice.",
+          "unchanged": true
+        },
+        {
+          "name": "nonfinite-coordinate",
+          "reason": "Causal journal numbers must be finite.",
+          "unchanged": true
+        },
+        {
+          "name": "unrecognized-reason",
+          "reason": "Invalid saved harmonic voice.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-degree",
+          "reason": "Saved formation tuning differs from its bound definition.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-period",
+          "reason": "Saved formation tuning differs from its bound definition.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-reference",
+          "reason": "Saved formation tuning differs from its bound definition.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-tuning",
+          "reason": "Saved formation tuning differs from its bound definition.",
+          "unchanged": true
+        },
+        {
+          "name": "changed-ratio",
+          "reason": "Saved formation tuning differs from its bound definition.",
+          "unchanged": true
+        }
+      ],
+      "display": {
+        "paints": 24,
+        "state": "ready",
+        "width": 1920,
+        "height": 1080
+      },
+      "pauses": [
+        {
+          "before": 16,
+          "after": 16,
+          "wallMs": 88.40000000596046,
+          "frames": 8
+        },
+        {
+          "before": 16,
+          "after": 16,
+          "wallMs": 105.80000001192093,
+          "frames": 8
+        }
+      ],
+      "liveProjectUnchanged": true,
+      "audioContexts": 0,
+      "midiRequests": 0
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 37,
+        "nodeFailures": 1,
+        "browserPassing": 2,
+        "browserFailures": 1,
+        "reason": "Actual ambiguity is refused but the unknown view loses formation identity; consumers cannot associate the reason.",
+        "sources": [
+          {
+            "path": "test/helpers/actualFormationHarmony.js",
+            "bytes": 14692,
+            "sha256": "64761d0f1630467b5c4e7044964b12fcb7c9ea3fcdd4aa52f1de48c48033a582"
+          },
+          {
+            "path": "test/procgen-actual-formation-harmony.test.js",
+            "bytes": 1093,
+            "sha256": "2b001b478f21d8b0758a03dc6d1b50805b3aec8e1bad15195f2af78a8b95288e"
+          },
+          {
+            "path": "e2e/procgen-workstation-formation-harmony.spec.js",
+            "bytes": 5932,
+            "sha256": "5693727cbd74183be8736c1832b331c2dc129759d3c9638f85c90ace24f34144"
+          }
+        ],
+        "trace": ".tmp/rook396-formation-first-trace.zip"
+      },
+      {
+        "stage": "Initial identity repair batch",
+        "nodePassing": 38,
+        "browserPassing": 3,
+        "result": "Passed identity and physical workflow assertions. Subsequent receipt inspection found a distinct2D metric error; not accepted as final geometry qualification.",
+        "sources": [
+          {
+            "path": "js/app/procgen/workstation/physical/FormationHarmony.js",
+            "bytes": 12397,
+            "sha256": "c2ee951f3b262fb4a996574ae3660c11d561a07cafab1324d5b21ecaf19125b0"
+          },
+          {
+            "path": "test/helpers/actualFormationHarmony.js",
+            "bytes": 14692,
+            "sha256": "64761d0f1630467b5c4e7044964b12fcb7c9ea3fcdd4aa52f1de48c48033a582"
+          },
+          {
+            "path": "test/procgen-actual-formation-harmony.test.js",
+            "bytes": 1093,
+            "sha256": "2b001b478f21d8b0758a03dc6d1b50805b3aec8e1bad15195f2af78a8b95288e"
+          },
+          {
+            "path": "e2e/procgen-workstation-formation-harmony.spec.js",
+            "bytes": 5932,
+            "sha256": "5693727cbd74183be8736c1832b331c2dc129759d3c9638f85c90ace24f34144"
+          }
+        ],
+        "measuredCounterexample": {
+          "scope": "Actual U geometry, two actors at tick110; FormationHarmony currently differences centroid radii for its neighborhood edge.",
+          "route": {
+            "id": "route",
+            "revision": 1,
+            "metric": "routeDistance",
+            "routeId": "u",
+            "ensembleId": "crew",
+            "membershipRevision": 110,
+            "status": "complete",
+            "memberCount": 2,
+            "representativeCount": 2,
+            "aggregated": 0,
+            "centroid": {
+              "x": 74.5,
+              "y": 60
+            },
+            "dispersion": 52.06155281280883,
+            "spreadTier": 3,
+            "assignments": [
+              {
+                "actorId": 1,
+                "status": "complete",
+                "pitch": {
+                  "cents": 6000,
+                  "referenceHz": 440,
+                  "tuningId": "actual-just",
+                  "degree": 0,
+                  "period": 0,
+                  "ratio": [
+                    1,
+                    1
+                  ]
+                },
+                "reason": "observed-formation",
+                "coordinate": 30
+              },
+              {
+                "actorId": 0,
+                "status": "complete",
+                "pitch": {
+                  "cents": 7901.955000865388,
+                  "referenceHz": 440,
+                  "tuningId": "actual-just",
+                  "degree": 5,
+                  "period": 1,
+                  "ratio": [
+                    3,
+                    2
+                  ]
+                },
+                "reason": "observed-formation",
+                "coordinate": 134.12310562561765
+              }
+            ],
+            "neighborRelations": [
+              {
+                "beforeActorId": 1,
+                "afterActorId": 0,
+                "distance": 104.12310562561765
+              }
+            ]
+          },
+          "neighborhood": {
+            "id": "neighborhood",
+            "revision": 1,
+            "metric": "2DNeighborhood",
+            "routeId": null,
+            "ensembleId": "crew",
+            "membershipRevision": 110,
+            "status": "complete",
+            "memberCount": 2,
+            "representativeCount": 2,
+            "aggregated": 0,
+            "centroid": {
+              "x": 74.5,
+              "y": 60
+            },
+            "dispersion": 0,
+            "spreadTier": 0,
+            "assignments": [
+              {
+                "actorId": 0,
+                "status": "complete",
+                "pitch": {
+                  "cents": 6000,
+                  "referenceHz": 440,
+                  "tuningId": "actual-just",
+                  "degree": 0,
+                  "period": 0,
+                  "ratio": [
+                    1,
+                    1
+                  ]
+                },
+                "reason": "observed-formation",
+                "coordinate": 20.5
+              },
+              {
+                "actorId": 1,
+                "status": "complete",
+                "pitch": {
+                  "cents": 6701.955000865388,
+                  "referenceHz": 440,
+                  "tuningId": "actual-just",
+                  "degree": 2,
+                  "period": 0,
+                  "ratio": [
+                    3,
+                    2
+                  ]
+                },
+                "reason": "observed-formation",
+                "coordinate": 20.5
+              }
+            ],
+            "neighborRelations": [
+              {
+                "beforeActorId": 0,
+                "afterActorId": 1,
+                "distance": 0
+              }
+            ]
+          },
+          "actualEuclideanPixels": 41,
+          "expected": "2D neighbor edge reports Euclidean distance41, not zero difference of equal centroid radii."
+        }
+      }
+    ],
+    "ci393": {
+      "head": "ef7b88b12429a40f3f3e26e98bed821606100ab2",
+      "status": "success",
+      "run": 41008970248,
+      "job": 123910274868,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41008970248",
+      "engineJob": 123910274938,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7268,
+      "nodePending": 10,
+      "browserPassed": 283,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 239,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.79,
+        "statements": 90.79,
+        "branches": 84.11,
+        "functions": 88.7
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 39316,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 11197,
+          "benchHistoryStress": 18938,
+          "benchHotpaths": 9177
+        },
+        "metrics": {
+          "perfP95Frame": 83.30000000000109,
+          "perfP50Tps": 71.2871287128713,
+          "historyRatio": 0.5851666666666666,
+          "antsAvgMs": 32.21,
+          "tileCompositionAvgMs": 3.72,
+          "overlayPlaneAvgMs": 21.34,
+          "scaledBlitAvgMs": 31.66
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5851666666666666
+          },
+          {
+            "speed": 60,
+            "ratio": 0.9388333333333333
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1271,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "62a2effa5918fb539041670cdea41c1e295cf7d977b2ed30d31edfc637be9a9b",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123910274750,
+        "windowsJob": 123910275012,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "5626c4b2ab07754486c2f47a5fd1a639d73b60fd",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1159,
+        "inventorySha256": "0f3078c260392e8fd1342adb4568b59367beebc36ff3162e0930937ebd3cb2c4",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1271,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "githubArchiveDigestsMatched": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci393-main.zip",
+          "bytes": 840181,
+          "sha256": "38f39ed4ad72e4f030a5e3b1081f0bc5a9767a944bfe4788e9d8d7d8be670c88",
+          "githubArtifactId": 12958058527,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci393-engine.zip",
+          "bytes": 159859,
+          "sha256": "23e95340cb51ba40dddaf4f9ace10379b42e76fe1fb3e1c7c4e250706cce42ab",
+          "githubArtifactId": 12957116364,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci393-windows.zip",
+          "bytes": 2149,
+          "sha256": "23497e124d1925c04c46c5a2990aae5ef4aeaec09ae240d32ee1786f836a77fd",
+          "githubArtifactId": 12956802419,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci393-linux.zip",
+          "bytes": 2246,
+          "sha256": "008736eb433aa6c38f613e0c7f480670c23ce056d9ed47a585ba17d24f2d5aae",
+          "githubArtifactId": 12956402710,
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "ci394": {
+      "head": "99ad19471246a4b656d597ae0969779ef0ab61dc",
+      "run": 41009738143,
+      "engineJob": 123912669840,
+      "result": "failed",
+      "enginePassing": 17,
+      "engineFailed": 1,
+      "boundary": "Native Linux Firefox content process SIG11 before document assertions; no application page error in trace. Preserve failure and do not invent a JavaScript repair.",
+      "localCurrentHeadFirefox": {
+        "passing": 1,
+        "durationSeconds": 16.4,
+        "platform": "Windows",
+        "scope": "Same actual document journey at c880; does not qualify Linux native crash fixed."
+      },
+      "ci395EngineJob": {
+        "id": 123919835389,
+        "reportedStatus": "success",
+        "scope": "Current395 full Linux engine job passes; not independently promoted here."
+      }
+    },
+    "audit": {
+      "command": "npm audit --json",
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "scope": "Current branch dependencies; default-branch alert194 is separate."
+    },
+    "limits": [
+      "Actual original scored geometry and production actors/masks/compilation; no installed-asset matrix or archived exact-mode execution claim.",
+      "Same-position and actor-order comparisons permute complete projections while preserving physical mutation order.",
+      "2D nearest neighbors are among admitted representatives, explicitly reported; this is not an all-pairs search over an unbounded world.",
+      "Ensemble branch coverage remains68.83%; richer selector/capacity failure cases stay under their own broad issues.",
+      "No acoustic, device, physical GPU or end-to-end latency qualification.",
+      "Latest independently verified full green advances to CI393/ef7b88b1; later396 sources await their own full CI. No full local suite repeated."
+    ],
+    "issueOutcome": "Close1023 after publication using actual source worlds, explicit geometric/tuning contracts and transactional saved history."
   }
 }

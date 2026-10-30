@@ -49,7 +49,9 @@ export function createFormationHarmony({ maxStates = 4096, maxDescriptorWork = 2
     const actorMap = new Map(actors.map(actor => [actor.actorId, actor])); let work = 0, count = 0;
     for (const definition of definitions) {
       const membership = domain.ensembleView(definition.ensembleId);
-      if (membership?.completeness.status !== 'complete') { views.set(definition.id, freeze({ status: 'unknown', reason: 'ensemble-incomplete' })); continue; }
+      const neighborhood = definition.metric === '2DNeighborhood', coordinateMetric = neighborhood ? 'centroid-radius-pixels' : definition.metric === 'routeDistance' ? 'qualified-route-arc-pixels' : 'world-x-pixels';
+      const source = { id: definition.id, revision: definition.revision, metric: definition.metric, coordinateMetric, routeId: definition.routeId, ensembleId: definition.ensembleId, membershipRevision: membership?.revision ?? null };
+      if (membership?.completeness.status !== 'complete') { views.set(definition.id, freeze({ ...source, status: 'unknown', reason: 'ensemble-incomplete' })); continue; }
       const members = []; let x = 0, y = 0, unknown = null, branch = null;
       for (const id of membership.memberIds) {
         if (++work > maxDescriptorWork) throw new Error('Formation descriptor budget exceeded.');
@@ -62,11 +64,11 @@ export function createFormationHarmony({ maxStates = 4096, maxDescriptorWork = 2
         }
         members.push({ actorId: id, x: actor.x, y: actor.y, coordinate }); x += actor.x; y += actor.y;
       }
-      if (unknown) { views.set(definition.id, freeze({ status: 'unknown', reason: unknown })); continue; }
+      if (unknown) { views.set(definition.id, freeze({ ...source, status: 'unknown', reason: unknown })); continue; }
       const centroid = { x: members.length ? x / members.length : 0, y: members.length ? y / members.length : 0 };
       if (definition.metric === '2DNeighborhood') for (const member of members) member.coordinate = Math.hypot(member.x - centroid.x, member.y - centroid.y);
       members.sort((a, b) => a.coordinate - b.coordinate || a.actorId - b.actorId);
-      const mean = members.reduce((sum, member) => sum + member.coordinate, 0) / Math.max(1, members.length), dispersion = Math.sqrt(members.reduce((sum, member) => sum + (member.coordinate - mean) ** 2, 0) / Math.max(1, members.length));
+      const mean = members.reduce((sum, member) => sum + member.coordinate, 0) / Math.max(1, members.length), dispersion = Math.sqrt(members.reduce((sum, member) => sum + (neighborhood ? member.coordinate ** 2 : (member.coordinate - mean) ** 2), 0) / Math.max(1, members.length));
       const previous = states.get(definition.id) || { assignments: [], spreadTier: 0 }, prior = new Map(previous.assignments.map(value => [value.actorId, value]));
       // Keep admitted actors while alive; fill remaining slots by evenly spaced physical rank.
       const selected = members.filter(member => prior.has(member.actorId)).slice(0, definition.maximumVoices), chosen = new Set(selected.map(member => member.actorId));
@@ -76,6 +78,20 @@ export function createFormationHarmony({ maxStates = 4096, maxDescriptorWork = 2
         for (let delta = 0; delta < members.length; delta++) { const candidate = members[(target + delta) % members.length]; if (!chosen.has(candidate.actorId)) { selected.push(candidate); chosen.add(candidate.actorId); break; } }
       }
       selected.sort((a, b) => a.coordinate - b.coordinate || a.actorId - b.actorId);
+      let neighborRelations = selected.slice(1).map((member, index) => ({ beforeActorId: selected[index].actorId, afterActorId: member.actorId, distance: member.coordinate - selected[index].coordinate }));
+      if (neighborhood) {
+        const edges = new Map();
+        for (const member of selected) {
+          let nearest = null, distance = Infinity;
+          for (const other of selected) if (other.actorId !== member.actorId) {
+            if (++work > maxDescriptorWork) throw new Error('Formation descriptor budget exceeded.');
+            const candidate = Math.hypot(member.x - other.x, member.y - other.y);
+            if (candidate < distance || candidate === distance && other.actorId < nearest.actorId) { nearest = other; distance = candidate; }
+          }
+          if (nearest) { const beforeActorId = Math.min(member.actorId, nearest.actorId), afterActorId = Math.max(member.actorId, nearest.actorId); edges.set(`${beforeActorId}/${afterActorId}`, { beforeActorId, afterActorId, distance }); }
+        }
+        neighborRelations = [...edges.values()].sort((a, b) => a.beforeActorId - b.beforeActorId || a.afterActorId - b.afterActorId);
+      }
       let spreadTier = previous.spreadTier;
       while (dispersion >= (spreadTier + 1) * definition.spacingPixels + definition.hysteresisPixels && spreadTier < 32) spreadTier++;
       while (spreadTier > 0 && dispersion < spreadTier * definition.spacingPixels - definition.hysteresisPixels) spreadTier--;
@@ -96,17 +112,20 @@ export function createFormationHarmony({ maxStates = 4096, maxDescriptorWork = 2
       });
       if ((count += assignments.length) > maxStates) throw new Error('Formation assignment capacity exceeded.');
       states.set(definition.id, { assignments: assignments.filter(value => value.status === 'complete'), spreadTier });
-      views.set(definition.id, freeze({ status: 'complete', id: definition.id, revision: definition.revision, membershipRevision: membership.revision, metric: definition.metric,
+      views.set(definition.id, freeze({ ...source, status: 'complete',
         memberCount: members.length, representativeCount: selected.length, aggregated: members.length - selected.length, centroid, dispersion, spreadTier, assignments,
-        neighborRelations: selected.slice(1).map((member, index) => ({ beforeActorId: selected[index].actorId, afterActorId: member.actorId, distance: member.coordinate - selected[index].coordinate })) }));
+        neighborMetric: neighborhood ? 'euclidean-pixels' : coordinateMetric, neighborPolicy: neighborhood ? 'nearest-selected-representative' : 'ordered-selected', neighborRelations }));
     }
   };
   return { configure, observe, definition: id => definitions.find(value => value.id === id),
     pitch(id, actorId) { const view = views.get(id); if (view?.status !== 'complete') return { status: 'unknown', reason: view?.reason || 'formation-unobserved' }; return view.assignments.find(value => value.actorId === actorId) || { status: 'unrepresented', reason: 'bounded-formation-representatives' }; },
-    snapshot: () => freeze({ version: 1, boundary, states: [...states].map(([id, state]) => ({ id, ...copy(state) })) }),
-    restore(value) { if (value?.version !== 1 || !Array.isArray(value.states) || value.states.length > definitions.length || value.boundary != null && typeof value.boundary !== 'string') throw new Error('Invalid formation checkpoint.'); const next = new Map(); let count = 0;
+    snapshot: () => freeze({ version: 2, boundary, signatures: definitions.map(value => [value.id, JSON.stringify(value)]), states: [...states].map(([id, state]) => ({ id, ...copy(state) })) }),
+    restore(value) { const emptyLegacy = value?.version === 1 && Array.isArray(value.states) && value.states.length === 0;
+      if (!emptyLegacy && (value?.version !== 2 || JSON.stringify(value.signatures) !== JSON.stringify(definitions.map(value => [value.id, JSON.stringify(value)]))) || !Array.isArray(value.states) || value.states.length > definitions.length || value.boundary != null && typeof value.boundary !== 'string') throw new Error('Invalid or unbound formation checkpoint.'); const next = new Map(); let count = 0;
       for (const state of value.states) { const definition = definitions.find(item => item.id === state.id); if (!definition || next.has(state.id) || !integer(state.spreadTier, 32) || !Array.isArray(state.assignments) || state.assignments.length > definition.maximumVoices || (count += state.assignments.length) > maxStates) throw new Error('Invalid formation assignment checkpoint.');
-        const seen = new Set(); for (const value of state.assignments) { if (!integer(value.actorId) || seen.has(value.actorId) || value.status !== 'complete' || !finite(value.pitch?.cents, 24000) || !finite(value.pitch?.referenceHz, 20000) || value.pitch.referenceHz <= 0 || !Number.isSafeInteger(value.pitch?.degree)) throw new Error('Invalid saved harmonic voice.'); seen.add(value.actorId); }
+        const seen = new Set(); for (const value of state.assignments) { if (!integer(value.actorId) || seen.has(value.actorId) || value.status !== 'complete' || !finite(value.coordinate, Number.MAX_SAFE_INTEGER) || !['observed-formation', 'frozen-voicing'].includes(value.reason) || !finite(value.pitch?.cents, 24000) || !finite(value.pitch?.referenceHz, 20000) || value.pitch.referenceHz <= 0 || !Number.isSafeInteger(value.pitch?.degree) || Math.abs(value.pitch.degree) > 4096) throw new Error('Invalid saved harmonic voice.');
+          if (definition.rootPolicy === 'anchor') { const expected = tuningDegree(definition.tuning, value.pitch.degree); if (['cents', 'referenceHz', 'tuningId', 'degree', 'period'].some(key => value.pitch[key] !== expected[key]) || JSON.stringify(value.pitch.ratio ?? null) !== JSON.stringify(expected.ratio ?? null)) throw new Error('Saved formation tuning differs from its bound definition.'); }
+          seen.add(value.actorId); }
         next.set(state.id, { assignments: copy(state.assignments), spreadTier: state.spreadTier }); }
       states = next; boundary = value.boundary; views.clear(); },
     reset() { states.clear(); views.clear(); boundary = null; }, diagnostics: () => freeze({ formations: definitions.length, views: [...views.values()] }) };

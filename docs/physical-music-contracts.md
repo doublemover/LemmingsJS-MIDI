@@ -377,3 +377,29 @@ Terrain rendering reads edit values through their observational lookup. It must
 not promote cold edits or update the world's last-lookup key while painting a
 paused source. The actual crowd desktop fixture covers the first paint of an
 unpainted checkpoint as well as subsequent camera and paint-cadence changes.
+
+## Formation geometry and saved voicing
+
+Formation views identify their definition/revision, ensemble/membership revision,
+and declared coordinate metric even when coverage is unknown. Qualified route
+coordinates never fall back to screen distance. Lane and route mappings retain
+their ordered selected-neighbor gaps. `2DNeighborhood` orders representatives by
+centroid radius with stable actor-ID ties, computes RMS distance from the centroid
+for dispersion, and reports actual Euclidean nearest-neighbor edges among the
+selected representatives. Equal radii do not imply zero physical separation.
+The pairwise neighborhood search is capped at 32 representatives and charged to
+the descriptor work limit.
+
+Explicit freeze/follow and ordered/clustered choices retain stable physical voice
+ownership. A formation recomputation cannot manufacture an attack: a new note
+still requires its actual action entry or pickup crossing. Tuning retains its
+reference Hz, tuning ID, fractional cents and declared ratios. Fixed ensembles
+retain missing historical members while only active members receive voices.
+
+Formation checkpoint version 2 binds the definition signatures and validates
+actor uniqueness, capacity, coordinate, reason and anchor-tuning metadata before
+changing live state. Observed legacy unbound assignments refuse restore; empty
+legacy state can resume without inventing history. Actual crowd fixtures cover
+spreading, removal and minimum-motion assignment, static silent/held behavior,
+same-leader/different-follower controls, stable ties, route ambiguity and exact
+checkpoint continuation.

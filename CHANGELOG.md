@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve formation identity on unknown views, compute actual 2D dispersion and selected-neighbor distances, and bind saved harmonic assignments to their definitions and tuning.
+
 - Add explicitly selected ratio-folded and delayed crowd responses with bounded saved ownership, preserve literal arrival gaps by default, and keep terrain painting from changing edit-cache checkpoint state.
 
 - Accept bounded empty byte chunks in default asset streams, including the final capacity probe, while retiring streams that repeatedly make no progress.
