@@ -9840,3 +9840,21 @@ export-budget acknowledgments still prevent a false complete receipt.
   action:227workstation cases passed; engine/native jobs pass. Inspect preserved
   trace before diagnosing or changing waits. Coverage did not run after that
   failure. Latest fully verified checkpoint remains374/97eeed53. Continue solo.
+
+
+### Continuation 381 - immutable export document startup and issue closure
+
+- Export fixtures await final immutable document navigation before evaluating
+  workstation globals. Preserve unchanged timeouts and all real file/ownership
+  actions; attach bounded page/request/startup diagnostics only on failure.
+  Six Playwright export cases pass together at1920x1080; runtime source is
+  unchanged from380. No Node or full local suite repeat for a fixture-only edit.
+- Retain377 CI:227workstation passes and one pre-picker startup timeout. Trace
+  shows bootstrap→immutable navigation and an aborted RawByteLease module
+  request; a definitive source-level transport cause is unproven. Later378
+  workstation smoke passes with the prior fixture and coverage is in progress.
+  No timeout increase, automatic retry or application transport fix is claimed.
+- Close #1223 with the final177Node/18Playwright state11 evidence and preserved
+  numeric, source/coverage, continuation and hazard/growth refusal corpus.
+  Coverage follow-ups do not imply a100%branch claim. #988 checkpoint projection,
+  #1213 prefix reuse and #1242 archived execution remain separate. Continue solo.

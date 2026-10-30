@@ -9,9 +9,29 @@ test.use({ permissions: [] });
 
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
 
-const prepareFileDelivery = async page => {
+const startupDiagnostics = new WeakMap();
+test.beforeEach(async ({ page }) => {
+  const records = []; startupDiagnostics.set(page, records);
+  const retain = value => { if (records.length === 16) records.shift(); records.push(value); };
+  page.on('pageerror', error => retain({ kind: 'page-error', message: error.message }));
+  page.on('requestfailed', request => retain({ kind: 'request-failed', url: request.url(), resourceType: request.resourceType(), message: request.failure()?.errorText }));
+});
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  let state = null;
+  try { state = await page.evaluate(() => ({ url: location.href, readyState: document.readyState, studio: !!window.__PROCGEN_STUDIO__,
+    world: !!window.__PROCGEN_LANES__?.world, status: document.getElementById('procgenRunStatus')?.textContent, failure: document.getElementById('procgenStartupError')?.textContent })); }
+  catch (error) { state = { unavailable: error.message }; }
+  await testInfo.attach('export-startup-diagnostics', { body: JSON.stringify({ state, records: startupDiagnostics.get(page) || [] }), contentType: 'application/json' });
+});
+
+const openWorkstation = async page => {
   await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=2');
+  await page.waitForURL(url => /\/dist\/browser\/[a-f0-9]{64}\/procgen\.html$/.test(url.pathname));
   await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+};
+const prepareFileDelivery = async page => {
+  await openWorkstation(page);
   await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.__PROCGEN_LANES__.pause();
     const root = await navigator.storage.getDirectory(), handle = await root.getFileHandle('owned-performance.mid', { create: true }), writer = await handle.createWritable();
@@ -132,8 +152,7 @@ test('Playwright picker permission and unsupported paths retain the actual ancho
 });
 test('native archive preparation can be superseded, canceled and discarded without replacing the current file', { tag: '@boundary' }, async ({ page }) => {
   test.setTimeout(120000);
-  await page.goto('/dist/browser/procgen.html?e2e=1&seed=42&lanes=2');
-  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain);
+  await openWorkstation(page);
   await page.evaluate(async () => {
     const studio = window.__PROCGEN_STUDIO__; studio.transport.pause(); window.__PROCGEN_LANES__.pause();
     await studio.handlers.startCausalTake({ takeName: 'Export ownership fixture' }); window.__PROCGEN_LANES__.step(2); await studio.stopCausalTake();
