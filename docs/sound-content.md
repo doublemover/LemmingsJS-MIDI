@@ -1238,3 +1238,11 @@ physical-binding consumers do not interpret future fields. Choose a supported
 sound explicitly before playing or deriving an editable candidate. Registry
 archives preserve bounded ordinary JSON dictionary keys, including MIDI note
 numbers, while rejecting prototype keys and conflicting immutable revisions.
+
+Legacy project conversion is an explicit one-time choice. Its review names the
+removed phrase steps, replacement physical mappings and native local aliases;
+valid external bank/program/channel/output routing is retained. Each lane has
+a field-level conversion receipt. Custom inline `patchDefinition` data, unknown
+aliases and invalid explicit routes refuse with named fields before publication.
+The original file/session and current document remain unchanged; supply a
+supported pinned reference explicitly instead of silently defaulting custom DSP.

@@ -97,3 +97,22 @@ test('legacy physical conversion reports discarded steps once and preserves the 
   expect(accepted).toMatchObject({ version: 2, originalUnchanged: true, reopened: true });
   await testInfo.attach('explicit-one-time-physical-conversion', { body: JSON.stringify({ canceled, accepted, messages }), contentType: 'application/json' });
 });
+
+test('custom legacy definitions refuse conversion with named fields and preserve the live desktop document @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(120000); await page.goto('/dist/browser/procgen.html?e2e=1&workstation=1&seed=42&lanes=2');
+  await page.waitForURL(/\/dist\/browser\/[a-f0-9]{64}\/procgen\.html\?/, { timeout: 90000 });
+  await page.waitForFunction(() => window.__PROCGEN_STUDIO__ && window.__PROCGEN_LANES__?.world?.terrain, null, { timeout: 90000 });
+  const result = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.transport.pause(); api.pause();
+    const world = api.world, project = JSON.stringify(studio.getProject()), document = JSON.stringify(studio.getDocumentState());
+    const source = structuredClone(studio.capture('Custom legacy source')); source.project.procgen.version = 1;
+    Object.assign(source.project.procgen.lanes[0], { family: 'user-foundry', role: 'lead', patch: 'my-body@7', patchDefinition: { schemaVersion: 2, id: 'my-body', revision: 7, parameters: { shape: 'original' } } });
+    const original = JSON.stringify(source); let failure;
+    try { await studio.loadSession(source); } catch (error) { failure = { code: error.code, message: error.message, laneId: error.laneId, fields: error.fields }; }
+    if (failure?.code !== 'legacy-instrument-review-required' || !failure.fields.includes('patchDefinition') || JSON.stringify(source) !== original ||
+        api.world !== world || JSON.stringify(studio.getProject()) !== project || JSON.stringify(studio.getDocumentState()) !== document) throw new Error('Custom legacy definition was silently defaulted or its live owner changed.');
+    return { failure, originalUnchanged: true, liveUnchanged: true, source: source.project.procgen.lanes[0].patchDefinition };
+  });
+  expect(result.failure.fields).toContain('family'); expect(result.originalUnchanged).toBe(true); expect(result.liveUnchanged).toBe(true);
+  await testInfo.attach('custom-legacy-definition-refusal', { body: JSON.stringify(result), contentType: 'application/json' });
+});

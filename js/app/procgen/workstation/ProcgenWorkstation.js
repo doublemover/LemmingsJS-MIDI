@@ -1502,7 +1502,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const serial = ++loadSerial;
     if (session.project?.procgen?.version !== 2) {
       const conversion = convertLegacyProcgenWorkstationProject(session.project, { strategy: 'physical-default' });
-      const summary = `Convert this legacy project to physical playback? ${conversion.report.discardedEnabledSteps} enabled phrase steps will be removed across ${conversion.report.laneCount} lanes. The imported source will not be overwritten.`;
+      const summary = `Convert this legacy project to physical playback? ${conversion.report.discardedEnabledSteps} enabled phrase steps will be removed across ${conversion.report.laneCount} lanes. Physical mappings replace the old event-advanced phrases. Unpinned local sounds use supported native aliases; external MIDI routing is retained. The imported source will not be overwritten.`;
       if (typeof window.confirm !== 'function' || !window.confirm(summary)) return false;
       session = { ...session, project: conversion.project, patterns: null, physicalTimeline: null, physicalState: null };
     }

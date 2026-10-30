@@ -60,7 +60,10 @@ const sanitizePattern = (value, family, role, slot) => {
   return { id: string(value?.id, base.id), name: string(value?.name, base.name), length, rate: number(value?.rate, 1, 0.125, 8),
     steps: Array.from({ length }, (_, index) => sanitizeProcgenStep(value?.steps?.[index] ?? base.steps[index % 16])) };
 };
+const legacyInstrumentError = (index, lane, fields) => Object.assign(new Error(`Lane ${index + 1} has unsupported legacy instrument fields: ${fields.join(', ')}. Keep the original project and choose a supported sound alias or pinned instrument reference explicitly.`),
+  { code: 'legacy-instrument-review-required', laneId: lane.id ?? null, fields: Object.freeze([...fields]) });
 const createProcgenLane = (index = 0, overrides = {}, trusted = null) => {
+  if (overrides.patchDefinition != null) throw legacyInstrumentError(index, overrides, ['patchDefinition']);
   if (overrides.mode != null && !MODES.includes(overrides.mode)) throw new Error('Legacy Game/hybrid semantics require explicit physical conversion.');
   const mode = overrides.mode ?? 'physical';
   if (mode === 'pattern' && !(typeof overrides.patternPurpose === 'string' && overrides.patternPurpose.trim())) {
@@ -125,14 +128,31 @@ const convertLegacyProcgenWorkstationProject = (project, { strategy } = {}) => {
     throw new Error('Choose the explicit physical-default conversion for a legacy procgen project.');
   }
   const old = project.procgen, lanes = (Array.isArray(old.lanes) && old.lanes.length ? old.lanes : [{}]).slice(0, MAX_PROCGEN_LANES);
+  for (let index = 0; index < lanes.length; index++) {
+    const lane = lanes[index] || {}, pair = PROCGEN_DEFAULT_PAIRS[index % PROCGEN_DEFAULT_PAIRS.length], fields = [];
+    const family = PROCGEN_SOUND_COLLECTIONS.find(value => value.id === (lane.family ?? pair[0])), role = family?.roles.find(value => value.id === (lane.role ?? pair[1]));
+    if (!family) fields.push('family'); if (!PROCGEN_ROLES.includes(lane.role ?? pair[1])) fields.push('role');
+    if (lane.patch != null && !role?.patches.some(value => value.id === lane.patch)) fields.push('patch');
+    if (lane.patchDefinition != null) fields.push('patchDefinition');
+    for (const [name, minimum, maximum] of [['channel', 1, 16], ['bankMSB', 0, 127], ['bankLSB', 0, 127], ['externalProgram', 0, 127]]) {
+      if (lane[name] != null && (!Number.isInteger(lane[name]) || lane[name] < minimum || lane[name] > maximum)) fields.push(name);
+    }
+    if (lane.outputId != null && (typeof lane.outputId !== 'string' || lane.outputId.length > 512)) fields.push('outputId');
+    if (fields.length) throw legacyInstrumentError(index, lane, fields);
+  }
+  const laneChanges = Object.freeze(lanes.map((lane, index) => Object.freeze({ laneId: lane?.id ?? `lane-${index + 1}`,
+    sourceMode: lane?.mode ?? 'game', targetMode: 'physical', replacedFields: Object.freeze(['mode', 'patterns', 'patternPurpose']),
+    removedEnabledSteps: (Array.isArray(lane?.patterns) ? lane.patterns.slice(0, 4) : []).reduce((count, pattern) => count + (Array.isArray(pattern.steps) ? pattern.steps.slice(0, 64) : []).filter(step => step.enabled === true).length, 0),
+    localSound: lane?.instrumentRef ? 'pinned-definition-retained' : 'supported-native-alias', externalRouting: 'retained' })));
   const discardedEnabledSteps = lanes.reduce((sum, lane) => sum + (Array.isArray(lane.patterns) ? lane.patterns.slice(0, 4) : [])
     .reduce((count, pattern) => count + (Array.isArray(pattern.steps) ? pattern.steps.slice(0, 64) : []).filter(step => step.enabled === true).length, 0), 0);
   const converted = createProcgenWorkstationProject({ ...project, procgen: undefined }, { seed: old.seed,
     lanes: lanes.map(lane => ({ ...lane, mode: 'physical', patterns: [], patternPurpose: null })) });
   return Object.freeze({ project: converted, report: Object.freeze({ version: 1, strategy, fromVersion: old.version ?? 'unversioned',
-    toVersion: PROCGEN_PROJECT_VERSION, discardedEnabledSteps, laneCount: converted.procgen.lanes.length,
+    toVersion: PROCGEN_PROJECT_VERSION, discardedEnabledSteps, laneCount: converted.procgen.lanes.length, laneChanges,
     changes: Object.freeze(['Physical facts now generate intents directly.', 'Legacy event-advanced phrases were removed.',
-      'Builder work, ordinary wall contacts and the x=40 gate use the declared default mapping.']) }) });
+      'Builder work, ordinary wall contacts and the x=40 gate use the declared default mapping.',
+      'Unpinned legacy sounds use supported native aliases rather than the former GM preview.', 'Existing external bank, program, channel and output routing values are retained.']) }) });
 };
 const sameValue = (left, right) => {
   if (left === right) return true;

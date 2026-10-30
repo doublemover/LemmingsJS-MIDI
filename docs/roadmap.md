@@ -9931,3 +9931,11 @@ export-budget acknowledgments still prevent a false complete receipt.
 - Coverage97.21%lines/93.68%functions/84.71%branches across named content/performer owners; detailed gaps remain in continuation387. Static/critical/category and10component/362file provenance gates pass;293file worker SHA f622276191bd6cc3995453126477f93be38495b151de1929ab09bf8483e9a314.
 - Latest independently source-verified full383 CI is green:7236 Node/10pending,273browser,14capabilities, coverage90.78lines/83.98branches/88.65functions and valid30673msbenchmark. All1149main/1260engine/both8native files match77e057fa. Current387CI remains separate.
 - Keep969 open pending the original custom inline legacy patchDefinition/unknown alias conversion probe; do not infer complete custom migration from the normal conversion.1092 is completed in386;988/1213 remain separate.
+
+
+### 2026-10-29 — Rook continuation388: explicit custom legacy instrument outcomes
+
+- Reproduced the original969 inline my-body@7/user-foundry definition loss at a468b8da. Current lane admission and legacy conversion now reject unsupported inline/custom identities before defaulting; invalid explicit external routing also refuses. Error names the source fields/lane while preserving original bytes and live document/world.
+- Supported legacy conversion exposes per-lane replaced fields/removed steps/local realization and retains valid external program/bank/channel/output values. Confirmation names physical grammar/native alias changes. External routing edits leave pinned local reference identity unchanged.
+- Final 179 affected Node and all five Playwright desktop cases pass together at1920x1080: explicit custom rejection, normal Cancel/Accept/report/native reopen, opaque future Save As/new-realm reopen/export, six-sound1000tick invariance, real built-library staging/audition/install/Apply. Project coverage85.32%lines/89.47%functions/75.88%branches; wider reducer/trust/numeric paths remain explicit. No repeated full local suite.
+- Close969 using387+388 complete software contract and actual original probe correction. Listening/DSP quality remains in its owners. Latest source-verified fullCI remains383 (7236Node/273browser); later388CI is separate.

@@ -58,9 +58,29 @@ describe('physical-first project boundary', () => {
     expect(() => convertLegacyProcgenWorkstationProject(original)).to.throw('Choose the explicit');
     const result = convertLegacyProcgenWorkstationProject(original, { strategy: 'physical-default' });
     expect(result.report).to.include({ fromVersion: 1, toVersion: 2, discardedEnabledSteps: 2 });
+    expect(result.report.laneChanges[0]).to.include({ laneId: 'old', sourceMode: 'game', targetMode: 'physical', removedEnabledSteps: 2, localSound: 'supported-native-alias', externalRouting: 'retained' });
+    expect(result.report.laneChanges[0].replacedFields).to.deep.equal(['mode', 'patterns', 'patternPurpose']);
     expect(result.project.procgen.lanes[0]).to.include({ id: 'old', mode: 'physical' });
     expect(result.project.procgen.lanes[0].patterns).to.have.length(0);
     expect(JSON.stringify(original)).to.equal(before);
+  });
+
+  it('rejects custom inline definitions and unknown legacy aliases before defaulting any instrument data', () => {
+    const custom = { id: 'original', family: 'user-foundry', role: 'lead', patch: 'my-body@7', patchDefinition: { schemaVersion: 2, id: 'my-body', revision: 7, parameters: { shape: 'original' } } };
+    const original = JSON.stringify(custom);
+    expect(() => createProcgenLane(0, custom)).to.throw('patchDefinition'); expect(JSON.stringify(custom)).to.equal(original);
+    for (const lane of [custom, { family: 'user-foundry' }, { role: 'future-role' }, { family: 'crystal', role: 'lead', patch: 'unknown-revision' }, { channel: 17 }, { externalProgram: 128 }, { bankMSB: -1 }, { outputId: {} }]) {
+      const project = { ...createMidiProject(), procgen: { version: 1, lanes: [lane] } }, before = JSON.stringify(project); let error;
+      try { convertLegacyProcgenWorkstationProject(project, { strategy: 'physical-default' }); } catch (failure) { error = failure; }
+      expect(error?.code).to.equal('legacy-instrument-review-required'); expect(error.fields.length).to.be.greaterThan(0); expect(JSON.stringify(project)).to.equal(before);
+    }
+  });
+
+  it('retains explicit valid external routing through the declared local-sound conversion', () => {
+    const lane = { id: 'routed', family: 'crystal', role: 'lead', patch: 'crystal-lead', externalProgram: 27, channel: 3, bankMSB: 4, bankLSB: 9, outputId: 'reviewed:route' };
+    const converted = convertLegacyProcgenWorkstationProject({ ...createMidiProject(), procgen: { version: 1, lanes: [lane] } }, { strategy: 'physical-default' });
+    expect(converted.project.procgen.lanes[0]).to.include({ externalProgram: 27, channel: 3, bankMSB: 4, bankLSB: 9, outputId: 'reviewed:route' });
+    expect(converted.report.laneChanges[0].externalRouting).to.equal('retained');
   });
 
   it('requires an authored purpose for complementary patterns and rejects silent graph reconstruction', () => {

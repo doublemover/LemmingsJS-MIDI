@@ -20,6 +20,8 @@ describe('saved immutable lane instrument definitions', () => {
     expect(Object.isFrozen(lane.instrumentRef.definition.parameters)).to.equal(true);
     expect(validateSoundContentReference(lane.instrumentRef)).to.equal(lane.instrumentRef);
     expect(getSupportedInstrumentDefinition(lane.instrumentRef)).to.equal(lane.instrumentRef.definition);
+    const routed = createProcgenLane(0, { ...lane, outputId: 'reviewed:external-route', channel: 3, externalProgram: 27, bankMSB: 4, bankLSB: 9 });
+    expect(routed.instrumentRef).to.equal(lane.instrumentRef); expect(routed.instrumentRef.engineRequirement).to.equal(lane.instrumentRef.engineRequirement);
     const restored = createProcgenLane(0, JSON.parse(JSON.stringify(lane)));
     const resolution = await resolveSoundContentReference(restored.instrumentRef, { engineDescriptors: [fixture.engine], availableHashes: [fixture.sha256] });
     expect(resolution.status).to.equal('ready'); expect(resolution.reference.definitionHash).to.equal(reference.definitionHash);

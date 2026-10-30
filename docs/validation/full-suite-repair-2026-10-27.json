@@ -98830,5 +98830,670 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "remaining969": "Check the original inline custom legacy patchDefinition/unknown alias conversion probe before closing. Generic current/future reference preservation and normal declared legacy conversion now have actual native save/reopen evidence. Listening/DSP defaults and wider source families remain separate issues."
+  },
+  "continuation388": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "a468b8da34e49e433c9fa3d39fe8352ee0b45ea9",
+    "scope": "Close969 original custom inline-definition preservation and explicit legacy conversion outcomes.",
+    "counterexample": {
+      "path": ".tmp/rook388-legacy-inline-counterexample.json",
+      "bytes": 761,
+      "sha256": "7a155781aba26dd1243d2a7f2a90609079e50481d177b86e9ffe506e044b7f2b"
+    },
+    "changes": [
+      "The actual a468b8da pure boundary still converted user-foundry/my-body@7 plus embedded patchDefinition to crystal-lead without reporting the definition loss. Preserve that controlled counterexample.",
+      "Reject inline patchDefinition at current lane admission and reject unknown legacy family/role/patch, custom definitions or invalid explicit external routing before conversion can default them. Precise legacy-instrument-review-required names source fields and lane, preserving input and live state.",
+      "Normal explicit conversion reports per-lane source/target mode, replaced fields, removed enabled steps, pinned-versus-native local realization and retained valid external routing. The visible confirmation explains changed physical grammar/native local aliases and preserved external routes.",
+      "Qualify local engine/reference identity through external program/bank/channel/output edits without a hardware claim."
+    ],
+    "validation": {
+      "node": {
+        "passed": 179,
+        "failed": 0,
+        "log": ".tmp/rook388-node-final.log",
+        "scope": "Complete physical project/controller/patch/reference/MIDI project/snapshot files together; original inline probe, unknown aliases and invalid route rejections, field-level conversion report, exact valid routing retention and source identity."
+      },
+      "playwright": {
+        "passed": 5,
+        "failed": 0,
+        "report": ".tmp/rook388-playwright-final.json",
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "cases": [
+          {
+            "title": "six pinned native sounds preserve the actual 1000-tick world and causal event order without a legacy pattern path",
+            "file": "procgen-sound-world-isolation.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "sound-world-isolation.json",
+                "value": {
+                  "initialHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+                  "restoredHash": "15db5d39fd9e97d2d42c568033ff4c907e5b60d775b83ba4ae43e2c6cbce9d32",
+                  "mismatchStates": null,
+                  "difference": null,
+                  "controlHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "changedHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "controlTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+                  "changedTrace": "26bbde89126bf7cd79895165a77029fe32a1a74c287c1d68754edf15d9253178",
+                  "undoHash": "8ad649d2492331951e58fe2d7f0aa2bf74d4e034bae6948fd712715efb4edd2e",
+                  "selections": [
+                    "foundation.soft-triangle",
+                    "forge.glass-rivet",
+                    "material.timber",
+                    "pluck.burrow-thumb",
+                    "choir.hollow-ooh",
+                    "spectrum.bubble-reed"
+                  ],
+                  "tickStart": 2,
+                  "tickEnd": 1002,
+                  "sameWorld": true,
+                  "hardwareUnchanged": true,
+                  "sourceOnlyFixture": false,
+                  "acousticQualification": false
+                }
+              }
+            ]
+          },
+          {
+            "title": "future instrument controls remain opaque through visible save and a fresh browser realm reopen @boundary",
+            "file": "procgen-workstation-instrument-compatibility.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "future-definition-native-save-reopen",
+                "value": {
+                  "source": {
+                    "future": {
+                      "assetHashes": [],
+                      "definition": {
+                        "author": "LemmingsJS-MIDI contributors",
+                        "causalBindings": {
+                          "futureOnly": true
+                        },
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "id": "future-foundry",
+                        "macros": {
+                          "futureOnly": [
+                            "opaque",
+                            99
+                          ]
+                        },
+                        "midiFallback": null,
+                        "mix": {
+                          "gain01": 0.6,
+                          "pan01": 0
+                        },
+                        "modulations": [],
+                        "name": "Opaque future instrument",
+                        "parameters": {
+                          "attackSeconds": 0.04,
+                          "decaySeconds": 0.08,
+                          "gain01": 0.55,
+                          "pan01": 0,
+                          "releaseSeconds": 0.08,
+                          "sustain01": 0.6,
+                          "waveform": 1
+                        },
+                        "revision": 99,
+                        "sampleRefs": [],
+                        "schemaVersion": 99,
+                        "tags": [
+                          "oscillator",
+                          "physical-facts"
+                        ],
+                        "voicePolicy": {
+                          "maxVoices": 16,
+                          "steal": "reject"
+                        },
+                        "variation": {
+                          "futureOnly": true
+                        }
+                      },
+                      "definitionHash": "a8d089bb60b139bbe9bf5707f9d68c1b19f3cad52255de97ea5b2d03464c397f",
+                      "engineRequirement": {
+                        "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995",
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "parameterSchemaHash": "c8af0534f2214d3a4e05a1f2415f5c47cd47288361c80aaee88d08cdfa3ac8f7"
+                      },
+                      "packHash": "05349b179a93c198dc03de33bf1030bdd3fc248859f72fe221828a6878d2ef8a",
+                      "patchId": "future-foundry",
+                      "revision": 99,
+                      "schema": "lemmings-sound-reference/v1"
+                    },
+                    "supportedHash": "860b67b6a803768f242fe84e3f6531202e1bf25ffb003a6aeb2816be747c1d33",
+                    "importedSourceUnchanged": true,
+                    "sourceRealm": "d7dbc6de-66a8-4c2c-82fb-e1c05db61829"
+                  },
+                  "restored": {
+                    "reference": {
+                      "assetHashes": [],
+                      "definition": {
+                        "author": "LemmingsJS-MIDI contributors",
+                        "causalBindings": {
+                          "futureOnly": true
+                        },
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "id": "future-foundry",
+                        "macros": {
+                          "futureOnly": [
+                            "opaque",
+                            99
+                          ]
+                        },
+                        "midiFallback": null,
+                        "mix": {
+                          "gain01": 0.6,
+                          "pan01": 0
+                        },
+                        "modulations": [],
+                        "name": "Opaque future instrument",
+                        "parameters": {
+                          "attackSeconds": 0.04,
+                          "decaySeconds": 0.08,
+                          "gain01": 0.55,
+                          "pan01": 0,
+                          "releaseSeconds": 0.08,
+                          "sustain01": 0.6,
+                          "waveform": 1
+                        },
+                        "revision": 99,
+                        "sampleRefs": [],
+                        "schemaVersion": 99,
+                        "tags": [
+                          "oscillator",
+                          "physical-facts"
+                        ],
+                        "variation": {
+                          "futureOnly": true
+                        },
+                        "voicePolicy": {
+                          "maxVoices": 16,
+                          "steal": "reject"
+                        }
+                      },
+                      "definitionHash": "a8d089bb60b139bbe9bf5707f9d68c1b19f3cad52255de97ea5b2d03464c397f",
+                      "engineRequirement": {
+                        "artifactHash": "5dc64433047979feba3ab80193cd856a10fe97b34afe5d7d76db7d1c92dc2995",
+                        "engineId": "native-oscillator",
+                        "engineVersion": 1,
+                        "parameterSchemaHash": "c8af0534f2214d3a4e05a1f2415f5c47cd47288361c80aaee88d08cdfa3ac8f7"
+                      },
+                      "packHash": "05349b179a93c198dc03de33bf1030bdd3fc248859f72fe221828a6878d2ef8a",
+                      "patchId": "future-foundry",
+                      "revision": 99,
+                      "schema": "lemmings-sound-reference/v1"
+                    },
+                    "revision": 1,
+                    "realm": "afff0863-8fef-4485-8c51-2bf29b82d7b3",
+                    "audioContexts": 0,
+                    "midiRequests": 0,
+                    "output": {
+                      "status": "off",
+                      "message": "Browser preview is off.",
+                      "enabled": false,
+                      "audio": {
+                        "status": "idle",
+                        "message": "Browser preview is off.",
+                        "enabled": false,
+                        "performanceLease": {
+                          "protocol": "lemmings-performance/v1",
+                          "applicationScope": "lemmingsjs-midi:performance:v1:default",
+                          "clientId": "4dc60540f9438e4c7a6e8620def00342",
+                          "leaseEpoch": 0,
+                          "status": "idle",
+                          "reason": null,
+                          "exclusive": false,
+                          "coordination": "web-locks",
+                          "heldResourceScopes": [],
+                          "roles": [],
+                          "activeDocumentIdentities": [],
+                          "otherOwner": null,
+                          "pendingRequests": 0,
+                          "disposed": false
+                        },
+                        "contextEpoch": 0,
+                        "contextState": "not-created",
+                        "resourceAccounting": {
+                          "enabled": true,
+                          "reservations": 1,
+                          "exactBytes": 0,
+                          "estimatedBytes": 4096,
+                          "peakDeclaredBytes": 4096,
+                          "denials": 0,
+                          "maxReservations": 512,
+                          "consumerOwnedReservations": 1,
+                          "unreconciledReservations": 0,
+                          "browserResidentBytes": null,
+                          "evidenceClass": "declared-storage-and-native-estimates"
+                        },
+                        "retirement": null,
+                        "retiredVoices": 0,
+                        "unclosedContext": false,
+                        "activeVoices": 0,
+                        "sharedMix": true,
+                        "sessionCount": 1,
+                        "instrumentBackends": 1,
+                        "maxInstrumentBackends": 20,
+                        "maxVoices": 32,
+                        "maxScheduledVoices": 96,
+                        "workload": {
+                          "liveCostUnits": 32,
+                          "cueCostUnits": 16,
+                          "aggregateCostUnits": 48,
+                          "liveVoices": 32,
+                          "cueVoices": 4,
+                          "aggregateVoices": 36,
+                          "liveSourceReservations": 64,
+                          "cueSourceReservations": 32,
+                          "cueCanStealLive": false
+                        },
+                        "monitorRoute": {
+                          "state": "muted",
+                          "mode": "muted",
+                          "muted": true,
+                          "revision": 0,
+                          "cueIncludedInMasterCapture": false,
+                          "physicalSeparation": "not-claimed",
+                          "cueGain": 0.5,
+                          "message": "Choose an explicit prelisten route."
+                        },
+                        "audition": {
+                          "foreground": null,
+                          "active": false,
+                          "acceptedSources": 0,
+                          "maxSources": 2,
+                          "unresolvedOwnership": false,
+                          "disposed": false
+                        },
+                        "voiceSteals": 0,
+                        "voiceDrops": 0,
+                        "mixCompression": false,
+                        "mixLatencyMs": 0,
+                        "mixMakeupCompensation": 1,
+                        "mixReductionDb": 0,
+                        "pendingNotes": 0,
+                        "masterVolume": 0.7
+                      },
+                      "selectedBackend": "synth",
+                      "backend": "no-active-output",
+                      "outputId": null,
+                      "outputName": null,
+                      "outputGeneration": 0,
+                      "activeNotes": 0,
+                      "pendingNotes": 0,
+                      "pressure": {
+                        "throttled": false,
+                        "dropped": 0,
+                        "reason": null,
+                        "messages": 0,
+                        "bytes": 0,
+                        "maxBytes": 3906,
+                        "budgetProfile": null,
+                        "sharedLink": null,
+                        "historyAggregations": 0,
+                        "historyDetail": "messages",
+                        "lastReservationIssue": null,
+                        "maxMessages": 900,
+                        "laneCount": 1,
+                        "pendingNotes": 0,
+                        "oldestDeadline": null
+                      }
+                    },
+                    "transport": {
+                      "version": 1,
+                      "playing": false,
+                      "timestamp": 2767.399999976158,
+                      "beat": 0.23940000003576278,
+                      "bpm": 360,
+                      "baseBpm": 120,
+                      "gameSpeed": 3,
+                      "speedMode": "game",
+                      "linked": true,
+                      "clockSource": "internal",
+                      "nominalSpeed": 3,
+                      "effectiveSpeed": 0,
+                      "tempoLocked": false,
+                      "clockStatus": "stopped",
+                      "reason": "paused",
+                      "lastDiscontinuity": null
+                    }
+                  },
+                  "document": {
+                    "id": "doc:991a4921-f22d-40ef-8104-742e9ebfc31f",
+                    "revision": 1,
+                    "editRevision": 2,
+                    "savedRevision": 2,
+                    "dirty": false,
+                    "savedAt": "2026-10-30T03:26:19.004Z"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "legacy physical conversion reports discarded steps once and preserves the imported source through native reopen @boundary",
+            "file": "procgen-workstation-instrument-compatibility.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "explicit-one-time-physical-conversion",
+                "value": {
+                  "canceled": {
+                    "canceled": true,
+                    "unchanged": true
+                  },
+                  "accepted": {
+                    "version": 2,
+                    "lanes": 2,
+                    "removedSteps": 2,
+                    "originalUnchanged": true,
+                    "reopened": true
+                  },
+                  "messages": [
+                    "Convert this legacy project to physical playback? 2 enabled phrase steps will be removed across 2 lanes. Physical mappings replace the old event-advanced phrases. Unpinned local sounds use supported native aliases; external MIDI routing is retained. The imported source will not be overwritten.",
+                    "Convert this legacy project to physical playback? 2 enabled phrase steps will be removed across 2 lanes. Physical mappings replace the old event-advanced phrases. Unpinned local sounds use supported native aliases; external MIDI routing is retained. The imported source will not be overwritten."
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "custom legacy definitions refuse conversion with named fields and preserve the live desktop document @boundary",
+            "file": "procgen-workstation-instrument-compatibility.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "custom-legacy-definition-refusal",
+                "value": {
+                  "failure": {
+                    "code": "legacy-instrument-review-required",
+                    "message": "Lane 1 has unsupported legacy instrument fields: family, patch, patchDefinition. Keep the original project and choose a supported sound alias or pinned instrument reference explicitly.",
+                    "laneId": "lane-1",
+                    "fields": [
+                      "family",
+                      "patch",
+                      "patchDefinition"
+                    ]
+                  },
+                  "originalUnchanged": true,
+                  "liveUnchanged": true,
+                  "source": {
+                    "schemaVersion": 2,
+                    "id": "my-body",
+                    "revision": 7,
+                    "parameters": {
+                      "shape": "original"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "title": "built sound library keeps world/project state unchanged through staging, audition and installation, then applies a pinned revision",
+            "file": "sound-content-workstation.spec.js",
+            "status": "passed",
+            "receipts": []
+          }
+        ],
+        "scope": "Actual immutable app/production CSS and IndexedDB: future99 opaque visible save/fresh-realm reopen/export; explicit normal conversion cancel/accept/native reopen; custom inline definition refused with named fields and identical live document/world/source; six actual sound choices preserve1000tick physics/fact trace; real stage/audition/install/Apply. No mobile or new acoustic/device qualification."
+      },
+      "coverage": {
+        "js/app/procgen/workstation/ProcgenWorkstationProject.js": {
+          "lines": 85.32,
+          "functions": 89.47,
+          "branches": 75.88
+        }
+      },
+      "coverageFollowup": "Extend source-policy/physical fragment and junction reducers, trust-identity fast paths and numeric fallback/parameter boundary branches outside the newly qualified conversion scenarios. Full project module coverage is85.32%lines/89.47%functions/75.88%branches, not100%.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 362,
+        "workerFiles": 293,
+        "workerSha256": "f622276191bd6cc3995453126477f93be38495b151de1929ab09bf8483e9a314",
+        "note": "Changed project/controller code is outside the named worker component; no fabricated component hash refresh."
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook388-legacy-inline-counterexample.json",
+          "bytes": 761,
+          "sha256": "7a155781aba26dd1243d2a7f2a90609079e50481d177b86e9ffe506e044b7f2b"
+        },
+        {
+          "path": ".tmp/rook388-node-final.log",
+          "bytes": 17426,
+          "sha256": "0c68b82a27a4cbc031d6cf9f085bc7c8565869c5e6daccef7c6988220bf4b4d0"
+        },
+        {
+          "path": ".tmp/rook388-playwright-final.json",
+          "bytes": 21333,
+          "sha256": "8163a1f77b526bc28866ba9ff066e27013d16bff6b63ce09831b1fb90c6e67a5"
+        },
+        {
+          "path": ".tmp/rook388-format-final.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook388-checks.log",
+          "bytes": 4411,
+          "sha256": "f411b87d12e02fd6ce98a013448e43b794bc35336dde273a0ab22868bc5432f5"
+        },
+        {
+          "path": ".tmp/rook388-coverage/coverage-summary.json",
+          "bytes": 702,
+          "sha256": "0ee41a3d3c0eb68022bc96ef085b3898ec398549f824bbba4b968fd2a90df202"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "e2e/procgen-workstation-instrument-compatibility.spec.js",
+        "bytes": 12970,
+        "sha256": "16d4285400e56a18a483c133e6e6f06ccebcd8eea64aaedf3159b25e1fb365e0"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+        "bytes": 225373,
+        "sha256": "918b4ef94b5ac27595ac3bf96dfdfb12d72344297e8d7e53fee45f987abd2431"
+      },
+      {
+        "path": "js/app/procgen/workstation/ProcgenWorkstationProject.js",
+        "bytes": 28202,
+        "sha256": "e6e15caab024dd920ebc9800aca7a450354add6baf782abfbe8c9f5f559ce3d5"
+      },
+      {
+        "path": "test/midi/sound-content-reference.test.js",
+        "bytes": 5695,
+        "sha256": "c56fe9ac6177147c1b1eaf1b2044dc318ee47dbc3b85fc0cd872cfe9483276ed"
+      },
+      {
+        "path": "test/procgen-physical-project.test.js",
+        "bytes": 8267,
+        "sha256": "b8dbad7563ca82361e21a93583267ce9797c3c3e9168f7781d3be60329a1e39b"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "77e057faed133c8de6e5fe63b8801428dcad2be9",
+      "status": "success",
+      "run": 40988065349,
+      "job": 123843636277,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40988065349",
+      "engineJob": 123843636584,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7236,
+      "nodePending": 10,
+      "browserPassed": 273,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 229,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.78,
+        "statements": 90.78,
+        "branches": 83.98,
+        "functions": 88.65
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 30673,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 9866,
+          "benchHistoryStress": 16305,
+          "benchHotpaths": 4498
+        },
+        "metrics": {
+          "perfP95Frame": 83.30000000000018,
+          "perfP50Tps": 105.41890142408897,
+          "historyRatio": 0.5858333333333333,
+          "antsAvgMs": 12.38,
+          "tileCompositionAvgMs": 2.69,
+          "overlayPlaneAvgMs": 9.56,
+          "scaledBlitAvgMs": 16.64
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.5858333333333333
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0851666666666666
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1260,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "556ebe80acdfb53ff4a40467d483509fd8bcaf4c26c2373f5973c9cd0b799538",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123843636522,
+        "windowsJob": 123843636553,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "3cfa3e5c8245cb83e733cec4e9b367322c1f7c1c",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1149,
+        "inventorySha256": "68b0e50a3631a7a3d9fcdb58fb8587cea350af0068488ad47bd2baaf766a4d9b",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1260,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci383-main.zip",
+          "bytes": 764464,
+          "sha256": "20d1b450fc2e01aa9ef9e5900f060ff14c04843eb5b490c728ec7323f9fdb324"
+        },
+        {
+          "path": ".tmp/ci383-engine.zip",
+          "bytes": 159330,
+          "sha256": "05ffc9185e9e9cc5b1a245ca5565f1fe5a89bbd41ef2afe02ff384170db021e5"
+        },
+        {
+          "path": ".tmp/ci383-linux.zip",
+          "bytes": 2247,
+          "sha256": "752ab3a30a3d55c1297de6eeba338cba32f6549d5a3f74e37a57666947c91416"
+        },
+        {
+          "path": ".tmp/ci383-windows.zip",
+          "bytes": 2147,
+          "sha256": "b33e83acfd1f5a0ce1e236f4c9e4b8248be08e5e6a32400f3fd24ecd26f31edf"
+        },
+        {
+          "path": ".tmp/ci383-main-workstation-result-qualification.json",
+          "bytes": 185607,
+          "sha256": "e80f5fc3e8a6983cc445d1147266fd11dff06f0ad7cd87532891c8ac724af923"
+        },
+        {
+          "path": ".tmp/ci383-engine-lifecycle-engine-qualification.json",
+          "bytes": 244934,
+          "sha256": "de7aba37cb1efc0a70cb8b64c3d933489fcf27c2656b8e22b11a4ad006be46fe"
+        },
+        {
+          "path": ".tmp/ci383-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "e51aeaec592dc4264a30dc8d66ff47cad3e2ee0ecf5dc3006dec63764ce27083"
+        },
+        {
+          "path": ".tmp/ci383-windows-native-midi-codec-qualification.json",
+          "bytes": 7748,
+          "sha256": "92cc02cde62d924ac33b280f9050dc265c6a0afd8ad5cedacb720ab91a48ddac"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "issue969": "Ready to close with387current/future readonly/save/reopen/registry/control-schema qualification and388explicit custom legacy rejection/loss/routing outcomes. Engine/render/listening quality and other sound family features remain separate owners."
   }
 }
