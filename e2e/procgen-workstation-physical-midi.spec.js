@@ -6,8 +6,121 @@ import installSmf from 'jzz-midi-smf';
 import { buildBrowserRuntime } from '../scripts/BrowserRuntimeBuild.js';
 import { revealWorkstationControl } from './helpers/workstationChrome.js';
 import { parseSmf } from '../test/support/smf.js';
+import { installWebMidiStub } from './helpers/webmidiStub.js';
+import { armActualPhysicalClock, finishActualPhysicalClock, downloadActualPhysicalMidi, assertCapturedClockMidi } from './helpers/physicalMidiClock.js';
 installSmf(JZZ);
 test.beforeAll(async () => { await buildBrowserRuntime({ rootDir: fileURLToPath(new URL('../', import.meta.url)) }); });
+
+test('native physical MIDI retains captured tempo and speed changes, nominal Step and closed tick crops @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(180000); const armed = await armActualPhysicalClock(page, { action: true });
+  await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__;
+    studio.play(); api.pause(); api.step(24);
+    studio.handlers.transport({ bpm: 175, speedMode: 'bpm', linked: true }); api.pause(); api.step(24); studio.transport.pause(); api.pause();
+  });
+  const pausedTick = await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex); await page.waitForTimeout(120);
+  expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(pausedTick);
+  await page.locator('#procgenStep').click(); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(pausedTick + 1);
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.handlers.transport({ bpm: 93, speedMode: 'game', linked: false, gameSpeed: 5 }); studio.play(); api.pause(); api.step(47); });
+  const actual = await finishActualPhysicalClock(page, armed.takeId), full = await downloadActualPhysicalMidi(page), checked = assertCapturedClockMidi(actual, full);
+  expect(new Set(actual.clock.timeline.epochs[0].segments.map(segment => segment.tickDurationMs)).size).toBeGreaterThanOrEqual(3);
+  expect(actual.batches.find(batch => batch.tick === pausedTick + 1).tickDurationMs).toBeCloseTo(60 / (175 / 120), 8);
+  const active = new Set(); let start = null;
+  for (let index = 0; index < actual.intents.length - 1; index++) {
+    const intent = actual.intents[index]; if (intent.kind === 'begin') active.add(intent.voiceId); else if (intent.kind === 'end') active.delete(intent.voiceId);
+    if (!active.size && actual.intents[index + 1].scoreTime.simTick > intent.scoreTime.simTick + 1) { start = intent.scoreTime.simTick + 1; break; }
+  }
+  expect(start).not.toBeNull();
+  expect(actual.intents.some(intent => intent.kind === 'begin' && intent.scoreTime.simTick > start)).toBe(true);
+  const crop = page.getByRole('checkbox', { name: 'Crop physical take MIDI', includeHidden: true }); await revealWorkstationControl(page, crop); await crop.check();
+  await page.getByRole('spinbutton', { name: 'Physical MIDI crop start tick', exact: true }).fill(String(start));
+  await page.getByRole('spinbutton', { name: 'Physical MIDI crop end tick', exact: true }).fill(String(actual.tick));
+  const cropped = await downloadActualPhysicalMidi(page), checkedCrop = assertCapturedClockMidi(actual, cropped);
+  expect(cropped.filename).toContain('-ticks-' + start + '-' + actual.tick); expect(cropped.manifest.cropSelection.excludedIntents).toBeGreaterThan(0);
+  const previous = await page.evaluate(() => window.__PROCGEN_STUDIO__.getExportState().artifact.artifactId), crossing = actual.intents.find(intent => intent.kind === 'begin' && intent.mappingId === 'clock-held-walk');
+  expect(crossing).toBeTruthy(); expect(actual.intents.find(intent => intent.kind === 'end' && intent.voiceId === crossing.voiceId).scoreTime.simTick).toBeGreaterThan(crossing.scoreTime.simTick + 1);
+  await revealWorkstationControl(page, crop); await page.getByRole('spinbutton', { name: 'Physical MIDI crop start tick', exact: true }).fill(String(crossing.scoreTime.simTick + 1));
+  const invalid = page.getByRole('button', { name: 'Physical take MIDI1', exact: true, includeHidden: true }); await revealWorkstationControl(page, invalid); await invalid.click();
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.getExportState().preparation)).toBeNull();
+  const after = await page.evaluate(() => ({ artifact: window.__PROCGEN_STUDIO__.getExportState().artifact.artifactId, project: JSON.stringify(window.__PROCGEN_STUDIO__.getProject()), tick: window.__PROCGEN_LANES__.world.tickIndex }));
+  expect(after.artifact).toBe(previous); expect(after.project).toBe(actual.project); expect(after.tick).toBe(actual.tick);
+  await testInfo.attach('actual-physical-midi-clock-crop', { body: JSON.stringify({ actual, full: checked, cropped: checkedCrop, rejectedCrossingPreserved: after, scope: 'Ordinary unposed actors; native nominal Step and crop controls; public transport changes with controlled actual tick batches; native IndexedDB reopen and dedicated export worker; independent SMF reader. No external receiver or hardware.' }), contentType: 'application/json' });
+});
+
+test('native physical MIDI preserves distinct source intervals through a controlled 200ms catch-up wake @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(120000); const armed = await armActualPhysicalClock(page, { speed: 10 });
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.play(); window.__PROCGEN_LANES__.resume(); });
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBeGreaterThanOrEqual(48);
+  const gap = await page.evaluate(() => { const started = performance.now(), before = window.__PROCGEN_LANES__.world.tickIndex; while (performance.now() - started < 200) { /* Controlled host task stall. */ } return { requestedMs: 200, observedMs: performance.now() - started, tickBefore: before, tickAfterTask: window.__PROCGEN_LANES__.world.tickIndex }; });
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBeGreaterThanOrEqual(96);
+  const actual = await finishActualPhysicalClock(page, armed.takeId), file = await downloadActualPhysicalMidi(page), checked = assertCapturedClockMidi(actual, file);
+  const groups = new Map(); for (const batch of actual.batches) { const group = groups.get(batch.hostEventTimeMs) || []; group.push(batch); groups.set(batch.hostEventTimeMs, group); }
+  const catchUp = [...groups.values()].filter(group => group.length > 1).sort((a, b) => b.length - a.length)[0];
+  expect(gap.tickAfterTask).toBe(gap.tickBefore); expect(catchUp?.length).toBeGreaterThan(1);
+  expect(new Set(catchUp.map(batch => batch.sourceTimeMs)).size).toBe(catchUp.length);
+  expect(file.manifest.timing.quantization.collapsedDistinctTimes).toBe(0);
+  await testInfo.attach('actual-physical-midi-catch-up', { body: JSON.stringify({ actual, gap, catchUp, file: checked, scope: 'Actual desktop timing driver and runtime pump after one controlled200ms main-thread stall; shared host wake retains distinct committed tick score times. Not OS background/suspension or listening qualification.' }), contentType: 'application/json' });
+});
+
+test('native physical MIDI excludes a controlled 500ms suspended host gap and requires explicit resume @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(120000); const armed = await armActualPhysicalClock(page);
+  await page.evaluate(() => { window.__PROCGEN_STUDIO__.play(); window.__PROCGEN_LANES__.resume(); });
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBeGreaterThanOrEqual(24);
+  const gap = await page.evaluate(() => { const started = performance.now(), before = window.__PROCGEN_LANES__.world.tickIndex; while (performance.now() - started < 500) { /* Controlled host task suspension. */ } return { requestedMs: 500, observedMs: performance.now() - started, tickBefore: before }; });
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().reason)).toBe('suspended');
+  const halted = await page.evaluate(() => ({ state: window.__PROCGEN_STUDIO__.transport.getState(), tick: window.__PROCGEN_LANES__.world.tickIndex }));
+  await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(halted.tick); expect(halted.tick).toBe(gap.tickBefore); expect(halted.state.lastDiscontinuity.source).toBe('host-wake-gap');
+  await page.locator('#procgenPause').click();
+  await page.evaluate(() => { const api = window.__PROCGEN_LANES__; api.pause(); api.step(Math.max(1, 96 - api.world.tickIndex)); });
+  const actual = await finishActualPhysicalClock(page, armed.takeId), file = await downloadActualPhysicalMidi(page), checked = assertCapturedClockMidi(actual, file);
+  expect(actual.inputs.some(input => input.payload.kind === 'transport-state' && input.payload.playing === false)).toBe(true);
+  await testInfo.attach('actual-physical-midi-suspended-gap', { body: JSON.stringify({ actual, gap, halted, file: checked, scope: 'Controlled500ms main-thread host gap through the actual transport driver; stops before physics catch-up and resumes through native Play world. Source-score export excludes unadvanced wall time. No OS sleep/background claim.' }), contentType: 'application/json' });
+});
+
+test('native physical MIDI preserves external clock stop, loss and Continue boundaries without stale physical catch-up @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(150000); await installWebMidiStub(page); const armed = await armActualPhysicalClock(page, { external: true });
+  const locked = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__, midi = window.__WEBMIDI_STUB__;
+    midi.sendInput([0xfb]); api.resume();
+    for (let index = 0; index < 16; index++) { midi.sendInput([0xf8]); await new Promise(resolve => setTimeout(resolve, 20)); }
+    return { state: studio.transport.getState(), tick: api.world.tickIndex };
+  });
+  expect(locked.state.clockStatus).toBe('locked'); expect(locked.tick).toBeGreaterThan(armed.tick);
+  await expect.poll(() => page.evaluate(() => window.__PROCGEN_STUDIO__.transport.getState().reason), { timeout: 5000 }).toBe('clock-lost');
+  const lost = await page.evaluate(() => ({ state: window.__PROCGEN_STUDIO__.transport.getState(), tick: window.__PROCGEN_LANES__.world.tickIndex }));
+  await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(lost.tick);
+  const resumed = await page.evaluate(async () => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__, midi = window.__WEBMIDI_STUB__; midi.sendInput([0xfb]); api.resume();
+    for (let index = 0; index < 16; index++) { midi.sendInput([0xf8]); await new Promise(resolve => setTimeout(resolve, 24)); }
+    midi.sendInput([0xfc]); return { state: studio.transport.getState(), tick: api.world.tickIndex };
+  });
+  expect(resumed.state.playing).toBe(false); expect(resumed.tick).toBeGreaterThan(lost.tick);
+  await page.waitForTimeout(100); expect(await page.evaluate(() => window.__PROCGEN_LANES__.world.tickIndex)).toBe(resumed.tick);
+  await page.evaluate(() => { const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.handlers.transport({ clockSource: 'internal', bpm: 83 }); studio.play(); api.pause(); api.step(Math.max(1, 96 - api.world.tickIndex)); });
+  const actual = await finishActualPhysicalClock(page, armed.takeId), file = await downloadActualPhysicalMidi(page), checked = assertCapturedClockMidi(actual, file);
+  expect(actual.clock.timeline.epochs[0].segments.length).toBeGreaterThan(2);
+  await testInfo.attach('actual-physical-midi-external-clock', { body: JSON.stringify({ actual, locked, lost, resumed, file: checked, scope: 'Controlled WebMIDI input port timestamps through actual MIDI parser/transport, native runtime, journal and dedicated export worker. Clock input is a declared stub; no physical MIDI device/receiver or listening claim.' }), contentType: 'application/json' });
+});
+
+test('native actual cohort generation transition exports separate captured MIDI epochs and reopens its source @boundary', async ({ page }, testInfo) => {
+  test.setTimeout(180000); const armed = await armActualPhysicalClock(page, { generationFixture: true });
+  const transition = await page.evaluate(() => {
+    const studio = window.__PROCGEN_STUDIO__, api = window.__PROCGEN_LANES__; studio.play(); api.pause();
+    const initial = api.world.generation; let steps = 0;
+    while (api.world.generation === initial && steps < 384) { api.step(); steps++; }
+    if (api.world.generation === initial) throw new Error('Natural bounded cohort cascade did not restart: ' + JSON.stringify(api.world.stall.snapshot(api.world.tickIndex)));
+    const boundaryTick = api.world.tickIndex; api.step(96);
+    return { initial, next: api.world.generation, boundaryTick, steps, sourceSetup: 'Controlled pre-take collision wall and declared stall thresholds; ordinary spawning, actions, cascade and restart; no actor posing or injected physical/semantic events.' };
+  });
+  const actual = await finishActualPhysicalClock(page, armed.takeId); expect(actual.batches.some(batch => batch.terminalGenerationTransition?.to === armed.generation + 1)).toBe(true);
+  expect(actual.clock.timeline.epochs.length).toBeGreaterThanOrEqual(2);
+  const first = assertCapturedClockMidi(actual, await downloadActualPhysicalMidi(page, { epochOrdinal: 1 })), second = assertCapturedClockMidi(actual, await downloadActualPhysicalMidi(page, { epochOrdinal: 2 }));
+  expect(first.manifest.epochSelection.ordinal).toBe(1); expect(second.manifest.epochSelection.ordinal).toBe(2);
+  expect(second.manifest.timing.origin.simTick).toBe(transition.boundaryTick); expect(second.manifest.timing.origin.beat).toBe(0);
+  const replay = await page.evaluate(async () => { const studio = window.__PROCGEN_STUDIO__, world = window.__PROCGEN_LANES__.world, result = await studio.handlers.compareCausalTake(); return { receipt: result?.receipt || null, worldUnchanged: window.__PROCGEN_LANES__.world === world }; });
+  expect(replay.receipt?.compatibilityMatch, JSON.stringify(replay.receipt)).toBe(true); expect(replay.worldUnchanged).toBe(true);
+  await testInfo.attach('actual-generation-midi-epochs', { body: JSON.stringify({ actual, transition, files: [first, second], replay, scope: 'Native actual controlled-score cohort cascade and generation boundary, IndexedDB reopen, per-epoch chooser and dedicated export worker, independent SMF parsing and current-runtime compatibility comparison. No manually injected epochs, posed actors, exact-qualified or hardware claim.' }), contentType: 'application/json' });
+});
 
 test('native physical take MIDI revoice uses recorded clocks and independent melodic channels without live output @boundary', async ({ page }, testInfo) => {
   test.setTimeout(120000);

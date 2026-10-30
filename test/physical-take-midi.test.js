@@ -110,7 +110,30 @@ describe('captured physical take MIDI1 projection', () => {
       const f = fixture(); change(f.revoice); await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls));
     }
     const f = fixture(); f.revoice.intents.splice(-1); f.revoice.intentCount--; await reject(encodePhysicalTakeMidi({ revoice: f.revoice }, controls), 'open voices');
-    await reject(encodePhysicalTakeMidi({ revoice: fixture().revoice, options: { origin: { epoch: fixture().clock.snapshot().timeline.currentEpoch, simTick: 11 } } }, controls), 'inside the declared crop');
+    await reject(encodePhysicalTakeMidi({ revoice: fixture().revoice, options: { origin: { epoch: fixture().clock.snapshot().timeline.currentEpoch, simTick: 11 } } }, controls), 'crop origin');
+  });
+  it('exports only complete lifetimes inside an inclusive closed crop and retains its selected silence', async () => {
+    const f = fixture(), epoch = f.clock.snapshot().timeline.currentEpoch;
+    const result = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin: { epoch, simTick: 9 }, end: { epoch, simTick: 19 } } }, controls);
+    expect(result.manifest.cropSelection).to.deep.equal({ selectedIntents: 7, excludedIntents: 0, boundaryPolicy: 'inclusive-closed-no-crossing-notes' });
+    expect(result.manifest.timing.origin.simTick).to.equal(9); expect(result.manifest.timing.end.simTick).to.equal(19);
+    const empty = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin: { epoch, simTick: 19 }, end: { epoch, simTick: 28 } } }, controls);
+    expect(empty.manifest.cropSelection).to.include({ selectedIntents: 0, excludedIntents: 7 });
+    const rows = parseSmf(empty.bytes); expect(rows.some(row => [0x80, 0x90].includes(row.status & 0xf0))).to.equal(false); expect(rows.at(-1).tick).to.equal(empty.manifest.timing.endTick); expect(rows.at(-1).tick).to.be.greaterThan(0);
+    f.revoice.intents.push(f.intent('begin', 22, 'D'), f.intent('end', 24, 'D')); f.revoice.intentCount += 2;
+    const later = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin: { epoch, simTick: 21 }, end: { epoch, simTick: 25 } } }, controls);
+    expect(later.manifest.cropSelection).to.include({ selectedIntents: 2, excludedIntents: 7 }); expect(later.manifest.lowering.begins).to.equal(1);
+  });
+  it('refuses crossing, outside, foreign and reversed crops without reconstructing a note at a cut', async () => {
+    const f = fixture(), epoch = f.clock.snapshot().timeline.currentEpoch;
+    for (const [start, end] of [[11, 20], [11, 12], [0, 13], [0, 17], [19, 31], [25, 20], [-1, 20]]) {
+      await reject(encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin: { epoch, simTick: start }, end: { epoch, simTick: end } } }, controls));
+    }
+    for (const origin of [{ epoch: 'foreign', simTick: 19 }, { epoch, simTick: 19, subTick: -1 }, { epoch, simTick: 19, beat: 999 }]) {
+      await reject(encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin } }, controls));
+    }
+    const exact = await encodePhysicalTakeMidi({ revoice: f.revoice, options: { origin: { epoch, simTick: 10 }, end: { epoch, simTick: 18 } } }, controls);
+    expect(exact.manifest.lowering).to.include({ begins: 3, ends: 3 });
   });
   it('cancels between bounded lowering slices without a published byte file', async () => {
     const f = fixture(), intents = [];

@@ -1378,8 +1378,10 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     } catch (error) { if (!isCurrent()) return null; throw error; }
     finally { computed?.release(); if (midiExportPreparation === pending) { midiExportPreparation = null; publishExportState(); } }
   };
-  const preparePhysicalTakeMidi = async ({ program = 0, bendRangeSemitones = 2, epoch = null } = {}) => {
+  const preparePhysicalTakeMidi = async ({ program = 0, bendRangeSemitones = 2, epoch = null, originTick = null, endTick = null } = {}) => {
     if (!Number.isInteger(program) || program < 0 || program > 127 || ![2, 12, 24, 48, 96].includes(bendRangeSemitones)) throw new RangeError('Choose a valid MIDI target program and pitch-bend range.');
+    const cropped = originTick != null || endTick != null;
+    if (cropped && (!Number.isSafeInteger(originTick) || originTick < 0 || !Number.isSafeInteger(endTick) || endTick < originTick)) throw new RangeError('Choose both captured crop ticks, with the end at or after the start.');
     if (causalTake || causalTakeStart || causalTakeStop) throw new Error('Finish the physical take before preparing its MIDI revoice.');
     const takeId = selectedCausalTakeId || lastCausalTake?.takeId;
     if (!takeId) throw new Error('Select a finished physical take first.');
@@ -1404,14 +1406,16 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
         if (!Number.isSafeInteger(index) || index < 0 || index >= epochs.length) throw new Error('The selected captured clock epoch is unavailable.');
         epoch = epochs[index].epoch;
       }
+      const selectedEpoch = epoch ?? epochs[0].epoch;
       const intentCount = source.value.intents.length;
       computed = await backgroundJobs.compute({ kind: 'encode-physical-take-midi', ownerId: 'procgen-midi-export', ownerEpoch: generation, sourceRevision: source.value.sourceCanonicalHash,
         inputBytes: 4 * 1048576 + 65536, estimatedPeakBytes: 32 * 1048576 + intentCount * 8192, signal: controller.signal, budgetAdapter: resourceBudget, isCurrent,
-        prepareInput: () => ({ revoice: source.value, options: { program, bendRangeSemitones, ...(epoch == null ? {} : { epoch }) } }),
+        prepareInput: () => ({ revoice: source.value, options: { program, bendRangeSemitones, ...(epoch == null ? {} : { epoch }),
+          ...(cropped ? { origin: { epoch: selectedEpoch, simTick: originTick }, end: { epoch: selectedEpoch, simTick: endTick } } : {}) } }),
         onProgress: progress => { if (isCurrent()) { Object.assign(pending, progress); publishExportState(); } } });
       if (!isCurrent()) return null;
       const { bytes, manifest } = computed.value;
-      const artifact = prepareDownload({ bytes, filename: 'physical-take-revoice' + (manifest.epochSelection.available > 1 ? '-epoch-' + manifest.epochSelection.ordinal : '') + (manifest.sourceComplete ? '' : '-partial') + '.mid', type: 'audio/midi',
+      const artifact = prepareDownload({ bytes, filename: 'physical-take-revoice' + (manifest.epochSelection.available > 1 ? '-epoch-' + manifest.epochSelection.ordinal : '') + (cropped ? '-ticks-' + originTick + '-' + endTick : '') + (manifest.sourceComplete ? '' : '-partial') + '.mid', type: 'audio/midi',
         sourceRef: `causal-take:${takeId}:${manifest.takeRevision}:${manifest.sourceCanonicalHash}`, formatVersion: 'physical-take-midi1/v1', lossRef: 'embedded-physical-midi-lowering-manifest' });
       lastMidiExportReceipt = Object.freeze({ artifactId: artifact.artifactId, receipt: computed.receipt });
       if (deliverPrepared()?.state === 'delivery-requested') status('Physical take MIDI1 revoice download requested. Captured timing is preserved; timbre is replaced by program' + (program + 1) + ', with fifteen independent melodic channels. Receiver setup and playback remain unverified.');

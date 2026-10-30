@@ -60,3 +60,29 @@ export async function selectPhysicalMidiEpoch(revoice, requestedEpoch, { signal,
   return { saved, selected, choices, sourceOrdinals,
     origin: { epoch: selected.epoch, simTick: selected.originTick }, end: { epoch: selected.epoch, simTick: selected.endTick } };
 }
+
+export function selectPhysicalMidiCrop(revoice, selection, origin, end) {
+  const clock = createProcgenPhysicalScoreClock(); clock.restore(selection.saved);
+  const mappedOrigin = clock.map(origin), mappedEnd = clock.map(end), epoch = selection.selected;
+  const compare = (a, b) => a.simTick - b.simTick || (a.subTick ?? 0) - (b.subTick ?? 0);
+  if (origin.epoch !== epoch.epoch || end.epoch !== epoch.epoch ||
+      compare(origin, selection.origin) < 0 || compare(end, selection.end) > 0 || compare(end, origin) < 0 ||
+      [origin, end].some((time, index) => time.beat != null && (!Number.isFinite(time.beat) || Math.abs(time.beat - [mappedOrigin, mappedEnd][index].beat) > 1e-10 * Math.max(1, Math.abs(time.beat)))))
+    throw new Error('Physical MIDI crop must be covered by the selected captured clock epoch.');
+  const active = new Set(), sourceOrdinals = [];
+  let entered = false;
+  for (const index of selection.sourceOrdinals) {
+    const intent = revoice.intents[index], time = intent.scoreTime;
+    if (compare(time, origin) >= 0 && !entered) {
+      if (active.size) throw new Error('A semantic note crosses the selected crop origin; no pickup was invented.');
+      entered = true;
+    }
+    if (compare(time, end) > 0) break;
+    const key = JSON.stringify([intent.worldId, intent.generation, intent.voiceId]);
+    if (intent.kind === 'begin') active.add(key);
+    else if (intent.kind === 'end') active.delete(key);
+    if (entered) sourceOrdinals.push(index);
+  }
+  if (active.size) throw new Error('A semantic note crosses the selected crop boundary; no pickup or release was invented.');
+  return { sourceOrdinals, excludedIntents: selection.sourceOrdinals.length - sourceOrdinals.length };
+}

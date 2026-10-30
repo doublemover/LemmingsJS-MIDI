@@ -367,7 +367,16 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
   const physicalMidiChoices = node('fieldset'), physicalMidiProgram = node('input'); physicalMidiChoices.append(node('legend', 'Physical take MIDI1 revoice'));
   physicalMidiProgram.type = 'number'; physicalMidiProgram.min = '1'; physicalMidiProgram.max = '128'; physicalMidiProgram.step = '1'; physicalMidiProgram.value = '1'; physicalMidiProgram.setAttribute('aria-label', 'Physical take MIDI program');
   const physicalMidiLabel = node('label', 'New target program (1–128) '); physicalMidiLabel.append(physicalMidiProgram);
-  physicalMidiChoices.append(physicalMidiLabel, node('p', 'Revoice the selected finished take using captured physical timing and one melodic program. Uses up to fifteen independent channels; timbre and expression resolution change. Select one captured clock epoch with covered, closed note boundaries. Notes crossing an epoch cut refuse export. The file includes a lowering report.'));
+  const physicalMidiCrop = node('input'), physicalMidiOrigin = node('input'), physicalMidiEnd = node('input');
+  physicalMidiCrop.type = 'checkbox'; physicalMidiCrop.setAttribute('aria-label', 'Crop physical take MIDI');
+  const physicalMidiCropLabel = node('label', 'Use captured tick crop '); physicalMidiCropLabel.append(physicalMidiCrop);
+  const physicalMidiCropFields = node('div'); physicalMidiCropFields.append(physicalMidiCropLabel);
+  for (const [input, label] of [[physicalMidiOrigin, 'Physical MIDI crop start tick'], [physicalMidiEnd, 'Physical MIDI crop end tick']]) {
+    input.type = 'number'; input.min = '0'; input.step = '1'; input.disabled = true; input.setAttribute('aria-label', label);
+    const wrapper = node('label', label + ' '); wrapper.append(input); physicalMidiCropFields.append(wrapper);
+  }
+  on(physicalMidiCrop, 'change', () => { physicalMidiOrigin.disabled = physicalMidiEnd.disabled = !physicalMidiCrop.checked; });
+  physicalMidiChoices.append(physicalMidiLabel, physicalMidiCropFields, node('p', 'Revoice the selected finished take using captured physical timing and one melodic program. Uses up to fifteen independent channels; timbre and expression resolution change. Select one captured clock epoch with covered, closed note boundaries. Optional start/end ticks include both boundaries and retain selected silence. Notes crossing either cut refuse export. The file includes a lowering report.'));
   const exportDesk = node('details', null, 'studio-export-desk'); exportDesk.setAttribute('aria-label', 'Prepared export'); exportDesk.hidden = true;
   const exportSummary = node('summary', 'No prepared file');
   const exportDetails = node('output', 'Choose Export or MIDI to prepare a file.', 'studio-export-details');
@@ -418,7 +427,8 @@ function createProcgenWorkstationView({ document, window, resourceBudget = null,
     inMenu('Project', button('Export', () => handlers.export?.())), inMenu('Project', midiExportChoices), inMenu('Project', button('MIDI', () => handlers.exportMidi?.({ sourceLayer: midiExportSource.value, placement: midiExportPlacement.value }), 'Prepare a compatible MIDI1 file from the selected source and timing')),
     inMenu('Project', clipExportChoices), inMenu('Project', button('MIDI2 Clip', () => handlers.exportMidi?.({ format: 'ump', sourceLayer: 'authored-intent', placement: midiExportPlacement.value, tempoSource: clipExportTempo.value }), 'Export original authored UMP intent for one recorded output connection')),
     inMenu('Project', button('Inspect Clip', () => inspectClipInput.click(), 'Validate an imported Clip as data; setup and notes are never sent')),
-    inMenu('Project', physicalMidiChoices), inMenu('Project', button('Physical take MIDI1', () => handlers.exportPhysicalTakeMidi?.({ program: Number(physicalMidiProgram.value) - 1 }), 'Prepare a new MIDI1 revoice from the selected finished physical take; preserve captured source timing')),
+    inMenu('Project', physicalMidiChoices), inMenu('Project', button('Physical take MIDI1', () => handlers.exportPhysicalTakeMidi?.({ program: Number(physicalMidiProgram.value) - 1,
+      ...(physicalMidiCrop.checked ? { originTick: physicalMidiOrigin.value === '' ? NaN : Number(physicalMidiOrigin.value), endTick: physicalMidiEnd.value === '' ? NaN : Number(physicalMidiEnd.value) } : {}) }), 'Prepare a new MIDI1 revoice from the selected finished physical take; preserve captured source timing')),
     inMenu('World tools', button('Physical authoring…', () => handlers.openPhysicalAuthoring?.(), 'Preview and safely apply terrain or pinned fragments with whole-world Undo')),
     inMenu('World tools', button('Release…', () => handlers.openReleaseGestures?.(), 'Perform finite, phased or physically clock-locked cohort releases')),
     inMenu('World tools', button('Physical scene…', () => handlers.openPhysicalScene?.(), 'Author physical gates, cargo stations and their causal instruments')),

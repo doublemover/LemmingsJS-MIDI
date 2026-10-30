@@ -1,4 +1,4 @@
-import { selectPhysicalMidiEpoch } from './PhysicalTakeMidiEpochs.js';
+import { selectPhysicalMidiEpoch, selectPhysicalMidiCrop } from './PhysicalTakeMidiEpochs.js';
 import { preparePhysicalMidiTiming } from './PhysicalMidiTiming.js';
 import { smfHeader, smfTempo, smfVariable, smfBeatTick } from './ProcgenSmfBytes.js';
 
@@ -34,8 +34,9 @@ export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { s
   const pulse = async completedUnits => { guard(); onProgress({ phase: 'lowering-physical-take', completedUnits, totalUnits: intents.length }); await yieldControl(); guard(); };
   guard();
   const selection = await selectPhysicalMidiEpoch(revoice, options.epoch, { signal, current, yieldControl });
-  const { saved, selected: epoch, sourceOrdinals } = selection;
+  const { saved, selected: epoch } = selection;
   const origin = options.origin ?? selection.origin, end = options.end ?? selection.end;
+  const crop = selectPhysicalMidiCrop(revoice, selection, origin, end), { sourceOrdinals } = crop;
   const sourceTime = { version: 1, domain: 'simulation-tick', ordering: 'canonical-intent-order', clock: saved, origin, end };
   const events = [], active = new Map(), seen = new Set(), free = [...channels].sort((a, b) => a - b), initialized = new Set();
   const losses = { velocity7bit: 0, minimumNonzeroVelocity: 0, pressure7bit: 0, pan7bit: 0, pitch14bit: 0, maximumVelocityError: 0, maximumPressureError: 0, maximumPanError: 0, maximumPitchErrorCents: 0,
@@ -103,7 +104,8 @@ export async function encodePhysicalTakeMidi({ revoice, options = {} } = {}, { s
   const lowering = { schema: 'procgen-physical-midi-lowering/v1', sourceLayer: 'captured-musical-intent', evidence: 'new-midi1-revoice-not-submitted-output', protocol: 'midi1-independent-melodic-channels',
     channels: [...channels], program, bendRangeSemitones: bendRange, capacity: channels.length, capacityPolicy: 'reject-no-steal-no-merge', peakVoices, begins, updates, ends, losses };
   const manifest = { schema: 'procgen-physical-take-midi/v1', takeId: revoice.takeId, takeRevision: revoice.takeRevision, sourceCanonicalHash: revoice.sourceCanonicalHash,
-    epochSelection: { epoch: epoch.epoch, ordinal: selection.choices.indexOf(epoch) + 1, available: selection.choices.length, selectedIntents: sourceOrdinals.length, excludedIntents: intents.length - sourceOrdinals.length, boundaryPolicy: 'retained-closed-no-crossing-notes' },
+    epochSelection: { epoch: epoch.epoch, ordinal: selection.choices.indexOf(epoch) + 1, available: selection.choices.length, selectedIntents: selection.sourceOrdinals.length, excludedIntents: intents.length - selection.sourceOrdinals.length, boundaryPolicy: 'retained-closed-no-crossing-notes' },
+    cropSelection: { selectedIntents: sourceOrdinals.length, excludedIntents: crop.excludedIntents, boundaryPolicy: 'inclusive-closed-no-crossing-notes' },
     sourceComplete: revoice.sourceComplete === true, noteBoundaries: 'retained-closed-no-derived-pickups-or-releases', timing: timed.report, lowering };
   const payload = new TextEncoder().encode(JSON.stringify(manifest)); if (payload.length > 4096) throw new RangeError('Physical MIDI manifest exceeds4KiB.');
   const rows = [{ tick: 0, data: smfTempo(timed.bpm) }, { tick: 0, data: [0xff, 1, ...smfVariable(payload.length), ...payload] }];

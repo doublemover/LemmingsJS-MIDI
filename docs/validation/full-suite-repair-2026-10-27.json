@@ -141441,5 +141441,325 @@
       "Recorded PCM/sample peaks establish internal browser output only. They do not establish matched level, acoustic/device behavior or listening quality; original output is quiet.",
       "Keep1194/1104/1087 open. Continue matched-level/actual work/render history acceptance, then remaining clock/export, exact prefix reuse and performance backlog. Open inventory remains191from continuation402."
     ]
+  },
+  "continuation404": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "sourceParent": "bdf5f81d76d83face33aaf9b9df167494a6ef1bc",
+    "issues": [
+      986,
+      1093,
+      1104
+    ],
+    "scope": "Closed physical MIDI tick crops and actual native captured-clock/export acceptance matrix; no full local suite repeated.",
+    "changes": [
+      "Replay complete selected epoch lifetimes before an inclusive closed crop; reject crossing, uncovered, foreign, reversed or inconsistent cuts without inventing pickup/release. Retain selected silence and report crop exclusions separately from epoch exclusions.",
+      "Expose explicit crop checkbox and integer ticks in the desktop Project menu; validate both bounds, bind them to the selected captured epoch in the owned worker, identify range in filenames and preserve the prior artifact on refusal.",
+      "Use ordinary actual actors and a bounded walking action voice for held-note refusal. Qualify nominal paused Step, captured tempo/effective speed changes, real catch-up pumping, controlled host suspension and external clock stop/loss/Continue through native IndexedDB and the actual export worker.",
+      "Replace synthetic-only generation evidence with ordinary natural cohort cascade/restart after a declared pre-take wall/stall setup, no actor posing or injected epochs. Export both epoch choices and compare reopened source with production current-runtime re-performance.",
+      "Independently reconstruct source beats/elapsed milliseconds from captured segments and parse note/lifecycle order, tempo map and crop end through SMF and jzz-midi-smf. Compare measured file error with the embedded timing report; preserve source and applied live lateness separately."
+    ],
+    "validation": {
+      "node": {
+        "passing": 85,
+        "failures": 0,
+        "scope": "One affected batch: physical-take MIDI, typed physical MIDI timing, SimScoreTimeline, transport, causal take and recorded worker export. All production/unit source hashes remain unchanged afterward."
+      },
+      "browser": {
+        "passing": 15,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 90.711207,
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "One final combined batch with all four new actual clock/export journeys, real generation/epoch export/replay, existing physical MIDI/controlled chooser and all eight transport/recovery cases.",
+        "receiptsArtifact": {
+          "path": "docs/validation/physical-clock-export-desktop-2026-10-30.json",
+          "bytes": 1585815,
+          "sha256": "145e54ec8595d4503aaf018a20dfbc5fa0e1619cd62233703f4e4d8b14393375"
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check",
+        "Fetched origin/master remains an ancestor"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "e2e/procgen-workstation-physical-midi.spec.js",
+          "bytes": 25654,
+          "sha256": "ef76c7ca34adcf91400e21ea6259aa192c3977432b05b425f299c34d43e28ed7"
+        },
+        {
+          "path": "js/app/procgen/workstation/PhysicalTakeMidiEpochs.js",
+          "bytes": 8150,
+          "sha256": "d149e9b448caeaaf721f0302045b2448a76160d48c1480066c7546d1203d4e22"
+        },
+        {
+          "path": "js/app/procgen/workstation/PhysicalTakeMidiProjection.js",
+          "bytes": 13002,
+          "sha256": "170e37f379391a6e1fdb33be8a6633e0e2d03a0846721c2a7352d5530717b3dc"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 227390,
+          "sha256": "1d17362d1d5ef2214e495f975f43db326bc5337a4ead350a9b1d51ea2f45e111"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstationView.js",
+          "bytes": 151451,
+          "sha256": "666418913a423a53f25887e4583ad3d65bb39df657c05e0f3e3603efa1a55d17"
+        },
+        {
+          "path": "test/physical-take-midi.test.js",
+          "bytes": 17203,
+          "sha256": "8e051519b6205547a0a652bd7d481c2db3f1ad76f44a9ee84432d95a4f4009ae"
+        },
+        {
+          "path": "e2e/helpers/physicalMidiClock.js",
+          "bytes": 10559,
+          "sha256": "0dac41714194692c3440fc92d843116395ca9aac85219981a3790e8f83224243"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 301,
+          "sha256": "9aac61256fd0e050fd24b21451a9fe948a9655357f83e00d8b0c88d6259f61e1"
+        }
+      ],
+      "coverage": {
+        "scope": "Only three loaded timing/projection/epoch modules, from the85-case affected Node batch. Native workstation/view paths have Playwright receipts rather than a Node percentage here.",
+        "selected": {
+          "total": {
+            "lines": {
+              "total": 298,
+              "covered": 298,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 298,
+              "covered": 298,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 30,
+              "covered": 25,
+              "skipped": 0,
+              "pct": 83.33
+            },
+            "branches": {
+              "total": 327,
+              "covered": 301,
+              "skipped": 0,
+              "pct": 92.04
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": "Unknown"
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalMidiTiming.js": {
+            "lines": {
+              "total": 83,
+              "covered": 83,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 9,
+              "covered": 9,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 83,
+              "covered": 83,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 80,
+              "covered": 78,
+              "skipped": 0,
+              "pct": 97.5
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalTakeMidiEpochs.js": {
+            "lines": {
+              "total": 88,
+              "covered": 88,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 7,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 71.42
+            },
+            "statements": {
+              "total": 88,
+              "covered": 88,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 115,
+              "covered": 106,
+              "skipped": 0,
+              "pct": 92.17
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalTakeMidiProjection.js": {
+            "lines": {
+              "total": 127,
+              "covered": 127,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 14,
+              "covered": 11,
+              "skipped": 0,
+              "pct": 78.57
+            },
+            "statements": {
+              "total": 127,
+              "covered": 127,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 132,
+              "covered": 117,
+              "skipped": 0,
+              "pct": 88.63
+            }
+          }
+        },
+        "followUp": "Default asynchronous callbacks, further malformed-source/cancellation/target branches and broader native sink clock matrices remain with986/1093/1104; no whole-repository coverage claim."
+      }
+    },
+    "evidence": {
+      "tempoSpeedPause": {
+        "segments": 3,
+        "noteEvents": 12,
+        "nominalStepMs": 41.142857142857146,
+        "maximumMeasuredErrorMs": 0.2533650297618806,
+        "cropped": {
+          "selectedIntents": 6,
+          "excludedIntents": 6,
+          "boundaryPolicy": "inclusive-closed-no-crossing-notes"
+        },
+        "priorArtifactRetained": true
+      },
+      "catchUp": {
+        "controlledHostGapMs": 200,
+        "tickBefore": 61,
+        "tickAfterTask": 61,
+        "sameWakeDistinctSourceTicks": 14,
+        "collapsedDistinctEventTimes": 0,
+        "maximumMeasuredErrorMs": 0.22916666666668561
+      },
+      "suspension": {
+        "controlledHostGapMs": 500,
+        "haltedBeforeCatchUp": true,
+        "resumedExplicitly": true,
+        "maximumMeasuredErrorMs": 0.20833333333331439
+      },
+      "external": {
+        "input": "declared-WebMIDI-stub",
+        "segments": 24,
+        "lossHalts": true,
+        "continueExplicit": true,
+        "maximumMeasuredErrorMs": 0.47905312500006403
+      },
+      "generation": {
+        "boundaryTick": 174,
+        "firstEpochOriginTick": 1,
+        "secondEpochOriginTick": 174,
+        "endTick": 270,
+        "sourceSetup": "Pre-take collision wall and bounded stall thresholds; ordinary unposed spawn/actions/cascade/restart.",
+        "notesPerFile": [
+          8,
+          8
+        ],
+        "comparedBatches": 270,
+        "comparedIntents": 16,
+        "compatibilityMatch": true,
+        "continuationMatch": true,
+        "semanticMatch": true,
+        "timelineMatch": true,
+        "replaySettingsMatch": true,
+        "liveWorldUnchanged": true,
+        "exactQualified": false
+      }
+    },
+    "priorAttempts": [
+      {
+        "kind": "stale-worker-provenance-declaration",
+        "result": "Browser build refused before first physical case; eight root-source transport cases passed and five physical cases did not run. Refresh only declared SHA; original report retained."
+      },
+      {
+        "kind": "incorrect-crossing-fixture",
+        "result": "Five native cases passed; one crop case expected refusal after a zero-duration one-shot had already ended. Add an actual bounded walking action lifetime and closed-gap selection rather than change correct crop semantics."
+      },
+      {
+        "kind": "complete-pre-generation-batch",
+        "result": "All14desktop cases passed with independent elapsed-time checks. Extend final batch with actual generation transition and replace Map.groupBy in harness with Node20-compatible grouping; final15pass."
+      },
+      {
+        "kind": "receipt-preparation-only",
+        "result": "Initial local source inventory preparation encountered Buffer.trim and NodeREPL TypeScript import errors; record source/worker hashes directly from files. Production and Node-test inputs stayed unchanged; final source inventory matches actual validation."
+      }
+    ],
+    "ci": {
+      "latestIndependentlyVerifiedFullGreen": {
+        "continuation": 399,
+        "head": "4ad585227b537f21ad0a35d85ff4dad5f234bb01",
+        "run": 41030776175,
+        "nodePassed": 7284,
+        "nodePending": 10,
+        "browserPassed": 289
+      },
+      "previous402": {
+        "head": "0c536b0fca220c83a311e34b2460dce0fd42b90a",
+        "run": 41046579452,
+        "mainJob": 124032021506,
+        "nodePassed": 7306,
+        "nodePending": 10,
+        "failures": 1,
+        "reason": "The same stale five-versus-two installed scene catalog assertion repaired in403.",
+        "engineFirstJob": 124032021733,
+        "engineFirstResult": "17passes plus native Firefox content-process signal11 at audio navigation; retained original failure.",
+        "retry": "Requested the single failed job once parent completed; latest lifecycle job124058339965 is running at last check. Latest main failed and native codec jobs succeeded."
+      },
+      "parent403": {
+        "head": "bdf5f81d76d83face33aaf9b9df167494a6ef1bc",
+        "run": 41051632497,
+        "mainJob": 124048846503,
+        "status": "workstation-smoke-in-progress",
+        "engineJob": 124048846901,
+        "engine": "17passes and Firefox native project-save boot content-process6318 signal11; no JS assertion cause inferred. Retry once parent run finishes.",
+        "nativeCodecs": "both-success"
+      },
+      "newSource": "CI pending after publication; no root checkpoint promotion."
+    },
+    "limits": [
+      "This qualifies captured source clocks, export lowering and current-runtime re-performance. Live audio/MIDI adapter late-output behavior across the same full matrix still needs its own native receipts; no OS sleep, external receiver, audible playback, exact-qualified or hardware claim.",
+      "Arbitrary mid-note pickup/state reconstruction is unavailable and refuses explicitly; additional UMP/MPE/CI Profile and receiver/DAW paths stay in1093/1104.",
+      "Keep986/1093/1104 open until their remaining named integration boundaries are implemented and qualified. Continue with native adapter clocks, then1194level/live-worker/graph-history and remaining191issue backlog."
+    ]
   }
 }

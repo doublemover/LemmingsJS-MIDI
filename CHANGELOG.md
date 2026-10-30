@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Export closed physical-take tick crops with captured tempo and speed history, explicit note-boundary refusal and independent desktop clock/export qualification.
 - Preview original cavity scenes through observed private geometry, the existing modal renderer and owned Prelisten cue; preserve unadvanced candidates, explicit spatial exclusions and bounded PCM transport.
 - Preserve cavity topology analysis after canonical journal restore by comparing normalized region definitions, with bounded field-level replay diagnostics.
 - Capture chamber edits before queue publication, prepare bounded cold collision masks on explicit requests, and resume current cavity bodies after owned tails retire.
