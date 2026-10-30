@@ -1,9 +1,14 @@
 import { plain, identity, integer, finite, point, bounds, boundedList, freeze, copy } from './PhysicalSchema.js';
 import { describeRoutePeriods } from './RoutePeriodEvidence.js';
 
+const preparedRouteMarkers = new WeakMap();
+export function routeDefinitionSignature(route) {
+  const markers = preparedRouteMarkers.get(route); if (markers == null) throw new Error('Route coordinates require validated marker-bound definitions.');
+  return JSON.stringify({ ...route, requestedPeriodTicks: undefined }) + '\0' + markers;
+}
 export function validateRouteDefinition(input, pickups = []) {
   if (!plain(input) || !identity(input.id) || !identity(input.branchId) || !integer(input.revision) || !['authored', 'measured-trace'].includes(input.geometrySource ?? 'authored')) throw new Error('Invalid route identity or geometry provenance.');
-  const gates = new Set(pickups.map(gate => gate.id));
+  const gates = new Map(pickups.map(gate => [gate.id, gate]));
   const markers = boundedList(input.markers, 65, marker => { if (!plain(marker) || !gates.has(marker.gateId) || !['positive', 'negative', 'either'].includes(marker.direction ?? 'either')) throw new Error('Route markers must reference an existing directional pickup.'); return { gateId: marker.gateId, direction: marker.direction ?? 'either' }; }, 'route markers');
   const segments = boundedList(input.segments, 64, (segment, index) => {
     if (!plain(segment) || !identity(segment.id)) throw new Error('Invalid route segment identity.');
@@ -18,10 +23,13 @@ export function validateRouteDefinition(input, pickups = []) {
   if (input.entryAction != null && (typeof input.entryAction !== 'string' || input.entryAction.length > 64)) throw new Error('Invalid route action qualifier.');
   if (input.requestedPeriodTicks != null && (!Number.isFinite(input.requestedPeriodTicks) || input.requestedPeriodTicks <= 0 || input.requestedPeriodTicks > 2147483647)) throw new Error('Invalid requested route period.');
   let offset = 0; const segmentOffsets = segments.map(segment => { const start = offset; offset += segment.lengthPixels; return start; });
-  return freeze({ segmentOffsets, id: input.id, revision: input.revision, branchId: input.branchId, geometrySource: input.geometrySource ?? 'authored',
+  const definition = freeze({ segmentOffsets, id: input.id, revision: input.revision, branchId: input.branchId, geometrySource: input.geometrySource ?? 'authored',
     metric: 'qualified-route-arc-pixels', loop: input.loop === true, markers, segments, entryAction: input.entryAction ?? null,
     tolerancePixels: Number.isFinite(input.tolerancePixels) && input.tolerancePixels >= 0 && input.tolerancePixels <= 16 ? input.tolerancePixels : 2,
     lengthPixels: segments.reduce((sum, segment) => sum + segment.lengthPixels, 0), requestedPeriodTicks: input.requestedPeriodTicks ?? null });
+  preparedRouteMarkers.set(definition, JSON.stringify(markers.map(marker => { const gate = gates.get(marker.gateId); return { id: gate.id, worldAnchor: gate.worldAnchor ?? 'world', geometry: gate.geometry ?? null,
+    laneScope: gate.laneScope ?? null, ensembleId: gate.ensembleId ?? null, trigger: gate.trigger ?? 'cross', directionPolicy: gate.directionPolicy ?? 'either', hysteresis: gate.hysteresis ?? 0, bypass: gate.bypass === true }; })));
+  return definition;
 }
 const intersects = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
 const routeStatuses = new Set(['qualified', 'ambiguous', 'off-route', 'terrain-invalidated', 'discontinuous', 'marker-order-mismatch', 'completed']);
@@ -66,7 +74,7 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
   const key = (id, actorId) => `${id}/${actorId}`;
   const configure = routes => {
     if (!Array.isArray(routes) || routes.length > maxRoutes || new Set(routes.map(route => route.id)).size !== routes.length) throw new Error('Route atlas capacity or duplicate identity.');
-    const next = new Map(routes.map(route => [route.id, JSON.stringify({ ...route, requestedPeriodTicks: undefined })]));
+    const next = new Map(routes.map(route => [route.id, routeDefinitionSignature(route)]));
     for (const [id, state] of trackers) if (signatures.get(state.routeId) !== next.get(state.routeId)) trackers.delete(id);
     for (const id of invalid.keys()) if (signatures.get(id) !== next.get(id)) invalid.delete(id);
     definitions = routes; byId = new Map(routes.map(route => [route.id, route])); signatures = next;
@@ -137,17 +145,22 @@ export function createRouteCoordinateAtlas({ maxTrackers = 16384, maxRoutes = 12
     lastObservations = observations.map(freeze); return Object.freeze(lastObservations);
   };
   const coordinate = (actorId, routeId) => { const state = trackers.get(key(routeId, actorId)); return state ? freeze({ ...copy(state), status: state.status !== 'qualified' || state.observationTick === currentTick ? state.status : 'stale', metric: 'qualified-route-arc-pixels' }) : null; };
-  const neighbors = routeId => {
+  const neighbors = (routeId, { maxGapPixels = null } = {}) => {
+    if (maxGapPixels != null && (!finite(maxGapPixels, 65536) || maxGapPixels < 0)) throw new Error('Invalid route neighbor radius.');
     const groups = new Map(); for (const state of trackers.values()) if (state.routeId === routeId && state.status === 'qualified' && state.observationTick === currentTick) {
       const id = `${state.branchId}:${state.direction}`; if (!groups.has(id)) groups.set(id, []); groups.get(id).push(state); }
-    return Object.freeze([...groups].map(([group, members]) => { members.sort((a, b) => a.sPixels - b.sPixels || a.actorId - b.actorId); return freeze({ group, members: members.map((member, i) => ({ actorId: member.actorId, sPixels: member.sPixels,
-      previousActorId: members[i - 1]?.actorId ?? null, gapPixels: i ? member.sPixels - members[i - 1].sPixels : null, metric: 'qualified-route-arc-pixels' })) }); }));
+    return Object.freeze([...groups].sort(([a], [b]) => a.localeCompare(b)).map(([group, members]) => { members.sort((a, b) => a.sPixels - b.sPixels || a.actorId - b.actorId); return freeze({ group, members: members.map((member, i) => ({ actorId: member.actorId, sPixels: member.sPixels,
+      previousActorId: i && (maxGapPixels == null || member.sPixels - members[i - 1].sPixels <= maxGapPixels) ? members[i - 1].actorId : null, gapPixels: i ? member.sPixels - members[i - 1].sPixels : null, metric: 'qualified-route-arc-pixels' })) }); }));
   };
   const periods = () => describeRoutePeriods([...trackers.values()].filter(state => state.periodTicks > 0).map(state => ({ routeId: state.routeId, routeRevision: state.routeRevision, branchId: state.branchId, actorId: state.actorId,
     coordinateStatus: state.status, periodTicks: state.periodTicks, requestedPeriodTicks: byId.get(state.routeId).requestedPeriodTicks, lastCompletedLapTick: state.lastReturnTick, sourceObservationId: state.lastLapObservationId, sourceEventIds: [...state.lastLapSourceEventIds] })));
   return { configure, observe, coordinate, neighbors, periods, reset() { trackers.clear(); invalid.clear(); boundary = null; },
-    snapshot: () => freeze({ version: 1, boundary, currentTick, signatures: [...signatures], trackers: [...trackers.values()].map(copy), invalid: [...invalid].map(([id, segments]) => [id, [...segments]]) }),
-    restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || !Number.isSafeInteger(value.currentTick) || value.currentTick < -1 || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.trackers) || value.trackers.length > maxTrackers || !Array.isArray(value.invalid) || value.invalid.length > maxRoutes) throw new Error('Invalid route checkpoint.');
+    snapshot: () => freeze({ version: 2, boundary, currentTick, signatures: [...signatures], trackers: [...trackers.values()].map(copy), invalid: [...invalid].map(([id, segments]) => [id, [...segments]]) }),
+    restore(value) {
+      const legacyEmpty = value?.version === 1 && Array.isArray(value.trackers) && value.trackers.length === 0 && Array.isArray(value.invalid) && value.invalid.length === 0;
+      if (value?.version === 1 && !legacyEmpty) throw new Error('Observed route history requires marker-bound checkpoint version 2.');
+      const expected = [...signatures], matched = JSON.stringify(value?.signatures) === JSON.stringify(expected), emptyUpgrade = legacyEmpty && JSON.stringify(value.signatures) === JSON.stringify(expected.map(([id, signature]) => [id, signature.split('\0')[0]]));
+      if (![1, 2].includes(value?.version) || value.boundary != null && typeof value.boundary !== 'string' || !Number.isSafeInteger(value.currentTick) || value.currentTick < -1 || !matched && !emptyUpgrade || !Array.isArray(value.trackers) || value.trackers.length > maxTrackers || !Array.isArray(value.invalid) || value.invalid.length > maxRoutes) throw new Error('Invalid route checkpoint.');
       const next = new Map();
       for (const state of value.trackers) {
         validateObservedRouteState(state, byId.get(state?.routeId), value.boundary, value.currentTick);

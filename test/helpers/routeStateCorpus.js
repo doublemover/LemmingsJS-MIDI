@@ -32,7 +32,7 @@ export async function qualifyRouteStateRefusals({ graph, source, sourceRoot = ne
   const unqualified = JSON.parse(before); unqualified.trackers[0].status = 'off-route'; atlas.restore(unqualified);
   if (atlas.coordinate(unqualified.trackers[0].actorId, unqualified.trackers[0].routeId).status !== 'off-route') throw new Error('Unknown route history became qualified.');
   atlas.restore(JSON.parse(before)); const tracker = source.trackers[0], oldCoordinate = JSON.stringify(atlas.coordinate(tracker.actorId, tracker.routeId));
-  atlas.configure(validateCausalInstrumentGraph(graph).routes.map(route => ({ ...route, requestedPeriodTicks: route.requestedPeriodTicks + 1 })));
+  atlas.configure(validateCausalInstrumentGraph({ ...graph, routes: graph.routes.map(route => ({ ...route, requestedPeriodTicks: route.requestedPeriodTicks + 1 })) }).routes);
   if (JSON.stringify(atlas.coordinate(tracker.actorId, tracker.routeId)) !== oldCoordinate || atlas.periods().rows.find(row => row.routeId === tracker.routeId).periodErrorTicks !== tracker.periodTicks - graph.routes.find(route => route.id === tracker.routeId).requestedPeriodTicks - 1) throw new Error('Requested period annotation reset actual traversal state.');
   return { rejected: outcomes.length, outcomes, sourceUnchanged: JSON.stringify(source) === before, unqualifiedRemainsUnknown: true, requestedMetadataRetainsPhase: true };
 }

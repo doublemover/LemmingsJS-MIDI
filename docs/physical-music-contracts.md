@@ -318,3 +318,26 @@ completed evidence. A request does not retime physics. In the two-wall reference
 fixture, a one-pixel walker has period `2*(rightWall-leftWall-1)`, including both
 turn ticks. Odd periods are unsupported under those particular constraints;
 this is not a claim about every skill or route geometry.
+
+## Marker-bound route history and neighbors
+
+Route checkpoint version 2 binds each definition to its ordered physical pickup
+markers: world geometry, lane/ensemble scope, trigger, direction, hysteresis and
+bypass. Moving a marker invalidates only dependent routes. Pitch, pickup metadata
+revision and requested-period annotation preserve physical traversal phase.
+Only validated definitions carry the private binding; copying or inventing a
+public signature cannot prepare an atlas. Observed version-1 history refuses
+restore because it lacks that binding. Empty version-1 history can upgrade without
+inferring coordinates from endpoint poses.
+
+`routeNeighbors(routeId, { maxGapPixels })` optionally limits adjacent links by a
+declared route-arc radius. It keeps the measured gap explicit and sorts groups and
+equal-coordinate actor IDs deterministically. Opposing directions and branches
+remain separate. A missing coordinate is never a zero gap or an x-distance fallback.
+
+The actual U-corridor corpus places actors 41 Euclidean pixels apart but
+104.12310562561765 route pixels apart, excluding their neighbor link at a declared
+48-pixel radius. Actual opposite walkers at the same geometric point retain their
+different entry-qualified branches; two compatible shared-entry routes remain
+ambiguous. Permuting complete actor projections preserves history without
+reordering authoritative physical mutations.

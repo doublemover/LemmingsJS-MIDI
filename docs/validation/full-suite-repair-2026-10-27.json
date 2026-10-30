@@ -104673,5 +104673,2539 @@
       "1182 remains open for physical marker-edit binding, actual U/crossing branch and native midpoint/reinterpretation-history qualification.990 remains open for complete actual spacing corpus and optional response modes."
     ],
     "issueOutcome": "Close991 after commit/push on its actual physical-route/canon contract. Update1182/990 with completed foundations and exact remaining work."
+  },
+  "continuation393": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1182,
+      990
+    ],
+    "sourceParent": "9518f1a2652cffa93eff8c09429972e5cb6618d7",
+    "scope": "Marker-bound route coordinate history, real U/crossing geometry, native mid-loop persistence and conservative reinterpretation qualification.",
+    "changes": [
+      "Private prepared-marker binding covers physical geometry, scope, direction, trigger, hysteresis and bypass; pitch/revision/requested-period metadata retains phase.",
+      "Route checkpoint version 2 refuses observed legacy state; only empty legacy state upgrades without inferred coordinates. Copied/forged definitions refuse before mutation.",
+      "Optional bounded route-neighbor radius and deterministic group ordering retain typed measured gaps.",
+      "physical-basic-v20 captures explicit marker-bound route-definition inventory; reinterpretation refuses incompatible or uncaptured route history."
+    ],
+    "counterexample": {
+      "source": "9518f1a2652cffa93eff8c09429972e5cb6618d7",
+      "scope": "Actual source-world tick200 observed route state; direct public route configuration after independent physical marker edit.",
+      "before": {
+        "worldId": "procgen:42",
+        "generation": 1,
+        "previousSPixels": 195,
+        "previousObservationTick": 199,
+        "entryObservationId": "procgen:42:1:1:0:4:pickup:entry0:1",
+        "routeId": "circuit0",
+        "routeRevision": 1,
+        "branchId": "lane0",
+        "actorId": 0,
+        "segmentIndex": 1,
+        "segmentId": "segment0-1",
+        "lapId": 1,
+        "sPixels": 196,
+        "segmentS": 38,
+        "direction": 1,
+        "observationTick": 200,
+        "status": "qualified",
+        "entryTick": 1,
+        "lastReturnTick": 121,
+        "periodTicks": 120,
+        "lastLapObservationId": "procgen:42:1:121:0:490:pickup:entry0:2",
+        "lastLapSourceEventIds": [
+          "procgen:42:1:121:0:490"
+        ],
+        "markerHistory": [
+          "procgen:42:1:1:0:4:pickup:entry0:1",
+          "procgen:42:1:41:0:167:pickup:right0:1",
+          "procgen:42:1:101:0:409:pickup:left0:1",
+          "procgen:42:1:121:0:490:pickup:entry0:2",
+          "procgen:42:1:161:0:651:pickup:right0:2"
+        ],
+        "sourceEventIds": [
+          "procgen:42:1:161:0:651"
+        ],
+        "motionSourceEventId": "procgen:42:1:200:0:808",
+        "motionSourceSequence": 808,
+        "motionSourceTick": 200,
+        "coordinatePrecision": "completed-route-endpoint-projection",
+        "geometrySource": "authored",
+        "lastPosition": {
+          "x": 42,
+          "y": 80
+        },
+        "metric": "qualified-route-arc-pixels"
+      },
+      "after": {
+        "worldId": "procgen:42",
+        "generation": 1,
+        "previousSPixels": 195,
+        "previousObservationTick": 199,
+        "entryObservationId": "procgen:42:1:1:0:4:pickup:entry0:1",
+        "routeId": "circuit0",
+        "routeRevision": 1,
+        "branchId": "lane0",
+        "actorId": 0,
+        "segmentIndex": 1,
+        "segmentId": "segment0-1",
+        "lapId": 1,
+        "sPixels": 196,
+        "segmentS": 38,
+        "direction": 1,
+        "observationTick": 200,
+        "status": "qualified",
+        "entryTick": 1,
+        "lastReturnTick": 121,
+        "periodTicks": 120,
+        "lastLapObservationId": "procgen:42:1:121:0:490:pickup:entry0:2",
+        "lastLapSourceEventIds": [
+          "procgen:42:1:121:0:490"
+        ],
+        "markerHistory": [
+          "procgen:42:1:1:0:4:pickup:entry0:1",
+          "procgen:42:1:41:0:167:pickup:right0:1",
+          "procgen:42:1:101:0:409:pickup:left0:1",
+          "procgen:42:1:121:0:490:pickup:entry0:2",
+          "procgen:42:1:161:0:651:pickup:right0:2"
+        ],
+        "sourceEventIds": [
+          "procgen:42:1:161:0:651"
+        ],
+        "motionSourceEventId": "procgen:42:1:200:0:808",
+        "motionSourceSequence": 808,
+        "motionSourceTick": 200,
+        "coordinatePrecision": "completed-route-endpoint-projection",
+        "geometrySource": "authored",
+        "lastPosition": {
+          "x": 42,
+          "y": 80
+        },
+        "metric": "qualified-route-arc-pixels"
+      },
+      "retainedQualifiedHistory": true,
+      "expected": "Dependent route history must be invalidated or requalified after its physical marker definition changes."
+    },
+    "validation": {
+      "node": {
+        "passing": 83,
+        "failures": 0,
+        "durationSeconds": 56,
+        "scope": "New actual atlas journey plus actual circuits, spatial, take/journal, engine, physical branch and period regressions."
+      },
+      "browser": {
+        "passing": 3,
+        "failures": 0,
+        "durationSeconds": 57.7,
+        "cases": [
+          {
+            "title": "authored durable tape preserves births transfer work and every captured control over 128 ticks",
+            "file": "procgen-workstation-authored-tape.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-durable-tape-128",
+                "value": {
+                  "ticks": 128,
+                  "takeId": "take:authored:128",
+                  "parentCanonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                  "parentDurableSequence": 270,
+                  "counts": {
+                    "ActionEntered": 2,
+                    "CommandApplied": 2,
+                    "ActorBorn": 2,
+                    "FlightArcStarted": 1,
+                    "undefined": 10,
+                    "FlightArcUpdated": 25,
+                    "ActorLaneTransferred": 1,
+                    "MotionCommitted": 48,
+                    "ContactSpanBegan": 1,
+                    "ContactSpanUpdated": 127,
+                    "TerrainWorkCommitted": 8,
+                    "ActionCycleCompleted": 8,
+                    "FlightArcEnded": 1,
+                    "ActionExited": 1,
+                    "ActorTerminated": 1
+                  },
+                  "controls": [
+                    {
+                      "tick": 10,
+                      "generation": 1,
+                      "input": {
+                        "kind": "tempo",
+                        "bpm": 90
+                      }
+                    },
+                    {
+                      "tick": 12,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "world-speed",
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 14,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "external-observation",
+                        "sourceId": "captured:external-port",
+                        "effect": "observation-only",
+                        "timestamp": 1234.567,
+                        "bytes": [
+                          144,
+                          60,
+                          1
+                        ]
+                      }
+                    },
+                    {
+                      "tick": 16,
+                      "generation": 1,
+                      "input": {
+                        "kind": "mapping",
+                        "revision": 2
+                      }
+                    },
+                    {
+                      "tick": 20,
+                      "generation": 1,
+                      "input": {
+                        "kind": "instrument-performance"
+                      }
+                    },
+                    {
+                      "tick": 30,
+                      "generation": 1,
+                      "input": {
+                        "version": 1,
+                        "kind": "intervention-cancel",
+                        "commandId": "authored:cancelled-policy"
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    },
+                    {
+                      "tick": 63,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 64,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": true,
+                        "speedFactor": 6
+                      }
+                    },
+                    {
+                      "tick": 128,
+                      "generation": 1,
+                      "input": {
+                        "version": 2,
+                        "kind": "transport-state",
+                        "playing": false,
+                        "speedFactor": 0
+                      }
+                    }
+                  ],
+                  "midpoint": 141,
+                  "midpointHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                  "expectedHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                  "recordingMs": 123.90000000596046,
+                  "replayMs": 111.40000000596046,
+                  "full": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                      "finalizationHash": "5fd254ace0d2c4c569116abc425ceb983600fc5a9f4292dddad85cdf402ab81c",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [
+                      {
+                        "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",141]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 141,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 64,
+                        "timelineMatch": true
+                      },
+                      {
+                        "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "checkpointId": "[\"take:authored:128\",\"checkpoint\",270]",
+                        "continuationMatch": true,
+                        "continuationStateSchema": 1,
+                        "exactQualified": false,
+                        "expectedContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                        "firstStateDifference": null,
+                        "replaySettingsMatch": true,
+                        "semanticMatch": true,
+                        "sequence": 270,
+                        "status": "validated-by-current-runtime-reperformance",
+                        "tick": 128,
+                        "timelineMatch": true
+                      }
+                    ],
+                    "comparedBatches": 128,
+                    "comparedIntents": 18,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:full",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "binding": "immutable-application-generation",
+                      "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                      "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 0,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 128,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "repeated": {
+                    "actualContinuationHash": "ef6263fc8f147834ba1b3eaf9ce9b1ee503705d151408b1fda2e292d2cc53715",
+                    "actualPhysicsHash": "e8f798e52abe719347bf5460804c48f40dfb1f216a397881ed22fa37a481a179",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                      "finalizationHash": "5fd254ace0d2c4c569116abc425ceb983600fc5a9f4292dddad85cdf402ab81c",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 128,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:repeated",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "binding": "immutable-application-generation",
+                      "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                      "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 270,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 270,
+                    "throughSequence": 270,
+                    "tick": 128,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "seek": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "artifactIntegrity": {
+                      "canonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                      "finalizationHash": "5fd254ace0d2c4c569116abc425ceb983600fc5a9f4292dddad85cdf402ab81c",
+                      "initialCheckpointHash": "3c8bcecd5962fa7143f5555b053a5f009e5b8415641c3b64ffdc8f7aff9062b8",
+                      "status": "verified-durable-chain"
+                    },
+                    "assetRefs": [
+                      {
+                        "family": null,
+                        "id": null,
+                        "revision": null
+                      }
+                    ],
+                    "boundaryComplete": true,
+                    "captureInventory": {
+                      "intentKinds": [
+                        "begin",
+                        "end"
+                      ],
+                      "mappingRevisions": [
+                        1,
+                        2
+                      ],
+                      "observedFactKinds": [
+                        "ActionCycleCompleted",
+                        "ActionEntered",
+                        "ActionExited",
+                        "ActorBorn",
+                        "ActorLaneTransferred",
+                        "ActorTerminated",
+                        "CommandApplied",
+                        "ContactSpanBegan",
+                        "ContactSpanUpdated",
+                        "FlightArcEnded",
+                        "FlightArcStarted",
+                        "FlightArcUpdated",
+                        "MotionCommitted",
+                        "TerrainWorkCommitted"
+                      ],
+                      "sourceRange": {
+                        "firstTick": 1,
+                        "lastTick": 64,
+                        "worldId": "procgen:42"
+                      }
+                    },
+                    "checkpointComparisons": [],
+                    "comparedBatches": 0,
+                    "comparedIntents": 0,
+                    "compatibilityMatch": true,
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionEpoch": "authored:seek",
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "binding": "immutable-application-generation",
+                      "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                      "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "finalWorldParity": "matched-at-captured-component-checkpoint",
+                    "firstDivergence": null,
+                    "fromCheckpointSequence": 141,
+                    "inspection": {
+                      "hardware": false,
+                      "paused": true,
+                      "physicalLayers": false,
+                      "recording": false,
+                      "thru": false
+                    },
+                    "mode": "physical-reperformance",
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-causal-reperformance",
+                    "sourceCanonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                    "sourceVersions": {
+                      "applicationExecution": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "causalProbabilityPolicy": 1,
+                      "causalRandom": "fnv1a32-avalanche-v1",
+                      "generator": "procgen-workstation-2",
+                      "instrumentPerformance": 4,
+                      "mappingRevision": 1,
+                      "numericCanonicalization": "finite-f64-minus-zero-v1",
+                      "phraseCargo": 1,
+                      "physicalBatch": 1,
+                      "physicalFeedback": 1,
+                      "physicalMusic": 13,
+                      "physicalPlaybackAdmission": 1,
+                      "populationRandom": 1,
+                      "project": 2,
+                      "releaseGesture": 1,
+                      "stallCascade": 2,
+                      "swarmReducer": 1,
+                      "terrainChallenge": 3,
+                      "worldCheckpoint": 2
+                    },
+                    "status": "matched-current-runtime",
+                    "takeId": "take:authored:128",
+                    "takeRevision": 15,
+                    "targetSequence": 141,
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "verifiedDurableSequence": 270,
+                    "version": 2
+                  },
+                  "branch": {
+                    "actualContinuationHash": "f831fdf83bbe422648e256b8f3274d331605915a60757394e8918f4412dd874c",
+                    "actualPhysicsHash": "97f848673e30d3423c654b4136f995c4ec7cfb08c0a4cf187f34cf8e9814d327",
+                    "continuationStateSchema": 1,
+                    "exactQualified": false,
+                    "executionBinding": {
+                      "active": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "exactQualified": false,
+                      "exactUnavailableReason": "causal-exact-realm-unqualified",
+                      "mismatches": [],
+                      "reasons": [],
+                      "required": {
+                        "activeExecution": "bound",
+                        "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                        "binding": "immutable-application-generation",
+                        "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                        "capabilityProfile": "browser-survey-core",
+                        "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                        "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                        "harnessVersion": "browser-survey-v1",
+                        "identityRecipe": "normalized-data-slot-v2-instruments",
+                        "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                        "receiptVersion": 3,
+                        "stateSchema": 11
+                      },
+                      "schema": "lemmings-causal-runtime-binding",
+                      "scope": "immutable-application-generation",
+                      "status": "matched",
+                      "version": 1
+                    },
+                    "executionIdentity": {
+                      "activeExecution": "bound",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "binding": "immutable-application-generation",
+                      "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                      "capabilityProfile": "browser-survey-core",
+                      "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                      "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                      "harnessVersion": "browser-survey-v1",
+                      "identityRecipe": "normalized-data-slot-v2-instruments",
+                      "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                      "receiptVersion": 3,
+                      "stateSchema": 11,
+                      "status": "bound"
+                    },
+                    "fromCheckpointSequence": 141,
+                    "generation": 1,
+                    "physicsStateSchema": 2,
+                    "schema": "lemmings-physical-branch-boundary",
+                    "sourceCanonicalHash": "6604bbe20037becde6a00b61a773efe30bb82c98091573c11d261344b8abe65b",
+                    "sourceFinalizationHash": "5fd254ace0d2c4c569116abc425ceb983600fc5a9f4292dddad85cdf402ab81c",
+                    "sourceTakeId": "take:authored:128",
+                    "sourceTakeRevision": 15,
+                    "status": "validated-by-current-runtime-reperformance",
+                    "throughSequence": 141,
+                    "tick": 64,
+                    "ticksExecuted": 0,
+                    "version": 2
+                  },
+                  "childTakeId": "take:authored:128:child",
+                  "cache": {
+                    "entries": 2,
+                    "maximumEntries": 16,
+                    "estimatedBytes": 17832,
+                    "maximumBytes": 4194304,
+                    "refusals": 0,
+                    "failure": null,
+                    "reservation": {
+                      "enabled": false,
+                      "owner": "causal-reperformance-checkpoint-cache",
+                      "kind": "qualified-replay-checkpoints",
+                      "category": "checkpoint",
+                      "generation": 0,
+                      "declaredBytes": 4198400,
+                      "maxBytes": 536870912,
+                      "state": "reserved",
+                      "error": null
+                    }
+                  },
+                  "sourceUnchanged": true,
+                  "sourceVersions": {
+                    "generator": "procgen-workstation-2",
+                    "causalRandom": "fnv1a32-avalanche-v1",
+                    "causalProbabilityPolicy": 1,
+                    "terrainChallenge": 3,
+                    "populationRandom": 1,
+                    "worldCheckpoint": 2,
+                    "stallCascade": 2,
+                    "physicalBatch": 1,
+                    "physicalMusic": 13,
+                    "swarmReducer": 1,
+                    "phraseCargo": 1,
+                    "releaseGesture": 1,
+                    "physicalFeedback": 1,
+                    "physicalPlaybackAdmission": 1,
+                    "instrumentPerformance": 4,
+                    "project": 2,
+                    "numericCanonicalization": "finite-f64-minus-zero-v1",
+                    "mappingRevision": 1,
+                    "applicationExecution": {
+                      "receiptVersion": 3,
+                      "activeExecution": "bound",
+                      "buildId": "4f1c050893acf101403ed7b698429ce8151a55c85b6b043a4dcacf9a3024c58c",
+                      "closureDigest": "293bf05a15ef09f73c083fc4ed58c995d596e3f2632899758c8b7d2d3220d41e",
+                      "codeDigest": "3b6b2839b576a78d60a1354dc0279fab73846fd63373bb57ea48859f74ca0c14",
+                      "assetDigest": "87471a9f442406263d8618b483dc12f9820241bf84e6a3df26a8902488f68fed",
+                      "harnessVersion": "browser-survey-v1",
+                      "stateSchema": 11,
+                      "realmId": "e42f6762-273d-4e4f-a48b-a6dbbd1f6d9b",
+                      "capabilityProfile": "browser-survey-core",
+                      "binding": "immutable-application-generation",
+                      "identityRecipe": "normalized-data-slot-v2-instruments"
+                    }
+                  },
+                  "scope": "Actual authored physical/semantic tape and silent current-runtime continuation; source and external observations are retained data, not a device/archived/acoustic qualification.",
+                  "realIndexedDbReopen": true,
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0
+                }
+              }
+            ]
+          },
+          {
+            "title": "actual U routes crossing branches marker edits and native mid-loop take reopening preserve route evidence",
+            "file": "procgen-workstation-route-atlas.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-route-atlas-desktop",
+                "value": {
+                  "geometry": {
+                    "u": {
+                      "result": {
+                        "tick": 110,
+                        "euclideanPixels": 41,
+                        "routeGapPixels": 104.12310562561765,
+                        "neighborRadiusPixels": 48,
+                        "neighbors": [
+                          {
+                            "group": "u-directed:1",
+                            "members": [
+                              {
+                                "actorId": 1,
+                                "sPixels": 30,
+                                "previousActorId": null,
+                                "gapPixels": null,
+                                "metric": "qualified-route-arc-pixels"
+                              },
+                              {
+                                "actorId": 0,
+                                "sPixels": 134.12310562561765,
+                                "previousActorId": null,
+                                "gapPixels": 104.12310562561765,
+                                "metric": "qualified-route-arc-pixels"
+                              }
+                            ]
+                          }
+                        ],
+                        "coordinates": [
+                          {
+                            "worldId": "procgen:42",
+                            "generation": 1,
+                            "previousSPixels": 133.12310562561765,
+                            "previousObservationTick": 109,
+                            "entryObservationId": "procgen:42:1:1:0:4:pickup:upper:1",
+                            "routeId": "u",
+                            "routeRevision": 1,
+                            "branchId": "u-directed",
+                            "actorId": 0,
+                            "segmentIndex": 3,
+                            "segmentId": "u-3",
+                            "lapId": 0,
+                            "sPixels": 134.12310562561765,
+                            "segmentS": 28,
+                            "direction": 1,
+                            "observationTick": 110,
+                            "status": "qualified",
+                            "entryTick": 1,
+                            "lastReturnTick": null,
+                            "periodTicks": null,
+                            "lastLapObservationId": null,
+                            "lastLapSourceEventIds": [],
+                            "markerHistory": [
+                              "procgen:42:1:1:0:4:pickup:upper:1",
+                              "procgen:42:1:61:0:187:pickup:edge:1",
+                              "procgen:42:1:73:0:227:pickup:land:1",
+                              "procgen:42:1:81:0:259:pickup:turn:1"
+                            ],
+                            "sourceEventIds": [
+                              "procgen:42:1:81:0:259"
+                            ],
+                            "motionSourceEventId": "procgen:42:1:110:0:376",
+                            "motionSourceSequence": 376,
+                            "motionSourceTick": 110,
+                            "coordinatePrecision": "completed-route-endpoint-projection",
+                            "geometrySource": "authored",
+                            "lastPosition": {
+                              "x": 79,
+                              "y": 80
+                            },
+                            "metric": "qualified-route-arc-pixels"
+                          },
+                          {
+                            "worldId": "procgen:42",
+                            "generation": 1,
+                            "previousSPixels": 29,
+                            "previousObservationTick": 109,
+                            "entryObservationId": "procgen:42:1:80:0:256:pickup:upper:1",
+                            "routeId": "u",
+                            "routeRevision": 1,
+                            "branchId": "u-directed",
+                            "actorId": 1,
+                            "segmentIndex": 0,
+                            "segmentId": "u-0",
+                            "lapId": 0,
+                            "sPixels": 30,
+                            "segmentS": 30,
+                            "direction": 1,
+                            "observationTick": 110,
+                            "status": "qualified",
+                            "entryTick": 80,
+                            "lastReturnTick": null,
+                            "periodTicks": null,
+                            "lastLapObservationId": null,
+                            "lastLapSourceEventIds": [],
+                            "markerHistory": [
+                              "procgen:42:1:80:0:256:pickup:upper:1"
+                            ],
+                            "sourceEventIds": [
+                              "procgen:42:1:80:0:256"
+                            ],
+                            "motionSourceEventId": "procgen:42:1:110:0:377",
+                            "motionSourceSequence": 377,
+                            "motionSourceTick": 110,
+                            "coordinatePrecision": "completed-route-endpoint-projection",
+                            "geometrySource": "authored",
+                            "lastPosition": {
+                              "x": 70,
+                              "y": 40
+                            },
+                            "metric": "qualified-route-arc-pixels"
+                          }
+                        ]
+                      },
+                      "coordinates": [
+                        {
+                          "actorId": 0,
+                          "position": {
+                            "x": 79,
+                            "y": 80
+                          },
+                          "routes": [
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 133.12310562561765,
+                              "previousObservationTick": 109,
+                              "entryObservationId": "procgen:42:1:1:0:4:pickup:upper:1",
+                              "routeId": "u",
+                              "routeRevision": 1,
+                              "branchId": "u-directed",
+                              "actorId": 0,
+                              "segmentIndex": 3,
+                              "segmentId": "u-3",
+                              "lapId": 0,
+                              "sPixels": 134.12310562561765,
+                              "segmentS": 28,
+                              "direction": 1,
+                              "observationTick": 110,
+                              "status": "qualified",
+                              "entryTick": 1,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:1:0:4:pickup:upper:1",
+                                "procgen:42:1:61:0:187:pickup:edge:1",
+                                "procgen:42:1:73:0:227:pickup:land:1",
+                                "procgen:42:1:81:0:259:pickup:turn:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:81:0:259"
+                              ],
+                              "motionSourceEventId": "procgen:42:1:110:0:376",
+                              "motionSourceSequence": 376,
+                              "motionSourceTick": 110,
+                              "coordinatePrecision": "completed-route-endpoint-projection",
+                              "geometrySource": "authored",
+                              "lastPosition": {
+                                "x": 79,
+                                "y": 80
+                              },
+                              "metric": "qualified-route-arc-pixels"
+                            }
+                          ]
+                        },
+                        {
+                          "actorId": 1,
+                          "position": {
+                            "x": 70,
+                            "y": 40
+                          },
+                          "routes": [
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 29,
+                              "previousObservationTick": 109,
+                              "entryObservationId": "procgen:42:1:80:0:256:pickup:upper:1",
+                              "routeId": "u",
+                              "routeRevision": 1,
+                              "branchId": "u-directed",
+                              "actorId": 1,
+                              "segmentIndex": 0,
+                              "segmentId": "u-0",
+                              "lapId": 0,
+                              "sPixels": 30,
+                              "segmentS": 30,
+                              "direction": 1,
+                              "observationTick": 110,
+                              "status": "qualified",
+                              "entryTick": 80,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:80:0:256:pickup:upper:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:80:0:256"
+                              ],
+                              "motionSourceEventId": "procgen:42:1:110:0:377",
+                              "motionSourceSequence": 377,
+                              "motionSourceTick": 110,
+                              "coordinatePrecision": "completed-route-endpoint-projection",
+                              "geometrySource": "authored",
+                              "lastPosition": {
+                                "x": 70,
+                                "y": 40
+                              },
+                              "metric": "qualified-route-arc-pixels"
+                            }
+                          ]
+                        }
+                      ],
+                      "physicalHash": "c9be56721cafdb905193661ec460270d2de3a3938959f03f63f42173c350e1d2",
+                      "physicalFacts": 379,
+                      "permutationEqual": true
+                    },
+                    "crossing": {
+                      "result": null,
+                      "coordinates": [
+                        {
+                          "actorId": 0,
+                          "position": {
+                            "x": 80,
+                            "y": 80
+                          },
+                          "routes": [
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 39,
+                              "previousObservationTick": 40,
+                              "entryObservationId": "procgen:42:1:1:0:4:pickup:east-in:1",
+                              "routeId": "east",
+                              "routeRevision": 1,
+                              "branchId": "east",
+                              "actorId": 0,
+                              "segmentIndex": 0,
+                              "segmentId": "east-segment",
+                              "lapId": 0,
+                              "sPixels": 40,
+                              "segmentS": 40,
+                              "direction": 1,
+                              "observationTick": 41,
+                              "status": "qualified",
+                              "entryTick": 1,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:1:0:4:pickup:east-in:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:1:0:4"
+                              ],
+                              "motionSourceEventId": "procgen:42:1:41:0:167",
+                              "motionSourceSequence": 167,
+                              "motionSourceTick": 41,
+                              "coordinatePrecision": "completed-route-endpoint-projection",
+                              "geometrySource": "authored",
+                              "lastPosition": {
+                                "x": 80,
+                                "y": 80
+                              },
+                              "metric": "qualified-route-arc-pixels"
+                            },
+                            null
+                          ]
+                        },
+                        {
+                          "actorId": 1,
+                          "position": {
+                            "x": 80,
+                            "y": 80
+                          },
+                          "routes": [
+                            null,
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 39,
+                              "previousObservationTick": 40,
+                              "entryObservationId": "procgen:42:1:1:0:8:pickup:west-in:1",
+                              "routeId": "west",
+                              "routeRevision": 1,
+                              "branchId": "west",
+                              "actorId": 1,
+                              "segmentIndex": 0,
+                              "segmentId": "west-segment",
+                              "lapId": 0,
+                              "sPixels": 40,
+                              "segmentS": 40,
+                              "direction": 1,
+                              "observationTick": 41,
+                              "status": "qualified",
+                              "entryTick": 1,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:1:0:8:pickup:west-in:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:1:0:8"
+                              ],
+                              "motionSourceEventId": "procgen:42:1:41:0:168",
+                              "motionSourceSequence": 168,
+                              "motionSourceTick": 41,
+                              "coordinatePrecision": "completed-route-endpoint-projection",
+                              "geometrySource": "authored",
+                              "lastPosition": {
+                                "x": 80,
+                                "y": 80
+                              },
+                              "metric": "qualified-route-arc-pixels"
+                            }
+                          ]
+                        }
+                      ],
+                      "physicalHash": "7c7d4a9cb85e10a647ffb525bb17260c102b3c99ce6868bca7c72ec77d4b0306",
+                      "physicalFacts": 170,
+                      "permutationEqual": true
+                    },
+                    "ambiguous": {
+                      "result": null,
+                      "coordinates": [
+                        {
+                          "actorId": 0,
+                          "position": {
+                            "x": 80,
+                            "y": 80
+                          },
+                          "routes": [
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 0,
+                              "previousObservationTick": 1,
+                              "entryObservationId": "procgen:42:1:1:0:4:pickup:east-in:1",
+                              "routeId": "east",
+                              "routeRevision": 1,
+                              "branchId": "east",
+                              "actorId": 0,
+                              "segmentIndex": 0,
+                              "segmentId": "east-segment",
+                              "lapId": 0,
+                              "sPixels": 0,
+                              "segmentS": 0,
+                              "direction": 1,
+                              "observationTick": 1,
+                              "status": "ambiguous",
+                              "entryTick": 1,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:1:0:4:pickup:east-in:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:1:0:4"
+                              ],
+                              "metric": "qualified-route-arc-pixels"
+                            },
+                            {
+                              "worldId": "procgen:42",
+                              "generation": 1,
+                              "previousSPixels": 0,
+                              "previousObservationTick": 1,
+                              "entryObservationId": "procgen:42:1:1:0:4:pickup:east-in:1",
+                              "routeId": "ambiguous-east",
+                              "routeRevision": 1,
+                              "branchId": "ambiguous-east",
+                              "actorId": 0,
+                              "segmentIndex": 0,
+                              "segmentId": "east-segment",
+                              "lapId": 0,
+                              "sPixels": 0,
+                              "segmentS": 0,
+                              "direction": 1,
+                              "observationTick": 1,
+                              "status": "ambiguous",
+                              "entryTick": 1,
+                              "lastReturnTick": null,
+                              "periodTicks": null,
+                              "lastLapObservationId": null,
+                              "lastLapSourceEventIds": [],
+                              "markerHistory": [
+                                "procgen:42:1:1:0:4:pickup:east-in:1"
+                              ],
+                              "sourceEventIds": [
+                                "procgen:42:1:1:0:4"
+                              ],
+                              "metric": "qualified-route-arc-pixels"
+                            }
+                          ]
+                        },
+                        {
+                          "actorId": 1,
+                          "position": {
+                            "x": 80,
+                            "y": 80
+                          },
+                          "routes": [
+                            null,
+                            null
+                          ]
+                        }
+                      ],
+                      "physicalHash": "7c7d4a9cb85e10a647ffb525bb17260c102b3c99ce6868bca7c72ec77d4b0306",
+                      "physicalFacts": 170,
+                      "permutationEqual": true
+                    }
+                  },
+                  "markers": {
+                    "edits": [
+                      {
+                        "name": "geometry",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "lane-scope",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "direction",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "bypass",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "hysteresis",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "trigger",
+                        "invalidatedOnlyDependentRoute": true,
+                        "restoreRefused": true
+                      },
+                      {
+                        "name": "pitch",
+                        "phasePreserved": true
+                      },
+                      {
+                        "name": "metadata-revision",
+                        "phasePreserved": true
+                      }
+                    ],
+                    "unboundDefinitionsRefused": 2,
+                    "observedLegacyRefused": true,
+                    "emptyLegacyUpgradedWithoutGuess": true,
+                    "nativeJsonRoundTrip": true,
+                    "sourceUnchanged": true
+                  },
+                  "nativeTake": {
+                    "takeId": "take:actual-route-history",
+                    "unrequestedTakeId": "take:unrequested-route-history",
+                    "midpointTick": 200,
+                    "midpointSequence": 401,
+                    "throughTick": 401,
+                    "futureFacts": 810,
+                    "futureIntents": 6,
+                    "equal": true,
+                    "checkpointHash": "475f59729904dd567f518713f70a7808083aa0f7d4e4810406a6f7fd6c183079",
+                    "finalHash": "bafd6b607e80c13a6285a1e4096a79f37cc72b3d734c37a266ef18fe8cd37706",
+                    "routePlanSupported": true,
+                    "changedMarkerPlanRefused": true,
+                    "endpointOnlyPlanRefused": true,
+                    "neverRequestedPlanRefused": true,
+                    "missingStateRefused": true,
+                    "neverRequestedRefused": true,
+                    "sourceTakeUnchanged": true
+                  },
+                  "realIndexedDbReopen": true,
+                  "displays": [
+                    {
+                      "paints": 27,
+                      "state": "ready",
+                      "width": 1920,
+                      "height": 1080
+                    },
+                    {
+                      "paints": 10,
+                      "state": "ready",
+                      "width": 1920,
+                      "height": 1080
+                    },
+                    {
+                      "paints": 10,
+                      "state": "ready",
+                      "width": 1920,
+                      "height": 1080
+                    }
+                  ],
+                  "pause": {
+                    "before": 200,
+                    "after": 200,
+                    "displayFrames": 8,
+                    "wallMs": 120.60000002384186
+                  },
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Real original scored geometry and actors; native durable checkpoint/reinterpretation preflight; no nearest-branch reconstruction, acoustic or device claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "actual route circuits preserve period evidence terrain edits pause replay and rejected saved histories",
+            "file": "procgen-workstation-route-circuits.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "actual-route-circuit-desktop",
+                "value": {
+                  "scenarios": {
+                    "reference": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          361,
+                          481,
+                          601,
+                          721,
+                          841,
+                          961
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481,
+                          641,
+                          801,
+                          961
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3875:pickup:entry0:9",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3875"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3876:pickup:entry1:7",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3876"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "f6103b7a4d12aaf0b76458b1b4b41a4b3bd3711f34125028453af5a838f8f00e",
+                      "intentHash": "724e38f81a5563f1fe6d17f6fa16d1c3c5046608d158b763c2ba5475660b0ef9",
+                      "lapseCount": 14,
+                      "invalidated": null,
+                      "paints": 288,
+                      "restored": {
+                        "fromTick": 480,
+                        "throughTick": 961,
+                        "facts": 1938,
+                        "intents": 18,
+                        "equal": true
+                      }
+                    },
+                    "fiveSeven": {
+                      "crossings": [
+                        [
+                          1,
+                          101,
+                          201,
+                          301,
+                          401,
+                          501,
+                          601,
+                          701
+                        ],
+                        [
+                          1,
+                          141,
+                          281,
+                          421,
+                          561,
+                          701
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 100,
+                            "requestedPeriodTicks": 100,
+                            "lastCompletedLapTick": 701,
+                            "sourceObservationId": "procgen:42:1:701:0:2831:pickup:entry0:8",
+                            "sourceEventIds": [
+                              "procgen:42:1:701:0:2831"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 140,
+                            "requestedPeriodTicks": 140,
+                            "lastCompletedLapTick": 701,
+                            "sourceObservationId": "procgen:42:1:701:0:2832:pickup:entry1:6",
+                            "sourceEventIds": [
+                              "procgen:42:1:701:0:2832"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.7142857142857143,
+                              "reduced": [
+                                5,
+                                7
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.4,
+                              "reduced": [
+                                7,
+                                5
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 700,
+                            "requestedPeriodRatio": {
+                              "value": 0.7142857142857143,
+                              "reduced": [
+                                5,
+                                7
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "241e161ecb2c293f4d264bd768828d052ef95baa26ea81309b706bfd6eab1508",
+                      "intentHash": "5ea0ea9d0343550ca04fd86fb01d38ed2102fe5e8c30c7e507aaf9fc601d9f06",
+                      "lapseCount": 12,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "changed": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          363,
+                          485,
+                          607,
+                          729,
+                          851
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481,
+                          641,
+                          801,
+                          961
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 2,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 122,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 851,
+                            "sourceObservationId": "procgen:42:1:851:0:3432:pickup:entry0:6",
+                            "sourceEventIds": [
+                              "procgen:42:1:851:0:3432"
+                            ],
+                            "periodErrorTicks": 2
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 2,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 961,
+                            "sourceObservationId": "procgen:42:1:961:0:3877:pickup:entry1:5",
+                            "sourceEventIds": [
+                              "procgen:42:1:961:0:3877"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.7625,
+                              "reduced": [
+                                61,
+                                80
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3114754098360655,
+                              "reduced": [
+                                80,
+                                61
+                              ]
+                            },
+                            "periodDifferenceTicks": 38,
+                            "periodLcmTicks": 9760,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "406a75bbe22cf86f22bd4509fc8e12b317952309a989f1737a63a7725ed62c09",
+                      "intentHash": "a818646624197fb1b84bab61465a6586803c0758b0da9b4952096916565eb9f3",
+                      "lapseCount": 11,
+                      "invalidated": [
+                        {
+                          "worldId": "procgen:42",
+                          "generation": 1,
+                          "previousSPixels": 196,
+                          "previousObservationTick": 200,
+                          "entryObservationId": "procgen:42:1:1:0:4:pickup:entry0:1",
+                          "routeId": "circuit0",
+                          "routeRevision": 1,
+                          "branchId": "lane0",
+                          "actorId": 0,
+                          "segmentIndex": 1,
+                          "segmentId": "segment0-1",
+                          "lapId": 1,
+                          "sPixels": 196,
+                          "segmentS": 38,
+                          "direction": 1,
+                          "observationTick": 200,
+                          "status": "terrain-invalidated",
+                          "entryTick": 1,
+                          "lastReturnTick": 121,
+                          "periodTicks": 120,
+                          "lastLapObservationId": "procgen:42:1:121:0:490:pickup:entry0:2",
+                          "lastLapSourceEventIds": [
+                            "procgen:42:1:121:0:490"
+                          ],
+                          "markerHistory": [
+                            "procgen:42:1:1:0:4:pickup:entry0:1",
+                            "procgen:42:1:41:0:167:pickup:right0:1",
+                            "procgen:42:1:101:0:409:pickup:left0:1",
+                            "procgen:42:1:121:0:490:pickup:entry0:2",
+                            "procgen:42:1:161:0:651:pickup:right0:2"
+                          ],
+                          "sourceEventIds": [
+                            "procgen:42:1:161:0:651"
+                          ],
+                          "motionSourceEventId": "procgen:42:1:200:0:808",
+                          "motionSourceSequence": 808,
+                          "motionSourceTick": 200,
+                          "coordinatePrecision": "completed-route-endpoint-projection",
+                          "geometrySource": "authored",
+                          "lastPosition": {
+                            "x": 42,
+                            "y": 80
+                          },
+                          "metric": "qualified-route-arc-pixels"
+                        },
+                        {
+                          "worldId": "procgen:42",
+                          "generation": 1,
+                          "previousSPixels": 197,
+                          "previousObservationTick": 200,
+                          "entryObservationId": "procgen:42:1:1:0:8:pickup:entry1:1",
+                          "routeId": "circuit1",
+                          "routeRevision": 1,
+                          "branchId": "lane1",
+                          "actorId": 1,
+                          "segmentIndex": 0,
+                          "segmentId": "segment1-0",
+                          "lapId": 1,
+                          "sPixels": 198,
+                          "segmentS": 40,
+                          "direction": 1,
+                          "observationTick": 201,
+                          "status": "qualified",
+                          "entryTick": 1,
+                          "lastReturnTick": 161,
+                          "periodTicks": 160,
+                          "lastLapObservationId": "procgen:42:1:161:0:652:pickup:entry1:2",
+                          "lastLapSourceEventIds": [
+                            "procgen:42:1:161:0:652"
+                          ],
+                          "markerHistory": [
+                            "procgen:42:1:1:0:8:pickup:entry1:1",
+                            "procgen:42:1:61:0:249:pickup:right1:1",
+                            "procgen:42:1:141:0:571:pickup:left1:1",
+                            "procgen:42:1:161:0:652:pickup:entry1:2"
+                          ],
+                          "sourceEventIds": [
+                            "procgen:42:1:161:0:652"
+                          ],
+                          "motionSourceEventId": "procgen:42:1:201:0:814",
+                          "motionSourceSequence": 814,
+                          "motionSourceTick": 201,
+                          "coordinatePrecision": "completed-route-endpoint-projection",
+                          "geometrySource": "authored",
+                          "lastPosition": {
+                            "x": 80,
+                            "y": 176
+                          },
+                          "metric": "qualified-route-arc-pixels"
+                        }
+                      ],
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "shortcut": {
+                      "crossings": [
+                        [
+                          1,
+                          81,
+                          161,
+                          241,
+                          321,
+                          401,
+                          481
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1946:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1946"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "29dfd4c439372daebaeab8a3e4e0758ed8efd83e7205aa69b1651c4ee9ebf1c8",
+                      "intentHash": "cc211b7f9788cd3f97ea4a124708b854f095b5e7c709f87177a43ded4a11cf82",
+                      "lapseCount": 3,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "stalled": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 120,
+                            "lastCompletedLapTick": 241,
+                            "sourceObservationId": "procgen:42:1:241:0:974:pickup:entry0:3",
+                            "sourceEventIds": [
+                              "procgen:42:1:241:0:974"
+                            ],
+                            "periodErrorTicks": 0
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1762:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1762"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "84c2f961a22ad10437c1e6d3fb03b13f916726702f7e30f8a6108e98e437c33f",
+                      "intentHash": "89d8d579a785b29892eb95029e69e983810215cd6739965f5ea3d5ab18ceb4ab",
+                      "lapseCount": 5,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    },
+                    "odd": {
+                      "crossings": [
+                        [
+                          1,
+                          121,
+                          241,
+                          361,
+                          481
+                        ],
+                        [
+                          1,
+                          161,
+                          321,
+                          481
+                        ]
+                      ],
+                      "periodView": {
+                        "status": "observed-completed-laps",
+                        "rows": [
+                          {
+                            "routeId": "circuit0",
+                            "routeRevision": 1,
+                            "branchId": "lane0",
+                            "actorId": 0,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 120,
+                            "requestedPeriodTicks": 121,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1941:pickup:entry0:5",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1941"
+                            ],
+                            "periodErrorTicks": -1
+                          },
+                          {
+                            "routeId": "circuit1",
+                            "routeRevision": 1,
+                            "branchId": "lane1",
+                            "actorId": 1,
+                            "coordinateStatus": "qualified",
+                            "periodTicks": 160,
+                            "requestedPeriodTicks": 160,
+                            "lastCompletedLapTick": 481,
+                            "sourceObservationId": "procgen:42:1:481:0:1942:pickup:entry1:4",
+                            "sourceEventIds": [
+                              "procgen:42:1:481:0:1942"
+                            ],
+                            "periodErrorTicks": 0
+                          }
+                        ],
+                        "comparisons": [
+                          {
+                            "reference": {
+                              "routeId": "circuit0",
+                              "actorId": 0
+                            },
+                            "other": {
+                              "routeId": "circuit1",
+                              "actorId": 1
+                            },
+                            "periodRatio": {
+                              "value": 0.75,
+                              "reduced": [
+                                3,
+                                4
+                              ]
+                            },
+                            "frequencyRatio": {
+                              "value": 1.3333333333333333,
+                              "reduced": [
+                                4,
+                                3
+                              ]
+                            },
+                            "periodDifferenceTicks": 40,
+                            "periodLcmTicks": 480,
+                            "requestedPeriodRatio": {
+                              "value": 0.75625,
+                              "reduced": [
+                                121,
+                                160
+                              ]
+                            }
+                          }
+                        ],
+                        "units": {
+                          "period": "simulation-ticks",
+                          "frequencyRatio": "inverse-period-ratio",
+                          "periodLcm": "integer-period-coincidence-window-not-a-phase-reset"
+                        },
+                        "movementChanged": false
+                      },
+                      "physicalHash": "ce3551684cf01de5f015d6c9e30cdb05d9ccab4a108533444e8019c6c12fa6c3",
+                      "intentHash": "ee5ba3f7a7665f492a11d1a09c74ead58b369f59158bf9040fdfa1d31ff9f5b8",
+                      "lapseCount": 7,
+                      "invalidated": null,
+                      "paints": 0,
+                      "restored": null
+                    }
+                  },
+                  "refusals": {
+                    "rejected": 41,
+                    "outcomes": [
+                      {
+                        "name": "route-revision",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "branch",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "segment-id",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "segment-index",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-lap",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "fractional-lap",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "forged-lap",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "arc-offset",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-segment-s",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "oversized-segment-s",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "direction",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "world",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "generation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "status",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "last-position",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "nonfinite-position",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-coordinate-proof",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "source-geometry",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-entry",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-entry",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-return",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-period",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-lap-proof",
+                        "reason": "Invalid completed route lap provenance.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-lap-sources",
+                        "reason": "Invalid completed route lap provenance.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "empty-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "invalid-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "unbounded-marker-history",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "empty-source-events",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "invalid-source-events",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "entry-observation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-observation",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "motion-sequence",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-motion-tick",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "future-previous-observation",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "negative-previous-arc",
+                        "reason": "Invalid completed route endpoint evidence.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "foreign-boundary",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "missing-current-tick",
+                        "reason": "Invalid observed route identity or history.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "duplicate-tracker",
+                        "reason": "Duplicate observed route identity.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "duplicate-invalid-route",
+                        "reason": "Invalid route dependency state.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "unknown-invalid-segment",
+                        "reason": "Invalid route dependency state.",
+                        "unchanged": true
+                      },
+                      {
+                        "name": "qualified-invalidated-segment",
+                        "reason": "Qualified route segment has invalidated terrain.",
+                        "unchanged": true
+                      }
+                    ],
+                    "sourceUnchanged": true,
+                    "unqualifiedRemainsUnknown": true,
+                    "requestedMetadataRetainsPhase": true
+                  },
+                  "travel": [
+                    118,
+                    158
+                  ],
+                  "oddRequest": {
+                    "status": "unsupported-under-fixture-constraints",
+                    "requested": 121,
+                    "realized": 120,
+                    "errorTicks": -1,
+                    "constraints": "Unmodified one-pixel walker and two stationary vertical walls; period 2*(rightWall-leftWall-1), including both zero-displacement turns."
+                  },
+                  "display": {
+                    "state": "ready",
+                    "width": 1920,
+                    "height": 1080,
+                    "renderedActors": 2,
+                    "projectedLanes": [
+                      1
+                    ],
+                    "hiddenLane": true,
+                    "nativePaints": 296
+                  },
+                  "pause": {
+                    "before": 480,
+                    "after": 480,
+                    "displayFrames": 8,
+                    "wallMs": 100.40000000596046
+                  },
+                  "pixelHash": "10e8f8729108349e58e983cbe3fa02bc052cb30eadaee9ce74ee91780ead77a9",
+                  "liveProjectUnchanged": true,
+                  "audioContexts": 0,
+                  "midiRequests": 0,
+                  "viewport": {
+                    "width": 1920,
+                    "height": 1080
+                  },
+                  "scope": "Actual physical circuits, source-time periods, ordered markers, terrain invalidation/requalification and source-preserving continuation; no sequencer rate, teleport or acoustic/device claim."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "coverage": {
+        "total": {
+          "lines": {
+            "total": 486,
+            "covered": 459,
+            "skipped": 0,
+            "pct": 94.44
+          },
+          "statements": {
+            "total": 486,
+            "covered": 459,
+            "skipped": 0,
+            "pct": 94.44
+          },
+          "functions": {
+            "total": 42,
+            "covered": 41,
+            "skipped": 0,
+            "pct": 97.61
+          },
+          "branches": {
+            "total": 637,
+            "covered": 482,
+            "skipped": 0,
+            "pct": 75.66
+          },
+          "branchesTrue": {
+            "total": 0,
+            "covered": 0,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalTake.js": {
+          "lines": {
+            "total": 309,
+            "covered": 283,
+            "skipped": 0,
+            "pct": 91.58
+          },
+          "functions": {
+            "total": 23,
+            "covered": 22,
+            "skipped": 0,
+            "pct": 95.65
+          },
+          "statements": {
+            "total": 309,
+            "covered": 283,
+            "skipped": 0,
+            "pct": 91.58
+          },
+          "branches": {
+            "total": 320,
+            "covered": 205,
+            "skipped": 0,
+            "pct": 64.06
+          }
+        },
+        "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\RouteCoordinateAtlas.js": {
+          "lines": {
+            "total": 177,
+            "covered": 176,
+            "skipped": 0,
+            "pct": 99.43
+          },
+          "functions": {
+            "total": 19,
+            "covered": 19,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 177,
+            "covered": 176,
+            "skipped": 0,
+            "pct": 99.43
+          },
+          "branches": {
+            "total": 317,
+            "covered": 277,
+            "skipped": 0,
+            "pct": 87.38
+          }
+        }
+      },
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run provenance:check",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/app/procgen/workstation/CausalTake.js",
+          "bytes": 37011,
+          "sha256": "3c07fb857d3f64088463c46345caf592b668474c6462c2e6e391511496e39c85"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/RouteCoordinateAtlas.js",
+          "bytes": 23148,
+          "sha256": "113db2c9aa40d23c0217e5b9e8f64e7487bcf3da5de8bc1950268cc307abddde"
+        },
+        {
+          "path": "test/helpers/routeStateCorpus.js",
+          "bytes": 5252,
+          "sha256": "98c1e57761567f74ec42fdf0822492f1cd2a8df54ec95c4edd009386b9ba6b2b"
+        },
+        {
+          "path": "test/helpers/routeMarkerCorpus.js",
+          "bytes": 3993,
+          "sha256": "feccde9e6d2f3a9555de907ea17b74ef0cf0700d1dbbba0ae0aaeebc7b41a2f8"
+        },
+        {
+          "path": "test/helpers/actualRouteAtlasJourneys.js",
+          "bytes": 15811,
+          "sha256": "a716d7fb5db429ed6147cabea98a8ff73d2249d304b764045cbc5dbb0f0287ed"
+        },
+        {
+          "path": "test/procgen-actual-route-atlas.test.js",
+          "bytes": 1423,
+          "sha256": "820b01c23833de1ad75d462006b8bea8448a3b5f0b1deac92cc9785eac47a6ca"
+        },
+        {
+          "path": "e2e/procgen-workstation-route-atlas.spec.js",
+          "bytes": 6258,
+          "sha256": "d261ffeafb9e2d1e80db7bcef5002203924623d4a8c0dbd59b161fc22ba6424b"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "sha256": "3cac2c8e8a6aaa2fb177d61a5c77e77ed69d4326413e4e2e6dc855deab9b667d",
+          "files": 294
+        }
+      ]
+    },
+    "limits": [
+      "Original controlled scored geometry with real production masks/actors/worker compilation; no installed-asset matrix or archived exact-mode qualification.",
+      "Neighbor exclusion uses explicitly declared 48-pixel route radius; no implicit musical tuning or Euclidean substitution.",
+      "Permutation reverses complete actor projections, preserving authoritative physical mutation order.",
+      "Unsupported route-history reconstruction refuses; no derived replay service is claimed.",
+      "CausalTake branch/coverage/owned revoice branches remain partial in this affected run.",
+      "No acoustic/device evidence. Full CI392 remains pending; latest independently source-verified full green remains383."
+    ],
+    "issueOutcome": {
+      "990": "Open: optional ratio-folded/delayed modes and actual crowd matrix remain development.",
+      "1182": "Close after publication; combines shared392 lap/terrain/hidden-row fixtures with marker/geometry/native take acceptance."
+    }
   }
 }

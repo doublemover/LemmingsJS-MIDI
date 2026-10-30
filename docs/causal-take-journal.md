@@ -377,3 +377,20 @@ invented to make a partial window playable. Reader authority is private and tied
 to the same root budget; copied receipt fields cannot qualify an unowned source.
 This prepares data for playback/rendering; it does not itself audition or prove
 rendered PCM. Ownership, identity and capacity fixtures remain unexecuted.
+
+Route-dependent reinterpretation requires `route-coordinate-history-v2` coverage
+and the matching marker-bound route definitions captured at the initial component
+boundary. The default physical capture profile is `physical-basic-v20`. Generic
+physical-domain coverage alone cannot establish branch or lap history. Moving a
+marker or requesting a route that was never captured returns
+`route-definition-history-not-captured`; endpoint poses cannot qualify it.
+Verified derived route reconstruction is not implemented by this boundary.
+
+The actual scored-world route corpus records both a route-aware take and a take
+that never requests route coordinates, closes/reopens native IndexedDB in
+Playwright, seeks to tick 200 inside a loop, and resumes through tick 401. It
+compares every future physical fact, musical intent and observer state while
+preserving the durable original. Missing history and incompatible marker history
+refuse transactionally. These are original controlled terrain fixtures using
+production actors, masks and compilation; they do not qualify an installed-asset
+matrix, acoustic output or hardware receivers.

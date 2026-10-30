@@ -7,6 +7,7 @@ import { createCausalCoverageIndex, queryCausalCoverage } from './CausalCoverage
 import { createCausalViewWorkspace } from './CausalViewWorkspace.js';
 import { retireCausalRead } from './CausalReadLeases.js';
 import { validateCausalPerformanceChange, validateCausalPerformanceState } from './CausalPerformanceState.js';
+import { routeDefinitionSignature } from './physical/RouteCoordinateAtlas.js';
 
 const name = value => typeof value === 'string' && value.length > 0 && value.length <= 128;
 const boundedKinds = value => Array.isArray(value) && value.length <= 128 && value.every(name) && new Set(value).size === value.length;
@@ -15,10 +16,10 @@ const validateCaptureProfile = value => {
       !boundedKinds(value.stateKinds)) throw new Error('A bounded, explicit causal capture profile is required.');
   return cloneJournalData(value);
 };
-const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v19',
+const PHYSICAL_CAPTURE_PROFILE = freezeJournalData({ version: 1, id: 'physical-basic-v20',
   factKinds: ['ReleaseGestureRequested', 'ReleaseScheduleCommitted', 'CrewRouteOpened', 'CrewRouteConnected', 'CrewMemberArrived', 'RouteCompleted', 'RouteFailed', 'MotionCommitted', 'DirectionChanged', 'ContactResolved', 'ActionEntered', 'ActionExited', 'AbilityChanged',
     'ActionCycleCompleted', 'FlightArcStarted', 'FlightArcUpdated', 'FlightArcEnded', 'ActorTerminated', 'ActorBorn', 'BirthAdmissionMissed', 'ActorLaneTransferred', 'TerrainWorkCommitted', 'CommandApplied', 'CommandWaiting', 'CommandRejected', 'ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded'],
-  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
+  descriptorKinds: ['movement-path', 'work-phase-v2', 'topology-geometry-v1'], stateKinds: ['prepared-surfaces', 'effect-performance', 'voices', 'travel', 'contactSpans', 'timeline', 'instrument-performance', 'physical-domain', 'route-coordinate-history-v2', 'rhythmic-responses', 'action-admission', 'tonal-interpretation', 'encounters', 'motifs', 'activity', 'physical-feedback', 'cargo', 'swarm'] });
 
 const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId, sourceVersions, captureProfile = PHYSICAL_CAPTURE_PROFILE,
   boundaryState = {}, initialCheckpoint, mapping, assetRefs = [], existingWriter = null, prefixCoverage = null, sourceCursor = null } = {}) => {
@@ -41,6 +42,10 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
     mappingRevisions = new Set([...(prefixCoverage?.mappingRevisions || []), graph.revision]);
   const topologyRegions = new Map((prefixCoverage?.topologyRegions || []).map(region => [`${region.id}:${region.revision}`, region]));
   const observedStateKinds = new Set(profile.stateKinds.filter(kind => Object.hasOwn(boundaryState, kind) && boundaryState[kind] != null));
+  observedStateKinds.delete('route-coordinate-history-v2');
+  const routeBoundary = initialCheckpoint?.engine?.physicalDomain?.routes;
+  const routeDefinitions = routeBoundary?.version === 2 && Array.isArray(routeBoundary.signatures) ? (graph.routes || []).filter(route => routeBoundary.signatures.some(([id, signature]) => id === route.id && signature === routeDefinitionSignature(route))).map(route => ({ id: route.id, revision: route.revision, signature: routeDefinitionSignature(route) })) : [];
+  if (routeDefinitions.length && profile.stateKinds.includes('route-coordinate-history-v2')) observedStateKinds.add('route-coordinate-history-v2');
   if (initialPerformance && profile.stateKinds.includes('instrument-performance')) observedStateKinds.add('instrument-performance');
   const coverageIndex = createCausalCoverageIndex({ gaps: prefixCoverage?.gaps || [] }), batches = new Set(), order = [];
   let firstTick = prefixCoverage?.sourceRange?.firstTick ?? null, lastTick = sourceCursor?.tick ?? null,
@@ -116,7 +121,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
       coverage: { status: gaps.some(gap => ['physical-facts', 'all'].includes(gap.kind)) ? 'partial' : 'complete',
         sourceRange: { firstTick, lastTick, worldId }, available: { factKinds: profile.factKinds, descriptorKinds: profile.descriptorKinds,
           stateKinds: [...observedStateKinds] }, observedFactKinds: [...observedFactKinds].sort(), intentKinds: [...intentKinds].sort(),
-        mappingRevisions: [...mappingRevisions], topologyRegions: [...topologyRegions.values()], gaps: cloneJournalData(gaps) } };
+        mappingRevisions: [...mappingRevisions], topologyRegions: [...topologyRegions.values()], routeDefinitions, gaps: cloneJournalData(gaps) } };
     return writer.stop(stopRequest);
   };
   const recordMapping = (next, boundary) => {
@@ -158,6 +163,7 @@ const createCausalTakeRecorder = async ({ journal, takeId, takeName, documentId,
 const graphCaptureRequirements = graph => {
   const valid = validateCausalInstrumentGraph(graph), requirements = new Map();
   const add = (kind, owner, type) => requirements.set(`${type}:${kind}`, { kind, owner, type });
+  if (valid.routes?.length) { add('route-coordinate-history-v2', 'route-atlas', 'state'); add('MotionCommitted', 'route-atlas', 'fact'); }
   for (const rule of [...(valid.feedback?.conductors || []), ...(valid.feedback?.layers || []).flatMap(layer => layer.rules)]) { add('physical-feedback', rule.id, 'state'); for (const kind of ['CommandApplied', 'CommandRejected', 'CommandWaiting', 'ActorBorn', 'ActorTerminated']) add(kind, rule.id, 'fact'); if (['PickupCrossing', 'RouteLap', 'EncounterBegan', 'RendezvousCompleted', 'MotifCompleted', 'RestStarted', 'RestEnded', 'CargoDelivered'].includes(rule.source.kind)) { add('MotionCommitted', rule.id, 'fact'); add('physical-domain', rule.id, 'state'); } else add(rule.source.kind, rule.id, 'fact'); }
   if (valid.swarm) { add('swarm', 'swarm-reducer', 'state'); add('voices', 'swarm-reducer', 'state'); }
   for (const surface of valid.preparedSurfaces || []) { add('prepared-surfaces', surface.id, 'state'); add('contactSpans', surface.id, 'state'); for (const kind of ['ContactSpanBegan', 'ContactSpanUpdated', 'ContactSpanEnded', 'ActorTerminated']) add(kind, surface.id, 'fact'); }
@@ -208,6 +214,7 @@ const planCausalReinterpretation = ({ manifest, graph, range = null, verifiedRec
     const outside = missing.some(gap => gap.reason === 'outside-captured-range');
     const captured = available[keys]?.includes(requirement.kind) === true;
     if (requirement.kind === 'topology-geometry-v1') { const wanted = validateCausalInstrumentGraph(graph).topologyRegions || []; if (wanted.some(region => !coverage.topologyRegions?.some(captured => captured.id === region.id && captured.revision === region.revision && captured.connectivity === region.connectivity && captured.space === region.space && canonicalJournalText(captured.bounds).text === canonicalJournalText(region.bounds).text))) return { ...requirement, status: 'unavailable', reason: 'topology-region-not-captured' }; }
+    if (requirement.kind === 'route-coordinate-history-v2' && validateCausalInstrumentGraph(graph).routes.some(route => !coverage.routeDefinitions?.some(value => value.id === route.id && value.revision === route.revision && value.signature === routeDefinitionSignature(route)))) return { ...requirement, status: 'unavailable', reason: 'route-definition-history-not-captured' };
     if (captured && queried.status === 'known-covered') return { ...requirement, status: 'supported-directly' };
     if (reconstruction?.coverage?.[keys]?.includes(requirement.kind) && reconstruction.firstTick <= requested.firstTick && reconstruction.lastTick >= requested.lastTick) {
       return { ...requirement, status: 'supported-by-verified-reconstruction', artifactId: reconstruction.artifactId };
