@@ -341,3 +341,39 @@ The actual U-corridor corpus places actors 41 Euclidean pixels apart but
 different entry-qualified branches; two compatible shared-entry routes remain
 ambiguous. Permuting complete actor projections preserves history without
 reordering authoritative physical mutations.
+
+## Crowd arrival and response timing
+
+Crowd instruments default to `literal-arrival`: an attack belongs to an actual
+qualified pickup arrival. Arrival intervals use simulation ticks, gaps use the
+selected Euclidean or qualified route pixels, and gap derivatives use pixels per
+simulation tick. Opposing directions retain independent history. A missing route
+coordinate stays unknown. Density thinning selects actual arrivals and preserves
+their timing; it does not fill gaps or move actors.
+
+Optional `delayed-response` adds an authored `delayTicks` (default 8). Optional
+`ratio-folded` folds each positive observed interval by powers of two into
+`[foldReferenceTicks, 2*foldReferenceTicks)` (default reference 6), starting with
+`delayTicks` of lookahead (default 32). Coincident arrivals retain zero intervals.
+A response is scheduled only after its physical arrival has occurred. An arrival
+that is too late for the folded schedule clamps to its actual arrival, and a
+response more than 4096 ticks ahead clamps to that bound. `presentationClamped`
+discloses either case; no retroactive source attack or filler is invented.
+
+The descriptor retains literal arrival, folded interval, presentation time,
+delay, original batch and original source-clock time. Intent score time describes
+the explicitly selected musical response; source event IDs and performance cause
+still name the original physical crossing. Gate duration follows the selected
+interval and authored maximum. BPM and painting do not advance this queue.
+
+Pending responses are bounded to 4096 records, 8 MiB of serialized fact estimates
+and 32 KiB per fact. Exhaustion reports incomplete interpretation. Checkpoint
+version 2 saves pending causes and estimator phase; restore validates ownership,
+byte counts, presentation ranges and the physical source boundary before changing
+live state. Instrument edits retire their own pending work, and epoch changes
+clear the queue. Legacy delayed ownership is refused rather than silently lost.
+
+Terrain rendering reads edit values through their observational lookup. It must
+not promote cold edits or update the world's last-lookup key while painting a
+paused source. The actual crowd desktop fixture covers the first paint of an
+unpainted checkpoint as well as subsequent camera and paint-cadence changes.

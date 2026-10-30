@@ -6,10 +6,12 @@ const readNumber = (value, fallback, low, high, label) => { const number = value
 export function validateRhythmicResponse(value, sourceKind) {
   if (!plain(value)) throw new Error('A physical response requires typed mapping data.');
   if (value.type === 'crowdInterval' && sourceKind === 'CrowdArrival') {
-    if (value.mode != null && value.mode !== 'literal-arrival' || !identity(value.pickupId) || !['arrival-time', 'euclidean', 'route-distance'].includes(value.metric ?? 'arrival-time') ||
+    if (!['literal-arrival', 'ratio-folded', 'delayed-response'].includes(value.mode ?? 'literal-arrival') || !identity(value.pickupId) || !['arrival-time', 'euclidean', 'route-distance'].includes(value.metric ?? 'arrival-time') ||
         value.metric === 'route-distance' && !identity(value.routeId) || !['lane', 'birth-cohort', 'ensemble'].includes(value.groupBy ?? 'lane') || value.groupBy === 'ensemble' && !identity(value.ensembleId)) throw new Error('Invalid crowd pickup, metric or grouping.');
     return freeze({ type: value.type, pickupId: value.pickupId, metric: value.metric ?? 'arrival-time', routeId: value.routeId ?? null, groupBy: value.groupBy ?? 'lane', ensembleId: value.ensembleId ?? null,
-      window: Math.round(readNumber(value.window, 16, 1, 64, 'interval window')), mode: 'literal-arrival',
+      window: Math.round(readNumber(value.window, 16, 1, 64, 'interval window')), mode: value.mode ?? 'literal-arrival',
+      delayTicks: readNumber(value.delayTicks, value.mode === 'ratio-folded' ? 32 : value.mode === 'delayed-response' ? 8 : 0, 0, 4096, 'crowd response delay'),
+      foldReferenceTicks: readNumber(value.foldReferenceTicks, 6, 0.001, 4096, 'crowd fold reference'),
       intervalToPitchCents: readNumber(value.intervalToPitchCents, 0, -1200, 1200, 'interval pitch slope'),
       intervalToGate: readNumber(value.intervalToGate, 0.5, 0, 4, 'interval gate ratio'), maximumGateTicks: readNumber(value.maximumGateTicks, 32, 0, 4096, 'maximum gate'),
       gapToAccent: readNumber(value.gapToAccent, 0, -1, 1, 'gap accent slope'), minimumIntervalTicks: readNumber(value.minimumIntervalTicks, 0, 0, 4096, 'density thinning interval') });
@@ -52,17 +54,19 @@ export function validateRhythmicResponse(value, sourceKind) {
 }
 const derived = (fact, instrument, extra = {}) => ({ ...fact, kind: instrument.sourceKind, targetMappingId: instrument.id, derivedResponse: true,
   physicalCauseFact: fact, sourceEventIds: fact.sourceEventIds || (fact.eventId ? [fact.eventId] : []), observationId: `${fact.observationId || fact.eventId}:${instrument.id}`, ...extra });
-export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } = {}) {
-  const states = new Map(); let boundary = null, signatures = new Map(), configured = [], diagnostics = [], failure = null;
+export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192, maxPending = 4096, maxPendingBytes = 8 * 1048576 } = {}) {
+  const states = new Map(); let boundary = null, signatures = new Map(), configured = [], diagnostics = [], failure = null, pending = [], pendingBytes = 0, currentTick = -1;
   const configure = instruments => {
     configured = instruments.filter(instrument => instrument.response);
     const next = new Map(configured.map(instrument => [instrument.id, JSON.stringify(instrument)]));
     for (const [key, state] of states) if (signatures.get(state.instrumentId) !== next.get(state.instrumentId)) states.delete(key);
+    pending = pending.filter(record => signatures.get(record.instrumentId) === next.get(record.instrumentId)); pendingBytes = pending.reduce((sum, record) => sum + record.bytes, 0);
     signatures = next;
   };
   const stateFor = (key, instrument, initial) => { let value = states.get(key); if (!value) { if (states.size >= maxStates) { failure = 'physical-response-state-capacity'; return null; } value = { instrumentId: instrument.id, ...initial }; states.set(key, value); } return value; };
   const expand = (batch, facts, environment) => {
-    if (boundary !== `${batch.worldId}:${batch.generation}`) { states.clear(); boundary = `${batch.worldId}:${batch.generation}`; }
+    if (boundary !== `${batch.worldId}:${batch.generation}`) { states.clear(); pending = []; pendingBytes = 0; boundary = `${batch.worldId}:${batch.generation}`; }
+    currentTick = batch.tick;
     failure = null; diagnostics = []; const output = [], actors = new Map((batch.snapshot?.actors || []).map(actor => [actor.actorId, actor]));
     const emit = fact => { if (output.length >= maxFacts) { failure = 'physical-response-output-capacity'; return; } output.push(freeze(fact)); };
     const groupedWork = new Map(), byKind = new Map();
@@ -74,7 +78,7 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
         const actor = actors.get(fact.actorId), membership = environment.membership(response.ensembleId || instrument.ensembleId, fact.actorId);
         if (!actor || membership.status !== 'complete' || !membership.includes || response.groupBy === 'birth-cohort' && !actor.birthCohortId) { diagnostics.push({ instrumentId: instrument.id, status: 'unknown', reason: 'crowd-membership-unavailable' }); continue; }
         const group = response.groupBy === 'birth-cohort' ? actor.birthCohortId : response.groupBy === 'ensemble' ? response.ensembleId : fact.laneId;
-        const state = stateFor(`${instrument.id}:arrival:${group}:${fact.direction}`, instrument, { kind: 'crowd', group, groupBy: response.groupBy, direction: fact.direction, lastArrival: null, lastActorId: null, lastGap: null, intervals: [], lastAccepted: null }); if (!state) continue;
+        const state = stateFor(`${instrument.id}:arrival:${group}:${fact.direction}`, instrument, { kind: 'crowd', group, groupBy: response.groupBy, direction: fact.direction, lastArrival: null, lastActorId: null, lastGap: null, intervals: [], lastAccepted: null, lastPresentation: null }); if (!state) continue;
         const time = batch.tick - 1 + (fact.fraction ?? 1), interval = state.lastArrival == null ? null : time - state.lastArrival;
         let gap = null, metricStatus = 'complete';
         if (response.metric === 'route-distance') { const current = environment.routeCoordinate(fact.actorId, response.routeId), previous = state.lastActorId == null ? null : environment.routeCoordinate(state.lastActorId, response.routeId);
@@ -86,13 +90,26 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
         if (interval != null) { state.intervals.push(interval); if (state.intervals.length > response.window) state.intervals.shift(); }
         const descriptor = { type: 'crowd-interval', group, metric: response.metric, metricStatus, intervalTicks: interval, gapPixels: gap, gapDerivativePixelsPerTick: derivative, literalArrivalTick: time,
           intervalMeanTicks: state.intervals.length ? state.intervals.reduce((a, b) => a + b, 0) / state.intervals.length : null };
-        diagnostics.push({ instrumentId: instrument.id, ...descriptor });
+        const diagnostic = { instrumentId: instrument.id, ...descriptor }; diagnostics.push(diagnostic);
         if (metricStatus !== 'complete') continue;
         if (state.lastAccepted != null && time - state.lastAccepted < response.minimumIntervalTicks) { diagnostics.push({ instrumentId: instrument.id, status: 'thinned', reason: 'authored-density-clamp', sourceEventIds: fact.sourceEventIds }); continue; }
         state.lastAccepted = time;
-        emit(derived(fact, instrument, { occupancy: false, pitchCents: clamp(instrument.pitchCents + (interval || 0) * response.intervalToPitchCents, -24000, 24000),
+        const foldedInterval = response.mode === 'ratio-folded' && interval > 0 ? interval * 2 ** -Math.floor(Math.log2(interval / response.foldReferenceTicks)) : interval;
+        const requestedPresentation = response.mode === 'literal-arrival' ? time : response.mode === 'delayed-response' || state.lastPresentation == null ? time + response.delayTicks : state.lastPresentation + (foldedInterval || 0);
+        const presentation = clamp(requestedPresentation, time, time + 4096);
+        Object.assign(descriptor, { mode: response.mode, foldedIntervalTicks: foldedInterval, presentationTick: presentation, presentationDelayTicks: presentation - time,
+          presentationClamped: presentation !== requestedPresentation, timingUnit: 'simulation-ticks', originalBatchId: batch.batchId, originalSourceTimeMs: batch.sourceTimeMs ?? null });
+        Object.assign(diagnostic, descriptor);
+        const result = derived(fact, instrument, { occupancy: false, pitchCents: clamp(instrument.pitchCents + (interval || 0) * response.intervalToPitchCents, -24000, 24000),
           velocity01: clamp(instrument.velocity01 + (gap || 0) * response.gapToAccent, 0, 1), responseDescriptor: descriptor,
-          gateTicks: interval == null ? null : Math.min(response.maximumGateTicks, interval * response.intervalToGate) }));
+          gateTicks: foldedInterval == null ? null : Math.min(response.maximumGateTicks, foldedInterval * response.intervalToGate),
+          ...(response.mode === 'literal-arrival' ? {} : { responsePresentationTime: { simTick: Math.floor(presentation), subTick: presentation % 1, precision: 'interpolated' } }) });
+        if (presentation <= batch.tick) { emit(result); state.lastPresentation = presentation; }
+        else {
+          const bytes = JSON.stringify(result).length * 2;
+          if (bytes > 32768 || pending.length >= maxPending || pendingBytes + bytes > maxPendingBytes) { failure = 'crowd-response-pending-capacity'; continue; }
+          pending.push({ instrumentId: instrument.id, dueTick: presentation, bytes, fact: freeze(result) }); pendingBytes += bytes; state.lastPresentation = presentation;
+        }
       }
       if (fact.kind === 'ContactResolved' && fact.causeKind === 'blocker') for (const instrument of byKind.get('ricochet') || []) {
         const response = instrument.response; if (!integer(fact.otherActorId) || !identity(fact.contactId) || fact.otherActionInstanceId != null && !identity(fact.otherActionInstanceId)) continue;
@@ -172,9 +189,19 @@ export function createRhythmicResponses({ maxStates = 16384, maxFacts = 8192 } =
     }
     if (batch.snapshot) { const liveCohorts = new Set([...actors.values()].map(actor => actor.birthCohortId)); for (const [key, state] of states) if (state.kind === 'crowd' && state.groupBy === 'birth-cohort' && !liveCohorts.has(state.group)) states.delete(key); }
     if (batch.snapshot) for (const [key, state] of states) if (state.actorId != null && !actors.has(state.actorId) && !state.sounding) states.delete(key);
+    pending.sort((a, b) => a.dueTick - b.dueTick || a.fact.causalSequence - b.fact.causalSequence || a.instrumentId.localeCompare(b.instrumentId) || a.fact.actorId - b.fact.actorId);
+    let delivered = 0; while (delivered < pending.length && pending[delivered].dueTick <= batch.tick) { const record = pending[delivered++]; pendingBytes -= record.bytes; emit(record.fact); } if (delivered) pending.splice(0, delivered);
     return freeze({ facts: output, completeness: failure ? { status: 'incomplete', reason: failure } : { status: 'complete' } });
   };
-  return { configure, expand, reset() { states.clear(); boundary = null; }, snapshot: () => freeze({ version: 1, boundary, signatures: [...signatures], states: [...states].map(([key, state]) => [key, copy(state)]) }),
-    restore(value) { if (value?.version !== 1 || value.boundary != null && typeof value.boundary !== 'string' || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.states) || value.states.length > maxStates) throw new Error('Invalid response checkpoint.'); const next = new Map(); for (const [key, state] of value.states) { if (typeof key !== 'string' || key.length > 1024 || next.has(key) || !signatures.has(state.instrumentId) || !['crowd', 'ricochet', 'work', 'flight'].includes(state.kind) || state.actorId != null && !integer(state.actorId) || JSON.stringify(state).length > 16384) throw new Error('Invalid response ownership.'); if (state.kind === 'crowd' && (!Array.isArray(state.intervals) || state.intervals.length > 64 || state.intervals.some(number => !Number.isFinite(number) || number < 0) || [state.lastArrival, state.lastAccepted, state.lastGap].some(number => number != null && (!Number.isFinite(number) || number < 0))) || state.kind === 'ricochet' && (!integer(state.count) || state.lastContactId != null && !identity(state.lastContactId) || state.actionInstanceId != null && !identity(state.actionInstanceId)) || state.kind === 'work' && (typeof state.actionInstanceId !== 'string' || typeof state.sounding !== 'boolean' || state.lastIntensity != null && (!Number.isFinite(state.lastIntensity) || state.lastIntensity < 0 || state.lastIntensity > 1)) || state.kind === 'flight' && (!identity(state.arcId) || !integer(state.lastUpdateTick) || !Number.isFinite(state.lastPitch) || typeof state.sounding !== 'boolean')) throw new Error('Invalid response estimator state.'); next.set(key, copy(state)); } states.clear(); for (const [key, state] of next) states.set(key, state); boundary = value.boundary; },
-    diagnostics: () => freeze({ stateCount: states.size, failure, descriptors: diagnostics.slice(-1024) }) };
+  return { configure, expand, reset() { states.clear(); pending = []; pendingBytes = 0; currentTick = -1; boundary = null; }, snapshot: () => freeze({ version: 2, boundary, currentTick, signatures: [...signatures], states: [...states].map(([key, state]) => [key, copy(state)]), pending: pending.map(copy) }),
+    restore(value) { if (![1, 2].includes(value?.version) || value.boundary != null && typeof value.boundary !== 'string' || JSON.stringify(value.signatures) !== JSON.stringify([...signatures]) || !Array.isArray(value.states) || value.states.length > maxStates) throw new Error('Invalid response checkpoint.'); const nextTick = value.version === 1 ? -1 : value.currentTick, nextPending = [], pendingIds = new Set(); let nextBytes = 0;
+      if (!Number.isSafeInteger(nextTick) || nextTick < -1 || value.version === 1 && configured.some(instrument => instrument.response?.type === 'crowdInterval' && instrument.response.mode !== 'literal-arrival') || value.version === 2 && (!Array.isArray(value.pending) || value.pending.length > maxPending)) throw new Error('Invalid pending crowd boundary.');
+      for (const record of value.pending || []) {
+        const fact = record?.fact, descriptor = fact?.responseDescriptor, instrument = configured.find(value => value.id === record?.instrumentId), time = fact?.responsePresentationTime;
+        const bytes = fact ? JSON.stringify(fact).length * 2 : 0;
+        if (!plain(record) || instrument?.response?.type !== 'crowdInterval' || instrument.response.mode === 'literal-arrival' || !plain(fact) || fact.kind !== 'CrowdArrival' || fact.derivedResponse !== true || fact.targetMappingId !== instrument.id || !integer(fact.actorId) || !integer(fact.causalSequence) || typeof fact.observationId !== 'string' || !fact.observationId || pendingIds.has(fact.observationId) || fact.physicalCauseFact?.kind !== 'PickupCrossing' || !Array.isArray(fact.sourceEventIds) || !fact.sourceEventIds.length || fact.sourceEventIds.length > 128 || fact.sourceEventIds.some(id => typeof id !== 'string' || !id || id.length > 512) || !Number.isFinite(record.dueTick) || record.dueTick <= nextTick || record.dueTick > nextTick + 4096 || descriptor?.type !== 'crowd-interval' || descriptor.mode !== instrument.response.mode || !Number.isFinite(descriptor.literalArrivalTick) || descriptor.literalArrivalTick < 0 || descriptor.literalArrivalTick > nextTick || descriptor.presentationTick !== record.dueTick || descriptor.presentationDelayTicks !== record.dueTick - descriptor.literalArrivalTick || descriptor.presentationDelayTicks > 4096 || !plain(time) || !integer(time.simTick) || !Number.isFinite(time.subTick) || time.subTick < 0 || time.subTick >= 1 || time.simTick + time.subTick !== record.dueTick || bytes !== record.bytes || bytes > 32768 || (nextBytes += bytes) > maxPendingBytes) throw new Error('Invalid pending crowd response ownership.');
+        pendingIds.add(fact.observationId); nextPending.push(copy(record));
+      }
+      const next = new Map(); for (const [key, state] of value.states) { if (typeof key !== 'string' || key.length > 1024 || next.has(key) || !signatures.has(state.instrumentId) || !['crowd', 'ricochet', 'work', 'flight'].includes(state.kind) || state.actorId != null && !integer(state.actorId) || JSON.stringify(state).length > 16384) throw new Error('Invalid response ownership.'); if (state.kind === 'crowd' && (!Array.isArray(state.intervals) || state.intervals.length > 64 || state.intervals.some(number => !Number.isFinite(number) || number < 0) || state.lastActorId != null && !integer(state.lastActorId) || state.lastPresentation != null && (state.lastArrival == null || nextTick >= 0 && state.lastPresentation > nextTick + 4096) || [state.lastArrival, state.lastAccepted, state.lastGap, state.lastPresentation].some(number => number != null && (!Number.isFinite(number) || number < 0))) || state.kind === 'ricochet' && (!integer(state.count) || state.lastContactId != null && !identity(state.lastContactId) || state.actionInstanceId != null && !identity(state.actionInstanceId)) || state.kind === 'work' && (typeof state.actionInstanceId !== 'string' || typeof state.sounding !== 'boolean' || state.lastIntensity != null && (!Number.isFinite(state.lastIntensity) || state.lastIntensity < 0 || state.lastIntensity > 1)) || state.kind === 'flight' && (!identity(state.arcId) || !integer(state.lastUpdateTick) || !Number.isFinite(state.lastPitch) || typeof state.sounding !== 'boolean')) throw new Error('Invalid response estimator state.'); next.set(key, copy(state)); } states.clear(); for (const [key, state] of next) states.set(key, state); boundary = value.boundary; pending = nextPending; pendingBytes = nextBytes; currentTick = nextTick; },
+    diagnostics: () => freeze({ stateCount: states.size, pendingResponses: pending.length, pendingBytes, failure, descriptors: diagnostics.slice(-1024) }) };
 }

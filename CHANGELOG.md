@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add explicitly selected ratio-folded and delayed crowd responses with bounded saved ownership, preserve literal arrival gaps by default, and keep terrain painting from changing edit-cache checkpoint state.
+
 - Accept bounded empty byte chunks in default asset streams, including the final capacity probe, while retiring streams that repeatedly make no progress.
 
 - Bind route history to physical marker definitions, reject unavailable route reinterpretation evidence, and separate nearby sprites by qualified route distance.

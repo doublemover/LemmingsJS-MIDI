@@ -137,7 +137,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
     if (bytes > 8 * 1048576) { traceOmitted++; return; }
     while (trace.length && (trace.length >= traceLimit || traceBytes + bytes > 8 * 1048576)) { trace.shift(); traceBytes -= traceSizes.shift(); traceOmitted++; }
     trace.push(intent); traceSizes.push(bytes); traceBytes += bytes; };
-  const timeFor = (batch, fact) => fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
+  const timeFor = (batch, fact) => fact?.derivedResponse && fact.responsePresentationTime ? fact.responsePresentationTime : fact?.derivedObservation ? { simTick: fact.subTick >= 1 ? batch.tick : Math.max(0, batch.tick - 1), subTick: fact.subTick >= 1 ? 0 : fact.subTick ?? 0, precision: 'interpolated' } : { simTick: batch.tick, subTick: fact?.subTick ?? 0, precision: fact?.precision ?? 'tick' };
   const basePitchFor = (instrument, fact) => fact?.topologyBinding?.status === 'complete' ? fact.topologyBinding.pitchCents : (fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchCents) ? fact.pitchCents : instrument.pitchCents + ((fact?.derivedObservation || fact?.derivedResponse) && Number.isFinite(fact.pitchOffsetCents) ? fact.pitchOffsetCents : 0);
   const intentFor = (batch, fact, instrument, kind, voiceId, reason = null, voiceGeneration = batch.generation, expression = {}, articulationState = null, definitionRevision = undefined) => {
     const qualifiedBodyContact = !instrument.preparedBodyStrike || fact?.kind !== 'ContactSpanBegan' || fact.physicalPayload?.evidence === 'completed-support-cell' && fact.causeKind === 'support';
@@ -576,7 +576,7 @@ const createCausalMusicEngine = ({ getGraph, deliver = () => {}, scoreTimeline =
       const nextAdmission = createActionVoiceAdmission({ maxPending: Math.max(maxVoices, 4096) }); nextAdmission.configure(current.instruments); if (value.actionAdmission) nextAdmission.restore(value.actionAdmission); else if (current.instruments.some(instrument => instrument.actionVoicePolicy)) throw new Error('Action admission boundary missing.');
       const nextRhythmic = createRhythmicResponses(), nextPhysical = createPhysicalMusicDomain(), nextTravel = createTravelAccumulator({ maxEntries: Math.max(4096, maxVoices) });
       nextRhythmic.configure(current.instruments); nextPhysical.configure(current);
-      if (value.rhythmicResponses) nextRhythmic.restore(value.rhythmicResponses);
+      if (value.rhythmicResponses) { nextRhythmic.restore(value.rhythmicResponses); if (value.rhythmicResponses.version === 2 && (value.rhythmicResponses.currentTick !== nextCursor.tick || value.rhythmicResponses.boundary !== (nextCursor.worldId == null ? null : `${nextCursor.worldId}:${nextCursor.generation}`))) throw new Error('Rhythmic response continuation differs from the physical boundary.'); }
       if (value.physicalDomain) nextPhysical.restore(value.physicalDomain);
       if (value.travel) nextTravel.restore(value.travel);
       snapshotCache = null; bodyPreparations = nextBodyPreparations; latestBodyPreparations = null; swarm = nextSwarm; cargo = nextCargo; activity = nextActivity; motifs = nextMotifs; encounters = nextEncounters; latestPhysicalAnalysis = null; tones = nextTones; actionAdmission = nextAdmission; rhythmic = nextRhythmic; physical = nextPhysical; travel = nextTravel;

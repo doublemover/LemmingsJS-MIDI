@@ -289,8 +289,8 @@ class ProcgenLaneRenderer {
             const output = py * width;
             for (let px = px0; px < px1; px++) {
               const x = Math.floor(x0 + px * step), color = hidden || x < world.leftEdgeX ? 0 : descriptor ? terrain.rasterSample(seed, cx, x - cx * chunkWidth, localY, descriptor, materialization) : tile[row + x - cx * chunkWidth];
-              const edits = world.editChunks.get(world._editKey(x, y));
-              const edit = edits?.[localY * 32 + x % 32] || 0;
+              const editKey = world._editKey(x, y), editIndex = localY * 32 + x % 32;
+              const edit = (world.editChunks.peekValue ? world.editChunks.peekValue(editKey, editIndex) : world.editChunks.get(editKey)?.[editIndex]) || 0;
               pixels[output + px] = 0xff0e0807;
               if (edit === 1) continue;
               if (edit === 4) pixels[output + px] = 0xff86cbea;

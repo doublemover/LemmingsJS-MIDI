@@ -1,7 +1,7 @@
 import { routeCircuitLayout, routeCircuitGraph } from './actualRouteCircuits.js';
 import { qualifyRouteMarkerBindings } from './routeMarkerCorpus.js';
 
-export async function qualifyActualRouteAtlasJourneys({ createWorld, journal, reopenJournal = async () => journal, createDisplay = null, onPause = async () => {}, sourceRoot = new URL('../../js/app/procgen/', import.meta.url) }) {
+export async function qualifyActualRouteAtlasJourneys({ createWorld, journal, reopenJournal = async () => journal, createDisplay = null, onPause = async () => {}, geometryOnly = false, onGeometryBatch = () => {}, sourceRoot = new URL('../../js/app/procgen/', import.meta.url) }) {
   const [{ createCausalMusicEngine, validateCausalInstrumentGraph }, { createPhysicalMusicDomain }, { createRouteCoordinateAtlas }, { LemmingStateType: State }, checkpoints, takes, identity, evidence] = await Promise.all([
     import(new URL('workstation/CausalMusicEngine.js', sourceRoot)), import(new URL('workstation/physical/PhysicalMusicDomain.js', sourceRoot)), import(new URL('workstation/physical/RouteCoordinateAtlas.js', sourceRoot)),
     import(new URL('../../lemmings/LemmingStateType.js', sourceRoot)), import(new URL('workstation/ProcgenCheckpoint.js', sourceRoot)), import(new URL('workstation/CausalTake.js', sourceRoot)),
@@ -18,6 +18,7 @@ export async function qualifyActualRouteAtlasJourneys({ createWorld, journal, re
       listener = batch => { try {
         facts.push(...batch.facts); domain.observe(batch); permuted.observe({ ...batch, snapshot: { ...batch.snapshot, actors: [...batch.snapshot.actors].reverse() } });
         equal(domain.snapshot().routes, permuted.snapshot().routes, 'complete actor projection permutation changed route history');
+        onGeometryBatch({ layout, graph, batch });
       } catch (error) { failure = error; } }; world.soundEvents.onBatch.on(listener); if (createDisplay) host = await createDisplay(world);
       for (let tick = 1; tick <= ticks; tick++) { beforeStep(world, tick); world.step(); if (failure) throw failure; if (tick % 4 === 0) check(host?.render() ?? true, 'native geometry paint failed'); if (inspect) result = inspect({ world, domain, result }); }
       return { result, facts, coordinates: world.actors.map(actor => ({ actorId: actor.id, position: { x: actor.x, y: actor.y }, routes: graph.routes.map(route => domain.routeCoordinate(actor.id, route.id)) })), permutationEqual: true, sourceUnchanged: true };
@@ -45,6 +46,7 @@ export async function qualifyActualRouteAtlasJourneys({ createWorld, journal, re
   const ambiguousGraph = clone(crossingGraph); ambiguousGraph.routes = [ambiguousGraph.routes[0], { ...clone(ambiguousGraph.routes[0]), id: 'ambiguous-east', branchId: 'ambiguous-east' }];
   const ambiguous = await geometry({ layout: flat, graph: ambiguousGraph, ticks: 41, setup(world) { actorSetup(world, world.actors[0], 39, 80); actorSetup(world, world.actors[1], 121, 80, false); } });
   check(ambiguous.coordinates[0].routes.every(route => route?.status === 'ambiguous'), 'two compatible entry branches must remain ambiguous');
+  if (geometryOnly) return { u, crossing, ambiguous };
 
   const owner = await createWorld(routeCircuitLayout()), world = owner.world, graph = routeCircuitGraph(), noRouteGraph = { ...graph, routes: [] }, engine = createCausalMusicEngine({ getGraph: () => graph, traceLimit: 0 }), noRoutes = createCausalMusicEngine({ getGraph: () => noRouteGraph, traceLimit: 0 });
   let listener = null, recorder = null, noRouteRecorder = null, failure = null, branch = null, branchEngine = null, branchListener = null, midpoint = null, midpointSequence = null, source = null;
