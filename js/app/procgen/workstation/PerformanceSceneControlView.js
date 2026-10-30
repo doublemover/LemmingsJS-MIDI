@@ -1,8 +1,9 @@
 import { createProcgenRetirementScope } from '../ProcgenRetirement.js';
+import { prepareCavityGeometryControl } from './CavityGeometryControl.js';
 
 export function createPerformanceSceneControlView({ document, parent, displayScheduler, getScene, getWorld, performReleaseGesture, requestJunction, getSceneMacroState = null, performSceneMacro = null, openControl, onStatus = () => {} } = {}) {
   const retirement = createProcgenRetirementScope(), rows = [], listeners = [];
-  let disposed = false, selectedScene = null, selectedWorld = null, generation = null;
+  let disposed = false, selectedScene = null, selectedWorld = null, generation = null, editSerial = 0;
   const node = (tag, text) => { const value = document.createElement(tag); if (text != null) value.textContent = text; return value; };
   const root = node('section'); root.className = 'studio-scene-controls'; root.setAttribute('aria-label', 'Current physical score controls'); root.hidden = true; parent.append(root);
   const status = node('output'); status.setAttribute('role', 'status');
@@ -30,6 +31,15 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
           if (receipt?.status !== 'queued') throw new Error(receipt?.reason || 'The release request was not admitted.');
           report('Entry ' + caption + ' requested for the next cohort boundary. Existing actors keep their motion.');
         }, line); rows.push({ kind: 'spacing', field, caption, result, apply, input });
+      } else if (binding.startsWith('cavity-square:') || binding.startsWith('cavity-throat:')) {
+        const input = node('input'); input.type = 'number'; input.required = true; input.min = String(control.minimum); input.max = String(control.maximum); input.step = String(control.step); input.value = String(control.initial); input.setAttribute('aria-label', control.label); line.append(input);
+        const row = { kind: 'cavity', input, result, apply: null, transactionId: null };
+        row.apply = button('Request chamber edit', () => {
+          if (!input.checkValidity()) throw new Error('Choose a declared chamber size or throat value.');
+          if (!Number.isSafeInteger(editSerial + 1)) throw new Error('Chamber edit identity exhausted.');
+          const command = prepareCavityGeometryControl({ scene: selectedScene, world: selectedWorld, controlId: control.id, value: Number(input.value), transactionId: 'scene-cavity:' + generation + ':' + (++editSerial) }), receipt = selectedWorld.enqueueIntervention(command);
+          if (receipt?.status !== 'queued') throw new Error(receipt?.reason || 'The chamber edit was not admitted.'); row.transactionId = command.transactionId; report('Chamber edit queued for the next physical tick.');
+        }, line); rows.push(row);
       } else if (binding.startsWith('patch-macro:') && getSceneMacroState && performSceneMacro) {
         const input = node('input'); input.type = 'number'; input.required = true; input.min = '0'; input.max = '1'; input.step = String(control.step); input.placeholder = 'Mixed'; input.setAttribute('aria-label', control.label); line.append(input);
         try { const state = getSceneMacroState(control.id); input.value = state.value01 == null ? '' : String(state.value01); } catch {}
@@ -62,6 +72,9 @@ export function createPerformanceSceneControlView({ document, parent, displaySch
       if (row.kind === 'spacing') {
         const actual = world?.population?.releaseGesture, pending = world?.population?.pendingReleaseGesture;
         row.result.textContent = actual ? 'Realized ' + row.caption + ': ' + actual[row.field] + ' ticks' + (pending ? ' · pending: ' + pending[row.field] + ' ticks' : '') + (actual.paused ? ' · entrants paused' : '') : 'No active release policy'; row.apply.disabled = !world || !actual;
+      } else if (row.kind === 'cavity') {
+        const receipt = row.transactionId ? world?.interventionState?.receipts.findLast(receipt => receipt.transactionId === row.transactionId || receipt.id === row.transactionId) : null;
+        row.result.textContent = receipt ? receipt.status + (receipt.reason ? ' · ' + receipt.reason : '') : row.transactionId ? 'Waiting for physical commit' : 'Edit while paused, then advance the world to commit'; row.apply.disabled = !world;
       } else if (row.kind === 'macro') {
         try { const state = getSceneMacroState(row.control.id); row.result.textContent = (state.value01 == null ? 'Mixed saved values' : 'Saved value: ' + state.value01) + ' · ' + state.targets.length + ' authored lanes · later onsets only'; row.apply.disabled = false; }
         catch (error) { row.result.textContent = error.message; row.apply.disabled = true; }

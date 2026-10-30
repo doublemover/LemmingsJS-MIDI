@@ -29,6 +29,7 @@ class ActionWalkSystem extends ActionBaseSystem {
       if (lem.canClimb) {
         return LemmingStateType.CLIMBING;
       } else {
+        const anchor = { x: lem.x, y: lem.y - 1 };
         lem.x = prevX;
         const directionBefore = lem.lookRight ? 'right' : 'left';
         lem.lookRight = !lem.lookRight;
@@ -37,7 +38,8 @@ class ActionWalkSystem extends ActionBaseSystem {
           const contactId = `${level.worldId}:${level.generation}:${level.tickIndex}:${lem.id}:wall`;
           const position = { x: lem.x, y: lem.y };
           facts.emit({ kind: 'ContactResolved', contactId, actorId: lem.id, laneId: lem.laneIndex ?? null,
-            causeKind: 'wall', positionBefore: position, positionAfter: position,
+            causeKind: 'wall', positionBefore: position, positionAfter: position, anchor,
+            ...(Number.isSafeInteger(level.terrainRevision) ? { surfaceRevision: level.terrainRevision } : {}),
             physicalPayload: { stepHeightPixels: upDelta } });
           facts.emit({ kind: 'DirectionChanged', contactId, actorId: lem.id, laneId: lem.laneIndex ?? null,
             directionBefore, directionAfter: lem.lookRight ? 'right' : 'left', causeKind: 'wall' });

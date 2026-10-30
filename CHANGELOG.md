@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Add three Digging Ocarina scores with native chamber edits, explicit modal mappings, owned body replacement and bounded excitation at original audio frames.
+
+- Preserve probed wall-contact anchors and authored adjacent chamber selection, and keep terrain reveal bookkeeping valid without an installed terrain object.
+
 - Invalidate chamber analysis by affected region and read halo, reuse qualified unchanged geometry across unrelated edits, and preserve honest analysis costs and restored ownership.
 
 - Scale replay restore staging to validated input, reuse normalized immutable checkpoints, and retain independent ownership of nested voice data.

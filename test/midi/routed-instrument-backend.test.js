@@ -27,6 +27,16 @@ describe('voice-owned lane instrument replacement', () => {
   };
   const root = (backend, options = {}) => createRoutedInstrumentBackend({ defaultBackend: backend, getContext: () => context, getGeneration: () => 0, ...options });
   const onset = voiceId => ({ generation: 1, voiceId, laneId: 'lane-1' });
+  it('accepts only an explicitly resolved current shared topology body and preserves its scheduled excitation evidence', async () => {
+    const fallback = renderer(), receipts = []; let selected = null;
+    const router = root(fallback.backend, { resolveSharedTopologyBody: () => selected, onTopologyBody: value => receipts.push(value) }), execution = router.backend.registerExecution({ generation: 1, executionEpoch: 'shared-body' }).execution;
+    const source = { ...onset('shared'), intentId: 'shared-source', sourceEventIds: ['actual-wall'], topologyBinding: { bodyId: 'original.clay', boundTopologyRevision: 7, dampingMacroId: null } };
+    try { expect(router.backend.begin(source, 100, execution).reason).to.equal('topology-body-or-macro-unavailable'); selected = { bodyId: 'original.clay', bodyRevision: 1, boundTopologyRevision: 7, ownerRouteRevision: 2, graphDefinitionHash: 'a'.repeat(64), bodyIdentityHash: 'b'.repeat(64) };
+      expect(router.backend.begin(source, 101, execution).status).to.equal('accepted'); expect(receipts[0].topologyBody).to.deep.equal(selected); expect(receipts[0].sourceEventIds).to.deep.equal(['actual-wall']); expect(receipts[0].targetFrame).to.equal(101); expect(source.topologyBinding.bodyId).to.equal('original.clay');
+      selected = { ...selected, boundTopologyRevision: 8 }; expect(router.backend.begin({ ...source, voiceId: 'stale' }, 102, execution).reason).to.equal('topology-body-or-macro-unavailable');
+      selected = { ...selected, boundTopologyRevision: 7 }; expect(router.backend.begin({ ...source, voiceId: 'macro', topologyBinding: { ...source.topologyBinding, dampingMacroId: 'unimplemented' } }, 102, execution).reason).to.equal('topology-body-or-macro-unavailable');
+    } finally { const retired = router.dispose(); await retired.completion; }
+  });
   it('rolls back a candidate synchronously while each held voice keeps its original renderer', async () => {
     const fallback = renderer(), old = renderer(), candidate = renderer(), router = root(fallback.backend);
     router.assign('lane-1', 'old', old.backend); const previous = router.retainAssignment('lane-1');

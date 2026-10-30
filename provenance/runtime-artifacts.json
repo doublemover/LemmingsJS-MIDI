@@ -255,6 +255,9 @@
         "js/app/procgen/workstation/CausalProbabilityPolicy.js",
         "js/app/procgen/workstation/CausalRandom.js",
         "js/app/procgen/workstation/CausalStoredSourceVerification.js",
+        "js/app/procgen/workstation/CavityGeometryControl.js",
+        "js/app/procgen/workstation/CavitySourceAdmission.js",
+        "js/app/procgen/workstation/DiggingOcarinaScore.js",
         "js/app/procgen/workstation/LaneMixState.js",
         "js/app/procgen/workstation/MidiRecordingExportSnapshot.js",
         "js/app/procgen/workstation/OriginalUmpRecordingSnapshot.js",
@@ -275,6 +278,7 @@
         "js/app/procgen/workstation/RecordedMidiEncoding.js",
         "js/app/procgen/workstation/RecordedMidiExportPlan.js",
         "js/app/procgen/workstation/RecordedUmpClipExport.js",
+        "js/app/procgen/workstation/SceneCavityBody.js",
         "js/app/procgen/workstation/SceneEffectRack.js",
         "js/app/procgen/workstation/SceneMorphMechanism.js",
         "js/app/procgen/workstation/SceneRehearsalLane.js",
@@ -283,6 +287,7 @@
         "js/app/procgen/workstation/TravelAccumulator.js",
         "js/app/procgen/workstation/physical/ActionVoicePolicy.js",
         "js/app/procgen/workstation/physical/ActivityWindows.js",
+        "js/app/procgen/workstation/physical/CavitySoundMap.js",
         "js/app/procgen/workstation/physical/Encounters.js",
         "js/app/procgen/workstation/physical/Ensembles.js",
         "js/app/procgen/workstation/physical/FormationHarmony.js",
@@ -441,8 +446,8 @@
         "js/util/LogHandler.js",
         "js/util/performanceInstrumentation.js"
       ],
-      "fileCount": 295,
-      "sha256": "ba0e308530016329a367e8deb4f100317d3f0017a4b6cce6a1eeb4ab018e0b21"
+      "fileCount": 300,
+      "sha256": "927e052c086a8c962c23c5491966c4056d9ee5c36002d991ea1d986817ce5af8"
     },
     {
       "id": "lemmings-timing-worker-source",

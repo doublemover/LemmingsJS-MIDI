@@ -8,10 +8,10 @@ const validLane = lane => typeof lane === 'string' && lane.length > 0 && lane.le
 let nextRouter = 0;
 
 export function createRoutedInstrumentBackend({ defaultBackend, getContext, getGeneration, resolveLane = value => String(value), maxChildren = 17, maxVoices = 512,
-  defaultReleaseSeconds = null, defaultOneShotTailSeconds = null, maxLanes = 1024, resourceBudget = null, requiredInstrumentKey = () => null, getLaneMix = () => ({ gain: 1, pan: 0 }) } = {}) {
+  defaultReleaseSeconds = null, defaultOneShotTailSeconds = null, maxLanes = 1024, resourceBudget = null, requiredInstrumentKey = () => null, getLaneMix = () => ({ gain: 1, pan: 0 }), resolveSharedTopologyBody = null, onTopologyBody = null } = {}) {
   if (!defaultBackend?.registerExecution || !defaultBackend?.inspectExecution || typeof getContext !== 'function' || typeof getGeneration !== 'function' || typeof resolveLane !== 'function' ||
       !Number.isInteger(maxChildren) || maxChildren < 2 || maxChildren > 65 || !Number.isInteger(maxVoices) || maxVoices < 1 || maxVoices > 2048 ||
-      !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function') throw new TypeError('Invalid routed instrument owner.');
+      !Number.isSafeInteger(maxLanes) || maxLanes < 1 || maxLanes > 1024 || typeof requiredInstrumentKey !== 'function' || [resolveSharedTopologyBody, onTopologyBody].some(callback => callback != null && typeof callback !== 'function')) throw new TypeError('Invalid routed instrument owner.');
   if ([defaultReleaseSeconds, defaultOneShotTailSeconds].some(value => value != null && (!Number.isFinite(value) || value < 0 || value > 4))) throw new TypeError('Invalid default release policy.');
   const defaults = { key: 'default', backend: defaultBackend, retirement: null, assignedLanes: 0, releaseSeconds: defaultReleaseSeconds, oneShotTailSeconds: defaultOneShotTailSeconds },
     children = new Map([['default', defaults]]), assignments = new Map(), assignmentVersions = new Map(), executions = new Map(), voices = new Map();
@@ -89,13 +89,18 @@ export function createRoutedInstrumentBackend({ defaultBackend, getContext, getG
     const assigned = assignments.get(lane), child = assigned || defaults; if (child.blocked) return reject(child.reason);
     let expected; try { expected = requiredInstrumentKey(lane, intent.laneId); } catch { return reject('lane-requirement-unavailable'); }
     if (expected && assigned?.key !== expected) return reject('pinned-instrument-not-prepared');
-    if (intent.topologyBinding && (intent.topologyBinding.bodyId !== child.bodyId || intent.topologyBinding.dampingMacroId && !child.macroIds?.includes(intent.topologyBinding.dampingMacroId))) return reject('topology-body-or-macro-unavailable');
+    let sharedBody = null;
+    if (intent.topologyBinding && (intent.topologyBinding.bodyId !== child.bodyId || intent.topologyBinding.dampingMacroId && !child.macroIds?.includes(intent.topologyBinding.dampingMacroId))) {
+      try { sharedBody = resolveSharedTopologyBody?.(intent, targetFrame); } catch {}
+      if (!sharedBody || sharedBody.bodyId !== intent.topologyBinding.bodyId || sharedBody.boundTopologyRevision !== intent.topologyBinding.boundTopologyRevision || !Number.isSafeInteger(sharedBody.bodyRevision) || sharedBody.bodyRevision < 1 || !Number.isSafeInteger(sharedBody.ownerRouteRevision) || sharedBody.ownerRouteRevision < 0 || !/^[a-f0-9]{64}$/.test(sharedBody.graphDefinitionHash) || !/^[a-f0-9]{64}$/.test(sharedBody.bodyIdentityHash) || intent.topologyBinding.dampingMacroId) return reject('topology-body-or-macro-unavailable');
+    }
     const execution = executionFor(child, epoch, intent.generation); if (!execution) return reject('renderer-execution-unavailable');
     try { reserveMetadata({ voices: 1 }); } catch { return reject('audio-resource-budget'); }
     const laneMix = getLaneMix(lane, intent.laneId); if (!laneMix) return reject('lane-unavailable');
     if (laneMix.muted || laneMix.soloSuppressed || laneMix.gain === 0) return reject(laneMix.muted ? 'lane-muted' : laneMix.soloSuppressed ? 'lane-solo-suppressed' : 'lane-zero-gain');
     const outcome = child.backend.begin({ ...intent, laneMix, audioLaneId: lane }, targetFrame, execution);
     if (outcome?.status === 'accepted') voices.set(keyFor(epoch, intent.voiceId), { child, execution, epoch, laneId: lane, sourceLaneId: intent.laneId, mix: laneMix, mixFault: false, voiceId: intent.voiceId, articulation: outcome.articulation || child });
+    if (sharedBody) try { onTopologyBody?.(Object.freeze({ status: outcome?.status || 'rejected', stage: 'shared-topology-body-excitation', intentId: intent.intentId, sourceEventIds: intent.sourceEventIds, generation: intent.generation, voiceId: intent.voiceId, targetFrame, topologyBody: Object.freeze({ ...sharedBody }), acousticReceipt: false })); } catch {}
     return outcome;
   };
   const voiceCall = (method, voiceId, value, frame, epoch, rampSeconds) => {

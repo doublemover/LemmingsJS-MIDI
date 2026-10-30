@@ -1,4 +1,5 @@
 import { createInstrumentNurseryScore } from './InstrumentNurseryScore.js';
+import { createDiggingOcarinaScores } from './DiggingOcarinaScore.js';
 import { createGlacierChoirScores } from './GlacierChoirScore.js';
 import { createRescueOrchestraScores } from './RescueOrchestraScore.js';
 import { createSwitchyardScores } from './SwitchyardScore.js';
@@ -152,6 +153,7 @@ export async function createInstalledPerformanceSceneCatalog({ getCatalog = getN
     }
   };
   const texture = catalog.descriptors.find(value => value.engineId === 'worklet-texture');
+  if (descriptor.maximumVoices >= 4) await registerAuthoredScores(await createDiggingOcarinaScores({ sourceHash, descriptor, signal }));
   if (texture?.capabilities.feedforwardTextureBody && texture.capabilities.canonicalTextureTravel && texture.maximumVoices >= 8 && wind?.capabilities.sealedFeedbackBody && wind.maximumVoices >= 2) await registerAuthoredScores([await createInstrumentNurseryScore({ sourceHash, textureDescriptor: texture, windDescriptor: wind, signal })]);
   const choir = catalog.descriptors.find(value => value.engineId === 'worklet-choir'), spectrum = catalog.descriptors.find(value => value.engineId === 'worklet-spectrum');
   if (choir?.maximumVoices >= 4) await registerAuthoredScores(await createGlacierChoirScores({ sourceHash, descriptor: choir, spectrumDescriptor: spectrum?.maximumVoices >= 4 ? spectrum : null, signal }));

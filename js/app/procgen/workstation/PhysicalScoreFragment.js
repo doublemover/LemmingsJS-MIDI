@@ -99,6 +99,7 @@ const transformContent = (input, { dx, dy, reflect = false, width = 0, preserveP
   for (const group of GROUPS) for (const object of graph[group] || []) {
     object.id = rename(group, object.id);
     for (const [key, kind] of [['ensembleId', 'ensembles'], ['routeId', 'routes'], ['pickupId', 'pickups'], ['formationId', 'formations'], ['topologyRegionId', 'topologyRegions'], ['encounterId', 'encounters'], ['motifId', 'motifs'], ['activityWindowId', 'activityWindows'], ['cargoStationId', 'cargoStations']]) if (object[key]) object[key] = rename(kind, object[key]);
+    if (group === 'instruments' && object.topologyAnchorId) object.topologyAnchorId = rename('anchor', object.topologyAnchorId);
     if (object.response) for (const [key, kind] of [['ensembleId', 'ensembles'], ['routeId', 'routes'], ['pickupId', 'pickups']]) if (object.response[key]) object.response[key] = rename(kind, object.response[key]);
     if (object.geometry) { if (object.geometry.kind === 'band') object.geometry.bounds = bound(object.geometry.bounds); else object.geometry.points = object.geometry.points.map(point); }
     if (object.laneScope) object.laneScope = object.laneScope.map(id => Number(external('lane', String(id))));

@@ -141,7 +141,7 @@ class ProcgenLaneWorld {
     this._revealGrowth = (lane, previous, next, chunk, job) => {
       const revisionBefore = this.terrainRevision;
       this.terrainRevision++; this.frontierRevision++;
-      const width = this.terrain.chunkWidth; if (this.terrainTopology.profiles.length) invalidateTerrainTopology(this, { x1: chunk * width, x2: (chunk + 1) * width, y1: lane * this.laneHeight, y2: (lane + 1) * this.laneHeight }, revisionBefore);
+      if (this.terrainTopology.profiles.length) { const width = this.terrain?.chunkWidth || CHUNK_WIDTH; invalidateTerrainTopology(this, { x1: chunk * width, x2: (chunk + 1) * width, y1: lane * this.laneHeight, y2: (lane + 1) * this.laneHeight }, revisionBefore); }
       if (job?.kind === 'foundation' || job?.kind === 'terrain') this.terrainActivityTicks[lane] = this.tickIndex;
       this.terrainTileRevisions.set(lane * 0x800000 + chunk, this.terrainRevision);
       if (chunk === 0) this._edgeWallRevisions[lane]++;

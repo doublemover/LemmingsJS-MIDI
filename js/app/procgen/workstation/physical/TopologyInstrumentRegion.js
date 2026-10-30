@@ -134,7 +134,7 @@ export function topologyResultMatchesRegion(result, region) {
   validateTopologyResult(result);
   return result.regionId === region.id && result.regionRevision === region.revision && result.mappingRevision === region.mapping.revision && result.connectivity === region.connectivity && result.space === region.space && ['x1', 'x2', 'y1', 'y2'].every(key => result.bounds[key] === region.bounds[key]);
 }
-export function topologyComponentAt(result, point, neighbor = true) {
+export function topologyComponentAt(result, point, neighbor = true, anchorId = null) {
   if (result?.status !== 'complete' || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
   validateTopologyResult(result);
   const b = result.bounds, width = b.x2 - b.x1;
@@ -142,19 +142,21 @@ export function topologyComponentAt(result, point, neighbor = true) {
     const index = (y - b.y1) * width + x - b.x1; let low = 0, high = result.runs.length / 3 - 1;
     while (low <= high) { const mid = (low + high) >>> 1, start = result.runs[mid * 3], end = start + result.runs[mid * 3 + 1]; if (index < start) high = mid - 1; else if (index >= end) low = mid + 1; else return result.components[result.runs[mid * 3 + 2]]; } return null;
   };
-  const direct = at(point.x, point.y); if (direct || !neighbor) return direct;
-  const candidates = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => at(point.x + dx, point.y + dy)).filter(Boolean);
+  const selected = component => component && (anchorId == null || component.anchors.includes(anchorId));
+  const direct = at(point.x, point.y); if (selected(direct) || !neighbor) return selected(direct) ? direct : null;
+  const candidates = [[0, -1], [-1, 0], [1, 0], [0, 1]].map(([dx, dy]) => at(point.x + dx, point.y + dy)).filter(selected);
   return new Set(candidates.map(c => c.id)).size === 1 ? candidates[0] : null;
 }
-export function bindTopologyFact(region, batch, fact) {
+export function bindTopologyFact(region, batch, fact, { anchorId = null } = {}) {
   const entry = batch.snapshot?.topology?.regions?.find(value => value.regionId === region.id && value.regionRevision === region.revision);
   const sourceRevision = fact.physicalPayload?.sourceEditRevisionAfter ?? fact.surfaceRevision ?? fact.physicalPayload?.surfaceRevision ?? null;
   const result = region.bindingPolicy === 'endOfTick' ? entry?.current : entry?.history?.findLast(value => value.sourceRevision === sourceRevision);
   if (!topologyResultMatchesRegion(result, region) || result.worldId !== batch.worldId || result.generation !== batch.generation || result.tick > batch.tick || region.bindingPolicy === 'endOfTick' && result.sourceRevision !== batch.snapshot?.terrainRevision) return { status: 'unsupported', reason: 'qualified-topology-unavailable' };
+  if (anchorId != null && !region.anchors.some(anchor => anchor.id === anchorId)) return { status: 'unsupported', reason: 'topology-anchor-unavailable' };
   const payload = fact.physicalPayload, point = fact.anchor ?? (Number.isFinite(payload?.targetX) && Number.isFinite(payload?.targetY) ? { x: payload.targetX, y: payload.targetY } : fact.positionAfter ?? fact.positionBefore);
-  let component = topologyComponentAt(result, point);
+  let component = topologyComponentAt(result, point, true, anchorId);
   if (!component && Array.isArray(payload?.terrainEdit?.spans) && payload.terrainEdit.spans.length <= 64) {
-    const candidates = payload.terrainEdit.spans.map(span => topologyComponentAt(result, { x: Math.floor((span.x1 + span.x2 - 1) / 2), y: span.y })).filter(Boolean);
+    const candidates = payload.terrainEdit.spans.map(span => topologyComponentAt(result, { x: Math.floor((span.x1 + span.x2 - 1) / 2), y: span.y }, true, anchorId)).filter(Boolean);
     if (new Set(candidates.map(value => value.id)).size === 1) component = candidates[0];
   }
   if (!component || component.musical.status !== 'complete') return { status: 'unsupported', reason: 'topology-component-unavailable' };

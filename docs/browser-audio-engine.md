@@ -2018,3 +2018,48 @@ its original source/definition remains bound. Partial coverage must be invalidat
 when a source mask materializes, including at the same numeric terrain revision.
 Checkpoint validation preserves the revision and dirty flags; malformed ownership
 refuses before publication. Geometry completion alone never creates an attack.
+
+
+### Authored cavity scores and shared body admission
+
+`initialCavityBody` binds a saved score to one validated `CavitySoundMap`, its
+complete free-space region and declared anchor selection. Clay maps64/256square
+world pixels to220/110Hz using the explicit square-root area proxy, clamped to
+80–1760Hz. Crumbled chimes normalizes perimeter/area against declared reference
+units for upper-mode weight. Throat duet retains two anchor identities and220/330Hz
+while its connecting cross-section enables a bounded edge in the existing modal
+network. Only the first selected component receives direct excitation; the second
+duet body responds through the declared coupling. These are compositions, without
+3D volume, measured material or acoustic claims.
+
+A wall contact retains the solid cell actually covered by the failed column probe,
+just above the feet, independently of the backed-out actor position. Instruments
+may name `topologyAnchorId` to select among physically adjacent components. The
+default still refuses ambiguity; an anchor cannot select a distant component.
+Geometry completion and parameter preparation never add semantic attacks.
+
+The score reuses the owned sympathetic/modal runtime. Active and retiring graphs
+count separately: scene peak bounds are two bodies for clay/chimes or four for
+the duet. The existing two-graph host admits overlap and retains tails on the
+audio clock. Cavity preparation waits for a retiring graph before allocating
+another candidate. A shared-body resolver checks the current graph hash, owner
+route revision, map/body identity and selected topology revision before allowing
+the pinned exciter through the ordinary instrument router. Existing patch-owned
+body and macro checks remain the default. Excitation receipts preserve the source
+intent/events, original target frame and exact prepared body identity.
+
+Preparation may retain at most64source begins and ordered ends, within an8MiB
+declared high-water estimate and a maximum50ms wall wait. A source uses its
+original audio frame; expiration, changed geometry/execution/context or unavailable
+body refuses it without retiming or catch-up. Valid unchanged regional revisions
+share a bounded four-revision qualification. Deferred completion/cancellation uses
+the canonical sink admission owner. Source copies stay charged through actual
+begin/end producer settlement; unknown cancellation poisons reuse and retains
+accounting. These estimates do not measure physical browser heap.
+
+Native scene controls queue ordinary atomic terrain commands. Size edits restore
+the enclosing wall and close the throat; the next physical tick reports the
+applied or refused result. Occupied/stale edits cannot partially carve a chamber.
+Scene loading and geometry inspection leave output disarmed. Native audio,
+canonical takes, private rehearsal/export and listening have separate evidence;
+the general private rehearsal profile currently refuses this dynamic cavity route.

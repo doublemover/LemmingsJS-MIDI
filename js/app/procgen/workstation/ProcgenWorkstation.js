@@ -999,7 +999,7 @@ export function createProcgenWorkstation({ document, window, legacy, getRuntime,
     const physicalMidi = createCausalMidiSink({ ports, now, getLanes: () => effectiveSoundLanes(playbackProject().procgen.lanes),
       isEnabled: () => { const output = legacy.local.getState(); return output.selectedBackend === 'midi' && output.enabled; }, onReceipt: onPhysicalReceipt });
     let nextPlayback;
-    physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
+    physicalPlayback = nextPlayback = createProcgenPhysicalPlayback({ initialMorphMechanism: boundProject.procgen.sceneOrigin?.recipe.initialMorphMechanism || null, initialCavityBody: boundProject.procgen.sceneOrigin?.recipe.initialCavityBody || null, documentEpoch: 'procgen-document-' + documentGeneration, isEffectCaptureEnabled: () => !!causalTake, world: next.world, audio: legacy.local.audio, getInstrumentCatalog, renderer: next.lanes?.renderer, resourceBudget,
       additionalOutputs: [physicalMidi],
       onIntentProvenance: value => {
         if (!physicalProvenanceBuffer || physicalDocumentEpoch !== documentGeneration || runtime()?.world !== next.world) return;

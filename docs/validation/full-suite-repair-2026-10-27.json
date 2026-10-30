@@ -818,19 +818,19 @@
     ]
   },
   "latestVerifiedCiCheckpoint": {
-    "head": "bf81145d0a18497c6fe4a52187097c7bd119c2bf",
+    "head": "4ad585227b537f21ad0a35d85ff4dad5f234bb01",
     "status": "success",
-    "run": 41026410394,
-    "job": 123965466386,
-    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41026410394",
-    "engineJob": 123965465931,
+    "run": 41030776175,
+    "job": 123979720229,
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41030776175",
+    "engineJob": 123979720719,
     "requiredJobs": {
       "test": "success",
       "lifecycle-engines": "success",
       "native-midi-codec (windows-latest)": "success",
       "native-midi-codec (ubuntu-latest)": "success"
     },
-    "nodePassed": 7281,
+    "nodePassed": 7284,
     "nodePending": 10,
     "browserPassed": 289,
     "desktopPassed": 26,
@@ -841,13 +841,13 @@
       "lines": 90.81,
       "statements": 90.81,
       "branches": 84.22,
-      "functions": 88.71
+      "functions": 88.72
     },
     "benchmark": {
       "status": "success",
       "ok": true,
       "profile": "smoke",
-      "totalDurationMs": 29816,
+      "totalDurationMs": 35232,
       "thresholds": {
         "perfP95FrameMsMax": 250,
         "perfP50TpsMin": 15,
@@ -858,18 +858,18 @@
         "scaledBlitAvgMsMax": 250
       },
       "durationsMs": {
-        "benchPerformance": 9787,
-        "benchHistoryStress": 15816,
-        "benchHotpaths": 4211
+        "benchPerformance": 10366,
+        "benchHistoryStress": 17994,
+        "benchHotpaths": 6869
       },
       "metrics": {
-        "perfP95Frame": 83.40000000000055,
-        "perfP50Tps": 110.68254234449206,
-        "historyRatio": 0.5853333333333334,
-        "antsAvgMs": 11.92,
-        "tileCompositionAvgMs": 2.87,
-        "overlayPlaneAvgMs": 8.73,
-        "scaledBlitAvgMs": 16.34
+        "perfP95Frame": 66.70000000000073,
+        "perfP50Tps": 90.65155807365439,
+        "historyRatio": 0.586,
+        "antsAvgMs": 13.67,
+        "tileCompositionAvgMs": 4.12,
+        "overlayPlaneAvgMs": 16.57,
+        "scaledBlitAvgMs": 27.77
       },
       "failures": [],
       "diagnostics": [],
@@ -877,11 +877,11 @@
       "scenarios": [
         {
           "speed": 30,
-          "ratio": 0.5853333333333334
+          "ratio": 0.586
         },
         {
           "speed": 60,
-          "ratio": 1.0385
+          "ratio": 1.0178333333333334
         }
       ]
     },
@@ -892,7 +892,7 @@
       "status": "passed",
       "files": 1271,
       "configuredAudioBackend": "pulseaudio-null-sink",
-      "closureDigest": "f282e5be1af2885a1ef7361e1485faa03831a874154e051acf7ec320f03994c8",
+      "closureDigest": "9b2e4d520c7492e817a9a976b113c73a7df9d5af665453400caaec1dad70376c",
       "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
       "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
       "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
@@ -918,8 +918,8 @@
     },
     "nativeCodec": {
       "status": "both passed",
-      "linuxJob": 123965466447,
-      "windowsJob": 123965466344,
+      "linuxJob": 123979720504,
+      "windowsJob": 123979720599,
       "commandsPerPlatform": 8829,
       "boundedProtocolFailuresPerPlatform": 4,
       "sourceIdentical": true,
@@ -930,10 +930,10 @@
       "shippingTransportQualified": false
     },
     "sourceQualification": {
-      "testedPrMergeHead": "ad314b1533731c7f8c9e01baa8f8fbc1ee282091",
+      "testedPrMergeHead": "62a1e1e49c6b1e0b83d12b60c718d738edfee7a7",
       "rawDirtyFlag": true,
       "inventoryFiles": 1164,
-      "inventorySha256": "0ac7c52bb567888607ee93f2ed883049c1d6aa5e3cdda95977fbd01f8002b904",
+      "inventorySha256": "fe6b2c826faa27498f4df3a5d24e34a438a626c0ac3211c60857f9eb571dbf82",
       "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
       "allWorkstationSourceFilesMatchPublishedHead": true,
       "engineInventoryFiles": 1271,
@@ -945,31 +945,31 @@
     },
     "artifacts": [
       {
-        "path": ".tmp/ci398-0.zip",
-        "bytes": 923610,
-        "sha256": "db3429bd8676923f02d2d03cf343e1bd9bb05d711f8a2971649663aa32337ba1",
-        "githubArtifactId": 12964349469,
+        "path": ".tmp/ci399-0.zip",
+        "bytes": 931000,
+        "sha256": "8c40bf03a368d36e9dbfa0ea9032025aef00fd613f0faceb5c0e6a238bcd6bbd",
+        "githubArtifactId": 12968425842,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci398-1.zip",
-        "bytes": 162944,
-        "sha256": "3f0eee5a603d2cdbafa43effe797eaf7ad40b21dae295765ba0c111d8489012b",
-        "githubArtifactId": 12963693578,
+        "path": ".tmp/ci399-1.zip",
+        "bytes": 163150,
+        "sha256": "7b9b59689599bbc128d6963f43c0560c514c90722a00de8e8ec1e98e812961b4",
+        "githubArtifactId": 12966051407,
         "githubDigestMatched": true
       },
       {
-        "path": ".tmp/ci398-2.zip",
-        "bytes": 2148,
-        "sha256": "ec63dd002003edc395af8b22c240848004c794e200bb3873af36e7871b3fc563",
-        "githubArtifactId": 12963657959,
-        "githubDigestMatched": true
-      },
-      {
-        "path": ".tmp/ci398-3.zip",
+        "path": ".tmp/ci399-2.zip",
         "bytes": 2246,
-        "sha256": "239886a2f50c0568e19b15194b698a9351f37161a7ef9325eb50a7b837b32130",
-        "githubArtifactId": 12963249270,
+        "sha256": "be8ee336100fdb2addeb39fd3ffb7a855f0791072bb93fb0c805ddb257db1a83",
+        "githubArtifactId": 12965078231,
+        "githubDigestMatched": true
+      },
+      {
+        "path": ".tmp/ci399-3.zip",
+        "bytes": 2146,
+        "sha256": "fc15fd141754cf57b59774725bb95b998b4f7cb85e72f664fde6b88eda658371",
+        "githubArtifactId": 12964954376,
         "githubDigestMatched": true
       }
     ],
@@ -138368,5 +138368,1384 @@
       "No authored Digging Ocarina sound/content, acoustic/listening, hardware or archived-exact-runtime qualification."
     ],
     "issueOutcome": "Close1183 after publishing the qualified incremental source; keep1194 and remaining replay/performance acceptance open."
+  }
+,
+  "continuation401": {
+    "date": "2026-10-30",
+    "agent": "rook",
+    "issues": [
+      1194,
+      1104,
+      1087
+    ],
+    "sourceParent": "a7b5fe08e7286630be3031af066642c7e7f7cae6",
+    "scope": "Three authored cavity maps/scores, actual atomic desktop geometry controls, source-qualified existing modal playback and bounded original-frame preparation; CI400 terrain-less reveal repair.",
+    "changes": [
+      "Clay chamber, throat duet and crumbled chimes compile complete actual topology into existing bounded modal profiles. Clay/chime area64/256 maps220/110Hz; duet keeps two anchor body identities/pitches220/330 and uses an actual bounded connecting cross-section. Only the selected first component is directly excited; the second duet body responds through coupling.",
+      "Save initialCavityBody in exact scene origins; register three scores and expose native size/throat controls that queue ordinary atomic terrain input. Count active plus retained-tail bodies (two clay/chime;four duet) under the existing two-graph host. Wait without preparation allocation while previous tails occupy overlap.",
+      "Retain the actual solid wall sample just above the feet, separately from the backed-out actor position. An explicit topologyAnchorId filters physically adjacent components; default ambiguity and distant selections still refuse. Preserve anchor references through fragment placement.",
+      "Resolve the current shared body using exact graph/owner/body/topology identity before the pinned exciter crosses the ordinary router. Existing patch body/macro checks remain strict. Preserve per-excitation source IDs, target frame and prepared body evidence.",
+      "Bound source preparation to64begins and ordered ends,8MiB high-water metadata and50ms wall delay. Keep original target frames; timeout, stale geometry/context/execution and unknown cancellation refuse or quarantine without catch-up. Retain copied source/end data through actual producer settlement and use canonical cancellable deferred sink admissions.",
+      "Repair CI400: only calculate regional reveal bounds when topology profiles exist and use the established chunk-width fallback when terrain is absent. Preserve normal scalar growth/revision retention bookkeeping."
+    ],
+    "validation": {
+      "node": {
+        "passing": 117,
+        "failures": 0,
+        "durationSeconds": 41,
+        "scope": "Complete affected batch: maps/source admission/actual scenes, routed and physical playback, existing morph/control/terrain/authoring/fragment/topology,10000tick replay/checkpoint, actual activity/Rescue and formation.",
+        "beforeRevealRepair": true
+      },
+      "finalRevealRepair": {
+        "nodePassing": 40,
+        "nodeFailures": 0,
+        "nodeSeconds": 1,
+        "scope": "Actual CI-failing terrain retention plus spans and all new cavity/topology cases. Includes13additional retention/span cases not in the117-case batch;130unique passing Node cases across both runs, not one130-case run.",
+        "browserPassing": 3,
+        "browserFailures": 0,
+        "browserDurationSeconds": 42.24222,
+        "onlyAdditionalRuntimeSource": "js/app/procgen/ProcgenLaneWorld.js",
+        "other117CaseRuntimeInputsUnchanged": true
+      },
+      "browser": {
+        "passing": 12,
+        "failures": 0,
+        "skips": 0,
+        "flaky": 0,
+        "durationSeconds": 101.714168,
+        "scope": "Final complete cavity feature plus formation/topology/all transport/work-cycle batch before the isolated reveal fallback; three final-source cavity/topology cases requalify that repair.",
+        "receiptsArtifact": {
+          "path": "docs/validation/cavity-sound-desktop-2026-10-30.json",
+          "bytes": 1039836,
+          "sha256": "99c533f8236f4f398b5b88d88f46fe090daa9eb84a532ce7cf619787b0228804"
+        }
+      },
+      "coverage": {
+        "scope": "Seven selected modules in117-case run; reused raw V8 data to inspect all additional loaded changed modules without rerunning tests. Only the later LaneWorld fallback differs and is excluded from these source-bound percentages.",
+        "selected": {
+          "total": {
+            "lines": {
+              "total": 677,
+              "covered": 665,
+              "skipped": 0,
+              "pct": 98.22
+            },
+            "statements": {
+              "total": 677,
+              "covered": 665,
+              "skipped": 0,
+              "pct": 98.22
+            },
+            "functions": {
+              "total": 129,
+              "covered": 115,
+              "skipped": 0,
+              "pct": 89.14
+            },
+            "branches": {
+              "total": 924,
+              "covered": 746,
+              "skipped": 0,
+              "pct": 80.73
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\midi-ui\\RoutedInstrumentBackend.js": {
+            "lines": {
+              "total": 251,
+              "covered": 243,
+              "skipped": 0,
+              "pct": 96.81
+            },
+            "functions": {
+              "total": 58,
+              "covered": 49,
+              "skipped": 0,
+              "pct": 84.48
+            },
+            "statements": {
+              "total": 251,
+              "covered": 243,
+              "skipped": 0,
+              "pct": 96.81
+            },
+            "branches": {
+              "total": 267,
+              "covered": 183,
+              "skipped": 0,
+              "pct": 68.53
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CavityGeometryControl.js": {
+            "lines": {
+              "total": 20,
+              "covered": 19,
+              "skipped": 0,
+              "pct": 95
+            },
+            "functions": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 20,
+              "covered": 19,
+              "skipped": 0,
+              "pct": 95
+            },
+            "branches": {
+              "total": 14,
+              "covered": 10,
+              "skipped": 0,
+              "pct": 71.42
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CavitySourceAdmission.js": {
+            "lines": {
+              "total": 71,
+              "covered": 71,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 21,
+              "covered": 18,
+              "skipped": 0,
+              "pct": 85.71
+            },
+            "statements": {
+              "total": 71,
+              "covered": 71,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 83,
+              "covered": 65,
+              "skipped": 0,
+              "pct": 78.31
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\DiggingOcarinaScore.js": {
+            "lines": {
+              "total": 40,
+              "covered": 40,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 40,
+              "covered": 40,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 17,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 88.23
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SceneCavityBody.js": {
+            "lines": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 18,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "statements": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 123,
+              "covered": 89,
+              "skipped": 0,
+              "pct": 72.35
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\CavitySoundMap.js": {
+            "lines": {
+              "total": 61,
+              "covered": 61,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 12,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 61,
+              "covered": 61,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 73,
+              "covered": 63,
+              "skipped": 0,
+              "pct": 86.3
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TopologyInstrumentRegion.js": {
+            "lines": {
+              "total": 166,
+              "covered": 163,
+              "skipped": 0,
+              "pct": 98.19
+            },
+            "functions": {
+              "total": 17,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 166,
+              "covered": 163,
+              "skipped": 0,
+              "pct": 98.19
+            },
+            "branches": {
+              "total": 347,
+              "covered": 321,
+              "skipped": 0,
+              "pct": 92.5
+            }
+          }
+        },
+        "allChangedLoaded": {
+          "total": {
+            "lines": {
+              "total": 2252,
+              "covered": 1940,
+              "skipped": 0,
+              "pct": 86.14
+            },
+            "statements": {
+              "total": 2252,
+              "covered": 1940,
+              "skipped": 0,
+              "pct": 86.14
+            },
+            "functions": {
+              "total": 360,
+              "covered": 261,
+              "skipped": 0,
+              "pct": 72.5
+            },
+            "branches": {
+              "total": 2622,
+              "covered": 1821,
+              "skipped": 0,
+              "pct": 69.45
+            },
+            "branchesTrue": {
+              "total": 0,
+              "covered": 0,
+              "skipped": 0,
+              "pct": 100
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\actions\\ActionWalkSystem.js": {
+            "lines": {
+              "total": 72,
+              "covered": 67,
+              "skipped": 0,
+              "pct": 93.05
+            },
+            "functions": {
+              "total": 4,
+              "covered": 3,
+              "skipped": 0,
+              "pct": 75
+            },
+            "statements": {
+              "total": 72,
+              "covered": 67,
+              "skipped": 0,
+              "pct": 93.05
+            },
+            "branches": {
+              "total": 26,
+              "covered": 21,
+              "skipped": 0,
+              "pct": 80.76
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\midi-ui\\RoutedInstrumentBackend.js": {
+            "lines": {
+              "total": 251,
+              "covered": 243,
+              "skipped": 0,
+              "pct": 96.81
+            },
+            "functions": {
+              "total": 58,
+              "covered": 49,
+              "skipped": 0,
+              "pct": 84.48
+            },
+            "statements": {
+              "total": 251,
+              "covered": 243,
+              "skipped": 0,
+              "pct": 96.81
+            },
+            "branches": {
+              "total": 267,
+              "covered": 183,
+              "skipped": 0,
+              "pct": 68.53
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CausalMusicEngine.js": {
+            "lines": {
+              "total": 639,
+              "covered": 535,
+              "skipped": 0,
+              "pct": 83.72
+            },
+            "functions": {
+              "total": 42,
+              "covered": 37,
+              "skipped": 0,
+              "pct": 88.09
+            },
+            "statements": {
+              "total": 639,
+              "covered": 535,
+              "skipped": 0,
+              "pct": 83.72
+            },
+            "branches": {
+              "total": 892,
+              "covered": 606,
+              "skipped": 0,
+              "pct": 67.93
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CavityGeometryControl.js": {
+            "lines": {
+              "total": 20,
+              "covered": 19,
+              "skipped": 0,
+              "pct": 95
+            },
+            "functions": {
+              "total": 1,
+              "covered": 1,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 20,
+              "covered": 19,
+              "skipped": 0,
+              "pct": 95
+            },
+            "branches": {
+              "total": 14,
+              "covered": 10,
+              "skipped": 0,
+              "pct": 71.42
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\CavitySourceAdmission.js": {
+            "lines": {
+              "total": 71,
+              "covered": 71,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 21,
+              "covered": 18,
+              "skipped": 0,
+              "pct": 85.71
+            },
+            "statements": {
+              "total": 71,
+              "covered": 71,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 83,
+              "covered": 65,
+              "skipped": 0,
+              "pct": 78.31
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\DiggingOcarinaScore.js": {
+            "lines": {
+              "total": 40,
+              "covered": 40,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 2,
+              "covered": 2,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 40,
+              "covered": 40,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 17,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 88.23
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneControlView.js": {
+            "lines": {
+              "total": 92,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 89.13
+            },
+            "functions": {
+              "total": 16,
+              "covered": 15,
+              "skipped": 0,
+              "pct": 93.75
+            },
+            "statements": {
+              "total": 92,
+              "covered": 82,
+              "skipped": 0,
+              "pct": 89.13
+            },
+            "branches": {
+              "total": 98,
+              "covered": 74,
+              "skipped": 0,
+              "pct": 75.51
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneInstalledCatalog.js": {
+            "lines": {
+              "total": 175,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 57.14
+            },
+            "functions": {
+              "total": 10,
+              "covered": 5,
+              "skipped": 0,
+              "pct": 50
+            },
+            "statements": {
+              "total": 175,
+              "covered": 100,
+              "skipped": 0,
+              "pct": 57.14
+            },
+            "branches": {
+              "total": 65,
+              "covered": 31,
+              "skipped": 0,
+              "pct": 47.69
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PerformanceSceneRecipe.js": {
+            "lines": {
+              "total": 53,
+              "covered": 53,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 9,
+              "covered": 8,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "statements": {
+              "total": 53,
+              "covered": 53,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 45,
+              "covered": 26,
+              "skipped": 0,
+              "pct": 57.77
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\PhysicalScoreFragment.js": {
+            "lines": {
+              "total": 230,
+              "covered": 199,
+              "skipped": 0,
+              "pct": 86.52
+            },
+            "functions": {
+              "total": 32,
+              "covered": 28,
+              "skipped": 0,
+              "pct": 87.5
+            },
+            "statements": {
+              "total": 230,
+              "covered": 199,
+              "skipped": 0,
+              "pct": 86.52
+            },
+            "branches": {
+              "total": 361,
+              "covered": 220,
+              "skipped": 0,
+              "pct": 60.94
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\ProcgenPhysicalPlayback.js": {
+            "lines": {
+              "total": 314,
+              "covered": 239,
+              "skipped": 0,
+              "pct": 76.11
+            },
+            "functions": {
+              "total": 118,
+              "covered": 50,
+              "skipped": 0,
+              "pct": 42.37
+            },
+            "statements": {
+              "total": 314,
+              "covered": 239,
+              "skipped": 0,
+              "pct": 76.11
+            },
+            "branches": {
+              "total": 211,
+              "covered": 97,
+              "skipped": 0,
+              "pct": 45.97
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\SceneCavityBody.js": {
+            "lines": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 18,
+              "covered": 16,
+              "skipped": 0,
+              "pct": 88.88
+            },
+            "statements": {
+              "total": 68,
+              "covered": 68,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 123,
+              "covered": 89,
+              "skipped": 0,
+              "pct": 72.35
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\CavitySoundMap.js": {
+            "lines": {
+              "total": 61,
+              "covered": 61,
+              "skipped": 0,
+              "pct": 100
+            },
+            "functions": {
+              "total": 12,
+              "covered": 12,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 61,
+              "covered": 61,
+              "skipped": 0,
+              "pct": 100
+            },
+            "branches": {
+              "total": 73,
+              "covered": 63,
+              "skipped": 0,
+              "pct": 86.3
+            }
+          },
+          "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI-issues\\js\\app\\procgen\\workstation\\physical\\TopologyInstrumentRegion.js": {
+            "lines": {
+              "total": 166,
+              "covered": 163,
+              "skipped": 0,
+              "pct": 98.19
+            },
+            "functions": {
+              "total": 17,
+              "covered": 17,
+              "skipped": 0,
+              "pct": 100
+            },
+            "statements": {
+              "total": 166,
+              "covered": 163,
+              "skipped": 0,
+              "pct": 98.19
+            },
+            "branches": {
+              "total": 347,
+              "covered": 321,
+              "skipped": 0,
+              "pct": 92.5
+            }
+          }
+        },
+        "followUp": "Broader mixed-scene routing/activation, repeated body replacement/tail-capacity and context/capture/export branches remain with1194/1087/1104; browser-only workstation paths have separate native Playwright evidence."
+      },
+      "checks": [
+        "npm run format",
+        "npm run provenance:check",
+        "npm run typecheck:critical",
+        "node scripts/check-browser-categories.js",
+        "git diff --check"
+      ],
+      "qualifiedSources": [
+        {
+          "path": "js/actions/ActionWalkSystem.js",
+          "bytes": 2794,
+          "sha256": "3ba1dd73c9c0d5e9abf7262c345e9d66a69732e8a4f6d962443b8e28015e0b65"
+        },
+        {
+          "path": "js/app/midi-ui/RoutedInstrumentBackend.js",
+          "bytes": 25841,
+          "sha256": "58b7967b4bbde57fc6123184a91ea4c3caacadeb730a7bb4297ed18ad3263469"
+        },
+        {
+          "path": "js/app/procgen/ProcgenLaneWorld.js",
+          "bytes": 93637,
+          "sha256": "b1679483b9b28e14cbde4cc0085c511f94e81216047a5779c60637542a3080d7"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 85305,
+          "sha256": "1973b893c89c3a305462949c83f3716380ca88e13a66dab292e63f98718d3373"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneControlView.js",
+          "bytes": 11129,
+          "sha256": "e12f78834c7dec5bdf1946912a4cd911fb5f07dc02df8877032ad89c9ed57491"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js",
+          "bytes": 24527,
+          "sha256": "df7a73ef9512260a3cba531b9a6dafe2fcd4a50087e183411574a0e62c129205"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneRecipe.js",
+          "bytes": 7067,
+          "sha256": "0f292e6f764226b3ea1d8906ed3ab47978b163f211ca291f20f8c3195f8e346e"
+        },
+        {
+          "path": "js/app/procgen/workstation/PhysicalScoreFragment.js",
+          "bytes": 42776,
+          "sha256": "76702ce8f3d585f39145e8ea25de3e35d68ec48ddbb1d3d936dbf9ce39828b63"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+          "bytes": 37666,
+          "sha256": "c76766534f1d608db637d699e99cb5cfd3a3e4cf4108995077b7d43fc255e929"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 225460,
+          "sha256": "0ec60c85c12b47969d27d791c11931dd6832fa77db0c48ca474e7ff38cb7e496"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+          "bytes": 23253,
+          "sha256": "e615349ebf7020fda869de26513a0848994cc36aaa94f37984d6daaeb8d19e98"
+        },
+        {
+          "path": "test/midi/routed-instrument-backend.test.js",
+          "bytes": 15856,
+          "sha256": "a7add1444e9f7621df57f46cd56e3e31ff8f5a17c7e08629ed182036afc99599"
+        },
+        {
+          "path": "e2e/procgen-workstation-cavity-sound.spec.js",
+          "bytes": 10376,
+          "sha256": "3d3bd079a2ca30a7d714cdba3b83024741e93ac76697bf2d1b0e763577d3d60e"
+        },
+        {
+          "path": "js/app/procgen/workstation/CavityGeometryControl.js",
+          "bytes": 2394,
+          "sha256": "a2747df1815c3d7202ed6b425c73f38857dd926b40adebf04a0a0535f76ad488"
+        },
+        {
+          "path": "js/app/procgen/workstation/CavitySourceAdmission.js",
+          "bytes": 8320,
+          "sha256": "3d5caec6cf3f6ab28b8062e0ceadb505041a5a23af7c993754c2528cf2c7558a"
+        },
+        {
+          "path": "js/app/procgen/workstation/DiggingOcarinaScore.js",
+          "bytes": 7697,
+          "sha256": "0b1d463e9340391d485d42bf02ddd5a79d09f598b24e7ad18c2a2dc591627a01"
+        },
+        {
+          "path": "js/app/procgen/workstation/SceneCavityBody.js",
+          "bytes": 10056,
+          "sha256": "28ce2904167c15297b63a7088bb6e4c1b8cb26294fb0539479f04a750b5e7664"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/CavitySoundMap.js",
+          "bytes": 10084,
+          "sha256": "c0ef2fe26ca053492cd09b12335fc85cf0a9844d703493e0477618ce3d9223bb"
+        },
+        {
+          "path": "test/cavity-sound-map.test.js",
+          "bytes": 9409,
+          "sha256": "a400b1ed435e7cf62021cf9524b92f35f65bc2568c1735275d0e5e0f7f846677"
+        },
+        {
+          "path": "test/cavity-source-admission.test.js",
+          "bytes": 6258,
+          "sha256": "57f621c73c4c3fa53be7d8316b170762ce3ee2b2086b9f900db7b660dbdf47b0"
+        },
+        {
+          "path": "test/digging-ocarina-score.test.js",
+          "bytes": 2405,
+          "sha256": "f22ebd22fc0a4ccf2da444f8dadded602621d6cc407a32b9ebba6d0f87dde757"
+        },
+        {
+          "path": "test/helpers/actualCavitySound.js",
+          "bytes": 8028,
+          "sha256": "44abea126bbfb68450750d75e88671dfaf36552fc3114b51a4346f20f6fffea6"
+        }
+      ],
+      "publicationSources": [
+        {
+          "path": "js/actions/ActionWalkSystem.js",
+          "bytes": 2794,
+          "sha256": "3ba1dd73c9c0d5e9abf7262c345e9d66a69732e8a4f6d962443b8e28015e0b65"
+        },
+        {
+          "path": "js/app/midi-ui/RoutedInstrumentBackend.js",
+          "bytes": 25841,
+          "sha256": "58b7967b4bbde57fc6123184a91ea4c3caacadeb730a7bb4297ed18ad3263469"
+        },
+        {
+          "path": "js/app/procgen/workstation/CausalMusicEngine.js",
+          "bytes": 85305,
+          "sha256": "1973b893c89c3a305462949c83f3716380ca88e13a66dab292e63f98718d3373"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneControlView.js",
+          "bytes": 11129,
+          "sha256": "e12f78834c7dec5bdf1946912a4cd911fb5f07dc02df8877032ad89c9ed57491"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneInstalledCatalog.js",
+          "bytes": 24527,
+          "sha256": "df7a73ef9512260a3cba531b9a6dafe2fcd4a50087e183411574a0e62c129205"
+        },
+        {
+          "path": "js/app/procgen/workstation/PerformanceSceneRecipe.js",
+          "bytes": 7067,
+          "sha256": "0f292e6f764226b3ea1d8906ed3ab47978b163f211ca291f20f8c3195f8e346e"
+        },
+        {
+          "path": "js/app/procgen/workstation/PhysicalScoreFragment.js",
+          "bytes": 42776,
+          "sha256": "76702ce8f3d585f39145e8ea25de3e35d68ec48ddbb1d3d936dbf9ce39828b63"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenPhysicalPlayback.js",
+          "bytes": 37666,
+          "sha256": "c76766534f1d608db637d699e99cb5cfd3a3e4cf4108995077b7d43fc255e929"
+        },
+        {
+          "path": "js/app/procgen/workstation/ProcgenWorkstation.js",
+          "bytes": 225460,
+          "sha256": "0ec60c85c12b47969d27d791c11931dd6832fa77db0c48ca474e7ff38cb7e496"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/TopologyInstrumentRegion.js",
+          "bytes": 23253,
+          "sha256": "e615349ebf7020fda869de26513a0848994cc36aaa94f37984d6daaeb8d19e98"
+        },
+        {
+          "path": "test/midi/routed-instrument-backend.test.js",
+          "bytes": 15856,
+          "sha256": "a7add1444e9f7621df57f46cd56e3e31ff8f5a17c7e08629ed182036afc99599"
+        },
+        {
+          "path": "e2e/procgen-workstation-cavity-sound.spec.js",
+          "bytes": 10376,
+          "sha256": "3d3bd079a2ca30a7d714cdba3b83024741e93ac76697bf2d1b0e763577d3d60e"
+        },
+        {
+          "path": "js/app/procgen/workstation/CavityGeometryControl.js",
+          "bytes": 2394,
+          "sha256": "a2747df1815c3d7202ed6b425c73f38857dd926b40adebf04a0a0535f76ad488"
+        },
+        {
+          "path": "js/app/procgen/workstation/CavitySourceAdmission.js",
+          "bytes": 8320,
+          "sha256": "3d5caec6cf3f6ab28b8062e0ceadb505041a5a23af7c993754c2528cf2c7558a"
+        },
+        {
+          "path": "js/app/procgen/workstation/DiggingOcarinaScore.js",
+          "bytes": 7697,
+          "sha256": "0b1d463e9340391d485d42bf02ddd5a79d09f598b24e7ad18c2a2dc591627a01"
+        },
+        {
+          "path": "js/app/procgen/workstation/SceneCavityBody.js",
+          "bytes": 10056,
+          "sha256": "28ce2904167c15297b63a7088bb6e4c1b8cb26294fb0539479f04a750b5e7664"
+        },
+        {
+          "path": "js/app/procgen/workstation/physical/CavitySoundMap.js",
+          "bytes": 10084,
+          "sha256": "c0ef2fe26ca053492cd09b12335fc85cf0a9844d703493e0477618ce3d9223bb"
+        },
+        {
+          "path": "test/cavity-sound-map.test.js",
+          "bytes": 9409,
+          "sha256": "a400b1ed435e7cf62021cf9524b92f35f65bc2568c1735275d0e5e0f7f846677"
+        },
+        {
+          "path": "test/cavity-source-admission.test.js",
+          "bytes": 6258,
+          "sha256": "57f621c73c4c3fa53be7d8316b170762ce3ee2b2086b9f900db7b660dbdf47b0"
+        },
+        {
+          "path": "test/digging-ocarina-score.test.js",
+          "bytes": 2405,
+          "sha256": "f22ebd22fc0a4ccf2da444f8dadded602621d6cc407a32b9ebba6d0f87dde757"
+        },
+        {
+          "path": "test/helpers/actualCavitySound.js",
+          "bytes": 8028,
+          "sha256": "44abea126bbfb68450750d75e88671dfaf36552fc3114b51a4346f20f6fffea6"
+        }
+      ],
+      "provenance": [
+        {
+          "id": "lemmings-background-job-worker",
+          "files": 300,
+          "sha256": "927e052c086a8c962c23c5491966c4056d9ee5c36002d991ea1d986817ce5af8"
+        }
+      ]
+    },
+    "evidence": {
+      "nativeAudio": {
+        "beforeTick": 2,
+        "afterTick": 122,
+        "targetFrequencyHz": 110,
+        "dominantFftBinHz": 109.86328125,
+        "fftSize": 32768,
+        "sampleRate": 48000,
+        "peak": 0.000014781951904296875,
+        "rms": 0.0000023806375538211848,
+        "accepted": 2,
+        "rejected": 0,
+        "audioContexts": 1,
+        "midiRequests": 0,
+        "actorPoseOverridden": false,
+        "clock": "Native Play world control and actual production timer; no scripted source stepping.",
+        "meaning": "Real internal browser PCM signal and FFT-bin evidence; not loudness/listening or physical speaker qualification."
+      },
+      "geometry": [
+        {
+          "recipe": "clay-chamber",
+          "models": [
+            {
+              "label": "initial-8",
+              "frequenciesHz": [
+                220
+              ],
+              "areasPixels2": [
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "f71112a7a82e139422a0f58a77e2b5bcfb65d77fb62c38c114ac9cf4d93cc161"
+            },
+            {
+              "label": "expanded-16",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "1788563bfeacf456fa43199f5f077ca21868426f1c7d9e189205c5c8e9eab52c"
+            },
+            {
+              "label": "one-pixel-throat",
+              "frequenciesHz": [
+                98.23362070472676
+              ],
+              "areasPixels2": [
+                321
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "3e990b4808a95ec02bcbc07502b11ae273c21945f1622998e649ff9e2c23d719"
+            },
+            {
+              "label": "split-again",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "1788563bfeacf456fa43199f5f077ca21868426f1c7d9e189205c5c8e9eab52c"
+            },
+            {
+              "label": "restored-expanded",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "1788563bfeacf456fa43199f5f077ca21868426f1c7d9e189205c5c8e9eab52c"
+            }
+          ],
+          "geometryOnlyIntents": 0,
+          "restoredBodyEqual": true
+        },
+        {
+          "recipe": "throat-duet",
+          "models": [
+            {
+              "label": "initial-8",
+              "frequenciesHz": [
+                220,
+                330
+              ],
+              "areasPixels2": [
+                64,
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "97aa33365425c76a2944ea36caf61052e3e8583d31043893f0ed48742b3466cc"
+            },
+            {
+              "label": "expanded-16",
+              "frequenciesHz": [
+                220,
+                330
+              ],
+              "areasPixels2": [
+                256,
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "ad6fe79dda732bb877d37caa121bfd82d75c21052646948d830e8bd9971737f7"
+            },
+            {
+              "label": "one-pixel-throat",
+              "frequenciesHz": [
+                220,
+                330
+              ],
+              "areasPixels2": [
+                321,
+                321
+              ],
+              "openingWidthPixels": 1,
+              "bodyIdentityHash": "f52b847ae290135d709ad681c0cfd63277f62497ba74513cccc451e4e94a4f0b"
+            },
+            {
+              "label": "split-again",
+              "frequenciesHz": [
+                220,
+                330
+              ],
+              "areasPixels2": [
+                256,
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "778f8f9553a390028ab4d11b21024a02711bed46ecaf5814b1279cb4454b8c69"
+            },
+            {
+              "label": "restored-expanded",
+              "frequenciesHz": [
+                220,
+                330
+              ],
+              "areasPixels2": [
+                256,
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "ad6fe79dda732bb877d37caa121bfd82d75c21052646948d830e8bd9971737f7"
+            }
+          ],
+          "geometryOnlyIntents": 0,
+          "restoredBodyEqual": true
+        },
+        {
+          "recipe": "crumbled-chimes",
+          "models": [
+            {
+              "label": "initial-8",
+              "frequenciesHz": [
+                220
+              ],
+              "areasPixels2": [
+                64
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "613d4bad06880a444759966fd7bbd8888253e54b154a29a8cfe932816d2b52fa"
+            },
+            {
+              "label": "expanded-16",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "4ec3fea97e94011d364f146a7560608dc620e34d075bac11aab0b0adef05efc8"
+            },
+            {
+              "label": "one-pixel-throat",
+              "frequenciesHz": [
+                98.23362070472676
+              ],
+              "areasPixels2": [
+                321
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "5a30a64bde2f734c98685a6bc8bc86130a951c87a4b3676a4bfe6483e3679b64"
+            },
+            {
+              "label": "split-again",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "4ec3fea97e94011d364f146a7560608dc620e34d075bac11aab0b0adef05efc8"
+            },
+            {
+              "label": "restored-expanded",
+              "frequenciesHz": [
+                110
+              ],
+              "areasPixels2": [
+                256
+              ],
+              "openingWidthPixels": 0,
+              "bodyIdentityHash": "4ec3fea97e94011d364f146a7560608dc620e34d075bac11aab0b0adef05efc8"
+            }
+          ],
+          "geometryOnlyIntents": 0,
+          "restoredBodyEqual": true
+        }
+      ],
+      "work": [
+        {
+          "steel": false,
+          "workFacts": 3,
+          "attacks": 3,
+          "sourceRevisions": [
+            1,
+            10,
+            19
+          ]
+        },
+        {
+          "steel": true,
+          "workFacts": 1,
+          "attacks": 0,
+          "sourceRevisions": [
+            0
+          ]
+        }
+      ],
+      "ordinaryWalls": [
+        {
+          "size": 8,
+          "contacts": 1,
+          "attacks": 1,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        },
+        {
+          "size": 16,
+          "contacts": 1,
+          "attacks": 1,
+          "actorPoseOverridden": false,
+          "processorsOverridden": false
+        }
+      ]
+    },
+    "priorAttempts": [
+      {
+        "nodePassing": 42,
+        "nodeFailures": 1,
+        "reason": "New geometry control used global terrain revision instead of the terrain-score transaction serial. Fixed before final qualification."
+      },
+      {
+        "reason": "A raw wall-point at foot height and then unfiltered neighbor lookup could not distinguish outside air from the closed cavity. Retain an actually probed above-foot solid cell and require the explicit adjacent anchor."
+      },
+      {
+        "nodePassing": 64,
+        "nodeFailures": 1,
+        "reason": "New anchor unit batch fixture lacked its region revision; corrected the fixture."
+      },
+      {
+        "nodePassing": 78,
+        "nodeFailures": 1,
+        "reason": "Dispatcher integration fixture omitted required intent version1; corrected, then all deferred/cancellation cases pass."
+      },
+      {
+        "browserPassing": 1,
+        "browserFailures": 1,
+        "reason": "Fixture waited for the disarmed physical session while musical transport was stopped, instead of asserting explicit global output activation."
+      },
+      {
+        "browserFailures": 1,
+        "reason": "Manual40ms source pacing made the20ms-authored clock late. Native world timer replaces the invalid fixture; late-attack policy unchanged."
+      },
+      {
+        "browserFailures": 1,
+        "reason": "Actual native clock/contact/body preparation succeeded, but existing router rejected missing patch-owned body identity. Add an explicit prepared shared-body resolver, retaining the original guard."
+      }
+    ],
+    "ci399": {
+      "head": "4ad585227b537f21ad0a35d85ff4dad5f234bb01",
+      "status": "success",
+      "run": 41030776175,
+      "job": 123979720229,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/41030776175",
+      "engineJob": 123979720719,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7284,
+      "nodePending": 10,
+      "browserPassed": 289,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 245,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.81,
+        "statements": 90.81,
+        "branches": 84.22,
+        "functions": 88.72
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 35232,
+        "thresholds": {
+          "perfP95FrameMsMax": 250,
+          "perfP50TpsMin": 15,
+          "historySpanRatioMin": 0.5,
+          "antsAvgMsMax": 250,
+          "tileCompositionAvgMsMax": 250,
+          "overlayPlaneAvgMsMax": 250,
+          "scaledBlitAvgMsMax": 250
+        },
+        "durationsMs": {
+          "benchPerformance": 10366,
+          "benchHistoryStress": 17994,
+          "benchHotpaths": 6869
+        },
+        "metrics": {
+          "perfP95Frame": 66.70000000000073,
+          "perfP50Tps": 90.65155807365439,
+          "historyRatio": 0.586,
+          "antsAvgMs": 13.67,
+          "tileCompositionAvgMs": 4.12,
+          "overlayPlaneAvgMs": 16.57,
+          "scaledBlitAvgMs": 27.77
+        },
+        "failures": [],
+        "diagnostics": [],
+        "measurementValid": true,
+        "scenarios": [
+          {
+            "speed": 30,
+            "ratio": 0.586
+          },
+          {
+            "speed": 60,
+            "ratio": 1.0178333333333334
+          }
+        ]
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1271,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "9b2e4d520c7492e817a9a976b113c73a7df9d5af665453400caaec1dad70376c",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "6603e8ddd2ce2bdfd09a4e219ffca6dfd24612f6fb10d53779cc28d5a00aad48",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123979720504,
+        "windowsJob": 123979720599,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "62a1e1e49c6b1e0b83d12b60c718d738edfee7a7",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1164,
+        "inventorySha256": "fe6b2c826faa27498f4df3a5d24e34a438a626c0ac3211c60857f9eb571dbf82",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1271,
+        "engineRuntimeFiles": 1262,
+        "engineHarnessFiles": 9,
+        "allEngineSourceFilesMatchPublishedHead": true,
+        "githubArchiveDigestsMatched": true,
+        "reportDigestMatched": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci399-0.zip",
+          "bytes": 931000,
+          "sha256": "8c40bf03a368d36e9dbfa0ea9032025aef00fd613f0faceb5c0e6a238bcd6bbd",
+          "githubArtifactId": 12968425842,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci399-1.zip",
+          "bytes": 163150,
+          "sha256": "7b9b59689599bbc128d6963f43c0560c514c90722a00de8e8ec1e98e812961b4",
+          "githubArtifactId": 12966051407,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci399-2.zip",
+          "bytes": 2246,
+          "sha256": "be8ee336100fdb2addeb39fd3ffb7a855f0791072bb93fb0c805ddb257db1a83",
+          "githubArtifactId": 12965078231,
+          "githubDigestMatched": true
+        },
+        {
+          "path": ".tmp/ci399-3.zip",
+          "bytes": 2146,
+          "sha256": "fc15fd141754cf57b59774725bb95b998b4f7cb85e72f664fde6b88eda658371",
+          "githubArtifactId": 12964954376,
+          "githubDigestMatched": true
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review on the named source. Historical397 admission refusal and394/396 native Firefox crashes remain in prior continuations. Later source, hardware, acoustic and issue-specific acceptance remain independent."
+    },
+    "ci400": {
+      "head": "a7b5fe08e7286630be3031af066642c7e7f7cae6",
+      "runId": 41032734730,
+      "testJob": 123986113527,
+      "lifecycleJob": 123986113418,
+      "linuxJob": 123986113640,
+      "windowsJob": 123986113638,
+      "status": "Main failed; lifecycle/both native jobs success.",
+      "nodePassing": 7286,
+      "nodePending": 10,
+      "nodeFailures": 1,
+      "browserPassing": 289,
+      "desktopPassing": 26,
+      "workstationPassing": 245,
+      "enginePassing": 18,
+      "failure": "procgen-terrain-retention.test.js:131: _revealGrowth read this.terrain.chunkWidth on a terrain-less base world.",
+      "coverage": {
+        "lines": 90.82,
+        "statements": 90.82,
+        "branches": 84.22,
+        "functions": 88.72
+      },
+      "repair": "Current source guards unneeded bounds work and uses the established fallback. The final40Node/3Playwright affected repair batch passes; new-source CI pending publication."
+    },
+    "limits": [
+      "Only clay110Hz has the new native browser PCM/FFT acceptance here. All three recipes have actual browser geometry/worker/restore evidence and software-kernel coupling tests; remaining native render comparisons, level/listening and live tail/replacement/capture matrices remain open under1194.",
+      "Generic private rehearsal explicitly refuses this dynamic cavity body route; no offline export or acoustic/hardware qualification is inferred.",
+      "No full local suite repeated;117+40Node and12+3browser runs overlap and must not be summed as unique totals. Only LaneWorld reveal fallback changed after the larger passing batch.",
+      "Latest independently verified full green is399, not failed400 or the unpublished current source."
+    ],
+    "issueOutcome": "Keep1194/1104/1087open for the remaining explicit acceptance, continue implementation after publication.1183remains closed; its discovered reveal regression is repaired in this source."
   }
 }
