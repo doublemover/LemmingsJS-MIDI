@@ -9798,3 +9798,24 @@ export-budget acknowledgments still prevent a false complete receipt.
   projection and exact archived execution are separate contracts. Full377 has
   passed engine/native/static/desktop jobs and is still running the main job;
   latest fully source-verified checkpoint remains374/97eeed53. Continue solo.
+
+
+### Continuation 379 - actual processing order and causal continuation
+
+- Reproduce six state9 omissions at17af0056. State10 includes actual actor
+  processing order, causal fact identity/capacity and physical simulation
+  interval. Private weak actor associations do not extend actor lifetimes.
+- Refuse detached/overridden actor registries, duplicate/foreign actors, wrong
+  stall-work aliases, pending physical facts and missing/quarantined required
+  survey observers. Delivery queues, passive listeners and error counters stay
+  diagnostic; legacy sequence is retained only in full state.
+- Final176related Node and17desktop Playwright cases pass together. Actual
+  paired next batches reverse motion order, advance distinct event IDs, report
+  four lost facts under zero fact capacity and advance1020vs990ms clocks.
+  All12binding refusals recover with zero getters. Continuation owner100%lines/
+  functions,95.34%branches; survey core100%lines/functions,91.29%branches.
+  Static/critical/provenance/category gates pass; no full local suite repeat.
+- Continue #1223 with retained generated hazard/route descriptor and source-asset
+  pointer binding, because generic ignored asset field names must not conceal
+  future physical decisions. Checkpoint-compatible projection and archived
+  exact execution remain separate. Continue solo; minimum1920x1080 desktop.

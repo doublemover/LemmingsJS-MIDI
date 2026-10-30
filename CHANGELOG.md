@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Preserve survey actor processing order, causal fact capacity/identity and physical clock intervals; reject detached actor/work/observer bindings while excluding passive delivery counters.
+
 - Bind survey evidence to authoring revisions, crew prerequisites and topology lineage; refuse pending topology publications and unsupported or accessor-based command metadata.
 
 - Verify physical collision and edit cache bindings, retain wall and active-assistance continuations, and refuse ground-query states that previously produced identical survey hashes.

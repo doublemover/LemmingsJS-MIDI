@@ -4,6 +4,7 @@ import { captureTerrainEditIdentity } from '../ProcgenTerrainEditIdentity.js';
 import { captureGeneratedTerrainEvidence } from '../ProcgenTerrainCacheEvidence.js';
 import { verifyProcgenWorldCacheBindings } from '../ProcgenWorldCacheEvidence.js';
 import { assertTopologyEvidenceBoundary } from '../ProcgenTerrainTopology.js';
+import { captureSurveyContinuations } from './ProcgenSurveyContinuations.js';
 import { normalizeSurveyScenario, normalizeSurveyCandidate, surveyTrialIdentity } from './ProcgenSurveyScenario.js';
 import { freezeSurveyData, hashSurveyValue, SURVEY_STATE_SCHEMA, SURVEY_CANONICAL_SCHEMA } from './ProcgenSurveyCanonical.js';
 import { LemmingStateType as State } from '../../../lemmings/LemmingStateType.js';
@@ -32,7 +33,7 @@ const knownWorldOwners = new Set([...stateOwners, 'actors', 'actions', 'terrain'
   '_processingActorId', '_processingLane', '_stepping', '_failedTick', '_disposed', '_disposalError']);
 
 // Read own data only. No snapshot, terrain query, revision read, or cache get.
-const captureState = (world, records, eventHash, { physicalOnly = false, scenarioOnly = false } = {}) => {
+const captureState = (world, records, eventHash, { physicalOnly = false, scenarioOnly = false, actorRecords, observers } = {}) => {
   assertTopologyEvidenceBoundary(world);
   for (const key of Object.getOwnPropertyNames(world)) {
     const descriptor = Object.getOwnPropertyDescriptor(world, key);
@@ -78,7 +79,7 @@ const captureState = (world, records, eventHash, { physicalOnly = false, scenari
     if (value instanceof Trigger) out.disabledUntilTick = value.disabledUntilTick;
     return out;
   };
-  const out = { schema: SURVEY_STATE_SCHEMA, actors: records.map(record => ({ identity: record.id, generation: record.generation,
+  const out = { schema: SURVEY_STATE_SCHEMA, continuations: captureSurveyContinuations(world, actorRecords, observers, physicalOnly), actors: records.map(record => ({ identity: record.id, generation: record.generation,
     current: record.actor ? encode(record.actor, `actors.${record.id}`) : record.terminal,
     arrivalTick: record.arrivalTick, deathTick: record.deathTick, retired: record.retired })) };
   for (const key of stateOwners) {
@@ -105,7 +106,7 @@ class ProcgenSurveyTrial {
     terrain ||= new ProcgenSurveyTerrain(this.scenario.geometry);
     if (activeTerrainOwners.has(terrain)) throw new Error('Survey replicas cannot share mutable terrain');
     activeTerrainOwners.add(terrain); this._terrain = terrain;
-    this._records = []; this._activeRecords = new Set(); this._byIdentity = new Map(); this._pendingAdmission = null; this._nextAdmission = 0; this._disposed = false;
+    this._records = []; this._activeRecords = new Set(); this._byIdentity = new Map(); this._actorRecords = new WeakMap(); this._pendingAdmission = null; this._nextAdmission = 0; this._disposed = false;
     this._openRecords = new Set(); this._byActorIdentity = new Map(); this._pendingFinalizations = []; this._physicalEvidenceIncomplete = false;
     this._observationWork = { actorVisits: 0, finalizedActors: 0, telemetryProjections: 0 };
     this._counts = { admitted: 0, arrived: 0, qualified: 0, deaths: 0, unresolved: this.scenario.designatedCohort.length,
@@ -147,7 +148,7 @@ class ProcgenSurveyTrial {
       this.world.soundEvents.onBatch.on(this._batchListener);
       if (s.mode === 'controlled') { this.world.cohorts = false; this._installHazards(); this._admit(); }
       this._observe(); this._refreshTelemetry();
-      const initial = this.snapshot(); this.initialStateHash = initial.stateHash; this.initialPhysicalStateHash = initial.physicalStateHash; const scenarioState = captureState(this.world, this._records, this._eventHash, { physicalOnly: true, scenarioOnly: true });
+      const initial = this.snapshot(); this.initialStateHash = initial.stateHash; this.initialPhysicalStateHash = initial.physicalStateHash; const scenarioState = this._captureState({ physicalOnly: true, scenarioOnly: true });
       scenarioState.controlledTriggers = initial.state.controlledTriggers;
       this.initialScenarioStateHash = hashSurveyValue({ schema: 'paired-initial-physical-v2', state: scenarioState });
       this.observeMilestone();
@@ -160,7 +161,7 @@ class ProcgenSurveyTrial {
       birthLane: actor.spawnLaneIndex, birthOrdinal: actor.spawnOrdinal, designated: this.scenario.designatedCohort.includes(id),
       scout: actor.scout, worker: false, guard: false, allowedClimb: actor.canClimb || !!(actor.scoutAbilities & 1),
       allowedFloat: actor.hasParachute || !!(actor.scoutAbilities & 2), arrivalTick: null, qualifiedTick: null, deathTick: null, deathReason: null, retired: null };
-    this._records.push(record); this._activeRecords.add(record); this._byIdentity.set(id, record);
+    this._records.push(record); this._activeRecords.add(record); this._byIdentity.set(id, record); this._actorRecords.set(actor, record);
     this._openRecords.add(record); this._byActorIdentity.set(`${record.generation}:${record.actorId}`, record);
     if (record.designated) { this._counts.admitted++; this._counts[record.scout ? 'scouts' : 'ordinary']++; }
     return record;
@@ -314,6 +315,10 @@ class ProcgenSurveyTrial {
       error.name = 'SurveyInvalidStateError'; error.kind = 'incomplete-physical-boundary'; throw error;
     }
   }
+  _captureState(options = {}) {
+    return captureState(this.world, this._records, this._eventHash, { ...options, actorRecords: this._actorRecords,
+      observers: { onEvent: this._eventListener, onBatch: this._batchListener } });
+  }
   snapshot() {
     this._assertCompletedBoundary();
     for (const tick of this.world.terrainActivityTicks) {
@@ -323,11 +328,11 @@ class ProcgenSurveyTrial {
         throw error;
       }
     }
-    const state = captureState(this.world, this._records, this._eventHash);
+    const state = this._captureState();
     state.controlledTriggers = this._fixedTriggers?.map(trigger => ({ id: trigger.surveyId, cooldown: trigger.disabledUntilTick })) || [];
     state.evaluation = { resets: this._resets, missingActors: this._missingActors, protectedViolation: this._protectedViolation,
       illegitimateTraits: this._illegitimateTraits, physicalEvidenceIncomplete: this._physicalEvidenceIncomplete };
-    const physical = captureState(this.world, this._records, this._eventHash, { physicalOnly: true }); physical.controlledTriggers = state.controlledTriggers;
+    const physical = this._captureState({ physicalOnly: true }); physical.controlledTriggers = state.controlledTriggers;
     return freezeSurveyData({ tick: this.world.tickIndex, stateHash: hashSurveyValue(state), physicalStateHash: hashSurveyValue(physical), eventHash: this._eventHash, state });
   }
   observeMilestone() {
@@ -374,7 +379,7 @@ class ProcgenSurveyTrial {
     if (!this._disposed) throw new Error('Survey storage remains pinned by a live trial.');
     this.world = null; this._terrain = null;
     for (const record of this._records) record.actor = null;
-    this._records.length = 0; this._activeRecords.clear(); this._byIdentity.clear(); this._openRecords.clear(); this._byActorIdentity.clear(); this._pendingFinalizations.length = 0;
+    this._records.length = 0; this._activeRecords.clear(); this._byIdentity.clear(); this._actorRecords = new WeakMap(); this._openRecords.clear(); this._byActorIdentity.clear(); this._pendingFinalizations.length = 0;
     this._pendingAdmission = null; this._eventListener = null; this._batchListener = null; this._events.length = 0; this._milestones.length = 0;
     this._spawnOriginal = null; this._restartOriginal = null; this._setPixelOriginal = null;
   }

@@ -77,6 +77,7 @@ test('browser physical projection preserves real continuation differences and re
     const { surveyProjectionContinuations } = await import('/test/helpers/surveyProjectionContinuations.js');
     const { surveyCacheBindingCorpus } = await import('/test/helpers/surveyCacheBindingCorpus.js');
     const { surveyBehaviorOwnerCorpus } = await import('/test/helpers/surveyBehaviorOwnerCorpus.js');
+    const { surveyCausalContinuationCorpus } = await import('/test/helpers/surveyCausalContinuationCorpus.js');
     const { createSurveyTrial } = await import(new URL('js/app/procgen/survey/ProcgenSurveyCore.js', root));
     const { BinaryReader } = await import(new URL('js/data/BinaryReader.js', root)), { FileContainer } = await import(new URL('js/data/FileContainer.js', root)), { MaskProvider } = await import(new URL('js/render/MaskProvider.js', root));
     const response = await fetch(new URL('lemmings_ohNo/MAIN.DAT', root)); if (!response.ok) throw new Error('Source masks unavailable');
@@ -84,10 +85,11 @@ test('browser physical projection preserves real continuation differences and re
     try { masks = new MaskProvider(part); } finally { part.release(); container.dispose(); reader.release(); }
     const create = scenario => createSurveyTrial({ scenario, masks });
     return { continuations: await surveyProjectionContinuations(create), cacheBindings: await surveyCacheBindingCorpus(create),
-      behaviorOwners: await surveyBehaviorOwnerCorpus(create, new URL('js/app/procgen/', root)) };
+      behaviorOwners: await surveyBehaviorOwnerCorpus(create, new URL('js/app/procgen/', root)), causalOwners: await surveyCausalContinuationCorpus(create) };
   });
   expect(result.continuations.map(row => row.kind)).toEqual(['speed', 'intervention', 'contact', 'intrinsic-and-accessor']); expect(result.cacheBindings.failures).toHaveLength(9);
   expect(result.behaviorOwners.map(row => row.kind)).toEqual(['authoring-revision', 'crew-prerequisite', 'topology-lineage', 'pending-and-metadata']); expect(result.behaviorOwners.at(-1).failures).toHaveLength(13);
+  expect(result.causalOwners.map(row => row.kind)).toEqual(['actor-order', 'causal-sequence', 'fact-capacity', 'frame-interval', 'binding-refusals']); expect(result.causalOwners.at(-1).failures).toHaveLength(12);
   await testInfo.attach('browser-projection-continuations', { body: JSON.stringify(result), contentType: 'application/json' });
 });
 
@@ -119,7 +121,7 @@ test('production generated pack evidence ignores query warmth and refuses altere
       sameWorld: api.world === world, sameTick: world.tickIndex === tick, sameProject: JSON.stringify(studio.getProject()) === project,
       output: studio.getPlaybackState().enabled, scope: 'Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract.' };
   });
-  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(9); expect(result.refusals).toHaveLength(6);
+  expect(result.warm).toBe(result.before); expect(result.recovered).toBe(result.before); expect(result.stateSchema).toBe(10); expect(result.refusals).toHaveLength(6);
   expect(result.sameWorld && result.sameTick && result.sameProject).toBe(true); expect(result.output).toBe(false);
   await testInfo.attach('generated-pack-cache-evidence', { body: JSON.stringify(result), contentType: 'application/json' });
 });

@@ -85104,5 +85104,1926 @@
       "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
     },
     "remaining1223": "Audit actual actor processing order, active actor registry and physical fact identity/capacity continuation. Survey state must not claim authoritative equality while these owners remain omitted. Checkpoint-compatible physical projection and exact archived execution are separate contracts."
+  },
+  "continuation379": {
+    "date": "2026-10-29",
+    "agent": "rook",
+    "baseHead": "17af00560fc1fad58a3deba2cac860e3b4cb8a7b",
+    "scope": "Survey state10 actor ordering, private actor association, native registry/work/observer binding and causal fact/clock continuation; Playwright at1920x1080.",
+    "counterexamples": {
+      "path": ".tmp/rook379-owner-counterexamples.json",
+      "bytes": 865,
+      "sha256": "1872bddc51f2c07f011456c739f1aa9a207e0012678ee30612e74666076e9ba4"
+    },
+    "changes": [
+      "Reproduce six state9 omissions under the preceding source: actor order, actor registry, causal sequence, fact capacity, physical frame interval and detached stall-work alias.",
+      "Retain actual processing order via weak actor-to-record association without extending actor lifetime. Refuse unknown/duplicate actors and detached or overridden native authority registry.",
+      "Validate exact stall-work typed-array aliases and the current mandatory survey subscriptions; detached/quarantined owners or uncommitted physical facts cannot qualify.",
+      "Project physical causal sequence, coverage, finite fact budgets and actual simulation interval. Legacy delivery sequence remains full-state-only; queues, extra passive listeners and delivery error counters remain outside physical identity.",
+      "Paired actual future batches prove reversed MotionCommitted actor order, distinct event IDs, four dropped facts under zero capacity and1020vs990ms actual simulation clocks."
+    ],
+    "validation": {
+      "node": {
+        "passed": 176,
+        "failed": 0,
+        "log": ".tmp/rook379-node-final.log",
+        "scope": "All survey files and generated/authored/world-cache/edit-identity, topology and atomic authoring cohorts."
+      },
+      "playwright": {
+        "passed": 17,
+        "failed": 0,
+        "report": ".tmp/rook379-playwright-final.json",
+        "cases": [
+          {
+            "title": "offline replay pause follows active playback and resets after completion",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "saved reports compare current muted controlled and generated trials with explicit source uncertainty and reject changed assets",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "saved-report-source-replay.json",
+                "value": {
+                  "sourceDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                  "receipts": [
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-4ae859ff2088951b",
+                      "replayTrialId": "trial-4ae859ff2088951b",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 64,
+                        "originalMilestones": 2,
+                        "replayMilestones": 2
+                      },
+                      "originalFinalStateHash": "8c9281a91112db5d",
+                      "replayFinalStateHash": "8c9281a91112db5d",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 64,
+                          "originalMilestones": 2,
+                          "replayMilestones": 2
+                        }
+                      }
+                    },
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-6183738464790640",
+                      "replayTrialId": "trial-6183738464790640",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 64,
+                        "originalMilestones": 2,
+                        "replayMilestones": 2
+                      },
+                      "originalFinalStateHash": "bd3f65af04d21f9b",
+                      "replayFinalStateHash": "bd3f65af04d21f9b",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 64,
+                          "originalMilestones": 2,
+                          "replayMilestones": 2
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "midi": 0,
+                    "audio": 0
+                  },
+                  "errors": [],
+                  "activeCodeUnverified": true,
+                  "changedAssetRejected": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "a missing early baseline checkpoint never substitutes future final telemetry",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "scenario and policy-seed review preserves candidate identity and exposes distinct outcome evidence",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "matches real controlled and source replay, keeps tile focus, and renders 64 queued logical candidates @boundary",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "survey-native-parity.json",
+                "value": {
+                  "sourceDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                  "replays": [
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-43f184b580456ee9",
+                      "replayTrialId": "trial-43f184b580456ee9",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 192,
+                        "originalMilestones": 4,
+                        "replayMilestones": 4
+                      },
+                      "originalFinalStateHash": "98d892ca4a4fcb4e",
+                      "replayFinalStateHash": "98d892ca4a4fcb4e",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 192,
+                          "originalMilestones": 4,
+                          "replayMilestones": 4
+                        }
+                      }
+                    },
+                    {
+                      "schemaVersion": 4,
+                      "originalTrialId": "trial-084e12207e8bd1bc",
+                      "replayTrialId": "trial-084e12207e8bd1bc",
+                      "matched": false,
+                      "differences": [],
+                      "validity": "execution-unbound",
+                      "reasons": [
+                        "active-execution-unbound"
+                      ],
+                      "coverage": {
+                        "commonTicks": [
+                          0,
+                          64,
+                          128,
+                          192,
+                          256,
+                          320,
+                          384,
+                          448,
+                          512,
+                          576,
+                          600
+                        ],
+                        "mismatchedTicks": [],
+                        "intervals": [
+                          {
+                            "fromTick": 0,
+                            "throughTick": 64,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 64,
+                            "throughTick": 128,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 128,
+                            "throughTick": 192,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 192,
+                            "throughTick": 256,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 256,
+                            "throughTick": 320,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 320,
+                            "throughTick": 384,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 384,
+                            "throughTick": 448,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 448,
+                            "throughTick": 512,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 512,
+                            "throughTick": 576,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          },
+                          {
+                            "fromTick": 576,
+                            "throughTick": 600,
+                            "observation": "endpoint-checksums; interior ticks not individually observed"
+                          }
+                        ],
+                        "logicalMismatchedTicks": [],
+                        "physicalMismatchedTicks": [],
+                        "eventMismatchedTicks": [],
+                        "checksumDomains": [
+                          "logical-state",
+                          "physical-state",
+                          "logical-events"
+                        ],
+                        "truncated": false,
+                        "fromTick": 0,
+                        "throughTick": 600,
+                        "originalMilestones": 11,
+                        "replayMilestones": 11
+                      },
+                      "originalFinalStateHash": "ed06269ef360c07a",
+                      "replayFinalStateHash": "ed06269ef360c07a",
+                      "independentSample": false,
+                      "scope": "current-runtime-compatibility",
+                      "compatibilityMatch": true,
+                      "artifactIntegrity": {
+                        "status": "assets-verified",
+                        "codeDigest": "f9f83df446c0c77273f929e9e8b2e76ff5d5b404cab628495b2a74527bd96231",
+                        "codeStatus": "not-checked",
+                        "assetStatus": "verified",
+                        "policy": "saved-assets-only"
+                      },
+                      "executionIdentity": {
+                        "status": "unbound",
+                        "reason": "explicit-current-runtime-comparison"
+                      },
+                      "replayConsistency": {
+                        "status": "matched",
+                        "coverage": {
+                          "commonTicks": [
+                            0,
+                            64,
+                            128,
+                            192,
+                            256,
+                            320,
+                            384,
+                            448,
+                            512,
+                            576,
+                            600
+                          ],
+                          "mismatchedTicks": [],
+                          "intervals": [
+                            {
+                              "fromTick": 0,
+                              "throughTick": 64,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 64,
+                              "throughTick": 128,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 128,
+                              "throughTick": 192,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 192,
+                              "throughTick": 256,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 256,
+                              "throughTick": 320,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 320,
+                              "throughTick": 384,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 384,
+                              "throughTick": 448,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 448,
+                              "throughTick": 512,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 512,
+                              "throughTick": 576,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            },
+                            {
+                              "fromTick": 576,
+                              "throughTick": 600,
+                              "observation": "endpoint-checksums; interior ticks not individually observed"
+                            }
+                          ],
+                          "logicalMismatchedTicks": [],
+                          "physicalMismatchedTicks": [],
+                          "eventMismatchedTicks": [],
+                          "checksumDomains": [
+                            "logical-state",
+                            "physical-state",
+                            "logical-events"
+                          ],
+                          "truncated": false,
+                          "fromTick": 0,
+                          "throughTick": 600,
+                          "originalMilestones": 11,
+                          "replayMilestones": 11
+                        }
+                      }
+                    }
+                  ],
+                  "outputRequests": {
+                    "midi": 0,
+                    "audio": 0
+                  },
+                  "errors": [],
+                  "layout64Only": true
+                }
+              }
+            ]
+          },
+          {
+            "title": "routes visible pause/step/cancel controls to bounded resident worlds without changing their clock @boundary",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "survey-native-controls.json",
+                "value": {
+                  "states": [
+                    "resume",
+                    "pause",
+                    "step",
+                    "cancel"
+                  ],
+                  "lastState": {
+                    "runGeneration": "dd616c27-7aee-4a78-bcb7-39d2532f81b2",
+                    "controlId": 3,
+                    "paused": true,
+                    "cancelled": true,
+                    "stepPending": false,
+                    "executionWorkers": 1,
+                    "stepReceipt": {
+                      "schemaVersion": 1,
+                      "runGeneration": "dd616c27-7aee-4a78-bcb7-39d2532f81b2",
+                      "controlId": 3,
+                      "status": "reached",
+                      "phase": "complete",
+                      "targetTick": 64,
+                      "requestedMs": 1675.8693999999996,
+                      "prepareLatencyMs": 0.924300000000585,
+                      "barrierLatencyMs": 352.6883000000007,
+                      "reachedCheckpoint": 64,
+                      "terminationReason": null,
+                      "selected": [
+                        {
+                          "trialId": "trial-fc27b660c4bd8a8c",
+                          "attemptId": "native-control-baseline-593bc02eb30261f2",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-64f00dd279904726",
+                          "attemptId": "native-control-no-learning-1895d9c73414dd2b",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-088886e9e285aee5",
+                          "attemptId": "native-control-sample-9c6af5431e94e87f",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-32efc6f5cc5939e1",
+                          "attemptId": "native-control-sample-c95aae1694d6e2ca",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-249b6e178ed3e52b",
+                          "attemptId": "native-control-sample-8204defb1ae2354f",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-bad145db42aac00f",
+                          "attemptId": "native-control-sample-7e86d1e946b095d5",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-86753d02c6009c4e",
+                          "attemptId": "native-control-sample-e8ec2394c86f5988",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-cf595be1dcdc9a75",
+                          "attemptId": "native-control-sample-1594a62912d523fd",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-4b6ce8a3d6c94317",
+                          "attemptId": "native-control-sample-745798c9064ae4a5",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-98e426993b43bd4d",
+                          "attemptId": "native-control-sample-e7ad1efe7ec73062",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-11405d53cc97bc6f",
+                          "attemptId": "native-control-sample-02aeb744271c7998",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-ef3a542424adc068",
+                          "attemptId": "native-control-sample-b6a6461e10a7d29a",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-5967d3d6e6b8140a",
+                          "attemptId": "native-control-sample-72572b5c69092b60",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-39dd077421be1900",
+                          "attemptId": "native-control-sample-fa71db019238547d",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-06e3ed375ac05d63",
+                          "attemptId": "native-control-sample-327803932ed7f8ff",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        },
+                        {
+                          "trialId": "trial-ef86dbb156ca630d",
+                          "attemptId": "native-control-sample-f72464080ea5a99c",
+                          "tick": 64,
+                          "status": "resident",
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39"
+                        }
+                      ],
+                      "selectedCount": 16,
+                      "selectionComplete": true,
+                      "workers": [
+                        {
+                          "worker": 0,
+                          "workerGeneration": "06ad09b3-8cc9-492e-9e5d-ae29feb58e39",
+                          "status": "reached",
+                          "selectionKnown": true,
+                          "acknowledged": true,
+                          "selected": [
+                            {
+                              "trialId": "trial-fc27b660c4bd8a8c",
+                              "attemptId": "native-control-baseline-593bc02eb30261f2",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-64f00dd279904726",
+                              "attemptId": "native-control-no-learning-1895d9c73414dd2b",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-088886e9e285aee5",
+                              "attemptId": "native-control-sample-9c6af5431e94e87f",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-32efc6f5cc5939e1",
+                              "attemptId": "native-control-sample-c95aae1694d6e2ca",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-249b6e178ed3e52b",
+                              "attemptId": "native-control-sample-8204defb1ae2354f",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-bad145db42aac00f",
+                              "attemptId": "native-control-sample-7e86d1e946b095d5",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-86753d02c6009c4e",
+                              "attemptId": "native-control-sample-e8ec2394c86f5988",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-cf595be1dcdc9a75",
+                              "attemptId": "native-control-sample-1594a62912d523fd",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-4b6ce8a3d6c94317",
+                              "attemptId": "native-control-sample-745798c9064ae4a5",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-98e426993b43bd4d",
+                              "attemptId": "native-control-sample-e7ad1efe7ec73062",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-11405d53cc97bc6f",
+                              "attemptId": "native-control-sample-02aeb744271c7998",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-ef3a542424adc068",
+                              "attemptId": "native-control-sample-b6a6461e10a7d29a",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-5967d3d6e6b8140a",
+                              "attemptId": "native-control-sample-72572b5c69092b60",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-39dd077421be1900",
+                              "attemptId": "native-control-sample-fa71db019238547d",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-06e3ed375ac05d63",
+                              "attemptId": "native-control-sample-327803932ed7f8ff",
+                              "tick": 64,
+                              "status": "resident"
+                            },
+                            {
+                              "trialId": "trial-ef86dbb156ca630d",
+                              "attemptId": "native-control-sample-f72464080ea5a99c",
+                              "tick": 64,
+                              "status": "resident"
+                            }
+                          ]
+                        }
+                      ],
+                      "expectedWorkers": 1,
+                      "acknowledgedWorkers": 1,
+                      "unacknowledgedWorkerCount": 0,
+                      "unacknowledgedWorkers": []
+                    },
+                    "readyWorkers": 1,
+                    "preparingWorkers": 0,
+                    "computation": {
+                      "computedResults": 16,
+                      "receivedResults": 16,
+                      "preparingTrials": 0,
+                      "admittedTrials": 0
+                    },
+                    "storage": {
+                      "pendingResultCount": 0,
+                      "pendingResultBytes": 0,
+                      "peakPendingResultCount": 1,
+                      "peakPendingResultBytes": 11572
+                    }
+                  },
+                  "statuses": [
+                    {
+                      "trialId": "trial-fc27b660c4bd8a8c",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-64f00dd279904726",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-088886e9e285aee5",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-32efc6f5cc5939e1",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-249b6e178ed3e52b",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-bad145db42aac00f",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-86753d02c6009c4e",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-cf595be1dcdc9a75",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-4b6ce8a3d6c94317",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-98e426993b43bd4d",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-11405d53cc97bc6f",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-ef3a542424adc068",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-5967d3d6e6b8140a",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-39dd077421be1900",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-06e3ed375ac05d63",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    },
+                    {
+                      "trialId": "trial-ef86dbb156ca630d",
+                      "status": "cancelled",
+                      "lastTick": 64
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "keeps selection, keyboard order and empty comparisons consistent",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "explains an absent baseline and fits the supported desktop review viewport",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "keeps the pause label truthful when the server rejects a control",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "newer files win over delayed files and URL reports; malformed replacement is atomic",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "a changed manifest with the same experiment ID replaces scene and trial identity",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "a saved file detaches live controls and ignores a pending live report",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "obsolete replay setup cannot paint, publish a receipt or dispose a newer replay",
+            "file": "procgen-survey.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "desktop survey canonical numeric vectors match Node and ignore spoofed typed view properties",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": []
+          },
+          {
+            "title": "authored scene source evidence preserves prepared ownership through physical byte refusal and recovery @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "authored-scene-source-evidence",
+                "value": {
+                  "before": "2e7088c9745b214d",
+                  "recovered": "2e7088c9745b214d",
+                  "failures": [
+                    {
+                      "field": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "pixels",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    },
+                    {
+                      "field": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "kind": "authored-source"
+                    }
+                  ],
+                  "source": {
+                    "status": "prepared",
+                    "profile": "original-ordered-rectangle-terrain-v1",
+                    "method": "dedicated-worker",
+                    "activeExecution": "bound",
+                    "layoutHash": "baf64186ee94a5ef72c7f6363ebf78d0582f892be17fb2a3e419f1161dc12a5a",
+                    "storageHash": "8212269bbb275f26840bbf59c00eeec36f6246c8a5bec1cd0c06d1f5d8fe713a",
+                    "typedBytes": 838656,
+                    "fineGrowth": false,
+                    "objectPolicy": "no-procedural-objects-inside-initial-score",
+                    "qualification": "original-authored-source;runtime-and-playability-validation-pending"
+                  },
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Actual catalog Prepare/Load, admitted worker compiled authored source, immutable seed bindings and read-only local integrity checks. No archived exact-execution or acoustic claim."
+                }
+              }
+            ]
+          },
+          {
+            "title": "browser physical projection preserves real continuation differences and rejects nested accessor evidence @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "browser-projection-continuations",
+                "value": {
+                  "continuations": [
+                    {
+                      "kind": "speed",
+                      "tick": 48,
+                      "before": [
+                        "f97ea5834e65528f",
+                        "8a9cab027edcebd6"
+                      ],
+                      "after": [
+                        {
+                          "physical": "b7c2453621c4443a",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "7d33d6c5618bce09",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        30
+                      ]
+                    },
+                    {
+                      "kind": "intervention",
+                      "tick": 48,
+                      "before": [
+                        "f97ea5834e65528f",
+                        "6a0747d1a4561555"
+                      ],
+                      "after": [
+                        {
+                          "physical": "b7c2453621c4443a",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "d7b6a1ea76b1b806",
+                          "events": "0edd37c330fa0c6f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        26
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "contact",
+                      "tick": 48,
+                      "before": [
+                        "f97ea5834e65528f",
+                        "dcc806ad0c8b3cd1"
+                      ],
+                      "after": [
+                        {
+                          "physical": "b7c2453621c4443a",
+                          "events": "40c3fb534c73103f"
+                        },
+                        {
+                          "physical": "bcb8d13097fc85ac",
+                          "events": "40c3fb534c73103f"
+                        }
+                      ],
+                      "facts": [
+                        32,
+                        32
+                      ],
+                      "tickDurationsMs": [
+                        60,
+                        60
+                      ]
+                    },
+                    {
+                      "kind": "intrinsic-and-accessor",
+                      "getters": 0,
+                      "refusal": "accessor-state-data",
+                      "holesDistinct": true
+                    }
+                  ],
+                  "cacheBindings": {
+                    "failures": [
+                      {
+                        "kind": "wrong-lane-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-collision-slot",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "wrong-lane-index",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "foreign-source-chunk",
+                        "field": "lane-collision",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "altered-evicted-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "divergent-held-source",
+                        "field": "collision-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": "unverified-controlled-collision"
+                      },
+                      {
+                        "kind": "detached-lane-edit",
+                        "field": "lane-edit",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-slot",
+                        "field": "edit-slot",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      },
+                      {
+                        "kind": "detached-edit-owner",
+                        "field": "edit-owner-last",
+                        "code": "unverified-world-cache-binding",
+                        "sourceCode": null
+                      }
+                    ],
+                    "collisionGround": true,
+                    "editGround": true,
+                    "getters": 0,
+                    "compactionStable": true,
+                    "heldPristineStable": true,
+                    "wallContinuationDistinct": true,
+                    "activeAssistDistinct": true,
+                    "scope": "Owned collision/edit binding refusal and actual source repair; wall and active-assist continuations remain authoritative, without claiming warm/cold wall-cache normalization."
+                  },
+                  "behaviorOwners": [
+                    {
+                      "kind": "authoring-revision",
+                      "before": [
+                        "e0394a108171e984",
+                        "e0394a108171e984"
+                      ],
+                      "after": [
+                        "e0394a108171e984",
+                        "c90f2381d77e6a05"
+                      ],
+                      "outcomes": [
+                        "prepared",
+                        "stale"
+                      ]
+                    },
+                    {
+                      "kind": "crew-prerequisite",
+                      "before": [
+                        "93cce29a42d7a4d6",
+                        "93cce29a42d7a4d6"
+                      ],
+                      "after": [
+                        "93cce29a42d7a4d6",
+                        "6c3c0f4f5ad8258b"
+                      ],
+                      "outcomes": [
+                        "complete",
+                        "incomplete"
+                      ]
+                    },
+                    {
+                      "kind": "topology-lineage",
+                      "before": [
+                        "53e8315307f150d7",
+                        "53e8315307f150d7"
+                      ],
+                      "after": [
+                        "53e8315307f150d7",
+                        "c27429338173119f"
+                      ],
+                      "outcomes": [
+                        "owner.room:1:1:component:1",
+                        "owner.room:1:1:component:41"
+                      ]
+                    },
+                    {
+                      "kind": "pending-and-metadata",
+                      "before": "e8ed2a49fe5f3045",
+                      "settled": "e8ed2a49fe5f3045",
+                      "pending": "pending-topology-evidence",
+                      "getters": 0,
+                      "failures": [
+                        {
+                          "field": "objects",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "descriptor",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "groups",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "world",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "runtime",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "image",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "piece",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "composite",
+                          "code": "accessor-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        },
+                        {
+                          "field": "unsupported-value",
+                          "code": "unsupported-state-data"
+                        }
+                      ]
+                    }
+                  ],
+                  "causalOwners": [
+                    {
+                      "kind": "actor-order",
+                      "before": [
+                        "0015426b5b11223f",
+                        "0015426b5b11223f"
+                      ],
+                      "after": [
+                        "0015426b5b11223f",
+                        "e014d13350eccf77"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:79"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          1,
+                          0
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "causal-sequence",
+                      "before": [
+                        "0015426b5b11223f",
+                        "0015426b5b11223f"
+                      ],
+                      "after": [
+                        "0015426b5b11223f",
+                        "d947a2845a51c0f8"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:179"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          0,
+                          1
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "fact-capacity",
+                      "before": [
+                        "0015426b5b11223f",
+                        "0015426b5b11223f"
+                      ],
+                      "after": [
+                        "0015426b5b11223f",
+                        "d11a013e8e2f1912"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        null
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        []
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "incomplete",
+                          "dropped": 4
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        1020
+                      ]
+                    },
+                    {
+                      "kind": "frame-interval",
+                      "before": [
+                        "0015426b5b11223f",
+                        "0015426b5b11223f"
+                      ],
+                      "after": [
+                        "0015426b5b11223f",
+                        "74034a00d6d41cc4"
+                      ],
+                      "firstEvents": [
+                        "procgen:42:1:17:0:79",
+                        "procgen:42:1:17:0:79"
+                      ],
+                      "motionOrder": [
+                        [
+                          0,
+                          1
+                        ],
+                        [
+                          0,
+                          1
+                        ]
+                      ],
+                      "completeness": [
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        },
+                        {
+                          "status": "complete",
+                          "dropped": 0
+                        }
+                      ],
+                      "simulationTimeMs": [
+                        1020,
+                        990
+                      ]
+                    },
+                    {
+                      "kind": "binding-refusals",
+                      "failures": [
+                        {
+                          "kind": "empty-registry",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "registry-hook",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "duplicate-actor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "foreign-actor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-registry"
+                        },
+                        {
+                          "kind": "actor-accessor",
+                          "code": "invalid-physical-continuation",
+                          "field": "actor-order"
+                        },
+                        {
+                          "kind": "detached-work",
+                          "code": "invalid-physical-continuation",
+                          "field": "stall-work"
+                        },
+                        {
+                          "kind": "work-accessor",
+                          "code": "invalid-physical-continuation",
+                          "field": "stall-work"
+                        },
+                        {
+                          "kind": "invalid-sequence",
+                          "code": "invalid-physical-continuation",
+                          "field": "_causalSequence"
+                        },
+                        {
+                          "kind": "invalid-clock",
+                          "code": "invalid-physical-continuation",
+                          "field": "physical-clock"
+                        },
+                        {
+                          "kind": "pending-fact",
+                          "code": "invalid-physical-continuation",
+                          "field": "fact-boundary"
+                        },
+                        {
+                          "kind": "quarantined-owner",
+                          "code": "invalid-physical-continuation",
+                          "field": "survey-observer"
+                        },
+                        {
+                          "kind": "detached-owner",
+                          "code": "invalid-physical-continuation",
+                          "field": "survey-observer"
+                        }
+                      ],
+                      "getters": 0,
+                      "deliveryStable": true
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "production generated pack evidence ignores query warmth and refuses altered physical caches @boundary",
+            "file": "procgen-workstation-survey-numerics.spec.js",
+            "status": "passed",
+            "receipts": [
+              {
+                "name": "generated-pack-cache-evidence",
+                "value": {
+                  "stateSchema": 10,
+                  "before": "fb0cd951eb3986ed",
+                  "warm": "fb0cd951eb3986ed",
+                  "recovered": "fb0cd951eb3986ed",
+                  "initialCounts": [
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    },
+                    {
+                      "collision": 1,
+                      "descriptions": 2,
+                      "growth": 1
+                    }
+                  ],
+                  "warmCounts": [
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    },
+                    {
+                      "collision": 6,
+                      "descriptions": 10,
+                      "growth": 6
+                    }
+                  ],
+                  "refusals": [
+                    {
+                      "kind": "solid",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "steel",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "topProfile",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "descriptor",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "description",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "growth-plan",
+                      "code": "changed-generated-terrain-cache",
+                      "cacheKind": "growth-plan",
+                      "cacheKey": "4157451727:4"
+                    },
+                    {
+                      "kind": "unproved-collision",
+                      "code": "unverified-generated-terrain-cache",
+                      "cacheKind": "collision",
+                      "cacheKey": "4157451727:4"
+                    }
+                  ],
+                  "sameWorld": true,
+                  "sameTick": true,
+                  "sameProject": true,
+                  "output": false,
+                  "scope": "Production generated pack and owned cache content; no cache queries during evidence capture, immutable source assets retain their separate provenance contract."
+                }
+              }
+            ]
+          }
+        ],
+        "viewport": {
+          "width": 1920,
+          "height": 1080
+        },
+        "scope": "All selected survey/report/replay/control and actual catalog/source journeys pass in one final source-bound group. Shared four causal continuations and12binding refusals recover; zero metadata getters execute; passive queues/listeners/counters preserve physical hash."
+      },
+      "coverage": {
+        "total": {
+          "lines": 99,
+          "functions": 97.87,
+          "branches": 90.3
+        },
+        "js/app/procgen/ProcgenTerrainTopology.js": {
+          "lines": 92.75,
+          "functions": 90.9,
+          "branches": 83.72
+        },
+        "js/app/procgen/survey/ProcgenSurveyContinuations.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 95.34
+        },
+        "js/app/procgen/survey/ProcgenSurveyCore.js": {
+          "lines": 100,
+          "functions": 100,
+          "branches": 91.29
+        }
+      },
+      "coverageFollowup": "New continuation owner100%lines/functions and95.34%branches; extend invalid scalar/array/prototype/budget/coverage forms, stale handler snapshot and additional generated route-source aliases. Survey core100%lines/functions and91.29%branches.",
+      "checks": [
+        "npm run format",
+        "npm run typecheck:critical",
+        "npm run check-undefined",
+        "npm run provenance:check",
+        "npm run check:browser-categories",
+        "git diff --check"
+      ],
+      "provenance": {
+        "components": 10,
+        "files": 361,
+        "workerFiles": 292,
+        "workerSha256": "fb0fa0758f714147b1474f65f55995127795d0870a30c3e38780804b08b23ed5"
+      },
+      "evidence": [
+        {
+          "path": ".tmp/rook379-owner-counterexamples.json",
+          "bytes": 865,
+          "sha256": "1872bddc51f2c07f011456c739f1aa9a207e0012678ee30612e74666076e9ba4"
+        },
+        {
+          "path": ".tmp/rook379-node-final.log",
+          "bytes": 18828,
+          "sha256": "50b657cbbf687f23815d04f520c57d76dd252ff5523e6be8577e94c3487d287a"
+        },
+        {
+          "path": ".tmp/rook379-playwright-final.json",
+          "bytes": 59285,
+          "sha256": "ed0944e2ea7a7cccd9b0905cd6e0183ba55a0d7cf9445d9b1581e5cfd336bb3b"
+        },
+        {
+          "path": ".tmp/rook379-format.log",
+          "bytes": 55,
+          "sha256": "6a37356bd37aff2476150322a008f8840d992a94dd5c7dd0063cf12e6631e95f"
+        },
+        {
+          "path": ".tmp/rook379-checks.log",
+          "bytes": 4209,
+          "sha256": "44adba5e1ecbd9444f5a29553eea81d078c65d5eed836f0d540f39c464839abe"
+        },
+        {
+          "path": ".tmp/rook379-coverage/coverage-summary.json",
+          "bytes": 1371,
+          "sha256": "ae951d1abbf99047372de98728adefffecd88776581c4e410d308c53f7880e51"
+        }
+      ]
+    },
+    "sources": [
+      {
+        "path": "js/app/procgen/ProcgenTerrainCacheEvidence.js",
+        "bytes": 12032,
+        "sha256": "5dbad56ed687e0a89bd5030b96ac60a024b8d6073c941ed943e06c8992aea210"
+      },
+      {
+        "path": "js/app/procgen/ProcgenWorldCacheEvidence.js",
+        "bytes": 5112,
+        "sha256": "b671320464a3877aa8ad4b68c6747aa2890bd4f6090af6bf4ea0db1ed088debb"
+      },
+      {
+        "path": "js/app/procgen/ProcgenScoredTerrain.js",
+        "bytes": 15289,
+        "sha256": "20e2060cee8624e1166f9b92a753b28c2cbdb602395962253d6d4e11f411ee04"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCore.js",
+        "bytes": 36984,
+        "sha256": "0d785909aa7485c114d0eb0c7c6558a3b11f5256fe0967ff5a6cc75f3fe6aeaa"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyTerrain.js",
+        "bytes": 4052,
+        "sha256": "bb697143ae378f430de12f231e7ff3832c8490067d0e1883a1698c8dd6a4140e"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyCanonical.js",
+        "bytes": 4792,
+        "sha256": "aa2d0b3df10bf2dc7eb9c5b63dd68ccff30318742bba3180bcb1c71a452555de"
+      },
+      {
+        "path": "e2e/procgen-workstation-survey-numerics.spec.js",
+        "bytes": 13685,
+        "sha256": "5ca1491752675dbc5837e9ada857231320900db6c3df7f38406eabe6d016f982"
+      },
+      {
+        "path": "test/procgen-world-cache-evidence.test.js",
+        "bytes": 1820,
+        "sha256": "e0c73ebd53270f6c2ed202a3981fb1dc3b2c014f9259a28b0b6c915417477544"
+      },
+      {
+        "path": "test/helpers/surveyCacheBindingCorpus.js",
+        "bytes": 5748,
+        "sha256": "7b8f77f282b6516979fb9b45096b7ee264f9cfccacf7b5e03b7b57800ae57cb0"
+      },
+      {
+        "path": "test/procgen-authored-terrain-evidence.test.js",
+        "bytes": 5983,
+        "sha256": "cb1a4f0bc3bed971ff47dae5728c1cb74e64982719556b33cf6706f0b91b94c1"
+      },
+      {
+        "path": "test/procgen-generated-terrain-evidence.test.js",
+        "bytes": 8391,
+        "sha256": "6d21c29dd719201f56673a027f4b286e6b9e3a6bb987e7ebe202d9b36c1be9ac"
+      },
+      {
+        "path": "provenance/runtime-artifacts.json",
+        "bytes": 22309,
+        "sha256": "f97a4dcf98438a06ca9c8c6186846d28803e1556707db7f2380511905215a689"
+      },
+      {
+        "path": "js/app/procgen/ProcgenTerrainTopology.js",
+        "bytes": 8313,
+        "sha256": "9992d45ffcd86d1b43b2a1a0c0a1c670588743af184cb7ccf9b775b12866fadd"
+      },
+      {
+        "path": "test/procgen-survey-core.test.js",
+        "bytes": 33448,
+        "sha256": "0a0834ef3c6960a6042287a3f7e53f5aa639e5da0a78ba79b74191267c75dc38"
+      },
+      {
+        "path": "test/helpers/surveyBehaviorOwnerCorpus.js",
+        "bytes": 7989,
+        "sha256": "e5ed214acdd53b236e11590f13527aa6002f49f1805d9ce3e8d178351f615df7"
+      },
+      {
+        "path": "js/app/procgen/survey/ProcgenSurveyContinuations.js",
+        "bytes": 3140,
+        "sha256": "212ee833ba6a9ae8c8cdcdcdae5648bbdb9af93fcb862acb9356c5b8770ffbdf"
+      },
+      {
+        "path": "test/helpers/surveyCausalContinuationCorpus.js",
+        "bytes": 6478,
+        "sha256": "5be40bddaf1b861d2468dc2bcd502468019a4c71ae5434ce7fd609e0baac47c3"
+      }
+    ],
+    "latestVerifiedCiCheckpoint": {
+      "head": "97eeed53b68c910b197cf9bdefc914b0804d5138",
+      "status": "success",
+      "run": 40973024023,
+      "job": 123794163765,
+      "url": "https://github.com/doublemover/LemmingsJS-MIDI/actions/runs/40973024023",
+      "engineJob": 123794163345,
+      "requiredJobs": {
+        "test": "success",
+        "lifecycle-engines": "success",
+        "native-midi-codec (windows-latest)": "success",
+        "native-midi-codec (ubuntu-latest)": "success"
+      },
+      "nodePassed": 7216,
+      "nodePending": 10,
+      "browserPassed": 269,
+      "desktopPassed": 26,
+      "workstationSmokePassed": 225,
+      "enginePassed": 18,
+      "workstationCapabilities": 14,
+      "coverage": {
+        "lines": 90.77,
+        "statements": 90.77,
+        "branches": 83.97,
+        "functions": 88.61
+      },
+      "benchmark": {
+        "status": "success",
+        "ok": true,
+        "profile": "smoke",
+        "totalDurationMs": 38465,
+        "measurementValid": true,
+        "failures": [],
+        "metrics": {
+          "perfP95Frame": 83.29999999999927,
+          "perfP50Tps": 82.88357748653708,
+          "historyRatio": 0.5853333333333334,
+          "antsAvgMs": 31.98,
+          "tileCompositionAvgMs": 4.21,
+          "overlayPlaneAvgMs": 22.35,
+          "scaledBlitAvgMs": 30.45
+        }
+      },
+      "mcp": "success",
+      "policy": "success",
+      "dependencyReview": "success",
+      "engineQualification": {
+        "status": "passed",
+        "files": 1257,
+        "configuredAudioBackend": "pulseaudio-null-sink",
+        "closureDigest": "b0d231e9213e55806172b56ae9335465eb5ddea8429fc4540aaf93505ef40be8",
+        "initialHash": "131723d70812b3b7170ce22627d8f154626fa0eefced1e03fea3aa04009d647f",
+        "physicsHash": "ad95e60f7679d2cd85ba555a7f1ba6daaac442e59908159b6b37cf2916f82257",
+        "causalHash": "651b421590c58e3af5c020721bdb4b1489071ebbe7da8c9995de9a569c933feb",
+        "facts": 1078,
+        "ticks": 64,
+        "nativeAudio": [
+          {
+            "project": "chromium-semantic",
+            "browser": "153.0.8010.12",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "firefox-lifecycle",
+            "browser": "155.0",
+            "audioContextAvailable": true
+          },
+          {
+            "project": "webkit-lifecycle",
+            "browser": "26.6",
+            "audioContextAvailable": true
+          }
+        ]
+      },
+      "nativeCodec": {
+        "status": "both passed",
+        "linuxJob": 123794164372,
+        "windowsJob": 123794163852,
+        "commandsPerPlatform": 8829,
+        "boundedProtocolFailuresPerPlatform": 4,
+        "sourceIdentical": true,
+        "verifiedSourceFiles": 8,
+        "outputSha256": "cd299ebd39da5c64122c7da662eb0b233e95720ee68e15ac3a65711a9b6c0f3d",
+        "outputIdentical": true,
+        "deviceIO": false,
+        "shippingTransportQualified": false
+      },
+      "sourceQualification": {
+        "testedPrMergeHead": "f8d20cd6dc3839b6990c551b562b68b866148f9b",
+        "rawDirtyFlag": true,
+        "inventoryFiles": 1146,
+        "inventorySha256": "18fa5b9ad949e209ffa86b1c44e572a72d4fd3a2a69523ca4ce1a63b0e6852be",
+        "inventoryDigestEncoding": "JSON.stringify(files)-utf8",
+        "allWorkstationSourceFilesMatchPublishedHead": true,
+        "engineInventoryFiles": 1257,
+        "allEngineSourceFilesMatchPublishedHead": true
+      },
+      "artifacts": [
+        {
+          "path": ".tmp/ci374-main.zip",
+          "bytes": 764467,
+          "sha256": "de886280d4959ef6e339bb18319546feb02f44836ac2f727a92c6b98cc621a04"
+        },
+        {
+          "path": ".tmp/ci374-engine.zip",
+          "bytes": 155275,
+          "sha256": "658a93c9fb413d707104e97fda7bf87243ef2d4aef86f4b96ae56bcac413e0dc"
+        },
+        {
+          "path": ".tmp/ci374-linux.zip",
+          "bytes": 2247,
+          "sha256": "d8b91bb0c41606e93a66f01036c4f03c311c47b5f96329d5c4bf9556cf95e21a"
+        },
+        {
+          "path": ".tmp/ci374-windows.zip",
+          "bytes": 2146,
+          "sha256": "be01a8d98e54a87cb1239e33b507885c9eb273ae8044316a43a903c97e47655f"
+        },
+        {
+          "path": ".tmp/ci374-main-workstation-result-qualification.json",
+          "bytes": 185109,
+          "sha256": "b51ca05aacf2ef435862a00e99569a6548391ede3ad20f48cec23e257b84ff2f"
+        },
+        {
+          "path": ".tmp/ci374-engine-lifecycle-engine-qualification.json",
+          "bytes": 244359,
+          "sha256": "e9310c873429217997d802a84db2d8735d5788f23f231cfe92cceee54013581b"
+        },
+        {
+          "path": ".tmp/ci374-linux-native-midi-codec-qualification.json",
+          "bytes": 7876,
+          "sha256": "fea1b8d421995a3b68f10f268106f2caef8b2588743fb03fcd899f20d55b0c0e"
+        },
+        {
+          "path": ".tmp/ci374-windows-native-midi-codec-qualification.json",
+          "bytes": 7747,
+          "sha256": "ad773d901d38b5a381d34816b79fdbc9783e869071e7bc2626e06965e08f44cf"
+        }
+      ],
+      "scope": "All four required jobs plus policy and dependency review at the named branch/PR-merge checkpoint. Later source, device and issue-specific acceptance work is independent."
+    },
+    "remaining1223": "Generated hazard/route retained descriptor and asset pointer binding audit remains; generic ignored asset names still require an explicit current-source proof where those references affect future physical decisions. Do not infer checkpoint physics projection or archived exact execution from survey checks."
   }
 }
